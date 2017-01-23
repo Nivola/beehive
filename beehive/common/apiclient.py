@@ -10,10 +10,12 @@ from beecell.perf import watch
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
+from Crypto.Random import atfork
 import binascii
 from beecell.simple import truncate
 from socket import gethostname
 from itertools import repeat
+from multiprocessing import current_process
 
 class BeehiveApiClientError(Exception):
     def __init__(self, value, code=400):
@@ -40,6 +42,9 @@ class BeehiveApiClient(object):
     def __init__(self, auth_endpoints, user, pwd, catalog_id=None):
         self.logger = getLogger(self.__class__.__module__+ \
                                 '.'+self.__class__.__name__)
+        
+        #atfork()
+        self.pid = current_process().ident
         
         self.endpoints = {u'auth':[]}
         self.endpoint_weights = {u'auth':[]}
@@ -134,6 +139,9 @@ class BeehiveApiClient(object):
         :rtype: str 
         """
         try:
+            if current_process().ident != self.pid:
+                atfork()
+            
             # import key
             seckey = binascii.a2b_base64(seckey64)
             key = RSA.importKey(seckey)
@@ -152,7 +160,8 @@ class BeehiveApiClient(object):
             signature64 = binascii.b2a_hex(signature)
             
             return signature64
-        except:
+        except Exception as ex:
+            self.logger.error(ex, exc_info=1)
             raise BeehiveApiClientError("Error signing data: %s" % data)
 
     '''
@@ -277,10 +286,10 @@ class BeehiveApiClient(object):
         #identity = self.api_manager.get_identity(uid)
         #seckey = identity['seckey']
         # create sign
-        headers = {'Accept':'json'}
+        headers = {u'Accept':u'json'}
         if uid is not None:
             sign = self.sign_request(seckey, path)
-            headers.update({'uid':uid, 'sign':sign})
+            headers.update({u'uid':uid, u'sign':sign})
             
         if other_headers is not None:
             headers.update(other_headers)            
@@ -479,7 +488,7 @@ class BeehiveApiClient(object):
             u'refresh':u'dynamic'            
         }
         res = self.invoke(u'monitor', u'/v1.0/monitor/node/',
-                          u'PUT', json.dumps(data))        
+                          u'POST', json.dumps(data))        
         self.logger.debug(u'Register in monitor')
         return res 
 
