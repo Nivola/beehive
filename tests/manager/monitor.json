@@ -1,0 +1,22 @@
+{
+    "api_system":"beehive",
+    "api_subsystem":"monitor",
+    "api_modules":["gibboncloudapi.module.monitor.mod.MonitorModule"],
+    "api_plugins":[],    
+    "db_uri":"mysql+pymysql://db2:db2@10.102.160.240:3306/db2",
+    "db_managers":["gibboncloudapi.module.monitor.model.MonitorDbManager"],
+    "config":[
+        {"group":"redis", "name":"redis_01", "value":"redis://10.102.160.240:6379/0"},
+        {"group":"mail", "name":"server1", "value":"mailfarm-app.csi.it"},
+        {"group":"mail", "name":"sender1", "value":"sergio.tonani@csi.it"},        
+        {"group":"tcpproxy", "name":"proxy01", "value":"10.102.47.208"},
+        {"group":"httpproxy", "name":"proxy02", "value":"http://10.102.162.5:3128"},
+        {"group":"gateway", "name":"internet_spice", "value":{"name":"internet_spice", "host":"84.240.187.251", "port":80, "type":"spice"}},
+        {"group":"gateway", "name":"internet_vnc", "value":{"name":"internet_vnc", "host":"84.240.187.251", "port":80, "type":"vnc"}},
+        {"group":"gateway", "name":"rupar_spice", "value":{"name":"rupar_spice", "host":"10.102.81.197", "port":15900, "type":"spice"}},
+        {"group":"gateway", "name":"rupar_vnc", "value":{"name":"rupar_vnc", "host":"10.102.81.197", "port":15900, "type":"vnc"}},
+        {"group":"queue", "name":"queue.event", "value":{"name":"queue.event", "queue":"cloudapi.event", "uri":"redis://10.102.160.240:6379/0"}},
+        {"group":"queue", "name":"queue.process", "value":{"name":"queue.process", "queue":"cloudapi.process.event", "uri":"redis://10.102.160.240:6379/0"}},
+        {"group":"queue", "name":"queue.monitor", "value":{"name":"queue.monitor", "queue":"cloudapi.monitor", "uri":"redis://10.102.160.240:6379/0"}} 
+   ]
+}

@@ -537,15 +537,12 @@ class ApiManager(object):
     
                     # setup event producer
                     conf = json.loads(conf[0].value)
-                    # set redis manager
-                    host, port, db = parse_redis_uri(conf['uri'])
-                    self.redis_event_manager = StrictRedis(host=host, 
-                                                                   port=int(port), 
-                                                                   db=int(db))               
-                    self.redis_event_channel = conf['queue']            
+                    self.redis_event_uri = conf['uri']
+                    self.redis_event_channel = conf['queue']
+                            
                     # create instance of event producer
                     self.event_producer = EventProducerRedis(
-                                                        self.redis_event_manager, 
+                                                        self.redis_event_uri, 
                                                         self.redis_event_channel)
                     self.logger.info('Configure event queue - STOP')
                 except:

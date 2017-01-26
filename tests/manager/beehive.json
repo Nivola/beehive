@@ -1,0 +1,7 @@
+{
+    "endpoint":["http://10.102.184.52:6060"],
+    "user":"admin@local",
+    "pwd":"testlab",
+    "catalog":3,
+    "log":"./"    
+}

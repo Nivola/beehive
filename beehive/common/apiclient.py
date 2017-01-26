@@ -53,6 +53,8 @@ class BeehiveApiClient(object):
         
         self.catalog_id = catalog_id
         
+        self.max_attempts = 3 # number of attempt to get a valid endpoint
+        
         self.uid = None
         self.seckey = None
         
@@ -107,20 +109,23 @@ class BeehiveApiClient(object):
         
         # select endpoint that ping:True
         endpoint = endpoints[0]
-        while self.ping(endpoint=endpoint[0]) is not True:
-            try:
-                # remove item from the list
-                endpoints.pop(0)
-                endpoint = endpoints[0]
-            except:
-                self.logger.warn(u'No suitable endpoint are available. Reload catalog')
-                self.load_catalog()
-                # if subsystem does not already exist return error
+        for attempt in range(0, self.max_attempts):
+            if self.ping(endpoint=endpoint[0]) is True:
+                break
+            else:
                 try:
-                    endpoints = self.endpoints[subsystem]
+                    # remove item from the list
+                    endpoints.pop(0)
+                    endpoint = endpoints[0]
                 except:
-                    raise BeehiveApiClientError(u'Subsystem %s reference is empty' % 
-                                                subsystem, code=404)
+                    self.logger.warn(u'No suitable %s endpoint are available. Reload catalog' % subsystem)
+                    self.load_catalog()
+                    # if subsystem does not already exist return error
+                    try:
+                        endpoints = self.endpoints[subsystem]
+                    except:
+                        raise BeehiveApiClientError(u'Subsystem %s reference is empty' % 
+                                                    subsystem, code=404)
         
         # inc endpoint usage
         endpoint[1] += 1
