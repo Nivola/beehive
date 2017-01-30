@@ -5,7 +5,7 @@ Created on Jan 31, 2014
 '''
 import logging
 from datetime import datetime
-from gibboncloudapi.util.data import transaction, query, operation
+from beehive.common.data import transaction, query, operation
 from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from sqlalchemy import create_engine, exc
 from sqlalchemy.ext.declarative import declarative_base

@@ -198,7 +198,7 @@ class BeehiveApiClient(object):
             raise BeehiveApiClientError("Identity %s doen't exist or is expired" % uid, code=1014)'''
 
     def http_client(self, proto, host, path, method, 
-                          data='', headers={}, port=80, timeout=30):
+                          data=u'', headers={}, port=80, timeout=30):
         """Http client. Usage:
         
             res = http_client2('https', 'host1', '/api', 'POST',
@@ -240,7 +240,7 @@ class BeehiveApiClient(object):
             # get response
             conn.request(method, path, data, headers)
         except Exception as ex:
-            self.logger.error(ex, exc_info=False)
+            self.logger.error(ex, exc_info=1)
             raise BeehiveApiClientError(u'Service Unavailable', code=503)
         
         try:            
@@ -328,15 +328,21 @@ class BeehiveApiClient(object):
         return res'''
     
     @watch    
-    def invoke(self, subsystem, path, method, data='', other_headers=None):
+    def invoke(self, subsystem, path, method, data=u'', other_headers=None,
+               parse=False):
         """Make api request using subsystem internal admin user credentials.
         
+        :param parse: if True check if data is dict and transform in json
+                    else accept data as passed
         :raise BeehiveApiClientError:
         """
         if self.uid is None or self.exist(self.uid) is False:
             self.login()
         
         try:
+            if parse is True and isinstance(data, dict):
+                data = json.dumps(data)
+                
             res = self.send_signed_request(subsystem, path, method, data, 
                                            self.uid, self.seckey, other_headers)
         except BeehiveApiClientError as ex:
@@ -418,6 +424,17 @@ class BeehiveApiClient(object):
                         self.endpoints[service] = [[self.__parse_endpoint(uri), 0]]
         else:
             raise BeehiveApiClientError(u'Catalog id is undefined')
+        
+    def set_catalog_endpoint(self, service, endpoint, append=False):
+        """Set new service endpoint manually
+        
+        :param subsystem:
+        :parma endpoint: 
+        """
+        if append is True:
+            self.endpoints[service].append([self.__parse_endpoint(endpoint), 0])
+        else:
+            self.endpoints[service] = [[self.__parse_endpoint(endpoint), 0]]
     
     @watch
     def login(self, api_user=None, api_user_pwd=None, login_ip=None):

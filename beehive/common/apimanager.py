@@ -38,7 +38,7 @@ from beehive.common.event import EventProducerRedis
 from beehive.common.apiclient import BeehiveApiClient, BeehiveApiClientError
 from beehive.common.data import operation
 from beehive.common.config import ConfigDbManager
-from gibboncloudapi.module.auth.model import AuthDbManager
+from beehive.module.auth.model import AuthDbManager
 
 class ApiManagerError(Exception):
     """Main excpetion raised by api manager and childs
@@ -556,18 +556,15 @@ class ApiManager(object):
                                             name='queue.monitor')
                     self.logger.info('Configure monitor queue - START')
     
-                    # setup event producer
+                    # setup monitor producer
                     conf = json.loads(conf[0].value)
-                    # set redis managerhttp_client
-                    host, port, db = parse_redis_uri(conf['uri'])
-                    self.redis_monitor_manager = StrictRedis(host=host, 
-                                                                   port=int(port), 
-                                                                   db=int(db))               
-                    self.redis_monitor_channel = conf['queue']            
+                    self.redis_monitor_uri = conf['uri']
+                    self.redis_monitor_channel = conf['queue']                    
+                        
                     # create instance of monitor producer
-                    from gibboncloudapi.module.monitor.producer import MonitorProducerRedis
+                    from beehive_monitor.producer import MonitorProducerRedis
                     self.monitor_producer = MonitorProducerRedis(
-                                                        self.redis_monitor_manager, 
+                                                        self.redis_monitor_uri, 
                                                         self.redis_monitor_channel)
                     
                     self.logger.info('Configure monitor queue - STOP')
@@ -582,18 +579,15 @@ class ApiManager(object):
                                             name='queue.catalog')
                     self.logger.info('Configure catalog queue - START')
     
-                    # setup event producer
+                    # setup catalog producer
                     conf = json.loads(conf[0].value)
-                    # set redis managerhttp_client
-                    host, port, db = parse_redis_uri(conf['uri'])
-                    self.redis_catalog_manager = StrictRedis(host=host, 
-                                                            port=int(port), 
-                                                            db=int(db))               
-                    self.redis_catalog_channel = conf['queue']            
-                    # create instance of monitor producer
-                    from gibboncloudapi.module.catalog.producer import CatalogProducerRedis
+                    self.redis_catalog_uri = conf['uri']
+                    self.redis_catalog_channel = conf['queue']                    
+                        
+                    # create instance of catalog producer
+                    from beehive.module.catalog.producer import CatalogProducerRedis
                     self.catalog_producer = CatalogProducerRedis(
-                                                        self.redis_catalog_manager, 
+                                                        self.redis_catalog_uri, 
                                                         self.redis_catalog_channel)
                     
                     self.logger.info('Configure catalog queue - STOP')

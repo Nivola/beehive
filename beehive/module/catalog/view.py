@@ -6,9 +6,9 @@ Created on Jan 12, 2017
 from re import match
 from flask import request, send_from_directory
 from beecell.simple import id_gen, import_class, get_value
-from gibboncloudapi.util.data import operation
-from gibboncloudapi.module.base import ApiView, ApiManagerError
-#from gibboncloudapi.common import JobManagerError
+from beehive.common.data import operation
+from beehive.common.apimanager import ApiView, ApiManagerError
+#from beehive.common import JobManagerError
 from beecell.simple import get_attrib
 
 class CatalogApiView(ApiView):

@@ -1,9 +1,5 @@
 #!/usr/bin/env python
 '''
-Created on Jan 9, 2017
-
-@author: darkbk
-
 use: manage.py <otions> <cmd> PARAMS
 
 options:
@@ -65,12 +61,15 @@ section:
         auth user get <name>
         auth user add_system <name> <pwdd> <desc> 
 
+Created on Jan 9, 2017
+
+@author: darkbk
 '''
 import os, sys
 import logging
 import getopt
 
-VERSION = 0.1
+VERSION = u'1.0.0'
 
 def main(run_path, argv):
     """
@@ -88,13 +87,18 @@ def main(run_path, argv):
     from beehive.manager.ops.auth import auth_main
     from beehive.manager.ops.create import create_main
     from beehive.manager.ops.create import create_client
+    from beehive.manager.ops.monitor import monitor_main
+    from beehive.manager.ops.resource import resource_main
+    from beehive.manager.ops.scheduler import scheduler_main
+    from beehive.manager.ops.tenant import tenant_main
     
     cmd = None
     p = None
     retcode = 0
     format = u'text'
     
-    auth_config = {u'log':u'./'}
+    auth_config = {u'log':u'./',
+                   u'endpoint':None}
     
     try:
         opts, args = getopt.getopt(argv,"c:f:hv",["help", "conf=", 'format=',
@@ -103,7 +107,7 @@ def main(run_path, argv):
         print __doc__
         return 2
     for opt, arg in opts:
-        if opt in ("-h", "--help"):
+        if opt in (u'-h', u'--help'):
             print __doc__
             return 0
         elif opt in ('-v', '--version'):
@@ -117,7 +121,7 @@ def main(run_path, argv):
             auth_config = json.loads(auth_config)
             f.close()
         elif opt in ('-f', '--format'):
-            format = arg  
+            format = arg
 
     logger = logging.getLogger(__name__)
 
@@ -142,7 +146,7 @@ def main(run_path, argv):
                                       1024*1024, 5, frmt)
 
     try:
-        section = args[0]
+        section = args.pop(0)
     except:
         print __doc__
         return 0
@@ -170,8 +174,23 @@ def main(run_path, argv):
                 
         elif section == u'auth':
             retcode = auth_main(auth_config, format, args)
+            
+        elif section == u'monitor':
+            retcode = monitor_main(auth_config, format, opts, args)
+            
+        elif section == u'resource':
+            retcode = resource_main(auth_config, format, opts, args)            
+            
+        elif section == u'scheduler':
+            retcode = scheduler_main(auth_config, format, opts, args) 
+            
+        elif section == u'tenant':
+            retcode = tenant_main(auth_config, format, opts, args) 
+                    
     except Exception as ex:
         print(u'ERROR : %s' % (ex))
+        #print __doc__        
+        
         logger.error(ex, exc_info=1)
         retcode = 1
     

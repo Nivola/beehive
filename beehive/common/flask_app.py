@@ -173,7 +173,7 @@ class BeehiveApp(Flask):
                    logging.getLogger('sqlalchemy.engine'),
                    logging.getLogger('sqlalchemy.pool')]
         LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, 
-                                          '%s/%s.db' % (self.log_path, logname))
+                                          '%s/%s.db.log' % (self.log_path, logname))
         
         # performance logging
         loggers = [logging.getLogger('beecell.perf')]
