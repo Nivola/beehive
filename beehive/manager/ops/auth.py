@@ -21,20 +21,20 @@ def auth_main(auth_config, format, args):
                          u'user': u'admin@local'}
     """
     try:
-        entity = args[1]
+        entity = args.pop(0)
     except Exception as ex:
         entity = u'ping'
-    
+
     pp = PrettyPrinter(width=200)
     
-    client = BeehiveApiClient(auth_config['endpoint'], 
-                              auth_config['user'], 
-                              auth_config['pwd'],
-                              auth_config['catalog'])
+    client = BeehiveApiClient(auth_config[u'endpoint'], 
+                              auth_config[u'user'], 
+                              auth_config[u'pwd'],
+                              auth_config[u'catalog'])
     
     if (entity == u'ping'):
         try:
-            service = args[2]
+            service = args.pop(0)
         except:
             service = u'auth'
         res = client.ping(service)
@@ -64,7 +64,7 @@ def auth_main(auth_config, format, args):
             
     elif (entity == u'catalog'):
         try:
-            cmd = args[2]
+            cmd = args.pop(0)
         except:
             cmd = u'list'
         if cmd == u'list':    
@@ -78,7 +78,7 @@ def auth_main(auth_config, format, args):
         
         elif cmd == u'get':
             try:
-                catalog_id = args[3]
+                catalog_id = args.pop(0)
             except:
                 print(u'ERROR : Specify catalog id')
                 return 1
@@ -93,7 +93,7 @@ def auth_main(auth_config, format, args):
                 
         elif cmd == u'add':
             try:
-                name = args[3]
+                name = args.pop(0)
                 zone = args[4]
             except:
                 print(u'ERROR : Specify catalog name and zone')
@@ -108,7 +108,7 @@ def auth_main(auth_config, format, args):
                 
         elif cmd == u'delete':
             try:
-                catalog_id = args[3]
+                catalog_id = args.pop(0)
             except:
                 print(u'ERROR : Specify catalog id')
                 return 1
@@ -122,7 +122,7 @@ def auth_main(auth_config, format, args):
                 
     elif (entity == u'endpoint'):
         try:
-            cmd = args[2]
+            cmd = args.pop(0)
         except:
             cmd = u'list'
             
@@ -137,7 +137,7 @@ def auth_main(auth_config, format, args):
             
         if cmd == u'get':
             try:
-                endpoint_id = args[3]
+                endpoint_id = args.pop(0)
             except:
                 print(u'ERROR : Specify endpoint id')
                 return 1
@@ -152,7 +152,7 @@ def auth_main(auth_config, format, args):
                 
         elif cmd == u'add':
             try:
-                name = args[3]
+                name = args.pop(0)
                 catalog = args[4]
                 service = args[5]
                 uri = args[6]
@@ -177,7 +177,7 @@ def auth_main(auth_config, format, args):
                 
         elif cmd == u'delete':
             try:
-                endpoint_id = args[3]
+                endpoint_id = args.pop(0)
             except:
                 print(u'ERROR : Specify endpoint id/name')
                 return 1
@@ -191,7 +191,7 @@ def auth_main(auth_config, format, args):
     
     elif (entity == u'perm'):
         try:
-            cmd = args[2]
+            cmd = args.pop(0)
         except:
             cmd = u'list'
             
@@ -200,7 +200,7 @@ def auth_main(auth_config, format, args):
             
     elif (entity == u'object'):
         try:
-            cmd = args[2]
+            cmd = args.pop(0)
         except:
             cmd = u'list'
             
@@ -209,7 +209,7 @@ def auth_main(auth_config, format, args):
             
     elif (entity == u'user'):
         try:
-            cmd = args[2]
+            cmd = args.pop(0)
         except:
             cmd = u'list'
             
@@ -217,14 +217,14 @@ def auth_main(auth_config, format, args):
             get_users(client, pp, format)
         elif cmd == u'get':
             try:
-                oid = args[3]
+                oid = args.pop(0)
             except:
                 print(u'ERROR : Specify user name')
                 return 1
             get_user(client, pp, format, oid)
         elif cmd == u'add_system':
             try:
-                name = args[3]
+                name = args.pop(0)
                 password = args[4]
                 description = args[5]
             except:
@@ -239,7 +239,7 @@ def auth_main(auth_config, format, args):
                 pass
         elif cmd == u'delete':
             try:
-                oid = args[3]
+                oid = args.pop(0)
             except:
                 print(u'ERROR : Specify user name')
                 return 1
@@ -253,7 +253,7 @@ def auth_main(auth_config, format, args):
     
     elif (entity == u'role'):
         try:
-            cmd = args[2]
+            cmd = args.pop(0)
         except:
             cmd = u'list'
             
@@ -261,7 +261,7 @@ def auth_main(auth_config, format, args):
             get_roles(client, pp, format)
         elif cmd == u'get':
             try:
-                oid = args[3]
+                oid = args.pop(0)
             except:
                 print(u'ERROR : Specify role name')
                 return 1

@@ -11,6 +11,16 @@ import redis
 import gevent
 from beecell.simple import str2uni, id_gen
 
+from kombu.mixins import ConsumerMixin
+from kombu.log import get_logger as kombu_get_logger
+from kombu.utils import reprcall
+from kombu import Exchange, Queue
+from kombu import Connection
+from kombu.utils.debug import setup_logging
+from signal import *
+
+logger = logging.getLogger(__name__)
+
 class Event(object):
     """Event.
     
@@ -165,3 +175,62 @@ class EventProducerZmq(EventProducer):
                 zmq_socket.close()
             if context is not None:
                 context.term()
+                
+class SimpleEventConsumer(ConsumerMixin):
+    def __init__(self, connection, redis_channel):
+        self.logger = logging.getLogger(self.__class__.__module__+ \
+                                        u'.'+self.__class__.__name__)
+        
+        self.connection = connection
+
+        # redis
+        self.redis_channel = redis_channel
+        
+        # kombu channel
+        self.exchange = Exchange(self.redis_channel+u'.sub', type=u'topic')
+        self.queue_name = u'%s.queue.sub' % self.redis_channel   
+        self.routing_key = u'%s.key.sub' % self.redis_channel
+        self.queue = Queue(self.queue_name, self.exchange,
+                           routing_key=self.routing_key)        
+
+    def get_consumers(self, Consumer, channel):
+        return [Consumer(queues=self.queue,
+                         accept=[u'pickle', u'json'],
+                         callbacks=[self.manage_event],
+                         on_decode_error=self.decode_error)]
+
+    def decode_error(self, message, exc):
+        self.logger.error(exc)
+        
+    def manage_event(self, data, message):
+        """Manage event
+        
+        :param data json: event received
+        :param message:
+        :raise MonitorConsumerError:
+        """
+        self.logger.debug(data)
+        message.ack()
+                
+    @staticmethod
+    def start_subscriber(event_redis_uri, event_redis_channel):
+        """
+        """    
+        def terminate(*args):
+            worker.should_stop = True 
+        
+        for sig in (SIGHUP, SIGABRT, SIGILL, SIGINT, SIGSEGV, SIGTERM, SIGQUIT):
+            signal(sig, terminate)    
+        
+        with Connection(event_redis_uri) as conn:
+            try:
+                worker = SimpleEventConsumer(conn, event_redis_channel)
+                logger.info(u'Start event consumer on redis channel %s:%s' % 
+                                (event_redis_uri, event_redis_channel))
+                worker.run()
+            except KeyboardInterrupt:
+                logger.info(u'Stop event consumer on redis channel %s:%s' % 
+                                (event_redis_uri, event_redis_channel))
+                
+        logger.info(u'Stop event consumer on redis channel %s:%s' % 
+                        (event_redis_uri, event_redis_channel))                

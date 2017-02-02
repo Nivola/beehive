@@ -77,13 +77,14 @@ def main(run_path, argv):
     # setup pythonpath
     sys.path.append(os.path.expanduser("~/workspace/git/beecell"))
     sys.path.append(os.path.expanduser("~/workspace/git/beedrones"))
-    sys.path.append(os.path.expanduser("~/workspace/git/beehive"))    
+    sys.path.append(os.path.expanduser("~/workspace/git/beehive"))
+    sys.path.append(os.path.expanduser("~/workspace/git/gibboncloudapi"))     
     
     from beecell.logger.helper import LoggerHelper
     
     # imports
     import ujson as json
-    from beehive.manager.ops.test import test_redis, test_mysql, test_beehive
+    from beehive.manager.ops.platform import platform_main
     from beehive.manager.ops.auth import auth_main
     from beehive.manager.ops.create import create_main
     from beehive.manager.ops.create import create_client
@@ -152,19 +153,8 @@ def main(run_path, argv):
         return 0
 
     try:
-        if section == u'test':
-            test = args[1]
-            server = args[2]
-            if test == u'redis':
-                test_redis(server)
-            elif test == u'mysql':
-                user = args[3]
-                pwd = args[4]
-                db = args[5]
-                test_mysql(server, user, pwd, db)
-            elif test == u'beehive':
-                port = args[3]
-                test_beehive(server, port)         
+        if section == u'platform':
+            retcode = platform_main(auth_config, format, opts, args)
     
         elif section == u'subsystem':
             retcode = create_main(auth_config, format, args)

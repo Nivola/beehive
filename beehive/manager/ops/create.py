@@ -7,7 +7,8 @@ import logging
 import ujson as json
 from pprint import PrettyPrinter
 from beehive.common.apimanager import ApiManager
-from beehive.common.data import operation
+from gibboncloudapi.util.data import operation
+#from beehive.common.data import operation
 from beecell.simple import import_class, id_gen, random_password
 from beehive.module.auth.controller import Objects, Role, User
 from beehive.common.apiclient import BeehiveApiClient,\
@@ -148,11 +149,13 @@ def init_subsystem(config, update=True):
             if module.name == u'AuthModule':
                 res = __create_main_users(controller, config, 
                                           config_db_manager)
+                controller.set_superadmin_permissions()
                 msgs.extend(res)
                 
             elif module.name == u'CatalogModule':
                 res = __create_main_catalogs(controller, config, 
                                              config_db_manager)
+                controller.set_superadmin_permissions()
                 msgs.extend(res)
           
         except Exception as ex:
@@ -176,8 +179,10 @@ def __create_main_users(controller, config, config_db_manager):
     users = config[u'users']
 
     # add superadmin role
-    perms_to_assign = controller.get_superadmin_permissions()
+    #perms_to_assign = controller.get_superadmin_permissions()
+    perms_to_assign = []
     controller.add_superadmin_role(perms_to_assign)
+    
 
     # add guest role
     controller.add_guest_role()
@@ -200,7 +205,7 @@ def __create_main_users(controller, config, config_db_manager):
         # check if user already exist
         users = controller.get_users(name=user[u'name'])
         if len(users) > 0:
-            logger.warn(u'User %s already exist' % (user[u'name']))
+            logger.debug(u'User %s already exist' % (user[u'name']))
             msgs.append(u'User %s already exist' % (user[u'name']))        
         
         else:
@@ -221,7 +226,7 @@ def __create_main_users(controller, config, config_db_manager):
                                                    user[u'pwd'], 
                                                    description=user[u'desc'])
             
-            logger.warn(u'Add user %s' % (user[u'name']))
+            logger.debug(u'Add user %s' % (user[u'name']))
             msgs.append(u'Add user %s' % (user[u'name']))          
             
     return msgs            
@@ -279,14 +284,14 @@ def create_main(auth_config, format, args):
     set_operation(classes=classes)
     
     try:
-        subsystem = args[1]
+        subsystem = args.pop(0)
     except:
         print(u'ERROR : Specify subsystem')
         logger.error(u'Specify subsystem', exc_info=1)
         return 1    
     
     try:
-        file_config = args[2]
+        file_config = args.pop(0)
     except:
         print(u'ERROR : Specify subsystem config file')
         logger.error(u'Specify subsystem config file', exc_info=1)
@@ -365,7 +370,7 @@ def create_client(auth_config, format, args):
     set_operation(classes=classes)
     
     try:
-        file_config = args[1]
+        file_config = args.pop(0)
     except:
         print(u'ERROR : Specify client config file')
         logger.error(u'Specify client config file', exc_info=1)

@@ -751,14 +751,13 @@ class BeehiveApiClient(object):
         self.logger.debug('Remove object: %s:%s %s' % (objtype, objdef, objid))
         return res
 
-    def get_permissions(self, objtype, objdef, objid,
-                        uid=None, seckey=None):
+    def get_permissions(self, objtype, objdef, objid, uid=None, seckey=None):
         """Get object permissions
         
         :raise BeehiveApiClientError:
         """
         data = ''
-        objid = objid.replace('//', '_')
+        objid = objid.replace(u'//', u'_')
         uri = u'/api/auth/object/perm/T:%s+D:%s+I:%s/' % (objtype, objdef, objid)
         res = self.invoke(u'auth', uri, 'GET', data)
         self.logger.debug('Get permission : %s:%s %s' % (objtype, objdef, objid))

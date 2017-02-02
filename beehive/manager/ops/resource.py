@@ -9,9 +9,25 @@ Mandatory arguments to long options are mandatory for short options too.
     
 PARAMS:
     containers list
+    container types
     container get <id>
+    container ping <id>
+    container perms <id>
     container add vsphere tst-vecenter-01 \{\"vcenter\":\{\"host\":\"tst-vcenter.tstsddc.csi.it\",\"user\":\"administrator@tstsddc.csi.it\",\"pwd\":\"cs1\$topix\",\"port\":443,\"timeout\":5,\"verified\":false\},\"nsx\":\{\"host\":\"tst-nsxmanager.tstsddc.csi.it\",\"port\":443,\"user\":\"admin\",\"pwd\":\"Cs1\$topix\",\"verified\":false,\"timeout\":5\}\}
+    container add openstack tst-opstk-redhat-01 \{\"api\":\{\"user\":\"admin\",\"project\":\"admin\",\"domain\":\"default\",\"uri\":\"http://10.102.184.200:5000/v3\",\"timeout\":5,\"pwd\":\"8fAwzAJAHQFMcJfrntpapzDpC\",\"region\":\"regionOne\"\}\}
     container delete <id>
+    container tag-add <id> <tag>
+    container tag-delete <id> <tag>
+    container tags <id>
+    
+    tags list
+    tag get <tag>
+    tags count 
+    tags occurrences 
+    tag perms <tag>
+    tag add <value>
+    tag update  <value> <new_value>
+    tag delete <value>
 
 Exit status:
  0  if OK,
@@ -44,19 +60,23 @@ class ResourceManager(ApiManager):
     def actions(self):
         actions = {
             u'containers.list': self.get_resource_containers,
-            u'container_types.list': self.get_resource_container_types,
+            u'container.types': self.get_resource_container_types,
             u'container.get': self.get_resource_container,
             u'container.count': self.get_resource_container_rescount,
             u'container.perms': self.get_resource_container_perms,
+            u'container.ping': self.ping_container,
             u'container.add': self.add_resource_container,
             u'container.delete': self.delete_resource_container,
+            u'container.tag-add': self.add_container_tag,
+            u'container.tag-delete': self.delete_container_tag,
+            u'container.tags': self.get_container_tag,
+            
             
             u'tags.list': self.test_get_tags,
             u'tag.get': self.test_get_tag,
             u'tags.count': self.test_count_tags,
             u'tags.occurrences': self.test_get_tags_occurrences,
             u'tag.perms': self.test_get_tag_perms,
-            u'tag.list': self.test_get_tags,
             u'tag.add': self.test_add_tags,
             u'tag.update': self.test_update_tag,
             u'tag.delete': self.test_delete_tag,
@@ -105,6 +125,13 @@ class ResourceManager(ApiManager):
         self.msg = res[u'perms']
         return res      
     
+    def ping_container(self, contid):
+        uri = u'%s/container/%s/ping/' % (self.baseuri, contid)  
+        res = self._call(uri, u'GET')      
+        self.logger.info(u'Ping container %s: %s' % (contid, res))
+        self.msg = u'Ping container %s: %s' % (contid, res)
+        return res        
+    
     def add_resource_container(self, ctype, name, conn):
         self.logger.debug(conn)
         data = {
@@ -126,40 +153,70 @@ class ResourceManager(ApiManager):
         self.logger.info(u'Delete resource container: %s' % oid)
         self.msg = u'Delete resource container: %s' % oid
 
+    def get_container_tag(self, contid):
+        uri = u'%s/container/%s/tags/' % (self.baseuri, contid)        
+        res = self._call(uri, u'GET')
+        self.msg = u'Get container %s tag %s' % (contid, res)
+        
+    def add_container_tag(self, contid, tag):
+        data = {
+            u'resource_tag':{
+                u'cmd':u'add',
+                u'value':tag
+            }
+        }
+        uri = u'%s/container/%s/tag/' % (self.baseuri, contid)        
+        res = self._call(uri, u'PUT', data=data)
+        self.msg = u'Add tag %s to container %s' % (tag, contid)
+        
+    def delete_container_tag(self, contid, tag):
+        data = {
+            u'resource_tag':{
+                u'cmd':u'remove',
+                u'value':tag
+            }
+        }
+        uri = u'%s/container/%s/tag/' % (self.baseuri, contid)        
+        res = self._call(uri, u'PUT', data=data)
+        self.msg = u'Remove tag %s from container %s' % (tag, contid)
+
     #
     # tags
     #
     def test_add_tags(self, value):
         data = {
-            u'tag':{
+            u'resource_tag':{
                 u'value':value
             }
         }
         uri = u'%s/tag/' % self.baseuri        
         res = self._call(uri, u'POST', data=data)
         self.logger.info(res)
+        self.msg = u'Add tag: %s' % value
 
     def test_count_tags(self):
         uri = u'%s/tags/count/' % self.baseuri        
         res = self._call(uri, u'GET')
         self.logger.info(res)
+        self.msg = res
         
     def test_get_tags_occurrences(self):
         uri = u'%s/tags/occurrences/' % self.baseuri        
         res = self._call(uri, u'GET')
-        self.logger.info(res)        
+        self.logger.info(res)
+        self.msg = res     
 
     def test_get_tags(self):
         uri = u'%s/tags/' % self.baseuri        
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.msg = res[u'tags']
+        self.msg = res[u'resource_tags']
         
     def test_get_tag(self, value):
         uri = u'%s/tag/%s/' % (self.baseuri, value)        
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.msg = res[u'tags']
+        self.msg = res[u'resource_tag']
 
     def test_get_tag_perms(self, value):
         uri = u'%s/tag/%s/perms/' % (self.baseuri, value)        
@@ -176,6 +233,7 @@ class ResourceManager(ApiManager):
         uri = u'%s/tag/%s/' % (self.baseuri, value)        
         res = self._call(uri, u'PUT', data=data)
         self.logger.info(res)
+        self.msg = u'Update tag: %s' % value
         
     def test_delete_tag(self, value):
         data = ''
