@@ -3,7 +3,14 @@ Created on Feb 2, 2017
 
 @author: darkbk
 '''
+import sys
+import os
 import logging
+
+sys.path.append(os.path.expanduser(u'~/workspace/git/beecell'))
+sys.path.append(os.path.expanduser(u'~/workspace/git/beedrones'))
+sys.path.append(os.path.expanduser(u'~/workspace/git/beehive'))
+
 from beehive.common.event import SimpleEventConsumer
 from beecell.logger.helper import LoggerHelper
 

@@ -187,9 +187,10 @@ class SimpleEventConsumer(ConsumerMixin):
         self.redis_channel = redis_channel
         
         # kombu channel
-        self.exchange = Exchange(self.redis_channel+u'.sub', type=u'topic')
-        self.queue_name = u'%s.queue.sub' % self.redis_channel   
-        self.routing_key = u'%s.key.sub' % self.redis_channel
+        self.exchange = Exchange(self.redis_channel+u'.sub', type=u'topic',
+                                 durable=False)
+        self.queue_name = u'%s.queue.%s' % (self.redis_channel, id_gen())   
+        self.routing_key = u'%s.sub.key' % self.redis_channel
         self.queue = Queue(self.queue_name, self.exchange,
                            routing_key=self.routing_key)        
 
@@ -209,7 +210,7 @@ class SimpleEventConsumer(ConsumerMixin):
         :param message:
         :raise MonitorConsumerError:
         """
-        self.logger.debug(data)
+        self.logger.debug(u'Get event %s' % data[u'id'])
         message.ack()
                 
     @staticmethod
