@@ -71,7 +71,6 @@ class ResourceManager(ApiManager):
             u'container.tag-delete': self.delete_container_tag,
             u'container.tags': self.get_container_tag,
             
-            
             u'tags.list': self.test_get_tags,
             u'tag.get': self.test_get_tag,
             u'tags.count': self.test_count_tags,

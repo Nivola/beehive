@@ -41,71 +41,63 @@ import sys
 logger = logging.getLogger(__name__)
 
 class TenantManager(ApiManager):
-    def __init__(self, auth_config):
+    def __init__(self, auth_config, containerid):
         ApiManager.__init__(self, auth_config)
-        self.baseuri = u'/v1.0/tenant'
+        self.baseuri = u'/v1.0/resource/tenant/%s' % containerid
         self.subsystem = u'tenant'
         self.logger = logger
         self.msg = None
     
     def actions(self):
         actions = {
-            u'types.list': self.get_node_types,
-            u'type.get': self.get_node_type,
-            u'type.add': self.add_node_type,
-            u'type.delete': self.delete_node_type,
+            u'clouddomains.list': self.get_cloud_domains,
+            u'clouddomain.get': self.get_cloud_domain,
+            u'clouddomain.add': self.add_cloud_domain,
+            u'clouddomain.delete': self.delete_cloud_domain,
             
-            u'nodes.list': self.get_nodes,
-            u'node.get': self.get_node,
-            u'node.ping': self.ping_node,
-            u'node.perms': self.get_node_permissions,
-            u'node.add': self.add_node,
-            u'node.update': self.update_node,
-            u'node.delete': self.delete_node,
-            u'node.tags': self.get_node_tag,
-            u'node.add_tag': self.add_node_tag,
-            u'node.del_tag': self.remove_node_tag,
-            u'node.task': self.exec_node_task,
+
         }
         return actions    
     
     #
-    # node types
+    # cloud domains
     #
-    def get_node_types(self):
-        uri = u'%s/node/types/' % self.baseuri
+    def get_cloud_domains(self):
+        uri = u'%s/cloud_domains/' % self.baseuri
         res = self._call(uri, u'GET')
-        self.logger.info(u'Get node types: %s' % self.pp.pformat(res))
-        self.msg = res[u'node_types']
-        return res[u'node_types']
+        self.logger.info(u'Get cloud domains: %s' % self.pp.pformat(res))
+        self.msg = res[u'cloud_domains']
+        return res[u'cloud_domains']
 
-    def get_node_type(self, value):
-        uri = u'%s/node/type/%s/' % (self.baseuri, value)
+    def get_cloud_domain(self, value):
+        uri = u'%s/cloud_domain/%s/' % (self.baseuri, value)
         res = self._call(uri, u'GET')
-        self.logger.info(u'Get node type: %s' % self.pp.pformat(res))
-        self.msg = res[u'node_type']
-        return res[u'node_type']
+        self.logger.info(u'Get cloud domain: %s' % self.pp.pformat(res))
+        self.msg = res[u'cloud_domain']
+        return res[u'cloud_domain']
     
-    def add_node_type(self, value, action, template):
-        global oid
+    def add_cloud_domain(self, *args):
+        data = self.load_config_file(args.pop(0)) 
+        
+        
         data = {
-            u'node_type':{
+            u'cloud_domain':{
                 u'value':value, 
                 u'action':action, 
                 u'template':template   
             }
         }
-        uri = u'%s/node/type/' % (self.baseuri)
+        uri = u'%s/cloud_domain/' % (self.baseuri)
         res = self._call(uri, u'POST', data=data)
-        self.logger.info(u'Add node type: %s' % self.pp.pformat(res))
-        self.msg = u'Add node type: %s' % self.pp.pformat(res)
+        self.logger.info(u'Add cloud domain: %s' % self.pp.pformat(res))
+        self.msg = u'Add cloud domain: %s' % self.pp.pformat(res)
         return res
         
-    def delete_node_type(self, value):
-        uri = u'%s/node/type/%s/' % (self.baseuri, value)
+    def delete_cloud_domain(self, value):
+        uri = u'%s/cloud_domain/%s/' % (self.baseuri, value)
         self._call(uri, u'DELETE')
-        self.logger.info(u'Delete node type: %s' % value)
-        self.msg = u'Delete node type: %s' % value
+        self.logger.info(u'Delete cloud domain: %s' % value)
+        self.msg = u'Delete cloud domain: %s' % value
 
 def tenant_main(auth_config, format, opts, args):
     """
@@ -125,7 +117,9 @@ def tenant_main(auth_config, format, opts, args):
         print __doc__
         return 0
     
-    client = TenantManager(auth_config)
+    containerid = args.pop(0)
+    
+    client = TenantManager(auth_config, containerid)
     
     actions = client.actions()
     

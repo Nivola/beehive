@@ -1,3 +1,4 @@
+import ujson as json
 from pprint import PrettyPrinter
 from beehive.common.apiclient import BeehiveApiClient
 
@@ -19,3 +20,12 @@ class ApiManager(object):
         res = self.client.invoke(self.subsystem, uri, method, data=data, 
                                  other_headers=headers, parse=True)
         return res
+    
+    def load_config_file(self, filename):
+        """
+        """
+        f = open(filename, 'r')
+        config = f.read()
+        config = json.loads(config)
+        f.close()
+        return config        
