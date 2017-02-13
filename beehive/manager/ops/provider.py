@@ -1,5 +1,5 @@
 '''
-Usage: manage.py [OPTION]... monitor [PARAMs]...
+Usage: manage.py [OPTION]... provider [PARAMs]...
 
 Tenant api interaction.
 
@@ -8,17 +8,10 @@ Mandatory arguments to long options are mandatory for short options too.
     -f, --format        output format
     
 PARAMS:
-    types list
-    type get prova
-    type add beehive task.ping_cloudapi 'http://localhost:8080
-    type delete beehive
-    
-    nodes list
-    node get 51
-    node ping 51
-    node perms 6
-    node add pippo pippo beehive {\"uri\":\"dddd\"} {}
-    node delete <id>
+    regions list
+    regions get
+    regions add name desc geo_area
+    regions delete
 
 Exit status:
  0  if OK,
@@ -40,66 +33,66 @@ import sys
 
 logger = logging.getLogger(__name__)
 
-class TenantManager(ApiManager):
+class ProviderManager(ApiManager):
     def __init__(self, auth_config, containerid):
         ApiManager.__init__(self, auth_config)
-        self.baseuri = u'/v1.0/resource/tenant/%s' % containerid
-        self.subsystem = u'tenant'
+        self.baseuri = u'/v1.0/providers/%s' % containerid
+        self.subsystem = u'resource'
         self.logger = logger
         self.msg = None
     
     def actions(self):
         actions = {
-            u'clouddomains.list': self.get_cloud_domains,
-            u'clouddomain.get': self.get_cloud_domain,
-            u'clouddomain.add': self.add_cloud_domain,
-            u'clouddomain.delete': self.delete_cloud_domain,
+            u'regions.list': self.list_regions,
+            u'regions.get': self.get_regions,
+            u'regions.add': self.add_regions,
+            u'regions.delete': self.delete_regions,
             
 
         }
         return actions    
     
     #
-    # cloud domains
+    # regions
     #
-    def get_cloud_domains(self):
-        uri = u'%s/cloud_domains/' % self.baseuri
+    def list_regions(self):
+        uri = u'%s/regions/' % self.baseuri
         res = self._call(uri, u'GET')
-        self.logger.info(u'Get cloud domains: %s' % self.pp.pformat(res))
-        self.msg = res[u'cloud_domains']
-        return res[u'cloud_domains']
+        self.logger.info(u'Get regions: %s' % self.pp.pformat(res))
+        self.msg = res[u'regions']
+        return res[u'regions']
 
-    def get_cloud_domain(self, value):
-        uri = u'%s/cloud_domain/%s/' % (self.baseuri, value)
+    def get_regions(self, value):
+        uri = u'%s/regions/%s/' % (self.baseuri, value)
         res = self._call(uri, u'GET')
-        self.logger.info(u'Get cloud domain: %s' % self.pp.pformat(res))
-        self.msg = res[u'cloud_domain']
-        return res[u'cloud_domain']
+        self.logger.info(u'Get region: %s' % self.pp.pformat(res))
+        self.msg = res[u'regions']
+        return res[u'regions']
     
-    def add_cloud_domain(self, *args):
-        data = self.load_config_file(args.pop(0)) 
-        
+    def add_regions(self, name, desc, geo_area):
+        #data = self.load_config_file(args.pop(0)) 
         
         data = {
-            u'cloud_domain':{
-                u'value':value, 
-                u'action':action, 
-                u'template':template   
+            u'regions':{
+                u'name':name,
+                u'desc':desc,
+                u'geo-area':geo_area,
+                u'coords':None,
             }
         }
-        uri = u'%s/cloud_domain/' % (self.baseuri)
+        uri = u'%s/regions/' % (self.baseuri)
         res = self._call(uri, u'POST', data=data)
-        self.logger.info(u'Add cloud domain: %s' % self.pp.pformat(res))
-        self.msg = u'Add cloud domain: %s' % self.pp.pformat(res)
+        self.logger.info(u'Add region: %s' % self.pp.pformat(res))
+        self.msg = u'Add region: %s' % self.pp.pformat(res)
         return res
         
-    def delete_cloud_domain(self, value):
-        uri = u'%s/cloud_domain/%s/' % (self.baseuri, value)
+    def delete_regions(self, value):
+        uri = u'%s/regions/%s/' % (self.baseuri, value)
         self._call(uri, u'DELETE')
-        self.logger.info(u'Delete cloud domain: %s' % value)
-        self.msg = u'Delete cloud domain: %s' % value
+        self.logger.info(u'Delete region: %s' % value)
+        self.msg = u'Delete region: %s' % value
 
-def tenant_main(auth_config, format, opts, args):
+def provider_main(auth_config, format, opts, args):
     """
     
     :param auth_config: {u'pwd': u'..', 
@@ -119,7 +112,7 @@ def tenant_main(auth_config, format, opts, args):
     
     containerid = args.pop(0)
     
-    client = TenantManager(auth_config, containerid)
+    client = ProviderManager(auth_config, containerid)
     
     actions = client.actions()
     
@@ -127,7 +120,7 @@ def tenant_main(auth_config, format, opts, args):
     if len(args) > 0:
         operation = args.pop(0)
         action = u'%s.%s' % (entity, operation)
-    else: 
+    else:
         raise Exception(u'Tenant entity and/or command are not correct')
         return 1
     

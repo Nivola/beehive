@@ -91,7 +91,7 @@ def main(run_path, argv):
     from beehive.manager.ops.monitor import monitor_main
     from beehive.manager.ops.resource import resource_main
     from beehive.manager.ops.scheduler import scheduler_main
-    from beehive.manager.ops.tenant import tenant_main
+    from beehive.manager.ops.provider import provider_main
     
     cmd = None
     p = None
@@ -174,13 +174,11 @@ def main(run_path, argv):
         elif section == u'scheduler':
             retcode = scheduler_main(auth_config, format, opts, args) 
             
-        elif section == u'tenant':
-            retcode = tenant_main(auth_config, format, opts, args) 
+        elif section == u'provider':
+            retcode = provider_main(auth_config, format, opts, args) 
                     
     except Exception as ex:
         print(u'ERROR : %s' % (ex))
-        #print __doc__        
-        
         logger.error(ex, exc_info=1)
         retcode = 1
     
