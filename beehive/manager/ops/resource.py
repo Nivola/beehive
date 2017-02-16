@@ -104,7 +104,7 @@ class ResourceManager(ApiManager):
         return res    
 
     def get_resource_container(self, value):
-        uri = u'%s/container/%s/' % (self.baseuri, value)
+        uri = u'%s/containers/%s/' % (self.baseuri, value)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get resource container: %s' % res)
         self.msg = res[u'containers']

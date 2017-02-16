@@ -1,5 +1,5 @@
 '''
-Usage: manage.py [OPTION]... provider [PARAMs]...
+Usage: manage.py [OPTION]... provider <provider_id> [PARAMs]...
 
 Tenant api interaction.
 
@@ -9,9 +9,10 @@ Mandatory arguments to long options are mandatory for short options too.
     
 PARAMS:
     regions list
-    regions get
-    regions add name desc geo_area
-    regions delete
+    regions get <id>
+    regions add <name> <desc> <geo_area>
+    regions update <id> <field>=<value>    field: name, desc, geo_area
+    regions delete <id>
 
 Exit status:
  0  if OK,
@@ -46,6 +47,7 @@ class ProviderManager(ApiManager):
             u'regions.list': self.list_regions,
             u'regions.get': self.get_regions,
             u'regions.add': self.add_regions,
+            u'regions.update': self.update_regions,
             u'regions.delete': self.delete_regions,
             
 
@@ -62,8 +64,8 @@ class ProviderManager(ApiManager):
         self.msg = res[u'regions']
         return res[u'regions']
 
-    def get_regions(self, value):
-        uri = u'%s/regions/%s/' % (self.baseuri, value)
+    def get_regions(self, oid):
+        uri = u'%s/regions/%s/' % (self.baseuri, oid)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get region: %s' % self.pp.pformat(res))
         self.msg = res[u'regions']
@@ -85,12 +87,29 @@ class ProviderManager(ApiManager):
         self.logger.info(u'Add region: %s' % self.pp.pformat(res))
         self.msg = u'Add region: %s' % self.pp.pformat(res)
         return res
+    
+    def update_regions(self, oid, *args):
+        #data = self.load_config_file(args.pop(0)) 
         
-    def delete_regions(self, value):
-        uri = u'%s/regions/%s/' % (self.baseuri, value)
+        val = {}
+        for arg in args:
+            t = arg.split(u'=')
+            val[t[0]] = t[1]
+        
+        data = {
+            u'regions':val
+        }
+        uri = u'%s/regions/%s/' % (self.baseuri, oid)
+        res = self._call(uri, u'PUT', data=data)
+        self.logger.info(u'Update region: %s' % self.pp.pformat(res))
+        self.msg = u'Update region: %s' % self.pp.pformat(res)
+        return res    
+        
+    def delete_regions(self, oid):
+        uri = u'%s/regions/%s/' % (self.baseuri, oid)
         self._call(uri, u'DELETE')
-        self.logger.info(u'Delete region: %s' % value)
-        self.msg = u'Delete region: %s' % value
+        self.logger.info(u'Delete region: %s' % oid)
+        self.msg = u'Delete region: %s' % oid
 
 def provider_main(auth_config, format, opts, args):
     """
