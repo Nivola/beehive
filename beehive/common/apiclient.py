@@ -109,7 +109,7 @@ class BeehiveApiClient(object):
         
         # select endpoint that ping:True
         endpoint = endpoints[0]
-        for attempt in range(0, self.max_attempts):
+        '''for attempt in range(0, self.max_attempts):
             if self.ping(endpoint=endpoint[0]) is True:
                 break
             else:
@@ -125,7 +125,7 @@ class BeehiveApiClient(object):
                         endpoints = self.endpoints[subsystem]
                     except:
                         raise BeehiveApiClientError(u'Subsystem %s reference is empty' % 
-                                                    subsystem, code=404)
+                                                    subsystem, code=404)'''
         
         # inc endpoint usage
         endpoint[1] += 1
@@ -503,11 +503,13 @@ class BeehiveApiClient(object):
     def register_to_monitor(self, name, desc, conn, uid=None, seckey=None):
         """Register system in monitor"""
         data = {
-            u'name':name,
-            u'desc':desc,
-            u'type':u'portal',
-            u'conn':conn,
-            u'refresh':u'dynamic'            
+            u'node':{
+                u'name':name,
+                u'desc':desc,
+                u'type':u'portal',
+                u'conn':conn,
+                u'refresh':u'dynamic'
+            }
         }
         res = self.invoke(u'monitor', u'/v1.0/monitor/node/',
                           u'POST', json.dumps(data))        
