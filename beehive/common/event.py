@@ -188,7 +188,7 @@ class SimpleEventConsumer(ConsumerMixin):
         
         # kombu channel
         self.exchange = Exchange(self.redis_channel+u'.sub', type=u'topic',
-                                 durable=False)
+                                 delivery_mode=1)
         self.queue_name = u'%s.queue.%s' % (self.redis_channel, id_gen())   
         self.routing_key = u'%s.sub.key' % self.redis_channel
         self.queue = Queue(self.queue_name, self.exchange,

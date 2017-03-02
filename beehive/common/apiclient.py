@@ -4,6 +4,7 @@ Created on Jan 12, 2017
 @author: darkbk
 '''
 import ujson as json
+import json as sjson
 import httplib
 from logging import getLogger
 from beecell.perf import watch
@@ -327,6 +328,44 @@ class BeehiveApiClient(object):
         self.logger.debug('Rpc %s://%s:%s/%s response: %s' % (proto, host, port, path, res))
         return res'''
     
+    @watch
+    def get_api_doc(self, subsystem, path, method, data=u'', sync=True, 
+                    title=u'', desc= u'', output={}):
+        """Generate api documentation
+        """
+        doc = [
+            '.. expand::',
+            '   :method: %s' % method,
+            '   :auth: true',
+            '   :sync: %s' % sync,
+            '   :uri: %s' % path,
+            '   :title: %s' % title,
+            '   :desc: %s' % desc,
+            ''
+        ]
+        
+        if data != u'':
+            doc.extend([
+                '   **Inputs**',
+                '',
+                '   .. code-block:: python',
+                '',
+            ])
+            input = sjson.dumps(data, indent=2).split(u'\n')
+            input = map(lambda x: u'      %s' % x, input)
+            doc.extend(input)
+        doc.extend([
+            '   **Outputs**',
+            '',
+            '   .. code-block:: python',
+            '',
+            
+        ])
+        output = sjson.dumps(output, indent=2).split(u'\n')
+        output = map(lambda x: u'      %s' % x, output)
+        doc.extend(output)
+        return u'\n'.join(doc)
+
     @watch    
     def invoke(self, subsystem, path, method, data=u'', other_headers=None,
                parse=False):

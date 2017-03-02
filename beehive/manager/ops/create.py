@@ -1,5 +1,49 @@
 '''
-Created on Jan 10, 2017
+Usage: manage.py [OPTION]... subsystem|client [PARAMs]...
+
+Beehive ecosystem api interaction.
+
+Mandatory arguments to long options are mandatory for short options too.
+    -c, --config        json auth config file
+    -f, --format        output format
+    -h, --help          manager help    
+    
+PARAMs:
+    subsystem <subsystem> <config-file>
+        subsystem: auth, catalog, apicore, resource, tenant, monitor, service
+        config-file: json file like
+            {
+                'api_system':'beehive',
+                'api_subsystem':'auth',
+                'api_modules':['beehive.module.auth.mod.AuthModule'],
+                'api_plugins':[],
+                'db_uri':'mysql+pymysql://auth:auth@localhost:3306/auth',
+                'db_manager':'beehive.module.auth.model.AuthDbManager',  
+                'config':[
+                   {'group':'redis', 'name':'redis_01', 'value':'redis://localhost:6379/0'},
+                   ...
+                ],
+                'user':{'type':'admin', 'name':'admin@local', 'pwd':'..', 'desc':'Super Administrator'},
+                'user':{'type':'user', 'name':'test1@local', 'pwd':'..', 'desc':'Test user 1'},
+                'user':{'type':'user', 'name':'test2@local', 'pwd':'..', 'desc':'Test user 2'},                
+            }
+            
+    client <config-file>
+        config-file: json file like
+            {
+                'name':'portla-01',
+                'type':'portal',
+                "object_types":[],
+                "objects":[],
+                "roles":[],
+                "users":[]             
+            }
+
+Exit status:
+ 0  if OK,
+ 1  if problems occurred
+
+Created on Jan 25, 2017
 
 @author: darkbk
 '''

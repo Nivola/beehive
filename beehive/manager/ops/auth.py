@@ -1,5 +1,39 @@
 '''
-Created on Jan 9, 2017
+Usage: manage.py [OPTION]... auth [PARAMs]...
+
+Authorization api interaction.
+
+Mandatory arguments to long options are mandatory for short options too.
+    -c, --config        json auth config file
+    -f, --format        output format
+    -h, --help          manager help    
+    
+PARAMs:
+    auth <entity> <op>
+        entity: user, role, object
+        op: list, get, add, delete
+        
+    auth catalog
+    auth catalog get <id>
+    auth catalog add <name> <zone>
+    auth catalog delete <id>
+    
+    auth endpoint add <name> <catalog_id> <subsystem> <uri=http://localhost:3030>
+    auth endpoint delete <id>
+    
+    auth perm
+    auth object
+    auth role
+    auth role get <name>
+    auth user
+    auth user get <name>
+    auth user add_system <name> <pwdd> <desc> 
+
+Exit status:
+ 0  if OK,
+ 1  if problems occurred
+
+Created on Jan 25, 2017
 
 @author: darkbk
 '''

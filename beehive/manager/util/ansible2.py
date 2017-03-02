@@ -167,7 +167,7 @@ class Runner(object):
         # All the variables from all the various places
         self.variable_manager.extra_vars = run_data
         self.variable_manager.group_vars_files = u'%s/group_vars' % self.inventory
-        print self.variable_manager.get_vars(self.loader)
+        #print self.variable_manager.get_vars(self.loader)
         
         # set options
         self.options.tags = tags
