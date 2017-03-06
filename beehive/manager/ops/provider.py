@@ -10,71 +10,52 @@ from geventhttpclient import HTTPClient
 from geventhttpclient.url import URL
 from pprint import PrettyPrinter
 from pandas import DataFrame, set_option
-from beehive.manager import ApiManager
+from beehive.manager import ApiManager, ComponentManager
 import sys
+import abc
 
 logger = logging.getLogger(__name__)
 
-class ProviderManager(ApiManager):
+class Actions(object):
     """
-    CMD: 
-        provider    
-    
-    PARAMs:
-        regions list
-        regions get <id>
-        regions add <name> <desc> <geo_area>
-        regions update <id> <field>=<value>    field: name, desc, geo_area
-        regions delete <id>    
     """
-    def __init__(self, auth_config, env, frmt=u'json', containerid=None):
-        ApiManager.__init__(self, auth_config, env, frmt)
-        
-        self.baseuri = u'/v1.0/providers/%s' % containerid
-        self.subsystem = u'resource'
-        self.logger = logger
-        self.msg = None
+    def __init__(self, parent, name):
+        self.parent = parent
+        self.name = name
     
-    def actions(self):
-        actions = {
-            
-            u'sites.list': self.list_sites,
-            u'sites.get': self.get_sites,
-            u'sites.add': self.add_sites,
-            u'sites.update': self.update_sites,
-            u'sites.delete': self.delete_sites,            
-            
-            u'regions.list': self.list_regions,
-            u'regions.get': self.get_regions,
-            u'regions.add': self.add_regions,
-            u'regions.update': self.update_regions,
-            u'regions.delete': self.delete_regions
-        }
-        return actions    
+    def doc(self):
+        return """
+        %ss list [filters]
+        %ss get <id>
+        %ss add <file data in json>
+        %ss update <id> <field>=<value>    field: name, desc, geo_area
+        %ss delete <id>    
+        """ % (self.name, self.name, self.name, self.name, self.name)
     
-    #
-    # sites
-    #
-    def list_sites(self):
-        uri = u'%s/sites/' % self.baseuri
-        res = self._call(uri, u'GET')
-        self.logger.info(u'Get sites: %s' % self.pp.pformat(res))
-        self.result(res)
+    def list(self, *args):
+        data = self.parent.format_http_get_query_params(*args)
+        uri = u'%s/%ss/' % (self.parent.baseuri, self.name)
+        res = self.parent._call(uri, u'GET', data=data)
+        self.parent.logger.info(u'Get %s: %s' % (self.name, 
+                                          self.parent.pp.pformat(res)))
+        self.parent.result(res)
 
-    def get_sites(self, oid):
-        uri = u'%s/sites/%s/' % (self.baseuri, oid)
-        res = self._call(uri, u'GET')
-        self.logger.info(u'Get site: %s' % self.pp.pformat(res))
-        self.result(res)
+    def get(self, oid):
+        uri = u'%s/%ss/%s/' % (self.parent.baseuri, self.name, oid)
+        res = self.parent._call(uri, u'GET')
+        self.parent.logger.info(u'Get %s: %s' % (self.name, 
+                                          self.parent.pp.pformat(res)))
+        self.parent.result(res)
     
-    def add_sites(self, data):
-        data = self.load_config(data)
-        uri = u'%s/sites/' % (self.baseuri)
-        res = self._call(uri, u'POST', data=data)
-        self.logger.info(u'Add site: %s' % self.pp.pformat(res))
-        self.result(res)
-    
-    def update_sites(self, oid, *args):
+    def add(self, data):
+        data = self.parent.load_config(data)
+        uri = u'%s/%ss/' % (self.parent.baseuri, self.name)
+        res = self.parent._call(uri, u'POST', data=data)
+        self.parent.logger.info(u'Add %s: %s' % (self.name, 
+                                          self.parent.pp.pformat(res)))
+        self.parent.result(res)
+
+    def update(self, oid, *args):
         #data = self.load_config_file(args.pop(0)) 
         
         val = {}
@@ -85,66 +66,68 @@ class ProviderManager(ApiManager):
         data = {
             u'sites':val
         }
-        uri = u'%s/sites/%s/' % (self.baseuri, oid)
-        res = self._call(uri, u'PUT', data=data)
-        self.logger.info(u'Update site: %s' % self.pp.pformat(res))
-        self.result(res)
-        
-    def delete_sites(self, oid):
-        uri = u'%s/sites/%s/' % (self.baseuri, oid)
-        res = self._call(uri, u'DELETE')
-        self.logger.info(u'Delete site: %s' % oid)
-        self.result(res)    
-    
-    #
-    # regions
-    #
-    def list_regions(self):
-        uri = u'%s/regions/' % self.baseuri
-        res = self._call(uri, u'GET')
-        self.logger.info(u'Get regions: %s' % self.pp.pformat(res))
-        self.result(res)
+        uri = u'%s/%5s/%s/' % (self.parent.baseuri, self.name, oid)
+        res = self.parent._call(uri, u'PUT', data=data)
+        self.parent.logger.info(u'Update %s: %s' % (self.name, 
+                                             self.parent.pp.pformat(res)))
+        self.parent.result(res)
 
-    def get_regions(self, oid):
-        uri = u'%s/regions/%s/' % (self.baseuri, oid)
-        res = self._call(uri, u'GET')
-        self.logger.info(u'Get region: %s' % self.pp.pformat(res))
-        self.result(res)
+    def delete(self, oid):
+        uri = u'%s/%ss/%s/' % (self.parent.baseuri, self.name, oid)
+        res = self.parent._call(uri, u'DELETE')
+        self.parent.logger.info(u'Delete %s: %s' % (self.name, oid))
+        self.parent.result(res)
     
-    def add_regions(self, name, desc, geo_area):
-        #data = self.load_config_file(args.pop(0)) 
-        
-        data = {
-            u'regions':{
-                u'name':name,
-                u'desc':desc,
-                u'geo-area':geo_area,
-                u'coords':None,
-            }
+    def register(self):
+        res = {
+            u'%ss.list' % self.name: self.list,
+            u'%ss.get' % self.name: self.get,
+            u'%ss.add' % self.name: self.add,
+            u'%ss.update' % self.name: self.update,
+            u'%ss.delete' % self.name: self.delete
         }
-        uri = u'%s/regions/' % (self.baseuri)
-        res = self._call(uri, u'POST', data=data)
-        self.logger.info(u'Add region: %s' % self.pp.pformat(res))
-        self.result(res)
+        self.parent.add_actions(res)
+
+class ProviderManager(ApiManager):
+    """
+    CMD: 
+        provider    
     
-    def update_regions(self, oid, *args):
-        #data = self.load_config_file(args.pop(0)) 
+    PARAMs:  
+    """
+    __metaclass__ = abc.ABCMeta
+    
+    class_names = {
+        u'region',
+        u'site',
+        u'site-network',
+        u'gateway',
+        u'super-zone',
+        u'availability-zone',
+        u'vpc',
+        u'security-group',
+    }
+
+    def __init__(self, auth_config, env, frmt=u'json', containerid=None):
+        ApiManager.__init__(self, auth_config, env, frmt)
         
-        val = {}
-        for arg in args:
-            t = arg.split(u'=')
-            val[t[0]] = t[1]
+        self.baseuri = u'/v1.0/providers/%s' % containerid
+        self.subsystem = u'resource'
+        self.logger = logger
+        self.msg = None
         
-        data = {
-            u'regions':val
-        }
-        uri = u'%s/regions/%s/' % (self.baseuri, oid)
-        res = self._call(uri, u'PUT', data=data)
-        self.logger.info(u'Update region: %s' % self.pp.pformat(res))
-        self.result(res)
+        self.__actions = {}
         
-    def delete_regions(self, oid):
-        uri = u'%s/regions/%s/' % (self.baseuri, oid)
-        res = self._call(uri, u'DELETE')
-        self.logger.info(u'Delete region: %s' % oid)
-        self.result(res)
+        for class_name in self.class_names:
+            Actions(self, class_name).register()
+    
+    def actions(self):
+        return self.__actions
+    
+    def add_actions(self, actions):
+        self.__actions.update(actions)
+        
+doc = ProviderManager.__doc__
+for class_name in ProviderManager.class_names:
+    doc += Actions(None, class_name).doc()
+ProviderManager.__doc__ = doc

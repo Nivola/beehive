@@ -26,6 +26,13 @@ class PlatformManager(ComponentManager):
         
     PARAMS:
         redis ping
+        redis info
+        redis config
+        redis size
+        redis inspect
+        redis query <pattern>
+        redis delete <pattern>
+        
         mysql ping <user> <pwd> <schema>
     
         ansible hosts

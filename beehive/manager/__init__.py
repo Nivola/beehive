@@ -2,6 +2,7 @@ import ujson as json
 from pprint import PrettyPrinter
 from beehive.common.apiclient import BeehiveApiClient
 from logging import getLogger
+from urllib import urlencode
 
 logger = getLogger(__name__)
 
@@ -29,20 +30,23 @@ class ComponentManager(object):
         self.pp = PrettyPrinter(width=200)        
         self.format = frmt      
     
-    def __format(self, data, space=u'', key=None):
+    def __format(self, data, space=u'', delimiter=u':', key=None):
         """
         """
         if key is not None:
-            frmt = u'%s%-20s: %s'
+            frmt = u'%s%-s %s %s'
         else:
-            frmt = u'%s%s%s'
+            frmt = u'%s%s%s%s'
             key = u''
+        
         if isinstance(data, str):
-            self.text.append(frmt % (space, key, data))
+            data = data.rstrip().replace(u'\n', u'')
+            self.text.append(frmt % (space, key, delimiter, data))
         elif isinstance(data, unicode):
-            self.text.append(frmt % (space, key, data))    
+            data = data.rstrip().replace(u'\n', u'')
+            self.text.append(frmt % (space, key, delimiter, data))    
         elif isinstance(data, int):
-            self.text.append(frmt % (space, key, data))
+            self.text.append(frmt % (space, key, delimiter, data))
     
     def format_text(self, data, space=u'  '):
         """
@@ -50,17 +54,18 @@ class ComponentManager(object):
         if isinstance(data, dict):
             for k,v in data.items():
                 if isinstance(v, dict) or isinstance(v, list):
-                    self.__format(u'', space, k)
+                    self.__format(u'', space, u':', k)
                     self.format_text(v, space+u'  ')
                 else:
-                    self.__format(v, space, k)
+                    self.__format(v, space, u':', k)
         elif isinstance(data, list):
             for v in data:
                 if isinstance(v, dict) or isinstance(v, list):
                     self.format_text(v, space+u'  ')
                 else:
-                    self.__format(v, space, k)                    
-                self.text.append(u'')
+                    self.__format(v, space, u'', u'')
+                if space == u'  ':                
+                    self.text.append(u'===================================')
         else:
             self.__format(data, space)
                 
@@ -80,7 +85,16 @@ class ComponentManager(object):
         auth_config = json.loads(auth_config)
         f.close()
         return auth_config
-            
+    
+    def format_http_get_query_params(self, *args):
+        """
+        """
+        val = {}
+        for arg in args:
+            t = arg.split(u'=')
+            val[t[0]] = t[1]
+        return urlencode(val)
+    
     @staticmethod
     def main(auth_config, frmt, opts, args, env, component_class, 
              *vargs, **kvargs):
@@ -142,7 +156,7 @@ class ApiManager(ComponentManager):
     def __init__(self, auth_config, env, frmt=u'json'):
         ComponentManager.__init__(self, auth_config, env, frmt)
         config = auth_config[u'environments'][env]
-        
+    
         if config[u'endpoint'] is None:
             raise Exception(u'Auth endpoint is not configured')
         

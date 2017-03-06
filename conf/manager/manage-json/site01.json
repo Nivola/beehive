@@ -1,0 +1,30 @@
+{
+  "site":{
+    "region":385,
+    "name":"Site1", 
+    "desc":"Site1",
+    "geo-area":"Turin",
+    "coords":{},
+    "limits":{
+      "cp":1000,
+      "ram":4096,
+      "storage":100000,
+      "instance":3000,
+      "network":4096,
+    },
+    "orchestrators":[
+        {
+          "type":"vsphere", 
+          "id":16,
+          "tag":"default",
+          "config":{
+            "datacenter":4, 
+            "resource-pool":{"default":298},
+            "physical-network": 346
+          }
+        },
+    ],
+    "networks":[],           
+    "gateways":[]
+  }
+}

@@ -11,6 +11,7 @@ import ujson as json
 
 
 
+
 VERSION = u'1.0.0'
 
 def load_config(file_config):
@@ -45,6 +46,7 @@ def main(run_path, argv):
     from beehive.manager.ops.platform import PlatformManager
     from beehive.manager.ops.provider import ProviderManager
     from beehive.manager.ops.resource import ResourceManager
+    from beehive.manager.ops.scheduler import SchedulerManager
     
     from beehive.manager.ops.platform import platform_main
     from beehive.manager.ops.auth import auth_main
@@ -146,10 +148,14 @@ def main(run_path, argv):
                                            ResourceManager)         
             
         elif section == u'scheduler':
-            retcode = scheduler_main(auth_config, frmt, opts, args) 
+            try: subsystem = args.pop(0)
+            except: pass
+            retcode = SchedulerManager.main(auth_config, frmt, opts, args, env, 
+                                            SchedulerManager, subsystem=subsystem)
             
         elif section == u'provider':
-            cid = args.pop(0)
+            try: cid = args.pop(0)
+            except: pass
             retcode = ProviderManager.main(auth_config, frmt, opts, args, env, 
                                            ProviderManager, containerid=cid)
                     

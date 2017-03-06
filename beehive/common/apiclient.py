@@ -6,6 +6,7 @@ Created on Jan 12, 2017
 import ujson as json
 import json as sjson
 import httplib
+from time import time
 from logging import getLogger
 from beecell.perf import watch
 from Crypto.Hash import SHA256
@@ -13,7 +14,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 from Crypto.Random import atfork
 import binascii
-from beecell.simple import truncate
+from beecell.simple import truncate, id_gen
 from socket import gethostname
 from itertools import repeat
 from multiprocessing import current_process
@@ -154,8 +155,8 @@ class BeehiveApiClient(object):
             
             # create data hash
             hash_data = SHA256.new(data)#.digest()
-            self.logger.debug('Get data: %s' % data)
-            self.logger.debug('Created hash: %s' % binascii.b2a_base64(hash_data.digest()))
+            #self.logger.debug('Get data: %s' % data)
+            #self.logger.debug('Created hash: %s' % binascii.b2a_base64(hash_data.digest()))
         
             # sign data
             signer = PKCS1_v1_5.new(key)
@@ -223,15 +224,22 @@ class BeehiveApiClient(object):
         :raise BeehiveApiClientError:
         """
         try:
-            self.logger.info(u'Send http %s api request to %s://%s:%s%s' % 
-                             (method, proto, host, port, path))
+            # start time
+            start = time()
+            
+            # append request-id to headers
+            headers[u'request-id'] = id_gen()
+            
+            #self.logger.info(u'Send http %s to %s://%s:%s%s' % 
+            #                 (method, proto, host, port, path))
             #self.logger.debug('Send headers: %s' % headers)
             if data.lower().find(u'password') < 0:
-                self.logger.debug(u'Send [headers=%s] [data=%s]' % 
-                                  (headers, data))
+                send_data = data
             else:
-                self.logger.debug(u'Send [headers=%s] [data=%s]' % 
-                                  (headers, u'xxxxxxx'))
+                send_data = u'xxxxxxx'
+            self.logger.info(u'Call: METHOD=%s, URI=%s://%s:%s%s'\
+                             u'HEADERS=%s, DATA=%s' % (method, proto, host, 
+                             port, path, headers, send_data))
             
             if proto == u'http':
                 conn = httplib.HTTPConnection(host, port, timeout=timeout)
@@ -264,18 +272,19 @@ class BeehiveApiClient(object):
                 res = {u'status':u'error',u'code':503, u'msg':u'Service Unavailable'}
             conn.close()
         except Exception as ex:
-            self.logger.error(ex, exc_info=True)       
-            self.logger.info(u'Response status: %s %s' % 
-                            (response.status, response.reason))
-            self.logger.debug(u'Response [content-type=%s] [data=%s]' % 
-                              (content_type, truncate(res)))
+            elapsed = time() - start
+            self.logger.error(ex, exc_info=True)
+            self.logger.info(u'Response: STATUS=%s, CONTENT-TYPE=%s, RES=%s, '\
+                             u'ELAPSED=%s' % (response.status, content_type, 
+                             truncate(res), elapsed))
+            
             raise BeehiveApiClientError(ex, code=400)
             
         if res[u'status'] == u'ok':
-            self.logger.info(u'Response status: %s %s' % 
-                             (response.status, response.reason))
-            self.logger.debug(u'Response [content-type=%s] [data=%s]' % 
-                              (content_type, truncate(res)))
+            elapsed = time() - start
+            self.logger.info(u'Response: STATUS=%s, CONTENT-TYPE=%s, RES=%s, '\
+                             u'ELAPSED=%s' % (response.status, content_type, 
+                             truncate(res), elapsed))
         elif res[u'status'] == u'error':
             self.logger.error(res[u'msg'])
             raise BeehiveApiClientError(res[u'msg'], code=int(res[u'code']))
@@ -305,28 +314,11 @@ class BeehiveApiClient(object):
         proto = endpoint[u'proto']
         host = endpoint[u'host']
         port = endpoint[u'port']
+        if method ==u'GET':
+            path = u'%s?%s' % (path, data)
         res = self.http_client(proto, host, path, method,
                                port=port, data=data, headers=headers)
         return res
-    
-    '''
-    @watch
-    def send_request(self, subsystem, path, method, data='', other_headers=None):
-        """
-        :raise BeehiveApiClientError:
-        """
-        headers = {'Accept':'json'}
-        if other_headers is not None:
-            headers.update(other_headers)
-        # make request
-        proto = 'http'
-        endpoint = self.endpoint(subsystem)
-        host = endpoint['host']
-        port = endpoint['port'][0]
-        res = self.http_client(proto, host, path, method,
-                               port=port, data=data, headers=headers)
-        self.logger.debug('Rpc %s://%s:%s/%s response: %s' % (proto, host, port, path, res))
-        return res'''
     
     @watch
     def get_api_doc(self, subsystem, path, method, data=u'', sync=True, 
@@ -394,8 +386,8 @@ class BeehiveApiClient(object):
                               (path, self.uid, res['msg']))
             raise BeehiveApiClientError(res['msg'], code=res['code'])
         else:
-            self.logger.info('Send request to %s using uid %s: %s' % 
-                             (path, self.uid, truncate(res)))
+            self.logger.info('Send request to %s using uid %s' % 
+                             (path, self.uid))
             return res['response']
     
     #
@@ -520,7 +512,7 @@ class BeehiveApiClient(object):
         res = self.send_signed_request(u'auth', u'/api/auth/login/%s/' % uid, 
                                        u'GET', data='')
         res = res[u'response']
-        self.logger.debug(u'Identity %s exists: %s' % (uid, res))
+        #self.logger.debug(u'Identity %s exists: %s' % (uid, res))
         return res
 
     #

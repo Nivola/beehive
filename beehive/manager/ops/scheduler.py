@@ -41,10 +41,28 @@ import sys
 logger = logging.getLogger(__name__)
 
 class SchedulerManager(ApiManager):
-    def __init__(self, auth_config):
-        ApiManager.__init__(self, auth_config)
+    """
+    CMD: 
+        scheduler
+    
+    PARAMS:
+        <subsystem> manager ping
+        <subsystem> manager stat
+        <subsystem> manager report
+        <subsystem> tasks list
+        <subsystem> task <task_id>
+        <subsystem> task test
+        <subsystem> task graph <task_id>
+        <subsystem> schedule list
+        <subsystem> schedule get <schedule_name>
+        <subsystem> schedule add <schedule_name> <task> \{\"type\":\"timedelta\",\"minutes\":10\} []
+        <subsystem> schedule delete <schedule_name>    
+    """
+    def __init__(self, auth_config, env, frmt, subsystem=None):
+        ApiManager.__init__(self, auth_config, env, frmt)
+        
         self.baseuri = u'/v1.0/scheduler'
-        #self.subsystem = u'scheduler'
+        self.subsystem = subsystem
         self.logger = logger
         self.msg = None
     
@@ -74,37 +92,37 @@ class SchedulerManager(ApiManager):
     def ping_task_manager(self):
         uri = u'/v1.0/task/ping/'
         res = self._call(uri, u'GET')
-        self.msg = res
+        self.result(res)
 
     def stat_task_manager(self):
         uri = u'/v1.0/task/stats/'
         res = res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.msg = res
+        self.result(res)
 
     def report_task_manager(self):
         uri = u'/v1.0/task/report/'
         res = res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.msg = res
+        self.result(res)
     
     def get_all_tasks(self):
         uri = u'/v1.0/task/tasks/'
         res = res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.msg = res
+        self.result(res)
         
     def get_task(self, task_id):
         uri = u'/v1.0/task/task/%s/' % task_id
         res = res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.msg = res
+        self.result(res)
         
     def get_task_graph(self, task_id):
         uri = u'/v1.0/task/task/%s/graph/' % task_id
         res = res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.msg = res
+        self.result(res)
 
     def count_all_tasks(self):
         """TODO"""
@@ -112,7 +130,7 @@ class SchedulerManager(ApiManager):
         
         res = res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.msg = res
+        self.result(res)
 
     def registered_tasks(self):
         """TODO"""
@@ -120,7 +138,7 @@ class SchedulerManager(ApiManager):
         
         res = res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.msg = res
+        self.result(res)
          
     def active_tasks(self):
         """TODO"""
@@ -128,7 +146,7 @@ class SchedulerManager(ApiManager):
         
         res = res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.msg = res
+        self.result(res)
         
     def scheduled_tasks(self):
         """TODO"""
@@ -136,28 +154,28 @@ class SchedulerManager(ApiManager):
         
         res = res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.msg = res
+        self.result(res)
         
     def reserved_tasks(self):
         """TODO"""
         uri = u'/v1.0/task/tasks/reserved/'
         
         res = res = self._call(uri, u'GET')
-        self.msg = res
+        self.result(res)
         
     def revoked_tasks(self):
         """TODO"""
         uri = u'/v1.0/task/tasks/revoked/'
         
         res = res = self._call(uri, u'GET')
-        self.msg = res
+        self.result(res)
         
     def delete_all_tasks(self):
         """TODO"""
         uri = u'/v1.0/task/tasks/'
         
         res = self._call(uri, u'DELETE')
-        self.msg = res
+        self.result(res)
         
     def delete_task(self):
         """TODO"""
@@ -170,21 +188,21 @@ class SchedulerManager(ApiManager):
         uri = u'/v1.0/task/tasks/purge/'
         
         res = self._call(uri, u'DELETE')
-        self.msg = res      
+        self.result(res)      
 
     def revoke_task(self):
         """TODO"""
         uri = u'/v1.0/task/task/revoke/%s/' % task_id
         
         res = self._call(uri, u'DELETE')
-        self.msg = res
+        self.result(res)
         
     def run_job_test(self):
         data = {u'x':2, u'y':234, u'numbers':[2, 78, 45, 90], u'mul_numbers':[]} 
         uri = u'/v1.0/task/task/jobtest/'
         res = self._call(uri, u'POST', data=data)
         self.logger.info(u'Run job test: %s' % res)
-        self.msg = res   
+        self.result(res)   
 
     #
     # scheduler
@@ -193,13 +211,13 @@ class SchedulerManager(ApiManager):
         uri = u'/v1.0/scheduler/entries/'
         res = self._call(uri, u'GET')
         self.logger.debug(res)
-        self.msg = res
+        self.result(res)
         
     def get_scheduler_entry(self, name):
         uri = u'/v1.0/scheduler/entry/%s/' % name
         res = self._call(uri, u'GET')
         self.logger.debug(res)
-        self.msg = res        
+        self.result(res)        
 
     def create_scheduler_entries(self, name, task, schedule, args):
         schedule = {
@@ -210,13 +228,13 @@ class SchedulerManager(ApiManager):
         }
         uri = u'/v1.0/scheduler/entry/'
         res = self._call(uri, u'POST', data=schedule)
-        self.msg = res
+        self.result(res)
 
     def delete_scheduler_entry(self, name):
         data = {u'name':name}
         uri = u'/v1.0/scheduler/entry/'
         res = self._call(uri, u'DELETE', data=data)
-        self.msg = res
+        self.result(res)
 
 def scheduler_main(auth_config, format, opts, args):
     """
