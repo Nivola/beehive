@@ -1,0 +1,9 @@
+{"api":{
+    "user":"admin",
+    "project":"admin",
+    "domain":"default",
+    "uri":"http://10.102.184.200:5000/v3",
+    "timeout":5,
+    "pwd":"8fAwzAJAHQFMcJfrntpapzDpC",
+    "region":"regionOne"}
+}

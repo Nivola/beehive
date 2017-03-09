@@ -106,6 +106,7 @@ class ProviderManager(ApiManager):
         u'availability-zone',
         u'vpc',
         u'security-group',
+        u'rule',
     }
 
     def __init__(self, auth_config, env, frmt=u'json', containerid=None):

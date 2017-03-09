@@ -1,0 +1,10 @@
+{
+    "rule":{
+        "tag":"default",
+        "name":"rule04",
+        "super-zone":703,
+        "source":{"type":"Cidr", "value":"10.102.178.90/24"},
+        "destination":{"type":"SecurityGroup", "value":754},
+        "service":{"port":"80-81", "protocol":6}
+    }
+}

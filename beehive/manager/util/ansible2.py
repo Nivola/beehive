@@ -6,7 +6,7 @@ Created on Feb 17, 2017
 from : https://serversforhackers.com/running-ansible-2-programmatically
 '''
 import os
-import ujson as json
+import json
 from tempfile import NamedTemporaryFile
 from ansible.inventory import Inventory
 from ansible.vars import VariableManager
@@ -264,7 +264,7 @@ class Runner(object):
         finally:
             if tqm is not None:
                 tqm.cleanup()
-            
+
         return result
 
         

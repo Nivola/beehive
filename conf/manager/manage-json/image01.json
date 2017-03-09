@@ -1,0 +1,14 @@
+{
+    "super-image":{
+        "tag":"default",
+        "name":"iamge01",
+        "desc":"image01",
+        "zone":,
+        "os":"Centos",
+        "os-ver":"7.1",
+        "bandwidth":1000,
+        "templates":{
+            "zone-id":{"cid":, "template-id":}
+        }
+   }
+}

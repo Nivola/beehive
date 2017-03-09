@@ -1,0 +1,13 @@
+{
+    "super-flavor":{
+        "tag":"default",
+        "name":"flavor01",
+        "desc":"flavor01",
+        "zone":,
+        "memory":1024,
+        "disk":10,
+        "vcpus":1,
+        "bandwidth":1000,
+        "flavors":{}
+   }
+}

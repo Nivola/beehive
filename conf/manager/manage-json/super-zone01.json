@@ -1,0 +1,16 @@
+{
+  "super-zone":{
+    "tag":"default",
+    "name":"isola1",
+    "desc":"isola1",
+    "sites":[424],
+    "networks":[],
+    "quota":{
+      "cpu":10,
+      "ram":100,
+      "storage":1000,
+      "instance":10,
+      "network":10
+    }
+  }
+}

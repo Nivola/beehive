@@ -1,0 +1,16 @@
+{
+  "site-network":{
+    "tag":"default",
+    "site":424,
+    "name":"site-network02",
+    "desc":"site-network02",
+    "external":false,
+    "vlan":4002,
+    "gateway":"192.116.110.18",
+    "subnet":"192.116.110.0/24",
+    "routes":[],
+    "allocation-pools":[{"start":"192.116.110.200", "end":"192.116.110.250"}],
+    "enable-dhcp":false,
+    "dns-nameservers":["8.8.8.8", "8.8.8.4"]
+  }
+}

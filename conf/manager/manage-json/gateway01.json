@@ -1,0 +1,11 @@
+{
+  "gateway":{
+    "site":424,
+    "tag":"default",
+    "type":"openstack",
+    "name":"gateway01",
+    "desc":"gateway01",
+    "networks": {"external":439,
+                  "internal":[451]}
+  }
+}

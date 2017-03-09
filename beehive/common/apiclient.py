@@ -237,7 +237,7 @@ class BeehiveApiClient(object):
                 send_data = data
             else:
                 send_data = u'xxxxxxx'
-            self.logger.info(u'Call: METHOD=%s, URI=%s://%s:%s%s'\
+            self.logger.info(u'Call: METHOD=%s, URI=%s://%s:%s%s, '\
                              u'HEADERS=%s, DATA=%s' % (method, proto, host, 
                              port, path, headers, send_data))
             
