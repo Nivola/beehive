@@ -88,34 +88,23 @@ class Actions(object):
         }
         self.parent.add_actions(res)
 
-class ProviderManager(ApiManager):
+class VsphereManager(ApiManager):
     """
     CMD: 
-        provider    
+        vsphere    
     
     PARAMs:  
     """
     __metaclass__ = abc.ABCMeta
     
     class_names = {
-        u'region',
-        u'site',
-        u'site-network',
-        u'gateway',
-        u'super-zone',
-        u'availability-zone',
-        u'vpc',
-        u'security-group',
-        u'rule',
-        u'image',
-        u'flavor',
-        u'instance'
+        u'server',
     }
 
     def __init__(self, auth_config, env, frmt=u'json', containerid=None):
         ApiManager.__init__(self, auth_config, env, frmt)
         
-        self.baseuri = u'/v1.0/providers/%s' % containerid
+        self.baseuri = u'/v1.0/vspheres/%s' % containerid
         self.subsystem = u'resource'
         self.logger = logger
         self.msg = None
@@ -131,7 +120,7 @@ class ProviderManager(ApiManager):
     def add_actions(self, actions):
         self.__actions.update(actions)
         
-doc = ProviderManager.__doc__
-for class_name in ProviderManager.class_names:
+doc = VsphereManager.__doc__
+for class_name in VsphereManager.class_names:
     doc += Actions(None, class_name).doc()
-ProviderManager.__doc__ = doc
+VsphereManager.__doc__ = doc

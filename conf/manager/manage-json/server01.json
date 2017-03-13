@@ -1,0 +1,45 @@
+{
+    "server": {
+        "description": "Instance instance03",
+        "parent": 709,
+        "availability_zone": 298,
+        "flavorRef": {
+            "guest_id": null,
+            "memory_mb": 1024,
+            "version": "vmx-11",
+            "cpu": 1,
+            "core_x_socket": 1
+        },
+        "user_data": "eyJwdWJrZXkiOiAic2gtcnNhIEFBQUFCM056YUMxeWMyRUFBQUFEQVFBQkFBQUNBUURwTjM2Uk1qQk5wUTlsVHZiZE1qYmtVNk95eXRYNzhSWEtpVk5NQlUwN3ZCeDZSRXdHV2d5dGcrOHJHMXBxRkF1bzZVM2xSMXEyNWRwUERRdEs4RGFkNjhNUEhGeWRmdjBXQVlPRzZZMDJqL3BRS0pER1BoYmVTWVMwWEY0Ri96NFV4WTZjWEI4VWR6a1VTS3RJZzkzWUNUa3piUVk2K0FQT1kvSzlxMWIyWnhURUVCRFFnV2VuWnc0TWNtU2JhUytBWXdtaWdTSmI1c0ZNZXhKUktaQ2RYRVNnUWNTbVVrUUZpWFJRTkpNbGdQWkJuSWNiR2x1NVVBOUc1b3dMTTZMVDExYlBRUHJST3FtaGNTR29RdFlxODNSR05YNUtnd2UwMHBxZW8vRytTVXRjUVJwNUp0V0lFOWJMZWFYUkloWnVJbnJiUDBybUh5Q1FoQmVaRENQcjFtdzJZRFpWOUZiYjA4L3F3YnExVVl1VXpSWHhYcm9YMUY3L216dHlYUXQ3bzRBalhXcGV5QmNjUjBua0F5WmNhbk92dkpKdm9Jd0xvRHFic1phcUNsZFFKQ3Z0YjFXTlg5dWtjZTVUb1cxeTgwUmNmMUdacnJYUlRzMmNBYnViVWt4WVFhTFFRQXBWbkdJSmVsUjlCbHZSN3hzbWZRNVk1d29kZUxmRWdxdzJoTnpKRWVLS0hzNXhucGNnRzlpWFZ2VzFUcjBHZitVc1kwVUlvZ1o2QkNzdGZSNTlsUEF0MUlSYVlWQ3ZnSHNIbTRobXIweU12VXdHSHJvenRyamE1MFhIcDloMHovRVdBdDU2bmlvT0pjT1Rsb0FJcEFJMDV6NFo5ODViWVdnRms4ai8xTGtFREtIOWJ1cTVtSEx3TjY5TzdKUE44WGFEeEJxOXhxU1A5dz09IHNlcmdpby50b25hbmlAY3NpLml0In0=",
+        "networks": [{
+            "fixed_ip": {
+                "gw": "194.116.110.18",
+                "ip": "192.116.110.200",
+                "hostname": "instance01",
+                "nm": "255.255.255.0"
+            },
+            "uuid": 454
+        }],
+        "security_groups": [{
+            "uuid": 760
+        }],
+        "name": "instance03-server",
+        "imageRef": 1081,
+        "adminPass": "mypass",
+        "block_device_mapping_v2": [{
+            "source_type": "image",
+            "destination_type": "volume",
+            "uuid": 316,
+            "volume_size": "20"
+        }],
+        "accessIPv4": null,
+        "accessIPv6": null,
+        "personality": [{
+            "path": "\/etc\/banner.txt",
+            "contents": "dsdsd=="
+        }],
+        "metadata": {
+            "My Server Name": "Apache1"
+        }
+    }
+}

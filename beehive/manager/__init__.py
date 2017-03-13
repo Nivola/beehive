@@ -3,6 +3,7 @@ from pprint import PrettyPrinter
 from beehive.common.apiclient import BeehiveApiClient
 from logging import getLogger
 from urllib import urlencode
+from time import sleep
 
 logger = getLogger(__name__)
 
@@ -69,15 +70,25 @@ class ComponentManager(object):
         else:
             self.__format(data, space)
                 
-    def result(self, data):
+    def result(self, data, delta=None):
         """
         """
         if self.format == u'json':
             self.json = data
-        elif self.format == u'text':
+            if data is not None:
+                if isinstance(self.json, dict) or isinstance(self.json, list):
+                    self.pp.pprint(self.json)                
+            
+        elif self.format == u'text':            
             self.format_text(data)
+            if len(self.text) > 0:
+                print(u'\n'.join(self.text))
+                    
         elif self.format == u'doc':
             print(data)
+        
+        if delta is not None:
+            sleep(delta)
             
     def load_config(self, file_config):
         f = open(file_config, 'r')
@@ -104,12 +115,12 @@ class ComponentManager(object):
                              u'endpoint': u'http://10.102.160.240:6060/api/', 
                              u'user': u'admin@local'}
         """
-        try:
-            args[1]
-        except:
-            print(ComponentManager.__doc__)
-            print(component_class.__doc__)
-            return 0
+        #try:
+        #    args[1]
+        #except:
+        #    print(ComponentManager.__doc__)
+        #    print(component_class.__doc__)
+        #    return 0
 
         logger.debug(u'Format %s' % frmt)
         logger.debug(u'Get component class %s' % component_class)
@@ -126,7 +137,7 @@ class ComponentManager(object):
             logger.debug(u'Get operation %s' % operation)
             action = u'%s.%s' % (entity, operation)
         else: 
-            raise Exception(u'Entity and/or command are not correct')
+            raise Exception(u'ERROR: Entity and/or command are not correct')
             return 1
         
         #print(u'platform %s %s response:' % (entity, operation))
@@ -137,9 +148,10 @@ class ComponentManager(object):
             func = actions[action]
             res = func(*args)
         else:
-            raise Exception(u'Entity and/or command are not correct')
+            raise Exception(u'ERROR: Entity and/or command are not correct')      
             return 1
-    
+        
+        '''
         if frmt == u'text':
             if len(client.text) > 0:
                 print(u'\n'.join(client.text))
@@ -148,7 +160,7 @@ class ComponentManager(object):
                 if isinstance(client.json, dict) or isinstance(client.json, list):
                     client.pp.pprint(client.json)
                 else:
-                    print(client.json)
+                    print(client.json)'''
             
         return 0
 

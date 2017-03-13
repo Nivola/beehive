@@ -1,14 +1,14 @@
 {
-    "super-image":{
+    "image":{
         "tag":"default",
-        "name":"iamge01",
+        "name":"image01",
         "desc":"image01",
-        "zone":,
+        "super-zone":703,
         "os":"Centos",
         "os-ver":"7.1",
         "bandwidth":1000,
-        "templates":{
-            "zone-id":{"cid":, "template-id":}
-        }
+        "templates":[
+           {"zone-id":706, "cid":16, "template-id":1081}
+        ]
    }
 }

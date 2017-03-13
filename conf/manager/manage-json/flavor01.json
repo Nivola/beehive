@@ -1,13 +1,15 @@
 {
-    "super-flavor":{
+    "flavor":{
         "tag":"default",
         "name":"flavor01",
         "desc":"flavor01",
-        "zone":,
+        "super-zone":703,
         "memory":1024,
         "disk":10,
         "vcpus":1,
         "bandwidth":1000,
-        "flavors":{}
+        "flavors":[
+            {"zone-id":706, "cid":16, "datastores":[316,319], "version":"vmx-11"}
+        ]
    }
 }

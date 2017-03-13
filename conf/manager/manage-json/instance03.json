@@ -1,0 +1,41 @@
+{
+    "instance":{
+        "type":"vsphere",
+        "super-zone":703,
+        "availability-zone":706,
+        "vpc":730,
+        "tag":"default",                    
+        "name":"instance04",
+        "description":"instance04",
+        "flavor":1261,
+        "image":1126,
+        "admin-pass":"mypass",
+        "networks":[
+            {
+                "id":451,
+                "fixed_ip":{
+                    "ip":"192.116.110.200", 
+                    "nm":"255.255.255.0", 
+                    "gw":"194.116.110.18", 
+                    "hostname":"instance01"
+                }
+            }
+        ],
+        "storage": [
+            {   
+                "volume_size":"20"
+            }
+        ],                    
+        "security-groups": [754],
+        "user-data": "IyEvYmluL2Jhc2gKL2Jpbi9zdQplY2hvICJJIGFtIGluIHlvdSEiCg==",
+        "metadata":{
+            "My Server Name" : "Apache1"
+        },
+        "personality": [
+            {
+                "path": "/etc/banner.txt",
+                "contents": "dsdsd=="
+            }
+        ]
+   }
+}

@@ -47,6 +47,8 @@ def main(run_path, argv):
     from beehive.manager.ops.provider import ProviderManager
     from beehive.manager.ops.resource import ResourceManager
     from beehive.manager.ops.scheduler import SchedulerManager
+    from beehive.manager.ops.vsphere import VsphereManager
+    from beehive.manager.ops.native_vsphere import NativeVsphereManager
     
     from beehive.manager.ops.platform import platform_main
     from beehive.manager.ops.auth import auth_main
@@ -149,18 +151,41 @@ def main(run_path, argv):
             
         elif section == u'scheduler':
             try: subsystem = args.pop(0)
-            except: pass
+            except:
+                print(ComponentManager.__doc__)
+                print(main.__doc__)
+                return 0
             retcode = SchedulerManager.main(auth_config, frmt, opts, args, env, 
                                             SchedulerManager, subsystem=subsystem)
             
         elif section == u'provider':
             try: cid = args.pop(0)
-            except: pass
+            except:
+                print(ComponentManager.__doc__)
+                print(main.__doc__)
+                return 0                
             retcode = ProviderManager.main(auth_config, frmt, opts, args, env, 
                                            ProviderManager, containerid=cid)
+            
+        elif section == u'vsphere':
+            try: cid = args.pop(0)
+            except:
+                raise Exception(u'ERROR : Orchestrator id is missing')              
+            retcode = VsphereManager.main(auth_config, frmt, opts, args, env, 
+                                          VsphereManager, containerid=cid)
+            
+        elif section == u'native.vsphere':
+            try: cid = args.pop(0)
+            except:
+                raise Exception(u'ERROR : Platform id is missing')              
+            retcode = NativeVsphereManager.main(auth_config, frmt, opts, args, env, 
+                                                NativeVsphereManager, 
+                                                orchestrator_id=cid) 
                     
     except Exception as ex:
         print(u'ERROR : %s' % (ex))
+        print(ComponentManager.__doc__)
+        print(main.__doc__)
         logger.error(ex, exc_info=1)
         retcode = 1
     
