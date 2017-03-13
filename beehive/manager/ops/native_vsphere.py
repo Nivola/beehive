@@ -124,7 +124,7 @@ class ServerActions(Actions):
     def exec_command(self, oid, pwd, *args):
         #nmcli con mod test-lab ipv4.dns "8.8.8.8 8.8.4.4"
         server = self.entity_class.get_by_morid(oid)
-        params = "connection add type ethernet con-name wired01 ifname `nmcli dev status|grep ethernet|awk '{print $1}'` ip4 10.102.184.55 gw4 10.102.184.1"
+        params = "connection add type ethernet con-name wired01 ifname `nmcli dev status|grep ethernet|awk '{print $1}'` ip4 10.102.184.56/24 gw4 10.102.184.1"
         proc = self.entity_class.guest_execute_command(
                     server, u'root', pwd, path_to_program='/bin/nmcli',
                     program_arguments=params)
