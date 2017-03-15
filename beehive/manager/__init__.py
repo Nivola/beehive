@@ -130,14 +130,19 @@ class ComponentManager(object):
         logger.debug(u'Available actions %s' % 
                      PrettyPrinter(width=200).pformat(actions.keys()))
         
-        entity = args.pop(0)
-        logger.debug(u'Get entity %s' % entity)
+        if len(args) > 0:
+            entity = args.pop(0)
+            logger.debug(u'Get entity %s' % entity)
+        else: 
+            raise Exception(u'ERROR: Entity is not specified')
+            return 1
+
         if len(args) > 0:
             operation = args.pop(0)
             logger.debug(u'Get operation %s' % operation)
             action = u'%s.%s' % (entity, operation)
         else: 
-            raise Exception(u'ERROR: Entity and/or command are not correct')
+            raise Exception(u'ERROR: command is not specified')
             return 1
         
         #print(u'platform %s %s response:' % (entity, operation))

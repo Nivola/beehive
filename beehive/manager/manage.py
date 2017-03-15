@@ -130,7 +130,10 @@ def main(run_path, argv):
         return 0
 
     try:
+        manager = main
+        
         if section == u'platform':
+            manager = PlatformManager
             retcode = PlatformManager.main(auth_config, frmt, opts, args, env, 
                                            PlatformManager)
     
@@ -147,28 +150,28 @@ def main(run_path, argv):
             retcode = monitor_main(auth_config, frmt, opts, args)
             
         elif section == u'resource':
+            manager = ResourceManager
             retcode = ResourceManager.main(auth_config, frmt, opts, args, env, 
                                            ResourceManager)         
             
         elif section == u'scheduler':
+            manager = SchedulerManager
             try: subsystem = args.pop(0)
             except:
-                print(ComponentManager.__doc__)
-                print(main.__doc__)
-                return 0
+                raise Exception(u'ERROR : Container id is missing')  
             retcode = SchedulerManager.main(auth_config, frmt, opts, args, env, 
                                             SchedulerManager, subsystem=subsystem)
             
         elif section == u'provider':
+            manager = ProviderManager
             try: cid = args.pop(0)
             except:
-                print(ComponentManager.__doc__)
-                print(main.__doc__)
-                return 0                
+                raise Exception(u'ERROR : Provider id is missing')                
             retcode = ProviderManager.main(auth_config, frmt, opts, args, env, 
                                            ProviderManager, containerid=cid)
             
         elif section == u'vsphere':
+            manager = VsphereManager
             try: cid = args.pop(0)
             except:
                 raise Exception(u'ERROR : Orchestrator id is missing')              
@@ -176,9 +179,10 @@ def main(run_path, argv):
                                           VsphereManager, containerid=cid)
             
         elif section == u'native.vsphere':
+            manager = NativeVsphereManager
             try: cid = args.pop(0)
             except:
-                raise Exception(u'ERROR : Platform id is missing')              
+                raise Exception(u'ERROR : Vcenter id is missing')              
             retcode = NativeVsphereManager.main(auth_config, frmt, opts, args, env, 
                                                 NativeVsphereManager, 
                                                 orchestrator_id=cid) 
@@ -187,7 +191,7 @@ def main(run_path, argv):
         #\033[1;31;40m
         print(u'    ==ERROR== : %s' % (ex))
         print(ComponentManager.__doc__)
-        print(main.__doc__)
+        print(manager.__doc__)
         logger.error(ex, exc_info=1)
         retcode = 1
     
