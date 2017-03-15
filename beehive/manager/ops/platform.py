@@ -111,12 +111,13 @@ class PlatformManager(ComponentManager):
         """
         path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.environment)
         runner = Runner(inventory=path_inventory, verbosity=self.verbosity)
-        hosts = runner.get_inventory()
-        if self.format == u'json':
+        res = runner.get_inventory()
+        self.result(res)
+        '''if self.format == u'json':
             self.json = hosts
         elif self.format == u'text':
             for k,v in hosts.items():
-                self.text.append(u'%-30s %s' % (k, (u', ').join(v)))
+                self.text.append(u'%-30s %s' % (k, (u', ').join(v)))'''
         
     
     # gather info by section and host
@@ -305,7 +306,7 @@ class PlatformManager(ComponentManager):
                 #res = server.ping()
                 self.logger.info(u'Ping redis %s : %s' % (redis_uri, res))
                 resp.append({u'host':host, u'db':db, u'response':res})
-                self.result(resp)        
+        self.result(resp)        
     
     def redis_ping(self):
         """Ping redis instances
@@ -375,19 +376,16 @@ class PlatformManager(ComponentManager):
         path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.environment)
         runner = Runner(inventory=path_inventory, verbosity=self.verbosity)
         hosts, vars = runner.get_inventory_with_vars(u'mysql')        
-        
+        resp = []
         for host in hosts:
             db_uri = u'mysql+pymysql://%s:%s@%s:%s/%s' % (user, pwd, host, port, db)
             server = MysqlManager(1, db_uri)
             server.create_simple_engine()
             res = server.ping()
+            resp.append({u'host':host, u'response':res})
             self.logger.info(u'Ping mysql %s : %s' % (db_uri, res))
-
-            self.json = []
-            if self.format == u'json':
-                self.json.append({u'host':host, u'response':res})
-            elif self.format == u'text':
-                self.text.append(u'%s: %s' % (host, res))
+        
+        self.result(resp)
     
     def test_beehive(self, server, port):
         """Test redis instance
@@ -465,13 +463,14 @@ class PlatformManager(ComponentManager):
         for host in hosts:
             res = self.__get_stats(host)
             res.pop(u'vassals')
-            res.pop(u'blacklist')            
-            if self.format == u'json':
+            res.pop(u'blacklist')  
+            self.result(res) 
+            '''if self.format == u'json':
                 self.json.append(res)
             elif self.format == u'text':
                 self.text.append(u'%s' % (host))
                 for k,v in res.items():
-                    self.text.append(u'- %-15s : %s' % (k,v))
+                    self.text.append(u'- %-15s : %s' % (k,v))'''
 
     def get_emperor_vassals(self, details=u'', system=None):
         """Get uwsgi emperor active vassals statistics
@@ -487,6 +486,7 @@ class PlatformManager(ComponentManager):
             vassals = res.pop(u'vassals')         
             if self.format == u'json':
                 self.json.append(vassals)
+                print(self.json)
             elif self.format == u'text':
                 self.text.append(u'\n%s' % (host))
                 for inst in vassals:
@@ -502,6 +502,7 @@ class PlatformManager(ComponentManager):
                         for k in [u'last_run']:
                             last_run = datetime.fromtimestamp(inst[k])
                             self.text.append(u'  - %-15s : %s' % (k, last_run))
+                self.pp.pprint(self.text)
                             
     def get_emperor_blacklist(self, details=u'', system=None):
         """Get uwsgi emperor active vassals statistics

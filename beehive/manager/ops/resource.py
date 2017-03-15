@@ -35,6 +35,7 @@ class ResourceManager(ApiManager):
                 type=vsphere.datacenter
         resources types
         resources get <id|uuid>
+        resources tree <id|uuid>
         resources perms <id|uuid>
         resources roles <id|uuid>
         resources add 
@@ -91,6 +92,7 @@ class ResourceManager(ApiManager):
             u'resources.list': self.get_resources,
             u'resources.types': self.get_resource_types,
             u'resources.get': self.get_resource,
+            u'resources.tree': self.get_resource_tree,
             u'resources.count': self.get_resource_rescount,
             u'resources.perms': self.get_resource_perms,
             u'resources.roles': self.get_resource_roles,
@@ -142,6 +144,33 @@ class ResourceManager(ApiManager):
         res = self._call(uri, u'GET')
         self.logger.info(u'Get resource: %s' % res)
         self.result(res)
+    
+    def __print_tree(self, resource, space=u'   '):
+        for child in resource.get(u'children', []):
+            relation = child.get(u'relation')
+            if relation is None:
+                print u'%s=> [%s] %s - %s' % (space, child.get(u'type'),
+                                              child.get(u'name'), 
+                                              child.get(u'id'))
+            else:
+                print u'%s--%s--> [%s] %s - %s' % (space, relation, 
+                                                   child.get(u'type'),
+                                                   child.get(u'name'), 
+                                                   child.get(u'id'))
+            self.__print_tree(child, space=space+u'   ')
+    
+    def get_resource_tree(self, value):
+        uri = u'%s/resources/%s/tree/' % (self.baseuri, value)
+        res = self._call(uri, u'GET')
+        self.logger.info(u'Get resource tree: %s' % res)
+        if self.format == u'text':
+            res = res[u'resource-tree']
+            print u'[%s] %s - %s' % (res.get(u'type'), 
+                                     res.get(u'name'), 
+                                     res.get(u'id'))
+            self.__print_tree(res)
+        else:
+            self.result(res)        
     
     def get_resource_rescount(self, value):
         uri = u'%s/resources/%s/count/' % (self.baseuri, value)

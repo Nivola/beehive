@@ -106,6 +106,7 @@ def main(run_path, argv):
         logging.getLogger(u'beecell'),
         #logging.getLogger(u'sqlalchemy'),
         logging.getLogger(u'beehive'),
+        logging.getLogger(u'beedrones'),
     ]
     lfrmt = u'%(asctime)s - %(levelname)s - ' \
             u'%(name)s.%(funcName)s:%(lineno)d - %(message)s'
@@ -183,7 +184,8 @@ def main(run_path, argv):
                                                 orchestrator_id=cid) 
                     
     except Exception as ex:
-        print(u'ERROR : %s' % (ex))
+        #\033[1;31;40m
+        print(u'    ==ERROR== : %s' % (ex))
         print(ComponentManager.__doc__)
         print(main.__doc__)
         logger.error(ex, exc_info=1)

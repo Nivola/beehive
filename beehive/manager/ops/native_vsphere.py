@@ -44,9 +44,8 @@ class Actions(object):
         %ss update <id> <field>=<value>    field: name, desc, geo_area
         %ss delete <id>
         
-        >>> {u'pubkey':u'sh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it'}
-        >>> import base64
-        >>> import json
+        >>> {u'pubkey':u'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it'}
+        >>> import base64, json
         >>> c=base64.b64encode(json.dumps(a))
         >>> json.loads(base64.b64decode(c))        
         
@@ -60,10 +59,8 @@ class Actions(object):
         self.parent.result(res)
 
     def get(self, oid):
-        uri = u'%s/%ss/%s/' % (self.parent.baseuri, self.name, oid)
-        res = self.parent._call(uri, u'GET')
-        self.parent.logger.info(u'Get %s: %s' % (self.name, 
-                                          self.parent.pp.pformat(res)))
+        obj = self.entity_class.get(oid)
+        res = self.entity_class.data(obj)
         self.parent.result(res)
     
     def add(self, data):
@@ -117,26 +114,94 @@ class ServerActions(Actions):
     
     def get_guest(self, oid, *args):
         server = self.entity_class.get_by_morid(oid)
-        print server.guest.net
+        data = self.entity_class.hardware.get_original_devices(server, 
+                            dev_type=u'vim.vm.device.VirtualVmxnet3')[0].macAddress
+        print data
         res = self.entity_class.guest_info(server)
         self.parent.result(res)        
     
     def exec_command(self, oid, pwd, *args):
         #nmcli con mod test-lab ipv4.dns "8.8.8.8 8.8.4.4"
         server = self.entity_class.get_by_morid(oid)
-        params = "connection add type ethernet con-name wired01 ifname `nmcli dev status|grep ethernet|awk '{print $1}'` ip4 10.102.184.56/24 gw4 10.102.184.1"
+        conn_name = u'net01'
+        #conn_name = u'ens160'
+        dev_name = u"`nmcli dev status|grep ethernet|awk '{print $1}'`"
+        ipaddr = u'10.102.184.55/24'
+        macaddr = u'00:50:56:a1:55:4e'
+        gw = u'10.102.184.1'
+        dns = u'10.102.184.2'
+        
+        # delete connection with the same name
+        params = u'con delete %s' % conn_name
         proc = self.entity_class.guest_execute_command(
-                    server, u'root', pwd, path_to_program='/bin/nmcli',
+                    server, u'root', pwd, path_to_program=u'/bin/nmcli',
+                    program_arguments=params)        
+        
+        # create new connection
+        #params = u'con add type ethernet con-name %s ifname %s ip4 %s gw4 %s' % (conn_name, dev_name, ipaddr, gw)
+        params = u'con add type ethernet con-name %s ifname "*" mac %s ip4 %s gw4 %s' % (conn_name, macaddr, ipaddr, gw)
+        proc = self.entity_class.guest_execute_command(
+                    server, u'root', pwd, path_to_program=u'/bin/nmcli',
                     program_arguments=params)
-        res = self.entity_class.guest_read_environment_variable(server,
-                                                                u'root', pwd)  
+        
+        # setup dns
+        params = u'con modify %s ipv4.dns "%s"' % (conn_name, dns)
+        proc = self.entity_class.guest_execute_command(
+                    server, u'root', pwd, path_to_program=u'/bin/nmcli',
+                    program_arguments=params)
+        '''
+        # bring up interface
+        params = u'con up %s %s ifname %s' % (conn_name, dev_name)
+        proc = self.entity_class.guest_execute_command(
+                    server, u'root', pwd, path_to_program=u'/bin/nmcli',
+                    program_arguments=params)'''
+        
+        '''# bring up interface
+        params = u'con down %s ifname "*" %s mac %s' % (conn_name, dev_name, macaddr)
+        proc = self.entity_class.guest_execute_command(
+                    server, u'root', pwd, path_to_program=u'/bin/nmcli',
+                    program_arguments=params)    '''      
+        
+        #res = self.entity_class.guest_read_environment_variable(server,
+        #                                                        u'root', pwd)
+        res = proc
         self.parent.result(res)        
+    
+    def setup_ssh_key(self, oid, pwd):
+        key = u'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it'
+        server = self.entity_class.get_by_morid(oid)
+        res = self.entity_class.guest_setup_ssh_key(server, u'root', pwd, key)
+        self.parent.result(res)
+        
+    def setup_ssh_pwd(self, oid, pwd, newpwd):
+        newpwd = u'prova'
+        server = self.entity_class.get_by_morid(oid)
+        res = self.entity_class.guest_setup_admin_apssword(server, u'root', pwd, 
+                                                           newpwd)
+        self.parent.result(res)        
+    
+    def setup_network(self, oid, pwd, data):
+        data = self.parent.load_config(data)
+        ipaddr = data.get(u'ipaddr')
+        macaddr = data.get(u'macaddr')
+        gw = data.get(u'gw')
+        hostname = data.get(u'name')
+        dns = data.get(u'dns')
+        dns_search = data.get(u'dns-search')
+        server = self.entity_class.get_by_morid(oid)
+        res = self.entity_class.guest_setup_network(server, pwd, ipaddr, 
+                    macaddr, gw, hostname, dns, dns_search, 
+                    conn_name=u'net01', user=u'root')
+        self.parent.result(res)
     
     def register(self):
         res = {
             u'%ss.console' % self.name: self.get_console,
             u'%ss.cmd' % self.name: self.exec_command,
             u'%ss.guest' % self.name: self.get_guest,
+            u'%ss.sshkey' % self.name: self.setup_ssh_key,
+            u'%ss.pwd' % self.name: self.setup_ssh_pwd,
+            u'%ss.net' % self.name: self.setup_network,
         }
         self.parent.add_actions(res)
 

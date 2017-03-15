@@ -8,7 +8,7 @@
         "os-ver":"7.1",
         "bandwidth":1000,
         "templates":[
-           {"zone-id":706, "cid":16, "template-id":1081}
+           {"zone-id":706, "cid":16, "template-id":1081, "admin-pwd":"cs1$topix"}
         ]
    }
 }
