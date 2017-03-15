@@ -90,7 +90,7 @@ class Actions(object):
 
 class ProviderManager(ApiManager):
     """
-    CMD: 
+    SECTION: 
         provider    
     
     PARAMs:  

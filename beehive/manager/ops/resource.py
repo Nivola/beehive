@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 class ResourceManager(ApiManager):
     """
-    CMD: 
+    SECTION: 
         resource
         
     PARAMS:

@@ -9,7 +9,7 @@ logger = getLogger(__name__)
 
 class ComponentManager(object):
     """
-    use: manage.py [OPTION]... <CMD> [PARAMs]...
+    use: manage.py [OPTION]... <SECTION> [PARAMs]...
     
     Beehive manager.
     

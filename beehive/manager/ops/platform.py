@@ -21,7 +21,7 @@ except:
 
 class PlatformManager(ComponentManager):
     """
-    CMD: 
+    SECTION: 
         platform
         
     PARAMS:

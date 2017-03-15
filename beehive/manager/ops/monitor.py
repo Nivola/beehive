@@ -1,29 +1,4 @@
 '''
-Usage: manage.py [OPTION]... monitor [PARAMs]...
-
-Monitor api interaction.
-
-Mandatory arguments to long options are mandatory for short options too.
-    -c, --config        json auth config file
-    -f, --format        output format
-    
-PARAMS:
-    types list
-    type get prova
-    type add beehive task.ping_cloudapi 'http://localhost:8080
-    type delete beehive
-    
-    nodes list
-    node get 51
-    node ping 51
-    node perms 6
-    node add pippo pippo beehive {\"uri\":\"dddd\"} {}
-    node delete <id>
-
-Exit status:
- 0  if OK,
- 1  if problems occurred
-
 Created on Jan 25, 2017
 
 @author: darkbk
@@ -41,6 +16,23 @@ import sys
 logger = logging.getLogger(__name__)
 
 class MonitorManager(ApiManager):
+    """
+    SECTION:
+        monitor
+    
+    PARAMS:
+        types list
+        type get prova
+        type add beehive task.ping_cloudapi 'http://localhost:8080
+        type delete beehive
+        
+        nodes list
+        node get 51
+        node ping 51
+        node perms 6
+        node add pippo pippo beehive {\"uri\":\"dddd\"} {}
+        node delete <id>    
+    """
     def __init__(self, auth_config):
         ApiManager.__init__(self, auth_config)
         self.baseuri = u'/v1.0/monitor'

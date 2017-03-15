@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 class SchedulerManager(ApiManager):
     """
-    CMD: 
+    SECTION: 
         scheduler
     
     PARAMS:

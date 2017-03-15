@@ -30,7 +30,7 @@ def load_config(file_config):
 
 def main(run_path, argv):
     """
-    CMDs:
+    SECTIONs:
         platform
         subsystem
         client
@@ -56,6 +56,7 @@ def main(run_path, argv):
     from beehive.manager.ops.scheduler import SchedulerManager
     from beehive.manager.ops.vsphere import VsphereManager
     from beehive.manager.ops.native_vsphere import NativeVsphereManager
+    from beehive.manager.ops.monitor import MonitorManager
     
     from beehive.manager.ops.platform import platform_main
     from beehive.manager.ops.auth import auth_main
@@ -154,12 +155,14 @@ def main(run_path, argv):
             retcode = auth_main(auth_config, frmt, args)
             
         elif section == u'monitor':
-            retcode = monitor_main(auth_config, frmt, opts, args)
+            manager = MonitorManager
+            retcode = MonitorManager.main(auth_config, frmt, opts, args, env, 
+                                          MonitorManager)
             
         elif section == u'resource':
             manager = ResourceManager
             retcode = ResourceManager.main(auth_config, frmt, opts, args, env, 
-                                           ResourceManager)         
+                                           ResourceManager)
             
         elif section == u'scheduler':
             manager = SchedulerManager
@@ -192,11 +195,14 @@ def main(run_path, argv):
                 raise Exception(u'ERROR : Vcenter id is missing')              
             retcode = NativeVsphereManager.main(auth_config, frmt, opts, args, env, 
                                                 NativeVsphereManager, 
-                                                orchestrator_id=cid) 
+                                                orchestrator_id=cid)
+            
+        else:
+            raise Exception(u'ERROR : Specify a section')
                     
     except Exception as ex:
         print(ComponentManager.__doc__)
-        print(manager.__doc__)
+        print(bcolors.OKBLUE + manager.__doc__ + bcolors.ENDC)
         line = [u'='] * 50
         print(bcolors.FAIL + bcolors.BOLD + u'    ' + u''.join(line))
         print(u'     %s' % (ex))

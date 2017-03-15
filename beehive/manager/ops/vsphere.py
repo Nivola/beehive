@@ -90,7 +90,7 @@ class Actions(object):
 
 class VsphereManager(ApiManager):
     """
-    CMD: 
+    SECTION: 
         vsphere    
     
     PARAMs:  

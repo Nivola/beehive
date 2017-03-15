@@ -207,7 +207,7 @@ class ServerActions(Actions):
 
 class NativeVsphereManager(ApiManager):
     """
-    CMD: 
+    SECTION: 
         native.vsphere    
     
     PARAMs:  
