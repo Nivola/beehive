@@ -9,10 +9,17 @@ import logging
 import getopt
 import ujson as json
 
-
-
-
 VERSION = u'1.0.0'
+
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 def load_config(file_config):
     f = open(file_config, 'r')
@@ -188,10 +195,12 @@ def main(run_path, argv):
                                                 orchestrator_id=cid) 
                     
     except Exception as ex:
-        #\033[1;31;40m
-        print(u'    ==ERROR== : %s' % (ex))
         print(ComponentManager.__doc__)
         print(manager.__doc__)
+        line = [u'='] * 50
+        print(bcolors.FAIL + bcolors.BOLD + u'    ' + u''.join(line))
+        print(u'     %s' % (ex))
+        print(u'    ' + u''.join(line) + bcolors.ENDC)
         logger.error(ex, exc_info=1)
         retcode = 1
     
