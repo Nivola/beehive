@@ -18,5 +18,5 @@ loggers = [logging.getLogger(u'beehive')]
 LoggerHelper.simple_handler(loggers, logging.DEBUG)
 
 event_redis_uri = u'redis://10.102.184.51:6379/0'
-event_redis_channel = u'beehive.event'
-SimpleEventConsumer.start_subscriber(event_redis_uri, event_redis_channel)
+event_redis_channel = u'beehive.event.sub'
+SimpleEventConsumer(event_redis_uri, event_redis_channel).start_subscriber()

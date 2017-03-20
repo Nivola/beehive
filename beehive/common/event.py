@@ -9,7 +9,7 @@ import logging
 import redis
 #import zmq.green as zmq
 import gevent
-from beecell.simple import str2uni, id_gen
+from beecell.simple import str2uni, id_gen, parse_redis_uri
 
 from kombu.mixins import ConsumerMixin
 from kombu.log import get_logger as kombu_get_logger
@@ -18,6 +18,7 @@ from kombu import Exchange, Queue
 from kombu import Connection
 from kombu.utils.debug import setup_logging
 from signal import *
+import pprint
 
 logger = logging.getLogger(__name__)
 
@@ -175,8 +176,47 @@ class EventProducerZmq(EventProducer):
                 zmq_socket.close()
             if context is not None:
                 context.term()
+
+class SimpleEventConsumer(object):
+    def __init__(self, redis_uri, redis_channel):
+        self.logger = logging.getLogger(self.__class__.__module__+ \
+                                        u'.'+self.__class__.__name__)
+        
+        self.redis_uri = redis_uri
+        self.redis_channel = redis_channel     
+        
+        # set redis manager
+        host, port, db = parse_redis_uri(redis_uri)
+        self.redis = redis.StrictRedis(
+            host=host, port=int(port), db=int(db))
+        
+        self.pp = pprint.PrettyPrinter(indent=2)
+
+    def start_subscriber(self):
+        """
+        """
+        channel = self.redis.pubsub()
+        channel.subscribe(self.redis_channel)
+
+        self.logger.info(u'Start event consumer on redis channel %s:%s' % 
+                        (self.redis_uri, self.redis_channel))
+        while True:
+            try:
+                msg = channel.get_message()
+                if msg and msg[u'type'] == u'message':
+                    # get event data
+                    data = json.loads(msg[u'data'])
+                    self.logger.debug(u'Get message : %s' % 
+                                      self.pp.pformat(data))
+                    
+                gevent.sleep(0.05)  # be nice to the system :) 0.05
+            except (gevent.Greenlet.GreenletExit, Exception) as ex:
+                self.logger.error(u'Error receiving message: %s', exc_info=1)                 
+                    
+        self.logger.info(u'Stop event consumer on redis channel %s:%s' % 
+                         (self.redis_uri, self.redis_channel))                       
                 
-class SimpleEventConsumer(ConsumerMixin):
+class SimpleEventConsumerKombu(ConsumerMixin):
     def __init__(self, connection, redis_channel):
         self.logger = logging.getLogger(self.__class__.__module__+ \
                                         u'.'+self.__class__.__name__)
@@ -225,7 +265,7 @@ class SimpleEventConsumer(ConsumerMixin):
         
         with Connection(event_redis_uri) as conn:
             try:
-                worker = SimpleEventConsumer(conn, event_redis_channel)
+                worker = SimpleEventConsumerKombu(conn, event_redis_channel)
                 logger.info(u'Start event consumer on redis channel %s:%s' % 
                                 (event_redis_uri, event_redis_channel))
                 worker.run()
