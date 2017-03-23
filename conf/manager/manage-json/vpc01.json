@@ -4,6 +4,6 @@
         "name":"vpc01",
         "desc":"vpc01",
         "super-zone":703,
-        "networks":[{"id":451}]
+        "networks":[{"id":1351}]
     }
 }

@@ -5,7 +5,7 @@
     "geo-area":"Turin CSI",
     "coords":[],
     "limits":{
-        "cp":200,
+        "cpu":200,
         "ram":4096,
         "storage":524288,
         "instance":5000,

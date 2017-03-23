@@ -3,7 +3,7 @@
         "tag":"default",
         "name":"vpc02",
         "desc":"vpc02",
-        "super-zone":703,
-        "networks":[{"id":1351}]
+        "super-zone":1843,
+        "networks":[{"id":1825}]
     }
 }

@@ -55,7 +55,9 @@ def main(run_path, argv):
     from beehive.manager.ops.resource import ResourceManager
     from beehive.manager.ops.scheduler import SchedulerManager
     from beehive.manager.ops.vsphere import VsphereManager
+    from beehive.manager.ops.openstack import OpenstackManager
     from beehive.manager.ops.native_vsphere import NativeVsphereManager
+    from beehive.manager.ops.native_openstack import NativeOpenstackManager
     from beehive.manager.ops.monitor import MonitorManager
     
     from beehive.manager.ops.platform import platform_main
@@ -188,6 +190,14 @@ def main(run_path, argv):
             retcode = VsphereManager.main(auth_config, frmt, opts, args, env, 
                                           VsphereManager, containerid=cid)
             
+        elif section == u'openstack':
+            manager = OpenstackManager
+            try: cid = args.pop(0)
+            except:
+                raise Exception(u'ERROR : Orchestrator id is missing')              
+            retcode = OpenstackManager.main(auth_config, frmt, opts, args, env, 
+                                            OpenstackManager, containerid=cid)            
+            
         elif section == u'native.vsphere':
             manager = NativeVsphereManager
             try: cid = args.pop(0)
@@ -196,6 +206,15 @@ def main(run_path, argv):
             retcode = NativeVsphereManager.main(auth_config, frmt, opts, args, env, 
                                                 NativeVsphereManager, 
                                                 orchestrator_id=cid)
+            
+        elif section == u'native.openstack':
+            manager = NativeOpenstackManager
+            try: cid = args.pop(0)
+            except:
+                raise Exception(u'ERROR : Openstack id is missing')              
+            retcode = NativeOpenstackManager.main(auth_config, frmt, opts, args, env, 
+                                                  NativeOpenstackManager, 
+                                                  orchestrator_id=cid)            
             
         else:
             raise Exception(u'ERROR : Specify a section')
