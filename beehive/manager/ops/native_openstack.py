@@ -15,6 +15,7 @@ import sys
 import abc
 from beedrones.vsphere.client import VsphereManager
 from beedrones.openstack.client import OpenstackManager
+from beecell.simple import truncate
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +89,7 @@ class Actions(object):
         uri = u'%s/%5s/%s/' % (self.parent.baseuri, self.name, oid)
         res = self.parent._call(uri, u'PUT', data=data)
         self.parent.logger.info(u'Update %s: %s' % (self.name, 
-                                             self.parent.pp.pformat(res)))
+                                             truncate(res)))
         self.parent.result(res)
 
     def delete(self, oid):

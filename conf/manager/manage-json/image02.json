@@ -1,0 +1,13 @@
+{
+    "image":{
+        "tag":"default",
+        "name":"image02",
+        "desc":"image02",
+        "super-zone":1843,
+        "os":"Centos",
+        "os-ver":"7.2",
+        "templates":[
+           {"zone-id":1846, "cid":22, "template-id":2002}
+        ]
+    }
+}

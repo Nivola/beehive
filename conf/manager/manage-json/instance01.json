@@ -14,7 +14,7 @@
             {
                 "id":1351,
                 "fixed_ip":{
-                    "ip":"10.102.184.56",
+                    "ip":"10.102.184.121",
                     "hostname":"instance01.tstsddc.csi.it",
                     "dns-search":"tstsddc.csi.it"
                 }

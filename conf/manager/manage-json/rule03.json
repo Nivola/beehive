@@ -2,9 +2,9 @@
     "rule":{
         "tag":"default",
         "name":"rule03",
-        "super-zone":703,
-        "source":{"type":"SecurityGroup", "value":754},
-        "destination":{"type":"SecurityGroup", "value":754},
+        "super-zone":1843,
+        "source":{"type":"SecurityGroup", "value":1903},
+        "destination":{"type":"SecurityGroup", "value":1903},
         "service":{"protocol":1, "subprotocol":8}
     }
 }

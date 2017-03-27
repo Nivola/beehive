@@ -1,11 +1,85 @@
 import ujson as json
+import yaml
+try:
+    from yaml import CLoader as Loader, CDumper as Dumper
+except ImportError:
+    from yaml import Loader, Dumper
 from pprint import PrettyPrinter
 from beehive.common.apiclient import BeehiveApiClient
 from logging import getLogger
 from urllib import urlencode
 from time import sleep
+from pygments import highlight
+from pygments import lexers
+from pygments.formatters import Terminal256Formatter
+from pygments.style import Style
+from pygments.token import Keyword, Name, Comment, String, Error, \
+     Number, Operator, Generic, Token
+from pygments.filter import Filter
+from pprint import pformat
+from re import match
 
 logger = getLogger(__name__)
+
+class JsonStyle(Style):
+    default_style = ''
+    styles = {
+        Token.Name.Tag: u'bold #ffcc66',
+        Token.Literal.String.Double: u'#fff',
+        Token.Literal.Number: u'#0099ff',
+        Token.Keyword.Constant: u'#ff3300'
+    }
+    
+class YamlStyle(Style):
+    default_style = ''
+    styles = {
+        Token.Literal.Scalar.Plain: u'bold #ffcc66',
+        Token.Literal.String: u'#fff',
+        Token.Literal.Number: u'#0099ff',
+        Token.Operator: u'#ff3300'
+    }    
+
+class JsonFilter(Filter):
+    def __init__(self, **options):
+        Filter.__init__(self, **options)
+
+    def filter(self, lexer, stream):
+        for ttype, value in stream:
+            rtype = ttype
+            if match(u'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}'\
+                     u'-[0-9a-f]{12}', value.strip(u'"')):
+                rtype = Token.Literal.Number            
+            yield rtype, value
+
+class YamlFilter(Filter):
+    def __init__(self, **options):
+        Filter.__init__(self, **options)
+        self.prev_tag1 = None
+        self.prev_tag2 = None
+
+    def filter(self, lexer, stream):
+        for ttype, value in stream:
+            rtype = ttype
+            if self.prev_tag1 == u':' and \
+               self.prev_tag2 == u' ' and \
+               ttype == Token.Literal.Scalar.Plain:
+                rtype = Token.Literal.String
+            elif self.prev_tag1 != u'-' and \
+                 self.prev_tag2 == u' ' and \
+                 ttype == Token.Literal.Scalar.Plain:
+                rtype = Token.Literal.String
+            try:
+                int(value)
+                rtype = Token.Literal.Number
+            except: pass
+            if value == u'null':
+                rtype = Token.Operator
+            if match(u'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}'\
+                     u'-[0-9a-f]{12}', value):
+                rtype = Token.Literal.Number
+            self.prev_tag1 = self.prev_tag2
+            self.prev_tag2 = value
+            yield rtype, value
 
 class ComponentManager(object):
     """
@@ -13,11 +87,11 @@ class ComponentManager(object):
     
     Beehive manager.
     
-    Mandatory arguments to long options are mandatory for short options too.
+    OPTIONs:
         -c, --config        json auth config file
-        -f, --format        output format
+        -f, --format        output format: json, yaml, text
         -h, --help          manager help
-        -e, --env           set environment to use
+        -e, --env           set environment to use. Ex. test, lab, prod
     
     Exit status:
         0  if OK,
@@ -31,11 +105,40 @@ class ComponentManager(object):
         self.pp = PrettyPrinter(width=200)        
         self.format = frmt      
     
+    def __jsonprint(self, data):
+        lexer = lexers.JsonLexer
+        data = json.dumps(data, indent=2)
+        l = lexer()
+        l.add_filter(JsonFilter())
+        #for i in l.get_tokens(data):
+        #    print i        
+        print highlight(data, l, Terminal256Formatter(style=JsonStyle))
+        
+    def __yamlprint(self, data):
+        lexer = lexers.YamlLexer
+        data = yaml.safe_dump(data, default_flow_style=False)
+        l = lexer()
+        l.add_filter(YamlFilter())
+        #for i in l.get_tokens(data):
+        #    print i
+        from pygments import lex
+        #for item in lex(data, l):
+        #    print item       
+        print highlight(data, l, Terminal256Formatter(style=YamlStyle))        
+        
+    def __textprint(self, data):
+        #lexer = lexers.
+        lexer = lexers.VimLexer
+        l = lexer()          
+        print highlight(data, l, Terminal256Formatter()) 
+    
     def __format(self, data, space=u'', delimiter=u':', key=None):
         """
         """
+        if isinstance(data, str) or isinstance(data, unicode):
+            data = u'%s' % data
         if key is not None:
-            frmt = u'%s%-s %s %s'
+            frmt = u'%s%-s%s %s'
         else:
             frmt = u'%s%s%s%s'
             key = u''
@@ -65,8 +168,9 @@ class ComponentManager(object):
                     self.format_text(v, space+u'  ')
                 else:
                     self.__format(v, space, u'', u'')
-                if space == u'  ':                
-                    self.text.append(u'===================================')
+                #if space == u'  ':                
+                #    self.text.append(u'===================================')
+                self.__format(u'===================================', space, u'', None)
         else:
             self.__format(data, space)
                 
@@ -74,15 +178,19 @@ class ComponentManager(object):
         """
         """
         if self.format == u'json':
-            self.json = data
             if data is not None:
-                if isinstance(self.json, dict) or isinstance(self.json, list):
-                    self.pp.pprint(self.json)                
+                if isinstance(data, dict) or isinstance(data, list):
+                    self.__jsonprint(data)                
+            
+        elif self.format == u'yaml':
+            if data is not None:
+                if isinstance(data, dict) or isinstance(data, list):
+                    self.__yamlprint(data)
             
         elif self.format == u'text':            
             self.format_text(data)
             if len(self.text) > 0:
-                print(u'\n'.join(self.text))
+                self.__textprint(u'\n'.join(self.text))
                     
         elif self.format == u'doc':
             print(data)

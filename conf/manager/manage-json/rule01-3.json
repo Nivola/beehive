@@ -1,0 +1,10 @@
+{
+    "rule":{
+        "tag":"default",
+        "name":"rule04",
+        "super-zone":1843,
+        "source":{"type":"SecurityGroup", "value":1903},
+        "destination":{"type":"Cidr", "value":"10.102.184.0/24"},
+        "service":{"port":53, "protocol":17}
+    }
+}

@@ -12,6 +12,7 @@ from pprint import PrettyPrinter
 from pandas import DataFrame, set_option
 from beehive.manager import ApiManager
 import sys
+from beecell.simple import truncate
 
 logger = logging.getLogger(__name__)
 
@@ -67,16 +68,14 @@ class MonitorManager(ApiManager):
     def get_node_types(self):
         uri = u'%s/node/types/' % self.baseuri
         res = self._call(uri, u'GET')
-        self.logger.info(u'Get node types: %s' % self.pp.pformat(res))
-        self.msg = res[u'node_types']
-        return res[u'node_types']
+        self.logger.info(u'Get node types: %s' % truncate(res))
+        self.result(res)
 
     def get_node_type(self, value):
         uri = u'%s/node/type/%s/' % (self.baseuri, value)
         res = self._call(uri, u'GET')
-        self.logger.info(u'Get node type: %s' % self.pp.pformat(res))
-        self.msg = res[u'node_type']
-        return res[u'node_type']
+        self.logger.info(u'Get node type: %s' % truncate(res))
+        self.result(res)
     
     def add_node_type(self, value, action, template):
         global oid
@@ -89,15 +88,14 @@ class MonitorManager(ApiManager):
         }
         uri = u'%s/node/type/' % (self.baseuri)
         res = self._call(uri, u'POST', data=data)
-        self.logger.info(u'Add node type: %s' % self.pp.pformat(res))
-        self.msg = u'Add node type: %s' % self.pp.pformat(res)
-        return res
+        self.logger.info(u'Add node type: %s' % truncate(res))
+        self.result(res)
         
     def delete_node_type(self, value):
         uri = u'%s/node/type/%s/' % (self.baseuri, value)
         self._call(uri, u'DELETE')
         self.logger.info(u'Delete node type: %s' % value)
-        self.msg = u'Delete node type: %s' % value
+        self.result(res)
     
     #
     # graph
@@ -106,7 +104,7 @@ class MonitorManager(ApiManager):
         uri = u'%s/graph/' % self.baseuri
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.msg = res
+        self.result(res)
 
     #
     # nodes
@@ -118,25 +116,25 @@ class MonitorManager(ApiManager):
         uri = u'%s/nodes/' % self.baseuri
         res = self._call(uri, u'GET', headers=headers)
         self.logger.info(res)
-        self.msg = res[u'nodes']
+        self.result(res)
 
     def get_node(self, oid):
         uri = u'%s/node/%s/' % (self.baseuri, oid)
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.msg = res[u'node']
+        self.result(res)
         
     def ping_node(self, oid):
         uri = u'%s/node/%s/ping/' % (self.baseuri, oid)
         res = self._call(uri, u'PUT')
         self.logger.info(res)
-        self.msg = res   
+        self.result(res)  
         
     def get_node_permissions(self, oid):
         uri = u'%s/node/%s/perms/' % (self.baseuri, oid)
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.msg = res[u'perms']
+        self.result(res)
 
     def add_node(self, name, desc, ntype, conn, attribute):
         print conn
@@ -153,7 +151,7 @@ class MonitorManager(ApiManager):
         uri = u'%s/node/' % (self.baseuri)
         res = self._call(uri, u'POST', data=data)
         self.msg = u'Add node %s' % res
-        self.logger.info(res)
+        self.result(res)
         
     def update_node(self, name, desc, ntype, conn, attribute):
         """TODO"""
@@ -169,18 +167,19 @@ class MonitorManager(ApiManager):
         }
         uri = u'%s/node/%s/' % (self.baseuri, oid)
         res = self._call(uri, u'PUT', data=data)
-        self.logger.info(res)
+        self.result(res)
         
     def delete_node(self, oid):
         uri = u'%s/node/%s/' % (self.baseuri, oid)
         res = self._call(uri, u'DELETE')
-        self.msg = u'Delete node %s' % oid
+        self.result(res)
 
     def get_node_link(self):
         """TODO"""
         uri = u'%s/node/%s/links/' % (self.baseuri, oid)
         res = self._call(uri, u'GET')
         self.logger.info(res)
+        self.result(res)
 
     def get_node_tag(self):
         """TODO"""
@@ -189,6 +188,7 @@ class MonitorManager(ApiManager):
         uri = u'%s/node/%s/tags/' % (self.baseuri, oid)
         res = self._call(uri, u'GET', data=data)
         self.logger.info(res)
+        self.result(res)
         
     def add_node_tag(self):
         """TODO"""
@@ -197,6 +197,7 @@ class MonitorManager(ApiManager):
         uri = u'%s/node/%s/tag/' % (self.baseuri, oid)
         res = self._call(uri, u'PUT', data=data)
         self.logger.info(res)
+        self.result(res)
         
     def remove_node_tag(self):
         """TODO"""
@@ -205,6 +206,7 @@ class MonitorManager(ApiManager):
         uri = u'%s/node/%s/tag/' % (self.baseuri, oid)
         res = self._call(uri, u'PUT', data=data)
         self.logger.info(res)
+        self.result(res)
 
     def exec_node_task(self):
         """TODO"""
@@ -222,6 +224,7 @@ class MonitorManager(ApiManager):
         res = self._call(uri, u'PUT', data=data)
         print u'out: %s' % res[u'response'][u'result'][u'stdout'].split(u'\n')
         print u'err: %s' % res[u'response'][u'result'][u'stderr']
+        self.result(res)
 
     #
     # links
@@ -230,13 +233,13 @@ class MonitorManager(ApiManager):
         uri = u'%s/links/' % self.baseuri
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.msg = u'Get node links : %s' % res[u'links']
+        self.result(res)
 
     def get_link(self):
         uri = u'%s/link/%s/' % (self.baseuri, oid)
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.msg = u'Get node link : %s' % res[u'link']
+        self.result(res)
         
     def get_link_permissions(self):
         global oid
@@ -244,6 +247,7 @@ class MonitorManager(ApiManager):
         uri = u'%s/link/%s/perms/' % (self.baseuri, oid)
         res = self._call(uri, u'GET', data=data)
         self.logger.info(res)
+        self.result(res)
 
     def add_link(self):
         data = {'name':'link1',
@@ -263,6 +267,7 @@ class MonitorManager(ApiManager):
         uri = u'%s/link/%s/' % (self.baseuri, oid)
         res = self._call(uri, u'PUT', data=data)
         self.logger.info(res)
+        self.result(res)
         
     def delete_link(self):
         global oid

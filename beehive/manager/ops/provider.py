@@ -13,6 +13,7 @@ from pandas import DataFrame, set_option
 from beehive.manager import ApiManager, ComponentManager
 import sys
 import abc
+from beecell.simple import truncate
 
 logger = logging.getLogger(__name__)
 
@@ -36,23 +37,20 @@ class Actions(object):
         data = self.parent.format_http_get_query_params(*args)
         uri = u'%s/%ss/' % (self.parent.baseuri, self.name)
         res = self.parent._call(uri, u'GET', data=data)
-        self.parent.logger.info(u'Get %s: %s' % (self.name, 
-                                          self.parent.pp.pformat(res)))
+        self.parent.logger.info(u'Get %s: %s' % (self.name, truncate(res)))
         self.parent.result(res)
 
     def get(self, oid):
         uri = u'%s/%ss/%s/' % (self.parent.baseuri, self.name, oid)
         res = self.parent._call(uri, u'GET')
-        self.parent.logger.info(u'Get %s: %s' % (self.name, 
-                                          self.parent.pp.pformat(res)))
+        self.parent.logger.info(u'Get %s: %s' % (self.name, truncate(res)))
         self.parent.result(res)
     
     def add(self, data):
         data = self.parent.load_config(data)
         uri = u'%s/%ss/' % (self.parent.baseuri, self.name)
         res = self.parent._call(uri, u'POST', data=data)
-        self.parent.logger.info(u'Add %s: %s' % (self.name, 
-                                          self.parent.pp.pformat(res)))
+        self.parent.logger.info(u'Add %s: %s' % (self.name, truncate(res)))
         self.parent.result(res)
 
     def update(self, oid, *args):
@@ -68,8 +66,7 @@ class Actions(object):
         }
         uri = u'%s/%5s/%s/' % (self.parent.baseuri, self.name, oid)
         res = self.parent._call(uri, u'PUT', data=data)
-        self.parent.logger.info(u'Update %s: %s' % (self.name, 
-                                             self.parent.pp.pformat(res)))
+        self.parent.logger.info(u'Update %s: %s' % (self.name, truncate(res)))
         self.parent.result(res)
 
     def delete(self, oid):

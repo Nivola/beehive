@@ -1,0 +1,15 @@
+{
+    "flavor":{
+        "tag":"default",
+        "name":"flavor01",
+        "desc":"flavor01",
+        "super-zone":1843,
+        "memory":2048,
+        "disk":20,
+        "vcpus":1,
+        "bandwidth":1000,
+        "flavors":[
+            {"zone-id":1846, "cid":22, "flavor-id":"2029"}
+        ]
+   }
+}

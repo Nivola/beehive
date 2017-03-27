@@ -1,29 +1,4 @@
 '''
-Usage: manage.py [OPTION]... scheduler [PARAMs]...
-
-Scheduler api interaction.
-
-Mandatory arguments to long options are mandatory for short options too.
-    -c, --config        json auth config file
-    -f, --format        output format
-    
-PARAMS:
-    <subsystem> manager ping
-    <subsystem> manager stat
-    <subsystem> manager report
-    <subsystem> tasks list
-    <subsystem> task <task_id>
-    <subsystem> task test
-    <subsystem> task graph <task_id>
-    <subsystem> schedule list
-    <subsystem> schedule get <schedule_name>
-    <subsystem> schedule add <schedule_name> <task> \{\"type\":\"timedelta\",\"minutes\":10\} []
-    <subsystem> schedule delete <schedule_name>
-
-Exit status:
- 0  if OK,
- 1  if problems occurred
-
 Created on Jan 25, 2017
 
 @author: darkbk

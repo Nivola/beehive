@@ -50,6 +50,7 @@ def main(run_path, argv):
     
     # imports
     from beehive.manager import ComponentManager
+    from beehive.common.log import ColorFormatter
     from beehive.manager.ops.platform import PlatformManager
     from beehive.manager.ops.provider import ProviderManager
     from beehive.manager.ops.resource import ResourceManager
@@ -59,15 +60,10 @@ def main(run_path, argv):
     from beehive.manager.ops.native_vsphere import NativeVsphereManager
     from beehive.manager.ops.native_openstack import NativeOpenstackManager
     from beehive.manager.ops.monitor import MonitorManager
+    from beehive.manager.ops.auth import AuthManager
     
-    from beehive.manager.ops.platform import platform_main
-    from beehive.manager.ops.auth import auth_main
     from beehive.manager.ops.create import create_main
     from beehive.manager.ops.create import create_client
-    from beehive.manager.ops.monitor import monitor_main
-    from beehive.manager.ops.scheduler import scheduler_main
-    
-
     
     logger = logging.getLogger(__name__)
     file_config = u'./manage.conf'
@@ -122,7 +118,8 @@ def main(run_path, argv):
             u'%(name)s.%(funcName)s:%(lineno)d - %(message)s'
     LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, 
                                       u'%smanage.log' % auth_config[u'log'], 
-                                      1024*1024, 5, lfrmt)
+                                      1024*1024, 5, lfrmt,
+                                      formatter=ColorFormatter)
     
     loggers = [
         logging.getLogger(u'beecell.perf')
@@ -154,7 +151,9 @@ def main(run_path, argv):
             retcode = create_client(auth_config, frmt, args)
                 
         elif section == u'auth':
-            retcode = auth_main(auth_config, frmt, args)
+            manager = AuthManager
+            retcode = AuthManager.main(auth_config, frmt, opts, args, env, 
+                                       AuthManager)
             
         elif section == u'monitor':
             manager = MonitorManager
@@ -176,7 +175,7 @@ def main(run_path, argv):
             
         elif section == u'provider':
             manager = ProviderManager
-            try: cid = args.pop(0)
+            try: cid = int(args.pop(0))
             except:
                 raise Exception(u'ERROR : Provider id is missing')                
             retcode = ProviderManager.main(auth_config, frmt, opts, args, env, 
@@ -184,7 +183,7 @@ def main(run_path, argv):
             
         elif section == u'vsphere':
             manager = VsphereManager
-            try: cid = args.pop(0)
+            try: cid = int(args.pop(0))
             except:
                 raise Exception(u'ERROR : Orchestrator id is missing')              
             retcode = VsphereManager.main(auth_config, frmt, opts, args, env, 
@@ -192,7 +191,7 @@ def main(run_path, argv):
             
         elif section == u'openstack':
             manager = OpenstackManager
-            try: cid = args.pop(0)
+            try: cid = int(args.pop(0))
             except:
                 raise Exception(u'ERROR : Orchestrator id is missing')              
             retcode = OpenstackManager.main(auth_config, frmt, opts, args, env, 
@@ -220,12 +219,12 @@ def main(run_path, argv):
             raise Exception(u'ERROR : Specify a section')
                     
     except Exception as ex:
-        print(ComponentManager.__doc__)
-        print(bcolors.OKBLUE + manager.__doc__ + bcolors.ENDC)
         line = [u'='] * 50
         print(bcolors.FAIL + bcolors.BOLD + u'    ' + u''.join(line))
         print(u'     %s' % (ex))
-        print(u'    ' + u''.join(line) + bcolors.ENDC)
+        print(u'    ' + u''.join(line) + bcolors.ENDC)        
+        print(ComponentManager.__doc__)
+        #print(bcolors.OKBLUE + manager.__doc__ + bcolors.ENDC)
         logger.error(ex, exc_info=1)
         retcode = 1
     

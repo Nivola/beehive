@@ -12,8 +12,24 @@ from pprint import PrettyPrinter
 from pandas import DataFrame, set_option
 from beehive.manager import ApiManager, ComponentManager
 import sys
+from beecell.simple import truncate
+from pygments.formatters import Terminal256Formatter
+from pygments.token import Keyword, Name, Comment, String, Error, \
+     Number, Operator, Generic, Token
+from pygments.style import Style     
+from pygments import format
 
 logger = logging.getLogger(__name__)
+
+class TreeStyle(Style):
+    default_style = ''
+    styles = {
+        Token.Text.Whitespace: u'#fff',
+        Token.Name: u'bold #ffcc66',
+        Token.Literal.String: u'#fff',
+        Token.Literal.Number: u'#0099ff',
+        Token.Operator: u'#ff3300' 
+    } 
 
 class ResourceManager(ApiManager):
     """
@@ -130,33 +146,44 @@ class ResourceManager(ApiManager):
         data = self.format_http_get_query_params(*args)
         uri = u'%s/resources/' % (self.baseuri)
         res = self._call(uri, u'GET', data=data)
-        self.logger.info(u'Get resources: %s' % res)
+        self.logger.info(u'Get resources: %s' % truncate(res))
         self.result(res)
     
     def get_resource_types(self, tags=None):
         uri = u'%s/resources/types/' % self.baseuri
         res = self._call(uri, u'GET')
-        self.logger.info(u'Get resource types: %s' % res)
+        self.logger.info(u'Get resource types: %s' % truncate(res))
         self.result(res)
 
     def get_resource(self, value):
         uri = u'%s/resources/%s/' % (self.baseuri, value)
         res = self._call(uri, u'GET')
-        self.logger.info(u'Get resource: %s' % res)
+        self.logger.info(u'Get resource: %s' % truncate(res))
         self.result(res)
     
     def __print_tree(self, resource, space=u'   '):
         for child in resource.get(u'children', []):
             relation = child.get(u'relation')
             if relation is None:
-                print u'%s=> [%s] %s - %s' % (space, child.get(u'type'),
-                                              child.get(u'name'), 
-                                              child.get(u'id'))
+                def create_data():
+                    yield (Token.Text.Whitespace, space)
+                    yield (Token.Operator, u'=>')
+                    yield (Token.Name, u' [%s] ' % child.get(u'type'))
+                    yield (Token.Literal.String, child.get(u'name'))
+                    yield (Token.Text.Whitespace, u' - ')
+                    yield (Token.Literal.Number, str(child.get(u'id')))
+                data = format(create_data(), Terminal256Formatter(style=TreeStyle))
+                print data
             else:
-                print u'%s--%s--> [%s] %s - %s' % (space, relation, 
-                                                   child.get(u'type'),
-                                                   child.get(u'name'), 
-                                                   child.get(u'id'))
+                def create_data():
+                    yield (Token.Text.Whitespace, space)
+                    yield (Token.Operator, u'--%s-->' % relation)
+                    yield (Token.Name, u' [%s] ' % child.get(u'type'))
+                    yield (Token.Literal.String, child.get(u'name'))
+                    yield (Token.Text.Whitespace, u' - ')
+                    yield (Token.Literal.Number, str(child.get(u'id')))
+                data = format(create_data(), Terminal256Formatter(style=TreeStyle))
+                print data
             self.__print_tree(child, space=space+u'   ')
     
     def get_resource_tree(self, value):
@@ -165,9 +192,13 @@ class ResourceManager(ApiManager):
         self.logger.info(u'Get resource tree: %s' % res)
         if self.format == u'text':
             res = res[u'resource-tree']
-            print u'[%s] %s - %s' % (res.get(u'type'), 
-                                     res.get(u'name'), 
-                                     res.get(u'id'))
+            def create_data():
+                yield (Token.Name, u' [%s] ' % res.get(u'type'))
+                yield (Token.Literal.String, res.get(u'name'))
+                yield (Token.Text.Whitespace, u' - ')
+                yield (Token.Literal.Number, str(res.get(u'id')))
+            data = format(create_data(), Terminal256Formatter(style=TreeStyle))
+            print data
             self.__print_tree(res)
         else:
             self.result(res)        
@@ -175,19 +206,19 @@ class ResourceManager(ApiManager):
     def get_resource_rescount(self, value):
         uri = u'%s/resources/%s/count/' % (self.baseuri, value)
         res = self._call(uri, u'GET')
-        self.logger.info(u'Get resource count: %s' % res)
+        self.logger.info(u'Get resource count: %s' % truncate(res))
         self.result(res)
     
     def get_resource_perms(self, value):
         uri = u'%s/resources/%s/perms/' % (self.baseuri, value)
         res = self._call(uri, u'GET')
-        self.logger.info(u'Get resource perms: %s' % res)
+        self.logger.info(u'Get resource perms: %s' % truncate(res))
         self.result(res)
         
     def get_resource_roles(self, value):
         uri = u'%s/resources/%s/roles/' % (self.baseuri, value)
         res = self._call(uri, u'GET')
-        self.logger.info(u'Get resource roles: %s' % res)
+        self.logger.info(u'Get resource roles: %s' % truncate(res))
         self.result(res)  
     
     def add_resource(self, ctype, name, conn):
@@ -201,7 +232,7 @@ class ResourceManager(ApiManager):
         }
         uri = u'%s/resources/' % (self.baseuri)
         res = self._call(uri, u'POST', data=data)
-        self.logger.info(u'Add resource: %s' % res)
+        self.logger.info(u'Add resource: %s' % truncate(res))
         self.result(res)
         
     def delete_resource(self, oid):
@@ -257,37 +288,37 @@ class ResourceManager(ApiManager):
         else:
             headers = None
         res = self._call(uri, u'GET', headers=headers)
-        self.logger.info(u'Get resource containers: %s' % res)
+        self.logger.info(u'Get resource containers: %s' % truncate(res))
         self.result(res)
     
     def get_resource_container_types(self, tags=None):
         uri = u'%s/containers/types/' % self.baseuri
         res = self._call(uri, u'GET')
-        self.logger.info(u'Get resource container types: %s' % res)
+        self.logger.info(u'Get resource container types: %s' % truncate(res))
         self.result(res)
 
     def get_resource_container(self, value):
         uri = u'%s/containers/%s/' % (self.baseuri, value)
         res = self._call(uri, u'GET')
-        self.logger.info(u'Get resource container: %s' % res)
+        self.logger.info(u'Get resource container: %s' % truncate(res))
         self.result(res)
     
     def get_resource_container_rescount(self, value):
         uri = u'%s/containers/%s/count/' % (self.baseuri, value)
         res = self._call(uri, u'GET')
-        self.logger.info(u'Get resource container resource count: %s' % res)
+        self.logger.info(u'Get resource container resource count: %s' % truncate(res))
         self.result(res)
     
     def get_resource_container_perms(self, value):
         uri = u'%s/containers/%s/perms/' % (self.baseuri, value)
         res = self._call(uri, u'GET')
-        self.logger.info(u'Get resource container perms: %s' % res)
+        self.logger.info(u'Get resource container perms: %s' % truncate(res))
         self.result(res)
         
     def get_resource_container_roles(self, value):
         uri = u'%s/containers/%s/roles/' % (self.baseuri, value)
         res = self._call(uri, u'GET')
-        self.logger.info(u'Get resource container roles: %s' % res)
+        self.logger.info(u'Get resource container roles: %s' % truncate(res))
         self.result(res)            
     
     def ping_container(self, contid):
