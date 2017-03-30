@@ -72,11 +72,12 @@ def main(run_path, argv):
     retcode = 0
     frmt = u'text'
     env = u'test'
+    color = 1
     
     try:
-        opts, args = getopt.getopt(argv,"c:f:e:hv",
-                                   ["help", "conf=", 'format=', 'env=', 
-                                    "version"])
+        opts, args = getopt.getopt(argv, u'c:f:e:o:hv',
+                                   [u'help', u'conf=', u'format=', u'env=', 
+                                    u'color', u'version'])
     except getopt.GetoptError:
         print(ComponentManager.__doc__)
         print(main.__doc__)
@@ -96,6 +97,8 @@ def main(run_path, argv):
             file_config = arg
         elif opt in ('-f', '--format'):
             frmt = arg
+        elif opt in ('-o', '--color'):
+            color = arg            
 
     # load configuration
     if os.path.exists(file_config):
@@ -104,7 +107,8 @@ def main(run_path, argv):
         auth_config = {
             u'log':u'./',
             u'endpoint':None
-        }        
+        }
+    auth_config[u'color'] = color
     
     # setup loggers
     loggers = [
@@ -224,7 +228,7 @@ def main(run_path, argv):
         print(u'     %s' % (ex))
         print(u'    ' + u''.join(line) + bcolors.ENDC)        
         print(ComponentManager.__doc__)
-        #print(bcolors.OKBLUE + manager.__doc__ + bcolors.ENDC)
+        print(bcolors.OKBLUE + manager.__doc__ + bcolors.ENDC)
         logger.error(ex, exc_info=1)
         retcode = 1
     

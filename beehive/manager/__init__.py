@@ -104,33 +104,41 @@ class ComponentManager(object):
         self.text = []
         self.pp = PrettyPrinter(width=200)        
         self.format = frmt      
-    
+        self.color = auth_config[u'color']
+        
     def __jsonprint(self, data):
-        lexer = lexers.JsonLexer
         data = json.dumps(data, indent=2)
-        l = lexer()
-        l.add_filter(JsonFilter())
-        #for i in l.get_tokens(data):
-        #    print i        
-        print highlight(data, l, Terminal256Formatter(style=JsonStyle))
+        if self.color == 1:
+            l = lexers.JsonLexer()
+            l.add_filter(JsonFilter())
+            #for i in l.get_tokens(data):
+            #    print i        
+            print highlight(data, l, Terminal256Formatter(style=JsonStyle))
+        else:
+            print data
         
     def __yamlprint(self, data):
-        lexer = lexers.YamlLexer
         data = yaml.safe_dump(data, default_flow_style=False)
-        l = lexer()
-        l.add_filter(YamlFilter())
-        #for i in l.get_tokens(data):
-        #    print i
-        from pygments import lex
-        #for item in lex(data, l):
-        #    print item       
-        print highlight(data, l, Terminal256Formatter(style=YamlStyle))        
+        if self.color == 1:
+            l = lexers.YamlLexer()
+            l.add_filter(YamlFilter())
+            #for i in l.get_tokens(data):
+            #    print i
+            from pygments import lex
+            #for item in lex(data, l):
+            #    print item       
+            print highlight(data, l, Terminal256Formatter(style=YamlStyle))
+        else:
+            print data
         
     def __textprint(self, data):
-        #lexer = lexers.
-        lexer = lexers.VimLexer
-        l = lexer()          
-        print highlight(data, l, Terminal256Formatter()) 
+        if self.color == 1:
+            #lexer = lexers.
+            lexer = lexers.VimLexer
+            l = lexer()          
+            print highlight(data, l, Terminal256Formatter())
+        else:
+            print data        
     
     def __format(self, data, space=u'', delimiter=u':', key=None):
         """
@@ -142,15 +150,17 @@ class ComponentManager(object):
         else:
             frmt = u'%s%s%s%s'
             key = u''
-        
+
         if isinstance(data, str):
             data = data.rstrip().replace(u'\n', u'')
             self.text.append(frmt % (space, key, delimiter, data))
         elif isinstance(data, unicode):
             data = data.rstrip().replace(u'\n', u'')
-            self.text.append(frmt % (space, key, delimiter, data))    
+            self.text.append(frmt % (space, key, delimiter, data))
         elif isinstance(data, int):
             self.text.append(frmt % (space, key, delimiter, data))
+        elif isinstance(data, tuple):
+            self.text.append(frmt % (space, key, delimiter, data))            
     
     def format_text(self, data, space=u'  '):
         """
@@ -170,7 +180,7 @@ class ComponentManager(object):
                     self.__format(v, space, u'', u'')
                 #if space == u'  ':                
                 #    self.text.append(u'===================================')
-                self.__format(u'===================================', space, u'', None)
+                #self.__format(u'===================================', space, u'', None)
         else:
             self.__format(data, space)
                 
@@ -187,10 +197,10 @@ class ComponentManager(object):
                 if isinstance(data, dict) or isinstance(data, list):
                     self.__yamlprint(data)
             
-        elif self.format == u'text':            
+        elif self.format == u'text':       
             self.format_text(data)
             if len(self.text) > 0:
-                self.__textprint(u'\n'.join(self.text))
+                print(u'\n'.join(self.text))
                     
         elif self.format == u'doc':
             print(data)
@@ -242,7 +252,7 @@ class ComponentManager(object):
             entity = args.pop(0)
             logger.debug(u'Get entity %s' % entity)
         else: 
-            raise Exception(u'ERROR: Entity is not specified')
+            raise Exception(u'ERROR: ENTITY is not specified')
             return 1
 
         if len(args) > 0:

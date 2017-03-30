@@ -96,6 +96,7 @@ class OpenstackManager(ApiManager):
     
     class_names = {
         u'domain',
+        u'project',
         u'server',
         u'network',
     }

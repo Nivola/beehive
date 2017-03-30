@@ -208,6 +208,37 @@ class ServerActions(Actions):
             u'%ss.net' % self.name: self.setup_network,
         }
         self.parent.add_actions(res)
+        
+class SystemActions(Actions):
+    """
+    """
+    def get_hosts(self, *args):
+        res = self.entity_class.compute_hosts()
+        self.parent.result(res)
+    
+    def get_compute_hypervisors(self, *args):
+        res = self.entity_class.compute_hypervisors()
+        self.parent.result(res)        
+    
+    def register(self):
+        res = {
+            u'%ss.hosts' % self.name: self.get_hosts,
+            u'%ss.hypervisors' % self.name: self.get_compute_hypervisors,
+        }
+        self.parent.add_actions(res)
+        
+class SgActions(Actions):
+    """
+    """
+    def list_logging(self, *args):
+        res = self.entity_class.list_logging()
+        self.parent.result(res)
+    
+    def register(self):
+        res = {
+            u'%ss.log' % self.name: self.list_logging,
+        }
+        self.parent.add_actions(res)        
 
 class NativeOpenstackManager(ApiManager):
     """
@@ -238,6 +269,7 @@ class NativeOpenstackManager(ApiManager):
         self.entities = {
             (u'project', self.client.project),
             (u'network', self.client.network),
+            (u'server', self.client.server),
         }        
         
         for entity in self.entities:
@@ -245,7 +277,8 @@ class NativeOpenstackManager(ApiManager):
         
         # custom actions
         ServerActions(self, u'server', self.client.server).register()
-        
+        SystemActions(self, u'system', self.client.system).register()
+        SgActions(self, u'security-group', self.client.network.security_group).register()
     
     def actions(self):
         return self.__actions

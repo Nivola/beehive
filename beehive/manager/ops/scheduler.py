@@ -47,11 +47,12 @@ class SchedulerManager(ApiManager):
             u'manager.stat': self.stat_task_manager,
             u'manager.report': self.report_task_manager,
             u'tasks.list': self.get_all_tasks,
-            u'task.get': self.get_task,
-            u'task.graph': self.get_task_graph,
+            u'tasks.get': self.get_task,
+            u'tasks.status': self.get_task_status,
+            u'tasks.graph': self.get_task_graph,
             u'tasks.delete': self.delete_all_tasks,
-            u'task.delete': self.delete_task,
-            u'task.test': self.run_job_test,
+            u'tasks.delete': self.delete_task,
+            u'tasks.test': self.run_job_test,
             
             u'schedule.list': self.get_scheduler_entries,
             u'schedule.get': self.get_scheduler_entry,
@@ -65,43 +66,49 @@ class SchedulerManager(ApiManager):
     # task manager
     #
     def ping_task_manager(self):
-        uri = u'/v1.0/task/ping/'
+        uri = u'/v1.0/worker/ping/'
         res = self._call(uri, u'GET')
         self.result(res)
 
     def stat_task_manager(self):
-        uri = u'/v1.0/task/stats/'
+        uri = u'/v1.0/worker/stats/'
         res = res = self._call(uri, u'GET')
         self.logger.info(res)
         self.result(res)
 
     def report_task_manager(self):
-        uri = u'/v1.0/task/report/'
+        uri = u'/v1.0/worker/report/'
         res = res = self._call(uri, u'GET')
         self.logger.info(res)
         self.result(res)
     
     def get_all_tasks(self):
-        uri = u'/v1.0/task/tasks/'
+        uri = u'/v1.0/worker/tasks/'
         res = res = self._call(uri, u'GET')
         self.logger.info(res)
         self.result(res)
         
     def get_task(self, task_id):
-        uri = u'/v1.0/task/task/%s/' % task_id
+        uri = u'/v1.0/worker/tasks/%s/' % task_id
         res = res = self._call(uri, u'GET')
         self.logger.info(res)
         self.result(res)
         
+    def get_task_status(self, task_id):
+        uri = u'/v1.0/worker/tasks/%s/status/' % task_id
+        res = res = self._call(uri, u'GET')
+        self.logger.info(res)
+        self.result(res)        
+        
     def get_task_graph(self, task_id):
-        uri = u'/v1.0/task/task/%s/graph/' % task_id
+        uri = u'/v1.0/worker/tasks/%s/graph/' % task_id
         res = res = self._call(uri, u'GET')
         self.logger.info(res)
         self.result(res)
 
     def count_all_tasks(self):
         """TODO"""
-        uri = u'/v1.0/task/tasks/count/'
+        uri = u'/v1.0/worker/tasks/count/'
         
         res = res = self._call(uri, u'GET')
         self.logger.info(res)
@@ -109,7 +116,7 @@ class SchedulerManager(ApiManager):
 
     def registered_tasks(self):
         """TODO"""
-        uri = u'/v1.0/task/tasks/registered/'
+        uri = u'/v1.0/worker/tasks/registered/'
         
         res = res = self._call(uri, u'GET')
         self.logger.info(res)
@@ -117,7 +124,7 @@ class SchedulerManager(ApiManager):
          
     def active_tasks(self):
         """TODO"""
-        uri = u'/v1.0/task/tasks/active/'
+        uri = u'/v1.0/worker/tasks/active/'
         
         res = res = self._call(uri, u'GET')
         self.logger.info(res)
@@ -125,7 +132,7 @@ class SchedulerManager(ApiManager):
         
     def scheduled_tasks(self):
         """TODO"""
-        uri = u'/v1.0/task/tasks/scheduled/'
+        uri = u'/v1.0/worker/tasks/scheduled/'
         
         res = res = self._call(uri, u'GET')
         self.logger.info(res)
@@ -133,48 +140,49 @@ class SchedulerManager(ApiManager):
         
     def reserved_tasks(self):
         """TODO"""
-        uri = u'/v1.0/task/tasks/reserved/'
+        uri = u'/v1.0/worker/tasks/reserved/'
         
         res = res = self._call(uri, u'GET')
         self.result(res)
         
     def revoked_tasks(self):
         """TODO"""
-        uri = u'/v1.0/task/tasks/revoked/'
+        uri = u'/v1.0/worker/tasks/revoked/'
         
         res = res = self._call(uri, u'GET')
         self.result(res)
         
     def delete_all_tasks(self):
         """TODO"""
-        uri = u'/v1.0/task/tasks/'
+        uri = u'/v1.0/worker/tasks/'
         
         res = self._call(uri, u'DELETE')
         self.result(res)
         
     def delete_task(self):
         """TODO"""
-        uri = u'/v1.0/task/task/%s/' % oid
+        uri = u'/v1.0/worker/task/%s/' % oid
         
         res = self._call(uri, u'DELETE')       
         
     def purge_tasks(self):
         """TODO"""
-        uri = u'/v1.0/task/tasks/purge/'
+        uri = u'/v1.0/worker/tasks/purge/'
         
         res = self._call(uri, u'DELETE')
         self.result(res)      
 
     def revoke_task(self):
         """TODO"""
-        uri = u'/v1.0/task/task/revoke/%s/' % task_id
+        uri = u'/v1.0/manager/tasks/revoke/%s/' % task_id
         
         res = self._call(uri, u'DELETE')
         self.result(res)
         
-    def run_job_test(self):
-        data = {u'x':2, u'y':234, u'numbers':[2, 78, 45, 90], u'mul_numbers':[]} 
-        uri = u'/v1.0/task/task/jobtest/'
+    def run_job_test(self, error=False):
+        data = {u'x':2, u'y':234, u'numbers':[2, 78, 45, 90], u'mul_numbers':[],
+                u'error':error} 
+        uri = u'/v1.0/worker/tasks/jobtest/'
         res = self._call(uri, u'POST', data=data)
         self.logger.info(u'Run job test: %s' % res)
         self.result(res)   

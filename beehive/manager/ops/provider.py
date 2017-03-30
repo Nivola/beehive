@@ -14,8 +14,23 @@ from beehive.manager import ApiManager, ComponentManager
 import sys
 import abc
 from beecell.simple import truncate
+from pygments.formatters import Terminal256Formatter
+from pygments.token import Keyword, Name, Comment, String, Error, \
+     Number, Operator, Generic, Token
+from pygments.style import Style
+from pygments import format
 
 logger = logging.getLogger(__name__)
+
+class ListStyle(Style):
+    default_style = ''
+    styles = {
+        Token.Text.Whitespace: u'#fff',
+        Token.Name: u'bold #ffcc66',
+        Token.Literal.String: u'#fff',
+        Token.Literal.Number: u'#0099ff',
+        Token.Operator: u'#ff3300' 
+    }
 
 class Actions(object):
     """
@@ -26,7 +41,7 @@ class Actions(object):
     
     def doc(self):
         return """
-        %ss list [filters]
+        %ss list [filters: <field>=<value>]   field: name, tags, ext_id, parent_id
         %ss get <id>
         %ss add <file data in json>
         %ss update <id> <field>=<value>    field: name, desc, geo_area
@@ -38,7 +53,58 @@ class Actions(object):
         uri = u'%s/%ss/' % (self.parent.baseuri, self.name)
         res = self.parent._call(uri, u'GET', data=data)
         self.parent.logger.info(u'Get %s: %s' % (self.name, truncate(res)))
-        self.parent.result(res)
+        
+        if self.parent.format == u'text':
+            res.pop(u'count')
+            
+            def print_dict(data):
+                for k,v in data.items():
+                    yield (Token.Name, u'  %s' % k)
+                    yield (Token.Text.Whitespace, u' : ')
+                    yield (Token.Literal.String, u'%s' % v)
+            
+            def create_data():
+                for item in res.values()[0]:
+                    for key in [u'id', u'uuid', u'name']:
+                        yield (Token.Name, u'  %-10s' % key)
+                        yield (Token.Text.Whitespace, u' : ')
+                        yield (Token.Literal.String, u'%s\n' % item.get(key))
+                        
+                    yield (Token.Name, u'  %-10s' % u'parent')
+                    yield (Token.Text.Whitespace, u' : ')
+                    yield (Token.Literal.String, u'%s\n' % item.get(u'parent_name'))
+                    
+                    configs = item.get(u'attributes').pop(u'configs')
+                    yield (Token.Name, u'  %-10s' % u'configs')
+                    if len(configs.keys()) == 0:
+                        yield (Token.Text.Whitespace, u' : ')
+                        yield (Token.Literal.Number, u'Empty\n')
+                    else:
+                        yield (Token.Text.Whitespace, u' :\n')
+                    for k,v in configs.items():
+                        yield (Token.Name, u'   - %-12s' % k)
+                        yield (Token.Text.Whitespace, u' : ')
+                        yield (Token.Literal.String, u'%s\n' % v)
+                        
+                    attribs = item.get(u'attributes')
+                    yield (Token.Name, u'  %-10s' % u'attribs')
+                    if len(attribs.keys()) == 0:
+                        yield (Token.Text.Whitespace, u' : ')
+                        yield (Token.Literal.Number, u'Empty\n')
+                    else:
+                        yield (Token.Text.Whitespace, u' :\n')
+                    for k,v in attribs.items():
+                        yield (Token.Name, u'   - %-12s' % k)
+                        yield (Token.Text.Whitespace, u' : ')
+                        yield (Token.Literal.String, u'%s\n' % v)                        
+
+                    yield (Token.Text.Whitespace, u' ===========================\n')
+                    
+            data = format(create_data(), Terminal256Formatter(style=ListStyle))
+            print data            
+         
+        else:
+            self.parent.result(res)
 
     def get(self, oid):
         uri = u'%s/%ss/%s/' % (self.parent.baseuri, self.name, oid)
@@ -85,12 +151,51 @@ class Actions(object):
         }
         self.parent.add_actions(res)
 
+class RuleActions(Actions):
+    """
+    """
+    def list(self, oid, *args):
+        data = self.parent.format_http_get_query_params(*args)
+        uri = u'%s/%ss/' % (self.parent.baseuri, self.name)
+        res = self.parent._call(uri, u'GET', data=data)
+        self.parent.logger.info(u'Get %s: %s' % (self.name, truncate(res)))
+        
+    def register(self):
+        res = {
+            u'%ss.console' % self.name: self.get_console,
+            u'%ss.cmd' % self.name: self.exec_command,
+            u'%ss.guest' % self.name: self.get_guest,
+            u'%ss.sshkey' % self.name: self.setup_ssh_key,
+            u'%ss.pwd' % self.name: self.setup_ssh_pwd,
+            u'%ss.net' % self.name: self.setup_network,
+        }
+        self.parent.add_actions(res)        
+
 class ProviderManager(ApiManager):
     """
     SECTION: 
         provider    
     
-    PARAMs:  
+    PARAMs:
+        <ENTITY> list [filters: <field>=<value>]   field: name, tags, ext_id, parent_id
+        <ENTITY> get <id>
+        <ENTITY> add <file data in json>
+        <ENTITY> update <id> <field>=<value>    field: name, desc, geo_area
+        <ENTITY> delete <id>
+        
+    ENTITY:
+        regions
+        sites
+        site-networks
+        gateways
+        super-zones
+        availability-zones
+        vpcs
+        security-groups
+        rules
+        images
+        flavors
+        instances
     """
     __metaclass__ = abc.ABCMeta
     
@@ -121,6 +226,9 @@ class ProviderManager(ApiManager):
         
         for class_name in self.class_names:
             Actions(self, class_name).register()
+            
+        # custom actions
+        #ServerActions(self, u'server', self.client.server).register()            
     
     def actions(self):
         return self.__actions
@@ -128,7 +236,7 @@ class ProviderManager(ApiManager):
     def add_actions(self, actions):
         self.__actions.update(actions)
         
-doc = ProviderManager.__doc__
-for class_name in ProviderManager.class_names:
-    doc += Actions(None, class_name).doc()
-ProviderManager.__doc__ = doc
+#doc = ProviderManager.__doc__
+#for class_name in ProviderManager.class_names:
+#    doc += Actions(None, class_name).doc()
+#ProviderManager.__doc__ = doc

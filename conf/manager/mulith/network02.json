@@ -1,0 +1,16 @@
+{
+  "site-network":{
+    "tag":"default",
+    "site":2791,
+    "name":"shared-net-563",
+    "desc":"shared-net-563",
+    "external":false,
+    "vlan":563,
+    "gateway":"10.102.184.1",
+    "subnet":"10.102.184.0/24",
+    "routes":[],
+    "allocation-pools":[{"start":"10.102.184.120", "end":"10.102.184.129"}],
+    "enable-dhcp":false,
+    "dns-nameservers":["10.102.184.2", "10.102.184.3"]
+  }
+}

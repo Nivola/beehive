@@ -97,6 +97,7 @@ class VsphereManager(ApiManager):
     
     class_names = {
         u'server',
+        u'folder'
     }
 
     def __init__(self, auth_config, env, frmt=u'json', containerid=None):

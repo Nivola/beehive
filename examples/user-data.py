@@ -22,4 +22,4 @@ ssh_authorized_keys:
 import base64, json
 c=base64.b64encode(user_data)
 print c
-#print json.loads(base64.b64decode(c)) 
+#print json.loads(base64.b64decode(c))
