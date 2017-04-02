@@ -6,7 +6,7 @@
     "desc":"site-network03",
     "external":false,
     "vlan":563,
-    "gateway":"10.102.184.1",
+    "gateway":"10.102.184.2",
     "subnet":"10.102.184.0/24",
     "routes":[],
     "allocation-pools":[{"start":"10.102.184.120", "end":"10.102.184.129"}],

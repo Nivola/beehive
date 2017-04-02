@@ -2,8 +2,8 @@
   "site-network":{
     "tag":"default",
     "site":2791,
-    "name":"external-net-568",
-    "desc":"external-net-568",
+    "name":"DCCTP-tst-FE-Internet",
+    "desc":"DCCTP-tst-FE-Internet",
     "external":true,
     "vlan":568,
     "gateway":"158.102.68.225",

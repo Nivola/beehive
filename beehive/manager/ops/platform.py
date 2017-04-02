@@ -304,9 +304,10 @@ class PlatformManager(ComponentManager):
                 server = RedisManager(redis_uri)
                 res = func(server)
                 #res = server.ping()
-                self.logger.info(u'Ping redis %s : %s' % (redis_uri, res))
-                resp.append({u'host':host, u'db':db, u'response':res})
-        self.result(resp)        
+
+                resp.append({u'host':str(host), u'db':db, u'response':res})
+            self.logger.info(u'Ping redis %s : %s' % (redis_uri, resp))
+        self.result(resp)
     
     def redis_ping(self):
         """Ping redis instances

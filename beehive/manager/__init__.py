@@ -1,4 +1,4 @@
-import ujson as json
+import json
 import yaml
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
