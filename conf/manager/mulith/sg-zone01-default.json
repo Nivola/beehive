@@ -1,0 +1,22 @@
+{
+    "security-group":{
+        "tag":"default",
+        "name":"sg-zone01-default",
+        "desc":"sg-zone01-default",
+        "vpc":3010,
+        "rules":[
+            {
+                "name":"SecurityGroupInnerTrust",
+                "source":{"type":"SecurityGroup", "value":"self"},
+                "destination":{"type":"SecurityGroup", "value":"self"},
+                "service":{"port":"*", "protocol":"*"}
+            },
+            {
+                "name":"MetadataServerTrust",
+                "source":{"type":"SecurityGroup", "value":"self"},
+                "destination":{"type":"Cidr", "value":"169.254.169.254/32"},
+                "service":{"port":"*", "protocol":"*"}
+            }
+        ]
+    }
+}

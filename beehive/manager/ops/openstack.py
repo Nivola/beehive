@@ -99,6 +99,8 @@ class OpenstackManager(ApiManager):
         u'project',
         u'server',
         u'network',
+        u'flavor',
+        u'image',
     }
 
     def __init__(self, auth_config, env, frmt=u'json', containerid=None):

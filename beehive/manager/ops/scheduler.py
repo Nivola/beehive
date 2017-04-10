@@ -12,6 +12,7 @@ from pprint import PrettyPrinter
 from pandas import DataFrame, set_option
 from beehive.manager import ApiManager
 import sys
+from beecell.simple import str2bool
 
 logger = logging.getLogger(__name__)
 
@@ -180,8 +181,8 @@ class SchedulerManager(ApiManager):
         self.result(res)
         
     def run_job_test(self, error=False):
-        data = {u'x':2, u'y':234, u'numbers':[2, 78, 45, 90], u'mul_numbers':[],
-                u'error':error} 
+        data = {u'x':2, u'y':234, u'numbers':[2, 78], u'mul_numbers':[],
+                u'error':str2bool(error)} 
         uri = u'/v1.0/worker/tasks/jobtest/'
         res = self._call(uri, u'POST', data=data)
         self.logger.info(u'Run job test: %s' % res)

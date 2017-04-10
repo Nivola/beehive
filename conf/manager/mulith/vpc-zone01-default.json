@@ -1,0 +1,9 @@
+{
+    "vpc":{
+        "tag":"default",
+        "name":"vpc-zone01-default",
+        "desc":"vpc-zone01-default",
+        "super-zone":2992,
+        "networks":[{"id":2887}]
+    }
+}

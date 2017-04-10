@@ -18,6 +18,7 @@ from pygments.token import Keyword, Name, Comment, String, Error, \
 from pygments.filter import Filter
 from pprint import pformat
 from re import match
+from tabulate import tabulate
 
 logger = getLogger(__name__)
 
@@ -89,7 +90,7 @@ class ComponentManager(object):
     
     OPTIONs:
         -c, --config        json auth config file
-        -f, --format        output format: json, yaml, text
+        -f, --format        output format: json, yaml, text, table
         -h, --help          manager help
         -e, --env           set environment to use. Ex. test, lab, prod
     
@@ -138,7 +139,32 @@ class ComponentManager(object):
             l = lexer()          
             print highlight(data, l, Terminal256Formatter())
         else:
-            print data        
+            print data
+    
+    def __multi_get(self, data, key):
+        keys = key.split(u'.')
+        res = data
+        for k in keys:
+            res = res.get(k, {})
+        return res
+    
+    def __tabularprint(self, data):
+        if u'count' in data.keys():
+            data.pop(u'count')
+            values = data.values()[0]
+        else:
+            values = data.values()
+        headers = [u'id', u'uuid', u'name', u'parent_id', u'parent_name', 
+                   u'date.creation']
+        table = []
+        for item in values:
+            raw = []
+            for key in headers:
+                val = self.__multi_get(item, key)
+                raw.append(val)
+            table.append(raw)
+        print(tabulate(table, headers=headers, tablefmt=u'fancy_grid'))
+        print(u'')
     
     def __format(self, data, space=u'', delimiter=u':', key=None):
         """
@@ -196,6 +222,11 @@ class ComponentManager(object):
             if data is not None:
                 if isinstance(data, dict) or isinstance(data, list):
                     self.__yamlprint(data)
+            
+        elif self.format == u'table':
+            if data is not None:
+                if isinstance(data, dict) or isinstance(data, list):
+                    self.__tabularprint(data)
             
         elif self.format == u'text':       
             self.format_text(data)

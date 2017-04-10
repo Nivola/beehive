@@ -1,0 +1,10 @@
+{
+    "rule":{
+        "tag":"default",
+        "name":"AdminSubnetInnerTrust",
+        "super-zone":2992,
+        "source":{"type":"Cidr", "value":"158.102.160.0/24"},
+        "destination":{"type":"SecurityGroup", "value":3151},
+        "service":{"port":"*", "protocol":"*"}
+    }
+}

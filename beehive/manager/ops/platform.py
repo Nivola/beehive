@@ -337,11 +337,11 @@ class PlatformManager(ComponentManager):
             return server.size()
         self.__run_redis_cmd(func, dbs=range(0,8))
         
-    def redis_inspect(self):
+    def redis_inspect(self, pattern=u'*'):
         """Inspect redis instances
         """
         def func(server):
-            return server.inspect(pattern='*', debug=False)
+            return server.inspect(pattern=pattern, debug=False)
         self.__run_redis_cmd(func, dbs=range(0,8))        
     
     def redis_query(self, pattern, count=False):

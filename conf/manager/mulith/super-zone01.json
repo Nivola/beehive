@@ -1,0 +1,16 @@
+{
+  "super-zone":{
+    "tag":"default",
+    "name":"account1",
+    "desc":"account1",
+    "sites":[2791],
+    "networks":[],
+    "quota":{
+      "cpu":10,
+      "ram":100,
+      "storage":1000,
+      "instance":10,
+      "network":10
+    }
+  }
+}

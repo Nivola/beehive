@@ -1,0 +1,10 @@
+{
+    "rule":{
+        "tag":"default",
+        "name":"rule-fake01",
+        "super-zone":2992,
+        "source":{"type":"SecurityGroup", "value":"3151"},
+        "destination":{"type":"Cidr", "value":"11.102.185.0/24"},
+        "service":{"protocol":6, "port":"45-44"}
+    }
+}

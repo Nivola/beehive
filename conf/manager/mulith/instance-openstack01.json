@@ -1,0 +1,40 @@
+{
+    "instance":{
+        "type":"openstack",
+        "super-zone":1843,
+        "availability-zone":1846,
+        "vpc":1858,
+        "tag":"default",                    
+        "name":"instance02",
+        "description":"instance02",
+        "flavor":2053,
+        "image":2221,
+        "admin-pass":"mypass",
+        "networks":[
+            {
+                "id":1825,
+                "fixed_ip":{
+                    "ip":"10.102.184.120",
+                    "hostname":"instance02.tstsddc.csi.it",
+                    "dns-search":"tstsddc.csi.it"
+                }
+            }
+        ],
+        "storage": [
+            {   
+                "volume_size":"20"
+            }
+        ],                    
+        "security-groups": [1903],
+        "user-data": "I2Nsb3VkLWNvbmZpZwpib290Y21kOgogIC0gWyBpcCwgcm91dGUsIGNoYW5nZSwgZGVmYXVsdCwgdmlhLCAxMC4xMDIuMTg0LjEgXQpob3N0bmFtZTogaW5zdGFuY2UwMgpmcWRuOiBpbnN0YW5jZTAyLnRzdHNkZGMuY3NpLml0Cm1hbmFnZV9ldGNfaG9zdHM6IHRydWUKbWFuYWdlLXJlc29sdi1jb25mOiB0cnVlCnJlc29sdl9jb25mOgogIG5hbWVzZXJ2ZXJzOiBbJzEwLjEwMi4xODQuMicsICcxMC4xMDIuMTg0LjInXQogIHNlYXJjaGRvbWFpbnM6CiAgICAtIHRzdHNkZGMuY3NpLml0CiAgZG9tYWluOiB0c3RzZGRjLmNzaS5pdApwYXNzd29yZDogbXlwYXNzCnNzaF9hdXRob3JpemVkX2tleXM6CiAgLSBzc2gtcnNhIEFBQUFCM056YUMxeWMyRUFBQUFEQVFBQkFBQUNBUURwTjM2Uk1qQk5wUTlsVHZiZE1qYmtVNk95eXRYNzhSWEtpVk5NQlUwN3ZCeDZSRXdHV2d5dGcrOHJHMXBxRkF1bzZVM2xSMXEyNWRwUERRdEs4RGFkNjhNUEhGeWRmdjBXQVlPRzZZMDJqL3BRS0pER1BoYmVTWVMwWEY0Ri96NFV4WTZjWEI4VWR6a1VTS3RJZzkzWUNUa3piUVk2K0FQT1kvSzlxMWIyWnhURUVCRFFnV2VuWnc0TWNtU2JhUytBWXdtaWdTSmI1c0ZNZXhKUktaQ2RYRVNnUWNTbVVrUUZpWFJRTkpNbGdQWkJuSWNiR2x1NVVBOUc1b3dMTTZMVDExYlBRUHJST3FtaGNTR29RdFlxODNSR05YNUtnd2UwMHBxZW8vRytTVXRjUVJwNUp0V0lFOWJMZWFYUkloWnVJbnJiUDBybUh5Q1FoQmVaRENQcjFtdzJZRFpWOUZiYjA4L3F3YnExVVl1VXpSWHhYcm9YMUY3L216dHlYUXQ3bzRBalhXcGV5QmNjUjBua0F5WmNhbk92dkpKdm9Jd0xvRHFic1phcUNsZFFKQ3Z0YjFXTlg5dWtjZTVUb1cxeTgwUmNmMUdacnJYUlRzMmNBYnViVWt4WVFhTFFRQXBWbkdJSmVsUjlCbHZSN3hzbWZRNVk1d29kZUxmRWdxdzJoTnpKRWVLS0hzNXhucGNnRzlpWFZ2VzFUcjBHZitVc1kwVUlvZ1o2QkNzdGZSNTlsUEF0MUlSYVlWQ3ZnSHNIbTRobXIweU12VXdHSHJvenRyamE1MFhIcDloMHovRVdBdDU2bmlvT0pjT1Rsb0FJcEFJMDV6NFo5ODViWVdnRms4ai8xTGtFREtIOWJ1cTVtSEx3TjY5TzdKUE44WGFEeEJxOXhxU1A5dz09IHNlcmdpby50b25hbmlAY3NpLml0Cg==",
+        "metadata":{
+            "My Server Name" : "Apache1"
+        },
+        "personality": [
+            {
+                "path": "/etc/banner.txt",
+                "contents": "dsdsd=="
+            }
+        ]
+    }
+}
