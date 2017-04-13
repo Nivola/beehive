@@ -81,6 +81,15 @@ class ResourceManager(ApiManager):
         tags add <value>
         tags update  <value> <new_value>
         tags delete <value>
+        
+        links list
+        links count         
+        links get <link_id>
+        links tags <link_id> 
+        links perms <link_id>
+        links add <link_id>
+        links update <link_id> <new_value>
+        links delete <link_id>
     """      
     def __init__(self, auth_config, env, frmt):
         ApiManager.__init__(self, auth_config, env, frmt)
@@ -89,6 +98,15 @@ class ResourceManager(ApiManager):
         self.subsystem = u'resource'
         self.logger = logger
         self.msg = None
+        self.res_headers = [u'id', u'uuid', u'definition', u'name', u'parent_id', 
+                            u'parent_name', u'active', u'date.creation']
+        self.cont_headers = [u'id', u'uuid', u'category', u'name', u'active', 
+                             u'date.creation']
+        self.tag_headers = [u'id', u'uuid', u'value']
+        self.link_headers = [u'id', u'uuid', u'name', u'active', 
+                             u'details.start_resource.id', 
+                             u'details.end_resource.id',
+                             u'details.attributes']
     
     def actions(self):
         actions = {
@@ -130,7 +148,8 @@ class ResourceManager(ApiManager):
             u'tags.delete': self.test_delete_tag,
             
             u'links.list': self.test_get_links,
-            u'links.get': self.test_get_tag,
+            u'links.get': self.test_get_link,
+            u'links.tags': self.test_get_link_tags,
             u'links.count': self.test_count_links,
             u'links.perms': self.test_get_tag_perms,
             u'links.add': self.test_add_links,
@@ -147,19 +166,20 @@ class ResourceManager(ApiManager):
         uri = u'%s/resources/' % (self.baseuri)
         res = self._call(uri, u'GET', data=data)
         self.logger.info(u'Get resources: %s' % truncate(res))
-        self.result(res)
+        self.result(res, key=u'resources', headers=self.res_headers)
     
-    def get_resource_types(self, tags=None):
+    def get_resource_types(self, *args):
+        data = self.format_http_get_query_params(*args)
         uri = u'%s/resources/types/' % self.baseuri
-        res = self._call(uri, u'GET')
+        res = self._call(uri, u'GET', data=data)
         self.logger.info(u'Get resource types: %s' % truncate(res))
-        self.result(res)
+        self.result(res, key=u'resource-types', headers=[u'id', u'type'])
 
     def get_resource(self, value):
         uri = u'%s/resources/%s/' % (self.baseuri, value)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get resource: %s' % truncate(res))
-        self.result(res)
+        self.result(res, key=u'resource', headers=self.res_headers)
     
     def __print_tree(self, resource, space=u'   '):
         for child in resource.get(u'children', []):
@@ -213,7 +233,8 @@ class ResourceManager(ApiManager):
         uri = u'%s/resources/%s/perms/' % (self.baseuri, value)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get resource perms: %s' % truncate(res))
-        self.result(res)
+        self.result(res, key=u'perms', headers=self.perm_headers, 
+                    fields=self.perm_fields)
         
     def get_resource_roles(self, value):
         uri = u'%s/resources/%s/roles/' % (self.baseuri, value)
@@ -289,7 +310,7 @@ class ResourceManager(ApiManager):
             headers = None
         res = self._call(uri, u'GET', headers=headers)
         self.logger.info(u'Get resource containers: %s' % truncate(res))
-        self.result(res)
+        self.result(res, key=u'containers', headers=self.cont_headers)
     
     def get_resource_container_types(self, tags=None):
         uri = u'%s/containers/types/' % self.baseuri
@@ -301,7 +322,7 @@ class ResourceManager(ApiManager):
         uri = u'%s/containers/%s/' % (self.baseuri, value)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get resource container: %s' % truncate(res))
-        self.result(res)
+        self.result(res, key=u'container', headers=self.cont_headers)
     
     def get_resource_container_rescount(self, value):
         uri = u'%s/containers/%s/count/' % (self.baseuri, value)
@@ -313,7 +334,8 @@ class ResourceManager(ApiManager):
         uri = u'%s/containers/%s/perms/' % (self.baseuri, value)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get resource container perms: %s' % truncate(res))
-        self.result(res)
+        self.result(res, key=u'perms', headers=self.perm_headers, 
+                    fields=self.perm_fields)
         
     def get_resource_container_roles(self, value):
         uri = u'%s/containers/%s/roles/' % (self.baseuri, value)
@@ -398,25 +420,30 @@ class ResourceManager(ApiManager):
         uri = u'%s/resource-tags/occurrences/' % self.baseuri        
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.result(res)
+        self.result(res, key=u'resource-tags', headers=[u'id', u'uuid', u'value', 
+                                                        u'resources'])
 
     def test_get_tags(self):
         uri = u'%s/resource-tags/' % self.baseuri        
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.result(res)
+        self.result(res, key=u'resource-tags', headers=self.tag_headers)
         
     def test_get_tag(self, value):
         uri = u'%s/resource-tags/%s/' % (self.baseuri, value)        
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.result(res)
+        self.result(res, key=u'resource-tag', headers=self.tag_headers)
+        if self.format == u'table':
+            self.result(res[u'resource-tag'], key=u'resources', headers=
+                        [u'id', u'uuid', u'definition', u'name'])
 
     def test_get_tag_perms(self, value):
         uri = u'%s/resource-tags/%s/perms/' % (self.baseuri, value)        
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.result(res[u'perms'])
+        self.result(res, key=u'perms', headers=self.perm_headers, 
+                    fields=self.perm_fields)
         
     def test_update_tag(self, value, new_value):
         data = {
@@ -455,29 +482,30 @@ class ResourceManager(ApiManager):
         self.logger.info(res)
         self.result(res)
         
-    def test_get_links_occurrences(self):
-        uri = u'%s/resource-links/occurrences/' % self.baseuri        
+    def test_get_link_tags(self, oid):
+        uri = u'%s/resource-links/%s/tags/' % (self.baseuri, oid)        
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.result(res)
+        self.result(res, key=u'resource-tags', headers=self.tag_headers)
 
     def test_get_links(self):
         uri = u'%s/resource-links/' % self.baseuri        
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.result(res)
+        self.result(res, key=u'resource-links', headers=self.link_headers)
         
-    def test_get_link(self, value):
-        uri = u'%s/resource-links/%s/' % (self.baseuri, value)        
+    def test_get_link(self, oid):
+        uri = u'%s/resource-links/%s/' % (self.baseuri, oid)        
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.result(res)
+        self.result(res, key=u'resource-link', headers=self.link_headers)
 
-    def test_get_link_perms(self, value):
-        uri = u'%s/resource-links/%s/perms/' % (self.baseuri, value)        
+    def test_get_link_perms(self, oid):
+        uri = u'%s/resource-links/%s/perms/' % (self.baseuri, oid)        
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.result(res[u'perms'])
+        self.result(res, key=u'perms', headers=self.perm_headers, 
+                    fields=self.perm_fields)
         
     def test_update_link(self, value, new_value):
         data = {

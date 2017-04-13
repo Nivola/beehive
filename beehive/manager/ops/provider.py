@@ -35,9 +35,10 @@ class ListStyle(Style):
 class Actions(object):
     """
     """
-    def __init__(self, parent, name):
+    def __init__(self, parent, name, other_headers):
         self.parent = parent
         self.name = name
+        self.headers = other_headers
     
     def doc(self):
         return """
@@ -101,16 +102,15 @@ class Actions(object):
                     yield (Token.Text.Whitespace, u' ===========================\n')
                     
             data = format(create_data(), Terminal256Formatter(style=ListStyle))
-            print data            
-         
+            print(data)
         else:
-            self.parent.result(res)
+            self.parent.result(res, other_headers=self.headers, key=self.name+u's')
 
     def get(self, oid):
         uri = u'%s/%ss/%s/' % (self.parent.baseuri, self.name, oid)
         res = self.parent._call(uri, u'GET')
         self.parent.logger.info(u'Get %s: %s' % (self.name, truncate(res)))
-        self.parent.result(res)
+        self.parent.result(res, other_headers=self.headers, key=self.name)
     
     def add(self, data):
         data = self.parent.load_config(data)
@@ -151,23 +151,22 @@ class Actions(object):
         }
         self.parent.add_actions(res)
 
-class RuleActions(Actions):
+class InstanceActions(Actions):
     """
     """
-    def list(self, oid, *args):
+    def list(self, *args):
         data = self.parent.format_http_get_query_params(*args)
         uri = u'%s/%ss/' % (self.parent.baseuri, self.name)
         res = self.parent._call(uri, u'GET', data=data)
         self.parent.logger.info(u'Get %s: %s' % (self.name, truncate(res)))
+        if self.format == u'table':
+            if data is not None:
+                if isinstance(data, dict) or isinstance(data, list):
+                    self.__tabularprint(data)        
+        self.parent.result(res)
         
     def register(self):
         res = {
-            u'%ss.console' % self.name: self.get_console,
-            u'%ss.cmd' % self.name: self.exec_command,
-            u'%ss.guest' % self.name: self.get_guest,
-            u'%ss.sshkey' % self.name: self.setup_ssh_key,
-            u'%ss.pwd' % self.name: self.setup_ssh_pwd,
-            u'%ss.net' % self.name: self.setup_network,
         }
         self.parent.add_actions(res)        
 
@@ -199,20 +198,20 @@ class ProviderManager(ApiManager):
     """
     __metaclass__ = abc.ABCMeta
     
-    class_names = {
-        u'region',
-        u'site',
-        u'site-network',
-        u'gateway',
-        u'super-zone',
-        u'availability-zone',
-        u'vpc',
-        u'security-group',
-        u'rule',
-        u'image',
-        u'flavor',
-        u'instance'
-    }
+    class_names = [
+        (u'region', []),
+        (u'site', []),
+        (u'site-network', []),
+        (u'gateway', []),
+        (u'super-zone', []),
+        (u'availability-zone', []),
+        (u'vpc', []),
+        (u'security-group', []),
+        (u'rule', []),
+        (u'image', []),
+        (u'flavor', []),
+        (u'instance', [u'networks.0.ip', u'flavor.vcpus', u'flavor.memory'])
+    ]
 
     def __init__(self, auth_config, env, frmt=u'json', containerid=None):
         ApiManager.__init__(self, auth_config, env, frmt)
@@ -224,11 +223,11 @@ class ProviderManager(ApiManager):
         
         self.__actions = {}
         
-        for class_name in self.class_names:
-            Actions(self, class_name).register()
+        for class_name, other_headers in self.class_names:
+            Actions(self, class_name, other_headers).register()
             
         # custom actions
-        #ServerActions(self, u'server', self.client.server).register()            
+        #InstanceActions(self, u'instance').register()            
     
     def actions(self):
         return self.__actions

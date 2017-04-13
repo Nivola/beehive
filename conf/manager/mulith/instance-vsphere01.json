@@ -14,7 +14,7 @@
             {
                 "id":2887,
                 "fixed_ip":{
-                    "ip":"10.102.185.105",
+                    "ip":"10.102.185.50",
                     "hostname":"instance-vsphere01.tstsddc.csi.it",
                     "dns-search":"tstsddc.csi.it"
                 }

@@ -20,9 +20,10 @@ logger = logging.getLogger(__name__)
 class Actions(object):
     """
     """
-    def __init__(self, parent, name):
+    def __init__(self, parent, name, other_headers):
         self.parent = parent
         self.name = name
+        self.headers = other_headers
     
     def doc(self):
         return """
@@ -38,19 +39,21 @@ class Actions(object):
         uri = u'%s/%ss/' % (self.parent.baseuri, self.name)
         res = self.parent._call(uri, u'GET', data=data)
         self.parent.logger.info(u'Get %s: %s' % (self.name, truncate(res)))
-        self.parent.result(res)
+        self.parent.result(res, other_headers=self.headers, key=self.name+u's')
 
     def get(self, oid):
         uri = u'%s/%ss/%s/' % (self.parent.baseuri, self.name, oid)
         res = self.parent._call(uri, u'GET')
         self.parent.logger.info(u'Get %s: %s' % (self.name, truncate(res)))
-        self.parent.result(res)
+        self.parent.result(res, other_headers=self.headers, key=self.name)
     
     def add(self, data):
         data = self.parent.load_config(data)
         uri = u'%s/%ss/' % (self.parent.baseuri, self.name)
         res = self.parent._call(uri, u'POST', data=data)
         self.parent.logger.info(u'Add %s: %s' % (self.name, truncate(res)))
+        if self.parent.format == u'table':
+            self.parent.format = u'yaml'        
         self.parent.result(res)
 
     def update(self, oid, *args):
@@ -73,6 +76,8 @@ class Actions(object):
         uri = u'%s/%ss/%s/' % (self.parent.baseuri, self.name, oid)
         res = self.parent._call(uri, u'DELETE')
         self.parent.logger.info(u'Delete %s: %s' % (self.name, oid))
+        if self.parent.format == u'table':
+            self.parent.format = u'yaml'        
         self.parent.result(res)
     
     def register(self):
@@ -88,20 +93,37 @@ class Actions(object):
 class OpenstackManager(ApiManager):
     """
     SECTION: 
-        vsphere    
+        openstack    
     
-    PARAMs:  
+    PARAMs:
+        <ENTITY> list [filters: <field>=<value>]   field: name, tags, ext_id, parent_id
+        <ENTITY> get <id>
+        <ENTITY> add <file data in json>
+        <ENTITY> update <id> <field>=<value>    field: name, desc, geo_area
+        <ENTITY> delete <id>
+        
+    ENTITY:
+        domains
+        projects
+        servers
+        volumes
+        networks
+        ports
+        flavors
+        images
     """
     __metaclass__ = abc.ABCMeta
     
-    class_names = {
-        u'domain',
-        u'project',
-        u'server',
-        u'network',
-        u'flavor',
-        u'image',
-    }
+    class_names = [
+        (u'domain', []),
+        (u'project', []),
+        (u'server', []),
+        (u'volume', []),
+        (u'network', []),
+        (u'port', []),
+        (u'flavor', []),
+        (u'image', []),
+    ]
 
     def __init__(self, auth_config, env, frmt=u'json', containerid=None):
         ApiManager.__init__(self, auth_config, env, frmt)
@@ -113,8 +135,8 @@ class OpenstackManager(ApiManager):
         
         self.__actions = {}
         
-        for class_name in self.class_names:
-            Actions(self, class_name).register()
+        for class_name, other_headers in self.class_names:
+            Actions(self, class_name, other_headers).register()
     
     def actions(self):
         return self.__actions
@@ -122,7 +144,8 @@ class OpenstackManager(ApiManager):
     def add_actions(self, actions):
         self.__actions.update(actions)
         
+'''
 doc = OpenstackManager.__doc__
 for class_name in OpenstackManager.class_names:
     doc += Actions(None, class_name).doc()
-OpenstackManager.__doc__ = doc
+OpenstackManager.__doc__ = doc'''

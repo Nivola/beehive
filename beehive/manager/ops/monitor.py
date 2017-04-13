@@ -95,7 +95,7 @@ class MonitorManager(ApiManager):
         uri = u'%s/node/type/%s/' % (self.baseuri, value)
         self._call(uri, u'DELETE')
         self.logger.info(u'Delete node type: %s' % value)
-        self.result(res)
+        self.result(True)
     
     #
     # graph

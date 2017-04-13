@@ -41,10 +41,10 @@ def main(run_path, argv):
         provider
     """
     # setup pythonpath
-    sys.path.append(os.path.expanduser(u'~/workspace/git/beecell'))
-    sys.path.append(os.path.expanduser(u'~/workspace/git/beedrones'))
-    sys.path.append(os.path.expanduser(u'~/workspace/git/beehive'))
-    sys.path.append(os.path.expanduser(u'~/workspace/git/gibboncloudapi'))     
+    #sys.path.append(os.path.expanduser(u'~/workspace/git/beecell'))
+    #sys.path.append(os.path.expanduser(u'~/workspace/git/beedrones'))
+    #sys.path.append(os.path.expanduser(u'~/workspace/git/beehive'))
+    #sys.path.append(os.path.expanduser(u'~/workspace/git/gibboncloudapi'))     
     
     from beecell.logger.helper import LoggerHelper
     
@@ -55,7 +55,7 @@ def main(run_path, argv):
     from beehive.manager.ops.provider import ProviderManager
     from beehive.manager.ops.resource import ResourceManager
     from beehive.manager.ops.scheduler import SchedulerManager
-    from beehive.manager.ops.vsphere import VsphereManager
+    from beehive.manager.ops.vsphere import VsphereManager, NsxManager
     from beehive.manager.ops.openstack import OpenstackManager
     from beehive.manager.ops.native_vsphere import NativeVsphereManager
     from beehive.manager.ops.native_openstack import NativeOpenstackManager
@@ -192,6 +192,14 @@ def main(run_path, argv):
                 raise Exception(u'ERROR : Orchestrator id is missing')              
             retcode = VsphereManager.main(auth_config, frmt, opts, args, env, 
                                           VsphereManager, containerid=cid)
+            
+        elif section == u'nsx':
+            manager = NsxManager
+            try: cid = int(args.pop(0))
+            except:
+                raise Exception(u'ERROR : Orchestrator id is missing')              
+            retcode = NsxManager.main(auth_config, frmt, opts, args, env, 
+                                          NsxManager, containerid=cid)
             
         elif section == u'openstack':
             manager = OpenstackManager

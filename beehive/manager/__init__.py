@@ -107,6 +107,10 @@ class ComponentManager(object):
         self.format = frmt      
         self.color = auth_config[u'color']
         
+        self.perm_headers = [u'pid', u'oid', u'objtype', u'objdef', u'objid', 
+                             u'action']
+        self.perm_fields = [u'0.0', u'0.1', u'0.2', u'0.3', u'0.4', u'0.6']
+        
     def __jsonprint(self, data):
         data = json.dumps(data, indent=2)
         if self.color == 1:
@@ -145,21 +149,32 @@ class ComponentManager(object):
         keys = key.split(u'.')
         res = data
         for k in keys:
-            res = res.get(k, {})
+            if isinstance(res, list):
+                res = res[int(k)]
+            else:
+                res = res.get(k, {})
         return res
     
-    def __tabularprint(self, data):
-        if u'count' in data.keys():
+    def __tabularprint(self, data, headers=None, other_headers=[], fields=None):
+        '''if u'count' in data.keys():
             data.pop(u'count')
             values = data.values()[0]
         else:
-            values = data.values()
-        headers = [u'id', u'uuid', u'name', u'parent_id', u'parent_name', 
-                   u'date.creation']
+            values = data.values()'''
+        if not isinstance(data, list):
+            values = [data]
+        else:
+            values = data
+        if headers is None:
+            headers = [u'id', u'uuid', u'name', u'parent_id', u'parent_name',
+                       u'active', u'date.creation']
+        headers.extend(other_headers)
         table = []
+        if fields is None:
+            fields = headers
         for item in values:
             raw = []
-            for key in headers:
+            for key in fields:
                 val = self.__multi_get(item, key)
                 raw.append(val)
             table.append(raw)
@@ -210,9 +225,18 @@ class ComponentManager(object):
         else:
             self.__format(data, space)
                 
-    def result(self, data, delta=None):
+    def result(self, data, delta=None, other_headers=[], headers=None, key=None, 
+               fields=None):
         """
         """
+        if key is not None:
+            data = data[key]
+        
+        if u'jobid' in data:
+            print(u'Start JOB: %s' % data.get(u'jobid'))
+            print(u'')
+            return None
+        
         if self.format == u'json':
             if data is not None:
                 if isinstance(data, dict) or isinstance(data, list):
@@ -226,7 +250,8 @@ class ComponentManager(object):
         elif self.format == u'table':
             if data is not None:
                 if isinstance(data, dict) or isinstance(data, list):
-                    self.__tabularprint(data)
+                    self.__tabularprint(data, other_headers=other_headers,
+                                        headers=headers, fields=fields)
             
         elif self.format == u'text':       
             self.format_text(data)

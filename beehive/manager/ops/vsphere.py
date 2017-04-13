@@ -20,9 +20,10 @@ logger = logging.getLogger(__name__)
 class Actions(object):
     """
     """
-    def __init__(self, parent, name):
+    def __init__(self, parent, name, other_headers):
         self.parent = parent
         self.name = name
+        self.headers = other_headers
     
     def doc(self):
         return """
@@ -38,13 +39,13 @@ class Actions(object):
         uri = u'%s/%ss/' % (self.parent.baseuri, self.name)
         res = self.parent._call(uri, u'GET', data=data)
         self.parent.logger.info(u'Get %s: %s' % (self.name, truncate(res)))
-        self.parent.result(res)
+        self.parent.result(res, other_headers=self.headers, key=self.name+u's')
 
     def get(self, oid):
         uri = u'%s/%ss/%s/' % (self.parent.baseuri, self.name, oid)
         res = self.parent._call(uri, u'GET')
         self.parent.logger.info(u'Get %s: %s' % (self.name, truncate(res)))
-        self.parent.result(res)
+        self.parent.result(res, other_headers=self.headers, key=self.name)
     
     def add(self, data):
         data = self.parent.load_config(data)
@@ -65,7 +66,7 @@ class Actions(object):
         data = {
             u'sites':val
         }
-        uri = u'%s/%5s/%s/' % (self.parent.baseuri, self.name, oid)
+        uri = u'%s/%ss/%s/' % (self.parent.baseuri, self.name, oid)
         res = self.parent._call(uri, u'PUT', data=data)
         self.parent.logger.info(u'Update %s: %s' % (self.name, truncate(res)))
         self.parent.result(res)
@@ -91,14 +92,25 @@ class VsphereManager(ApiManager):
     SECTION: 
         vsphere    
     
-    PARAMs:  
+    PARAMs:
+        <ENTITY> list [filters: <field>=<value>]   field: name, tags, ext_id, parent_id
+        <ENTITY> get <id>
+        <ENTITY> add <file data in json>
+        <ENTITY> update <id> <field>=<value>    field: name, desc, geo_area
+        <ENTITY> delete <id>
+        
+    ENTITY:
+        servers
+        folders
+        networks
     """
     __metaclass__ = abc.ABCMeta
     
-    class_names = {
-        u'server',
-        u'folder'
-    }
+    class_names = [
+        (u'server', []),
+        (u'folder', []),
+        (u'network', [])
+    ]
 
     def __init__(self, auth_config, env, frmt=u'json', containerid=None):
         ApiManager.__init__(self, auth_config, env, frmt)
@@ -110,8 +122,8 @@ class VsphereManager(ApiManager):
         
         self.__actions = {}
         
-        for class_name in self.class_names:
-            Actions(self, class_name).register()
+        for class_name, other_headers in self.class_names:
+            Actions(self, class_name, other_headers).register()
     
     def actions(self):
         return self.__actions
@@ -119,7 +131,53 @@ class VsphereManager(ApiManager):
     def add_actions(self, actions):
         self.__actions.update(actions)
         
+class NsxManager(ApiManager):
+    """
+    SECTION: 
+        provider    
+    
+    PARAMs:
+        <ENTITY> list [filters: <field>=<value>]   field: name, tags, ext_id, parent_id
+        <ENTITY> get <id>
+        <ENTITY> add <file data in json>
+        <ENTITY> update <id> <field>=<value>    field: name, desc, geo_area
+        <ENTITY> delete <id>
+        
+    ENTITY:
+        ipsets
+    """
+    __metaclass__ = abc.ABCMeta
+    
+    class_names = [
+        (u'ipset', []),
+    ]
+
+    def __init__(self, auth_config, env, frmt=u'json', containerid=None):
+        ApiManager.__init__(self, auth_config, env, frmt)
+        
+        self.baseuri = u'/v1.0/nsxs/%s' % containerid
+        self.subsystem = u'resource'
+        self.logger = logger
+        self.msg = None
+        
+        self.__actions = {}
+        
+        for class_name, other_headers in self.class_names:
+            Actions(self, class_name, other_headers).register()            
+    
+    def actions(self):
+        return self.__actions
+    
+    def add_actions(self, actions):
+        self.__actions.update(actions)        
+       
+'''
 doc = VsphereManager.__doc__
 for class_name in VsphereManager.class_names:
     doc += Actions(None, class_name).doc()
 VsphereManager.__doc__ = doc
+
+doc = NsxManager.__doc__
+for class_name in NsxManager.class_names:
+    doc += Actions(None, class_name).doc()
+NsxManager.__doc__ = doc'''
