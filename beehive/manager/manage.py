@@ -61,6 +61,7 @@ def main(run_path, argv):
     from beehive.manager.ops.native_openstack import NativeOpenstackManager
     from beehive.manager.ops.monitor import MonitorManager
     from beehive.manager.ops.auth import AuthManager
+    from beehive.manager.ops.event import EventManager
     
     from beehive.manager.ops.create import create_main
     from beehive.manager.ops.create import create_client
@@ -70,7 +71,7 @@ def main(run_path, argv):
     cmd = None
     p = None
     retcode = 0
-    frmt = u'text'
+    frmt = u'table'
     env = u'test'
     color = 1
     
@@ -158,7 +159,12 @@ def main(run_path, argv):
             manager = AuthManager
             retcode = AuthManager.main(auth_config, frmt, opts, args, env, 
                                        AuthManager)
-            
+
+        elif section == u'event':
+            manager = EventManager
+            retcode = EventManager.main(auth_config, frmt, opts, args, env, 
+                                        EventManager)
+
         elif section == u'monitor':
             manager = MonitorManager
             retcode = MonitorManager.main(auth_config, frmt, opts, args, env, 

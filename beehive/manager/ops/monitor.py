@@ -34,8 +34,8 @@ class MonitorManager(ApiManager):
         node add pippo pippo beehive {\"uri\":\"dddd\"} {}
         node delete <id>    
     """
-    def __init__(self, auth_config):
-        ApiManager.__init__(self, auth_config)
+    def __init__(self, auth_config, env, frmt):
+        ApiManager.__init__(self, auth_config, env, frmt)
         self.baseuri = u'/v1.0/monitor'
         self.subsystem = u'monitor'
         self.logger = logger

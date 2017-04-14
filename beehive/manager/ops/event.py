@@ -23,15 +23,40 @@ class EventManager(ApiManager):
     
     PARAMS:
         types list
-        events list
-        events get <id> 
+        events list <field>=<value>
+        events get <event_id> 
+        
+        Possible fields are:
+        - page     results are pagenated in page of default size = 10. To change page showed pass this param
+        - size     use this to change number of evente returned per page
+        - type     filter events by destination object type
+        - data     filter events by some key in data
+        - source   filter events by some key in source
+        - datefrom filter events by start date. Ex. '2015-3-9-15-23-56'
+        - dateto   filter events by end date. Ex. '2015-3-9-15-23-56'
+        - objid    entity id 
+        - objtype  entity type
+        - objdef   entity definition 
     """
-    def __init__(self, auth_config):
-        ApiManager.__init__(self, auth_config)
+    def __init__(self, auth_config, env, frmt):
+        ApiManager.__init__(self, auth_config, env, frmt)
         self.baseuri = u'/v1.0/events'
         self.subsystem = u'event'
         self.logger = logger
         self.msg = None
+        self.headers = [
+            u'id',
+            u'event_id',
+            u'objtype',
+            u'objdef',
+            u'objid',
+            u'type',
+            u'date',
+            u'data.op',
+            u'data.opid',
+            u'source.user',
+            u'source.ip'
+        ]
     
     def actions(self):
         actions = {
@@ -45,19 +70,23 @@ class EventManager(ApiManager):
     # node types
     #
     def get_types(self):
-        uri = u'%s/events/types/' % self.baseuri
+        uri = u'%s/types/' % self.baseuri
         res = self._call(uri, u'GET')
         self.logger.info(u'Get event types: %s' % truncate(res))
-        self.result(res)
+        self.result(res, key=u'event-types', headers=[u'event type'])
 
-    def get_events(self, value):
-        uri = u'%s/events/' % (self.baseuri, value)
-        res = self._call(uri, u'GET')
+    def get_events(self, *args):
+        data = self.format_http_get_query_params(*args)
+        uri = u'%s/' % (self.baseuri)
+        res = self._call(uri, u'GET', data=data)
         self.logger.info(u'Get events: %s' % truncate(res))
-        self.result(res)
+        print(u'Page: %s' % res[u'page'])
+        print(u'Count: %s' % res[u'count'])
+        print(u'Total: %s' % res[u'total'])
+        self.result(res, key=u'events', headers=self.headers)
     
     def get_event(self, oid):
-        uri = u'%s/events/%s/' % (self.baseuri, oid)
+        uri = u'%s/%s/' % (self.baseuri, oid)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get event: %s' % truncate(res))
-        self.result(res)
+        self.result(res, key=u'event', headers=self.headers)

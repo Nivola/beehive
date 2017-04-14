@@ -1,5 +1,6 @@
 import json
 import yaml
+from pandas.core.algorithms import isin
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
@@ -90,7 +91,7 @@ class ComponentManager(object):
     
     OPTIONs:
         -c, --config        json auth config file
-        -f, --format        output format: json, yaml, text, table
+        -f, --format        output format: json, yaml, custom, table
         -h, --help          manager help
         -e, --env           set environment to use. Ex. test, lab, prod
     
@@ -174,9 +175,12 @@ class ComponentManager(object):
             fields = headers
         for item in values:
             raw = []
-            for key in fields:
-                val = self.__multi_get(item, key)
-                raw.append(val)
+            if isinstance(item, dict):
+                for key in fields:
+                    val = self.__multi_get(item, key)
+                    raw.append(val)
+            else:
+                raw.append(item)
             table.append(raw)
         print(tabulate(table, headers=headers, tablefmt=u'fancy_grid'))
         print(u'')
@@ -253,7 +257,7 @@ class ComponentManager(object):
                     self.__tabularprint(data, other_headers=other_headers,
                                         headers=headers, fields=fields)
             
-        elif self.format == u'text':       
+        elif self.format == u'custom':       
             self.format_text(data)
             if len(self.text) > 0:
                 print(u'\n'.join(self.text))
@@ -364,6 +368,7 @@ class ApiManager(ComponentManager):
         if self.format == u'doc':
             res = self.client.get_api_doc(self.subsystem, uri, method, data=data, 
                                           sync=True, title=u'', desc= u'', output=res)
+        self.client.logout()
         return res
     
     def load_config_file(self, filename):

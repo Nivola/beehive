@@ -22,120 +22,250 @@ class AuthManager(ApiManager):
         resource
         
     PARAMS:
-        resources list <field>=<value>    field: name
-                                                 active
-                                                 type
-                                                 container
-                                                 creation-date
-                                                 modification-date
-                                                 attribute
-                                                 parent-id
-                                                 type-filter
-                                                 tags
-            Ex. type-filter=%folder.server% name=tst-b%
-                type=vsphere.datacenter
-        resources types
-        resources get <id|uuid>
-        resources tree <id|uuid>
-        resources perms <id|uuid>
-        resources roles <id|uuid>
-        resources add 
-        resources delete <id|uuid>
-        resources tag-add <id|uuid> <tag>
-        resources tag-delete <id|uuid> <tag>
-        resources tags <id|uuid>    
-    
-        containers list
-        containers types
-        containers get <id>
-        containers ping <id>
-        containers perms <id>
-        containers roles <id>
-        containers add vsphere tst-vecenter-01 \{\"vcenter\":\{\"host\":\"tst-vcenter.tstsddc.csi.it\",\"user\":\"administrator@tstsddc.csi.it\",\"pwd\":\"cs1\$topix\",\"port\":443,\"timeout\":5,\"verified\":false\},\"nsx\":\{\"host\":\"tst-nsxmanager.tstsddc.csi.it\",\"port\":443,\"user\":\"admin\",\"pwd\":\"Cs1\$topix\",\"verified\":false,\"timeout\":5\}\}
-        containers add openstack tst-opstk-redhat-01 \{\"api\":\{\"user\":\"admin\",\"project\":\"admin\",\"domain\":\"default\",\"uri\":\"http://10.102.184.200:5000/v3\",\"timeout\":5,\"pwd\":\"8fAwzAJAHQFMcJfrntpapzDpC\",\"region\":\"regionOne\"\}\}
-        containers delete <id>
-        containers tag-add <id> <tag>
-        containers tag-delete <id> <tag>
-        containers tags <id>
+        auth <entity> <op>
+
+            
+        catalogs list
+        catalogs get <id>
+        catalogs add <name> <zone>
+        catalogs delete <id>
         
-        tags list
-        tags get <tag>
-        tags count 
-        tags occurrences 
-        tags perms <tag>
-        tags add <value>
-        tags update  <value> <new_value>
-        tags delete <value>
+        endpoints list
+        endpoints get <id>
+        endpoints add <name> <catalog_id> <subsystem> <uri=http://localhost:3030>
+        endpoints delete <id>
+        
+        users domains
+        users login <name>@<domain> <password>
+        users token <token>
+        users logout
+        users list
+        users get <id>
+        users add <name> <zone>
+        users delete <id>        
+        
+        <entity> <op>        
+            entity: users, roles, objects, perms
+            op: list, get, add, update, delete        
+        
+        perm 
+        object
+        role
+        role get <name>
+        user
+        user get <name>
+        user add_system <name> <pwdd> <desc> 
     """      
     def __init__(self, auth_config, env, frmt):
         ApiManager.__init__(self, auth_config, env, frmt)
         
-        self.baseuri = u'/v1.0'
-        self.subsystem = u'resource'
+        self.baseuri = u'/v1.0/keyauth'
+        self.subsystem = u'auth'
         self.logger = logger
         self.msg = None
+        
+        self.cat_headers = [u'id', u'uuid', u'name', u'zone', u'active', 
+                            u'date.creation', u'date.modification']
+        self.end_headers = [u'id', u'uuid', u'catalog_id', u'catalog', 
+                            u'name', u'service', u'active',
+                            u'endpoint', u'date.creation', u'date.modification']  
     
     def actions(self):
         actions = {
-            u'containers.list': self.get_resource_containers,
-            u'containers.types': self.get_resource_container_types,
-            u'containers.get': self.get_resource_container,
-            u'containers.count': self.get_resource_container_rescount,
-            u'containers.perms': self.get_resource_container_perms,
-            u'containers.roles': self.get_resource_container_roles,
-            u'containers.ping': self.ping_container,
-            u'containers.add': self.add_resource_container,
-            u'containers.delete': self.delete_resource_container,
-            u'containers.tag-add': self.add_container_tag,
-            u'containers.tag-delete': self.delete_container_tag,
-            u'containers.tags': self.get_container_tag,
+            u'catalogs.list': self.get_catalogs,
+            u'catalogs.get': self.get_catalog,
+            u'catalogs.add': self.add_catalog,
+            u'catalogs.delete': self.delete_catalog,
+           
+            u'endpoints.list': self.get_endpoints,
+            u'endpoints.get': self.get_endpoint,
+            u'endpoints.add': self.add_endpoint,
+            u'endpoints.delete': self.delete_endpoint,           
+           
+            u'users.domains': self.get_user_domains,
+            u'users.login': self.login_user,
+            u'users.token': self.verify_token,
+            u'users.logout': self.logout_user,
+            u'users.list': self.get_users,
+            u'users.get': self.get_user,
+            u'users.add': self.add_user,
+            u'users.delete': self.delete_user,
             
-            u'resources.list': self.get_resources,
-            u'resources.types': self.get_resource_types,
-            u'resources.get': self.get_resource,
-            u'resources.tree': self.get_resource_tree,
-            u'resources.count': self.get_resource_rescount,
-            u'resources.perms': self.get_resource_perms,
-            u'resources.roles': self.get_resource_roles,
-            u'resources.add': self.add_resource,
-            u'resources.delete': self.delete_resource,
-            u'resources.tag-add': self.add_resource_tag,
-            u'resources.tag-delete': self.delete_resource_tag,
-            u'resources.tags': self.get_resource_tag,
-            u'resources.links': self.get_resource_links,
-            u'resources.linked': self.get_resource_linked,
-            
-            u'tags.list': self.test_get_tags,
-            u'tags.get': self.test_get_tag,
-            u'tags.count': self.test_count_tags,
-            u'tags.occurrences': self.test_get_tags_occurrences,
-            u'tags.perms': self.test_get_tag_perms,
-            u'tags.add': self.test_add_tags,
-            u'tags.update': self.test_update_tag,
-            u'tags.delete': self.test_delete_tag,
-            
-            u'links.list': self.test_get_links,
-            u'links.get': self.test_get_tag,
-            u'links.count': self.test_count_links,
-            u'links.perms': self.test_get_tag_perms,
-            u'links.add': self.test_add_links,
-            u'links.update': self.test_update_link,
-            u'links.delete': self.test_delete_link,            
+            u'identities.list': self.get_identities,
+            u'identities.get': self.get_identity,
+            u'identities.delete': self.delete_identity,
         }
-        return actions
+        return actions    
     
     #
-    # resources
+    # catalogs
     #
-    def get_resources(self, *args):
-        data = self.format_http_get_query_params(*args)
-        uri = u'%s/resources/' % (self.baseuri)
-        res = self._call(uri, u'GET', data=data)
-        self.logger.info(u'Get resources: %s' % truncate(res))
+    def get_catalogs(self):
+        res = self.client.get_catalogs()
+        self.logger.info(u'Get catalogs: %s' % truncate(res))
+        self.result(res, headers=self.cat_headers)
+    
+    def get_catalog(self, catalog_id):
+        res = self.client.get_catalog(catalog_id)
+        self.logger.info(u'Get catalog: %s' % truncate(res))
+        services = []
+        for k,v in res.get(u'services', {}).items():
+            for v1 in v:
+                services.append({u'service':k, u'endpoint':v1})
+        self.result(res, headers=self.cat_headers)
+        if self.format == u'table':
+            print(u'Services: ')
+            self.result(services, headers=[u'service', u'endpoint'])
+        
+    def add_catalog(self, name, zone):
+        res = self.client.create_catalog(name, zone)
+        self.logger.info(u'Add catalog: %s' % truncate(res))
         self.result(res)
+        
+    def delete_catalog(self, catalog_id):
+        res = self.client.delete_catalog(catalog_id)
+        self.logger.info(u'Delete catalog: %s' % truncate(res))
+        self.result(res)
+        
+    #
+    # endpoints
+    #    
+    def get_endpoints(self):
+        res = self.client.get_endpoints()
+        self.logger.info(u'Get endpoints: %s' % truncate(res))
+        self.result(res, key=u'endpoints', headers=self.end_headers)
     
-    def get_resource_types(self, tags=None):
-        uri = u'%s/resources/types/' % self.baseuri
+    def get_endpoint(self, endpoint_id):
+        res = self.client.get_endpoint(endpoint_id)
+        self.logger.info(u'Get endpoint: %s' % truncate(res))
+        self.result(res, key=u'endpoint', headers=self.end_headers)
+        
+    def add_endpoint(self, name, catalog, service, uri):
+        # if endpoint exist update it else create new one
+        try:
+            res = self.client.get_endpoint(name)
+            res = self.client.update_endpoint(name, catalog_id=catalog, 
+                                              name=name, 
+                                              service=service, uri=uri)
+        except Exception as ex:
+            logger.error(ex, exc_info=1)
+            res = self.client.create_endpoint(catalog, name, service, uri)
+        self.logger.info(u'Add endpoint: %s' % truncate(res))
+        self.result(res)
+        
+    def delete_endpoint(self, endpoint_id):
+        res = self.client.delete_endpoint(endpoint_id)
+        self.logger.info(u'Delete endpoint: %s' % truncate(res))
+        self.result(res)        
+         
+    #
+    # users
+    #
+    def get_user_domains(self):
+        uri = u'%s/login/domains/' % (self.baseuri)
         res = self._call(uri, u'GET')
-        self.logger.info(u'Get resource types: %s' % truncate(res))
+        self.logger.info(u'Get domains: %s' % truncate(res))
+        domains = []
+        for item in res[u'domains']:
+            domains.append({u'domain':item[0],
+                            u'type':item[1]})
+        self.result(domains, headers=[u'domain', u'type'])
+        
+    def login_user(self, user, pwd):
+        data = {u'user':user, u'password':pwd}
+        uri = u'%s/login/' % (self.baseuri)
+        res = self.client.send_signed_request(
+                u'auth', uri, u'POST', data=json.dumps(data))
+        res = res[u'response']
+        self.logger.info(u'Login user %s: %s' % (user, res))
+        self.result(res, headers=[u'user.id', u'uid', u'user.name', u'timestamp',
+                                  u'user.active'])
+        print(u'Secret key: %s' % res.get(u'seckey'))
+        print(u'Public key: %s' % res.get(u'pubkey'))
+        print(u'Roles: %s' % u', '.join(res[u'user'][u'roles']))
+        print(u'')
+        print(u'Attributes:')
+        attrs = []
+        for k,v in res[u'user'][u'attribute'].items():
+            attrs.append({
+                u'name':k, 
+                u'value':v[0],
+                u'desc':v[1]
+            })
+        self.result(attrs, headers=[u'name', u'value', u'desc'])
+        print(u'Permissions:')
+        perms = []
+        for v in res[u'user'][u'perms']:
+            perms.append({
+                u'pid':v[0], 
+                u'oid':v[1], 
+                u'objtype':v[2], 
+                u'objdef':v[3], 
+                u'objid':v[5], 
+                u'action':v[7]
+            })        
+        self.result(perms, headers=self.perm_headers)          
+
+    def verify_token(self, token):
+        uri = u'%s/login/%s/' % (self.baseuri, token)
+        res = self._call(uri, u'GET')
+        self.logger.info(u'Verify user token %s: %s' % (token, truncate(res)))
+        self.result(res, headers=[u'token', u'exist']) 
+    
+    def logout_user(self, token, seckey):
+        uri = u'%s/logout/' % (self.baseuri)
+        res = self.client.send_signed_request(
+                u'auth', uri, u'DELETE', data=u'', uid=token, seckey=seckey)
+        res = res[u'response']
+        self.logger.info(u'Logout %s: %s' % (token, truncate(res)))
         self.result(res)    
+    
+    def get_users(self, *args):
+        data = self.format_http_get_query_params(*args)
+        uri = u'%s/user/' % (self.baseuri)
+        res = self._call(uri, u'GET', data=data)
+        self.logger.info(u'Get users: %s' % truncate(res))
+        self.result(res, headers=self.cat_headers)
+    
+    def get_user(self, user_id):
+        uri = u'%s/user/%s/' % (self.baseuri, user_id)
+        res = self._call(uri, u'GET')
+        self.logger.info(u'Get user: %s' % truncate(res))
+        self.result(res, headers=self.cat_headers)
+        
+    def add_user(self, name, zone):
+        res = self.client.create_user(name, zone)
+        self.logger.info(u'Add user: %s' % truncate(res))
+        self.result(res)
+        
+    def delete_user(self, user_id):
+        res = self.client.delete_user(user_id)
+        self.logger.info(u'Delete user: %s' % truncate(res))
+        self.result(res)
+
+    #
+    # identities
+    #    
+    def get_identities(self):
+        uri = u'%s/identities/' % (self.baseuri)
+        res = self._call(uri, u'GET')
+        self.logger.info(u'Get identities: %s' % truncate(res))
+        self.result(res, headers=[u'uid', u'user', u'ip', u'ttl', u'timestamp'])
+    
+    def get_identity(self, oid):
+        uri = u'%s/identities/%s/' % (self.baseuri, oid)
+        res = self._call(uri, u'GET')
+        self.logger.info(u'Get identity: %s' % truncate(res))
+        self.result(res, headers=[u'uid', u'user', u'ip', u'ttl', u'timestamp'])
+        
+    def delete_identity(self, oid):
+        uri = u'%s/identities/%s/' % (self.baseuri, oid)
+        res = self._call(uri, u'DELETE')
+        self.logger.info(u'Delete identity: %s' % truncate(res))
+        self.result({u'identity':oid}, headers=[u'identity']) 
+
+
+        
+        
+        
+        

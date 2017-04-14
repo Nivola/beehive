@@ -499,7 +499,7 @@ class BeehiveApiClient(object):
         if seckey == None: seckey = self.seckey            
                     
         res = self.send_signed_request(u'auth', u'/api/auth/logout/', 
-                                       u'POST', data='', 
+                                       u'POST', data=u'', 
                                        uid=uid, seckey=seckey)
         self.logger.info(u'Logout user %s with uid: %s' % (self.api_user, self.uid))    
     
