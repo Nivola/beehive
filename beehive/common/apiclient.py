@@ -6,6 +6,7 @@ Created on Jan 12, 2017
 import ujson as json
 import json as sjson
 import httplib
+from urllib import urlencode
 from time import time
 from logging import getLogger
 from beecell.perf import watch
@@ -240,6 +241,16 @@ class BeehiveApiClient(object):
             self.logger.info(u'Call: METHOD=%s, URI=%s://%s:%s%s, '\
                              u'HEADERS=%s, DATA=%s' % (method, proto, host, 
                              port, path, headers, send_data))
+
+            # format curl string
+            curl_url = [u'curl -v -S -X %s' % method]
+            if data is not None and data != u'':
+                curl_url.append(u'--data %s' % data)
+            if headers is not None:
+                for header in headers.items():
+                    curl_url.append(u'-H "%s: %s"' % header)
+            curl_url.append(u'%s://%s:%s%s' % (proto, host, port, path))
+            self.logger.debug(u' '.join(curl_url))
             
             if proto == u'http':
                 conn = httplib.HTTPConnection(host, port, timeout=timeout)
@@ -365,6 +376,7 @@ class BeehiveApiClient(object):
         
         :param parse: if True check if data is dict and transform in json
                     else accept data as passed
+        :parma debug: if True return curl syntax with result
         :raise BeehiveApiClientError:
         """
         if self.uid is None or self.exist(self.uid) is False:
@@ -377,18 +389,18 @@ class BeehiveApiClient(object):
             res = self.send_signed_request(subsystem, path, method, data, 
                                            self.uid, self.seckey, other_headers)
         except BeehiveApiClientError as ex:
-            self.logger.error('Send request to %s using uid %s: %s, %s' % 
+            self.logger.error(u'Send request to %s using uid %s: %s, %s' % 
                               (path, self.uid, ex.value, ex.code))
             raise BeehiveApiClientError(ex.value, code=ex.code)
         
-        if res['status'] == 'error':
-            self.logger.error('Send request to %s using uid %s: %s' % 
-                              (path, self.uid, res['msg']))
-            raise BeehiveApiClientError(res['msg'], code=res['code'])
+        if res[u'status'] == u'error':
+            self.logger.error(u'Send request to %s using uid %s: %s' % 
+                              (path, self.uid, res[u'msg']))
+            raise BeehiveApiClientError(res[u'msg'], code=res[u'code'])
         else:
-            self.logger.info('Send request to %s using uid %s' % 
+            self.logger.info(u'Send request to %s using uid %s' % 
                              (path, self.uid))
-            return res['response']
+            return res[u'response']
     
     #
     # authentication request

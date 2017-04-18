@@ -368,7 +368,7 @@ class ApiManager(ComponentManager):
         if self.format == u'doc':
             res = self.client.get_api_doc(self.subsystem, uri, method, data=data, 
                                           sync=True, title=u'', desc= u'', output=res)
-        self.client.logout()
+        #self.client.logout()
         return res
     
     def load_config_file(self, filename):
