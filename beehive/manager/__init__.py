@@ -1,6 +1,5 @@
 import json
 import yaml
-from pandas.core.algorithms import isin
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:

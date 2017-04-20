@@ -312,7 +312,7 @@ class BeehiveApiClient(object):
         #identity = self.api_manager.get_identity(uid)
         #seckey = identity['seckey']
         # create sign
-        headers = {u'Accept':u'json'}
+        headers = {u'Accept':u'application/json'}
         if uid is not None:
             sign = self.sign_request(seckey, path)
             headers.update({u'uid':uid, u'sign':sign})
