@@ -227,7 +227,6 @@ def __create_main_users(controller, config, config_db_manager):
     perms_to_assign = []
     controller.add_superadmin_role(perms_to_assign)
     
-
     # add guest role
     controller.add_guest_role()
     
