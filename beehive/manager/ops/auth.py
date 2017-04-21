@@ -35,10 +35,11 @@ class AuthManager(ApiManager):
         endpoints add <name> <catalog_id> <subsystem> <uri=http://localhost:3030>
         endpoints delete <id>
         
-        users domains
-        users login <name>@<domain> <password>
-        users token <token>
-        users logout
+        keyauth domains
+        keyauth login <name>@<domain> <password>
+        keyauth token <token>
+        keyauth logout
+        
         users list
         users get <id>
         users add <name> <zone>
@@ -82,18 +83,55 @@ class AuthManager(ApiManager):
             u'endpoints.add': self.add_endpoint,
             u'endpoints.delete': self.delete_endpoint,           
            
-            u'users.domains': self.get_user_domains,
-            u'users.login': self.login_user,
-            u'users.token': self.verify_token,
-            u'users.logout': self.logout_user,
-            u'users.list': self.get_users,
-            u'users.get': self.get_user,
-            u'users.add': self.add_user,
-            u'users.delete': self.delete_user,
+            u'keyauth.domains': self.login_domains,
+            u'keyauth.login': self.login_user,
+            u'keyauth.token': self.verify_token,
+            u'keyauth.logout': self.logout_user,
             
             u'identities.list': self.get_identities,
             u'identities.get': self.get_identity,
             u'identities.delete': self.delete_identity,
+            
+            u'users.list': self.get_users,
+            u'users.get': self.get_user,
+            u'users.perms': self.get_user_perms,
+            u'users.roles': self.get_user_roles,
+            u'users.groups': self.get_user_groups,
+            u'users.attribs': self.get_user_attribs,
+            u'users.can': self.can_user,
+            u'users.add': self.add_user,
+            u'users.update': self.update_user,
+            u'users.delete': self.delete_user,
+            
+            u'roles.list': self.get_roles,
+            u'roles.get': self.get_role,
+            u'roles.perms': self.get_role_perms,
+            u'roles.users': self.get_role_users,
+            u'roles.groups': self.get_role_groups,
+            u'roles.add': self.add_role,
+            u'roles.update': self.update_role,
+            u'roles.delete': self.delete_role,             
+            
+            u'groups.list': self.get_groups,
+            u'groups.get': self.get_group,
+            u'groups.perms': self.get_group_perms,
+            u'groups.roles': self.get_group_roles,
+            u'groups.users': self.get_group_users,
+            u'groups.add': self.add_group,
+            u'groups.update': self.update_group,
+            u'groups.delete': self.delete_group,
+            
+            u'objects.list': self.get_objects,
+            u'objects.get': self.get_object,
+            u'objects.perms': self.get_object_perms,
+            u'objects.add': self.add_object,
+            u'objects.delete': self.delete_object,
+            u'types.list': self.get_types,
+            u'types.add': self.add_type,
+            u'types.delete': self.delete_type,            
+            u'perms.list': self.get_perms,
+            u'perms.get': self.get_perm,
+            u'actions.list': self.get_actions,
         }
         return actions    
     
@@ -159,9 +197,9 @@ class AuthManager(ApiManager):
         self.result(res)        
          
     #
-    # users
+    # keyauth login
     #
-    def get_user_domains(self):
+    def login_domains(self):
         uri = u'%s/login/domains/' % (self.baseuri)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get domains: %s' % truncate(res))
@@ -244,7 +282,7 @@ class AuthManager(ApiManager):
         self.result(res)
 
     #
-    # identities
+    # keyauth identities
     #    
     def get_identities(self):
         uri = u'%s/identities/' % (self.baseuri)
