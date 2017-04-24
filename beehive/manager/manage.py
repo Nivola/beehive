@@ -68,12 +68,27 @@ def main(run_path, argv):
     
     logger = logging.getLogger(__name__)
     file_config = u'./manage.conf'
-    cmd = None
-    p = None
     retcode = 0
     frmt = u'table'
     env = u'test'
     color = 1
+    
+    sections = {
+        u'platform':PlatformManager,
+        u'subsystem':None,
+        u'client':None,
+        u'auth':AuthManager,
+        u'event':EventManager,
+        u'monitor':MonitorManager,
+        u'resource':ResourceManager,
+        u'scheduler':SchedulerManager,
+        u'provider':ProviderManager,
+        u'vsphere':VsphereManager,
+        u'nsx':NsxManager,
+        u'openstack':OpenstackManager,
+        u'native.vsphere':NativeVsphereManager,
+        u'native.openstack':NativeOpenstackManager
+    }
     
     try:
         opts, args = getopt.getopt(argv, u'c:f:e:o:hv',
@@ -83,22 +98,34 @@ def main(run_path, argv):
         print(ComponentManager.__doc__)
         print(main.__doc__)
         return 2
+    
+    # check section
+    try:
+        section = args.pop(0)
+    except:
+        print(ComponentManager.__doc__)
+        print(main.__doc__)
+        return 0    
+    
     for opt, arg in opts:
         if opt in (u'-h', u'--help'):
             print(ComponentManager.__doc__)
-            print(main.__doc__)
+            if sections.get(section, None) is not None:
+                print(bcolors.OKBLUE + sections[section].__doc__ + bcolors.ENDC)
+            else:
+                print(bcolors.OKBLUE + main.__doc__ + bcolors.ENDC)
             return 0
-        elif opt in ('-v', '--version'):
-            print 'auth %s' % VERSION
+        elif opt in (u'-v', u'--version'):
+            print u'auth %s' % VERSION
             return 0
-        elif opt in ('-e', '--env'):
+        elif opt in (u'-e', u'--env'):
             env = arg
-        elif opt in ('-c', '--conf'):
+        elif opt in (u'-c', u'--conf'):
             # read manage alternative config
             file_config = arg
-        elif opt in ('-f', '--format'):
+        elif opt in (u'-f', u'--format'):
             frmt = arg
-        elif opt in ('-o', '--color'):
+        elif opt in (u'-o', u'--color'):
             color = arg            
 
     # load configuration
@@ -132,14 +159,6 @@ def main(run_path, argv):
     LoggerHelper.rotatingfile_handler(loggers, logging.ERROR, 
                                       u'%smanage.watch.log' % auth_config[u'log'], 
                                       1024*1024, 5, lfrmt)
-
-    # check section
-    try:
-        section = args.pop(0)
-    except:
-        print(ComponentManager.__doc__)
-        print(main.__doc__)
-        return 0
 
     try:
         manager = main
@@ -234,15 +253,18 @@ def main(run_path, argv):
                                                   orchestrator_id=cid)            
             
         else:
-            raise Exception(u'ERROR : Specify a section')
+            raise Exception(u'ERROR : section in wrong')
                     
     except Exception as ex:
         line = [u'='] * 50
-        print(bcolors.FAIL + bcolors.BOLD + u'    ' + u''.join(line))
-        print(u'     %s' % (ex))
-        print(u'    ' + u''.join(line) + bcolors.ENDC)        
+        #print(bcolors.FAIL + bcolors.BOLD + u'    ' + u''.join(line))
+        #print(u'     %s' % (ex))
+        #print(u'    ' + u''.join(line) + bcolors.ENDC)
+        print(u'')
+        print(bcolors.FAIL + bcolors.BOLD + u'    %s' % (ex) + bcolors.ENDC)
         print(ComponentManager.__doc__)
-        print(bcolors.OKBLUE + manager.__doc__ + bcolors.ENDC)
+        print(u'')
+        #print(bcolors.OKBLUE + manager.__doc__ + bcolors.ENDC)
         logger.error(ex, exc_info=1)
         retcode = 1
     

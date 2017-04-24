@@ -40,36 +40,76 @@ class AuthManager(ApiManager):
         keyauth token <token>
         keyauth logout
         
-        users list
+        users list <field>=<value>    field: page, size, order, field, role, group
+            field can be: id, objid, uuid, name, description, creation_date, modification_date
+            
+            Ex. page=2 order=ASC field=name
         users get <id>
-        users add <name> <zone>
-        users delete <id>        
+        users add <name> <desc>
+        users update
+        users delete <id>
         
-        <entity> <op>        
-            entity: users, roles, objects, perms
-            op: list, get, add, update, delete        
+        roles list <field>=<value>    field: page, size, order, field, user, group
+            field can be: id, objid, uuid, name, description, creation_date, modification_date
+            
+            Ex. page=2 order=ASC field=name
+        roles get <id>
+        roles add <name> <desc>
+        roles update
+        roles delete <id>
         
-        perm 
-        object
-        role
-        role get <name>
-        user
-        user get <name>
-        user add_system <name> <pwdd> <desc> 
+        groups list <field>=<value>    field: page, size, order, field, role, user
+            field can be: id, objid, uuid, name, description, creation_date, modification_date
+            
+            Ex. page=2 order=ASC field=name
+        groups get <id>
+        groups add <name> <desc>
+        groups update
+        groups delete <id>
+        
+        objects list <field>=<value>    field: page, size, order, field, subsystem, type, objid
+            field can be: subsystem, type, id, objid
+            
+            Ex. page=2 order=ASC field=subsystem
+        objects get <id>
+        objects add <subsystem> <type> '<objid>' '<desc>'
+        objects delete <id>
+        
+        types list <field>=<value>    field: page, size, order, field, subsystem, type
+            field can be: subsystem, type, id
+            
+            Ex. page=2 order=ASC field=subsystem
+        types add <subsystem> <type>
+        types delete <id>
+        
+        perms list <field>=<value>    field: page, size, order, field, subsystem, type, objid, user, role, group
+            field can be: subsystem, type, id, objid, aid, action
+            
+            Ex. page=2 order=ASC field=subsystem
+        perms get <id>
+        
+        actions list
     """      
     def __init__(self, auth_config, env, frmt):
         ApiManager.__init__(self, auth_config, env, frmt)
         
         self.baseuri = u'/v1.0/keyauth'
+        self.authuri = u'/v1.0/auth'
         self.subsystem = u'auth'
         self.logger = logger
         self.msg = None
         
-        self.cat_headers = [u'id', u'uuid', u'name', u'zone', u'active', 
-                            u'date.creation', u'date.modification']
-        self.end_headers = [u'id', u'uuid', u'catalog_id', u'catalog', 
-                            u'name', u'service', u'active',
-                            u'endpoint', u'date.creation', u'date.modification']  
+        self.obj_headers = [u'id', u'objid', u'subsystem', u'type', u'desc']
+        self.type_headers = [u'id', u'subsystem', u'type']
+        self.act_headers = [u'id', u'value']
+        self.perm_headers = [u'id', u'oid', u'objid', u'subsystem', u'type', 
+                             u'aid', u'action', u'roles', u'desc']
+        self.user_headers = [u'id', u'uuid', u'objid', u'name', u'active', 
+                              u'date.creation', u'date.modified', u'desc']
+        self.role_headers = [u'id', u'uuid', u'objid', u'name', u'active', 
+                              u'date.creation', u'date.modified', u'desc']
+        self.group_headers = [u'id', u'uuid', u'objid', u'name', u'active', 
+                              u'date.creation', u'date.modified', u'desc']
     
     def actions(self):
         actions = {
@@ -94,46 +134,363 @@ class AuthManager(ApiManager):
             
             u'users.list': self.get_users,
             u'users.get': self.get_user,
-            u'users.perms': self.get_user_perms,
-            u'users.roles': self.get_user_roles,
-            u'users.groups': self.get_user_groups,
-            u'users.attribs': self.get_user_attribs,
-            u'users.can': self.can_user,
-            u'users.add': self.add_user,
-            u'users.update': self.update_user,
+            #u'users.attribs': self.get_user_attribs,
+            #u'users.can': self.can_user,
+            #u'users.add': self.add_user,
+            #u'users.update': self.update_user,
             u'users.delete': self.delete_user,
             
             u'roles.list': self.get_roles,
             u'roles.get': self.get_role,
-            u'roles.perms': self.get_role_perms,
-            u'roles.users': self.get_role_users,
-            u'roles.groups': self.get_role_groups,
-            u'roles.add': self.add_role,
-            u'roles.update': self.update_role,
+            #u'roles.add': self.add_role,
+            #u'roles.update': self.update_role,
             u'roles.delete': self.delete_role,             
             
             u'groups.list': self.get_groups,
             u'groups.get': self.get_group,
-            u'groups.perms': self.get_group_perms,
-            u'groups.roles': self.get_group_roles,
-            u'groups.users': self.get_group_users,
-            u'groups.add': self.add_group,
-            u'groups.update': self.update_group,
+            #u'groups.add': self.add_group,
+            #u'groups.update': self.update_group,
             u'groups.delete': self.delete_group,
             
             u'objects.list': self.get_objects,
             u'objects.get': self.get_object,
-            u'objects.perms': self.get_object_perms,
             u'objects.add': self.add_object,
             u'objects.delete': self.delete_object,
-            u'types.list': self.get_types,
-            u'types.add': self.add_type,
-            u'types.delete': self.delete_type,            
+            
+            u'types.list': self.get_object_types,
+            u'types.add': self.add_object_type,
+            u'types.delete': self.delete_object_type,            
+            
             u'perms.list': self.get_perms,
             u'perms.get': self.get_perm,
+            
             u'actions.list': self.get_actions,
         }
-        return actions    
+        return actions
+    
+    #
+    # actions
+    #        
+    def get_actions(self):
+        uri = u'%s/objects/actions/' % (self.authuri)
+        res = self._call(uri, u'GET', data=u'')
+        self.logger.info(u'Get object: %s' % truncate(res))
+        self.result(res, key=u'object-actions', headers=self.act_headers)     
+    
+    #
+    # perms
+    #    
+    def get_perms(self, *args):
+        data = self.format_http_get_query_params(*args)
+        params = self.get_query_params(*args)
+        uri = u'%s/objects/perms/' % (self.authuri)
+        res = self._call(uri, u'GET', data=data)
+        self.logger.info(u'Get objects: %s' % truncate(res))
+        print(u'Page: %s' % res[u'page'])
+        print(u'Count: %s' % res[u'count'])
+        print(u'Total: %s' % res[u'total'])
+        print(u'Order: %s %s' % (params.get(u'field', u'id'), 
+                                 params.get(u'order', u'DESC')))
+        print(u'')
+        self.result(res, key=u'perms', headers=self.perm_headers)
+    
+    def get_perm(self, perm_id):
+        uri = u'%s/objects/perms/%s/' % (self.authuri, perm_id)
+        res = self._call(uri, u'GET', data=u'')
+        self.logger.info(u'Get object perm: %s' % truncate(res))
+        self.result(res, key=u'perm', headers=self.perm_headers)    
+    
+    #
+    # object types
+    #    
+    def get_object_types(self, *args):
+        data = self.format_http_get_query_params(*args)
+        params = self.get_query_params(*args)
+        uri = u'%s/objects/types/' % (self.authuri)
+        res = self._call(uri, u'GET', data=data)
+        self.logger.info(u'Get objects: %s' % truncate(res))
+        print(u'Page: %s' % res[u'page'])
+        print(u'Count: %s' % res[u'count'])
+        print(u'Total: %s' % res[u'total'])
+        print(u'Order: %s %s' % (params.get(u'field', u'id'), 
+                                 params.get(u'order', u'DESC')))
+        print(u'')
+        self.result(res, key=u'object-types', headers=self.type_headers)
+
+    def add_object_type(self, subsystem, otype):
+        data = {
+            u'object-types':[
+                {
+                    u'subsystem':subsystem,
+                    u'type':otype,
+                }
+            ]
+        }
+        uri = u'%s/objects/types/' % (self.authuri)
+        res = self._call(uri, u'POST', data=data)
+        self.logger.info(u'Add object: %s' % truncate(res))
+        #self.result(res)
+        print(u'Add object type: %s' % res)
+        
+    def delete_object_type(self, object_id):
+        uri = u'%s/objects/types/%s/' % (self.authuri, object_id)
+        res = self._call(uri, u'DELETE', data=u'')
+        self.logger.info(u'Delete object: %s' % truncate(res))
+        #self.result(res)
+        print(u'Delete object type: %s' % object_id)    
+    
+    #
+    # objects
+    #    
+    def get_objects(self, *args):
+        data = self.format_http_get_query_params(*args)
+        params = self.get_query_params(*args)
+        uri = u'%s/objects/' % (self.authuri)
+        res = self._call(uri, u'GET', data=data)
+        self.logger.info(u'Get objects: %s' % truncate(res))
+        print(u'Page: %s' % res[u'page'])
+        print(u'Count: %s' % res[u'count'])
+        print(u'Total: %s' % res[u'total'])
+        print(u'Order: %s %s' % (params.get(u'field', u'id'), 
+                                 params.get(u'order', u'DESC')))
+        print(u'')
+        self.result(res, key=u'objects', headers=self.obj_headers)
+    
+    def get_object(self, object_id):
+        uri = u'%s/objects/%s/' % (self.authuri, object_id)
+        res = self._call(uri, u'GET', data=u'')
+        self.logger.info(u'Get object: %s' % truncate(res))
+        self.result(res, key=u'object', headers=self.obj_headers)
+        
+    def add_object(self, subsystem, otype, objid, desc):
+        data = {
+            "objects":[
+                {
+                    "subsystem":subsystem,
+                    "type":otype,
+                    "objid":objid,
+                    "desc":desc
+                }
+            ]
+        }
+        uri = u'%s/objects/' % (self.authuri)
+        res = self._call(uri, u'POST', data=data)
+        self.logger.info(u'Add object: %s' % truncate(res))
+        #self.result(res)
+        print(u'Add object: %s' % res)
+        
+    def delete_object(self, object_id):
+        uri = u'%s/objects/%s/' % (self.authuri, object_id)
+        res = self._call(uri, u'DELETE', data=u'')
+        self.logger.info(u'Delete object: %s' % truncate(res))
+        #self.result(res)
+        print(u'Delete object: %s' % object_id)
+    
+    #
+    # users
+    #    
+    def get_users(self, *args):
+        data = self.format_http_get_query_params(*args)
+        params = self.get_query_params(*args)
+        uri = u'%s/users/' % (self.authuri)
+        res = self._call(uri, u'GET', data=data)
+        self.logger.info(u'Get users: %s' % truncate(res))
+        print(u'Page: %s' % res[u'page'])
+        print(u'Count: %s' % res[u'count'])
+        print(u'Total: %s' % res[u'total'])
+        print(u'Order: %s %s' % (params.get(u'field', u'id'), 
+                                 params.get(u'order', u'DESC')))
+        print(u'')        
+        self.result(res, key=u'users', headers=self.user_headers)
+    
+    def get_user(self, user_id):
+        uri = u'%s/users/%s/' % (self.authuri, user_id)
+        res = self._call(uri, u'GET')
+        self.logger.info(u'Get user: %s' % truncate(res))
+        self.result(res, key=u'user', headers=self.user_headers)
+        
+    def add_user(self, subsystem, otype, objid, desc):
+        '''data = {
+           "user":{
+              "name":,
+              "storetype":,
+              "systype":,
+              "active":..,
+              "password":..,
+              "desc":"",
+              "attribute":"",
+              "system":"",
+              "generic":..
+           }
+        }'''
+        data = None
+        uri = u'%s/users/' % (self.authuri)
+        res = self._call(uri, u'POST', data=data)
+        self.logger.info(u'Add user: %s' % truncate(res))
+        #self.result(res)
+        print(u'Add user: %s' % res)
+
+    def update_user(self, name, desc):
+        '''data = {
+           "user":{
+              "name":,
+              "storetype":,
+              "active":..,
+              "password":..,
+              "desc":"",
+              "roles":{
+                  "append":[],
+                  "remove":[]
+              }
+           }
+        }'''
+        data = None
+        uri = u'%s/users/' % (self.authuri)
+        res = self._call(uri, u'PUT', data=data)
+        self.logger.info(u'Update user: %s' % truncate(res))
+        #self.result(res)
+        print(u'Add user: %s' % res)
+
+    def delete_user(self, user_id):
+        uri = u'%s/users/%s/' % (self.authuri, user_id)
+        res = self._call(uri, u'DELETE', data=u'')
+        self.logger.info(u'Delete user: %s' % truncate(res))
+        #self.result(res)
+        print(u'Delete user: %s' % user_id)
+    
+    #
+    # roles
+    #    
+    def get_roles(self, *args):
+        data = self.format_http_get_query_params(*args)
+        params = self.get_query_params(*args)
+        uri = u'%s/roles/' % (self.authuri)
+        res = self._call(uri, u'GET', data=data)
+        self.logger.info(u'Get roles: %s' % truncate(res))
+        print(u'Page: %s' % res[u'page'])
+        print(u'Count: %s' % res[u'count'])
+        print(u'Total: %s' % res[u'total'])
+        print(u'Order: %s %s' % (params.get(u'field', u'id'), 
+                                 params.get(u'order', u'DESC')))
+        print(u'')        
+        self.result(res, key=u'roles', headers=self.role_headers)
+    
+    def get_role(self, role_id):
+        uri = u'%s/roles/%s/' % (self.authuri, role_id)
+        res = self._call(uri, u'GET')
+        self.logger.info(u'Get role: %s' % truncate(res))
+        self.result(res, key=u'role', headers=self.role_headers)
+        
+    def add_role(self, name, desc):
+        data = {
+            "role":{
+                "name":name,
+                "desc":desc
+            }
+        }
+        uri = u'%s/roles/' % (self.authuri)
+        res = self._call(uri, u'POST', data=data)
+        self.logger.info(u'Add role: %s' % truncate(res))
+        #self.result(res)
+        print(u'Add role: %s' % res)
+
+    def update_role(self, name, desc):
+        data = {
+            "role":{
+                "name":name,
+                "desc":desc,
+                "perms":{
+                    "append":[
+                        (0, 0, "resource", "Openstack", "*", 0, "view")
+                    ],
+                    "remove":[]
+                }
+            }
+        }
+        uri = u'%s/roles/' % (self.authuri)
+        res = self._call(uri, u'PUT', data=data)
+        self.logger.info(u'Update role: %s' % truncate(res))
+        #self.result(res)
+        print(u'Add role: %s' % res)
+
+    def delete_role(self, role_id):
+        uri = u'%s/roles/%s/' % (self.authuri, role_id)
+        res = self._call(uri, u'DELETE', data=u'')
+        self.logger.info(u'Delete role: %s' % truncate(res))
+        #self.result(res)
+        print(u'Delete role: %s' % role_id)
+        
+    #
+    # groups
+    #    
+    def get_groups(self, *args):
+        data = self.format_http_get_query_params(*args)
+        params = self.get_query_params(*args)
+        uri = u'%s/groups/' % (self.authuri)
+        res = self._call(uri, u'GET', data=data)
+        self.logger.info(u'Get groups: %s' % truncate(res))
+        print(u'Page: %s' % res[u'page'])
+        print(u'Count: %s' % res[u'count'])
+        print(u'Total: %s' % res[u'total'])
+        print(u'Order: %s %s' % (params.get(u'field', u'id'), 
+                                 params.get(u'order', u'DESC')))
+        print(u'')        
+        self.result(res, key=u'groups', headers=self.group_headers)
+    
+    def get_group(self, group_id):
+        uri = u'%s/groups/%s/' % (self.authuri, group_id)
+        res = self._call(uri, u'GET')
+        self.logger.info(u'Get group: %s' % truncate(res))
+        self.result(res, key=u'group', headers=self.group_headers)
+        
+    def add_group(self, name, desc):
+        data = {
+            "group":{
+                "name":name,
+                "desc":desc
+            }
+        }
+        uri = u'%s/groups/' % (self.authuri)
+        res = self._call(uri, u'POST', data=data)
+        self.logger.info(u'Add group: %s' % truncate(res))
+        #self.result(res)
+        print(u'Add group: %s' % res)
+
+    def update_group(self, name, desc):
+        data = {
+            "group":{
+                "name":name,
+                "desc":desc,
+                "users":{
+                    "append":[
+                        "admin@local"
+                    ],
+                    "remove":[
+        
+                    ]
+                },
+                "roles":{
+                    "append":[
+        
+                    ],
+                    "remove":[
+        
+                    ]
+                },
+            }
+        }
+        uri = u'%s/groups/' % (self.authuri)
+        res = self._call(uri, u'PUT', data=data)
+        self.logger.info(u'Update group: %s' % truncate(res))
+        #self.result(res)
+        print(u'Add group: %s' % res)
+
+    def delete_group(self, group_id):
+        uri = u'%s/groups/%s/' % (self.authuri, group_id)
+        res = self._call(uri, u'DELETE', data=u'')
+        self.logger.info(u'Delete group: %s' % truncate(res))
+        #self.result(res)
+        print(u'Delete group: %s' % group_id)
     
     #
     # catalogs
@@ -164,7 +521,7 @@ class AuthManager(ApiManager):
         res = self.client.delete_catalog(catalog_id)
         self.logger.info(u'Delete catalog: %s' % truncate(res))
         self.result(res)
-        
+    
     #
     # endpoints
     #    
@@ -194,7 +551,7 @@ class AuthManager(ApiManager):
     def delete_endpoint(self, endpoint_id):
         res = self.client.delete_endpoint(endpoint_id)
         self.logger.info(u'Delete endpoint: %s' % truncate(res))
-        self.result(res)        
+        self.result(res)
          
     #
     # keyauth login
@@ -256,29 +613,6 @@ class AuthManager(ApiManager):
                 u'auth', uri, u'DELETE', data=u'', uid=token, seckey=seckey)
         res = res[u'response']
         self.logger.info(u'Logout %s: %s' % (token, truncate(res)))
-        self.result(res)    
-    
-    def get_users(self, *args):
-        data = self.format_http_get_query_params(*args)
-        uri = u'%s/user/' % (self.baseuri)
-        res = self._call(uri, u'GET', data=data)
-        self.logger.info(u'Get users: %s' % truncate(res))
-        self.result(res, headers=self.cat_headers)
-    
-    def get_user(self, user_id):
-        uri = u'%s/user/%s/' % (self.baseuri, user_id)
-        res = self._call(uri, u'GET')
-        self.logger.info(u'Get user: %s' % truncate(res))
-        self.result(res, headers=self.cat_headers)
-        
-    def add_user(self, name, zone):
-        res = self.client.create_user(name, zone)
-        self.logger.info(u'Add user: %s' % truncate(res))
-        self.result(res)
-        
-    def delete_user(self, user_id):
-        res = self.client.delete_user(user_id)
-        self.logger.info(u'Delete user: %s' % truncate(res))
         self.result(res)
 
     #

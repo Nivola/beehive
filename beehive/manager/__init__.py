@@ -234,8 +234,8 @@ class ComponentManager(object):
         """
         if key is not None:
             data = data[key]
-        
-        if u'jobid' in data:
+    
+        if isinstance(data, dict) and u'jobid' in data:
             print(u'Start JOB: %s' % data.get(u'jobid'))
             print(u'')
             return None
@@ -282,6 +282,15 @@ class ComponentManager(object):
             t = arg.split(u'=')
             val[t[0]] = t[1]
         return urlencode(val)
+    
+    def get_query_params(self, *args):
+        """
+        """
+        val = {}
+        for arg in args:
+            t = arg.split(u'=')
+            val[t[0]] = t[1]
+        return val   
     
     @staticmethod
     def main(auth_config, frmt, opts, args, env, component_class, 
