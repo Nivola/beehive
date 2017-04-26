@@ -147,8 +147,8 @@ class AuthManager(ApiManager):
             u'users.delete': self.delete_user,
             #u'users.attribs': self.get_user_attribs,
             #u'users.can': self.can_user,
-            u'users.add-role':self.add_users_role,
-            u'users.delete-role':self.delete_users_role,              
+            #u'users.add-role':self.add_users_role,
+            #u'users.delete-role':self.delete_users_role,              
             
             u'roles.list': self.get_roles,
             u'roles.get': self.get_role,
