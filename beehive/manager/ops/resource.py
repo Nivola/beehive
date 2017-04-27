@@ -233,8 +233,7 @@ class ResourceManager(ApiManager):
         uri = u'%s/resources/%s/perms/' % (self.baseuri, value)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get resource perms: %s' % truncate(res))
-        self.result(res, key=u'perms', headers=self.perm_headers, 
-                    fields=self.perm_fields)
+        self.result(res, key=u'perms', headers=self.perm_headers)
         
     def get_resource_roles(self, value):
         uri = u'%s/resources/%s/roles/' % (self.baseuri, value)
