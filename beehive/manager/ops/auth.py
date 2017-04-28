@@ -38,6 +38,9 @@ class AuthManager(ApiManager):
         keyauth token <token>
         keyauth logout
         
+        simplehttp domains
+        simplehttp login <name>@<domain> <password> <user-ip>        
+        
         users list <field>=<value>    field: page, size, order, field, role, group
             field can be: id, objid, uuid, name, description, creation_date, modification_date
             
@@ -104,6 +107,7 @@ class AuthManager(ApiManager):
         ApiManager.__init__(self, auth_config, env, frmt)
         
         self.baseuri = u'/v1.0/keyauth'
+        self.simplehttp_uri = u'/v1.0/simplehttp'
         self.authuri = u'/v1.0/auth'
         self.subsystem = u'auth'
         self.logger = logger
@@ -137,6 +141,9 @@ class AuthManager(ApiManager):
             u'keyauth.login': self.login_user,
             u'keyauth.token': self.verify_token,
             u'keyauth.logout': self.logout_user,
+            
+            u'simplehttp.domains': self.simplehttp_login_domains,
+            u'simplehttp.login': self.simplehttp_login_user,            
             
             u'identities.list': self.get_identities,
             u'identities.get': self.get_identity,
@@ -724,6 +731,29 @@ class AuthManager(ApiManager):
         res = self.client.delete_endpoint(endpoint_id)
         self.logger.info(u'Delete endpoint: %s' % truncate(res))
         self.result(res)
+
+    #
+    # simplehttp login
+    #
+    def simplehttp_login_domains(self):
+        uri = u'%s/login/domains/' % (self.simplehttp_uri)
+        res = self._call(uri, u'GET')
+        self.logger.info(u'Get domains: %s' % truncate(res))
+        domains = []
+        for item in res[u'domains']:
+            domains.append({u'domain':item[0],
+                            u'type':item[1]})
+        self.result(domains, headers=[u'domain', u'type'])
+        
+    def simplehttp_login_user(self, user, pwd, ip):
+        data = {u'user':user, u'password':pwd, u'login-ip':ip}
+        uri = u'%s/login/' % (self.simplehttp_uri)
+        res = self.client.send_signed_request(
+                u'auth', uri, u'POST', data=json.dumps(data))
+        res = res[u'response']
+        self.logger.info(u'Login user %s: %s' % (user, res))
+        self.result(res, headers=[u'user.id', u'uid', u'user.name', u'timestamp',
+                                  u'user.active'])
          
     #
     # keyauth login

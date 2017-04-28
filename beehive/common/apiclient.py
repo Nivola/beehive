@@ -60,6 +60,7 @@ class BeehiveApiClient(object):
         
         self.uid = None
         self.seckey = None
+        self.filter = None
         
         self.host = gethostname()
         
@@ -245,7 +246,8 @@ class BeehiveApiClient(object):
             # format curl string
             curl_url = [u'curl -v -S -X %s' % method]
             if data is not None and data != u'':
-                curl_url.append(u'--data "%s"' % data)
+                curl_url.append(u"-d '%s'" % data)
+                curl_url.append(u'-H "Content-Type: application/json"')
             if headers is not None:
                 for header in headers.items():
                     curl_url.append(u'-H "%s: %s"' % header)
@@ -480,6 +482,30 @@ class BeehiveApiClient(object):
             self.endpoints[service] = [[self.__parse_endpoint(endpoint), 0]]
     
     @watch
+    def simplehttp_login(self, api_user=None, api_user_pwd=None, login_ip=None):
+        """Login module internal user using simple http authentication
+        
+        :raise BeehiveApiClientError:
+        """
+        if api_user == None: api_user = self.api_user
+        if api_user_pwd == None: api_user_pwd = self.api_user_pwd            
+        
+        data = {u'user':api_user, u'password':api_user_pwd}
+        if login_ip is None:
+            data[u'login-ip'] = self.host
+        else:
+            data[u'login-ip'] = login_ip
+        res = self.send_signed_request(u'auth', u'/v1.0/simplehttp/login/', 
+                                       u'POST', data=json.dumps(data))
+        res = res[u'response']
+        self.logger.info(u'Login user %s: %s' % (self.api_user, res[u'uid']))
+        self.uid = None
+        self.seckey = None
+        self.filter = u'simplehttp'
+        
+        return res
+    
+    @watch
     def login(self, api_user=None, api_user_pwd=None, login_ip=None):
         """Login module internal user
         
@@ -490,17 +516,18 @@ class BeehiveApiClient(object):
         
         data = {u'user':api_user, u'password':api_user_pwd}
         if login_ip is None:
-            data[u'login_ip'] = self.host
+            data[u'login-ip'] = self.host
         else:
-            data[u'login_ip'] = login_ip
-        res = self.send_signed_request(u'auth', u'/api/auth/login/', 
+            data[u'login-ip'] = login_ip
+        res = self.send_signed_request(u'auth', u'/v1.0/keyauth/login/', 
                                        u'POST', data=json.dumps(data))
         res = res[u'response']
         self.logger.info(u'Login user %s with uid: %s' % (self.api_user, res[u'uid']))
         self.uid = res[u'uid']
         self.seckey = res[u'seckey']
+        self.filter = u'keyauth'
         
-        return res
+        return res    
 
     @watch
     def logout(self, uid=None, seckey=None):
@@ -510,9 +537,11 @@ class BeehiveApiClient(object):
         if uid == None: uid = self.uid
         if seckey == None: seckey = self.seckey            
                     
-        res = self.send_signed_request(u'auth', u'/api/auth/logout/', 
-                                       u'POST', data=u'', 
-                                       uid=uid, seckey=seckey)
+        res = self.send_signed_request(u'auth', u'/v1.0/keyauth/logout/', 
+                                       u'POST', data=u'', uid=uid, seckey=seckey)
+        self.uid = None
+        self.seckey = None
+        self.filter = None
         self.logger.info(u'Logout user %s with uid: %s' % (self.api_user, self.uid))    
     
     @watch
@@ -521,11 +550,16 @@ class BeehiveApiClient(object):
         
         :raise BeehiveApiClientError:
         """
-        res = self.send_signed_request(u'auth', u'/api/auth/login/%s/' % uid, 
-                                       u'GET', data='')
-        res = res[u'response']
-        #self.logger.debug(u'Identity %s exists: %s' % (uid, res))
-        return res
+        try:
+            res = self.send_signed_request(u'auth', u'/v1.0/keyauth/login/%s/' % uid, 
+                                           u'GET', data=u'', 
+                                           uid=self.uid, seckey=self.seckey)
+            #res = res[u'response']
+            #self.logger.debug(u'Identity %s exists: %s' % (uid, res))
+            return True
+        except BeehiveApiClientError as ex:
+            if ex.code == 401:
+                return False
 
     #
     # configuration
