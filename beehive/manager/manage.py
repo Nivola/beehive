@@ -138,6 +138,11 @@ def main(run_path, argv):
         }
     auth_config[u'color'] = color
     
+    # set token if exist
+    auth_config[u'token_file'] = u'.manage.token'
+    auth_config[u'seckey_file'] = u'.manage.seckey'
+    auth_config[u'token'] = None
+    
     # setup loggers
     loggers = [
         logger,

@@ -13,18 +13,16 @@ from pandas import DataFrame, set_option
 from beehive.manager import ApiManager, ComponentManager
 import sys
 from beecell.simple import truncate
+from re import match
 
 logger = logging.getLogger(__name__)
 
 class AuthManager(ApiManager):
     """
     SECTION: 
-        resource
+        auth
         
     PARAMS:
-        auth <entity> <op>
-
-            
         catalogs list
         catalogs get <id>
         catalogs add <name> <zone>
@@ -45,9 +43,15 @@ class AuthManager(ApiManager):
             
             Ex. page=2 order=ASC field=name
         users get <id>
-        users add <name> <desc>
-        users update
+        users add <name> <password> [<storetype> default=u'DBUSER']
+        users add-admin <name> <password>
+        users update <id> [name=<name>] [desc=<desc>] [password=<password>] [active=<active>]
         users delete <id>
+        users add-role <id> <role>
+        users delete-role <id> <role>
+        users attribs <id>
+        users attrib-add <id> <name> <value> <desc>
+        users attrib-delete <id> <attrib>        
         
         roles list <field>=<value>    field: page, size, order, field, user, group
             field can be: id, objid, uuid, name, description, creation_date, modification_date
@@ -55,8 +59,10 @@ class AuthManager(ApiManager):
             Ex. page=2 order=ASC field=name
         roles get <id>
         roles add <name> <desc>
-        roles update
+        roles update <id> [name=<name>] [desc=<desc>]
         roles delete <id>
+        roles add-perm <id> <subsystem> <ptype> <objid> <action>
+        roles delete-perm <id> <subsystem> <ptype> <objid> <action>        
         
         groups list <field>=<value>    field: page, size, order, field, role, user
             field can be: id, objid, uuid, name, description, creation_date, modification_date
@@ -64,8 +70,12 @@ class AuthManager(ApiManager):
             Ex. page=2 order=ASC field=name
         groups get <id>
         groups add <name> <desc>
-        groups update
+        groups update <id> [name=<name>] [desc=<desc>]
         groups delete <id>
+        groups add-role <id> <role>
+        groups delete-role <id> <role> 
+        groups add-user <id> <user>
+        groups delete-user <id> <user>
         
         objects list <field>=<value>    field: page, size, order, field, subsystem, type, objid
             field can be: subsystem, type, id, objid
@@ -103,7 +113,7 @@ class AuthManager(ApiManager):
         self.type_headers = [u'id', u'subsystem', u'type']
         self.act_headers = [u'id', u'value']
         self.perm_headers = [u'id', u'oid', u'objid', u'subsystem', u'type', 
-                             u'aid', u'action', u'roles', u'desc']
+                             u'aid', u'action', u'desc']
         self.user_headers = [u'id', u'uuid', u'objid', u'name', u'active', 
                               u'date.creation', u'date.modified', u'desc']
         self.role_headers = [u'id', u'uuid', u'objid', u'name', u'active', 
@@ -134,22 +144,33 @@ class AuthManager(ApiManager):
             
             u'users.list': self.get_users,
             u'users.get': self.get_user,
-            #u'users.attribs': self.get_user_attribs,
-            #u'users.can': self.can_user,
-            #u'users.add': self.add_user,
-            #u'users.update': self.update_user,
+            u'users.add': self.add_user,
+            u'users.add-admin': self.add_system_user,
+            u'users.update': self.update_user,          
             u'users.delete': self.delete_user,
+            u'users.attribs': self.get_user_attribs,
+            u'users.attrib-add': self.add_user_attrib,
+            u'users.attrib-delete': self.delete_user_attrib,
+            u'users.add-role':self.add_user_role,
+            u'users.delete-role':self.delete_user_role,
+            #u'users.can': self.can_user,
             
             u'roles.list': self.get_roles,
             u'roles.get': self.get_role,
-            #u'roles.add': self.add_role,
-            #u'roles.update': self.update_role,
+            u'roles.add': self.add_role,
+            u'roles.update': self.update_role,
+            u'roles.add-perm':self.add_role_perm,
+            u'roles.delete-perm':self.delete_role_perm,
             u'roles.delete': self.delete_role,             
             
             u'groups.list': self.get_groups,
             u'groups.get': self.get_group,
-            #u'groups.add': self.add_group,
-            #u'groups.update': self.update_group,
+            u'groups.add': self.add_group,
+            u'groups.update': self.update_group,
+            u'groups.add-role':self.add_group_role,
+            u'groups.delete-role':self.delete_group_role,
+            u'groups.add-user':self.add_group_user,
+            u'groups.delete-user':self.delete_group_user,
             u'groups.delete': self.delete_group,
             
             u'objects.list': self.get_objects,
@@ -264,12 +285,12 @@ class AuthManager(ApiManager):
         
     def add_object(self, subsystem, otype, objid, desc):
         data = {
-            "objects":[
+            u'objects':[
                 {
-                    "subsystem":subsystem,
-                    "type":otype,
-                    "objid":objid,
-                    "desc":desc
+                    u'subsystem':subsystem,
+                    u'type':otype,
+                    u'objid':objid,
+                    u'desc':desc
                 }
             ]
         }
@@ -309,47 +330,58 @@ class AuthManager(ApiManager):
         self.logger.info(u'Get user: %s' % truncate(res))
         self.result(res, key=u'user', headers=self.user_headers)
         
-    def add_user(self, subsystem, otype, objid, desc):
-        '''data = {
-           "user":{
-              "name":,
-              "storetype":,
-              "systype":,
-              "active":..,
-              "password":..,
-              "desc":"",
-              "attribute":"",
-              "system":"",
-              "generic":..
-           }
-        }'''
-        data = None
+    def add_user(self, name, pwd, storetype=u'DBUSER'):
+        if not match(u'[a-zA-z0-9]+@[a-zA-z0-9]+', name):
+            raise Exception(u'Name is not correct. Name syntax is <name>@<domain>')
+        data = {
+            u'user':{
+                u'name':name,
+                u'storetype':storetype,
+                u'password':pwd, 
+                u'description':u'User %s' % name, 
+                u'generic':True}
+        }
+        uri = u'%s/users/' % (self.authuri)
+        res = self._call(uri, u'POST', data=data)
+        self.logger.info(u'Add user: %s' % truncate(res))
+        #self.result(res)
+        print(u'Add user: %s' % res)
+        
+    def add_system_user(self, name, pwd):
+        if not match(u'[a-zA-z0-9]+@[a-zA-z0-9]+', name):
+            raise Exception(u'Name is not correct. Name syntax is <name>@<domain>')        
+        data = {
+            u'user':{
+                u'name':name,
+                u'password':pwd, 
+                u'desc':u'User %s' % name, 
+                u'system':True
+            }
+        }
         uri = u'%s/users/' % (self.authuri)
         res = self._call(uri, u'POST', data=data)
         self.logger.info(u'Add user: %s' % truncate(res))
         #self.result(res)
         print(u'Add user: %s' % res)
 
-    def update_user(self, name, desc):
-        '''data = {
-           "user":{
-              "name":,
-              "storetype":,
-              "active":..,
-              "password":..,
-              "desc":"",
-              "roles":{
-                  "append":[],
-                  "remove":[]
-              }
-           }
-        }'''
-        data = None
-        uri = u'%s/users/' % (self.authuri)
+    def update_user(self, oid, *args):
+        params = self.get_query_params(*args)
+        name = params.get(u'name', None)
+        if name is not None and not match(u'[a-zA-z0-9]+@[a-zA-z0-9]+', name):
+            raise Exception(u'Name is not correct. Name syntax is <name>@<domain>')
+        data = {
+            u'user':{
+                u'name':name,
+                u'desc':params.get(u'desc', None),
+                u'active':params.get(u'active', None),
+                u'password':params.get(u'password', None),
+            }
+        }
+        uri = u'%s/users/%s/' % (self.authuri, oid)
         res = self._call(uri, u'PUT', data=data)
         self.logger.info(u'Update user: %s' % truncate(res))
         #self.result(res)
-        print(u'Add user: %s' % res)
+        print(u'Update user: %s' % res)
 
     def delete_user(self, user_id):
         uri = u'%s/users/%s/' % (self.authuri, user_id)
@@ -357,6 +389,64 @@ class AuthManager(ApiManager):
         self.logger.info(u'Delete user: %s' % truncate(res))
         #self.result(res)
         print(u'Delete user: %s' % user_id)
+    
+    def add_user_role(self, oid, role):
+        data = {
+            u'user':{
+                u'roles':{
+                    u'append':[role],
+                    u'remove':[]
+                },
+            }
+        }
+        uri = u'%s/users/%s/' % (self.authuri, oid)
+        res = self._call(uri, u'PUT', data=data)
+        self.logger.info(u'Update user roles: %s' % truncate(res))
+        #self.result(res)
+        print(u'Update user roles: %s' % res)
+
+    def delete_user_role(self, oid, role):
+        data = {
+            u'user':{
+                u'roles':{
+                    u'append':[],
+                    u'remove':[role]
+                },
+            }
+        }
+        uri = u'%s/users/%s/' % (self.authuri, oid)
+        res = self._call(uri, u'PUT', data=data)
+        self.logger.info(u'Update user roles: %s' % truncate(res))
+        #self.result(res)
+        print(u'Update user roles: %s' % res)    
+    
+    def get_user_attribs(self, user_id):
+        uri = u'%s/users/%s/attributes/' % (self.authuri, user_id)
+        res = self._call(uri, u'GET')
+        self.logger.info(u'Get user attributes: %s' % truncate(res))
+        self.result(res, key=u'user-attributes', 
+                    headers=[u'name', u'value', u'desc'])    
+    
+    def add_user_attrib(self, oid, name, value, desc):
+        data = {
+            u'user-attribute':{
+                u'name':name,
+                u'value':value,
+                u'desc':desc
+            }
+        }
+        uri = u'%s/users/%s/attributes/' % (self.authuri, oid)
+        res = self._call(uri, u'POST', data=data)
+        self.logger.info(u'Add user attribute: %s' % truncate(res))
+        #self.result(res)
+        print(u'Add user attribute %s: %s' % (name, res))        
+    
+    def delete_user_attrib(self, oid, attrib):
+        uri = u'%s/users/%s/attributes/%s/' % (self.authuri, oid, attrib)
+        res = self._call(uri, u'dELETE', data=u'')
+        self.logger.info(u'Add user attribute: %s' % truncate(res))
+        #self.result(res)
+        print(u'Delete user attribute %s' % (attrib))     
     
     #
     # roles
@@ -383,9 +473,9 @@ class AuthManager(ApiManager):
         
     def add_role(self, name, desc):
         data = {
-            "role":{
-                "name":name,
-                "desc":desc
+            u'role':{
+                u'name':name,
+                u'desc':desc
             }
         }
         uri = u'%s/roles/' % (self.authuri)
@@ -394,24 +484,53 @@ class AuthManager(ApiManager):
         #self.result(res)
         print(u'Add role: %s' % res)
 
-    def update_role(self, name, desc):
+    def update_role(self, oid, *args):
+        params = self.get_query_params(*args)
         data = {
             "role":{
-                "name":name,
-                "desc":desc,
-                "perms":{
-                    "append":[
-                        (0, 0, "resource", "Openstack", "*", 0, "view")
-                    ],
-                    "remove":[]
-                }
+                "name":params.get(u'name', None),
+                "desc":params.get(u'desc', None)
             }
         }
-        uri = u'%s/roles/' % (self.authuri)
+        uri = u'%s/roles/%s/' % (self.authuri, oid)
         res = self._call(uri, u'PUT', data=data)
         self.logger.info(u'Update role: %s' % truncate(res))
         #self.result(res)
-        print(u'Add role: %s' % res)
+        print(u'Update role: %s' % res)
+
+    def add_role_perm(self, oid, subsystem, ptype, objid, action):
+        data = {
+            u'role':{
+                u'perms':{
+                    u'append':[
+                        (0, 0, subsystem, ptype, objid, 0, action)
+                    ],
+                    u'remove':[]
+                }
+            }
+        }
+        uri = u'%s/roles/%s/' % (self.authuri, oid)
+        res = self._call(uri, u'PUT', data=data)
+        self.logger.info(u'Update role perms: %s' % truncate(res))
+        #self.result(res)
+        print(u'Update role: %s' % res)
+        
+    def delete_role_perm(self, oid, subsystem, ptype, objid, action):
+        data = {
+            "role":{
+                "perms":{
+                    "append":[],
+                    "remove":[
+                        (0, 0, subsystem, ptype, objid, 0, action)                        
+                    ]
+                }
+            }
+        }
+        uri = u'%s/roles/%s/' % (self.authuri, oid)
+        res = self._call(uri, u'PUT', data=data)
+        self.logger.info(u'Update role perms: %s' % truncate(res))
+        #self.result(res)
+        print(u'Update role: %s' % res)
 
     def delete_role(self, role_id):
         uri = u'%s/roles/%s/' % (self.authuri, role_id)
@@ -456,34 +575,87 @@ class AuthManager(ApiManager):
         #self.result(res)
         print(u'Add group: %s' % res)
 
-    def update_group(self, name, desc):
+    def update_group(self, oid, *args):
+        params = self.get_query_params(*args)
         data = {
             "group":{
-                "name":name,
-                "desc":desc,
-                "users":{
-                    "append":[
-                        "admin@local"
-                    ],
-                    "remove":[
+                "name":params.get(u'name', None),
+                "desc":params.get(u'desc', None)
+            }
+        }
+        uri = u'%s/groups/%s/' % (self.authuri, oid)
+        res = self._call(uri, u'PUT', data=data)
+        self.logger.info(u'Update group: %s' % truncate(res))
+        #self.result(res)
+        print(u'Update group: %s' % res)
         
-                    ]
-                },
+    def add_group_role(self, oid, role):
+        data = {
+            "group":{
                 "roles":{
                     "append":[
-        
+                        role
                     ],
+                    "remove":[]
+                },
+            }
+        }
+        uri = u'%s/groups/%s/' % (self.authuri, oid)
+        res = self._call(uri, u'PUT', data=data)
+        self.logger.info(u'Update group roles: %s' % truncate(res))
+        #self.result(res)
+        print(u'Update group roles: %s' % res)
+
+    def delete_group_role(self, oid, role):
+        data = {
+            "group":{
+                "roles":{
+                    "append":[],
                     "remove":[
-        
+                        role
                     ]
                 },
             }
         }
-        uri = u'%s/groups/' % (self.authuri)
+        uri = u'%s/groups/%s/' % (self.authuri, oid)
         res = self._call(uri, u'PUT', data=data)
-        self.logger.info(u'Update group: %s' % truncate(res))
+        self.logger.info(u'Update group roles: %s' % truncate(res))
         #self.result(res)
-        print(u'Add group: %s' % res)
+        print(u'Update group roles: %s' % res)
+
+    def add_group_user(self, oid, user):
+        data = {
+            "group":{
+                "users":{
+                    "append":[
+                        user
+                    ],
+                    "remove":[]
+                },
+            }
+        }
+        uri = u'%s/groups/%s/' % (self.authuri, oid)
+        res = self._call(uri, u'PUT', data=data)
+        self.logger.info(u'Update group users: %s' % truncate(res))
+        #self.result(res)
+        print(u'Update group users: %s' % res)
+
+    def delete_group_user(self, oid, user):
+        data = {
+            "group":{
+                "users":{
+                    "append":[],
+                    "remove":[
+                        user
+                    ]
+                },
+            }
+        }
+        uri = u'%s/groups/%s/' % (self.authuri, oid)
+        res = self._call(uri, u'PUT', data=data)
+        self.logger.info(u'Update group users: %s' % truncate(res))
+        #self.result(res)
+        print(u'Update group users: %s' % res)
 
     def delete_group(self, group_id):
         uri = u'%s/groups/%s/' % (self.authuri, group_id)

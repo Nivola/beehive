@@ -1,5 +1,6 @@
 import json
 import yaml
+import os
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
@@ -96,7 +97,22 @@ class ComponentManager(object):
     
     Exit status:
         0  if OK,
-        1  if problems occurred"""
+        1  if problems occurred
+        
+    Examples:
+    
+    Generic help:
+    $ manage.py -h                                     
+    
+    <SECTION> help:
+    $ manage.py -h <SECTION>
+    
+    Use <SECTION> commands in environment test:
+    $ manage.py -e test <SECTION> [PARAMs]...
+    
+    Use <SECTION> commands in environment test. Format results in json:
+    $ manage.py -e test -f json <SECTION> [PARAMs]...   
+    """
     def __init__(self, auth_config, env, frmt):
         self.logger = getLogger(self.__class__.__module__+ \
                                 u'.'+self.__class__.__name__)
@@ -106,9 +122,11 @@ class ComponentManager(object):
         self.pp = PrettyPrinter(width=200)        
         self.format = frmt      
         self.color = auth_config[u'color']
+        self.token_file = auth_config[u'token_file']
+        self.seckey_file = auth_config[u'seckey_file']
         
-        self.perm_headers = [u'pid', u'oid', u'objtype', u'objdef', u'objid', 
-                             u'action']
+        self.perm_headers = [u'id', u'oid', u'subsystem', u'type', u'objid', 
+                             u'aid', u'action']
         self.perm_fields = [u'0.0', u'0.1', u'0.2', u'0.3', u'0.4', u'0.6']
         
     def __jsonprint(self, data):
@@ -292,6 +310,37 @@ class ComponentManager(object):
             val[t[0]] = t[1]
         return val   
     
+    def get_token(self):
+        """Get token and secret key from file.
+        
+        :return: token
+        """
+        if os.path.isfile(self.token_file) is True:
+            # get token
+            f = open(self.token_file, u'r')
+            token = f.read()
+            f.close()
+            # get secret key
+            f = open(self.seckey_file, u'r')
+            seckey = f.read()
+            f.close()
+            return token, seckey
+        return None, None
+    
+    def save_token(self, token, seckey):
+        """Save token and secret key on a file.
+        
+        :param token: token to save
+        """
+        # save token
+        f = open(self.token_file, u'w')
+        f.write(token)
+        f.close()
+        # save secret key
+        f = open(self.seckey_file, u'w')
+        f.write(seckey)
+        f.close() 
+    
     @staticmethod
     def main(auth_config, frmt, opts, args, env, component_class, 
              *vargs, **kvargs):
@@ -313,8 +362,8 @@ class ComponentManager(object):
         
         client = component_class(auth_config, env, frmt=frmt, *vargs, **kvargs)
         actions = client.actions()
-        logger.debug(u'Available actions %s' % 
-                     PrettyPrinter(width=200).pformat(actions.keys()))
+        logger.debug(u'Available actions %s' % actions.keys())
+        #PrettyPrinter(width=200).pformat(actions.keys()))
         
         if len(args) > 0:
             entity = args.pop(0)
@@ -337,7 +386,7 @@ class ComponentManager(object):
         
         if action is not None and action in actions.keys():
             func = actions[action]
-            res = func(*args)
+            func(*args)
         else:
             raise Exception(u'ERROR: Entity and/or command are not correct')      
             return 1
@@ -371,12 +420,20 @@ class ApiManager(ComponentManager):
         self.baseuri = None
         
     def _call(self, uri, method, data=u'', headers=None):
+        # get token
+        self.client.uid, self.client.seckey  = self.get_token()        
+        
+        # make request
         res = self.client.invoke(self.subsystem, uri, method, data=data, 
                                  other_headers=headers, parse=True)
         if self.format == u'doc':
             res = self.client.get_api_doc(self.subsystem, uri, method, data=data, 
                                           sync=True, title=u'', desc= u'', output=res)
         #self.client.logout()
+        
+        # set token
+        self.save_token(self.client.uid, self.client.seckey)
+        
         return res
     
     def load_config_file(self, filename):

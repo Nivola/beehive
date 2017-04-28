@@ -245,7 +245,7 @@ class BeehiveApiClient(object):
             # format curl string
             curl_url = [u'curl -v -S -X %s' % method]
             if data is not None and data != u'':
-                curl_url.append(u'--data %s' % data)
+                curl_url.append(u'--data "%s"' % data)
             if headers is not None:
                 for header in headers.items():
                     curl_url.append(u'-H "%s: %s"' % header)
@@ -740,9 +740,19 @@ class BeehiveApiClient(object):
         :param class_name: object class
         :raise BeehiveApiClientError:
         """
-        data = json.dumps([(objtype, objdef, class_name)])
-        res = self.invoke(u'auth', '/api/auth/object/type/', 'POST', data)
-        self.logger.debug('Add object type: %s:%s %s' % 
+        #data = json.dumps([(objtype, objdef, class_name)])
+        #res = self.invoke(u'auth', '/api/auth/object/type/', 'POST', data)
+        data = {
+            u'object-types':[
+                {
+                    u'subsystem':objtype,
+                    u'type':objdef
+                }
+            ]
+        }
+        res = self.invoke(u'auth', u'/v1.0/auth/objects/types/', 
+                          u'POST', data, parse=True)        
+        self.logger.debug(u'Add object type: %s:%s %s' % 
                           (objtype, objdef, class_name))
         return res
     
@@ -759,8 +769,20 @@ class BeehiveApiClient(object):
         :raise BeehiveApiClientError:
         """
         try:
-            data = json.dumps([(objtype, objdef, objid, desc)])
-            res = self.invoke(u'auth', u'/api/auth/object/', u'POST', data)
+            #data = json.dumps([(objtype, objdef, objid, desc)])
+            #res = self.invoke(u'auth', u'/api/auth/object/', u'POST', data)
+            data = {
+                u'objects':[
+                    {
+                        u'subsystem':objtype,
+                        u'type':objdef,
+                        u'objid':objid,
+                        u'desc':desc
+                    }
+                ]
+            }
+            res = self.invoke(u'auth', u'/v1.0/auth/objects/', u'POST', 
+                              data, parse=True)            
             self.logger.debug(u'Add object: %s:%s %s' % 
                               (objtype, objdef, objid))
             return res
@@ -778,25 +800,30 @@ class BeehiveApiClient(object):
         """
         # get object
         try:
-            data = ''
-            uri = u'/api/auth/object/T:%s/D:%s/I:%s/' % (objtype, objdef, 
-                                                        objid.replace(u'//', u'_'))
-            res = self.invoke(u'auth', uri, 'GET', data)
+            #data = ''
+            #uri = u'/api/auth/object/T:%s/D:%s/I:%s/' % (objtype, objdef, 
+            #                                            objid.replace(u'//', u'_'))
+            data = urlencode({u'subsystem':objtype,
+                              u'type':objdef,
+                              u'objid':objid})
+            uri = u'/v1.0/auth/objects/'           
+            res = self.invoke(u'auth', uri, u'GET', data, parse=True)
         except:
-            self.logger.warn('Object %s can not be removed' % objid)
+            self.logger.warn(u'Object %s can not be removed' % objid)
             return False
         
         if len(res) <= 0:
-            self.logger.warn('Object %s can not be removed' % objid)
+            self.logger.warn(u'Object %s can not be removed' % objid)
             return False            
         
         # remove object
-        uri = u'/api/auth/object/%s/' % res[0][0]
-        res = self.invoke(u'auth', uri, 'DELETE', data)
-        self.logger.debug('Remove object: %s:%s %s' % (objtype, objdef, objid))
+        #uri = u'/api/auth/object/%s/' % res[0][0]
+        uri = u'/v1.0/auth/objects/%s/' % res[0][0]
+        res = self.invoke(u'auth', uri, u'DELETE', data, parse=True)
+        self.logger.debug(u'Remove object: %s:%s %s' % (objtype, objdef, objid))
         return res
 
-    def get_permissions(self, objtype, objdef, objid, uid=None, seckey=None):
+    def get_permissions2(self, objtype, objdef, objid, uid=None, seckey=None):
         """Get object permissions
         
         :raise BeehiveApiClientError:
@@ -805,8 +832,22 @@ class BeehiveApiClient(object):
         objid = objid.replace(u'//', u'_')
         uri = u'/api/auth/object/perm/T:%s+D:%s+I:%s/' % (objtype, objdef, objid)
         res = self.invoke(u'auth', uri, 'GET', data)
-        self.logger.debug('Get permission : %s:%s %s' % (objtype, objdef, objid))
+        self.logger.debug(u'Get permission : %s:%s %s' % (objtype, objdef, objid))
         return res
+    
+    def get_permissions(self, objtype, objdef, objid, uid=None, seckey=None):
+        """Get object permissions
+        
+        :raise BeehiveApiClientError:
+        """
+        data = urlencode({u'subsystem':objtype,
+                          u'type':objdef,
+                          u'objid':objid, 
+                          u'size':1000})
+        uri = u'/v1.0/auth/objects/perms/'
+        res = self.invoke(u'auth', uri, u'GET', data, parse=True)
+        self.logger.debug(u'Get permission : %s:%s %s' % (objtype, objdef, objid))
+        return res.get(u'perms', [])
 
     def append_role_permissions(self, role, objtype, objdef, objid, objaction,
                                 uid=None, seckey=None):
@@ -814,12 +855,21 @@ class BeehiveApiClient(object):
         
         :raise BeehiveApiClientError:
         """
-        data = json.dumps({"perm":{"append":[(0, 0, objtype, objdef, "", 
-                                              objid, 0, objaction)], 
-                                   "remove":[]}})
-        uri = u'/api/auth/role/%s/' % role
-        res = self.invoke(u'auth', uri, 'PUT', data)
-        self.logger.debug('Append permission %s:%s %s %s to role %s' % 
+        # data = json.dumps({"perm":{"append":[(0, 0, objtype, objdef, "", 
+        #                                       objid, 0, objaction)], 
+        #                           "remove":[]}})
+        #uri = u'/api/auth/role/%s/' % role
+        data = {
+            u'role':{
+                u'perms':{
+                    u'append':[(0, 0, objtype, objdef, objid, 0, objaction)],
+                    u'remove':[]
+                }
+            }
+        }
+        uri = u'/v1.0/auth/roles/%s/' % role
+        res = self.invoke(u'auth', uri, u'PUT', data, parse=True)
+        self.logger.debug(u'Append permission %s:%s %s %s to role %s' % 
                           (objtype, objdef, objid, objaction, role))
         return res
     
@@ -828,8 +878,9 @@ class BeehiveApiClient(object):
         
         :raise BeehiveApiClientError:
         """
-        uri = u'/api/auth/role/%s/' % name
-        res = self.invoke(u'auth', uri, 'GET', '')
+        #uri = u'/api/auth/role/%s/' % name
+        uri = u'/v1.0/auth/roles/%s/' % name
+        res = self.invoke(u'auth', uri, u'GET', u'')
         self.logger.debug('Get role: %s' % name)
         return res    
     
@@ -838,21 +889,29 @@ class BeehiveApiClient(object):
         
         :raise BeehiveApiClientError:
         """
-        data = json.dumps({"name":name, "description":desc})
-        uri = u'/api/auth/role/'
-        res = self.invoke(u'auth', uri, 'POST', data)
+        #data = json.dumps({"name":name, "description":desc})
+        #uri = u'/api/auth/role/'
+        data = {
+            u'role':{
+                u'name':name,
+                u'desc':desc
+            }
+        }
+        uri = u'/v1.0/auth/roles/'        
+        res = self.invoke(u'auth', uri, u'POST', data, parse=True)
         self.logger.debug('Add role: %s' % str(name))
         return res
 
-    def remove_role(self, name, uid=None, seckey=None):
+    def remove_role(self, oid, uid=None, seckey=None):
         """Remove role
         
         :raise BeehiveApiClientError:
         """
         data = ''
-        uri = u'/api/auth/role/%s/' % name
-        res = self.invoke(u'auth', uri, 'DELETE', data)
-        self.logger.debug('Remove role: %s' % str(name))
+        #uri = u'/api/auth/role/%s/' % oid
+        uri = u'/v1.0/auth/roles/%s/' % oid
+        res = self.invoke(u'auth', uri, u'DELETE', data, parse=True)
+        self.logger.debug(u'Remove role: %s' % oid)
         return res
     
     def get_user(self, name):
@@ -860,9 +919,9 @@ class BeehiveApiClient(object):
         
         :raise BeehiveApiClientError:
         """
-        uri = u'/api/auth/user/%s/' % name
-        res = self.invoke(u'auth', uri, 'GET', '')
-        self.logger.debug('Get user: %s' % name)
+        uri = u'/v1.0/auth/users/%s/' % name
+        res = self.invoke(u'auth', uri, 'GET', '', parse=True)
+        self.logger.debug(u'Get user: %s' % name)
         return res    
     
     def add_user(self, name, password, description, storetype=u'DBUSER',
@@ -872,16 +931,18 @@ class BeehiveApiClient(object):
         :raise BeehiveApiClientError:
         """
         data = {
-            u'username':name,
-            u'password':password,
-            u'description':description, 
-            u'system':False,
-            u'storetype':storetype,
-            u'systype':u'USER',
-            u'active':True
+            u'user':{
+                u'anme':name,
+                u'password':password,
+                u'desc':description, 
+                u'system':False,
+                u'storetype':storetype,
+                u'systype':u'USER',
+                u'active':True
+            }
         } 
-        uri = u'/api/auth/user/'
-        res = self.invoke(u'auth', uri, u'POST', json.dumps(data))
+        uri = u'/v1.0/auth/users/'
+        res = self.invoke(u'auth', uri, u'POST', data, parse=True)
         self.logger.debug(u'Add system user: %s' % str(name))
         return res    
     
@@ -891,13 +952,15 @@ class BeehiveApiClient(object):
         :raise BeehiveApiClientError:
         """
         data = {
-            u'username':name,
-            u'password':password,
-            u'description':description, 
-            u'system':True
+            u'user':{
+                u'name':name,
+                u'password':password,
+                u'desc':description, 
+                u'system':True
+            }
         } 
-        uri = u'/api/auth/user/'
-        res = self.invoke(u'auth', uri, u'POST', json.dumps(data))
+        uri = u'/v1.0/auth/users/'
+        res = self.invoke(u'auth', uri, u'POST', data, parse=True)
         self.logger.debug(u'Add system user: %s' % str(name))
         return res
     
@@ -907,11 +970,13 @@ class BeehiveApiClient(object):
         :raise BeehiveApiClientError:
         """
         data = {
-            u'new_name':new_name,
-            u'new_password':new_pwd,
+            u'user':{
+                u'name':new_name,
+                u'password':new_pwd
+            }
         } 
-        uri = u'/api/auth/user/%s/' % name
-        res = self.invoke(u'auth', uri, u'PUT', json.dumps(data))
+        uri = u'/v1.0/auth/users/%s/' % name
+        res = self.invoke(u'auth', uri, u'PUT', data, parse=True)
         self.logger.debug(u'Update user: %s' % str(name))
         return res
     
@@ -920,19 +985,26 @@ class BeehiveApiClient(object):
         
         :raise BeehiveApiClientError:
         """
-        uri = u'/api/auth/user/%s/' % oid
-        res = self.invoke(u'auth', uri, 'DELETE', u'')
-        self.logger.debug('Remove user: %s' % str(oid))
+        uri = u'/v1.0/auth/users/%s/' % oid
+        res = self.invoke(u'auth', uri, u'DELETE', u'')
+        self.logger.debug(u'Remove user: %s' % str(oid))
         return res
     
-    def append_user_roles(self, user, roles, uid=None, seckey=None):
+    def append_user_roles(self, oid, roles, uid=None, seckey=None):
         """Append roles to user
         
         :raise BeehiveApiClientError:
         """
-        data = json.dumps({u'role':{u'append':roles, u'remove':[]}})
-        uri = u'/api/auth/user/%s/' % user
-        res = self.invoke(u'auth', uri, u'PUT', data)
-        self.logger.debug(u'Append roles %s to user %s' % (roles, user))
+        data = {
+            u'user':{
+                u'roles':{
+                    u'append':roles,
+                    u'remove':[]
+                },
+            }
+        }        
+        uri = u'/v1.0/auth/users/%s/' % oid
+        res = self.invoke(u'auth', uri, u'PUT', data, parse=True)
+        self.logger.debug(u'Append roles %s to user %s' % (roles, oid))
         return res    
     
