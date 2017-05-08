@@ -25,7 +25,8 @@ class SchedulerManager(ApiManager):
         <subsystem> manager ping
         <subsystem> manager stat
         <subsystem> manager report
-        <subsystem> tasks list
+        <subsystem> manager tasks      get available tasks
+        <subsystem> tasks list         get all the task instances
         <subsystem> tasks get <task_id>
         <subsystem> tasks test
         <subsystem> tasks graph <task_id>
@@ -41,12 +42,17 @@ class SchedulerManager(ApiManager):
         self.subsystem = subsystem
         self.logger = logger
         self.msg = None
-    
+        
+        self.sched_headers = [u'name', u'task', u'schedule', u'args', u'kwargs', 
+                              u'options', u'last_run_at', u'total_run_count']
+
+
     def actions(self):
         actions = {
             u'manager.ping': self.ping_task_manager,
             u'manager.stat': self.stat_task_manager,
             u'manager.report': self.report_task_manager,
+            u'manager.tasks': self.registered_tasks,            
             u'tasks.list': self.get_all_tasks,
             u'tasks.get': self.get_task,
             u'tasks.status': self.get_task_status,
@@ -82,17 +88,27 @@ class SchedulerManager(ApiManager):
         self.logger.info(res)
         self.result(res)
     
+    def registered_tasks(self):
+        uri = u'/v1.0/worker/tasks/registered/'
+        res = self._call(uri, u'GET')
+        self.logger.info(res)
+        resp = []
+        for k,v in res[u'tasks'].items():
+            for v1 in v:
+                resp.append({u'worker':k, u'task':v1})
+        self.result(resp, headers=[u'worker', u'task'])    
+    
     def get_all_tasks(self):
         uri = u'/v1.0/worker/tasks/'
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.result(res, headers=[u'id', u'type', u'state', u'name', u'timestamp'])
+        self.result(res, key=u'instances', headers=[u'id', u'type', u'state', u'name', u'timestamp'])
         
     def get_task(self, task_id):
         uri = u'/v1.0/worker/tasks/%s/' % task_id
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.result(res, headers=[u'id', u'type', u'state', u'name', 
+        self.result(res, key=u'instance', headers=[u'id', u'type', u'state', u'name', 
                                   u'timestamp'])
         
     def get_task_status(self, task_id):
@@ -197,24 +213,19 @@ class SchedulerManager(ApiManager):
         uri = u'/v1.0/scheduler/entries/'
         res = self._call(uri, u'GET')
         self.logger.debug(res)
-        self.result(res)
+        self.result(res, key=u'schedules', headers=self.sched_headers)
         
     def get_scheduler_entry(self, name):
         uri = u'/v1.0/scheduler/entry/%s/' % name
         res = self._call(uri, u'GET')
         self.logger.debug(res)
-        self.result(res)        
+        self.result(res, key=u'schedule', headers=self.sched_headers)        
 
-    def create_scheduler_entries(self, name, task, schedule, args):
-        schedule = {
-            u'name':name,
-            u'task':task,
-            u'schedule':json.loads(schedule),
-            u'args':args
-        }
+    def create_scheduler_entries(self, data):
+        data = self.load_config(data)
         uri = u'/v1.0/scheduler/entry/'
-        res = self._call(uri, u'POST', data=schedule)
-        self.result(res)
+        res = self._call(uri, u'POST', data=data)
+        self.result({u'msg':u'Create schedule %s' % data})
 
     def delete_scheduler_entry(self, name):
         data = {u'name':name}

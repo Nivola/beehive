@@ -46,7 +46,6 @@ class PlatformManager(ComponentManager):
         beehive instances [details]
         beehive blacklist
         
-        beehive subsystem <subsystem>
         beehive syncdev <subsystem> <instance>
         beehive deploy <subsystem> <instance>
         beehive undeploy <subsystem> <instance>

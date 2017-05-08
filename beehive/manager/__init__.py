@@ -174,11 +174,6 @@ class ComponentManager(object):
         return res
     
     def __tabularprint(self, data, headers=None, other_headers=[], fields=None):
-        '''if u'count' in data.keys():
-            data.pop(u'count')
-            values = data.values()[0]
-        else:
-            values = data.values()'''
         if not isinstance(data, list):
             values = [data]
         else:

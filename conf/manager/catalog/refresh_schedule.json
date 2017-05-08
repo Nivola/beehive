@@ -1,0 +1,6 @@
+{
+    "name":"refresh_catalogs",
+    "task":"gibboncloudapi.module.catalog.tasks.refresh_catalog",
+    "schedule":{"type":"timedelta","minutes":2},
+    "args":["*", {}]
+}

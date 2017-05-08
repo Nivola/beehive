@@ -419,6 +419,8 @@ class BeehiveApiClient(object):
         # make request
         res = []
         if endpoint is not None:
+            if not isinstance(endpoint, dict):
+                endpoint = self.__parse_endpoint(endpoint)
             proto = endpoint[u'proto']
             host = endpoint[u'host']
             port = endpoint[u'port']

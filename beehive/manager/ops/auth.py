@@ -23,16 +23,8 @@ class AuthManager(ApiManager):
         auth
         
     PARAMS:
-        catalogs list
-        catalogs get <id>
-        catalogs add <name> <zone>
-        catalogs delete <id>
-        
-        endpoints list
-        endpoints get <id>
-        endpoints add <name> <catalog_id> <subsystem> <uri=http://localhost:3030>
-        endpoints delete <id>
-        
+        sessions list
+    
         keyauth domains
         keyauth login <name>@<domain> <password>
         keyauth token <token>
@@ -127,15 +119,7 @@ class AuthManager(ApiManager):
     
     def actions(self):
         actions = {
-            u'catalogs.list': self.get_catalogs,
-            u'catalogs.get': self.get_catalog,
-            u'catalogs.add': self.add_catalog,
-            u'catalogs.delete': self.delete_catalog,
-           
-            u'endpoints.list': self.get_endpoints,
-            u'endpoints.get': self.get_endpoint,
-            u'endpoints.add': self.add_endpoint,
-            u'endpoints.delete': self.delete_endpoint,           
+            u'sessions.list': self.get_sessions,        
            
             u'keyauth.domains': self.login_domains,
             u'keyauth.login': self.login_user,
@@ -672,65 +656,18 @@ class AuthManager(ApiManager):
         print(u'Delete group: %s' % group_id)
     
     #
-    # catalogs
+    # sessions
     #
-    def get_catalogs(self):
-        res = self.client.get_catalogs()
-        self.logger.info(u'Get catalogs: %s' % truncate(res))
-        self.result(res, headers=self.cat_headers)
-    
-    def get_catalog(self, catalog_id):
-        res = self.client.get_catalog(catalog_id)
-        self.logger.info(u'Get catalog: %s' % truncate(res))
-        services = []
-        for k,v in res.get(u'services', {}).items():
-            for v1 in v:
-                services.append({u'service':k, u'endpoint':v1})
-        self.result(res, headers=self.cat_headers)
-        if self.format == u'table':
-            print(u'Services: ')
-            self.result(services, headers=[u'service', u'endpoint'])
-        
-    def add_catalog(self, name, zone):
-        res = self.client.create_catalog(name, zone)
-        self.logger.info(u'Add catalog: %s' % truncate(res))
-        self.result(res)
-        
-    def delete_catalog(self, catalog_id):
-        res = self.client.delete_catalog(catalog_id)
-        self.logger.info(u'Delete catalog: %s' % truncate(res))
-        self.result(res)
-    
-    #
-    # endpoints
-    #    
-    def get_endpoints(self):
-        res = self.client.get_endpoints()
-        self.logger.info(u'Get endpoints: %s' % truncate(res))
-        self.result(res, key=u'endpoints', headers=self.end_headers)
-    
-    def get_endpoint(self, endpoint_id):
-        res = self.client.get_endpoint(endpoint_id)
-        self.logger.info(u'Get endpoint: %s' % truncate(res))
-        self.result(res, key=u'endpoint', headers=self.end_headers)
-        
-    def add_endpoint(self, name, catalog, service, uri):
-        # if endpoint exist update it else create new one
-        try:
-            res = self.client.get_endpoint(name)
-            res = self.client.update_endpoint(name, catalog_id=catalog, 
-                                              name=name, 
-                                              service=service, uri=uri)
-        except Exception as ex:
-            logger.error(ex, exc_info=1)
-            res = self.client.create_endpoint(catalog, name, service, uri)
-        self.logger.info(u'Add endpoint: %s' % truncate(res))
-        self.result(res)
-        
-    def delete_endpoint(self, endpoint_id):
-        res = self.client.delete_endpoint(endpoint_id)
-        self.logger.info(u'Delete endpoint: %s' % truncate(res))
-        self.result(res)
+    def get_sessions(self):
+        uri = u'/v1.0/server/sessions/'
+        res = self._call(uri, u'GET', data=u'')
+        self.logger.info(u'Get sessions: %s' % truncate(res))
+        res = [{u'id':truncate(i[u'sid']),
+                u'ttl':i[u'ttl'],
+                u'oauth2_credentials':i[u'oauth2_credentials']}
+               for i in res[u'sessions']]
+        self.result(res, headers=
+                    [u'sid', u'ttl', u'oauth2_credentials.scopes'])
 
     #
     # simplehttp login
