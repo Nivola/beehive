@@ -765,15 +765,13 @@ class BeehiveApiClient(object):
     #
     # authorization request
     #    
-    def add_object_types(self, objtype, objdef, class_name, 
-                         uid=None, seckey=None):
+    def add_object_types(self, objtype, objdef, uid=None, seckey=None):
         """Add authorization object type
         
         :param uid: identity id
         :param seckey: identity secret key
         :param objtype: object type
         :param objdef: object definition
-        :param class_name: object class
         :raise BeehiveApiClientError:
         """
         #data = json.dumps([(objtype, objdef, class_name)])
@@ -789,7 +787,7 @@ class BeehiveApiClient(object):
         res = self.invoke(u'auth', u'/v1.0/auth/objects/types/', 
                           u'POST', data, parse=True)        
         self.logger.debug(u'Add object type: %s:%s %s' % 
-                          (objtype, objdef, class_name))
+                          (objtype, objdef))
         return res
     
     def add_object(self, objtype, objdef, objid, desc,

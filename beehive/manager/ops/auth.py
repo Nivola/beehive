@@ -664,10 +664,15 @@ class AuthManager(ApiManager):
         self.logger.info(u'Get sessions: %s' % truncate(res))
         res = [{u'id':truncate(i[u'sid']),
                 u'ttl':i[u'ttl'],
-                u'oauth2_credentials':i[u'oauth2_credentials']}
+                u'oauth2_credentials':i[u'oauth2_credentials'],
+                u'oauth2_user':i[u'oauth2_user']}
                for i in res[u'sessions']]
         self.result(res, headers=
-                    [u'sid', u'ttl', u'oauth2_credentials.scopes'])
+                    [u'id', u'ttl', u'oauth2_credentials.scope', 
+                     u'oauth2_credentials.state', 
+                     u'oauth2_credentials.redirect_uri',
+                     u'oauth2_credentials.client_id',
+                     u'oauth2_user.name',])
 
     #
     # simplehttp login
