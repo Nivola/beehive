@@ -58,7 +58,25 @@ class Event(object):
                       dest='%s'>" % (self.id, self.type, creation, self.data, 
                                      self.source, self.dest)
         return res
+    
+    def dict(self):
+        """Return dict representation.
 
+        .. code-block:: python
+        
+            {u'id':.., 
+             u'type':.., 
+             u'creation':.., 
+             u'data':.., 
+             u'source':.., 
+             u'dest':..}        
+        
+        :return: dict
+        """
+        msg = {u'id':self.id, u'type':self.type, u'creation':self.creation, 
+               u'data':self.data, u'source':self.source, u'dest':self.dest}
+        return msg    
+    
     def json(self):
         """Return json representation.
         
@@ -75,10 +93,7 @@ class Event(object):
         
         :return: json string
         """
-        #creation = str2uni(self.creation.strftime("%d-%m-%y %H:%M:%S"))
-        #creation = str2uni(datetime.fromtimestamp(self.creation))
-        msg = {'id':self.id, 'type':self.type, 'creation':self.creation, 
-               'data':self.data, 'source':self.source, 'dest':self.dest}
+        msg = self.dict()
         return json.dumps(msg)
     
 class EventProducer(object):
@@ -91,31 +106,79 @@ class EventProducer(object):
     def _send(self, event_type, data, source, dest):
         raise NotImplementedError()
     
-    def send(self, event_type, data, source, dest):
+    def send(self, event_type, data, source, dest, framework=u'kombu'):
         """Send new event.
         
         :param event_type: type of event to send
         :param str data: data to send
         :param source: event source
         :param dest: event destination
+        :param framework: framework used to manage redis pub sub. 
+            Ex. kombu, simple        
         """
-        gevent.spawn(self._send, event_type, data, source, dest)
+        gevent.spawn(self._send, event_type, data, source, dest, framework)
+        
+    def send_sync(self, event_type, data, source, dest, framework=u'kombu'):
+        """Send sync new event.
+        
+        :param event_type: type of event to send
+        :param str data: data to send
+        :param source: event source
+        :param dest: event destination
+        :param framework: framework used to manage redis pub sub. 
+            Ex. kombu, simple        
+        """
+        self._send(event_type, data, source, dest, framework)          
         
 class EventProducerRedis(EventProducer):
-    def __init__(self, redis_manager, redis_channel):
+    def __init__(self, redis_uri, redis_channel):
         """Redis event producer
         
-        :param redis_manager: redis manager
+        :param redis_uri: redis uri
         :param redis_channel: redis channel
         """
         EventProducer.__init__(self)
         
-        self.redis_manager = redis_manager
+        self.redis_uri = redis_uri
         self.redis_channel = redis_channel
+        # set redis manager
+        host, port, db = parse_redis_uri(redis_uri)
+        self.redis_manager = redis.StrictRedis(
+            host=host, port=int(port), db=int(db))        
+        
+        self.conn = Connection(redis_uri)
+        self.exchange = Exchange(self.redis_channel, type=u'direct',
+                                 delivery_mode=1)
+        self.routing_key = u'%s.key' % self.redis_channel
     
-    def _send(self, event_type, data, source, dest):
+    def _send(self, event_type, data, source, dest, framework):
+        if framework == u'kombu':
+            return self._send_kombu(event_type, data, source, dest)
+        elif framework == u'simple':
+            return self._send_simple(event_type, data, source, dest)        
+            
+    def _send_kombu(self, event_type, data, source, dest):
         try:
-            #self.logger.debug("Get event params: %s, %s, %s, %s" % 
+            event = Event(event_type, data, source, dest)
+            with producers[self.conn].acquire() as producer:
+                msg = event.dict()
+                producer.publish(event.dict(),
+                                 serializer=u'json',
+                                 compression=u'bzip2',
+                                 exchange=self.exchange,
+                                 declare=[self.exchange],
+                                 routing_key=self.routing_key,
+                                 expiration=60,
+                                 delivery_mode=1)
+                self.logger.debug(u'Send event : %s' % msg[u'id'])
+        except exceptions.ConnectionLimitExceeded as ex:
+            self.logger.error(u'Event can not be send: %s' % ex, exc_info=1)
+        except Exception as ex:
+            self.logger.error(u'Event can not be send: %s' % ex, exc_info=1)            
+            
+    def _send_simple(self, event_type, data, source, dest):
+        try:
+            #self.logger.debug('Get event params: %s, %s, %s, %s' % 
             #                  (event_type, data, source, dest))
             # generate event
             event = Event(event_type, data, source, dest)        
@@ -123,11 +186,11 @@ class EventProducerRedis(EventProducer):
             message = event.json()
             # publish message to redis
             self.redis_manager.publish(self.redis_channel, message)
-            self.logger.debug("Send event %s : %s" % (event.id, message))
+            self.logger.debug(u'Send event %s : %s' % (event.id, message))
         except redis.PubSubError as ex:
-            self.logger.error("Event can not be send: %s" % ex)
+            self.logger.error(u'Event can not be send: %s' % ex, exc_info=1)
         except Exception as ex:
-            self.logger.error("Event can not be encoded: %s" % ex)
+            self.logger.error(u'Event can not be encoded: %s' % ex, exc_info=1) 
 
 class EventProducerZmq(EventProducer):
     def __init__(self, host, port):

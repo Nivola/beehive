@@ -8,31 +8,15 @@ import ujson as json
 
 # patch redis socket to use async comunication 
 from time import time
-from gevent.socket import gethostname
+from socket import gethostname
 from flask import Flask, Response
-
-#from flask_admin import Admin
-#from logging.handlers import SysLogHandler
+from os import urandom
 from beecell.logger.helper import LoggerHelper
 from beecell.server.uwsgi_server.wrapper import uwsgi_util
-#from gibbonportal.controller.redis_session import RedisSessionInterface
-#from gibbonportal.controller.auth import AuthController, DbAuth
-#from gibbonportal.controller.auth import SystemUser
-#from gibbonportal.task.manager import JobTable
-#from gibbonportal.model import db
-#from .status import StatusTable
-#from .proxy import ProxyTable
-
 from beecell.db.manager import MysqlManagerError
-#from beecell.flask.redis_session import RedisSessionInterface
-#from beecell.auth import AuthError, DatabaseAuth, LdapAuth, SystemUser
-#from gibboncloud.orchestrator import OrchestratorManager, OrchestratorManagerError
-
-#from beehive.common import ConfigDbManager
-#from beehive.module.auth.model import AuthDbManager
 from beehive.common import ApiManager, ApiManagerError
-#from beehive.module.auth.mod import AuthenticationManager
-from beehive.common import operation
+from beehive.common.data import operation
+from beehive.common.log import ColorFormatter
 
 class BeehiveAppError(Exception): pass
 class BeehiveApp(Flask):
@@ -50,6 +34,9 @@ class BeehiveApp(Flask):
         # set debug mode
         self.debug = False
         
+        # flask secret
+        self.secret_key = urandom(48)         
+        
         self.http_socket = uwsgi_util.opt[u'http-socket']
         self.server_name = gethostname()
         
@@ -57,57 +44,17 @@ class BeehiveApp(Flask):
         self.app_id = uwsgi_util.opt[u'api_id']
         self.log_path = u'/var/log/%s/%s' % (uwsgi_util.opt[u'api_package'], 
                                              uwsgi_util.opt[u'api_env'])
-        
-        ########################################################################
-        # status table section        
-        #self.status = StatusTable()
-        #self.status.init_status_table(500)
-
-        ########################################################################
-        # status table section        
-        #self.proxy_table = ProxyTable()
-        #self.proxy_table.init_proxy_table(100)
-        
-        ########################################################################
-        # job manager section
-        #self.job_table = JobTable()
-        #self.job_table.init_jobs_table(100)
-
-        ########################################################################
-        # Create database connection object
-        #self.db = db
-        #self.db.init_app(self)
-        
-        ########################################################################
-        # security section
-        #self._setup_security()
-
-        #self.admin = Admin(name='Cloud Portal Admin')
-        # Add views here
-        #self.admin.init_app(self)
-        
-        #self.http_timeout = 2
-        #self.http_interval = 2
-        #self.db_uri = None
-        #self.tcp_proxy = None
-        #self.orchestrators = OrchestratorManager()
-        
-        # job manager
-        #self.max_concurrent_jobs = 2
-        #self.job_interval = 2
-        #self.job_timeout = 1200
-        #self.job_manager = None
 
         def error(e):
-            error = {'status':'error', 
-                     'api':'',
-                     'operation':'',
-                     'data':'',
-                     'exception':'',
-                     'code':str(405), 
-                     'msg':'Method Not Allowed'}
+            error = {u'status':u'error', 
+                     u'api':u'',
+                     u'operation':u'',
+                     u'data':u'',
+                     u'exception':u'',
+                     u'code':str(405), 
+                     u'msg':u'Method Not Allowed'}
             return Response(response=json.dumps(error), 
-                            mimetype='application/json', 
+                            mimetype=u'application/json', 
                             status=405)
 
         self._register_error_handler(None, 405, error)
@@ -154,32 +101,27 @@ class BeehiveApp(Flask):
         
         # base logging
         loggers = [self.logger,
-                   logging.getLogger('beehive'),
-                   logging.getLogger('beehive.db'),
-                   logging.getLogger('gibboncloud'),
-                   logging.getLogger('beecell'),
-                   logging.getLogger('beedrones'),
-                   logging.getLogger('beecell')]
+                   logging.getLogger(u'beehive'),
+                   logging.getLogger(u'beehive.db'),
+                   logging.getLogger(u'beecell'),
+                   logging.getLogger(u'beedrones'),
+                   logging.getLogger(u'beehive_resource')]
         LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, 
-                                          '%s/%s.log' % (self.log_path, logname))
-        
-        # async operation logging
-        #loggers = [logging.getLogger('beehive.common.job')]
-        #LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, 
-        #                                  'log/%s.job' % logname)        
+                                          u'%s/%s.log' % (self.log_path, logname),
+                                          formatter=ColorFormatter)      
         
         # transaction and db logging
-        loggers = [logging.getLogger('beehive.util.data'),
-                   logging.getLogger('sqlalchemy.engine'),
-                   logging.getLogger('sqlalchemy.pool')]
+        loggers = [logging.getLogger(u'beehive.util.data'),
+                   logging.getLogger(u'sqlalchemy.engine'),
+                   logging.getLogger(u'sqlalchemy.pool')]
         LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, 
-                                          '%s/%s.db.log' % (self.log_path, logname))
+                                          u'%s/%s.db.log' % (self.log_path, logname))
         
         # performance logging
-        loggers = [logging.getLogger('beecell.perf')]
+        loggers = [logging.getLogger(u'beecell.perf')]
         LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, 
-                                          '%s/%s.watch' % (self.log_path, logname), 
-                                          frmt='%(asctime)s - %(message)s')        
+                                          u'%s/%s.watch' % (self.log_path, logname), 
+                                          frmt=u'%(asctime)s - %(message)s')        
         
         #from openstack import utils
         #utils.enable_logging(debug=True)

@@ -4,10 +4,10 @@ Created on Jan 23, 2017
 @author: io
 '''
 import os
-os.environ['GEVENT_RESOLVER'] = 'ares'
+#os.environ['GEVENT_RESOLVER'] = 'ares'
 #os.environ['GEVENTARES_SERVERS'] = 'ares'
 
-import beecell.server.gevent_ssl
+#import beecell.server.gevent_ssl
 import gevent.monkey
 # apply monkey patch
 gevent.monkey.patch_all()

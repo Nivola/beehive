@@ -3,36 +3,27 @@ Created on Jan 27, 2017
 
 @author: darkbk
 '''
-from datetime import datetime
-import ujson as json
-import logging
-import zmq.green as zmq
-import gevent
-from beecell.simple import id_gen, str2uni
-from beehive.module.catalog.model import CatalogDbManager
-from beehive.common.apimanager import ApiManager
-from beehive.common.data import operation
-from beehive.common.data import TransactionError, QueryError
-from beehive.module.catalog.controller import CatalogEndpoint, Catalog,\
-    CatalogController
+from beecell.simple import id_gen
 from beecell.logger.helper import LoggerHelper
 from signal import signal
 from signal import SIGHUP, SIGABRT, SIGILL, SIGINT, SIGSEGV, SIGTERM, SIGQUIT
-
 from kombu.mixins import ConsumerMixin
-from kombu.log import get_logger as kombu_get_logger
-from kombu.utils import reprcall
 from kombu import Exchange, Queue
-
 from kombu import Connection
-from kombu.utils.debug import setup_logging
+from logging import getLogger, DEBUG
+from beehive.module.catalog.model import CatalogDbManager
+from beehive.common.data import operation
+from beehive.module.catalog.controller import CatalogController, Catalog
+from beehive.module.catalog.common import CatalogEndpoint
+from beecell.db import TransactionError
+from beehive.common.apimanager import ApiManager
 
 class CatalogConsumerError(Exception): pass
 
 class CatalogConsumer(ConsumerMixin):
     def __init__(self, connection, api_manager):
-        self.logger = logging.getLogger(self.__class__.__module__+ \
-                                        u'.'+self.__class__.__name__)
+        self.logger = getLogger(self.__class__.__module__+ \
+                                u'.'+self.__class__.__name__)
         
         self.connection = connection
         self.api_manager = api_manager
@@ -64,7 +55,8 @@ class CatalogConsumer(ConsumerMixin):
                 objid = u'%s//%s' % (catalog_obj.objid, id_gen())
                 res = self.manager.add_endpoint(objid, name, service, desc, 
                                                 catalog, uri, enabled=True)
-                obj = CatalogEndpoint(CatalogController(None), Catalog(None), 
+                controller = CatalogController(None)
+                obj = CatalogEndpoint(controller, Catalog(controller), 
                                       oid=res.id, objid=res.objid, 
                                       name=res.name, desc=res.desc, 
                                       active=res.enabled, model=res)
@@ -128,21 +120,21 @@ def start_catalog_consumer(params, log_path=None):
     #setup_logging(loglevel=u'DEBUG', loggers=[u''])
     
     # internal logger
-    logger = logging.getLogger(u'gibboncloudapi')   
+    logger = getLogger(u'gibboncloudapi')   
     
-    logger_level = logging.DEBUG
+    logger_level = DEBUG
     if log_path is None:
         log_path = u'/var/log/%s/%s' % (params[u'api_package'], 
                                         params[u'api_env'])
     logname = u'%s/%s.catalog.consumer' % (log_path, params[u'api_id'])
     logger_file = u'%s.log' % logname
-    loggers = [logging.getLogger(), logger]
+    loggers = [getLogger(), logger]
     LoggerHelper.rotatingfile_handler(loggers, logger_level, logger_file)
 
     # performance logging
-    loggers = [logging.getLogger(u'beecell.perf')]
+    loggers = [getLogger(u'beecell.perf')]
     logger_file = u'%s/%s.watch' % (log_path, params[u'api_id'])
-    LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, logger_file, 
+    LoggerHelper.rotatingfile_handler(loggers, DEBUG, logger_file, 
                                       frmt=u'%(asctime)s - %(message)s')
 
     # setup api manager

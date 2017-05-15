@@ -3,19 +3,13 @@ Created on Jan 27, 2017
 
 @author: darkbk
 '''
-import ujson as json
-import time
 from logging import getLogger
-import redis
-from beecell.simple import str2uni, id_gen
 import gevent
-from .common import CatalogEndpoint
-
 from kombu.pools import producers
 from kombu import Connection, exceptions
-from kombu import Exchange, Queue
-from kombu.log import get_logger
-from kombu.utils.debug import setup_logging
+from kombu import Exchange
+from beehive.module.catalog.common import CatalogEndpoint
+
     
 class CatalogProducer(object):
     def __init__(self):

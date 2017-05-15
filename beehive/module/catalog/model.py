@@ -5,7 +5,6 @@ Created on Jan 31, 2014
 '''
 import logging
 from datetime import datetime
-from beehive.common.data import transaction, query, operation
 from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from sqlalchemy import create_engine, exc
 from sqlalchemy.ext.declarative import declarative_base
@@ -14,6 +13,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship
 from beecell.db import ModelError
 from uuid import uuid4
+from beehive.common.data import operation, transaction, query
 
 Base = declarative_base()
 
@@ -25,7 +25,7 @@ class Catalog(Base):
     
     id = Column(Integer, primary_key=True)
     uuid = Column(String(50), unique = True)
-    objid = Column(String(400), unique = True)
+    objid = Column(String(400))
     name = Column(String(30), nullable=False)
     desc = Column(String(50), nullable=False)
     zone = Column(String(50), nullable=False)
@@ -50,7 +50,7 @@ class CatalogEndpoint(Base):
     
     id = Column(Integer, primary_key=True)
     uuid = Column(String(50), unique = True)
-    objid = Column(String(400), unique = True)
+    objid = Column(String(400))
     catalog_id = Column(Integer(), ForeignKey('catalog.id'))
     catalog = relationship("Catalog")
     name = Column(String(50), nullable=False, unique=True)

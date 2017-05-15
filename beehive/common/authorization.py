@@ -7,8 +7,6 @@ import logging
 import pandas as pd
 import datetime
 from passlib.hash import sha256_crypt
-from gibboncloudapi.util.data import transaction, query, operation
-from gibboncloudapi.util.data import QueryError
 from beecell.auth import AuthDbManagerError, AbstractAuthDbManager
 from sqlalchemy import Column, Integer, String, Boolean, Table, ForeignKey, DateTime
 from sqlalchemy.orm import relationship, backref
@@ -21,6 +19,7 @@ from beecell.perf import watch
 from beecell.simple import truncate
 from beecell.db import ModelError
 from uuid import uuid4
+from beehive.common.data import operation, query, transaction
 
 Base = declarative_base()
 

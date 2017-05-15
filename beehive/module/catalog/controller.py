@@ -3,16 +3,13 @@ Created on Jan 16, 2014
 
 @author: darkbk
 '''
-from beehive.common.data import QueryError, TransactionError
-from beehive.common.apimanager import ApiController, ApiObject
-from beehive.common.apimanager import ApiManagerError
 from beecell.perf import watch
 from beecell.simple import import_class, truncate, id_gen, str2uni
-from beehive.common.data import distributed_transaction
-from beehive.common.data import distributed_query
-from beehive.module.auth.model import AuthDbManager
-from .model import CatalogDbManager
-from beecell.db import ModelError
+from beecell.db import ModelError, QueryError, TransactionError
+from beehive.common.apiclient import BeehiveApiClientError
+from beehive.common.apimanager import ApiController, ApiManagerError, ApiObject
+from beehive.common.authorization import AuthDbManager
+from beehive.module.catalog.model import CatalogDbManager
 
 class CatalogController(ApiController):
     """Catalog Module controller.
@@ -73,12 +70,11 @@ class CatalogController(ApiController):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)            
 
-    @distributed_transaction
     def add_catalog(self, name, desc, zone):
         """ """
         # check authorization
         objs = self.can('insert', Catalog.objtype, definition=Catalog.objdef)
-        if len(objs) > 0 and objs[Catalog.objdef][0].split('//')[-1] != '*':
+        if len(objs) > 0 and objs[Catalog.objdef.lower()][0].split('//')[-1] != '*':
             raise ApiManagerError('You need more privileges to add catalog', 
                                   code=2000)
         
@@ -108,17 +104,14 @@ class CatalogController(ApiController):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
-    @distributed_query
     def count_all_catalogs(self):
         """Get all catalogs count"""
         return self.manager.count()
 
-    @distributed_query
     def count_all_catalog_services(self):
         """Get all catalog services count"""
         return self.manager.count_services()
 
-    @distributed_query
     def get_catalogs(self, oid=None, objid=None, name=None, zone=None):
         """Get containers.
         
@@ -177,7 +170,7 @@ class CatalogController(ApiController):
         :rtype: list of :class:`Resource`
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """   
-        objs = self.can('view', CatalogEndpoint.objtype, 
+        objs = self.can(u'view', CatalogEndpoint.objtype, 
                         definition=CatalogEndpoint.objdef)
         objset = set(objs[CatalogEndpoint.objdef.lower()])
         
@@ -190,12 +183,12 @@ class CatalogController(ApiController):
                                         desc=i.desc, active=True, model=i) 
                            for i in self.manager.get()}
             except:
-                endpoints = []            
+                endpoints = []
             
             res = []
             for i in endpoints:
                 # create needs
-                needs = self.get_needs(i.objid.split('//'))
+                needs = self.get_needs(i.objid.split(u'//'))
                 
                 # check if needs overlaps perms
                 if self.has_needs(needs, objset) is True:
@@ -221,10 +214,10 @@ class CatalogController(ApiController):
             raise ApiManagerError(ex, code=ex.code)        
         
 class Catalog(ApiObject):
-    objtype = 'directory'
-    objdef = 'Catalog'
-    objuri = 'catalog'
-    objdesc = 'Catalog'
+    objtype = u'directory'
+    objdef = u'Catalog'
+    objuri = u'catalog'
+    objdesc = u'Catalog'
     
     def __init__(self, controller, oid=None, objid=None, name=None, desc=None, 
                  active=None, model=None):
@@ -233,7 +226,7 @@ class Catalog(ApiObject):
                            desc=desc, active=active)
         self.catalog_classes = [CatalogEndpoint]
         self.model = model
-        self.objuri = '/%s/%s/%s' % (self.controller.version, self.objuri, self.oid)
+        self.objuri = u'/%s/%s/%s' % (self.controller.version, self.objuri, self.oid)
         
         if self.model is not None:
             self.zone = self.model.zone
@@ -247,7 +240,6 @@ class Catalog(ApiObject):
     def manager(self):
         return self.controller.manager
 
-    @distributed_query
     def info(self):
         """Get system capabilities.
         
@@ -274,7 +266,6 @@ class Catalog(ApiObject):
             }
         }
 
-    @distributed_query
     def detail(self):
         """Get system details.
         
@@ -333,15 +324,15 @@ class Catalog(ApiObject):
     def set_admin_permissions(self, role_name, args):
         """ """
         try:
-            role = self.dbauth.get_role(name=role_name)[0]
-            perms = self.dbauth.get_permission_by_object(
+            role, total = self.dbauth.get_role(name=role_name)
+            perms, total = self.dbauth.get_permission_by_object(
                                     objid=self._get_value(self.objdef, args),
                                     objtype=None, 
                                     objdef=self.objdef,
                                     action=u'*')            
             
             # set container main permissions
-            self.dbauth.append_role_permissions(role, perms)
+            self.dbauth.append_role_permissions(role[0], perms)
 
             # set catalog child resources permissions
             for catalog_class in self.catalog_classes:
@@ -516,7 +507,7 @@ class Catalog(ApiObject):
         """
         # check authorization
         self.controller.check_authorization(self.objtype, self.objdef, 
-                                            self.objid, 'view')        
+                                            self.objid, u'view')        
         
         try:
             # catalog permissions
@@ -524,7 +515,7 @@ class Catalog(ApiObject):
             # catalog child permissions
             res.extend(self.api_client.get_permissions(self.objtype, 
                                                        CatalogEndpoint.objdef, 
-                                                       self.objid+'//*'))
+                                                       self.objid+u'//*'))
 
             self.logger.debug('Get permissions for catalog %s: %s' % (self.oid, res))
             return res
@@ -534,10 +525,10 @@ class Catalog(ApiObject):
 
 
 class CatalogEndpoint(ApiObject):
-    objtype = 'directory'
-    objdef = 'Catalog.Endpoint'
-    objuri = 'endpoint'
-    objdesc = 'Catalog endpoint'
+    objtype = u'directory'
+    objdef = u'Catalog.Endpoint'
+    objuri = u'endpoint'
+    objdesc = u'Catalog endpoint'
     
     def __init__(self, controller, catalog=None, oid=None, objid=None, name=None, 
                  desc=None, active=None, model=None):
@@ -552,7 +543,7 @@ class CatalogEndpoint(ApiObject):
             self.uuid = self.model.uuid
         
         if self.catalog is not None:
-            self.objuri = '%s/%s/%s' % (self.catalog.objuri, self.objuri, self.oid)
+            self.objuri = u'%s/%s/%s' % (self.catalog.objuri, self.objuri, self.oid)
     
     def __repr__(self):
         return "<%s id='%s' objid='%s' name='%s' catalog='%s'>" % (
@@ -566,8 +557,7 @@ class CatalogEndpoint(ApiObject):
     @property
     def manager(self):
         return self.controller.manager
-    
-    @distributed_query
+
     def info(self):
         """Get endpoint infos.
         
@@ -601,7 +591,6 @@ class CatalogEndpoint(ApiObject):
             }
         }
     
-    @distributed_query
     def detail(self):
         """Get endpoint details.
         
@@ -622,15 +611,15 @@ class CatalogEndpoint(ApiObject):
     def set_admin_permissions(self, role_name, args):
         """ """
         try:
-            role = self.dbauth.get_role(name=role_name)[0]
-            perms = self.dbauth.get_permission_by_object(
+            role, total = self.dbauth.get_role(name=role_name)
+            perms, total = self.dbauth.get_permission_by_object(
                                     objid=self._get_value(self.objdef, args),
                                     objtype=None, 
                                     objdef=self.objdef,
                                     action=u'*')            
             
             # set container main permissions
-            self.dbauth.append_role_permissions(role, perms)
+            self.dbauth.append_role_permissions(role[0], perms)
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
@@ -720,16 +709,17 @@ class CatalogEndpoint(ApiObject):
         """
         # check authorization
         self.controller.check_authorization(self.objtype, self.objdef, 
-                                            self.objid, 'view')        
+                                            self.objid, u'view')
         
         try:
             # organization permissions
             res = self.api_client.get_permissions(self.objtype, self.objdef, 
                                                   self.objid)
 
-            self.logger.debug('Get catalog service %s permissions %s: %s' % 
+            self.logger.debug(u'Get catalog service %s permissions %s: %s' % 
                               (self.name, self.oid, res))
             return res
-        except (TransactionError, QueryError, Exception), ex:
+        except (BeehiveApiClientError, Exception), ex:
             self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=ex.code)
+            raise ApiManagerError(ex, code=ex.code) 
+                

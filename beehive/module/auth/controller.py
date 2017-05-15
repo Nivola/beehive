@@ -4,38 +4,32 @@ Created on Jan 16, 2014
 @author: darkbk
 '''
 import logging
-import pandas as pd
 import binascii
 import pickle
 from re import match
 from datetime import datetime
 from ipaddress import IPv4Address, IPv4Network, AddressValueError
-#from Crypto.PublicKey import RSA
-#from Crypto import Random
-#from Crypto.Hash import SHA256
-#from Crypto.Signature import PKCS1_v1_5
-
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
-
 from beecell.auth import extract
 from beecell.auth import AuthError
 from beecell.perf import watch
-from gibboncloudapi.module.base import ApiController, ApiManagerError, ApiObject
-from beehive.common.data import TransactionError, QueryError
-from beehive.common.data import transaction, query
+from beecell.simple import str2uni, id_gen, truncate
+from socket import gethostbyname
+from beehive.common.apimanager import ApiController, ApiManagerError, ApiObject
+from beecell.db import TransactionError, QueryError
 from beehive.common.data import operation
-from beecell.simple import transaction_id_generator, str2uni, id_gen, truncate
-from beehive.module.auth.model import AuthDbManager
+from beehive.common.authorization import AuthDbManager
 
 class AuthenticationManager(object):
     """Manager used to login and logout user on authentication provider.
     
     """
-    logger = logging.getLogger(u'gibbon.cloudapi')
-    
     def __init__(self, auth_providers):
+        self.logger = logging.getLogger(self.__class__.__module__+ \
+                                        '.'+self.__class__.__name__)        
+        
         self.auth_providers = auth_providers
 
     def __str__(self):
@@ -97,6 +91,8 @@ class AuthenticationManager(object):
 
 class AuthController(ApiController):
     """Auth Module controller.
+    
+    :param module: Beehive module
     """
     version = u'v1.0'    
     
@@ -144,17 +140,35 @@ class AuthController(ApiController):
             raise ApiManagerError(ex, code=ex.code)
     
     @watch
+    def verify_simple_http_credentials(self, user, pwd, user_ip):
+        """Verify simple ahttp credentials.
+        
+        :param user: user
+        :param pwd: password
+        :param user_ip: user ip address
+        :return: identity
+        :raise ApiManagerError:
+        """
+        self.logger.warn(user)
+        self.logger.warn(pwd)
+        self.logger.warn(user_ip)
+        name, domain = user.split(u'@')
+        identity = self.simple_http_login(name, domain, pwd, user_ip)
+
+        return identity    
+    
+    @watch
     def count(self):
         """Count users, groups, roles and objects
         """
         try:
             res = {u'users':self.dbauth.count_user(),
-                   'groups':self.dbauth.count_group(),
-                   'roles':self.dbauth.count_role(),
-                   'objects':self.dbauth.count_object()}
+                   u'groups':self.dbauth.count_group(),
+                   u'roles':self.dbauth.count_role(),
+                   u'objects':self.dbauth.count_object()}
             return res
         except QueryError as ex:
-            raise ApiManagerError(ex, code=ex.code)    
+            raise ApiManagerError(ex, code=ex.code)
     
     #
     # role manipulation methods
@@ -314,7 +328,7 @@ class AuthController(ApiController):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)    
     
-    @transaction
+    @watch
     def add_superadmin_role(self, perms):
         """Add cloudapi admin role with all the required permissions.
         
@@ -333,7 +347,7 @@ class AuthController(ApiController):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
     
-    @transaction
+    @watch
     def add_guest_role(self):
         """Add cloudapi admin role with all the required permissions.
         
@@ -345,7 +359,7 @@ class AuthController(ApiController):
         role = self.add_role(u'Guest', u'Beehive guest role')        
         return role
 
-    @transaction
+    @watch
     def add_app_role(self, name):
         """Add role used by an app that want to connect to cloudapi 
         to get configuration and make admin action.
@@ -516,7 +530,7 @@ class AuthController(ApiController):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)    
     
-    @transaction
+    @watch
     def add_generic_user(self, name, storetype, password=None,
                          description=''):
         """Add cloudapi generic user. A generic user has a default role
@@ -544,7 +558,7 @@ class AuthController(ApiController):
         user.append_role("Guest")
         return user.oid
     
-    @transaction
+    @watch
     def add_system_user(self, name, password=None, description=''):
         """Add cloudapi system user. A system user is used by a module to 
         call the apis of the other modules.
@@ -776,7 +790,7 @@ class AuthController(ApiController):
             identity = self.module.redis_manager.get(self.prefix + uid)
         except Exception as ex:
             self.logger.error("Identity %s retrieve error: %s" % (uid, ex))
-            raise ApiManagerError("Identity %s retrieve error" % uid, code=1014)
+            raise ApiManagerError("Identity %s retrieve error" % uid, code=404)
             
         if identity is not None:
             data = pickle.loads(identity)
@@ -785,7 +799,7 @@ class AuthController(ApiController):
             return data
         else:
             self.logger.error("Identity %s doen't exist or is expired" % uid)
-            raise ApiManagerError("Identity %s doen't exist or is expired" % uid, code=1014)
+            raise ApiManagerError("Identity %s doen't exist or is expired" % uid, code=404)
 
     @watch
     def get_identities(self):
@@ -843,6 +857,7 @@ class AuthController(ApiController):
             
             # create identity
             identity = {u'uid':uid,
+                        u'type':u'keyauth',
                         u'user':user.get_dict(),
                         u'timestamp':timestamp,
                         u'ip':login_ip,
@@ -892,7 +907,7 @@ class AuthController(ApiController):
     # base inner login
     #
     @watch
-    def __validate_params(self, name, domain, password, login_ip):
+    def validate_login_params(self, name, domain, password, login_ip):
         """Validate main login params.
         
         :param name: user name
@@ -904,6 +919,9 @@ class AuthController(ApiController):
         """
         if domain is None:
             domain = u'local'    
+    
+        # set user in thread local variable
+        operation.user = (u'%s@%s' % (name, domain), login_ip, None)    
     
         # Validate input data and login user
         try:
@@ -921,8 +939,9 @@ class AuthController(ApiController):
                 raise ApiManagerError(msg, code=400)
             
             try:
+                login_ip = gethostbyname(login_ip)
                 IPv4Address(str2uni(login_ip))
-            except AddressValueError as ex:
+            except Exception as ex:
                 msg = u'Ip address is not provided or syntax is wrong'
                 self.logger.error(msg, exc_info=1)
                 raise ApiManagerError(msg, code=400)                
@@ -933,7 +952,7 @@ class AuthController(ApiController):
             raise ApiManagerError(ex.value, code=ex.code)
     
     @watch
-    def __check_user(self, name, domain, password, login_ip):
+    def check_login_user(self, name, domain, password, login_ip):
         """Simple http authentication login.
         
         :param name: user name
@@ -950,7 +969,7 @@ class AuthController(ApiController):
             dbuser = self.dbauth.get_user(name=user_name)[0][0]
             # get user attributes
             dbuser_attribs = {a.name:(a.value, a.desc) for a in dbuser.attrib}
-        except QueryError as ex:
+        except (QueryError, Exception) as ex:
             msg = u'User %s does not exist' % user_name
             User(self).event(u'User.get', 
                              {u'name':name, u'domain':domain, 
@@ -959,15 +978,12 @@ class AuthController(ApiController):
             self.logger.error(msg, exc_info=1)
             raise ApiManagerError(msg, code=404)
         
-        # set user in thread local variable
-        operation.user = (u'%s@%s' % (name, domain), login_ip, None)
-        
         self.logger.debug(u'User %s exists' % user_name)
         
         return dbuser, dbuser_attribs   
     
     @watch
-    def __base_login(self, name, domain, password, login_ip, 
+    def base_login(self, name, domain, password, login_ip, 
                      dbuser, dbuser_attribs):
         """Simple http authentication login.
         
@@ -980,77 +996,36 @@ class AuthController(ApiController):
         :return: SystemUser instance, user attributes as dict
         :raise ApiManagerError:        
         """
+        opts = {
+            u'name':name, 
+            u'domain':domain, 
+            u'password':u'xxxxxxx', 
+            u'login_ip':login_ip
+        }        
+        
         # login user
         try:
             user = self.module.authentication_manager.login(name, password, 
                                                             domain, login_ip)
         except (AuthError) as ex:
-            # 1 - Wrong user or password
-            if ex.code == 1:
-                User(self).event(u'user.login.insert', 
-                                 {u'name':name, u'domain':domain, 
-                                  u'password':u'xxxxxxx', u'login_ip':login_ip}, 
-                                 (False, ex))
-                self.logger.error(u'Invalid credentials')
-                raise ApiManagerError(u'Invalid credentials', code=400)
-            # 2 - User is disabled
-            elif ex.code == 2:
-                User(self).event(u'user.login.insert', 
-                                 {u'name':name, u'domain':domain, 
-                                  u'password':u'xxxxxxx', u'login_ip':login_ip}, 
-                                 (False, ex))
-                self.logger.error(u'User is disabled')
-                raise ApiManagerError(u'User is disabled', code=400)
-            # 3 - Password is expired
-            elif ex.code == 3:
-                User(self).event(u'user.login.insert', 
-                                 {u'name':name, u'domain':domain, 
-                                  u'password':u'xxxxxxx', u'login_ip':login_ip}, 
-                                 (False, ex))
-                self.logger.error(u'Password is expired')
-                raise ApiManagerError(u'Password is expired', code=400)
-            # 7 - Connection error
-            elif ex.code == 7:
-                User(self).event(u'user.login.insert', 
-                                 {u'name':name, u'domain':domain, 
-                                  u'password':u'xxxxxxx', u'login_ip':login_ip}, 
-                                 (False, ex))
-                self.logger.error(u'Connection error')
-                raise ApiManagerError(u'Connection error', code=500)
-            # 10 - Domain error
-            elif ex.code == 7:
-                User(self).event(u'user.login.insert', 
-                                 {u'name':name, u'domain':domain, 
-                                  u'password':u'xxxxxxx', u'login_ip':login_ip}, 
-                                 (False, ex))
-                self.logger.error(ex.desc)
-                raise ApiManagerError(ex.desc, code=400)
-            # 0 - Not defined
-            else:
-                User(self).event(u'user.login.insert', 
-                                 {u'name':name, u'domain':domain, 
-                                  u'password':u'xxxxxxx', u'login_ip':login_ip}, 
-                                 (False, ex))
-                self.logger.error(ex.desc)
-                raise ApiManagerError(ex.desc, code=400)
+            User(self).event(u'login', opts, (False, ex.desc))
+            self.logger.error(ex.desc)
+            raise ApiManagerError(ex.desc, code=401)
         
         self.logger.info(u'Login user: %s' % user)
         
         # append attributes, roles and perms to SystemUser
         try:
             # set user attributes
-            self._set_user_attribs(user, dbuser_attribs)
+            #self._set_user_attribs(user, dbuser_attribs)
             # set user permission
             self._set_user_perms(dbuser, user)
             # set user roles
             self._set_user_roles(dbuser, user)
         except QueryError as ex:
-            User(self).event(u'user.login.insert', 
-                             {u'name':name, u'domain':domain, 
-                              u'password':u'xxxxxxx', u'login_ip':login_ip}, 
-                             (False, ex.desc))
+            User(self).event(u'login', opts, (False, ex.desc))
             self.logger.error(ex.desc)
-            raise ApiManagerError(ex.desc, code=400)
+            raise ApiManagerError(ex.desc, code=401)
         
         return user, dbuser_attribs
     #
@@ -1076,14 +1051,14 @@ class AuthController(ApiController):
         user_name = u'%s@%s' % (name, domain)
         
         # validate input params
-        self.__validate_params(name, domain, password, login_ip)
+        self.validate_login_params(name, domain, password, login_ip)
         
         # check user
-        dbuser, dbuser_attribs = self.__check_user(name, domain, 
+        dbuser, dbuser_attribs = self.check_login_user(name, domain, 
                                                    password, login_ip)        
         
         # check user has authentication filter
-        auth_filters = dbuser_attribs.get(u'auth-filters', u'').split(u',')
+        auth_filters = dbuser_attribs.get(u'auth-filters', (u'', None))[0].split(u',')
         if u'simplehttp' not in auth_filters:
             msg = u'Simple http authentication is not allowed for user %s' % \
                   user_name
@@ -1092,7 +1067,7 @@ class AuthController(ApiController):
             raise ApiManagerError(msg, code=401)
         
         # check user ip is in allowed cidr
-        auth_cidrs = dbuser_attribs.get(u'auth-cidrs', u'').split(u',')
+        auth_cidrs = dbuser_attribs.get(u'auth-cidrs', u'')[0].split(u',')
         allowed = False
         for auth_cidr in auth_cidrs:
             allowed_cidr = IPv4Network(str2uni(auth_cidr))
@@ -1109,10 +1084,11 @@ class AuthController(ApiController):
             raise ApiManagerError(msg, code=401)            
         
         # login user
-        user, attrib = self.__base_login(name, domain, password, login_ip, 
+        user, attrib = self.base_login(name, domain, password, login_ip, 
                                          dbuser, dbuser_attribs)
         
         res = {u'uid':id_gen(20),
+               u'type':u'simplehttp',
                u'user':user.get_dict(),
                u'timestamp':datetime.now().strftime(u'%y-%m-%d-%H-%M')}        
         
@@ -1135,16 +1111,16 @@ class AuthController(ApiController):
         :raise ApiManagerError:
         """
         # validate input params
-        self.__validate_params(name, domain, password, login_ip)
+        self.validate_login_params(name, domain, password, login_ip)
         
         # check user
-        dbuser, dbuser_attribs = self.__check_user(name, domain, 
+        dbuser, dbuser_attribs = self.check_login_user(name, domain, 
                                                    password, login_ip)        
         
         # check user attributes
         
         # login user
-        user, attrib = self.__base_login(name, domain, password, login_ip, 
+        user, attrib = self.base_login(name, domain, password, login_ip, 
                                          dbuser, dbuser_attribs)
         
 
@@ -1260,15 +1236,15 @@ class AuthObject(ApiObject):
     def set_admin_permissions(self, role_name, args):
         """ """
         try:
-            role = self.dbauth.get_role(name=role_name)[0]
-            perms = self.dbauth.get_permission_by_object(
+            role, total = self.dbauth.get_role(name=role_name)
+            perms, total = self.dbauth.get_permission_by_object(
                                     objid=self._get_value(self.objdef, args),
                                     objtype=None, 
                                     objdef=self.objdef,
                                     action=u'*')            
             
             # set container main permissions
-            self.dbauth.append_role_permissions(role, perms)
+            self.dbauth.append_role_permissions(role[0], perms)
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
@@ -1336,7 +1312,6 @@ class Objects(AuthObject):
         """
         # verify permissions
         self.controller.can(u'insert', self.objtype, definition=self.objdef)
-        
         try:
             data = [(i[u'subsystem'], i[u'type']) for i in obj_types]
             res = self.dbauth.add_object_types(data)
@@ -1751,7 +1726,7 @@ class Role(AuthObject):
                             desc=desc, active=active, model=model)
         
         if self.model is not None:
-            self.uuid = self.model.uuid        
+            self.uuid = self.model.uuid
 
     @watch
     def info(self):
@@ -1765,8 +1740,10 @@ class Role(AuthObject):
         self.controller.check_authorization(self.objtype, self.objdef, 
                                             self.objid, u'view')
            
-        creation_date = str2uni(self.model.creation_date.strftime(u'%d-%m-%y %H:%M:%S"'))
-        modification_date = str2uni(self.model.modification_date.strftime(u'%d-%m-%y %H:%M:%S"'))   
+        creation_date = str2uni(self.model.creation_date\
+                                .strftime(u'%d-%m-%y %H:%M:%S'))
+        modification_date = str2uni(self.model.modification_date\
+                                    .strftime(u'%d-%m-%y %H:%M:%S'))   
         return {
             u'id':self.oid, 
             u'uuid':self.uuid,    
@@ -1988,8 +1965,10 @@ class User(AuthObject):
         self.controller.check_authorization(self.objtype, self.objdef, 
                                             self.objid, u'view')
            
-        creation_date = str2uni(self.model.creation_date.strftime(u'%d-%m-%y %H:%M:%S"'))
-        modification_date = str2uni(self.model.modification_date.strftime(u'%d-%m-%y %H:%M:%S"'))
+        creation_date = str2uni(self.model.creation_date\
+                                .strftime(u'%d-%m-%y %H:%M:%S'))
+        modification_date = str2uni(self.model.modification_date\
+                                    .strftime(u'%d-%m-%y %H:%M:%S'))
         #attrib = self.get_attribs()
         return {
             u'id':self.oid,
@@ -2401,8 +2380,10 @@ class Group(AuthObject):
         self.controller.check_authorization(self.objtype, self.objdef, 
                                             self.objid, u'view')
            
-        creation_date = str2uni(self.model.creation_date.strftime(u'%d-%m-%y %H:%M:%S"'))
-        modification_date = str2uni(self.model.modification_date.strftime(u'%d-%m-%y %H:%M:%S"'))
+        creation_date = str2uni(self.model.creation_date\
+                                .strftime(u'%d-%m-%y %H:%M:%S'))
+        modification_date = str2uni(self.model.modification_date\
+                                    .strftime(u'%d-%m-%y %H:%M:%S'))
         #attrib = self.get_attribs()
         return {
             u'id':self.oid,

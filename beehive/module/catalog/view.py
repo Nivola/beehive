@@ -4,12 +4,10 @@ Created on Jan 12, 2017
 @author: darkbk
 """
 from re import match
-from flask import request, send_from_directory
-from beecell.simple import id_gen, import_class, get_value
-from beehive.common.data import operation
-from beehive.common.apimanager import ApiView, ApiManagerError
-#from gibboncloudapi.common import JobManagerError
+from flask import request
+from beecell.simple import get_value
 from beecell.simple import get_attrib
+from beehive.common.apimanager import ApiView, ApiManagerError
 
 class CatalogApiView(ApiView):
     def get_catalog(self, controller, oid):

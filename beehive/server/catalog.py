@@ -17,7 +17,7 @@ import sys, os
 import ConfigParser
 from collections import OrderedDict
 
-if __name__ == '__main__':
+if __name__ == u'__main__':
     virtualenv = sys.argv[1:][0]
     config_file = sys.argv[1:][1]
 
