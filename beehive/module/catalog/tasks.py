@@ -5,6 +5,11 @@ Created on May 5, 2017
 '''
 from celery.utils.log import get_task_logger
 from beehive.common.apiclient import BeehiveApiClient
+from beehive.common.task.job import Job, task_local, job, JobTask, job_task
+from beehive.module.catalog.controller import Catalog
+from beehive.module.catalog.common import CatalogEndpoint
+from beehive.common.task.manager import task_manager
+from beehive.common.task.util import end_task, start_task
 
 logger = get_task_logger(__name__)
 
@@ -18,6 +23,10 @@ class CatalogJob(Job):
     :param dict kwargs: Free job params passed as dict
     """
     abstract = True
+    ops = [
+        Catalog,
+        CatalogEndpoint,
+    ]
     
     def __init__(self, *args, **kwargs):
         Job.__init__(self, *args, **kwargs)
@@ -33,28 +42,6 @@ class CatalogJob(Job):
         endpoints = task_local.controller.get_endpoints(oid=oid)
         logger.debug(u'Get endpoints: %s' % endpoints)
         return endpoints
-    
-    def get_operation_id(self, objdef):
-        """
-        """
-        temp = objdef.split(u'.')
-        ids = [u'*' for i in temp]
-        return u'//'.join(ids)
-    
-    def set_operation(self):
-        """
-        """
-        ops = [
-            Catalog,
-            CatalogEndpoint,
-        ]
-        
-        operation.perms = []
-        for op in ops:
-            perm = (1, 1, op.objtype, op.objdef,
-                    self.get_operation_id(op.objdef), 1, u'*')
-            operation.perms.append(perm)
-        logger.debug(u'Set permissions: %s' % operation.perms)
 
 class CatalogJobTask(JobTask):
     """CatalogJobTask class.
@@ -63,6 +50,10 @@ class CatalogJobTask(JobTask):
     :param dict kwargs: Free job params passed as dict          
     """
     abstract = True
+    ops = [
+        Catalog,
+        CatalogEndpoint,
+    ]
     
     def __init__(self, *args, **kwargs):
         JobTask.__init__(self, *args, **kwargs)
@@ -89,38 +80,7 @@ class CatalogJobTask(JobTask):
         uri = endpoint.model.uri
         res = self.apiclient.ping(endpoint=uri)
         logger.warn(u'Ping endpoint %s: %s' % (uri, res))
-        return res    
-    
-    def remove_endpoint(self, endpoint):
-        """Remove endpoint
-        
-        :param endpoint: CatalogEndpoint instance
-        """
-        res = endpoint.delete()
-        logger.debug(u'Delete endpoint: %s' % endpoint.oid)
-        return res
-    
-    def get_operation_id(self, objdef):
-        """
-        """
-        temp = objdef.split(u'.')
-        ids = [u'*' for i in temp]
-        return u'//'.join(ids)
-    
-    def set_operation(self):
-        """
-        """
-        ops = [
-            Catalog,
-            CatalogEndpoint,
-        ]
-        
-        operation.perms = []
-        for op in ops:
-            perm = (1, 1, op.objtype, op.objdef,
-                    self.get_operation_id(op.objdef), 1, u'*')
-            operation.perms.append(perm)
-        logger.debug(u'Set permissions: %s' % operation.perms)        
+        return res      
 
 #
 # catalog refresh tasks
@@ -161,7 +121,7 @@ def refresh_catalog(self, objid, params):
     for endpoint in endpoints:
         g_endpoints.append(ping_endpoint.si(ops, endpoint.oid))
     
-    create_job([
+    Job.create([
         end_task,
         g_endpoints,
         start_task,

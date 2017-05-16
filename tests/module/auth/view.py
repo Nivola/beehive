@@ -4,14 +4,14 @@ Created on Sep 2, 2013
 @author: darkbk
 '''
 from tests.test_util import run_test, CloudapiTestCase
-import ujson as json
+import json
 import unittest
-from beehive.util.auth import AuthClient
-import urllib
+import tests.test_util
 
-uid = None
 seckey = None
 objid = None
+
+obj = 31813
 
 class AuthTestCase(CloudapiTestCase):
     """To execute this test you need a cloudstack instance.
@@ -19,660 +19,542 @@ class AuthTestCase(CloudapiTestCase):
     def setUp(self):
         CloudapiTestCase.setUp(self)
         
-        self.auth_client = AuthClient()
+        #self.auth_client = AuthClient()
         self.api_id = u'api'
-        self.user = u'admin1@local'
+        self.user = u'admin@local'
+        self.user1 = u'camunda@local'
+        self.ip = u'158.102.160.234'
         self.pwd = u'testlab'
+        self.pwd1 = u'camunda'
+        self.baseuri = u'/v1.0/keyauth'
+        self.baseuri1 = u'/v1.0/simplehttp'
+        self.baseuri2 = u'/v1.0/auth'
+        self.credentials = u'%s:%s' % (self.user1, self.pwd1)
         
     def tearDown(self):
         CloudapiTestCase.tearDown(self)
+    
+    #
+    # simplehttp
+    #
+    def test_get_simple_http_login_domains(self):
+        uri = u'%s/login/domains/' % self.baseuri1
+        res = self.invoke_no_sign(u'auth', uri, u'GET', data='')
+        self.logger.info(json.dumps(res, indent=4))
         
+    def test_get_simple_http_users(self):
+        ofilter = {u'page':0, u'size':5, u'order':u'ASC', u'field':u'name'}
+        uri = u'/v1.0/auth/users/'
+        res = self.invoke(u'auth', uri, u'GET', data=u'', filter=ofilter,
+                          auth_method=u'simplehttp', 
+                          credentials=self.credentials)
+        self.logger.info(json.dumps(res, indent=4))
+    
+    #
+    # keyauth
+    #
     def test_get_login_domains(self):
-        res = self.invoke('auth','/api/auth/login/domain/', 'GET', 
-                                         data='',
-                                         headers={'Accept':'json'})     
+        uri = u'%s/login/domains/' % self.baseuri
+        res = self.invoke_no_sign(u'auth', uri, u'GET', data='')
+        self.logger.info(json.dumps(res, indent=4))   
 
     def test_refresh(self):
-        global uid, seckey
-        sign = self.auth_client.sign_request(seckey, '/api/auth/login/refresh/')
-        self.invoke('auth','/api/auth/login/refresh/', 'PUT', 
-                                   data='',
-                                   headers={'Accept':'json',
-                                            'uid':uid,
-                                            'sign':sign})
+        uri = u'%s/login/refresh/' % self.baseuri
+        res = self.invoke(u'auth', uri, u'PUT', data='')
+        self.logger.info(json.dumps(res, indent=4))
 
     def test_exist_identity(self):
-        global uid, seckey
-        res = self.invoke('auth','/api/auth/login/%s/' % uid, 'GET', 
-                                         data='',
-                                         headers={'Accept':'json'})
+        uri = u'%s/login/%s/' % (self.baseuri, tests.test_util.uid)
+        res = self.invoke(u'auth', uri, u'GET', data='')
+        self.logger.info(json.dumps(res, indent=4))
 
+    #
     # identity
-    def test_get_identities(self):
-        global uid, seckey
-                
+    #
+    def test_get_identities(self):      
         data = ''
-        uri = '/api/auth/identity/'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'GET', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+        uri = u'%s/identities/' % self.baseuri
+        res = self.invoke(u'auth', uri, u'GET', data=data)
+        self.logger.info(json.dumps(res, indent=4))
 
     def test_get_identity(self):
-        global uid, seckey
-                
         data = ''
-        uri = '/api/auth/identity/%s/' % uid
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'GET', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})   
+        uri = u'%s/identities/%s/' % (self.baseuri, tests.test_util.uid)
+        res = self.invoke(u'auth', uri, u'GET', data=data)
+        self.logger.info(json.dumps(res, indent=4))
 
     def test_delete_identity(self):
-        global uid, seckey
-                
         data = ''
-        identity = 'ozIMohWioskVIh9PYyIC'
-        uri = '/api/auth/identity/%s/' % identity
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'DELETE', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
-
+        identity = u'9sglCzsNTUECVYkC5YDZ'
+        uri = u'%s/identities/%s/' % (self.baseuri, identity)
+        res = self.invoke(u'auth', uri, u'DELETE', data=data)
+        self.logger.info(json.dumps(res, indent=4))
+        
+    #
     # objects
+    #
     def test_get_objects(self):
-        global uid, seckey
-                
-        data = ''
-        uri = '/api/auth/object/'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'GET', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+        uri = u'/v1.0/auth/objects/'
+        ofilter = {u'page':0, u'size':20, u'order':u'ASC', u'field':u'type'}
+        res = self.invoke(u'auth', uri, u'GET', data=u'', filter=ofilter)
+        self.logger.info(json.dumps(res, indent=4))
 
     def test_get_objects_by_id(self):
-        global uid, seckey
-                
-        data = ''
-        uri = '/api/auth/object/%s/' % 22
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'GET', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+        uri = u'/v1.0/auth/objects/%s/' % 31600
+        res = self.invoke(u'auth', uri, u'GET', data=u'')
+        self.logger.info(json.dumps(res, indent=4))
 
-    def test_get_objects_by_value(self):
-        global uid, seckey
-                
-        data = ''
-        uri = '/api/auth/object/V:%s/' % ('*').replace('//', '--')
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'GET', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+    def test_get_objects_by_objid(self):
+        uri = u'/v1.0/auth/objects/'
+        ofilter = {u'objid':u'754aee5c9ba528024e40//ccc524e70ba5c7372592//*'}
+        res = self.invoke(u'auth', uri, u'GET', data=u'', filter=ofilter)
+        self.logger.info(json.dumps(res, indent=4))
 
-    def test_get_objects_by_value_empty(self):
-        global uid, seckey
-                
-        data = ''
-        uri = '/api/auth/object/V:aprrrr/'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'GET', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+    def test_get_objects_by_subsystem(self):
+        uri = u'/v1.0/auth/objects/'
+        ofilter = {u'subsystem':u'auth'}
+        res = self.invoke(u'auth', uri, u'GET', data=u'', filter=ofilter)
+        self.logger.info(json.dumps(res, indent=4))
 
     def test_get_objects_by_type(self):
-        global uid, seckey
-                
-        data = ''
-        uri = '/api/auth/object/T:auth/'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'GET', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+        uri = u'/v1.0/auth/objects/'
+        ofilter = {u'type':u'openstack'}
+        res = self.invoke(u'auth', uri, u'GET', data=u'', filter=ofilter)
+        self.logger.info(json.dumps(res, indent=4))
 
-    def test_get_objects_by_definition(self):
-        global uid, seckey
-                
-        data = ''
-        uri = '/api/auth/object/D:cloudstack.org.grp.vm/'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'GET', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
-
-    def test_get_object_permissions(self):
-        global uid, seckey
-                
-        data = ''
-        uri = '/api/auth/object/perm/74/'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'GET', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
-
-    def test_get_object_permissions_with_filter(self):
-        global uid, seckey
-                
-        data = ''
-        uri = '/api/auth/object/perm/T:resource+D:None+I:529857882_638138605_646335961_*/'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'GET', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
-
-    def test_get_all_permissions(self):
-        global uid, seckey
-                
-        data = ''
-        uri = '/api/auth/object/perm/'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'GET', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+    def test_get_objects_by_type_and_objid(self):
+        uri = u'/v1.0/auth/objects/'
+        ofilter = {u'type':u'Role', u'objid':u'prova'}
+        res = self.invoke(u'auth', uri, u'GET', data=u'', filter=ofilter)
+        self.logger.info(json.dumps(res, indent=4))
 
     def test_add_object(self):
-        global uid, seckey
-        
-        # [(objtype, definition, objid), (objtype, definition, objid)]
-        data = json.dumps([("resource", "vsphere.dc.dvs.dvp", "529857882//638138605//646335961//*", '')])
-        #data = json.dumps([("auth", "role", "1234566//73838", "prova desc")])
-        uri = '/api/auth/object/'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'POST', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
-
-    def test_get_objects_by_definition_and_value(self):
-        global uid, seckey, objid
-                
-        data = ''
-        uri = '/api/auth/object/D:cloudstack.org.grp.vm/V:%s/' % ('csi//*//*//*')#.replace('//', '--')
-        uri = '/api/auth/object/T:auth/D:role/I:%s/' % ('725563892')
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        res = self.invoke('auth',uri, 'GET', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
-        objid = res['response'][0][0]
+        global obj
+        data = {
+            u'objects':[
+                {
+                    u'subsystem':u'auth', 
+                    u'type':u'Role', 
+                    u'objid':u'prova', 
+                    u'desc':u'prova'        
+                }
+            ]
+        }
+        uri = u'/v1.0/auth/objects/'
+        res = self.invoke(u'auth', uri, u'POST', data=data)
+        self.logger.info(json.dumps(res, indent=4))
+        obj = res[u'objects'][0][u'id']
 
     def test_del_object(self):
-        global uid, seckey, objid
-        
-        data = ''
-        uri = '/api/auth/object/%s/' % objid
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'DELETE', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+        global obj
+        uri = u'/v1.0/auth/objects/%s/' % obj
+        res = self.invoke(u'auth', uri, u'DELETE', data=u'')
+        self.logger.info(json.dumps(res, indent=4))
 
+    #
+    # object permissions
+    #
+    def test_get_object_permissions(self):
+        ofilter = {u'page':0, u'size':20, u'order':u'ASC', u'field':u'type',
+                   u'subsystem':u'resource', u'type':u'Container.CustomResource'}
+        uri = u'/v1.0/auth/objects/perms/'
+        res = self.invoke(u'auth', uri, u'GET', data=u'', filter=ofilter)
+        self.logger.info(json.dumps(res, indent=4))       
+    
+    def test_get_object_permission(self):
+        uri = u'/v1.0/auth/objects/perms/%s/' % 31747
+        res = self.invoke(u'auth', uri, u'GET', data=u'')
+        self.logger.info(json.dumps(res, indent=4))
+
+    def test_get_object_permissions_with_filter(self):
+        ofilter = {u'order':u'ASC', u'field':u'subsystem'}
+        ofilter = {u'objid':u'a3ac12fa3e9a72b75a39//fa4e5d2ab9505468748d//d15630aeddcb982d425d'}
+        uri = u'/v1.0/auth/objects/perms/'
+        res = self.invoke(u'auth', uri, u'GET', data=u'', filter=ofilter)
+        self.logger.info(json.dumps(res, indent=4)) 
+
+    #
+    # object type
+    #
     def test_get_object_types(self):
-        global uid, seckey
-                
-        data = ''
-        uri = '/api/auth/object/type/'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'GET', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
-
-    # type
+        uri = u'/v1.0/auth/objects/types/'
+        res = self.invoke(u'auth', uri, u'GET', data=u'')
+        self.logger.info(json.dumps(res, indent=4))
+    
+    def test_filter_object_types(self):
+        ofilter = {u'order':u'ASC', u'field':u'type', 
+                   u'subsystem':u'resource'}
+        uri = u'/v1.0/auth/objects/types/'
+        res = self.invoke(u'auth', uri, u'GET', data=u'', filter=ofilter)
+        self.logger.info(json.dumps(res, indent=4))    
+    
     def test_add_object_type(self):
-        global uid, seckey
-        
-        data = json.dumps([('resource', 'orchestrator.org.area.prova', 'ProvaClass')])
-        uri = '/api/auth/object/type/'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'POST', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
-
-    def test_get_object_type(self):
-        global uid, seckey, objid
-                
-        data = ''
-        uri = '/api/auth/object/type/D:orchestrator.org.area.prova/'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        res = self.invoke('auth',uri, 'GET', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
-        objid = res['response'][0][0]
+        data = {
+            u'object-types':[
+                {
+                    u'subsystem':u'prova',
+                    u'type':u'prova',
+                }
+            ]
+        }
+        uri = u'/v1.0/auth/objects/types/'
+        res = self.invoke(u'auth', uri, u'POST', data=data)
+        self.logger.info(json.dumps(res, indent=4))
 
     def test_del_object_type(self):
-        global uid, seckey, objid
-        
-        data = ''
-        uri = '/api/auth/object/type/%s/' % objid
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'DELETE', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+        uri = u'/v1.0/auth/objects/types/%s/' % 883
+        res = self.invoke(u'auth', uri, u'DELETE', data=u'')
+        self.logger.info(json.dumps(res, indent=4))
 
+    #
     # actions
+    #
     def test_get_object_actions(self):
-        global uid, seckey
-                
-        data = ''
-        uri = '/api/auth/object/action/'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'GET', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
-
-    # users
-    def test_get_authentication_domains(self):
-        global uid, seckey
-                
-        data = ''
-        uri = '/api/auth/user/domain/'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'GET', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})    
+        uri = u'/v1.0/auth/objects/actions/'
+        res = self.invoke(u'auth', uri, u'GET', data=u'')
+        self.logger.info(json.dumps(res, indent=4))
     
+    #
+    # users
+    #
     def test_get_users(self):
-        global uid, seckey
-                
-        data = ''
-        uri = '/api/auth/user/'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'GET', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+        ofilter = {u'page':0, u'size':5, u'order':u'ASC', u'field':u'name'}
+        uri = u'/v1.0/auth/users/'
+        res = self.invoke(u'auth', uri, u'GET', data=u'', filter=ofilter)
+        self.logger.info(json.dumps(res, indent=4))
+        
     def test_get_user(self):
-        global uid, seckey
-                
-        data = ''
-        uri = '/api/auth/user/%s/' % 4
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'GET', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+        uri = u'/v1.0/auth/users/%s/' % 31
+        res = self.invoke(u'auth', uri, u'GET', data=u'')
+        self.logger.info(json.dumps(res, indent=4))
 
-    def test_get_user2(self):
-        global uid, seckey
-                
-        data = ''
-        uri = '/api/auth/user/portal222/'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'GET', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+    def test_get_user_perms(self):
+        ofilter = {u'page':0, u'size':5, u'order':u'ASC', u'field':u'id',
+                   u'user':31}
+        uri = u'/v1.0/auth/objects/perms/'
+        res = self.invoke(u'auth', uri, u'GET', data=u'', filter=ofilter)
+        self.logger.info(json.dumps(res, indent=4))
+        
+    def test_get_user_roles(self):
+        ofilter = {u'user':u'prova5@local'}
+        uri = u'/v1.0/auth/roles/'
+        res = self.invoke(u'auth', uri, u'GET', data=u'', filter=ofilter)
+        self.logger.info(json.dumps(res, indent=4))
+        
+    def test_get_user_groups(self):
+        ofilter = {u'user':u'admin@local'}
+        uri = u'/v1.0/auth/groups/'
+        res = self.invoke(u'auth', uri, u'GET', data=u'', filter=ofilter)
+        self.logger.info(json.dumps(res, indent=4))
 
-    def test_get_users_by_role(self):
-        global uid, seckey
-                
-        data = ''
-        uri = '/api/auth/role/%s/user/' % 'ApiSuperadmin'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'GET', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+    def test_get_user_attribs(self):
+        uri = u'/v1.0/auth/users/%s/attributes/' % u'prova5@local'
+        res = self.invoke(u'auth', uri, u'GET', data=u'')
+        self.logger.info(json.dumps(res, indent=4))
 
     def test_get_user_can(self):
-        global uid, seckey
-
         user = 'test1@local'
         action = 'view'
         obj_type = 'cloudapi.orchestrator.org.area.vm'
-                        
-        data = ''
-        uri = '/api/auth/user/%s/can/%s:%s/' % (user, obj_type, action)
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'GET', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+
+        uri = u'/v1.0/auth/users/%s/can/%s:%s/' % (user, obj_type, action)
+        res = self.invoke(u'auth', uri, u'GET', data=u'')
+        self.logger.info(json.dumps(res, indent=4))
 
     def test_add_user(self):
-        global uid, seckey
-        
-        data = json.dumps({'username':'prova@local', 
-                           'storetype':'DBUSER',
-                           'systype':'USER',
-                           'active':True, 
-                           'password':'prova', 
-                           'description':'',
-                           'generic':False})       
-                 
-        uri = '/api/auth/user/'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'POST', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+        data = {
+            u'user':{
+                u'name':u'prova5@local', 
+                u'storetype':u'DBUSER',
+                u'systype':u'USER',
+                u'active':True, 
+                u'password':u'prova', 
+                u'desc':''
+            }
+        } 
+        uri = u'/v1.0/auth/users/'
+        res = self.invoke(u'auth', uri, u'POST', data=data)
+        self.logger.info(json.dumps(res, indent=4))
 
     def test_add_generic_user(self):
-        global uid, seckey
-        
-        data = json.dumps({'username':'prova4@local', 
-                           'storetype':'DBUSER',
-                           'password':'prova', 
-                           'description':'',
-                           'generic':True})       
-                 
-        uri = '/api/auth/user/'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'POST', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+        data = {
+            u'user':{
+                u'name':u'prova53@local', 
+                u'storetype':u'DBUSER',
+                u'password':u'prova', 
+                u'desc':u'',
+                u'generic':True}
+        }
+        uri = u'/v1.0/auth/users/'
+        res = self.invoke(u'auth', uri, u'POST', data=data)
+        self.logger.info(json.dumps(res, indent=4))
 
     def test_add_system_user(self):
-        global uid, seckey
-        
-        data = json.dumps({'username':'prova2@local',
-                           'password':'prova', 
-                           'description':'', 
-                           'system':True})       
-                 
-        uri = '/api/auth/user/'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'POST', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+        data = {
+            u'user':{
+                u'name':u'prova54@local',
+                u'password':u'prova', 
+                u'description':u'', 
+                u'system':True
+            }
+        }
+        uri = u'/v1.0/auth/users/'
+        res = self.invoke(u'auth', uri, u'POST', data=data)
+        self.logger.info(json.dumps(res, indent=4))
 
     def test_update_user(self):
-        global uid, seckey, objid
-        
-        data = '{"new_name":"prova4@local", "role":{"append":["ApiSuperadmin"], "remove":[]}}'
-        uri = '/api/auth/user/%s/' % 'prova4@local'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'PUT', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+        data = {
+            u'user':{
+                u'desc':u'prova',
+                u'roles':{
+                    u'append':[], 
+                    u'remove':[u'ApiSuperAdmin']
+                }
+            }
+        }
+        uri = u'/v1.0/auth/users/%s/' % u'prova5@local'
+        res = self.invoke(u'auth', uri, u'PUT', data=data)
+        self.logger.info(json.dumps(res, indent=4))
 
     def test_del_user(self):
-        global uid, seckey, objid
-        
-        data = ''
-        uri = '/api/auth/user/%s/' % 'prova1@local'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'DELETE', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+        uri = u'/v1.0/auth/users/%s/' % u'prova53@local'
+        res = self.invoke(u'auth', uri, u'DELETE', data=u'')
+        self.logger.info(json.dumps(res, indent=4))
 
     def test_set_user_attrib(self):
-        global uid, seckey, objid
-        
-        data = json.dumps({'name':'test', 'value':'val', 'desc':'desc'})
-        uri = '/api/auth/user/%s/attribute/' % 9
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'PUT', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+        data = {
+            u'user-attribute':{
+                u'name':u'test',
+                u'value':u'test1',
+                u'desc':u'test2'
+            }
+        }
+        uri = u'/v1.0/auth/users/%s/attributes/' % u'prova5@local'
+        res = self.invoke(u'auth', uri, u'POST', data=data)
+        self.logger.info(json.dumps(res, indent=4))
 
     def test_remove_user_attrib(self):
-        global uid, seckey, objid
-        
-        data = ''
-        uri = '/api/auth/user/%s/attribute/%s/' % (9, 'test')
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'DELETE', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+        uri = u'/v1.0/auth/users/%s/attributes/%s/' % (u'prova5@local', u'test')
+        res = self.invoke(u'auth', uri, u'DELETE', data=u'')
+        self.logger.info(json.dumps(res, indent=4))
 
+    #
     # roles
+    #
     def test_get_roles(self):
-        global uid, seckey
-                
-        data = ''
-        uri = '/api/auth/role/'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'GET', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+        ofilter = {u'page':0, u'size':5, u'order':u'ASC', u'field':u'objid'}
+        uri = u'/v1.0/auth/roles/'
+        res = self.invoke(u'auth', uri, u'GET', data=u'', filter=ofilter)
+        self.logger.info(json.dumps(res, indent=4))
+
     def test_get_role(self):
-        global uid, seckey
-                
-        data = ''
-        uri = '/api/auth/role/ApiSuperadmin/'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'GET', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+        uri = u'/v1.0/auth/roles/%s/' % u'prova1_role'
+        res = self.invoke(u'auth', uri, u'GET', data=u'')
+        self.logger.info(json.dumps(res, indent=4))
 
-    def test_get_role2(self):
-        global uid, seckey
-                
-        data = ''
-        uri = '/api/auth/role/ApiSuperadmin2/'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'GET', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+    def test_get_role_perms(self):
+        ofilter = {u'page':0, u'size':5, u'order':u'ASC', u'field':u'id', 
+                   u'role':u'ApiSuperadmin'}
+        uri = u'/v1.0/auth/objects/perms/' 
+        res = self.invoke(u'auth', uri, u'GET', data=u'', filter=ofilter)
+        self.logger.info(json.dumps(res, indent=4))     
 
-    def test_get_role3(self):
-        global uid, seckey
-                
-        data = ''
-        uri = '/api/auth/role/prova_role/'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'GET', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+    def test_get_role_users(self):
+        ofilter = {u'role':u'ApiSuperadmin'}
+        uri = u'/v1.0/auth/users/'
+        res = self.invoke(u'auth', uri, u'GET', data=u'', filter=ofilter)
+        self.logger.info(json.dumps(res, indent=4))
 
-    def test_get_role4(self):
-        global uid, seckey
-                
-        data = ''
-        uri = '/api/auth/role/prova1_role/'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'GET', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+    def test_get_role_groups(self):
+        ofilter = {u'role':u'ApiSuperadmin'}
+        uri = u'/v1.0/auth/groups/'
+        res = self.invoke(u'auth', uri, u'GET', data=u'', filter=ofilter)
+        self.logger.info(json.dumps(res, indent=4))
 
     def test_add_role(self):
-        global uid, seckey
-        
-        data = '{"name":"prova_role", "description":"prova_role", "type":"app", "value":["portal"]}'
-        uri = '/api/auth/role/'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'POST', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+        data = {
+            u'role':{
+                u'name':u'prova_role', 
+                u'desc':u'prova_role'
+            }
+        }
+        uri = u'/v1.0/auth/roles/'
+        res = self.invoke(u'auth', uri, u'POST', data=data)
+        self.logger.info(json.dumps(res, indent=4))
 
     def test_update_role(self):
-        global uid, seckey, objid
-        data = json.dumps({"new_name":"prova1_role",
-                           "perm":{"append":[
-                                             (0, 0, "resource", 
-                                              "cloudstack.org", "", 
-                                              "*//*", 0, "view")], 
-                                   "remove":[]}})       
-        
-        uri = '/api/auth/role/%s/' % 'prova_role'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'PUT', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+        data = {
+            u'role':{
+                u'name':u'prova1_role', 
+                u'desc':u'prova1_role',
+                u'perms':{
+                    u'append':[
+                        (0, 0, u'resource', u'Openstack.Domain', u'*//*', 0, u'view')
+                    ], 
+                    u'remove':[
+                        #(0, 0, u'resource', u'Openstack.Domain', u'*//*', 0, u'view')
+                    ]
+                }              
+            }
+        }        
+        uri = u'/v1.0/auth/roles/%s/' % u'prova1_role'
+        res = self.invoke(u'auth', uri, u'PUT', data=data)
+        self.logger.info(json.dumps(res, indent=4))
 
     def test_del_role(self):
-        global uid, seckey, objid
-        
         data = ''
-        uri = '/api/auth/role/%s/' % 'c1c6add0-9d30-4852-9303-eabb7beef40c_security_domain_admin'
-        sign = self.auth_client.sign_request(seckey, uri)
-        sign = sign 
-        self.invoke('auth',uri, 'DELETE', 
-                              data=data,
-                              headers={'Accept':'json',
-                                       'uid':uid,
-                                       'sign':sign})
+        uri = u'/v1.0/auth/roles/%s/' % u'prova1_role'
+        res = self.invoke(u'auth', uri, u'DELETE', data=u'')
+        self.logger.info(json.dumps(res, indent=4))
+
+    #
+    # groups
+    #
+    def test_get_groups(self):
+        ofilter = {u'page':0, u'size':5, u'order':u'ASC', u'field':u'objid'}
+        uri = u'/v1.0/auth/groups/'
+        res = self.invoke(u'auth', uri, u'GET', data=u'', filter=ofilter)
+        self.logger.info(json.dumps(res, indent=4))
+
+    def test_get_group(self):
+        uri = u'/v1.0/auth/groups/%s/' % u'prova_group'
+        res = self.invoke(u'auth', uri, u'GET', data=u'')
+        self.logger.info(json.dumps(res, indent=4))
+
+    def test_get_group_perms(self):
+        ofilter = {u'page':0, u'size':5, u'order':u'ASC', u'field':u'id',
+                   u'group':u'prova1_group'}
+        uri = u'/v1.0/auth/objects/perms/'
+        res = self.invoke(u'auth', uri, u'GET', data=u'', filter=ofilter)
+        self.logger.info(json.dumps(res, indent=4))
+
+    def test_get_group_roles(self):
+        ofilter = {u'page':0, u'size':5, u'order':u'ASC', u'field':u'id',
+                   u'group':u'prova_group'}
+        uri = u'/v1.0/auth/roles/'
+        res = self.invoke(u'auth', uri, u'GET', data=u'', filter=ofilter)
+        self.logger.info(json.dumps(res, indent=4))
+
+    def test_get_group_users(self):
+        ofilter = {u'page':0, u'size':5, u'order':u'ASC', u'field':u'id',
+                   u'group':u'prova_group'}        
+        uri = u'/v1.0/auth/users/'
+        res = self.invoke(u'auth', uri, u'GET', data=u'', filter=ofilter)
+        self.logger.info(json.dumps(res, indent=4))
+
+    def test_add_group(self):
+        data = {
+            u'group':{
+                u'name':u'prova_group', 
+                u'desc':u'prova_group'
+            }
+        }
+        uri = u'/v1.0/auth/groups/'
+        res = self.invoke(u'auth', uri, u'POST', data=data)
+        self.logger.info(json.dumps(res, indent=4))
+
+    def test_update_group(self):
+        data = {
+            u'group':{
+                u'name':u'prova_group', 
+                u'desc':u'prova1_group',
+                u'users':{
+                    u'append':[
+                        u'admin@local'
+                    ], 
+                    u'remove':[
+                        
+                    ]
+                },
+                u'roles':{
+                    u'append':[
+                        u'ApiSuperAdmin'
+                    ], 
+                    u'remove':[
+                        
+                    ]
+                },                                
+            }
+        }        
+        uri = u'/v1.0/auth/groups/%s/' % u'prova_group'
+        res = self.invoke(u'auth', uri, u'PUT', data=data)
+        self.logger.info(json.dumps(res, indent=4))
+
+    def test_del_group(self):
+        uri = u'/v1.0/auth/groups/%s/' % u'prova_group'
+        res = self.invoke(u'auth', uri, u'DELETE', data=u'')
+        self.logger.info(json.dumps(res, indent=4))
 
 def test_suite():
     tests = [
-             'test_login',
-             #'test_get_login_domains',
-             #'test_refresh',
-             #'test_exist_identity',
-             #'test_get_identities',
-             #'test_get_identity',
-             #'test_delete_identity',
-             
-             #'test_get_objects',
-             #'test_get_objects_by_id',
-             #'test_get_objects_by_value',
-             #'test_get_objects_by_value_empty',
-             #'test_get_objects_by_type',
-             
-             #'test_get_object_types',
-             #'test_get_object_actions',
-             #'test_get_object_permissions',
-             #'test_get_object_permissions_with_filter',
-             #'test_get_all_permissions',
-             #'test_add_object',
-             #'test_get_objects_by_definition_and_value',
-             #'test_del_object',
-             #'test_add_object_type',
-             #'test_get_object_type',
-             #'test_del_object_type',             
-
-             #'test_get_authentication_domains',
-             #'test_get_users',
-             #'test_get_user',
-             #'test_get_user2',
-             
-             #'test_add_user',
-             #'test_add_generic_user',
-             #'test_add_system_user',
-             #'test_update_user',
-             #'test_get_users',
-             #'test_del_user',
-             #'test_set_user_attrib',
-             #'test_remove_user_attrib',
-             
-             #'test_get_user_can',
-             
-             #'test_get_roles',
-             #'test_get_role',
-             #'test_get_role2',
-             #'test_add_role',
-             #'test_get_role3',
-             #'test_update_role',
-             #'test_get_users_by_role',
-             #'test_get_role4',
-             #'test_del_role',             
-             'test_logout',
-             #'test_remove_initial_value',
-            ]
-    #tests = ['test_set_initial_value']
-    #tests = ['test_remove_initial_value']
+        #'test_get_simple_http_login_domains',
+        #'test_simple_http_login',
+        'test_get_simple_http_users',
+        
+        #'test_get_login_domains',
+        #'test_login',
+        
+        #'test_refresh',
+        #'test_exist_identity',
+        #'test_get_identities',
+        #'test_get_identity',
+        #'test_delete_identity',
+        
+        #'test_get_objects',
+        #'test_get_objects_by_id',
+        #'test_get_objects_by_objid',
+        #'test_get_objects_by_subsystem',
+        #'test_get_objects_by_type',
+        #'test_get_objects_by_type_and_objid',        
+        #'test_add_object',
+        #'test_del_object',
+        
+        #'test_get_object_permissions',        
+        #'test_get_object_permission',
+        #'test_get_object_permissions_with_filter',
+        
+        #'test_get_object_types',
+        #'test_filter_object_types',        
+        #'test_add_object_type',
+        #'test_del_object_type',
+        
+        #'test_get_object_actions',
+        
+        #'test_get_roles',
+        #'test_get_role',
+        #'test_get_role_perms',
+        #'test_get_role_users',
+        #'test_get_role_groups'
+        #'test_add_role',
+        #'test_update_role',
+        #'test_del_role',
+        
+        #'test_get_groups',
+        #'test_get_group',
+        #'test_get_group_perms',
+        #'test_get_group_roles',
+        #'test_get_group_users',
+        #'test_add_group',
+        #'test_update_group',
+        #'test_del_group',          
+           
+        #'test_get_users',
+        #'test_get_user',
+        #####'test_get_user_can', 
+        #'test_get_user_perms',
+        #'test_get_user_roles',
+        #'test_get_user_groups',
+        #'test_get_user_attribs',
+        #'test_add_user',
+        #'test_add_generic_user',
+        #'test_add_system_user',
+        #'test_update_user',
+        #'test_del_user',
+        #'test_set_user_attrib',
+        #'test_remove_user_attrib',
+           
+        #'test_logout',
+    ]
     return unittest.TestSuite(map(AuthTestCase, tests))
 
 if __name__ == '__main__':

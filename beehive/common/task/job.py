@@ -10,8 +10,11 @@ from celery.utils.log import get_task_logger
 from beehive.common.apimanager import ApiManagerError, ApiEvent
 from celery.result import AsyncResult, GroupResult
 from beehive.common.data import operation
-from beehive.module.scheduler.manager import task_manager
-
+from beehive.common.task.manager import task_manager
+from beecell.simple import get_value
+from celery import chord
+from traceback import format_tb
+from beehive.common.task.handler import TaskResult
 
 logger = get_task_logger(__name__)
 
@@ -49,24 +52,56 @@ class JobInvokeApiError(Exception):
         
 class Job(BaseTask):
     abstract = True
-    inner_type = 'JOB'
+    inner_type = u'JOB'
+    ops = []
 
     def __init__(self, *args, **kwargs):
         BaseTask.__init__(self, *args, **kwargs)
-        
-        '''
-        self.controller = None
-        self.objtype = None
-        self.objdef = None
-        self.objid = None
-        self.opid = None
-        self.op = None
-        self.start = 0'''
 
     @property
     def controller(self):
         return task_local.controller
 
+    @staticmethod
+    def create(tasks, *args):
+        """Create celery signature with chord, group and chain
+        """
+        process = tasks.pop().si(*args)
+        last_task = None
+        for task in tasks:
+            if isinstance(task, list):
+                item = chord(task, last_task)
+            else:
+                item = task.si(*args)
+                if last_task is not None:
+                    item.link(last_task)
+            last_task = item
+        process.link(last_task)
+        return process
+        
+    #
+    # permissions assignment
+    #
+    def get_operation_id(self, objdef):
+        """
+        """
+        temp = objdef.split(u'.')
+        ids = [u'*' for i in temp]
+        return u'//'.join(ids)
+    
+    def set_operation(self):
+        """
+        """        
+        operation.perms = []
+        for op in self.ops:
+            perm = (1, 1, op.objtype, op.objdef,
+                    self.get_operation_id(op.objdef), 1, u'*')
+            operation.perms.append(perm)
+        logger.debug(u'Set permissions: %s' % operation.perms)        
+
+    #
+    # api
+    #
     def api_admin_request(self, module, path, method, data=u'', 
                           other_headers=None):
         if isinstance(data, dict): data = json.dumps(data)
@@ -277,7 +312,7 @@ class Job(BaseTask):
         
         # update task result
         task_id = self.request.id
-        store_task_result(task_id, state=status, traceback=traceback,
+        TaskResult.store(task_id, state=status, traceback=traceback,
                           retval=result, msg=msg)
         
         # get current job state
@@ -321,7 +356,7 @@ class Job(BaseTask):
             #if msg is not None:
             #    msg = u'[%s - %s] %s' % (self.name, task_id, msg)
             msg = None
-            store_task_result(task_local.opid, state=status, retval=retval, 
+            TaskResult.store(task_local.opid, state=status, retval=retval, 
                               traceback=traceback, duration=elapsed, msg=msg)
             logger.info(u'Job %s status change to %s - %s' % 
                         (task_local.opid, status, elapsed))
@@ -408,7 +443,7 @@ def job(entity_class=None, job_name=None, module=None, delta=5):
         @wraps(fn)
         def decorated_view(*args, **kwargs):
             task = args[0]
-            store_task_result(task.request.id, state=u'PENDING', retval=None, 
+            TaskResult.store(task.request.id, state=u'PENDING', retval=None, 
                               traceback=None)
 
             # setup correct user

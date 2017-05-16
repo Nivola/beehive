@@ -6,7 +6,6 @@ Created on Sep 2, 2013
 import json
 import unittest
 from tests.test_util import run_test, CloudapiTestCase
-from gibboncloudapi.util.auth import AuthClient
 
 uid = None
 seckey = None
@@ -16,8 +15,6 @@ class ConfigAPITestCase(CloudapiTestCase):
     """
     def setUp(self):
         CloudapiTestCase.setUp(self)
-        
-        self.auth_client = AuthClient()
         self.api_id = 'api'
         
     def tearDown(self):

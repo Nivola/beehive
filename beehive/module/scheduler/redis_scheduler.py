@@ -120,29 +120,6 @@ class RedisScheduleEntry(object):
                'total_run_count':self.total_run_count}
         return res
 
-class PersistentScheduler2(PersistentScheduler):
-
-    def get_schedule(self):
-        print self._store['entries']
-        return self._store['entries']
-
-    def set_schedule(self, schedule):
-        print schedule
-        self._store['entries'] = schedule
-    schedule = property(get_schedule, set_schedule)
-
-    def sync(self):
-        if self._store is not None:
-            self._store.sync()
-
-    def close(self):
-        self.sync()
-        self._store.close()
-
-    @property
-    def info(self):
-        return '    . db -> {self.schedule_filename}'.format(self=self)
-
 class RedisScheduler(Scheduler):
     Entry = RedisScheduleEntry
 
@@ -181,93 +158,6 @@ class RedisScheduler(Scheduler):
     def setup_schedule(self):
         #self.install_default_entries(self.schedule)
         self.update_from_dict(self.app.conf.CELERYBEAT_SCHEDULE)
-    
-    '''
-    def update_from_dict(self, dict_):
-        self.schedule['pippo'] = 'pppp'
-        self.schedule.update(dict(
-            (name, self._maybe_entry(name, entry))
-            for name, entry in items(dict_)))
-    
-    def update_from_dict2(self, dict_):
-        s = {}
-        for name, entry in dict_.items():
-            s[name] = self.from_entry(name, **entry)
-            print s
-        #self.schedule.update(s)    
-        self.manager.conn.set(self._prefix+name, json.dumps(s))
-    
-    def add_sched(self, name, task, last_run_at=None, total_run_count=0, 
-                  schedule=None, args=None, kwargs=None, options=None):
-        value = {'task':task,
-                 'last_run_at':last_run_at,
-                 'total_run_count':total_run_count,
-                 'schedule':schedule,
-                 'args':args,
-                 'kwargs':kwargs,
-                 'options':options}
-        self.manager.conn.set(self._prefix+name, json.dumps(value))
-    '''
-
-    '''
-    def requires_update(self):
-        """check whether we should pull an updated schedule
-        from the backend database"""
-        if not self._last_updated:
-            return True
-        return self._last_updated + self.UPDATE_INTERVAL < datetime.datetime.now()
-
-    @property
-    def schedule(self):
-        if self.requires_update():
-            self._schedule = self.get_from_database()
-            self._last_updated = datetime.datetime.now()
-        return self._schedule'''
-
-    '''
-    def get_schedule(self):
-        print 'get'
-        keys = self.manager.inspect(pattern=self._prefix+'*', debug=False)
-        data = self.manager.query(keys)
-        
-        #data = self.redis_manager.get(self._prefix+'*')
-        entries = {}
-        for k, value in data.iteritems():
-            key = k.lstrip(self._prefix)
-            value = json.loads(value)
-            value['schedule'] = eval(value['schedule'])
-            #value['schedule'] = maybe_schedule(value['schedule'])
-            entries[key] = self._maybe_entry(key, value)
-        print entries 
-        return entries
-
-    def set_schedule(self, schedule):
-        print 'set'
-        for name, v in schedule.iteritems():
-            value = json.dumps(v)
-            self.manager.conn.set(name, value)
-        self.schedule = schedule
-    
-    schedule = property(get_schedule, set_schedule)
-
-    def sync(self):
-        for name, entry in self.schedule.iteritems():
-            value = {'task':entry.task,
-                     'last_run_at':entry.last_run_at,
-                     'total_run_count':entry.total_run_count,
-                     'schedule':entry.schedule,
-                     'args':entry.args,
-                     'kwargs':entry.kwargs,
-                     'options':entry.options}
-            value = json.dumps(value)
-            print name, value
-            self.manager.conn.set(name, value)
-
-    def close(self):
-        pass
-        #self.sync()
-        #self._store.close()
-    '''
 
     @property
     def info(self):

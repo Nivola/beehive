@@ -14,7 +14,7 @@ from os import urandom
 from beecell.logger.helper import LoggerHelper
 from beecell.server.uwsgi_server.wrapper import uwsgi_util
 from beecell.db.manager import MysqlManagerError
-from beehive.common import ApiManager, ApiManagerError
+from beehive.common.apimanager import ApiManager, ApiManagerError
 from beehive.common.data import operation
 from beehive.common.log import ColorFormatter
 
@@ -97,7 +97,7 @@ class BeehiveApp(Flask):
 
     def setup_loggers(self):
         """ """
-        logname = uwsgi_util.opt['api_id']
+        logname = uwsgi_util.opt[u'api_id']
         
         # base logging
         loggers = [self.logger,

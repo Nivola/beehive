@@ -6,7 +6,6 @@ Created on Sep 2, 2013
 from tests.test_util import run_test, CloudapiTestCase
 import json
 import unittest
-from gibboncloudapi.util.auth import AuthClient
 import tests.test_util
 
 uid = None
@@ -20,9 +19,8 @@ class CatalogAPITest(CloudapiTestCase):
     """
     def setUp(self):
         CloudapiTestCase.setUp(self)
-        
-        self.auth_client = AuthClient()
-        self.api_id = 'api'
+
+        self.api_id = u'api'
         self.baseuri = u'/v1.0/catalog'
         
     def tearDown(self):
@@ -65,7 +63,7 @@ class CatalogAPITest(CloudapiTestCase):
         cat = u'cloudapi'
         data = u''
         uri = u'/v1.0/catalogs/'
-        res = self.invoke(u'auth',uri, 'GET', data=data, headers={u'name':cat})
+        res = self.invoke(u'auth', uri, 'GET', data=data, headers={u'name':cat})
         self.logger.info(self.pp.pformat(res)) 
 
     def test_update_catalog(self):

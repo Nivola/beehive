@@ -5,10 +5,8 @@ Created on Jan 12, 2017
 '''
 import unittest
 from tests.test_util import run_test, CloudapiTestCase
-from gibboncloudapi.common.config import ConfigDbManager
-from gibboncloudapi.util.data import operation
-from gibboncloudapi.common.apiclient import BeehiveApiClient
 import time
+from beehive.common.apiclient import BeehiveApiClient
 
 uid = None
 seckey = None

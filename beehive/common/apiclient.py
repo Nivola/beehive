@@ -40,7 +40,6 @@ class BeehiveApiClient(object):
     .. code-block:: python    
     
     
-    
     """
     def __init__(self, auth_endpoints, user, pwd, catalog_id=None):
         self.logger = getLogger(self.__class__.__module__+ \

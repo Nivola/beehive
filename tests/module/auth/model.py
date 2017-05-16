@@ -6,9 +6,9 @@ Created on Sep 2, 2013
 import unittest
 from tests.test_util import run_test, CloudapiTestCase
 from beecell.db import TransactionError, QueryError
-from gibboncloudapi.module.auth.model import AuthDbManager
-from gibboncloudapi.util.data import operation
 from beecell.simple import id_gen
+from beehive.common.data import operation
+from beehive.common.authorization import AuthDbManager
 
 class AuthManagerTestCase(CloudapiTestCase):
     """To execute this test you need a mysql instance, a user and a 

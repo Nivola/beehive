@@ -4,7 +4,6 @@ Created on Nov 14, 2015
 
 @author: darkbk
 '''
-import time
 import ujson as json
 from datetime import datetime, timedelta
 import pickle
@@ -16,8 +15,8 @@ from celery.result import AsyncResult
 from networkx import DiGraph
 from networkx.readwrite import json_graph
 from beehive.common.apimanager import ApiController, ApiObject, ApiManagerError
-from beehive.module.scheduler.manager import task_scheduler, task_manager
 from beehive.module.scheduler.redis_scheduler import RedisScheduleEntry
+from beehive.common.task.manager import task_scheduler, task_manager
 
 class SchedulerController(ApiController):
     """Scheduler Module controller.
