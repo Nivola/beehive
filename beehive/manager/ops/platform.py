@@ -45,13 +45,18 @@ class PlatformManager(ComponentManager):
         nodes cmd <groups> <cmd>
             Run a command <cmd> over all the server identify by <self.environment> and
             <groups>
+            
+        beehive configure
+        beehive install
+        beehive hosts
         beehive subsystems
+        beehive sync
         beehive subsystem-create <subsystem>
         beehive instances [details]
         beehive blacklist
-        beehive instance-syncdev <subsystem> <instance>
+        beehive instance-syncdev <subsystem> <instance>        
         beehive instance-deploy <subsystem> <instance>
-        beehive instances-undeploy <subsystem> <instance>
+        beehive instance-undeploy <subsystem> <instance>
         
         beehive doc
         
@@ -92,11 +97,13 @@ class PlatformManager(ComponentManager):
             
             u'beehive.configure':self.beehive_configure,
             u'beehive.install':self.beehive_install,
+            u'beehive.hosts':self.beehive_hosts,
+            u'beehive.sync':self.beehive_sync,            
             u'beehive.subsystems': self.beehive_nodes_stats,
             u'beehive.subsystem-create':self.beehive_subsystem,
             u'beehive.instances': self.beehive_nodes_vassals,
-            u'beehive.blacklist': self.beehive_nodes_blacklist,            
-            u'beehive.instance-syncdev':self.beehive_syncdev,
+            u'beehive.blacklist': self.beehive_nodes_blacklist,
+            u'beehive.instance-sync':self.beehive_syncdev,
             u'beehive.instance-deploy':self.beehive_deploy,
             u'beehive.instance-undeploy':self.beehive_undeploy,
             #u'beehive.instance-ping':self.beehive_ping,
@@ -191,6 +198,15 @@ class PlatformManager(ComponentManager):
         }        
         self.ansible_playbook(u'beehive', run_data, 
                               playbook=self.beehive_playbook)
+
+    def beehive_hosts(self):
+        """Configure beehive nodes hosts local resolution
+        """
+        run_data = {
+            u'tags':[u'hosts']
+        }        
+        self.ansible_playbook(u'beehive', run_data, 
+                              playbook=self.beehive_playbook)
         
     def beehive_configure(self):
         """Install beehive platform on beehive nodes
@@ -211,8 +227,18 @@ class PlatformManager(ComponentManager):
         self.ansible_playbook(u'beehive-init', run_data, 
                               playbook=self.beehive_playbook)    
     
+    def beehive_sync(self):
+        """Sync beehive package an all nodes with remove git repository
+        """
+        run_data = {
+            u'tags':[u'sync']
+        }        
+        self.ansible_playbook(u'beehive', run_data, 
+                              playbook=self.beehive_playbook)    
+    
     def beehive_syncdev(self, subsystem, vassal):
-        """Sync beehive server package in developer mode
+        """Sync beehive package an all nodes with local git repository and
+        restart instances
         """
         run_data = {
             u'local_package_path':self.local_package_path,

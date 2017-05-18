@@ -11,20 +11,14 @@ from beehive.common.apimanager import ApiManagerError, ApiEvent
 from celery.result import AsyncResult, GroupResult
 from beehive.common.data import operation
 from beehive.common.task.manager import task_manager
-from beecell.simple import get_value
+from beecell.simple import get_value, import_class
 from celery import chord
 from traceback import format_tb
-from beehive.common.task.handler import TaskResult
+from beehive.common.task.handler import TaskResult, task_local
+from gevent import sleep
+from functools import wraps
 
 logger = get_task_logger(__name__)
-
-# job operation
-try:
-    import gevent
-    task_local = gevent.local.local()
-except:
-    import threading
-    task_local = threading.local()
 
 class JobError(Exception):
     def __init__(self, value, code=0):
@@ -137,7 +131,7 @@ class Job(BaseTask):
             attempt = 1
             # after 6 attempt set status to FAILURE and block loop
             while status != u'SUCCESS' and status != u'FAILURE':
-                gevent.sleep(task_local.delta)
+                sleep(task_local.delta)
                 job = self._query_job(module, job_id, attempt)
                 attempt = job[1]
                 job = job[0]
@@ -193,7 +187,7 @@ class Job(BaseTask):
             start = time()
             # loop until inner_task finish with success or error
             while inner_task.status != u'SUCCESS' and inner_task.status != u'FAILURE':
-                gevent.sleep(task_local.delta)
+                sleep(task_local.delta)
                 inner_task = AsyncResult(task_id, app=task_manager)
                 elapsed = time() - start
                 self.update(u'PROGRESS', msg=u'Task %s status %s after %ss' % 

@@ -7,13 +7,9 @@ import ujson as json
 from beecell.db.manager import RedisManager
 from celery.beat import Scheduler
 from datetime import timedelta
-import traceback
-import datetime
-import shelve
 from celery.schedules import maybe_schedule, crontab, schedule as interval
 from celery.five import items
-from kombu.utils import cached_property, reprcall
-from celery.beat import PersistentScheduler
+from kombu.utils import reprcall
 import redis_collections
 #import pickle
 
@@ -134,7 +130,6 @@ class RedisScheduler(Scheduler):
         self._prefix = app.conf.CELERY_REDIS_SCHEDULER_KEY_PREFIX
         
         self._schedule = redis_collections.Dict(key=self._prefix, redis=self.manager.conn)
-        self.logger.info(self._schedule)
         Scheduler.__init__(self, app, schedule=schedule, 
                            max_interval=max_interval, Publisher=Publisher, 
                            lazy=lazy, sync_every_tasks=sync_every_tasks, **kwargs)

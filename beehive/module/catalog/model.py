@@ -81,7 +81,7 @@ class CatalogDbManagerError(Exception): pass
 class CatalogDbManager(object):
     """
     """
-    logger = logging.getLogger('gibbon.cloudapi.db')
+    logger = logging.getLogger('beehive.db')
     
     def __init__(self, session=None):
         """ """

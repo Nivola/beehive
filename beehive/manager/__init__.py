@@ -385,17 +385,6 @@ class ComponentManager(object):
         else:
             raise Exception(u'ERROR: Entity and/or command are not correct')      
             return 1
-        
-        '''
-        if frmt == u'text':
-            if len(client.text) > 0:
-                print(u'\n'.join(client.text))
-        else:
-            if client.json is not None:
-                if isinstance(client.json, dict) or isinstance(client.json, list):
-                    client.pp.pprint(client.json)
-                else:
-                    print(client.json)'''
             
         return 0
 

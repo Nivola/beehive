@@ -45,6 +45,6 @@ if __name__ == u'__main__':
 
     import beecell.server.gevent_ssl
     from gevent import monkey; monkey.patch_all()
-    from beehive.module.scheduler.manager import start_scheduler
+    from beehive.common.task.manager import start_scheduler
 
     start_scheduler(params)

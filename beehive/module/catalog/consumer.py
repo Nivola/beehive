@@ -120,7 +120,7 @@ def start_catalog_consumer(params, log_path=None):
     #setup_logging(loglevel=u'DEBUG', loggers=[u''])
     
     # internal logger
-    logger = getLogger(u'gibboncloudapi')   
+    logger = getLogger(u'beehive')   
     
     logger_level = DEBUG
     if log_path is None:

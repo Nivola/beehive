@@ -298,6 +298,10 @@ class BeehiveHelper(object):
             res.extend(self.__configure(config, update=update))
             res.extend(self.__init_subsystem(config, update=update))
         
+        # init oauth2 subsytem
+        elif subsystem == u'oauth2':
+            res.extend(self.__init_subsystem(config, update=update))
+
         # init other subsystem
         else:
             # create api client instance

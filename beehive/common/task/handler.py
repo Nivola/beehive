@@ -10,11 +10,18 @@ from datetime import datetime
 from time import time
 from celery.utils.log import get_task_logger
 from celery.result import AsyncResult, GroupResult
-from beehive.common.task.job import task_local
 from celery.signals import task_prerun, task_postrun, task_failure, \
                            task_retry, task_revoked
 
 logger = get_task_logger(__name__)
+
+# job operation
+try:
+    import gevent
+    task_local = gevent.local.local()
+except:
+    import threading
+    task_local = threading.local()
 
 class TaskResult(object):
     @staticmethod

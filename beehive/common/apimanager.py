@@ -428,8 +428,8 @@ class ApiManager(object):
                 self.logger.info('Configure scheduler reference - START')
                 
                 try:
-                    from gibboncloudapi.module.scheduler.manager import configure_task_manager
-                    from gibboncloudapi.module.scheduler.manager import configure_task_scheduler
+                    from beehive.common.task.manager import configure_task_manager
+                    from beehive.common.task.manager import configure_task_scheduler
                     
                     # task manager
                     '''
@@ -590,6 +590,11 @@ class ApiManager(object):
                 
                 ##### monitor queue configuration #####
                 try:
+                    try:
+                        from beehive_monitor.producer import MonitorProducerRedis
+                    except:
+                        raise Exception(u'beehive_monitor is not installed')
+                    
                     conf = configurator.get(app=self.app_name, 
                                             group='queue', 
                                             name='queue.monitor')
@@ -601,14 +606,13 @@ class ApiManager(object):
                     self.redis_monitor_channel = conf['queue']                    
                         
                     # create instance of monitor producer
-                    from gibboncloudapi.module.monitor.producer import MonitorProducerRedis
                     self.monitor_producer = MonitorProducerRedis(
                                                         self.redis_monitor_uri, 
                                                         self.redis_monitor_channel)
                     
-                    self.logger.info('Configure monitor queue - STOP')
+                    self.logger.info(u'Configure monitor queue - STOP')
                 except Exception as ex:
-                    self.logger.warning('Monitor queue not configured - %s' % ex)                
+                    self.logger.warning(u'Monitor queue not configured - %s' % ex)                
                 ##### monitor queue configuration #####
         
                 ##### catalog queue configuration #####
@@ -624,14 +628,14 @@ class ApiManager(object):
                     self.redis_catalog_channel = conf['queue']                    
                         
                     # create instance of catalog producer
-                    from gibboncloudapi.module.catalog.producer import CatalogProducerRedis
+                    from beehive.module.catalog.producer import CatalogProducerRedis
                     self.catalog_producer = CatalogProducerRedis(
                                                         self.redis_catalog_uri, 
                                                         self.redis_catalog_channel)
                     
                     self.logger.info('Configure catalog queue - STOP')
                 except Exception as ex:
-                    self.logger.warning('Catalog queue not configured - %s' % ex)                
+                    self.logger.warning('Catalog queue not configured - %s' % ex)
                 ##### catalog queue configuration #####          
         
                 ##### tcp proxy configuration #####
@@ -670,8 +674,8 @@ class ApiManager(object):
                     # get auth endpoints
                     try:
                         endpoints = configurator.get(app=self.app_name, 
-                                                   group='auth', 
-                                                   name='endpoints')[0].value
+                                                     group='auth', 
+                                                     name='endpoints')[0].value
                         self.endpoints = json.loads(endpoints)
                     except:
                         # auth subsystem instance
