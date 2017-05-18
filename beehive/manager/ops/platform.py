@@ -14,9 +14,12 @@ from beehive.manager.manage.config import host
 from passlib import hosts
 from beehive.manager import ComponentManager
 from datetime import datetime
+from httplib import HTTPConnection
+from beecell.simple import str2uni
 try:
     from beehive.manager.util.ansible2 import Options, Runner
-except:
+except Exception as ex:
+    print ex
     print(u'ansible package not installed')    
 
 class PlatformManager(ComponentManager):
@@ -42,13 +45,15 @@ class PlatformManager(ComponentManager):
         nodes cmd <groups> <cmd>
             Run a command <cmd> over all the server identify by <self.environment> and
             <groups>
-        beehive nodes
+        beehive subsystems
+        beehive subsystem-create <subsystem>
         beehive instances [details]
         beehive blacklist
+        beehive instance-syncdev <subsystem> <instance>
+        beehive instance-deploy <subsystem> <instance>
+        beehive instances-undeploy <subsystem> <instance>
         
-        beehive syncdev <subsystem> <instance>
-        beehive deploy <subsystem> <instance>
-        beehive undeploy <subsystem> <instance>
+        beehive doc
         
         portal syncdev <client> <instance>
         portal deploy <client> <instance>
@@ -61,8 +66,10 @@ class PlatformManager(ComponentManager):
         self.baseuri = u'/v1.0/resource'
         self.subsystem = u'resource'
         self.ansible_path = auth_config[u'ansible_path']
-        self.verbosity = 3
-        self.playbook = u'%s/site.yml' % (self.ansible_path)
+        self.verbosity = 2
+        self.main_playbook= u'%s/site.yml' % (self.ansible_path)
+        self.beehive_playbook= u'%s/beehive.yml' % (self.ansible_path)
+        self.beehive_doc_playbook= u'%s/beehive-doc.yml' % (self.ansible_path)
         self.local_package_path = auth_config[u'local_package_path']
     
     def actions(self):
@@ -83,14 +90,18 @@ class PlatformManager(ComponentManager):
             u'nodes.list': self.ansible_inventory,
             u'nodes.cmd': self.nodes_run_cmd,
             
-            u'beehive.nodes': self.beehive_nodes_stats,
+            u'beehive.configure':self.beehive_configure,
+            u'beehive.install':self.beehive_install,
+            u'beehive.subsystems': self.beehive_nodes_stats,
+            u'beehive.subsystem-create':self.beehive_subsystem,
             u'beehive.instances': self.beehive_nodes_vassals,
-            u'beehive.blacklist': self.beehive_nodes_blacklist,
-            u'beehive.syncdev':self.beehive_syncdev,
-            u'beehive.deploy':self.beehive_deploy,
-            u'beehive.undeploy':self.beehive_undeploy,
-            u'beehive.ping':self.beehive_ping,
-            u'beehive.tree':self.beehive_get_uwsgi_tree,
+            u'beehive.blacklist': self.beehive_nodes_blacklist,            
+            u'beehive.instance-syncdev':self.beehive_syncdev,
+            u'beehive.instance-deploy':self.beehive_deploy,
+            u'beehive.instance-undeploy':self.beehive_undeploy,
+            #u'beehive.instance-ping':self.beehive_ping,
+            #u'beehive.tree':self.beehive_get_uwsgi_tree,
+            u'beehive.doc':self.beehive_make_doc,
             
             u'portal.nodes': self.portal_nodes_stats,
             u'portal.instances': self.portal_nodes_vassals,
@@ -106,64 +117,100 @@ class PlatformManager(ComponentManager):
     # ansible
     #
     def ansible_inventory(self):
-        """list host by section
+        """list host by group
         """
         path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.environment)
-        runner = Runner(inventory=path_inventory, verbosity=self.verbosity)
+        path_lib = u'%s/library/beehive/' % (self.ansible_path)
+        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
+                        module=path_lib)
         res = runner.get_inventory()
-        self.result(res)
-        '''if self.format == u'json':
-            self.json = hosts
-        elif self.format == u'text':
-            for k,v in hosts.items():
-                self.text.append(u'%-30s %s' % (k, (u', ').join(v)))'''
-        
+        resp = []
+        for k,v in res.items():
+            resp.append({u'group':k, u'hosts':u', '.join(v)})
+        self.logger.debug(u'Ansible inventory nodes: %s' % res)
+        self.result(resp, headers=[u'group', u'hosts'])
     
-    # gather info by section and host
-    # test by section and host
-    # get specific info from beehive section
+    # gather info by group and host
+    # test by group and host
+    # get specific info from beehive group
     
-    def ansible_playbook(self, section, run_data):
-        """run playbook on section and host
+    def ansible_playbook(self, group, run_data, playbook=None):
+        """run playbook on group and host
         """
         path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.environment)
-        runner = Runner(inventory=path_inventory, verbosity=self.verbosity)
+        path_lib = u'%s/library/beehive/' % (self.ansible_path)
+        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
+                        module=path_lib)
         tags = run_data.pop(u'tags')
-        runner.run_playbook(section, self.playbook, None, run_data, None, 
+        if playbook is None:
+            playbook = self.playbook
+        runner.run_playbook(group, playbook, None, run_data, None, 
                             tags=tags)
 
-    def ansible_task(self, section):
+    def ansible_task(self, group):
         """Run ansible tasks over a group of hosts
         
         :param self.environment: platform self.environment. Ex. test, dev, prod
-        :parma section: ansible host group
+        :parma group: ansible host group
         """
         path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.environment)
-        runner = Runner(inventory=path_inventory, verbosity=self.verbosity)
+        path_lib = u'%s/library/beehive/' % (self.ansible_path)
+        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
+                        module=path_lib)
         tasks = [
             dict(action=dict(module='shell', args='ls'), register='shell_out'),
         ]
-        runner.run_task(section, tasks=tasks, frmt=self.format)
+        runner.run_task(group, tasks=tasks, frmt=self.format)
 
     #
     # platform node
     #
-    def nodes_run_cmd(self, section, cmd):
+    def nodes_run_cmd(self, group, cmd):
         """Run ansible tasks over a group of hosts
         
         :param self.environment: platform self.environment. Ex. test, dev, prod
-        :parma section: ansible host group
+        :parma group: ansible host group
         """
         path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.environment)
-        runner = Runner(inventory=path_inventory, verbosity=self.verbosity)
+        path_lib = u'%s/library/beehive/' % (self.ansible_path)
+        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
+                        module=path_lib)
         tasks = [
             dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
         ]
-        runner.run_task(section, tasks=tasks, frmt=self.format)
+        runner.run_task(group, tasks=tasks, frmt=u'json')
 
     #
     # beehive
     #
+    def beehive_install(self):
+        """Configure beehive nodes
+        """
+        run_data = {
+            u'tags':[u'install']
+        }        
+        self.ansible_playbook(u'beehive', run_data, 
+                              playbook=self.beehive_playbook)
+        
+    def beehive_configure(self):
+        """Install beehive platform on beehive nodes
+        """
+        run_data = {
+            u'tags':[u'configure']
+        }        
+        self.ansible_playbook(u'beehive', run_data, 
+                              playbook=self.beehive_playbook)
+    
+    def beehive_subsystem(self, subsystem):
+        """Create beehive subsystem
+        """
+        run_data = {
+            u'subsystem':subsystem,
+            u'tags':[u'subsystem']
+        }        
+        self.ansible_playbook(u'beehive-init', run_data, 
+                              playbook=self.beehive_playbook)    
+    
     def beehive_syncdev(self, subsystem, vassal):
         """Sync beehive server package in developer mode
         """
@@ -173,7 +220,8 @@ class PlatformManager(ComponentManager):
             u'vassal':u'%s-%s' % (subsystem, vassal),
             u'tags':[u'sync-dev']
         }        
-        self.ansible_playbook(u'beehive', run_data)
+        self.ansible_playbook(u'beehive', run_data, 
+                              playbook=self.beehive_playbook)
            
     def beehive_deploy(self, subsystem, vassal):
         """Deploy beehive instance for subsystem
@@ -183,7 +231,8 @@ class PlatformManager(ComponentManager):
             u'vassal':u'%s-%s' % (subsystem, vassal),
             u'tags':[u'deploy']
         }        
-        self.ansible_playbook(u'beehive', run_data)
+        self.ansible_playbook(u'beehive', run_data, 
+                              playbook=self.beehive_playbook)
     
     def beehive_undeploy(self, subsystem, vassal):
         """Deploy beehive instance for subsystem
@@ -193,7 +242,8 @@ class PlatformManager(ComponentManager):
             u'vassal':u'%s-%s' % (subsystem, vassal),
             u'tags':[u'undeploy']
         }        
-        self.ansible_playbook(u'beehive', run_data)
+        self.ansible_playbook(u'beehive', run_data, 
+                              playbook=self.beehive_playbook)
         
     def beehive_nodes_stats(self):
         self.get_emperor_nodes_stats(u'beehive')
@@ -211,7 +261,9 @@ class PlatformManager(ComponentManager):
         :param port: server port [default=6379]
         """
         path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.environment)
-        runner = Runner(inventory=path_inventory, verbosity=self.verbosity)
+        path_lib = u'%s/library/beehive/' % (self.ansible_path)
+        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
+                        module=path_lib)
         hosts, vars = runner.get_inventory_with_vars(u'beehive')
         print hosts
         print vars
@@ -237,6 +289,16 @@ class PlatformManager(ComponentManager):
         """
         """
         self.__get_uwsgi_tree(self.environment, u'beehive')
+        
+    def beehive_make_doc(self):
+        """Make e deploy beehive documentation
+        """
+        run_data = {
+            u'tags':[u'doc'],
+            u'local_package_path':self.local_package_path
+        }        
+        self.ansible_playbook(u'docs', run_data, 
+                              playbook=self.beehive_doc_playbook)    
         
     #
     # portal
@@ -293,7 +355,9 @@ class PlatformManager(ComponentManager):
         """Run command on redis instances
         """
         path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.environment)
-        runner = Runner(inventory=path_inventory, verbosity=self.verbosity)
+        path_lib = u'%s/library/beehive/' % (self.ansible_path)
+        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
+                        module=path_lib)
         hosts, vars = runner.get_inventory_with_vars(u'redis')        
         
         resp = []
@@ -306,7 +370,7 @@ class PlatformManager(ComponentManager):
 
                 resp.append({u'host':str(host), u'db':db, u'response':res})
             self.logger.info(u'Ping redis %s : %s' % (redis_uri, resp))
-        self.result(resp)
+        self.result(resp, headers=[u'host', u'db', u'response'])
     
     def redis_ping(self):
         """Ping redis instances
@@ -341,7 +405,7 @@ class PlatformManager(ComponentManager):
         """
         def func(server):
             return server.inspect(pattern=pattern, debug=False)
-        self.__run_redis_cmd(func, dbs=range(0,8))        
+        self.__run_redis_cmd(func, dbs=range(0,8))
     
     def redis_query(self, pattern, count=False):
         """Query redis instances by key
@@ -374,7 +438,9 @@ class PlatformManager(ComponentManager):
         :param port: server port [default=6379]
         """
         path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.environment)
-        runner = Runner(inventory=path_inventory, verbosity=self.verbosity)
+        path_lib = u'%s/library/beehive/' % (self.ansible_path)
+        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
+                        module=path_lib)
         hosts, vars = runner.get_inventory_with_vars(u'mysql')        
         resp = []
         for host in hosts:
@@ -385,7 +451,7 @@ class PlatformManager(ComponentManager):
             resp.append({u'host':host, u'response':res})
             self.logger.info(u'Ping mysql %s : %s' % (db_uri, res))
         
-        self.result(resp)
+        self.result(resp, headers=[u'host', u'response'])
     
     def test_beehive(self, server, port):
         """Test redis instance
@@ -418,30 +484,33 @@ class PlatformManager(ComponentManager):
         err = 104
         while err == 104:
             try:
-                import httplib
-                conn = httplib.HTTPConnection(server, 80, timeout=1)
+                conn = HTTPConnection(server, 81, timeout=1)
                 conn.request(u'GET', u'/', None, {})
                 response = conn.getresponse()
                 res = response.read()
                 conn.close()
-                err = 0     
+                err = 0
+                self.logger.debug(u'Connect %s uwsgi stats' % (server))
             except socket.error as ex:
                 err = ex[0]
                 
         if response.status == 200:
-            res = json.loads(res)
-            self.logger.info(res)
+            try:
+                res = json.loads(res)
+                self.logger.info(res)
+            except:
+                res = {u'vassals':None, u'blacklist':None}
         else:
             self.logger.error(u'Emperor %s does not respond' % server)
             res = u'Emperor %s does not respond' % server
         return res
 
-    def __get_uwsgi_tree(self, section):
+    def __get_uwsgi_tree(self, group):
         """
         """
         '''path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.environment)
         runner = Runner(inventory=path_inventory, verbosity=self.verbosity)
-        hosts = runner.get_inventory(section=section)
+        hosts = runner.get_inventory(group=group)
         self.json = []
         cmd = []
         for host in hosts:
@@ -449,7 +518,7 @@ class PlatformManager(ComponentManager):
             pid = res[u'pid']
             cmd.append(u'pstree -ap %s' % pid)'''
 
-        self.nodes_run_cmd(self.environment, section, u'pstree -ap')
+        self.nodes_run_cmd(self.environment, group, u'pstree -ap')
 
     def get_emperor_nodes_stats(self, system):
         """Get uwsgi emperor statistics
@@ -458,19 +527,32 @@ class PlatformManager(ComponentManager):
         """
         path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.environment)
         runner = Runner(inventory=path_inventory, verbosity=self.verbosity)
-        hosts = runner.get_inventory(section=system)
+        hosts = runner.get_inventory(group=system)
         self.json = []
+        resp = []
         for host in hosts:
             res = self.__get_stats(host)
-            res.pop(u'vassals')
-            res.pop(u'blacklist')  
-            self.result(res) 
-            '''if self.format == u'json':
-                self.json.append(res)
-            elif self.format == u'text':
-                self.text.append(u'%s' % (host))
-                for k,v in res.items():
-                    self.text.append(u'- %-15s : %s' % (k,v))'''
+            vassals = res.pop(u'vassals')
+            res.pop(u'blacklist')
+            try:
+                temp = [u'%s [%s]' % (v[u'id']\
+                                  .replace(u'/etc/uwsgi/vassals/', u'')\
+                                  .replace(u'.ini', u'')\
+                                  , v[u'pid']) for v in vassals]
+                res[u'vassals'] = u', '.join(temp)
+            except:
+                res[u'vassals'] = []
+            res[u'host'] = host
+            resp.append(res)
+        self.result(resp, headers=[u'host', u'pid', u'version', u'uid', u'gid', 
+                                   u'throttle_level', u'emperor_tyrant', 
+                                   u'vassals'])
+
+    def cdate(self, date):
+        """
+        """
+        temp = datetime.utcfromtimestamp(date)
+        return str2uni(temp.strftime(u'%d-%m-%y %H:%M:%S'))
 
     def get_emperor_vassals(self, details=u'', system=None):
         """Get uwsgi emperor active vassals statistics
@@ -479,30 +561,25 @@ class PlatformManager(ComponentManager):
         """
         path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.environment)
         runner = Runner(inventory=path_inventory, verbosity=self.verbosity)
-        hosts = runner.get_inventory(section=system)
+        hosts = runner.get_inventory(group=system)
         self.json = []
+        resp = []
         for host in hosts:
             res = self.__get_stats(host)
-            vassals = res.pop(u'vassals')         
-            if self.format == u'json':
-                self.json.append(vassals)
-                print(self.json)
-            elif self.format == u'text':
-                self.text.append(u'\n%s' % (host))
-                for inst in vassals:
-                    self.text.append(u'- %s' % (inst.pop(u'id')\
-                                                .replace(u'.ini', u'')\
-                                                .replace(u'/etc/uwsgi/vassals/', u'')))
-                    if details == u'details':
-                        for k,v in inst.items():
-                            self.text.append(u'  - %-15s : %s' % (k,v))
-                    else:
-                        for k in [u'pid', u'ready', u'accepting']:
-                            self.text.append(u'  - %-15s : %s' % (k, inst[k]))
-                        for k in [u'last_run']:
-                            last_run = datetime.fromtimestamp(inst[k])
-                            self.text.append(u'  - %-15s : %s' % (k, last_run))
-                self.pp.pprint(self.text)
+            vassals = res.pop(u'vassals')
+            for vassal in vassals or []:
+                vassal[u'id'] = vassal[u'id']\
+                                  .replace(u'/etc/uwsgi/vassals/', u'')\
+                                  .replace(u'.ini', u'')
+                vassal.update({u'host':host})
+                for key in [u'first_run', u'last_run', u'last_ready', 
+                            u'last_mod', u'last_accepting']:
+                    vassal[key] = self.cdate(vassal[key])
+                resp.append(vassal)
+
+        self.result(resp, headers=[u'host', u'pid', u'uid', u'gid', u'id', 
+                                   u'first_run', u'last_run', u'last_ready', 
+                                   u'last_mod', u'last_accepting'])
                             
     def get_emperor_blacklist(self, details=u'', system=None):
         """Get uwsgi emperor active vassals statistics
@@ -511,7 +588,7 @@ class PlatformManager(ComponentManager):
         """
         path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.environment)
         runner = Runner(inventory=path_inventory, verbosity=self.verbosity)
-        hosts = runner.get_inventory(section=system)
+        hosts = runner.get_inventory(group=system)
         self.json = []
         for host in hosts:
             res = self.__get_stats(host)

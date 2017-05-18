@@ -102,7 +102,6 @@ class UserAttribute(Base):
         return "<UserAttribute id='%s' user='%s' name='%s' value='%s'>" % (
                     self.id, self.user_id, self.name, self.value)
 
-# Ldap users or groups
 class User(Base):
     """User
     
@@ -1039,7 +1038,7 @@ class AuthDbManager(AbstractAuthDbManager):
         data = Role(objid, name, [], description=description)
         session.add(data)
         session.flush()
-        self.logger.debug('Add role : %s' % (data))
+        self.logger.debug(u'Add role : %s' % (data))
         return data
 
     @transaction

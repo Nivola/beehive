@@ -24,9 +24,9 @@ class Catalog(Base):
     __table_args__ = {'mysql_engine':'InnoDB'}
     
     id = Column(Integer, primary_key=True)
-    uuid = Column(String(50), unique = True)
+    uuid = Column(String(50), unique=True)
     objid = Column(String(400))
-    name = Column(String(30), nullable=False)
+    name = Column(String(30), unique=True, nullable=False)
     desc = Column(String(50), nullable=False)
     zone = Column(String(50), nullable=False)
     creation_date = Column(DateTime())
@@ -152,13 +152,14 @@ class CatalogDbManager(object):
         return res     
     
     @query    
-    def get(self, oid=None, objid=None, name=None, zone=None):
+    def get(self, oid=None, objid=None, uuid=None, name=None, zone=None):
         """Get catalog.
         
         Raise QueryError if query return error.
         
         :param oid: catalog id [optional]
         :param objid: catalog objid [optional]
+        :param uuid: catalog uuid [optional]
         :param name: catalog name [optional]
         :param zone: catalog zone. Value like internal or external
         :return: list of :class:`Catalog`
@@ -170,6 +171,8 @@ class CatalogDbManager(object):
             query = query.filter_by(id=oid)
         if objid is not None:
             query = query.filter_by(objid=objid)
+        if uuid is not None:
+            query = query.filter_by(uuid=uuid)            
         if name is not None:
             query = query.filter_by(name=name)
         if zone is not None:
@@ -178,9 +181,8 @@ class CatalogDbManager(object):
         res = query.all()
         
         if len(res) == 0:
-            self.logger.error("No catalogs found - (oid:%s, objid:%s, name:%s)" % 
-                              (oid, objid, name)) 
-            raise SQLAlchemyError("No catalogs found")            
+            self.logger.error(u'No catalogs found')
+            raise SQLAlchemyError(u'No catalogs found')            
             
         self.logger.debug('Get catalogs: %s' % res)
         return res

@@ -26,14 +26,14 @@ except:
 
 container.connection = None
 
-# database operation
+# beehive operation
 try:
     import gevent
     operation = gevent.local.local()
 except:
     import threading
     operation = threading.local()
-    
+
 operation.transaction = None
 operation.session = None
 operation.user = None # (username, userip, uid)
@@ -88,7 +88,7 @@ def transaction(fn):
             #                                         fn.__module__+'.'+get_member_class(args), 
             #                                         fn.func_name, stmp_id, elapsed)
             #logging.getLogger('beecell.perf').info(info)               
-            #return res
+            return res
         except ModelError as ex:
             elapsed = round(time() - start, 4)
             logger.error('%s.%s - %s - TRANSACTION - %s - %s - KO - %s - %s' % (

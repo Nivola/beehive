@@ -9,6 +9,24 @@ import logging
 import getopt
 import ujson as json
 
+from beehive.manager import ComponentManager
+from beehive.common.log import ColorFormatter
+from beehive.manager.ops.platform import PlatformManager
+from beehive.manager.ops.provider import ProviderManager
+from beehive.manager.ops.resource import ResourceManager
+from beehive.manager.ops.scheduler import SchedulerManager
+from beehive.manager.ops.vsphere import VsphereManager, NsxManager
+from beehive.manager.ops.openstack import OpenstackManager
+from beehive.manager.ops.native_vsphere import NativeVsphereManager
+from beehive.manager.ops.native_openstack import NativeOpenstackManager
+from beehive.manager.ops.monitor import MonitorManager
+from beehive.manager.ops.auth import AuthManager
+from beehive.manager.ops.catalog import CatalogManager
+from beehive.manager.ops.event import EventManager
+from beehive.manager.ops.create import create_main
+from beehive.manager.ops.create import create_client
+from beecell.logger.helper import LoggerHelper
+
 VERSION = u'1.0.0'
 
 class bcolors:
@@ -35,40 +53,14 @@ def main(run_path, argv):
         subsystem
         client
         auth
+        oauth2
         monitor
         resource
         scheduler
         provider
     """
-    # setup pythonpath
-    #sys.path.append(os.path.expanduser(u'~/workspace/git/beecell'))
-    #sys.path.append(os.path.expanduser(u'~/workspace/git/beedrones'))
-    #sys.path.append(os.path.expanduser(u'~/workspace/git/beehive'))
-    #sys.path.append(os.path.expanduser(u'~/workspace/git/gibboncloudapi'))     
-    
-    from beecell.logger.helper import LoggerHelper
-    
-    # imports
-    from beehive.manager import ComponentManager
-    from beehive.common.log import ColorFormatter
-    from beehive.manager.ops.platform import PlatformManager
-    from beehive.manager.ops.provider import ProviderManager
-    from beehive.manager.ops.resource import ResourceManager
-    from beehive.manager.ops.scheduler import SchedulerManager
-    from beehive.manager.ops.vsphere import VsphereManager, NsxManager
-    from beehive.manager.ops.openstack import OpenstackManager
-    from beehive.manager.ops.native_vsphere import NativeVsphereManager
-    from beehive.manager.ops.native_openstack import NativeOpenstackManager
-    from beehive.manager.ops.monitor import MonitorManager
-    from beehive.manager.ops.auth import AuthManager
-    from beehive.manager.ops.catalog import CatalogManager
-    from beehive.manager.ops.event import EventManager
-    
-    from beehive.manager.ops.create import create_main
-    from beehive.manager.ops.create import create_client
-    
     logger = logging.getLogger(__name__)
-    file_config = u'./manage.conf'
+    file_config = u'/etc/beehive/manage.conf'
     retcode = 0
     frmt = u'table'
     env = u'test'
@@ -139,7 +131,7 @@ def main(run_path, argv):
             u'endpoint':None
         }
     auth_config[u'color'] = color
-    
+
     # set token if exist
     auth_config[u'token_file'] = u'.manage.token'
     auth_config[u'seckey_file'] = u'.manage.seckey'
@@ -156,7 +148,7 @@ def main(run_path, argv):
     lfrmt = u'%(asctime)s - %(levelname)s - ' \
             u'%(name)s.%(funcName)s:%(lineno)d - %(message)s'
     LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, 
-                                      u'%smanage.log' % auth_config[u'log'], 
+                                      u'%s/manage.log' % auth_config[u'log'], 
                                       1024*1024, 5, lfrmt,
                                       formatter=ColorFormatter)
     
@@ -164,7 +156,7 @@ def main(run_path, argv):
         logging.getLogger(u'beecell.perf')
     ]
     LoggerHelper.rotatingfile_handler(loggers, logging.ERROR, 
-                                      u'%smanage.watch.log' % auth_config[u'log'], 
+                                      u'%s/manage.watch.log' % auth_config[u'log'], 
                                       1024*1024, 5, lfrmt)
 
     try:

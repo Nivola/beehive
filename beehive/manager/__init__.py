@@ -85,13 +85,13 @@ class YamlFilter(Filter):
 
 class ComponentManager(object):
     """
-    use: manage.py [OPTION]... <SECTION> [PARAMs]...
+    use: beehive [OPTION]... <SECTION> [PARAMs]...
     
     Beehive manager.
     
     OPTIONs:
-        -c, --config        json auth config file
-        -f, --format        output format: json, yaml, custom, table
+        -c, --config        json auth config file [default=/etc/beehive/manage.conf]
+        -f, --format        output format: json, yaml, custom, table [default]
         -h, --help          manager help
         -e, --env           set environment to use. Ex. test, lab, prod
     

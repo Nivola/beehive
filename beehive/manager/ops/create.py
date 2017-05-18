@@ -51,12 +51,10 @@ import logging
 import ujson as json
 from pprint import PrettyPrinter
 from beehive.common.apimanager import ApiManager
-from gibboncloudapi.util.data import operation
-#from beehive.common.data import operation
+from beehive.common.data import operation
 from beecell.simple import import_class, id_gen, random_password
 from beehive.module.auth.controller import Objects, Role, User
-from beehive.common.apiclient import BeehiveApiClient,\
-    BeehiveApiClientError
+from beehive.common.apiclient import BeehiveApiClient, BeehiveApiClientError
 from beehive.module.catalog.controller import Catalog
 from beehive.common.config import ConfigDbManager
 

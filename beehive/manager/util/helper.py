@@ -5,19 +5,13 @@ Created on May 11, 2017
 '''
 import logging
 import ujson as json
-#from beehive.common.apimanager import ApiManager
-#from beehive.common.data import operation
-from gibboncloudapi.util.data import operation
+from beehive.common.apimanager import ApiManager
+from beehive.common.data import operation
 from beecell.simple import import_class, id_gen, random_password, get_value
-#from beehive.module.auth.controller import Objects, Role, User
+from beehive.module.auth.controller import Objects, Role, User
 from beehive.common.apiclient import BeehiveApiClient, BeehiveApiClientError
-#from beehive.module.catalog.controller import Catalog
-#from beehive.common.config import ConfigDbManager
-from gibboncloudapi.module.auth.controller import Objects, Role, User
-from gibboncloudapi.module.catalog.controller import Catalog
-from gibboncloudapi.module.base import ApiManager
-from gibboncloudapi.common.config import ConfigDbManager
-
+from beehive.module.catalog.controller import Catalog
+from beehive.common.config import ConfigDbManager
 
 try:
     import json
@@ -218,20 +212,6 @@ class BeehiveHelper(object):
         # add guest role
         controller.add_guest_role()
         
-        # add internal system user
-        '''sys_user = {u'name':u'auth_admin@local',
-                    u'pwd':random_password(20),
-                    u'desc':u'Auth admin user',
-                    u'type':u'admin'}
-        users.append(sys_user)
-        
-        # set user in config
-        config_db_manager.add(config[u'api_system'],
-                              u'auth', 
-                              u'api_user', 
-                              json.dumps({u'name':sys_user[u'name'], 
-                                          u'pwd':sys_user[u'pwd']}))''' 
-    
         for user in users:
             # check if user already exist
             users, total = controller.get_users(name=user[u'name'])
@@ -296,11 +276,10 @@ class BeehiveHelper(object):
         
         return msgs
     
-    def create_subsystem(self, subsystem_config, catalog):
+    def create_subsystem(self, subsystem_config):
         """Create subsystem.
         
         :param subsystem_config: subsystem configuration file
-        :param catalog: beehive catalog id
         """
         res = []
         
@@ -325,7 +304,7 @@ class BeehiveHelper(object):
             client = BeehiveApiClient(api_config[u'endpoint'], 
                                       api_config[u'user'], 
                                       api_config[u'pwd'],
-                                      catalog)
+                                      api_config[u'catalog'])
             
             # create super user
             user = {u'name':u'%s_admin@local' % config[u'api_subsystem'],
@@ -351,7 +330,7 @@ class BeehiveHelper(object):
                 # append catalog config
                 config[u'config'].append({u'group':u'auth', 
                                           u'name':u'catalog', 
-                                          u'value':catalog})
+                                          u'value':api_config[u'catalog']})
                 # append auth endpoints config
                 config[u'config'].append({u'group':u'auth', 
                                           u'name':u'endpoints', 

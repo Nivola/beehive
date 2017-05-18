@@ -12,10 +12,21 @@ from ansible.inventory import Inventory
 from ansible.vars import VariableManager
 from ansible.parsing.dataloader import DataLoader
 from ansible.executor import playbook_executor
-from ansible.utils.display import Display
+from ansible.utils.display import Display as OrigDisplay
 from ansible.playbook.play import Play
 from ansible.executor.task_queue_manager import TaskQueueManager
 from ansible.plugins.callback import CallbackBase
+from logging import getLogger
+
+logger = getLogger(__name__)
+
+class Display(OrigDisplay):
+    def __init__(self, verbosity=0):
+        OrigDisplay.__init__(self, verbosity)
+        
+    def display(self, msg, color=None, stderr=False, screen_only=False, log_only=False):
+        OrigDisplay.display(self, msg, color=color, stderr=stderr, screen_only=screen_only, log_only=log_only)
+        logger.debug(msg)
 
 class Options(object):
     """Options class to replace Ansible OptParser
@@ -71,6 +82,7 @@ class Options(object):
         self.listtags = listtags
         self.limit = limit
         self.module_path = module_path
+        self.cwd = limit
 
 class ResultCallback(CallbackBase):
     """A sample callback plugin used for performing an action as results come in
@@ -102,7 +114,7 @@ class ResultCallback(CallbackBase):
 class Runner(object):
     """Ansible api v2 playbook runner
     """
-    def __init__(self, inventory=None, verbosity=0):
+    def __init__(self, inventory=None, verbosity=2, module=u''):
         self.options = Options()
         self.options.private_key_file = None
         self.options.verbosity = verbosity
@@ -111,12 +123,16 @@ class Runner(object):
         #self.options.become_method = u'sudo'
         #self.options.become_user = u'root'
         
+        # set module
+        self.options.module_path = module
+        
         # Set global verbosity
         self.display = Display()
         self.display.verbosity = verbosity
         # Executor appears to have it's own 
         # verbosity object/setting as well
-        playbook_executor.verbosity = verbosity  
+        #playbook_executor.verbosity = verbosity
+        playbook_executor.display = self.display
         
         # Gets data from YAML/JSON files
         self.loader = DataLoader()
@@ -130,37 +146,37 @@ class Runner(object):
         
         self.passwords = None
         
-    def get_inventory(self, section=None):
+    def get_inventory(self, group=None):
         """Get inventory, using most of above objects
         """
         inventory = Inventory(loader=self.loader, 
                               variable_manager=self.variable_manager, 
                               host_list=self.inventory)
         hosts = inventory.get_group_dict()
-        if section is not None:
-            hosts = hosts[section]
+        if group is not None:
+            hosts = hosts[group]
         return hosts
     
-    def get_inventory_with_vars(self, section):
+    def get_inventory_with_vars(self, group):
         """Get inventory, using most of above objects
         """
         inventory = Inventory(loader=self.loader, 
                               variable_manager=self.variable_manager, 
                               host_list=self.inventory)
         self.variable_manager.set_inventory(inventory)
-        #self.variable_manager.group_vars_files = u'%s/group_vars/%s' % (self.inventory, section)
+        #self.variable_manager.group_vars_files = u'%s/group_vars/%s' % (self.inventory, group)
         #print self.variable_manager.get_vars(self.loader)
-        #print inventory.get_group_variables(section, True)
-        hosts = inventory.list_hosts(section)
+        #print inventory.get_group_variables(group, True)
+        hosts = inventory.list_hosts(group)
 
-        #print inventory.groups[section].vars
+        #print inventory.groups[group].vars
         #print inventory.get_host_variables('10.102.184.52')
 
         #print inventory.get_vars(group, new_pb_basedir, return_results)
         
         return hosts, None
     
-    def run_playbook(self, section, playbook, private_key_file, run_data, 
+    def run_playbook(self, group, playbook, private_key_file, run_data, 
                      become_pas, tags=[]):
         """
         """
@@ -171,14 +187,15 @@ class Runner(object):
         
         # set options
         self.options.tags = tags
+        self.options.limit = group
         #self.options.become = True
         #self.options.become_user = u'root'
         #self.options.private_key_file = u'%s/.ssh/id_rsa' % self.inventory
         
         # Parse hosts
         '''hosts = NamedTemporaryFile(delete=False)
-        hosts.write(u'[%s]\n' % section)
-        for host in self.get_inventory(section):
+        hosts.write(u'[%s]\n' % group)
+        for host in self.get_inventory(group):
             hosts.write(u'%s ansible_ssh_private_key_file=%s ansible_user=root\n' % 
                         (host, self.options.private_key_file))
         hosts.close()
@@ -190,7 +207,10 @@ class Runner(object):
         inventory = Inventory(loader=self.loader, 
                               variable_manager=self.variable_manager, 
                               host_list=self.inventory)
-        inventory.subset(section)
+        #logger.warn(inventory.list_groups())
+        inventory.subset(group)
+        logger.warn(inventory.list_groups())
+        logger.warn(inventory.list_hosts(group))
         self.variable_manager.set_inventory(inventory)
 
         # Setup playbook executor, but don't run until run() called
@@ -220,7 +240,7 @@ class Runner(object):
 
         return stats
     
-    def run_task(self, section, gather_facts=u'no', tasks=[], frmt=u'json'):
+    def run_task(self, group, gather_facts=u'no', tasks=[], frmt=u'json'):
         """
         """
         # set options
@@ -228,15 +248,15 @@ class Runner(object):
         
         # Set inventory, using most of above objects
         inventory = Inventory(loader=self.loader, 
-                                   variable_manager=self.variable_manager, 
-                                   host_list=self.inventory)
-        inventory.subset(section)
+                              variable_manager=self.variable_manager, 
+                              host_list=self.inventory)
+        inventory.subset(group)
         self.variable_manager.set_inventory(inventory)        
 
         # create play with tasks
         play_source =  dict(
                 name = u'Ansible Play',
-                hosts = section,
+                hosts = group,
                 gather_facts = gather_facts,
                 tasks = tasks
             )

@@ -11,10 +11,18 @@ from beehive.common.apimanager import ApiView, ApiManagerError
 
 class CatalogApiView(ApiView):
     def get_catalog(self, controller, oid):
-        catalog = controller.get_catalogs(oid=int(oid))
-        if len(catalog) == 0:
-            raise ApiManagerError('Catalog %s not found' % oid, code=404)
-        return catalog[0]
+        # get obj by uuid
+        if match(u'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', str(oid)):
+            objs = controller.get_catalogs(uuid=oid)
+        # get link by id
+        elif match(u'[0-9]+', str(oid)):
+            objs = controller.get_catalogs(oid=int(oid))
+        # get obj by name
+        else:
+            objs = controller.get_catalogs(name=oid)
+        if len(objs) == 0:
+            raise ApiManagerError(u'Catalog %s not found' % oid, code=404)
+        return objs[0]    
 
     def get_endpoint(self, controller, oid):
         # get link by id

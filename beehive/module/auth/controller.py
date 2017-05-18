@@ -313,6 +313,7 @@ class AuthController(ApiController):
         try:
             objid = id_gen()
             role = self.dbauth.add_role(objid, name, description)
+            self.logger.warn(role)
             # add object and permission
             Role(self).register_object([objid], desc=description)
             
@@ -321,12 +322,18 @@ class AuthController(ApiController):
                              {u'name':name, u'description':description}, 
                              (True))
             return role.id
-        except TransactionError as ex:
+        except (TransactionError) as ex:
             Role(self).event(u'role.insert', 
                              {u'name':name, u'description':description}, 
                              (False, ex))            
             self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=ex.code)    
+            raise ApiManagerError(ex, code=ex.code)
+        except (Exception) as ex:
+            Role(self).event(u'role.insert', 
+                             {u'name':name, u'description':description}, 
+                             (False, ex))            
+            self.logger.error(ex, exc_info=1)
+            raise ApiManagerError(ex, code=400)          
     
     @watch
     def add_superadmin_role(self, perms):
