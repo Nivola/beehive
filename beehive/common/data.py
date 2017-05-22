@@ -93,7 +93,7 @@ def transaction(fn):
             elapsed = round(time() - start, 4)
             logger.error('%s.%s - %s - TRANSACTION - %s - %s - KO - %s - %s' % (
                          operation.transaction, stmp_id, sessionid, fn.__name__, 
-                         params, ex, elapsed))
+                         params, ex, elapsed), exc_info=1)
             
             # watch log
             #info = "%s:%s - %s:%s.%s - ERROR - %s" % (cp.ident, ct.ident, 
@@ -107,7 +107,7 @@ def transaction(fn):
             elapsed = round(time() - start, 4)
             logger.error('%s.%s - %s - TRANSACTION - %s - %s - KO - %s - %s' % (
                          operation.transaction, stmp_id, sessionid, fn.__name__, 
-                         params, ex, elapsed))
+                         params, ex, elapsed), exc_info=1)
             
             # watch log
             #info = "%s:%s - %s:%s.%s - ERROR - %s" % (cp.ident, ct.ident, 
@@ -121,7 +121,7 @@ def transaction(fn):
             elapsed = round(time() - start, 4)
             logger.error('%s.%s - %s - TRANSACTION - %s - %s - KO - %s - %s' % (
                          operation.transaction, stmp_id, sessionid, fn.__name__, 
-                         params, ex, elapsed))
+                         params, ex, elapsed), exc_info=1)
             
             # watch log
             #info = "%s:%s - %s:%s.%s - ERROR - %s" % (cp.ident, ct.ident, 
@@ -131,6 +131,21 @@ def transaction(fn):
                         
             session.rollback()
             raise TransactionError(ex.orig)
+        
+        except Exception as ex:
+            elapsed = round(time() - start, 4)
+            logger.error('%s.%s - %s - TRANSACTION - %s - %s - KO - %s - %s' % (
+                         operation.transaction, stmp_id, sessionid, fn.__name__, 
+                         params, ex, elapsed), exc_info=1)
+            
+            # watch log
+            #info = "%s:%s - %s:%s.%s - ERROR - %s" % (cp.ident, ct.ident, 
+            #                                         fn.__module__+'.'+get_member_class(args), 
+            #                                         fn.func_name, stmp_id, elapsed)
+            #logging.getLogger('beecell.perf').info(info)
+                        
+            session.rollback()
+            raise TransactionError(ex)        
 
     return transaction_inner
 
@@ -187,7 +202,7 @@ def query(fn):
             elapsed = round(time() - start, 4)
             logger.error('%s.%s - %s - query - %s - %s - KO - %s - %s' % (
                          operation.transaction, stmp_id, sessionid, fn.__name__, 
-                         params, ex, elapsed))
+                         params, ex, elapsed), exc_info=1)
             
             # watch log
             #info = "%s:%s - %s:%s.%s - ERROR - %s" % (cp.ident, ct.ident, 
@@ -200,7 +215,7 @@ def query(fn):
             elapsed = round(time() - start, 4)
             logger.error('%s.%s - %s - query - %s - %s - KO - %s - %s' % (
                          operation.transaction, stmp_id, sessionid, fn.__name__, 
-                         params, ex, elapsed))
+                         params, ex, elapsed), exc_info=1)
             
             # watch log
             #info = "%s:%s - %s:%s.%s - ERROR - %s" % (cp.ident, ct.ident, 
@@ -213,7 +228,7 @@ def query(fn):
             elapsed = round(time() - start, 4)
             logger.error('%s.%s - %s - query - %s - %s - KO - %s - %s' % (
                          operation.transaction, stmp_id, sessionid, fn.__name__, 
-                         params, ex, elapsed))
+                         params, ex, elapsed), exc_info=1)
             
             # watch log
             #info = "%s:%s - %s:%s.%s - ERROR - %s" % (cp.ident, ct.ident, 

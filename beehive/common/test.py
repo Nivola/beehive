@@ -13,7 +13,6 @@ import beecell.server.gevent_ssl
 import gevent.monkey
 from beehive.common.log import ColorFormatter
 from beehive.common.apiclient import BeehiveApiClient
-from gevent.libev.corecext import stat
 gevent.monkey.patch_all()
 
 import logging
@@ -52,8 +51,8 @@ class BeehiveTestCase(unittest.TestCase):
         pass
         #cls._connection.destroy()
 
-    def load_config(self, file_config=None):
-        f = open(file_config|u'./params', u'r')
+    def load_config(self, file_config):
+        f = open(file_config, u'r')
         config = f.read()
         config = json.loads(config)
         f.close()
@@ -65,7 +64,7 @@ class BeehiveTestCase(unittest.TestCase):
         self.start = time.time()
         
         # ssl
-        path = os.path.dirname(__file__)
+        path = os.path.dirname(__file__).replace(u'beehive/common', u'tests')
         pos = path.find(u'tests')
         path = path[:pos+6]
         #keyfile = u'%s/ssl/nginx.key' % path
@@ -74,19 +73,24 @@ class BeehiveTestCase(unittest.TestCase):
         certfile = None
 
         # load config
-        config = self.load_config()
+        
+        config = self.load_config(u'%s/params.json' % path)
         #for k,v in self.load_config():
         #    setattr(self, k, v)
         
         env = config.get(u'env')
         current_user = config.get(u'user')
+        current_schema = config.get(u'schema')
         cfg = config.get(env)
         # endpoints
         self.endpoints = cfg.get(u'endpoints')
             
         # redis connection  
         rhost, rport, db = cfg.get(u'redis-uri').split(u';')
-        self.redis = redis.StrictRedis(host=rhost, port=int(rport), db=int(db))            
+        self.redis = redis.StrictRedis(host=rhost, port=int(rport), db=int(db))
+        
+        # mysql connection
+        self.db_uri = cfg.get(u'db-uris').get(current_schema)   
         
         # get users
         self.users = cfg.get(u'users')
@@ -99,7 +103,7 @@ class BeehiveTestCase(unittest.TestCase):
         
         # create api endpoint
         self.api = {}
-        for subsystem,endpoint in self.endpoints[self.env].items():
+        for subsystem,endpoint in self.endpoints.items():
             self.api[subsystem] = RemoteClient(endpoint, 
                                                keyfile=keyfile, 
                                                certfile=certfile)
@@ -201,29 +205,33 @@ class BeehiveTestCase(unittest.TestCase):
         uid = None
         seckey = None
 
-    @staticmethod
-    def run(suite):
-        log_file = u'/tmp/test.log'
-        watch_file = u'/tmp/test.watch'
+def runtest(suite):
+    log_file = u'/tmp/test.log'
+    watch_file = u'/tmp/test.watch'
+    
+    logging.captureWarnings(True)    
+    
+    #setting logger
+    #frmt = "%(asctime)s - %(levelname)s - %(process)s:%(thread)s - %(message)s"
+    frmt = u'%(asctime)s - %(levelname)s - %(message)s'
+    loggers = [
+        logging.getLogger(u'beehive'),
+        logging.getLogger(u'beecell'),
+    ]
+    LoggerHelper.file_handler(loggers, logging.DEBUG, log_file, frmt=frmt, 
+                              formatter=ColorFormatter)
+    loggers = [
+        logging.getLogger(u'beecell.perf'),
+    ]
+    LoggerHelper.file_handler(loggers, logging.DEBUG, watch_file, 
+                              frmt=u'%(message)s', formatter=ColorFormatter)
+    
+    # run test suite
+    #alltests = unittest.TestSuite(suite)
+    alltests = suite
+    #print alltests
+    runner = unittest.TextTestRunner(verbosity=2)
+    runner.run(alltests)
+    #suite.run()
         
-        logging.captureWarnings(True)    
         
-        #setting logger
-        #frmt = "%(asctime)s - %(levelname)s - %(process)s:%(thread)s - %(message)s"
-        frmt = u'%(asctime)s - %(levelname)s - %(message)s'
-        loggers = [
-            logging.getLogger(u'beehive'),
-            logging.getLogger(u'beecell'),
-        ]
-        LoggerHelper.file_handler(loggers, logging.DEBUG, log_file, frmt=frmt, 
-                                  formatter=ColorFormatter)
-        loggers = [
-            logging.getLogger(u'beecell.perf'),
-        ]
-        LoggerHelper.file_handler(loggers, logging.DEBUG, watch_file, 
-                                  frmt=u'%(message)s', formatter=ColorFormatter)
-        
-        # run test suite
-        alltests = unittest.TestSuite(suite)
-        #print alltests
-        TextTestRunner(verbosity=2).run(alltests)

@@ -566,9 +566,9 @@ class ApiManager(object):
                 ##### event queue configuration #####
                 try:
                     conf = configurator.get(app=self.app_name, 
-                                            group='queue',
-                                            name='queue.event')
-                    self.logger.info('Configure event queue - START')
+                                            group=u'queue',
+                                            name=u'queue.event')
+                    self.logger.info(u'Configure event queue - START')
     
                     # setup event producer
                     conf = json.loads(conf[0].value)
@@ -577,15 +577,15 @@ class ApiManager(object):
                     #self.redis_event_manager = redis.StrictRedis(host=host, 
                     #                                               port=int(port), 
                     #                                               db=int(db))               
-                    self.redis_event_uri = conf['uri']
-                    self.redis_event_channel = conf['queue']
+                    self.redis_event_uri = conf[u'uri']
+                    self.redis_event_channel = conf[u'queue']
                     # create instance of event producer
                     self.event_producer = EventProducerRedis(
                                                         self.redis_event_uri, 
                                                         self.redis_event_channel)
-                    self.logger.info('Configure event queue - STOP')
+                    self.logger.info(u'Configure event queue - STOP')
                 except:
-                    self.logger.warning('Event queue not configured')                
+                    self.logger.warning(u'Event queue not configured')                
                 ##### event queue configuration #####
                 
                 ##### monitor queue configuration #####

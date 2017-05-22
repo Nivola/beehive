@@ -174,4 +174,5 @@ def test_suite():
     return unittest.TestSuite(map(CatalogAPITest, tests))
 
 if __name__ == '__main__':
-    run_test([test_suite()])
+    run_test(test_suite())
+    

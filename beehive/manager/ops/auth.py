@@ -111,9 +111,10 @@ class AuthManager(ApiManager):
         self.perm_headers = [u'id', u'oid', u'objid', u'subsystem', u'type', 
                              u'aid', u'action', u'desc']
         self.user_headers = [u'id', u'uuid', u'objid', u'name', u'active', 
-                              u'date.creation', u'date.modified', u'desc']
+                             u'date.creation', u'date.modified', u'date.expiry', 
+                             u'desc']
         self.role_headers = [u'id', u'uuid', u'objid', u'name', u'active', 
-                              u'date.creation', u'date.modified', u'desc']
+                             u'date.creation', u'date.modified', u'desc']
         self.group_headers = [u'id', u'uuid', u'objid', u'name', u'active', 
                               u'date.creation', u'date.modified', u'desc']
     

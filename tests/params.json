@@ -1,6 +1,7 @@
 {
-    "env":"test",
+    "env":"lab",
     "user":"admin",
+    "schema":"auth",
     "test":{
         "cmdb-uri":null,
         "db-uris":{
@@ -32,7 +33,7 @@
     "lab":{
         "cmdb-uri":"postgresql+psycopg2://pastext:pent4ho@vm-cmdbuild.csi.it:5432/cmdbprod",
         "db-uris":{
-            "auth":"mysql+pymysql://auth:auth@10.102.160.240:3306/auth"
+            "auth":"mysql+pymysql://auth:auth@10.102.160.240:3306/auth1"
         },
         "redis-uri":"localhost;6379;0",
         "endpoints":{

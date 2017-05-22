@@ -76,7 +76,9 @@ class AuthApiView(ApiView):
 class ListUsers(AuthApiView):
     def dispatch(self, controller, data, *args, **kwargs):
         group = request.args.get(u'group', None)
-        role = request.args.get(u'role', None)        
+        role = request.args.get(u'role', None)
+        active = request.args.get(u'active', None)
+        expiry_date = request.args.get(u'expiry-date', None)
         page = request.args.get(u'page', 0)
         size = request.args.get(u'size', 10)
         order = request.args.get(u'order', u'DESC')
@@ -84,7 +86,8 @@ class ListUsers(AuthApiView):
         if field not in [u'id', u'objid', u'name']:
             field = u'id'
             
-        objs, total = controller.get_users(role=role, group=group,
+        objs, total = controller.get_users(role=role, group=group, active=active,
+                                           expiry_date=expiry_date,
                                            page=int(page), size=int(size), 
                                            order=order, field=field)
         res = [r.info() for r in objs]
@@ -103,69 +106,6 @@ class GetUser(AuthApiView):
         #res[u'roles'] = obj.get_roles()        
         resp = {u'user':res} 
         return resp
-
-'''
-class GetUserRoles(AuthApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):
-        page = request.args.get(u'page', 0)
-        size = request.args.get(u'size', 10)
-        order = request.args.get(u'order', u'DESC')
-        field = request.args.get(u'field', u'id')
-        if field not in [u'id', u'objid', u'name']:
-            field = u'id'
-        
-        objs, total = controller.get_roles(user=oid, page=int(page), 
-                                           size=int(size), order=order, 
-                                           field=field)
-        res = [r.info() for r in objs]
-        resp = {u'roles':res, 
-                u'count':len(res),
-                u'page':page,
-                u'total':total}       
-        return resp    
-    
-class GetUserPerms(AuthApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):
-        page = request.args.get(u'page', 0)
-        size = request.args.get(u'size', 10)
-        order = request.args.get(u'order', u'DESC')
-        field = request.args.get(u'field', u'id')
-        if field not in [u'subsystem', u'type', u'id', u'objid', u'aid', 
-                         u'action']:
-            field = u'id'
-        if field == u'subsystem':
-            field = u'objtype'
-        elif field == u'type':
-            field = u'objdef' 
-        
-        user = self.get_user(controller, oid)
-        objs, total = user.get_permissions(page=int(page), size=int(size), 
-                                           order=order, field=field)
-
-        resp = {u'perms':objs, 
-                u'count':len(objs),
-                u'page':page,
-                u'total':total}
-        return resp
-    
-class GetUserGroups(AuthApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):
-        page = request.args.get(u'page', 0)
-        size = request.args.get(u'size', 10)
-        order = request.args.get(u'order', u'DESC')
-        field = request.args.get(u'field', u'id')
-        if field not in [u'id', u'objid', u'name']:
-            field = u'id'
-        
-        objs, total = controller.get_groups(user=oid, page=int(page), 
-                                           size=int(size), order=order, 
-                                           field=field)
-        res = [r.info() for r in objs]
-        resp = {u'groups':res, 
-                u'count':len(res),
-                u'page':page,
-                u'total':total}       
-        return resp'''
 
 class GetUserAtributes(AuthApiView):
     def dispatch(self, controller, data, oid, *args, **kwargs):      
@@ -190,7 +130,8 @@ class CreateUser(AuthApiView):
             'desc':'', 
             'attribute':'', 
             'generic':True,
-            'system':True
+            'system':True,
+            'expiry-date':..,
         }
     }
     """
@@ -201,6 +142,7 @@ class CreateUser(AuthApiView):
         description = get_value(data, u'desc', u'User %s' % username)
         active = get_value(data, u'active', True)
         active = str2bool(active)
+        expiry_date = get_value(data, u'expiry-date', None)
                            
         if u'generic' in data and data.get(u'generic') is True:
             storetype = get_value(data, u'storetype', None, exception=True)
@@ -220,7 +162,8 @@ class CreateUser(AuthApiView):
                                        systype,
                                        active=active, 
                                        password=password, 
-                                       description=description)
+                                       description=description,
+                                       expiry_date=expiry_date)
         return (resp, 201)
     
 class UpdateUser(AuthApiView):
@@ -231,7 +174,8 @@ class UpdateUser(AuthApiView):
             'storetype':, 
             'desc':,
             'active':, 
-            'password':, 
+            'password':,
+            'expiry-date':..,
             'roles':{'append':, 'remove':}
         }
     }
@@ -244,6 +188,7 @@ class UpdateUser(AuthApiView):
         new_active = get_value(data, u'active', None)
         new_password = get_value(data, u'password', None)
         role = get_value(data, u'roles', None)
+        new_expiry_date = get_value(data, u'expiry-date', None)
         if new_active is not None:
             new_active = str2bool(new_active)
         
@@ -270,7 +215,8 @@ class UpdateUser(AuthApiView):
                           new_storetype=new_storetype,
                           new_description=new_description,
                           new_active=new_active, 
-                          new_password=new_password)
+                          new_password=new_password,
+                          new_expiry_date=new_expiry_date)
         resp[u'update'] = res
         return resp
 

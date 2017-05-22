@@ -4,18 +4,19 @@ Created on Sep 2, 2013
 @author: darkbk
 '''
 import unittest
-from tests.test_util import run_test, CloudapiTestCase
-from beecell.db import TransactionError, QueryError
-from beecell.simple import id_gen
+from tests.test_util import BeehiveTestCase
 from beehive.common.data import operation
 from beehive.common.authorization import AuthDbManager
+from beecell.db import QueryError, TransactionError
+from beecell.simple import id_gen
+from beehive.common.test import runtest
 
-class AuthManagerTestCase(CloudapiTestCase):
+class AuthManagerTestCase(BeehiveTestCase):
     """To execute this test you need a mysql instance, a user and a 
     database associated to the user.
     """
     def setUp(self):
-        CloudapiTestCase.setUp(self)
+        BeehiveTestCase.setUp(self)
         db_session = self.open_mysql_session(self.db_uri)
         operation.session = db_session()
         self.manager = AuthDbManager()
@@ -23,7 +24,7 @@ class AuthManagerTestCase(CloudapiTestCase):
         
     def tearDown(self):
         operation.session.close()
-        CloudapiTestCase.tearDown(self)
+        BeehiveTestCase.tearDown(self)
 
     def test_create_table(self):       
         AuthDbManager.create_table(self.db_uri)
@@ -215,12 +216,15 @@ class AuthManagerTestCase(CloudapiTestCase):
         res = self.manager.get_user(name='user1')
 
     def test_get_user_roles(self):
-        user = self.manager.get_user(name='user1')[0]
-        res = self.manager.get_user_roles(user)
+        user, total = self.manager.get_user(name='admin@local')
+        #print user[0].role[0].expiry_date
+        res, total = self.manager.get_user_roles(user[0])
+        print res[0]
 
     def test_get_role_users(self):
-        role = self.manager.get_role(name='role2')[0]
-        res = self.manager.get_role_users(role)
+        role, total = self.manager.get_role(name='ApiSuperadmin')
+        res = self.manager.get_role_users(role[0])
+        print res
 
     def test_get_user_permissions(self):
         user = self.manager.get_user(name='user1')[0]
@@ -386,92 +390,94 @@ class AuthManagerTestCase(CloudapiTestCase):
         self.assertEqual(res, True)
 
 def test_suite():
-    tests = ['test_remove_table',
-             'test_create_table',
-             #'test_set_initial_data',
-             # system object type
-             'test_add_object_types',
-             'test_get_object_type',
-             'test_get_object_type_all',
-             'test_get_type_empty',
-
-             # system object action
-             'test_get_object_action',             
-             'test_add_object_actions',
-             'test_get_object_action_all',
-             
-             # system object
-             'test_add_object',
-             'test_add_object_bis',
-             'test_get_object_all',
-             'test_get_object',
-             'test_get_object_empty',
-             
-             # system object permission
-             'test_get_permission_all',
-             'test_get_permission',
-             'test_get_permission_empty',          
-             
-             # role
-             'test_add_role',
-             'test_add_role_bis',
-             'test_get_role',
-             'test_update_role',
-             'test_append_role_permission',
-             'test_append_role_permission',
-             'test_get_role_permission',
-             'test_get_permission_roles',
-             
-             # user
-             'test_add_user',
-             'test_get_user',
-             'test_get_user_roles',
-             'test_get_role_users',
-             'test_get_user_permissions',
-             'test_verify_user_password',
-             'test_verify_user_password_bad',
-             'test_append_user_role',
-             'test_append_user_role_bis',
-             'test_get_user_roles',
-             'test_remove_user_role',
-             'test_update_user',
-             'test_set_attribute',
-             'test_set_attribute_bis',
-             'test_get_attribute',             
-             'test_remove_attribute',
-             
-             # group
-             'test_add_group',
-             'test_get_group',
-             'test_get_group_roles',
-             'test_get_role_groups',
-             'test_get_group_members',
-             'test_get_user_groups',
-             'test_get_group_permissions',
-             'test_append_group_role',
-             'test_append_group_role_bis',
-             'test_append_group_member',
-             'test_append_group_member_bis',          
-             'test_get_group_roles',
-             'test_get_group_members',
-             'test_get_user_groups',
-             'test_get_user_permissions2',
-             'test_get_group_permissions',           
-             'test_remove_group_role',
-             'test_remove_group_member',
-             'test_update_group',
-             
-             # delete all
-             'test_remove_group',
-             'test_remove_user',
-             'test_remove_role_permission',
-             'test_remove_role',
-             'test_remove_object',
-             'test_remove_object_empty',
-             'test_remove_object_action',             
-             'test_remove_object_type',
-            ]
+    tests = [
+        ##'test_remove_table',
+        ##'test_create_table',
+        ##'test_set_initial_data',
+        # system object type
+        ##'test_add_object_types',
+        ##'test_get_object_type',
+        ##'test_get_object_type_all',
+        ##'test_get_type_empty',
+        
+        # system object action
+        ##'test_get_object_action',             
+        ##'test_add_object_actions',
+        ##'test_get_object_action_all',
+        
+        # system object
+        ##'test_add_object',
+        ##'test_add_object_bis',
+        ##'test_get_object_all',
+        ##'test_get_object',
+        ##'test_get_object_empty',
+        
+        # system object permission
+        ##'test_get_permission_all',
+        ##'test_get_permission',
+        ##'test_get_permission_empty',          
+        
+        # role
+        ##'test_add_role',
+        #'test_add_role_bis',
+        #'test_get_role',
+        #'test_update_role',
+        #'test_append_role_permission',
+        #'test_append_role_permission',
+        #'test_get_role_permission',
+        #'test_get_permission_roles',
+        
+        # user
+        #'test_add_user',
+        #'test_get_user',
+        #'test_get_user_roles',
+        'test_get_role_users',
+        #'test_get_user_permissions',
+        #'test_verify_user_password',
+        #'test_verify_user_password_bad',
+        #'test_append_user_role',
+        #'test_append_user_role_bis',
+        'test_get_user_roles',
+        #'test_remove_user_role',
+        #'test_update_user',
+        #'test_set_attribute',
+        #'test_set_attribute_bis',
+        #'test_get_attribute',             
+        #'test_remove_attribute',
+        
+        # group
+        #'test_add_group',
+        #'test_get_group',
+        #'test_get_group_roles',
+        #'test_get_role_groups',
+        #'test_get_group_members',
+        #'test_get_user_groups',
+        #'test_get_group_permissions',
+        #'test_append_group_role',
+        #'test_append_group_role_bis',
+        #'test_append_group_member',
+        #'test_append_group_member_bis',          
+        #'test_get_group_roles',
+        #'test_get_group_members',
+        #'test_get_user_groups',
+        #'test_get_user_permissions2',
+        #'test_get_group_permissions',           
+        #'test_remove_group_role',
+        #'test_remove_group_member',
+        #'test_update_group',
+        
+        # delete all
+        #'test_remove_group',
+        #'test_remove_user',
+        #'test_remove_role_permission',
+        #'test_remove_role',
+        #'test_remove_object',
+        #'test_remove_object_empty',
+        #'test_remove_object_action',             
+        #'test_remove_object_type',
+    ]
     return unittest.TestSuite(map(AuthManagerTestCase, tests))
 
-if __name__ == '__main__':
-    run_test(test_suite())
+if __name__ == u'__main__':
+    runtest(test_suite())
+    

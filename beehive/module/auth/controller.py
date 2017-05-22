@@ -382,14 +382,16 @@ class AuthController(ApiController):
     # user manipulation methods
     #
     @watch
-    def get_users(self, oid=None, name=None, role=None, group=None,
-                  page=0, size=10, order=u'DESC', field=u'id'):
+    def get_users(self, oid=None, name=None, role=None, group=None, active=None,
+                  expiry_date=None, page=0, size=10, order=u'DESC', field=u'id'):
         """Get users or single user.
 
         :param oid: user id [optional]
         :param name: user name [optional]
         :param role: role name, id or uuid [optional]
         :param group: group name, id or uuid [optional]
+        :param active: user status [optional]
+        :param expiry_date: user expiry date. Use gg-mm-yyyy [optional]
         :param page: users list page to show [default=0]
         :param size: number of users to show in list per page [default=0]
         :param order: sort order [default=DESC]
@@ -449,8 +451,13 @@ class AuthController(ApiController):
             
             # get all users
             else:
+                if expiry_date is not None:
+                    g, m, y = expiry_date.split(u'-')
+                    expiry_date = datetime(int(y), int(m), int(g))
                 users, total = self.dbauth.get_user(page=page, size=size, 
-                                                    order=order, field=field)
+                                                    order=order, field=field,
+                                                    active=active, 
+                                                    expiry_date=expiry_date)
             
             for user in users:
                 # check authorization
@@ -481,18 +488,18 @@ class AuthController(ApiController):
 
     @watch
     def add_user(self, username, storetype, systype, active=True, 
-                       password=None, description=''):
+                       password=None, description=u'', expiry_date=None):
         """Add new user.
 
         :param username: name of the user
         :param storetype: type of the user store. Can be DBUSER, LDAPUSER
         :param systype: type of user. User can be a human USER or a system 
                         module SYS
-        :param profile: Profile name [Optional]
         :param active: User status. If True user is active [Optional] [Default=True]
         :param description: User description. [Optional]
         :param password: Password of the user. Set only for user like 
                          <user>@local [Optional]
+        :param expiry_date: user expiry date. Set as gg-mm-yyyy [default=365 days]
         :return: True if user added correctly
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
@@ -500,46 +507,46 @@ class AuthController(ApiController):
         # check authorization
         self.check_authorization(User.objtype, User.objdef, None, u'insert')
         
-        # verify permissions
-        '''objs = self.can(u'insert', u'auth', definition=User.objdef)
-        if len(objs) > 0 and objs[User.objdef][0].split(u'//')[-1] != '*':
-            raise ApiManagerError(u'You need more privileges to add user', 
-                                  code=2000)'''
-                
         try:
             objid = id_gen()
-            user = self.dbauth.add_user(objid, username, [], active=active, 
+            if expiry_date is not None:
+                g, m, y = expiry_date.split(u'-')
+                expiry_date = datetime(int(y), int(m), int(g))
+            user = self.dbauth.add_user(objid, username, active=active, 
                                         password=password, 
-                                        description=description)
+                                        description=description, 
+                                        expiry_date=expiry_date)
             # add object and permission
             User(self).register_object([objid], desc=description)
             
             # add default attributes
             self.dbauth.set_user_attribute(user, u'store_type', storetype, 
-                                           'Type of user store')
+                                           u'Type of user store')
             self.dbauth.set_user_attribute(user, u'sys_type', systype, 
-                                           'Type of user')            
+                                           u'Type of user')            
             
             self.logger.debug(u'Add new user: %s' % username)
             User(self).event(u'user.insert', 
                              {u'username':username, u'storetype':storetype, 
-                              'active':active,
-                              'password':password, u'description':description}, 
+                              u'active':active, u'password':password, 
+                              u'description':description,
+                              u'expiry_date':expiry_date}, 
                              (True))
             #user = self.get_users(name=username)[0]
             return user.id
         except TransactionError as ex:
             User(self).event(u'user.insert', 
                              {u'username':username, u'storetype':storetype, 
-                              'active':active,
-                              'password':password, u'description':description}, 
+                              u'active':active, u'password':password, 
+                              u'description':description, 
+                              u'expiry_date':expiry_date}, 
                              (False, ex))              
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)    
     
     @watch
     def add_generic_user(self, name, storetype, password=None,
-                         description=''):
+                         description=u'', expiry_date=None):
         """Add cloudapi generic user. A generic user has a default role
         associated and the guest role. A generic user role has no permissions
         associated.
@@ -547,26 +554,29 @@ class AuthController(ApiController):
         :param name: user name
         :param storetype: type of the user. Can be DBUSER, LDAPUSER
         :param password: user password for DBUSER
-        :param description: User description. [Optional]        
+        :param description: User description. [Optional]
+        :param expiry_date: user expiry date. Set as gg-mm-yyyy [default=365 days]     
         :return: True if user is added correctly
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # create user
         self.add_user(name, storetype, u'USER', active=True, 
-                      password=password, description=description)
+                      password=password, description=description,
+                      expiry_date=expiry_date)
         user = self.get_users(name=name)[0][0]
-        self.logger.warn(self.get_users(name=name))
+
         # create user role
         self.add_role(u'User%sRole' % user.oid, u'User %s private role' % name)
         
         # append role to user
+        expiry_date = u'31-12-2099'
         user.append_role(u'User%sRole' % user.oid)
-        user.append_role("Guest")
+        user.append_role(u'Guest', expiry_date=expiry_date)
         return user.oid
     
     @watch
-    def add_system_user(self, name, password=None, description=''):
+    def add_system_user(self, name, password=None, description=u''):
         """Add cloudapi system user. A system user is used by a module to 
         call the apis of the other modules.
         
@@ -583,10 +593,11 @@ class AuthController(ApiController):
         user = self.get_users(name=name)[0][0]
         
         # create user role
-        self.add_role("%sRole" % name.split(u'@')[0], u'User %s private role' % name)
+        self.add_role(u'%sRole' % name.split(u'@')[0], u'User %s private role' % name)
         
         # append role to user
-        user.append_role("ApiSuperadmin")
+        expiry_date = u'31-12-2099'
+        user.append_role(u'ApiSuperadmin', expiry_date=expiry_date)
         return user.oid
     
     #
@@ -1750,7 +1761,7 @@ class Role(AuthObject):
         creation_date = str2uni(self.model.creation_date\
                                 .strftime(u'%d-%m-%y %H:%M:%S'))
         modification_date = str2uni(self.model.modification_date\
-                                    .strftime(u'%d-%m-%y %H:%M:%S'))   
+                                    .strftime(u'%d-%m-%y %H:%M:%S'))
         return {
             u'id':self.oid, 
             u'uuid':self.uuid,    
@@ -1976,6 +1987,8 @@ class User(AuthObject):
                                 .strftime(u'%d-%m-%y %H:%M:%S'))
         modification_date = str2uni(self.model.modification_date\
                                     .strftime(u'%d-%m-%y %H:%M:%S'))
+        expiry_date = str2uni(self.model.expiry_date\
+                              .strftime(u'%d-%m-%y %H:%M:%S'))        
         #attrib = self.get_attribs()
         return {
             u'id':self.oid,
@@ -1985,18 +1998,18 @@ class User(AuthObject):
             u'name':self.name, 
             u'objid':self.objid, 
             u'desc':self.desc,
-            u'password':self.model.password,  
-            #u'attribute':attrib,
+            u'password':self.model.password,
             u'active':self.active, 
             u'date':{
                 u'creation':creation_date,
-                u'modified':modification_date
+                u'modified':modification_date,
+                u'expiry':expiry_date
             }
         }
 
     @watch
     def update(self, new_name=None, new_storetype=None, new_description=None, 
-                     new_active=None, new_password=None):
+                     new_active=None, new_password=None, new_expiry_date=None):
         """Update a user.
         
         :param username: user name
@@ -2005,6 +2018,7 @@ class User(AuthObject):
         :param new_description: new user description [optional]
         :param new_active: new user status [optional]
         :param new_password: new user password [optional]
+        :param new_expiry_date: new expiry date. Use gg-mm-yyyy [optional]
         :return: True if user updated correctly
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
@@ -2014,10 +2028,14 @@ class User(AuthObject):
                                             self.objid, u'update')
                 
         try:
+            if new_expiry_date is not None:
+                g, m, y = new_expiry_date.split(u'-')
+                new_expiry_date = datetime(int(y), int(m), int(g))
             res = self.dbauth.update_user(oid=self.oid, new_name=new_name,
                                           new_description=new_description, 
                                           new_active=new_active, 
-                                          new_password=new_password)
+                                          new_password=new_password,
+                                          new_expiry_date=new_expiry_date)
             if new_storetype is not None:
                 self.dbauth.set_user_attribute(self.model, u'store_type', 
                                                new_storetype)
@@ -2148,10 +2166,11 @@ class User(AuthObject):
             raise ApiManagerError(ex, code=ex.code)
     
     @watch
-    def append_role(self, role_name):
+    def append_role(self, role_name, expiry_date=None):
         """Append role to user.
         
         :param role_name: role name
+        :param expiry_date: role association expiry date [default=365 days]
         :return: True if role added correctly
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
@@ -2177,23 +2196,24 @@ class User(AuthObject):
         self.controller.check_authorization(Role.objtype, Role.objdef, 
                                             role.objid, u'view')
 
-        try:            
-            self.logger.warn(role)
-            self.logger.warn(total)
-            res = self.dbauth.append_user_role(self.model, role)
+        try:
+            if expiry_date is not None:
+                g, m, y = expiry_date.split(u'-')
+                expiry_date = datetime(int(y), int(m), int(g))
+            res = self.dbauth.append_user_role(self.model, role, 
+                                               expiry_date=expiry_date)
             if res is True: 
                 self.logger.debug(u'Append role %s to user %s' % (
                                             role, self.name))
             else:
                 self.logger.debug(u'Role %s already linked with user %s' % (
                                             role, self.name))
-            self.event(u'user.role.update', 
-                       {u'name':self.name, u'role':role_name}, 
-                       (True))
+            self.event(u'user.role.update', {u'name':self.name, 
+                       u'role':role_name, u'expiry_date':expiry_date}, (True))
             return res
         except (QueryError, TransactionError) as ex:
-            self.event(u'user.role.update', 
-                       {u'name':self.name, u'role':role_name}, 
+            self.event(u'user.role.update', {u'name':self.name, 
+                       u'role':role_name, u'expiry_date':expiry_date}, 
                        (False, ex.desc))
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)

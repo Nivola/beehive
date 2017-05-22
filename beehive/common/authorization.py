@@ -26,9 +26,35 @@ Base = declarative_base()
 logger = logging.getLogger(__name__)
 
 # Many-to-Many Relationship among users and system roles
-role_user = Table('roles_users', Base.metadata,
-    Column('user_id', Integer(), ForeignKey('user.id')),
-    Column('role_id', Integer(), ForeignKey('role.id')))
+#role_user = Table('roles_users', Base.metadata,
+#    Column('user_id', Integer(), ForeignKey('user.id')),
+#    Column('role_id', Integer(), ForeignKey('role.id')))
+
+class RoleUser(Base):
+    __tablename__ = u'roles_users'
+    user_id = Column(Integer, ForeignKey(u'user.id'), primary_key=True)
+    role_id = Column(Integer, ForeignKey(u'role.id'), primary_key=True)
+    expiry_date = Column(DateTime())
+    user = relationship(u'User', back_populates=u'role')
+    role = relationship(u'Role', back_populates=u'user')
+    
+    def __init__(self, user_id, role_id, expiry_date=None):
+        """Create new user
+        
+        :param user_id: user id
+        :param role_id: role id
+        :param expiry_date: relation expiry date [default=365 days]. Set using a 
+                datetime object
+        """
+        self.user_id = user_id
+        self.role_id = role_id
+        if expiry_date is None:
+            expiry_date = datetime.datetime.today()+datetime.timedelta(days=365)
+        self.expiry_date = expiry_date
+    
+    def __repr__(self):
+        return u"<RoleUser user='%s' role='%s' expiry='%s'>" % (self.user_id,
+                self.role_id, self.expiry_date)    
 
 # Many-to-Many Relationship among groups and system roles
 role_group = Table('roles_groups', Base.metadata,
@@ -48,8 +74,8 @@ role_permission = Table('role_permission', Base.metadata,
 
 # Systems roles
 class Role(Base):
-    __tablename__ = 'role'
-    __table_args__ = {'mysql_engine':'InnoDB'}
+    __tablename__ = u'role'
+    __table_args__ = {u'mysql_engine':u'InnoDB'}
         
     id = Column(Integer(), primary_key=True)
     uuid = Column(String(50), unique=True)
@@ -58,10 +84,11 @@ class Role(Base):
     description = Column(String(255))
     creation_date = Column(DateTime())
     modification_date = Column(DateTime())    
-    permission = relationship('SysObjectPermission', secondary=role_permission,
-                              backref=backref('role', lazy='dynamic'))
+    permission = relationship(u'SysObjectPermission', secondary=role_permission,
+                              backref=backref(u'role', lazy=u'dynamic'))
+    user = relationship(u'RoleUser', back_populates=u'role')
 
-    def __init__(self, objid, name, permission, description= ''):
+    def __init__(self, objid, name, permission, description=u''):
         self.uuid = str(uuid4())
         self.objid = objid
         self.name = name
@@ -72,22 +99,22 @@ class Role(Base):
         self.modification_date = self.creation_date        
     
     def __repr__(self):
-        return "<Role id='%s' name='%s' desc='%s')>" % (
+        return u"<Role id='%s' name='%s' desc='%s')>" % (
                     self.id, self.name, self.description)
 
 # Systems roles
 class UserAttribute(Base):
-    __tablename__ = 'user_attribute'
-    __table_args__ = {'mysql_engine':'InnoDB'}
+    __tablename__ = u'user_attribute'
+    __table_args__ = {u'mysql_engine':u'InnoDB'}
         
     id = Column(Integer(), primary_key=True)    
     name = Column(String(30))
     value = Column(String(100))    
     desc = Column(String(255))
-    user_id = Column(Integer(), ForeignKey('user.id'))
+    user_id = Column(Integer(), ForeignKey(u'user.id'))
 
-    def __init__(self, user, name, value, desc=''):
-        """
+    def __init__(self, user, name, value, desc=u''):
+        """Create a user attribute
         :param user: user id
         :param name: attribute name
         :param value: attribute value
@@ -107,8 +134,8 @@ class User(Base):
     
     :param type: can be DBUSER, LDAPUSER 
     """
-    __tablename__ = 'user'
-    __table_args__ = {'mysql_engine':'InnoDB'}    
+    __tablename__ = u'user'
+    __table_args__ = {u'mysql_engine':u'InnoDB'}    
     
     id = Column(Integer, primary_key=True)
     uuid = Column(String(50), unique=True)
@@ -117,30 +144,45 @@ class User(Base):
     description = Column(String(255))
     creation_date = Column(DateTime())
     modification_date = Column(DateTime())
+    expiry_date = Column(DateTime())
     password = Column(String(150))
-    role = relationship('Role', secondary=role_user,
-                        backref=backref('user', lazy='dynamic'))
-    attrib = relationship("UserAttribute")
+    #role = relationship('Role', secondary=role_user,
+    #                    backref=backref('user', lazy='dynamic'))
+    role = relationship(u'RoleUser', back_populates=u'user')
+    attrib = relationship(u'UserAttribute')
     active = Column(Boolean())
 
-    def __init__(self, objid, username, roles, active=True, 
-                       password=None, description=''):
+    def __init__(self, objid, username, active=True, password=None, 
+                 description=u'', expiry_date=None):
+        """Create new user
+        
+        :param objid: authorization id
+        :param username: name of the user
+        :param active: set if user is active [default=True]
+        :param password: user password [optional]
+        :param description: user description [default='']
+        :param expiry_date: user expiry date [default=365 days]. Set using a 
+                datetime object
+        """
         self.uuid = str(uuid4())
         self.objid = objid
         self.name = username
-        self.role = roles
+        self.role = []
         self.active = active
         self.description = description
         
         self.creation_date = datetime.datetime.today()
         self.modification_date = self.creation_date
+        if expiry_date is None:
+            expiry_date = datetime.datetime.today()+datetime.timedelta(days=365)
+        self.expiry_date = expiry_date
         
         if password is not None:
             # generate new salt, and hash a password 
             self.password = sha256_crypt.encrypt(password)
     
     def __repr__(self):
-        return "<User id='%s' name='%s' desc='%s' active='%s'>" % (
+        return u"<User id='%s' name='%s' desc='%s' active='%s'>" % (
                     self.id, self.name, self.description, self.active)
 
     @watch
@@ -150,8 +192,8 @@ class User(Base):
         return res
 
 class Group(Base):
-    __tablename__ = 'group'
-    __table_args__ = {'mysql_engine':'InnoDB'}    
+    __tablename__ = u'group'
+    __table_args__ = {u'mysql_engine':u'InnoDB'}    
         
     id = Column(Integer(), primary_key=True)
     uuid = Column(String(50), unique=True)
@@ -160,10 +202,10 @@ class Group(Base):
     description = Column(String(255))
     creation_date = Column(DateTime())
     modification_date = Column(DateTime())     
-    member = relationship('User', secondary=group_user,
-                          backref=backref('group', lazy='dynamic'))
-    role = relationship('Role', secondary=role_group,
-                        backref=backref('group', lazy='dynamic'))    
+    member = relationship(u'User', secondary=group_user,
+                          backref=backref(u'group', lazy=u'dynamic'))
+    role = relationship(u'Role', secondary=role_group,
+                        backref=backref(u'group', lazy=u'dynamic'))    
     
     #init member value to an empty list when creating a group
     def __init__(self, objid, name, member=[], role=[], description=None):
@@ -178,13 +220,13 @@ class Group(Base):
         self.modification_date = self.creation_date        
     
     def __repr__(self):
-        return "<Group id='%s' name='%s' desc='%s'>" % (
+        return u"<Group id='%s' name='%s' desc='%s'>" % (
                     self.id, self.name, self.description)
 
 # System object types
 class SysObjectType(Base):
-    __tablename__ = 'sysobject_type'
-    __table_args__ = {'mysql_engine':'InnoDB'}    
+    __tablename__ = u'sysobject_type'
+    __table_args__ = {u'mysql_engine':u'InnoDB'}    
     
     id = Column(Integer, primary_key=True)
     objtype = Column(String(100))
@@ -204,20 +246,20 @@ class SysObjectType(Base):
         self.creation_date = datetime.datetime.today()   
     
     def __repr__(self):
-        return "<SysObjectType id='%s' type='%s' def='%s'>" % (
+        return u"<SysObjectType id='%s' type='%s' def='%s'>" % (
                     self.id, self.objtype, self.objdef)
 
 # System objects
 class SysObject(Base):
-    __tablename__ = 'sysobject'
-    __table_args__ = {'mysql_engine':'InnoDB'}    
+    __tablename__ = u'sysobject'
+    __table_args__ = {u'mysql_engine':u'InnoDB'}    
     
     id = Column(Integer, primary_key=True)
     uuid = Column(String(50), unique=True)
-    objid = Column(String(500), default='')
-    desc = Column(String(100), default='')
-    type_id = Column(Integer(), ForeignKey('sysobject_type.id'))
-    type = relationship("SysObjectType", backref="sysobject")
+    objid = Column(String(500), default=u'')
+    desc = Column(String(100), default=u'')
+    type_id = Column(Integer(), ForeignKey(u'sysobject_type.id'))
+    type = relationship(u"SysObjectType", backref=u"sysobject")
     creation_date = Column(DateTime())
     modification_date = Column(DateTime())    
 
@@ -229,13 +271,13 @@ class SysObject(Base):
         self.modification_date = self.creation_date        
     
     def __repr__(self):
-        return "<SysObject id='%s' type='%s' def='%s' objid='%s'>" % (
+        return u"<SysObject id='%s' type='%s' def='%s' objid='%s'>" % (
                     self.id, self.type.objtype, self.type.objdef, self.objid)
 
 # System object actions
 class SysObjectAction(Base):
-    __tablename__ = 'sysobject_action'
-    __table_args__ = {'mysql_engine':'InnoDB'}    
+    __tablename__ = u'sysobject_action'
+    __table_args__ = {u'mysql_engine':u'InnoDB'}    
     
     id = Column(Integer, primary_key=True)
     value = Column(String(20), unique=True)
@@ -244,80 +286,32 @@ class SysObjectAction(Base):
         self.value = value
     
     def __repr__(self):
-        return "<SysObjectAction id='%s' value='%s'>" % (self.id, self.value)
+        return u"<SysObjectAction id='%s' value='%s'>" % (self.id, self.value)
 
 # System object permissions
 class SysObjectPermission(Base):
-    __tablename__ = 'sysobject_permission'
-    __table_args__ = {'mysql_engine':'InnoDB'}    
+    __tablename__ = u'sysobject_permission'
+    __table_args__ = {u'mysql_engine':u'InnoDB'}    
     
     id = Column(Integer, primary_key=True)
-    obj_id = Column(Integer(), ForeignKey('sysobject.id'))
-    obj = relationship("SysObject")
-    action_id = Column(Integer(), ForeignKey('sysobject_action.id'))
-    action = relationship("SysObjectAction")
+    obj_id = Column(Integer(), ForeignKey(u'sysobject.id'))
+    obj = relationship(u'SysObject')
+    action_id = Column(Integer(), ForeignKey(u'sysobject_action.id'))
+    action = relationship(u'SysObjectAction')
 
     def __init__(self, obj, action):
         self.obj = obj
         self.action = action
         
     def __repr__(self):
-        return "<SysObjectPermission id='%s' type='%s' def='%s' objid='%s' action='%s'>" % (
+        return u"<SysObjectPermission id='%s' type='%s' def='%s' objid='%s' action='%s'>" % (
                     self.id, self.obj.type.objtype, self.obj.type.objdef, 
                     self.obj.objid, self.action.value)
 
 class AuthDbManager(AbstractAuthDbManager):
+    """                                                                                            
     """
-    Ogni oggetto che verra utilizzato nel sistema di autorizzazzione e' formato 
-    dalla tupla (tipo, valore, descrizione). 
-    Es. 
-        (*, *, *) identifica tutti i tipi di oggetti di qualsiasi valore
-        (cloudapi, *, '') identifica tutti gli oggetti che sono messi a 
-                          disposizione da cloudapi
-        (cloudapi.orchestrator, *, '') identifica tutti gli oggetti che sono 
-                                       messi a disposizione da tutti gli 
-                                       orchestrator di cloudapi
-                                       
-        (orchestrator.tenant, *, '') identifica tutti i tenant che sono 
-                                     messi a disposizione da tutti gli 
-                                     orchestrator di cloudapi
-        (orchestrator.tenant, clsk43_1.*, '') identifica tutti i tenant che sono 
-                                              messi a disposizione dall'orchestrator 
-                                              clsk43_1
-        (orchestrator.tenant, clsk43_1.4u3929nd2b, '') identifica il tenant 4u3929nd2b
-                                                       che e' messo a disposizione 
-                                                       dall'orchestrator clsk43_1
-                                                       
-        (orchestrator.template, *, '') identifica tutti i template che sono 
-                                       messi a disposizione da tutti gli 
-                                       orchestrator di cloudapi
-        (orchestrator.template, clsk43_1.*, '') identifica tutti i template che sono 
-                                                messi a disposizione dall'orchestrator 
-                                                clsk43_1
-        (orchestrator.template, clsk43_1.4u3929nd2b, '') identifica il template 4u3929nd2b
-                                      .add_object_types([obj_type])                   che e' messo a disposizione 
-                                                         dall'orchestrator clsk43_1                                                       
-
-        (orchestrator.vm, *, '') identifica tutte le vm che sono messe a 
-                                 disposizione da tutti gli orchestrator di cloudapi
-        (orchestrator.vm, clsk43_1.*, '') identifica tutte le vm che sono messe 
-                                          a disposizione dall'orchestrator clsk43_1
-        (orchestrator.vm, clsk43_1.div1.*, '') identifica tutte le vm che sono messe 
-                                               a disposizione dall'orchestrator clsk43_1
-                                               e dal contenitore div1
-        (orchestrator.vm, clsk43_1.div1.div2.*, '') identifica tutte le vm che sono messe 
-                                                    a disposizione dall'orchestrator clsk43_1
-                                                    e dal contenitore div1.div2
-        (orchestrator.vm, clsk43_1.t356sww8, '') identifica tutte la vm con id
-                                                 t356sww8 che e' messa a disposizione 
-                                                 dall'orchestrator clsk43_1. 
-                                                 Il contenitore e' trascurabile al
-                                                 fine dell'autorizzazione in questo
-                                                 caso.                                                                                                
-    """
-
     def __init__(self, session=None):
-        """ """
         self.logger = logging.getLogger(self.__class__.__module__+ \
                                         '.'+self.__class__.__name__)        
         
@@ -327,7 +321,7 @@ class AuthDbManager(AbstractAuthDbManager):
         pass
 
     def __repr__(self):
-        return "<AuthDbManager id='%s'>" % id(self)
+        return u"<AuthDbManager id='%s'>" % id(self)
 
     def get_session(self):
         if self._session is None:
@@ -342,7 +336,7 @@ class AuthDbManager(AbstractAuthDbManager):
         try:
             engine = create_engine(db_uri)
             Base.metadata.create_all(engine)
-            logger.info('Create auth tables on : %s' % db_uri)
+            logger.info(u'Create auth tables on : %s' % db_uri)
             del engine
         except exc.DBAPIError, e:
             raise AuthDbManagerError(e)
@@ -354,7 +348,7 @@ class AuthDbManager(AbstractAuthDbManager):
         try:
             engine = create_engine(db_uri)
             Base.metadata.drop_all(engine)
-            logger.info('Remove auth tables from : %s' % db_uri)
+            logger.info(u'Remove auth tables from : %s' % db_uri)
             del engine
         except exc.DBAPIError, e:
             raise AuthDbManagerError(e)
@@ -365,12 +359,12 @@ class AuthDbManager(AbstractAuthDbManager):
         @transaction(self.get_session())
         def func(session):
             # object actions
-            actions = ['*', 'view', 'insert', 'update', 'delete', 'use']
+            actions = [u'*', u'view', u'insert', u'update', u'delete', u'use']
             data = []
             for item in actions:
                 data.append(SysObjectAction(item))
             session.add_all(data) 
-            self.logger.debug("Add object actions: %s" % actions)
+            self.logger.debug(u'Add object actions: %s' % actions)
         return func()
 
     #
@@ -1517,19 +1511,21 @@ class AuthDbManager(AbstractAuthDbManager):
         session = self.get_session()
         res = session.query(func.count(User.id))
         
-        self.logger.debug('Count users: %s' % res)
+        self.logger.debug(u'Count users: %s' % res)
         return res        
     
     @query
-    def get_user(self, name=None, oid=None, objid=None, uuid=None,
-                 page=0, size=10, order=u'DESC', field=u'id'):
+    def get_user(self, name=None, oid=None, objid=None, uuid=None, active=None,
+                 expiry_date=None, page=0, size=10, order=u'DESC', field=u'id'):
         """Get user with certain name. If name is not specified return all the 
         users.
         
         :param oid: user id [optional]
-        :param objid: user objid [optional]
+        :param objid: user authorization id [optional]
         :param uuid: user uuid [optional]
         :param name: name of the user [Optional]
+        :param active: user status [Optional]
+        :param expiry_date: list user with expiry_date >= expiry_date [Optional]
         :param page: users list page to show [default=0]
         :param size: number of users to show in list per page [default=0]
         :param order: sort order [default=DESC]
@@ -1547,6 +1543,10 @@ class AuthDbManager(AbstractAuthDbManager):
             user = session.query(User).filter_by(uuid=uuid)            
         elif name is not None:
             user = session.query(User).filter_by(name=name)
+        elif active is not None:
+            user = session.query(User).filter_by(active=active)            
+        elif expiry_date is not None:
+            user = session.query(User).filter_by(expiry_date>=expiry_date)            
         else:
             user = session.query(User)
         
@@ -1561,7 +1561,7 @@ class AuthDbManager(AbstractAuthDbManager):
 
     @query
     def get_user_roles(self, user,  page=0, size=10, order=u'DESC', 
-                        field=u'id'):
+                       field=u'id'):
         """Get roles of a user.
         
         :param user: Orm User istance
@@ -1577,15 +1577,19 @@ class AuthDbManager(AbstractAuthDbManager):
         
         start = size * page
         end = size * (page + 1)
+        #, RoleUser.expiry_date
+        roles = session.query(Role).join(RoleUser)\
+                       .filter(RoleUser.user_id == user.id)\
+                       .order_by(u'role.%s %s' % (field, order))[start:end]        
         
-        roles = session.query(Role).join(User.role)\
-                       .filter(User.id == user.id)\
-                       .order_by(u'role.%s %s' % (field, order))[start:end]
+        #roles = session.query(Role).join(User.role)\
+        #               .filter(User.id == user.id)\
+        #               .order_by(u'role.%s %s' % (field, order))[start:end]
         
         #roles = user.role.order_by(u'%s %s' % (field, order))[start:end]        
         
-        self.logger.debug('Get user %s roles: %s' % (user, truncate(roles)))
-        return roles, len(user.role)    
+        self.logger.debug(u'Get user %s roles: %s' % (user, truncate(roles)))
+        return roles, len(roles)    
     
     @query
     def get_role_users(self, role, page=0, size=10, order=u'DESC', field=u'id'):
@@ -1601,17 +1605,20 @@ class AuthDbManager(AbstractAuthDbManager):
         :raises QueryError: raise :class:`QueryError`          
         """
         session = self.get_session()
-        total = role.user.count()
+        #total = role.user.count()
         
         start = size * page
         end = size * (page + 1)
         #users = session.query(User).join(Role.user)\
         #               .filter(Role.id == role.id)\
         #               .order_by(u'user.%s %s' % (field, order))[start:end]        
-        users = role.user.order_by(u'%s %s' % (field, order))[start:end]        
+        #users = role.user.order_by(u'%s %s' % (field, order))[start:end]  
+        users = session.query(User).join(RoleUser)\
+                       .filter(RoleUser.role_id == role.id)\
+                       .order_by(u'user.%s %s' % (field, order))[start:end] 
         
         self.logger.debug('Get role %s users: %s' % (role, truncate(users)))
-        return users, total
+        return users, len(users)
         
     @query
     def get_user_permissions(self, user, page=0, size=10, order=u'DESC', 
@@ -1634,7 +1641,10 @@ class AuthDbManager(AbstractAuthDbManager):
 
         # get user roles
         roles = []
-        for role in user.role:
+        user_roles = session.query(Role)\
+                            .join(RoleUser)\
+                            .filter(RoleUser.user_id == user.id).all()      
+        for role in user_roles:
             roles.append(role.name)
             
         # get user roles from user groups
@@ -1665,7 +1675,10 @@ class AuthDbManager(AbstractAuthDbManager):
         
         # get all user roles
         roles = []
-        for role in user.role:
+        user_roles = session.query(Role)\
+                            .join(RoleUser)\
+                            .filter(RoleUser.user_id == user.id).all()      
+        for role in user_roles:
             roles.append(role.name)
         for group in user.group:
             for role in group.role:
@@ -1694,18 +1707,17 @@ class AuthDbManager(AbstractAuthDbManager):
         return res
 
     @transaction
-    def add_user(self, objid, username, roles, active=True, 
-                       password=None, description=''):
+    def add_user(self, objid, username, active=True, password=None, 
+                 description=u'', expiry_date=None):
         """Add user.
         
-        :param objid:
+        :param objid: authorization id
         :param username: name of the user
-        :param usertype: type of the user. Can be DBUSER, LDAPUSER
-        :param roles: List with Role instances
-        :param active: User status. If True user is active [Default=True]
-        :param description: User description. [Optional]
-        :param password: Password of the user. Set only for user like 
-                         <user>@local [Optional]
+        :param active: set if user is active [default=True]
+        :param password: user password [optional]
+        :param description: user description [default='']
+        :param expiry_date: user expiry date [default=365 days]. Set using a 
+                datetime object                      
         :return: True if operation is successful, False otherwise
         :rtype: bool
         :raises TransactionError: raise :class:`TransactionError`
@@ -1717,26 +1729,29 @@ class AuthDbManager(AbstractAuthDbManager):
             self.logger.error(u'User %s already exists' % user)
             raise ModelError(u'User %s already exists' % user, code=409)  
         
-        data = User(objid, username, roles, active=active, 
-                    password=password, description=description)
+        data = User(objid, username, active=active, password=password, 
+                    description=description, expiry_date=expiry_date)
         session.add(data)
         session.flush()
-        self.logger.debug('Add user: %s' % (data))
+        self.logger.debug(u'Add user: %s' % (data))
         return data
 
     @transaction
-    def update_user(self, oid=None, objid=None, name=None, new_name=None, 
-                          new_type=None, new_description=None,
-                          new_active=None, new_password=None):
+    def update_user(self, oid=None, objid=None, uuid=None, name=None, 
+                    new_name=None, new_description=None, new_active=None, 
+                    new_password=None, new_expiry_date=None):
         """Update a user.
         
-        :param username: user name
+        :param oid: user id [optional]
+        :param objid: user authorization id [optional]
+        :param uuid: user uuid [optional]
+        :param name: name of the user [Optional]
         :param new_name: new user name [optional]
-        :param new_type: new type of the user. Can be DBUSER, LDAPUSER [optional]
         :param new_description: new user description [optional]
-        :param new_profile: new user profile [optional]
         :param new_active: new user status [optional]
         :param new_password: new user password [optional]
+        :param new_expiry_date: user expiry date [optional]. Set using a 
+                datetime object                 
         :return: True if operation is successful, False otherwise
         :rtype: bool
         :raises TransactionError: raise :class:`TransactionError`
@@ -1747,72 +1762,103 @@ class AuthDbManager(AbstractAuthDbManager):
             user = session.query(User).filter_by(id=oid)
         elif objid is not None:
             user = session.query(User).filter_by(objid=objid)
+        elif uuid is not None:
+            user = session.query(User).filter_by(uuid=uuid)            
         elif name is not None:
-            user = session.query(User).filter_by(name=name)        
+            user = session.query(User).filter_by(name=name)  
           
         data = {}
         if new_name is not None: 
-            data['name'] = new_name
-        if new_type is not None: 
-            data['type'] = new_type                
+            data[u'name'] = new_name              
         if new_description is not None: 
-            data['description'] = new_description
+            data[u'description'] = new_description
         if new_active is not None:  
-            data['active'] = new_active                
+            data[u'active'] = new_active                
         if new_password is not None: 
-            data['password'] = sha256_crypt.encrypt(new_password)
-                            
+            data[u'password'] = sha256_crypt.encrypt(new_password)
+        if new_expiry_date is not None: 
+            data[u'expiry_date'] = new_expiry_date
+        
         if user.first() is not None:
-            data['modification_date'] = datetime.datetime.today()
+            data[u'modification_date'] = datetime.datetime.today()
             user.update(data)
             
-        self.logger.debug('Update user %s|%s|%s with data: %s' % 
+        self.logger.debug(u'Update user %s|%s|%s with data: %s' % 
                           (oid, objid, name, data))
         return True
     
     @transaction
-    def remove_user(self, user_id=None, username=None):
+    def remove_user(self, oid=None, objid=None, uuid=None, name=None):
         """Remove a user. Specify at least user id or user name.
         
-        :param user_id: id of the user [optional]
-        :param username: name of user [optional]
+        :param oid: user id [optional]
+        :param objid: user authorization id [optional]
+        :param uuid: user uuid [optional]
+        :param name: name of the user [Optional]
         :return: True if operation is successful, False otherwise
         :rtype: bool
         :raises TransactionError: raise :class:`TransactionError`
         """
         session = self.get_session()
-        if user_id is not None:  
-            user = session.query(User).filter_by(id=user_id).first()
-        elif username is not None:
-            user = session.query(User).filter_by(name=username).first()
+        if oid is not None:
+            user = session.query(User).filter_by(id=oid)
+        elif objid is not None:
+            user = session.query(User).filter_by(objid=objid)
+        elif uuid is not None:
+            user = session.query(User).filter_by(uuid=uuid)            
+        elif name is not None:
+            user = session.query(User).filter_by(name=name)
         
-        if user is None:
-            self.logger.error('User %s/%s does not exist' % (user_id, username))
-            raise ModelError('User %s/%s does not exist' % (user_id, username))
+        if user.first() is None:
+            self.logger.error(u'User does not exist')
+            raise ModelError(u'User does not exist')
         
         # delete object type
         session.delete(user)
         
-        self.logger.debug('Remove user: %s' % (user))
+        self.logger.debug(u'Remove user: %s' % (user))
         return True
-        
+    
     @transaction
-    def append_user_role(self, user, role):
-        """Append a role to an user
+    def expire_users(self, expiry_date):
+        """Disable a user that is expired.
         
-        :param user: User instance
-        :param role: Role instance
+        :param expiry_date: expiry date used to disable user
         :return: True if operation is successful, False otherwise
         :rtype: bool
         :raises TransactionError: raise :class:`TransactionError`
         """
         session = self.get_session()
+        user = session.query(User).filter_by(expiry_date>=expiry_date)
+        user.update({u'active':False})        
+        self.logger.debug(u'Disable exipred users: %s' % (user.all()))
+        return True    
+        
+    @transaction
+    def append_user_role(self, user, role, expiry_date=None):
+        """Append a role to an user
+        
+        :param user: User instance
+        :param role: Role instance
+        :param expiry_date: role association expiry date [default=365 days]
+        :return: True if operation is successful, False otherwise
+        :rtype: bool
+        :raises TransactionError: raise :class:`TransactionError`
+        """
+        session = self.get_session()
+        
         # append role to user if it doesn't already appended
-        if role.user.filter_by(name=user.name).first():
+        ru = session.query(RoleUser).filter_by(user_id=user.id)\
+                                    .filter_by(role_id=role.id)
+        if ru.first() is not None:
             self.logger.warn(u'Role %s already exists in user %s' % (role, user))
             return False
         else:
-            user.role.append(role)
+            if expiry_date is None:
+                expiry_date = datetime.datetime.today()+datetime.timedelta(days=365)
+            ru = RoleUser(user.id, role.id, expiry_date)
+            session.add(ru)
+            session.flush()            
             self.logger.debug(u'Append user %s role: %s' % (user, role))
             return role.id
     
@@ -1827,14 +1873,37 @@ class AuthDbManager(AbstractAuthDbManager):
         :raises TransactionError: raise :class:`TransactionError`
         """
         session = self.get_session()
+        
         # remove role from user if it exists
-        if role.user.filter_by(name=user.name).first():
-            user.role.remove(role)
+        ru = session.query(RoleUser).filter_by(user_id=user.id)\
+                                    .filter_by(role_id=role.id)
+        if ru.first() is not None:
+            session.delete(ru)
             self.logger.debug(u'Remove user %s role: %s' % (user, role))
             return role.id
         else:
             self.logger.warn(u'Role %s doesn''t exists in user %s' % (role, user))
             return False
+        
+    @transaction
+    def remove_expired_user_role(self, user, role, expiry_date):
+        """Remove roles from users where association is expired
+ 
+        :param user: User instance
+        :param role: Role instance
+        :param expiry_date: role association expiry date. Set using a 
+                datetime object
+        :return: True if operation is successful, False otherwise
+        :rtype: bool
+        :raises TransactionError: raise :class:`TransactionError`
+        """
+        session = self.get_session()
+        
+        # remove role from user if it exists
+        ru = session.query(RoleUser).filter_by(expiry_date>=expiry_date).all()
+        session.delete(ru)
+        self.logger.debug(u'Remove expired role 2 user association: %s' % (ru))
+        return ru
         
     @transaction
     def set_user_attribute(self, user, name, value=None, desc=None, new_name=None):

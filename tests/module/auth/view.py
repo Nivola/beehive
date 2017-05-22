@@ -3,21 +3,22 @@ Created on Sep 2, 2013
 
 @author: darkbk
 '''
-from tests.test_util import run_test, CloudapiTestCase
 import json
 import unittest
 import tests.test_util
+from tests.test_util import BeehiveTestCase
+from beehive.common.test import runtest
 
 seckey = None
 objid = None
 
 obj = 31813
 
-class AuthTestCase(CloudapiTestCase):
+class AuthTestCase(BeehiveTestCase):
     """To execute this test you need a cloudstack instance.
     """
     def setUp(self):
-        CloudapiTestCase.setUp(self)
+        BeehiveTestCase.setUp(self)
         
         #self.auth_client = AuthClient()
         self.api_id = u'api'
@@ -32,7 +33,7 @@ class AuthTestCase(CloudapiTestCase):
         self.credentials = u'%s:%s' % (self.user1, self.pwd1)
         
     def tearDown(self):
-        CloudapiTestCase.tearDown(self)
+        BeehiveTestCase.tearDown(self)
     
     #
     # simplehttp
@@ -489,10 +490,10 @@ def test_suite():
     tests = [
         #'test_get_simple_http_login_domains',
         #'test_simple_http_login',
-        'test_get_simple_http_users',
+        #'test_get_simple_http_users',
         
         #'test_get_login_domains',
-        #'test_login',
+        'test_login',
         
         #'test_refresh',
         #'test_exist_identity',
@@ -557,5 +558,6 @@ def test_suite():
     ]
     return unittest.TestSuite(map(AuthTestCase, tests))
 
-if __name__ == '__main__':
-    run_test([test_suite()])
+if __name__ == u'__main__':
+    runtest(test_suite())
+    
