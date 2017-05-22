@@ -114,7 +114,8 @@ class AuthManager(ApiManager):
                              u'date.creation', u'date.modified', u'date.expiry', 
                              u'desc']
         self.role_headers = [u'id', u'uuid', u'objid', u'name', u'active', 
-                             u'date.creation', u'date.modified', u'desc']
+                             u'date.creation', u'date.modified', u'date.expiry',
+                             u'desc']
         self.group_headers = [u'id', u'uuid', u'objid', u'name', u'active', 
                               u'date.creation', u'date.modified', u'desc']
     
@@ -322,7 +323,7 @@ class AuthManager(ApiManager):
         self.logger.info(u'Get user: %s' % truncate(res))
         self.result(res, key=u'user', headers=self.user_headers)
         
-    def add_user(self, name, pwd, storetype=u'DBUSER'):
+    def add_user(self, name, pwd, expiry_date=None, storetype=u'DBUSER'):
         if not match(u'[a-zA-z0-9]+@[a-zA-z0-9]+', name):
             raise Exception(u'Name is not correct. Name syntax is <name>@<domain>')
         data = {
@@ -331,7 +332,8 @@ class AuthManager(ApiManager):
                 u'storetype':storetype,
                 u'password':pwd, 
                 u'description':u'User %s' % name, 
-                u'generic':True}
+                u'generic':True,
+                u'expiry-date':expiry_date}
         }
         uri = u'%s/users/' % (self.authuri)
         res = self._call(uri, u'POST', data=data)
@@ -367,6 +369,7 @@ class AuthManager(ApiManager):
                 u'desc':params.get(u'desc', None),
                 u'active':params.get(u'active', None),
                 u'password':params.get(u'password', None),
+                u'expiry-date':params.get(u'expiry_date', None)
             }
         }
         uri = u'%s/users/%s/' % (self.authuri, oid)

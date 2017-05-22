@@ -218,7 +218,7 @@ class AuthManagerTestCase(BeehiveTestCase):
     def test_get_user_roles(self):
         user, total = self.manager.get_user(name='admin@local')
         #print user[0].role[0].expiry_date
-        res, total = self.manager.get_user_roles(user[0])
+        res, total = self.manager.get_user_roles_with_expiry(user[0])
         print res[0]
 
     def test_get_role_users(self):

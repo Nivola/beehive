@@ -149,7 +149,8 @@ class CreateUser(AuthApiView):
             resp = controller.add_generic_user(username, 
                                                storetype, 
                                                password=password, 
-                                               description=description)
+                                               description=description,
+                                               expiry_date=expiry_date)
         elif u'system' in data and data[u'system'] == True:
             resp = controller.add_system_user(username,
                                               password=password, 

@@ -237,9 +237,12 @@ class AuthController(ApiController):
                 else:
                     user = self.dbauth.get_user(name=user)[0][0]
 
-                roles, total = self.dbauth.get_user_roles(user, 
+                #roles, total = self.dbauth.get_user_roles(user, 
+                #                                    page=page, size=size, 
+                #                                    order=order, field=field)
+                roles, total = self.dbauth.get_user_roles_with_expiry(user, 
                                                     page=page, size=size, 
-                                                    order=order, field=field)
+                                                    order=order, field=field)                
 
             # search roles by group
             elif group is not None:
@@ -263,6 +266,11 @@ class AuthController(ApiController):
                                                     order=order, field=field)
             
             for role in roles:
+                expiry_date = None
+                if isinstance(role, tuple):
+                    expiry_date = role[1]
+                    role = role[0]                    
+                
                 # check authorization
                 objset = set(objs[Role.objdef.lower()])
 
@@ -274,6 +282,7 @@ class AuthController(ApiController):
                     obj = Role(self, oid=role.id, objid=role.objid, 
                                name=role.name, desc=role.description, 
                                model=role)
+                    obj.expiry_date = expiry_date
                     res.append(obj)            
             
             self.logger.debug(u'Get roles: %s' % len(res))
@@ -1745,6 +1754,7 @@ class Role(AuthObject):
         
         if self.model is not None:
             self.uuid = self.model.uuid
+        self.expiry_date = None
 
     @watch
     def info(self):
@@ -1762,7 +1772,7 @@ class Role(AuthObject):
                                 .strftime(u'%d-%m-%y %H:%M:%S'))
         modification_date = str2uni(self.model.modification_date\
                                     .strftime(u'%d-%m-%y %H:%M:%S'))
-        return {
+        res = {
             u'id':self.oid, 
             u'uuid':self.uuid,    
             u'type':self.objtype, 
@@ -1776,6 +1786,13 @@ class Role(AuthObject):
                 u'modified':modification_date
             }
         }
+        
+        if self.expiry_date is not None:
+            expiry_date = str2uni(self.expiry_date\
+                                  .strftime(u'%d-%m-%Y'))
+            res[u'date'][u'expiry'] = expiry_date
+        
+        return res
 
     @watch
     def update(self, new_name=None, new_description=None):
@@ -2075,7 +2092,7 @@ class User(AuthObject):
                                             self.objid, u'delete')
                 
         try:
-            res = self.dbauth.remove_user(username=self.name)
+            res = self.dbauth.remove_user(oid=self.oid)
             # remove object and permission
             self.deregister_object([self.objid])
             

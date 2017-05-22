@@ -1589,6 +1589,32 @@ class AuthDbManager(AbstractAuthDbManager):
         #roles = user.role.order_by(u'%s %s' % (field, order))[start:end]        
         
         self.logger.debug(u'Get user %s roles: %s' % (user, truncate(roles)))
+        return roles, len(roles)
+    
+    @query
+    def get_user_roles_with_expiry(self, user,  page=0, size=10, order=u'DESC', 
+                                   field=u'id'):
+        """Get roles of a user with expiry date
+        
+        :param user: Orm User istance
+        :param page: roles list page to show [default=0]
+        :param size: number of roles to show in list per page [default=0]
+        :param order: sort order [default=DESC]
+        :param field: sort field [default=id]            
+        :return: List of Role instances
+        :rtype: list of :class:`Role`
+        :raises QueryError: raise :class:`QueryError`     
+        """
+        session = self.get_session()
+        
+        start = size * page
+        end = size * (page + 1)
+        #, RoleUser.expiry_date
+        roles = session.query(Role,RoleUser.expiry_date).join(RoleUser)\
+                       .filter(RoleUser.user_id == user.id)\
+                       .order_by(u'role.%s %s' % (field, order))[start:end]        
+
+        self.logger.debug(u'Get user %s roles: %s' % (user, truncate(roles)))
         return roles, len(roles)    
     
     @query
@@ -1799,19 +1825,25 @@ class AuthDbManager(AbstractAuthDbManager):
         :rtype: bool
         :raises TransactionError: raise :class:`TransactionError`
         """
-        session = self.get_session()
-        if oid is not None:
-            user = session.query(User).filter_by(id=oid)
-        elif objid is not None:
-            user = session.query(User).filter_by(objid=objid)
-        elif uuid is not None:
-            user = session.query(User).filter_by(uuid=uuid)            
-        elif name is not None:
-            user = session.query(User).filter_by(name=name)
+        session = self.get_session()   
         
-        if user.first() is None:
+        if oid is not None:
+            user = session.query(User).filter_by(id=oid).first()
+        elif objid is not None:
+            user = session.query(User).filter_by(objid=objid).first()
+        elif uuid is not None:
+            user = session.query(User).filter_by(uuid=uuid).first()          
+        elif name is not None:
+            user = session.query(User).filter_by(name=name).first()
+        
+        if user is None:
             self.logger.error(u'User does not exist')
-            raise ModelError(u'User does not exist')
+            raise ModelError(u'User does not exist')        
+        
+        # remove role associated
+        rus = session.query(RoleUser).filter_by(user_id=user.id).all()
+        for ru in rus:
+            session.delete(ru)
         
         # delete object type
         session.delete(user)
