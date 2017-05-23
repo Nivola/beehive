@@ -385,11 +385,11 @@ class AuthManager(ApiManager):
         #self.result(res)
         print(u'Delete user: %s' % user_id)
     
-    def add_user_role(self, oid, role):
+    def add_user_role(self, oid, role, expiry):
         data = {
             u'user':{
                 u'roles':{
-                    u'append':[role],
+                    u'append':[(role, expiry)],
                     u'remove':[]
                 },
             }

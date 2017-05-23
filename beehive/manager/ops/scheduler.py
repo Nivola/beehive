@@ -225,13 +225,13 @@ class SchedulerManager(ApiManager):
         data = self.load_config(data)
         uri = u'/v1.0/scheduler/entry/'
         res = self._call(uri, u'POST', data=data)
-        self.result({u'msg':u'Create schedule %s' % data})
+        self.result({u'msg':u'Create schedule %s' % data}, headers=[u'msg'])
 
     def delete_scheduler_entry(self, name):
         data = {u'name':name}
         uri = u'/v1.0/scheduler/entry/'
         res = self._call(uri, u'DELETE', data=data)
-        self.result(res)
+        self.result({u'msg':u'Delete schedule %s' % name}, headers=[u'msg'])
 
 def scheduler_main(auth_config, format, opts, args):
     """

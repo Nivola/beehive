@@ -16,6 +16,7 @@ from beehive.manager import ComponentManager
 from datetime import datetime
 from httplib import HTTPConnection
 from beecell.simple import str2uni
+import gevent
 try:
     from beehive.manager.util.ansible2 import Options, Runner
 except Exception as ex:
@@ -54,6 +55,7 @@ class PlatformManager(ComponentManager):
         beehive subsystem-create <subsystem>
         beehive instances [details]
         beehive blacklist
+        beehive instance-ping [<subsystem>] [<instance>]
         beehive instance-sync <subsystem> <instance>        
         beehive instance-deploy <subsystem> <instance>
         beehive instance-undeploy <subsystem> <instance>
@@ -106,7 +108,7 @@ class PlatformManager(ComponentManager):
             u'beehive.instance-sync':self.beehive_syncdev,
             u'beehive.instance-deploy':self.beehive_deploy,
             u'beehive.instance-undeploy':self.beehive_undeploy,
-            #u'beehive.instance-ping':self.beehive_ping,
+            u'beehive.instance-ping':self.beehive_ping,
             #u'beehive.tree':self.beehive_get_uwsgi_tree,
             u'beehive.doc':self.beehive_make_doc,
             
@@ -280,36 +282,59 @@ class PlatformManager(ComponentManager):
     def beehive_nodes_vassals(self, details=u''):
         self.get_emperor_vassals(details, u'beehive')
         
-    def beehive_ping(self):
+    def beehive_ping(self, subsystem=None, vassal=None):
         """Ping beehive instance
         
         :param server: host name
         :param port: server port [default=6379]
         """
-        path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.environment)
+        path_inventory = u'%s/inventories/%s' % (self.ansible_path, 
+                                                 self.environment)
         path_lib = u'%s/library/beehive/' % (self.ansible_path)
         runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
                         module=path_lib)
         hosts, vars = runner.get_inventory_with_vars(u'beehive')
-        print hosts
-        print vars
-        
-        url = URL(u'http://%s:%s/v1.0/server/ping/' % (server, port))
-        http = HTTPClient(url.host, port=url.port)
-        # issue a get request
-        response = http.get(url.request_uri)
-        # read status_code
-        response.status_code
-        # read response body
-        res = json.loads(response.read())
-        # close connections
-        http.close()
-        if res[u'status'] == u'ok':
-            resp = True
+        vars = runner.variable_manager.get_vars(runner.loader, host=hosts[0])
+        instances = vars.get(u'instance')
+        vassals = []
+        if subsystem is not None and vassal is not None:
+            vassals.append([subsystem, vassal])
         else:
-            resp = False
-        self.logger.info(u'Ping beehive %s : %s' % (url.request_uri, resp))
-        self.json = u'Ping beehive %s : %s' % (url.request_uri, resp)
+            for instance in instances:
+                vassals.append(instance.split(u'-'))
+        
+        resp = []
+        for vassal in vassals:
+            port = instances.get(u'%s-%s' % tuple(vassal)).get(u'port')
+    
+            for host in hosts:
+                url = URL(u'http://%s:%s/v1.0/server/ping/' % (host, port))
+                http = HTTPClient(url.host, port=url.port)
+                try:
+                    # issue a get request
+                    response = http.get(url.request_uri)
+                    # read status_code
+                    response.status_code
+                    # read response body
+                    res = json.loads(response.read())
+                    # close connections
+                    http.close()
+                    if res[u'status'] == u'ok':
+                        resp.append({u'subsystem':vassal[0], u'instance':vassal[1], 
+                                     u'host':host, u'port':port, u'ping':True, 
+                                     u'status':u'UP'})
+                    else:
+                        resp.append({u'subsystem':vassal[0], u'instance':vassal[1], 
+                                     u'host':host, u'port':port, u'ping':False,
+                                     u'status':u'UP'})
+                except gevent.socket.error as ex:
+                    resp.append({u'subsystem':vassal[0], u'instance':vassal[1], 
+                                 u'host':host, u'port':port, u'ping':False,
+                                 u'status':u'DOWN'})
+                    
+            
+        self.result(resp, headers=[u'subsystem', u'instance', u'host', u'port', 
+                                   u'ping', u'status'])
         
     def beehive_get_uwsgi_tree(self):
         """

@@ -12,6 +12,7 @@ from beehive.module.auth.controller import Objects, Role, User
 from beehive.common.apiclient import BeehiveApiClient, BeehiveApiClientError
 from beehive.module.catalog.controller import Catalog
 from beehive.common.config import ConfigDbManager
+from beecell.db.manager import RedisManager
 
 try:
     import json
@@ -277,9 +278,22 @@ class BeehiveHelper(object):
                         (catalog[u'name'], catalog[u'zone'], res))
         
         # set catalog in config
-        config_db_manager.add(config[u'api_system'], u'auth', u'catalog', res)     
+        config_db_manager.add(config[u'api_system'], u'api', 
+                              u'catalog', catalog[u'name'])     
         
         return msgs
+    
+    def __setup_kombu_queue(self, config):
+        """Setup kombu redis key fro queue
+        """
+        configs = config[u'config']
+        for item in configs:
+            if item[u'group'] == u'queue':
+                value = item[u'value']
+                queue = value[u'queue']
+                uri = value[u'uri']
+                manager = RedisManager(uri)
+                manager.server.set(u'_kombu.binding.%s' % queue, value)
     
     def create_subsystem(self, subsystem_config):
         """Create subsystem.
@@ -302,7 +316,9 @@ class BeehiveHelper(object):
         if subsystem == u'auth':
             res.extend(self.__configure(config, update=update))
             res.extend(self.__init_subsystem(config, update=update))
-        
+            
+            # setup main kombu queue
+            
         # init oauth2 subsytem
         elif subsystem == u'oauth2':
             res.extend(self.__init_subsystem(config, update=update))
@@ -332,16 +348,16 @@ class BeehiveHelper(object):
             
             if update is False:
                 # append system user config
-                config[u'config'].append({u'group':u'auth', 
-                                          u'name':u'api_user', 
-                                          u'value':{u'name':user[u'name'], 
+                config[u'config'].append({u'group':u'api', 
+                                          u'name':u'user', 
+                                          u'value':{u'name':user[u'user'], 
                                                     u'pwd':user[u'pwd']}})
                 # append catalog config
-                config[u'config'].append({u'group':u'auth', 
+                config[u'config'].append({u'group':u'api', 
                                           u'name':u'catalog', 
                                           u'value':api_config[u'catalog']})
                 # append auth endpoints config
-                config[u'config'].append({u'group':u'auth', 
+                config[u'config'].append({u'group':u'api', 
                                           u'name':u'endpoints', 
                                           u'value':json.dumps(api_config[u'endpoint'])})
     

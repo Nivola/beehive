@@ -13,8 +13,7 @@ from kombu import Connection
 from logging import getLogger, DEBUG
 from beehive.module.catalog.model import CatalogDbManager
 from beehive.common.data import operation
-from beehive.module.catalog.controller import CatalogController, Catalog
-from beehive.module.catalog.common import CatalogEndpoint
+from beehive.module.catalog.controller import CatalogController, Catalog, CatalogEndpoint
 from beecell.db import TransactionError
 from beehive.common.apimanager import ApiManager
 
@@ -49,12 +48,12 @@ class CatalogConsumer(ConsumerMixin):
             catalog = endpoint[u'catalog']
             uri = endpoint[u'uri']
             
-            catalog_obj = self.manager.get(oid=catalog)[0]            
+            catalog_obj = self.manager.get(name=catalog)[0]            
             
             try:
                 objid = u'%s//%s' % (catalog_obj.objid, id_gen())
                 res = self.manager.add_endpoint(objid, name, service, desc, 
-                                                catalog, uri, enabled=True)
+                                            catalog_obj.id, uri, enabled=True)
                 controller = CatalogController(None)
                 obj = CatalogEndpoint(controller, Catalog(controller), 
                                       oid=res.id, objid=res.objid, 

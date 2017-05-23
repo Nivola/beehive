@@ -74,17 +74,18 @@ class CatalogEndpoint(Base):
         self.modification_date = self.creation_date
 
     def __repr__(self):
-        return "service(%s, %s, %s, %s)" % (self.id, self.name, self.service, 
-                                            self.catalog)
+        return u'CatalogEndpoint(%s, %s, %s, %s)' % \
+                (self.id, self.name, self.service, self.catalog)
 
 class CatalogDbManagerError(Exception): pass
 class CatalogDbManager(object):
     """
     """
-    logger = logging.getLogger('beehive.db')
-    
     def __init__(self, session=None):
         """ """
+        self.logger = logging.getLogger(self.__class__.__module__+ \
+                                        u'.'+self.__class__.__name__)
+        
         self._session = session
     
     def __repr__(self):
@@ -184,7 +185,7 @@ class CatalogDbManager(object):
             self.logger.error(u'No catalogs found')
             raise SQLAlchemyError(u'No catalogs found')            
             
-        self.logger.debug('Get catalogs: %s' % res)
+        self.logger.debug(u'Get catalogs: %s' % res)
         return res
         
     @transaction
@@ -339,15 +340,15 @@ class CatalogDbManager(object):
         # verify if endpoint already exists
         res = session.query(CatalogEndpoint).filter_by(name=name).first()
         if res is not None:
-            self.logger.error("Endpoint %s already exists" % res)
-            raise ModelError('Endpoint %s already exists' % res, code=409)
+            self.logger.warn(u'Endpoint %s already exists' % name)
+            raise ModelError(u'Endpoint %s already exists' % name, code=409)
         
         ser = CatalogEndpoint(objid, name, service, desc, catalog, uri, 
                               enabled=enabled)
         session.add(ser)
         session.flush()
         
-        self.logger.debug('Add endpoint: %s' % ser)
+        self.logger.debug(u'Add endpoint: %s' % ser)
         return ser
     
     @transaction

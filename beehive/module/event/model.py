@@ -69,7 +69,7 @@ class EventDbManager(object):
     def __init__(self, session=None):
         """ """
         self.logger = logging.getLogger(self.__class__.__module__+ \
-                                        '.'+self.__class__.__name__)          
+                                        u'.'+self.__class__.__name__)          
         
         self._session = session
     

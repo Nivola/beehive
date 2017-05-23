@@ -201,8 +201,8 @@ class UpdateUser(AuthApiView):
         if role is not None:
             # append role
             if u'append' in role:
-                for role in role.get(u'append'):
-                    res = user.append_role(role)
+                for role, expiry in role.get(u'append'):
+                    res = user.append_role(role, expiry_date=expiry)
                     resp[u'role.append'].append(res)
         
             # remove role

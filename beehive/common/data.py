@@ -72,14 +72,14 @@ def transaction(fn):
             for item in args:
                 params.append(unicode(item))
             for k,v in kwargs.iteritems():
-                params.append("'%s':'%s'" % (k, v))
+                params.append(u"'%s':'%s'" % (k, v))
                 
             # call internal function
             res = fn(*args, **kwargs)
             
             session.commit()
             elapsed = round(time() - start, 4)
-            logger.debug('%s.%s - %s - TRANSACTION - %s - %s - OK - %s' % (
+            logger.debug(u'%s.%s - %s - transaction - %s - %s - OK - %s' % (
                          operation.transaction, stmp_id, sessionid, fn.__name__, 
                          params,  elapsed))
             
@@ -91,9 +91,11 @@ def transaction(fn):
             return res
         except ModelError as ex:
             elapsed = round(time() - start, 4)
-            logger.error('%s.%s - %s - TRANSACTION - %s - %s - KO - %s - %s' % (
+            logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
                          operation.transaction, stmp_id, sessionid, fn.__name__, 
-                         params, ex, elapsed), exc_info=1)
+                         params, elapsed))
+            if ex.code not in [409]:
+                logger.error(ex.desc, exc_info=1)
             
             # watch log
             #info = "%s:%s - %s:%s.%s - ERROR - %s" % (cp.ident, ct.ident, 
@@ -105,9 +107,10 @@ def transaction(fn):
             raise TransactionError(ex.desc, code=ex.code)
         except IntegrityError as ex:
             elapsed = round(time() - start, 4)
-            logger.error('%s.%s - %s - TRANSACTION - %s - %s - KO - %s - %s' % (
+            logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
                          operation.transaction, stmp_id, sessionid, fn.__name__, 
-                         params, ex, elapsed), exc_info=1)
+                         params, elapsed))
+            logger.error(ex.orig, exc_info=1)
             
             # watch log
             #info = "%s:%s - %s:%s.%s - ERROR - %s" % (cp.ident, ct.ident, 
@@ -119,9 +122,10 @@ def transaction(fn):
             raise TransactionError(ex.orig)
         except DBAPIError as ex:
             elapsed = round(time() - start, 4)
-            logger.error('%s.%s - %s - TRANSACTION - %s - %s - KO - %s - %s' % (
+            logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
                          operation.transaction, stmp_id, sessionid, fn.__name__, 
-                         params, ex, elapsed), exc_info=1)
+                         params, elapsed))
+            logger.error(ex.orig, exc_info=1)
             
             # watch log
             #info = "%s:%s - %s:%s.%s - ERROR - %s" % (cp.ident, ct.ident, 
@@ -134,9 +138,10 @@ def transaction(fn):
         
         except Exception as ex:
             elapsed = round(time() - start, 4)
-            logger.error('%s.%s - %s - TRANSACTION - %s - %s - KO - %s - %s' % (
+            logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
                          operation.transaction, stmp_id, sessionid, fn.__name__, 
-                         params, ex, elapsed), exc_info=1)
+                         params, elapsed))
+            logger.error(ex, exc_info=1)
             
             # watch log
             #info = "%s:%s - %s:%s.%s - ERROR - %s" % (cp.ident, ct.ident, 
@@ -187,7 +192,7 @@ def query(fn):
             # call internal function
             res = fn(*args, **kwargs)
             elapsed = round(time() - start, 4)
-            logger.debug('%s.%s - %s - QUERY - %s - %s - OK - %s' % (
+            logger.debug(u'%s.%s - %s - query - %s - %s - OK - %s' % (
                          operation.transaction, stmp_id, sessionid, fn.__name__, 
                          params,  elapsed))
             
@@ -200,9 +205,10 @@ def query(fn):
             return res
         except ModelError as ex:
             elapsed = round(time() - start, 4)
-            logger.error('%s.%s - %s - query - %s - %s - KO - %s - %s' % (
+            logger.error(u'%s.%s - %s - query - %s - %s - KO - %s' % (
                          operation.transaction, stmp_id, sessionid, fn.__name__, 
-                         params, ex, elapsed), exc_info=1)
+                         params, elapsed))
+            logger.error(ex.desc)
             
             # watch log
             #info = "%s:%s - %s:%s.%s - ERROR - %s" % (cp.ident, ct.ident, 
@@ -213,9 +219,10 @@ def query(fn):
             raise QueryError(ex.desc, code=ex.code)    
         except DBAPIError as ex:
             elapsed = round(time() - start, 4)
-            logger.error('%s.%s - %s - query - %s - %s - KO - %s - %s' % (
+            logger.error(u'%s.%s - %s - query - %s - %s - KO - %s' % (
                          operation.transaction, stmp_id, sessionid, fn.__name__, 
-                         params, ex, elapsed), exc_info=1)
+                         params, elapsed))
+            logger.error(ex.orig)
             
             # watch log
             #info = "%s:%s - %s:%s.%s - ERROR - %s" % (cp.ident, ct.ident, 
@@ -226,9 +233,10 @@ def query(fn):
             raise QueryError(ex.orig, code=400)
         except Exception as ex:
             elapsed = round(time() - start, 4)
-            logger.error('%s.%s - %s - query - %s - %s - KO - %s - %s' % (
+            logger.error(u'%s.%s - %s - query - %s - %s - KO - %s' % (
                          operation.transaction, stmp_id, sessionid, fn.__name__, 
-                         params, ex, elapsed), exc_info=1)
+                         params, elapsed))
+            logger.error(ex)
             
             # watch log
             #info = "%s:%s - %s:%s.%s - ERROR - %s" % (cp.ident, ct.ident, 

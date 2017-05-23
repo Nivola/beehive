@@ -12,11 +12,9 @@ import gevent
 from beecell.simple import str2uni, id_gen, parse_redis_uri
 
 from kombu.mixins import ConsumerMixin
-from kombu.log import get_logger as kombu_get_logger
-from kombu.utils import reprcall
+from kombu.pools import producers
 from kombu import Exchange, Queue
-from kombu import Connection
-from kombu.utils.debug import setup_logging
+from kombu import Connection, exceptions
 from signal import *
 import pprint
 
@@ -150,6 +148,8 @@ class EventProducerRedis(EventProducer):
         self.exchange = Exchange(self.redis_channel, type=u'direct',
                                  delivery_mode=1)
         self.routing_key = u'%s.key' % self.redis_channel
+        self.queue = Queue(u'%s-queue' % self.redis_channel, self.exchange,
+                           routing_key=self.routing_key)
     
     def _send(self, event_type, data, source, dest, framework):
         if framework == u'kombu':
@@ -166,7 +166,7 @@ class EventProducerRedis(EventProducer):
                                  serializer=u'json',
                                  compression=u'bzip2',
                                  exchange=self.exchange,
-                                 declare=[self.exchange],
+                                 declare=[self.exchange,self.queue],
                                  routing_key=self.routing_key,
                                  expiration=60,
                                  delivery_mode=1)
@@ -178,8 +178,6 @@ class EventProducerRedis(EventProducer):
             
     def _send_simple(self, event_type, data, source, dest):
         try:
-            #self.logger.debug('Get event params: %s, %s, %s, %s' % 
-            #                  (event_type, data, source, dest))
             # generate event
             event = Event(event_type, data, source, dest)        
             # send message

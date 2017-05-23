@@ -1,0 +1,8 @@
+{
+    "schedule":{
+        "name":"expire_users_roles",
+        "task":"beehive.module.auth.tasks.remove_expired_roles_from_users",
+        "schedule":{"type":"timedelta","days":1},
+        "args":["*", {}]
+    }
+}

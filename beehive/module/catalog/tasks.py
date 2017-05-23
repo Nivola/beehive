@@ -6,8 +6,7 @@ Created on May 5, 2017
 from celery.utils.log import get_task_logger
 from beehive.common.apiclient import BeehiveApiClient
 from beehive.common.task.job import Job, task_local, job, JobTask, job_task
-from beehive.module.catalog.controller import Catalog
-from beehive.module.catalog.common import CatalogEndpoint
+from beehive.module.catalog.controller import Catalog, CatalogEndpoint
 from beehive.common.task.manager import task_manager
 from beehive.common.task.util import end_task, start_task
 
@@ -80,7 +79,16 @@ class CatalogJobTask(JobTask):
         uri = endpoint.model.uri
         res = self.apiclient.ping(endpoint=uri)
         logger.warn(u'Ping endpoint %s: %s' % (uri, res))
-        return res      
+        return res
+    
+    def remove_endpoint(self, endpoint):
+        """Remove endpoint
+        
+        :param endpoint: CatalogEndpoint instance
+        """
+        res = endpoint.delete()
+        logger.debug(u'Delete endpoint: %s' % endpoint.oid)
+        return res    
 
 #
 # catalog refresh tasks

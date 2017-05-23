@@ -1861,10 +1861,11 @@ class AuthDbManager(AbstractAuthDbManager):
         :raises TransactionError: raise :class:`TransactionError`
         """
         session = self.get_session()
-        user = session.query(User).filter_by(expiry_date>=expiry_date)
-        user.update({u'active':False})        
-        self.logger.debug(u'Disable exipred users: %s' % (user.all()))
-        return True    
+        user = session.query(User).filter(User.expiry_date<=expiry_date)
+        user.update({u'active':False})
+        res = [u.id for u in user.all()]
+        self.logger.debug(u'Disable exipred users: %s' % (res))
+        return res    
         
     @transaction
     def append_user_role(self, user, role, expiry_date=None):
@@ -1908,8 +1909,8 @@ class AuthDbManager(AbstractAuthDbManager):
         
         # remove role from user if it exists
         ru = session.query(RoleUser).filter_by(user_id=user.id)\
-                                    .filter_by(role_id=role.id)
-        if ru.first() is not None:
+                                    .filter_by(role_id=role.id).first()
+        if ru is not None:
             session.delete(ru)
             self.logger.debug(u'Remove user %s role: %s' % (user, role))
             return role.id
@@ -1918,7 +1919,7 @@ class AuthDbManager(AbstractAuthDbManager):
             return False
         
     @transaction
-    def remove_expired_user_role(self, user, role, expiry_date):
+    def remove_expired_user_role(self, expiry_date):
         """Remove roles from users where association is expired
  
         :param user: User instance
@@ -1932,10 +1933,12 @@ class AuthDbManager(AbstractAuthDbManager):
         session = self.get_session()
         
         # remove role from user if it exists
-        ru = session.query(RoleUser).filter_by(expiry_date>=expiry_date).all()
-        session.delete(ru)
-        self.logger.debug(u'Remove expired role 2 user association: %s' % (ru))
-        return ru
+        rus = session.query(RoleUser).filter(RoleUser.expiry_date<=expiry_date).all()
+        for ru in rus:
+            session.delete(ru)
+        res = [(u.role_id, u.user_id) for u in rus]
+        self.logger.debug(u'Remove expired roles from users: %s' % (res))
+        return res
         
     @transaction
     def set_user_attribute(self, user, name, value=None, desc=None, new_name=None):

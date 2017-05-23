@@ -8,6 +8,7 @@
             "auth":"mysql+pymysql://auth:auth@10.102.184.57:3306/auth"
         },
         "redis-uri":"localhost;6379;0",
+        "broker":"redis://10.102.184.51:6379/1",
         "endpoints":{
             "auth":"http://10.102.184.52:6060/",
             "event":"http://10.102.184.52:6070/",
@@ -35,6 +36,7 @@
         "db-uris":{
             "auth":"mysql+pymysql://auth:auth@10.102.160.240:3306/auth1"
         },
+        "broker":"redis://10.102.160.240:6379/1",
         "redis-uri":"localhost;6379;0",
         "endpoints":{
             "auth":"http://10.102.160.12:6060/",

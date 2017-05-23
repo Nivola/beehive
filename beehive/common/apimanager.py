@@ -64,7 +64,7 @@ class ApiManager(object):
     
     def __init__(self, params, app=None, hostname=None):
         self.logger = logging.getLogger(self.__class__.__module__+ \
-                                        '.'+self.__class__.__name__)
+                                        u'.'+self.__class__.__name__)
         
         # configuration params
         self.params = params       
@@ -402,17 +402,7 @@ class ApiManager(object):
                     
                 # set redis manager
                 self.redis_manager = redis.StrictRedis(
-                    host=host, port=int(port), db=int(db))          
-    
-                # create job manager
-                '''
-                self.job_manager = JobManager(self.redis_manager, 
-                                              self.redis_msg_channel, 
-                                              self.max_concurrent_jobs,
-                                              self.job_interval,
-                                              self.job_timeout)
-                self.logger.info('Create JobManager instance: %s' % self.job_manager)
-                '''
+                    host=host, port=int(port), db=int(db))
                 
                 # app session
                 if self.app is not None:
@@ -425,50 +415,34 @@ class ApiManager(object):
                 ##### redis configuration #####
                 
                 ##### scheduler reference configuration #####
-                self.logger.info('Configure scheduler reference - START')
+                self.logger.info(u'Configure scheduler reference - START')
                 
                 try:
                     from beehive.common.task.manager import configure_task_manager
                     from beehive.common.task.manager import configure_task_scheduler
                     
                     # task manager
-                    '''
-                    broker_url = configurator.get(app=self.app_name, 
-                                                  group='taskmanager',
-                                                  name='task_broker_url')[0].value           
-                    result_backend = configurator.get(app=self.app_name, 
-                                                      group='taskmanager',
-                                                      name='task_result_backend')[0].value'''
-                    
                     broker_url = self.params['broker_url']
                     result_backend = self.params['result_backend']
                     configure_task_manager(broker_url, result_backend)
                     self.redis_taskmanager = RedisManager(result_backend)
                     
                     # scheduler
-                    '''
-                    broker_url = configurator.get(app=self.app_name, 
-                                                  group='scheduler',
-                                                  name='scheduler_broker_url')[0].value           
-                    schedule_backend = configurator.get(app=self.app_name, 
-                                                        group='scheduler',
-                                                        name='scheduler_result_backend')[0].value'''
                     broker_url = self.params['broker_url']
                     schedule_backend = self.params['result_backend']                                                    
                     configure_task_scheduler(broker_url, schedule_backend)
                     self.redis_scheduler = RedisManager(schedule_backend)
     
-                    self.logger.info('Configure scheduler reference - STOP')
+                    self.logger.info(u'Configure scheduler reference - STOP')
                 except:
-                    self.logger.warning('Scheduler not configured')            
+                    self.logger.warning(u'Scheduler not configured')            
                 ##### scheduler reference configuration #####            
-                
                 
                 ##### security configuration #####
                 # configure only with auth module
                 try:
                     confs = configurator.get(app=self.app_name, group='auth')
-                    self.logger.info('Configure security - START')
+                    self.logger.info(u'Configure security - START')
                     
                     # Create authentication providers
         
@@ -484,40 +458,15 @@ class ApiManager(object):
                                                      ssl=item['ssl'])
                         self.auth_providers[item['domain']] = auth_provider
                         self.logger.info('Setup authentication provider: %s' % auth_provider)
-            
-                    # Create authentication manager
-                    #self.api_manager.authentication_manager = AuthenticationManager(self.auth_providers)
-            
-                    # Create security datastore
-                    #self.security_datastore = AuthController(self.auth_providers)
-                    #self.logger.debug('Setup security datastore: %s' % self.security_datastore)
-                    
-                    """
-                    # login manager
-                    def unauthorized_callback():
-                        return redirect(login_url(login_view, request.url))            
-                    
-                    self.login_manager = LoginManager(self)
-                    login_view = "login"
-                    self.login_manager.login_view = login_view
-                    self.login_manager.unauthorized_callback = unauthorized_callback
-                    self.logger.debug('Setup login manager: %s' % self.login_manager)
-                    
-                    @self.login_manager.user_loader
-                    def load_user(userid):
-                        # Return an instance of the User model
-                        user = session.get('user_obj')
-                        return user
-                    """
-                    
-                    self.logger.info('Configure security - STOP')
+
+                    self.logger.info(u'Configure security - STOP')
                 except:
-                    self.logger.warning('Security not configured')
+                    self.logger.warning(u'Security not configured', exc_info=1)
                 ##### security configuration #####
         
                 ##### camunda configuration #####
                 try:
-                    self.logger.debug('Conf Camunda  - START')            
+                    self.logger.debug(u'Configure Camunda  - START')            
                     from beedrones.camunda import WorkFlowEngine as CamundaEngine
                     confs = configurator.get(app=self.app_name, group='bpmn')
                     for conf in confs:
@@ -525,15 +474,14 @@ class ApiManager(object):
                     self.camunda_engine = CamundaEngine( item['conn'],
                             user=item['USER'],
                             passwd=item['PASSWD'])
-                    self.logger.debug('Conf Camunda  - STOP')            
+                    self.logger.debug(u'Configure Camunda  - STOP')            
                 except:
-                    self.logger.warning('Camunda not configured')
-       
+                    self.logger.warning(u'Camunda not configured')
                 ##### camunda configuration #####
 
                 ##### sendmail configuration #####
                 try:
-                    self.logger.debug('Conf igure sendmail - START')            
+                    self.logger.debug(u'Configure sendmail - START')            
                     confs = configurator.get(app=self.app_name, group='mail')
                     for conf in confs:
                         if conf.name == 'server1':
@@ -545,9 +493,9 @@ class ApiManager(object):
                             self.mail_sender = mail_sender
                             self.logger.info('Use mail sender: %s' % mail_sender) 
     
-                    self.logger.info('Configure sendmail - STOP')
+                    self.logger.info(u'Configure sendmail - STOP')
                 except:
-                    self.logger.warning('Sendmail not configured')
+                    self.logger.warning(u'Sendmail not configured')
                 ##### sendmail configuration #####
     
                 ##### gateway configuration #####
@@ -572,20 +520,19 @@ class ApiManager(object):
     
                     # setup event producer
                     conf = json.loads(conf[0].value)
-                    # set redis manager
-                    #host, port, db = parse_redis_uri(conf['uri'])
-                    #self.redis_event_manager = redis.StrictRedis(host=host, 
-                    #                                               port=int(port), 
-                    #                                               db=int(db))               
+                    # set redis manager   
                     self.redis_event_uri = conf[u'uri']
                     self.redis_event_channel = conf[u'queue']
                     # create instance of event producer
                     self.event_producer = EventProducerRedis(
                                                         self.redis_event_uri, 
                                                         self.redis_event_channel)
+                    self.logger.info(u'Configure queue %s on %s' % 
+                                     (self.redis_event_channel, 
+                                      self.redis_event_uri))
                     self.logger.info(u'Configure event queue - STOP')
                 except:
-                    self.logger.warning(u'Event queue not configured')                
+                    self.logger.warning(u'Event queue not configured', exc_info=1)                
                 ##### event queue configuration #####
                 
                 ##### monitor queue configuration #####
@@ -598,7 +545,7 @@ class ApiManager(object):
                     conf = configurator.get(app=self.app_name, 
                                             group='queue', 
                                             name='queue.monitor')
-                    self.logger.info('Configure monitor queue - START')
+                    self.logger.info(u'Configure monitor queue - START')
     
                     # setup monitor producer
                     conf = json.loads(conf[0].value)
@@ -609,10 +556,12 @@ class ApiManager(object):
                     self.monitor_producer = MonitorProducerRedis(
                                                         self.redis_monitor_uri, 
                                                         self.redis_monitor_channel)
-                    
+                    self.logger.info(u'Configure queue %s on %s' % 
+                                     (self.redis_monitor_channel, 
+                                      self.redis_monitor_uri))                    
                     self.logger.info(u'Configure monitor queue - STOP')
                 except Exception as ex:
-                    self.logger.warning(u'Monitor queue not configured - %s' % ex)                
+                    self.logger.warning(u'Monitor queue not configured', exc_info=1)                
                 ##### monitor queue configuration #####
         
                 ##### catalog queue configuration #####
@@ -620,7 +569,7 @@ class ApiManager(object):
                     conf = configurator.get(app=self.app_name, 
                                             group='queue', 
                                             name='queue.catalog')
-                    self.logger.info('Configure catalog queue - START')
+                    self.logger.info(u'Configure catalog queue - START')
     
                     # setup catalog producer
                     conf = json.loads(conf[0].value)
@@ -632,10 +581,12 @@ class ApiManager(object):
                     self.catalog_producer = CatalogProducerRedis(
                                                         self.redis_catalog_uri, 
                                                         self.redis_catalog_channel)
-                    
-                    self.logger.info('Configure catalog queue - STOP')
+                    self.logger.info(u'Configure queue %s on %s' % 
+                                     (self.redis_catalog_channel, 
+                                      self.redis_catalog_uri))                    
+                    self.logger.info(u'Configure catalog queue - STOP')
                 except Exception as ex:
-                    self.logger.warning('Catalog queue not configured - %s' % ex)
+                    self.logger.warning(u'Catalog queue not configured', exc_info=1)
                 ##### catalog queue configuration #####          
         
                 ##### tcp proxy configuration #####
@@ -663,38 +614,38 @@ class ApiManager(object):
                 ##### api authentication configuration #####
                 # not configure for auth module
                 try:
-                    self.logger.info('Configure apiclient- START')
+                    self.logger.info(u'Configure apiclient- START')
                     
                     # get auth catalog
                     self.catalog = configurator.get(app=self.app_name, 
-                                                    group='auth', 
-                                                    name='catalog')[0].value
-                    self.logger.info('Get catalog: %s' % self.catalog)                
+                                                    group=u'api', 
+                                                    name=u'catalog')[0].value
+                    self.logger.info(u'Get catalog: %s' % self.catalog)                
                     
                     # get auth endpoints
                     try:
                         endpoints = configurator.get(app=self.app_name, 
-                                                     group='auth', 
-                                                     name='endpoints')[0].value
+                                                     group=u'api', 
+                                                     name=u'endpoints')[0].value
                         self.endpoints = json.loads(endpoints)
                     except:
                         # auth subsystem instance
                         self.endpoints = [self.app_uri]
-                    self.logger.info('Get auth endpoints: %s' % self.endpoints)                    
+                    self.logger.info(u'Get auth endpoints: %s' % self.endpoints)                    
                     
                     # get auth system user
                     auth_user = configurator.get(app=self.app_name, 
-                                                 group='auth', 
-                                                 name='api_user')[0].value
+                                                 group=u'api', 
+                                                 name=u'user')[0].value
                     self.auth_user = json.loads(auth_user)
-                    self.logger.info('Get auth user: %s' % self.auth_user)
+                    self.logger.info(u'Get auth user: %s' % self.auth_user)
 
                     # configure api client
                     self.configure_api_client()                   
                     
-                    self.logger.info('Configure apiclient - STOP')
+                    self.logger.info(u'Configure apiclient - STOP')
                 except Exception as ex:
-                    self.logger.warning('Apiclient not configured')
+                    self.logger.warning(u'Apiclient not configured')
                 ##### api authentication configuration #####              
                 
                 del configurator

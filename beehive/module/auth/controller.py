@@ -1769,9 +1769,9 @@ class Role(AuthObject):
                                             self.objid, u'view')
            
         creation_date = str2uni(self.model.creation_date\
-                                .strftime(u'%d-%m-%y %H:%M:%S'))
+                                .strftime(u'%d-%m-%Y %H:%M:%S'))
         modification_date = str2uni(self.model.modification_date\
-                                    .strftime(u'%d-%m-%y %H:%M:%S'))
+                                    .strftime(u'%d-%m-%Y %H:%M:%S'))
         res = {
             u'id':self.oid, 
             u'uuid':self.uuid,    
@@ -1789,7 +1789,7 @@ class Role(AuthObject):
         
         if self.expiry_date is not None:
             expiry_date = str2uni(self.expiry_date\
-                                  .strftime(u'%d-%m-%Y'))
+                                  .strftime(u'%d-%m-%Y %H:%M:%S'))
             res[u'date'][u'expiry'] = expiry_date
         
         return res
@@ -2001,11 +2001,11 @@ class User(AuthObject):
                                             self.objid, u'view')
            
         creation_date = str2uni(self.model.creation_date\
-                                .strftime(u'%d-%m-%y %H:%M:%S'))
+                                .strftime(u'%d-%m-%Y %H:%M:%S'))
         modification_date = str2uni(self.model.modification_date\
-                                    .strftime(u'%d-%m-%y %H:%M:%S'))
+                                    .strftime(u'%d-%m-%Y %H:%M:%S'))
         expiry_date = str2uni(self.model.expiry_date\
-                              .strftime(u'%d-%m-%y %H:%M:%S'))        
+                              .strftime(u'%d-%m-%Y %H:%M:%S'))        
         #attrib = self.get_attribs()
         return {
             u'id':self.oid,
@@ -2214,11 +2214,12 @@ class User(AuthObject):
                                             role.objid, u'view')
 
         try:
+            expiry_date_obj = None
             if expiry_date is not None:
                 g, m, y = expiry_date.split(u'-')
-                expiry_date = datetime(int(y), int(m), int(g))
+                expiry_date_obj = datetime(int(y), int(m), int(g))
             res = self.dbauth.append_user_role(self.model, role, 
-                                               expiry_date=expiry_date)
+                                               expiry_date=expiry_date_obj)
             if res is True: 
                 self.logger.debug(u'Append role %s to user %s' % (
                                             role, self.name))
@@ -2425,9 +2426,9 @@ class Group(AuthObject):
                                             self.objid, u'view')
            
         creation_date = str2uni(self.model.creation_date\
-                                .strftime(u'%d-%m-%y %H:%M:%S'))
+                                .strftime(u'%d-%m-%Y %H:%M:%S'))
         modification_date = str2uni(self.model.modification_date\
-                                    .strftime(u'%d-%m-%y %H:%M:%S'))
+                                    .strftime(u'%d-%m-%Y %H:%M:%S'))
         #attrib = self.get_attribs()
         return {
             u'id':self.oid,

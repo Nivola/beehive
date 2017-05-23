@@ -1,0 +1,8 @@
+{
+    "schedule":{
+        "name":"expire_users",
+        "task":"beehive.module.auth.tasks.disable_expired_users",
+        "schedule":{"type":"timedelta","days":1},
+        "args":["*", {}]
+    }
+}

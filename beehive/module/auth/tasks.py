@@ -3,6 +3,7 @@ Created on May 5, 2017
 
 @author: darkbk
 '''
+import datetime
 from celery.utils.log import get_task_logger
 from beehive.common.apiclient import BeehiveApiClient
 from beehive.common.task.job import Job, task_local, job, JobTask, job_task
@@ -32,18 +33,6 @@ class AuthJob(Job):
     
     def __init__(self, *args, **kwargs):
         Job.__init__(self, *args, **kwargs)
-        
-    def get_endpoints(self, oid=None):
-        """Get all endpoints
-        """
-        '''try:
-            endpoints = task_local.controller.manager.get_endpoints()
-        except:
-            endpoints = []
-            logger.debug(u'Get endpoints: %s' % endpoints)'''
-        endpoints = task_local.controller.get_endpoints(oid=oid)
-        logger.debug(u'Get endpoints: %s' % endpoints)
-        return endpoints
 
 class AuthJobTask(JobTask):
     """AuthJobTask class.
@@ -90,7 +79,7 @@ class AuthJobTask(JobTask):
 #
 @task_manager.task(bind=True, base=AuthJob)
 @job(entity_class=Catalog, module=u'AuthModule', delta=1)
-def disable_expired_users_job(self, objid, params):
+def disable_expired_users(self, objid, params):
     """Disable expired users
     
     :param objid: objid of the resource. Ex. 110//2222//334//*
@@ -114,40 +103,29 @@ def disable_expired_users_job(self, objid, params):
     ops = self.get_options()
     self.set_shared_data(params)
     self.set_operation()
-    
-    # get all endpoints
-    self.get_session()
-    endpoints = self.get_endpoints()
-    self.release_session()
-    
-    g_endpoints = []
-    for endpoint in endpoints:
-        g_endpoints.append(ping_endpoint.si(ops, endpoint.oid))
-    
+
     Job.create([
         end_task,
-        g_endpoints,
+        disable_expired_users_task,
         start_task,
     ], ops).delay()
     return True    
 
 @task_manager.task(bind=True, base=AuthJobTask)
 @job_task(module=u'AuthModule')
-def disable_expired_users(self, params, endpoint_id):
+def disable_expired_users_task(self, options):
     """Disable expired users - task
     """
     self.set_operation()
     self.get_session()
-    endpoint = self.get_endpoints(endpoint_id)[0]
-    ping = self.ping_endpoint(endpoint)
-    if ping is False:
-        res = self.remove_endpoint(endpoint)
+    expiry_date = datetime.datetime.today()
+    res = task_local.controller.dbauth.expire_users(expiry_date)
     self.release_session()
-    return ping
+    return res
 
 @task_manager.task(bind=True, base=AuthJob)
 @job(entity_class=Catalog, module=u'AuthModule', delta=1)
-def remove_expired_roles_from_users_job(self, objid, params):
+def remove_expired_roles_from_users(self, objid, params):
     """Remove expired roles from users
     
     :param objid: objid of the resource. Ex. 110//2222//334//*
@@ -172,33 +150,22 @@ def remove_expired_roles_from_users_job(self, objid, params):
     self.set_shared_data(params)
     self.set_operation()
     
-    # get all endpoints
-    self.get_session()
-    endpoints = self.get_endpoints()
-    self.release_session()
-    
-    g_endpoints = []
-    for endpoint in endpoints:
-        g_endpoints.append(ping_endpoint.si(ops, endpoint.oid))
-    
     Job.create([
         end_task,
-        g_endpoints,
+        remove_expired_roles_from_users_task,
         start_task,
     ], ops).delay()
     return True
 
 @task_manager.task(bind=True, base=AuthJobTask)
 @job_task(module=u'AuthModule')
-def remove_expired_roles_from_users(self, params, endpoint_id):
+def remove_expired_roles_from_users_task(self, options):
     """Remove expired roles from users - task
     """
     self.set_operation()
     self.get_session()
-    endpoint = self.get_endpoints(endpoint_id)[0]
-    ping = self.ping_endpoint(endpoint)
-    if ping is False:
-        res = self.remove_endpoint(endpoint)
+    expiry_date = datetime.datetime.today()
+    res = task_local.controller.dbauth.remove_expired_user_role(expiry_date)
     self.release_session()
-    return ping
+    return res
 

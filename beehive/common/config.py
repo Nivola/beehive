@@ -127,11 +127,14 @@ class ConfigDbManager(object):
             prop = session.query(ConfigProp).all()
             
         if len(prop) == 0:
-            self.logger.error("No properties found - (app:%s, group:%s, "\
-                              "oid:%s, name:%s)" % (app, group, oid, name)) 
-            raise SQLAlchemyError("No properties found")            
+            self.logger.warn(u'No properties (app=%s, group=%s, '\
+                             u'oid=%s, name=%s) found' % 
+                             (app, group, oid, name)) 
+            raise SQLAlchemyError(u'No properties (app=%s, group=%s, '\
+                                  u'oid=%s, name=%s) found' % 
+                                  (app, group, oid, name))
             
-        self.logger.debug('Get properties: %s' % prop)
+        self.logger.debug(u'Get properties: %s' % prop)
         return prop
         
     @transaction
