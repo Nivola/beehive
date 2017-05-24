@@ -26,6 +26,7 @@ from beehive.manager.ops.event import EventManager
 from beehive.manager.ops.create import create_main
 from beehive.manager.ops.create import create_client
 from beecell.logger.helper import LoggerHelper
+from beehive.manager.ops.config import ConfigManager
 
 VERSION = u'1.0.0'
 
@@ -77,6 +78,7 @@ def main(run_path, argv):
         u'resource':ResourceManager,
         u'scheduler':SchedulerManager,
         u'provider':ProviderManager,
+        u'config':ConfigManager,
         u'vsphere':VsphereManager,
         u'nsx':NsxManager,
         u'openstack':OpenstackManager,
@@ -205,6 +207,11 @@ def main(run_path, argv):
                 raise Exception(u'ERROR : Container id is missing')  
             retcode = SchedulerManager.main(auth_config, frmt, opts, args, env, 
                                             SchedulerManager, subsystem=subsystem)
+
+        elif section == u'config':
+            manager = ConfigManager
+            retcode = ConfigManager.main(auth_config, frmt, opts, args, env, 
+                                         ConfigManager)
             
         elif section == u'provider':
             manager = ProviderManager

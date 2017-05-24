@@ -785,8 +785,7 @@ class BeehiveApiClient(object):
         }
         res = self.invoke(u'auth', u'/v1.0/auth/objects/types/', 
                           u'POST', data, parse=True)        
-        self.logger.debug(u'Add object type: %s:%s %s' % 
-                          (objtype, objdef))
+        self.logger.debug(u'Add object type: %s:%s' % (objtype, objdef))
         return res
     
     def add_object(self, objtype, objdef, objid, desc,

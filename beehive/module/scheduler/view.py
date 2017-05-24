@@ -220,6 +220,28 @@ class TaskAPI(ApiView):
     """
     @staticmethod
     def register_api(module):
+        '''
+            ('task/ping', 'GET', ManagerPing, {}),
+            ('task/stats', 'GET', ManagerStats, {}),
+            ('task/report', 'GET', ManagerReport, {}),
+            #('task/tasks', 'GET', GetTasks, {}),
+            ('task/tasks', 'GET', GetTasksWithDetail, {}),
+            ('task/tasks/count', 'GET', GetTasksCount, {}),
+            ('task/tasks/registered', 'GET', GetTasksRegistered, {}),
+            ('task/tasks/active', 'GET', GetTasksActive, {}),
+            ('task/tasks/scheduled', 'GET', GetTasksScheduled, {}),
+            ('task/tasks/reserved', 'GET', GetTasksReserved, {}),
+            ('task/tasks/revoked', 'GET', GetTasksRevoked, {}),
+            ('task/task/<oid>', 'GET', QueryTask, {}),
+            #('task/task/<oid>/status', 'GET', QueryChainedTaskStatus, {}),
+            ('task/task/<oid>/graph', 'GET', GetTaskGraph, {}),
+            ('task/tasks', 'DELETE', PurgeAllTasks, {}),
+            ('task/tasks/purge', 'DELETE', PurgeTasks, {}),
+            ('task/task/<oid>', 'DELETE', DeleteTask, {}),
+            ('task/task/<oid>/revoke', 'DELETE', RevokeTask, {}),
+            ('task/task/time_limit', 'PUT', SetTaskTimeLimit, {}),
+            ('task/task/jobtest', 'POST', RunJobTest, {})        
+        '''
         rules = [
             (u'worker/ping', u'GET', ManagerPing, {}),
             (u'worker/stats', u'GET', ManagerStats, {}),
@@ -240,29 +262,7 @@ class TaskAPI(ApiView):
             (u'worker/tasks/<oid>', u'DELETE', DeleteTask, {}),
             (u'worker/tasks/<oid>/revoke', u'DELETE', RevokeTask, {}),
             (u'worker/tasks/time-limit', u'PUT', SetTaskTimeLimit, {}),
-            (u'worker/tasks/jobtest', u'POST', RunJobTest, {}), 
-            
-            
-            ('task/ping', 'GET', ManagerPing, {}),
-            ('task/stats', 'GET', ManagerStats, {}),
-            ('task/report', 'GET', ManagerReport, {}),
-            #('task/tasks', 'GET', GetTasks, {}),
-            ('task/tasks', 'GET', GetTasksWithDetail, {}),
-            ('task/tasks/count', 'GET', GetTasksCount, {}),
-            ('task/tasks/registered', 'GET', GetTasksRegistered, {}),
-            ('task/tasks/active', 'GET', GetTasksActive, {}),
-            ('task/tasks/scheduled', 'GET', GetTasksScheduled, {}),
-            ('task/tasks/reserved', 'GET', GetTasksReserved, {}),
-            ('task/tasks/revoked', 'GET', GetTasksRevoked, {}),
-            ('task/task/<oid>', 'GET', QueryTask, {}),
-            #('task/task/<oid>/status', 'GET', QueryChainedTaskStatus, {}),
-            ('task/task/<oid>/graph', 'GET', GetTaskGraph, {}),
-            ('task/tasks', 'DELETE', PurgeAllTasks, {}),
-            ('task/tasks/purge', 'DELETE', PurgeTasks, {}),
-            ('task/task/<oid>', 'DELETE', DeleteTask, {}),
-            ('task/task/<oid>/revoke', 'DELETE', RevokeTask, {}),
-            ('task/task/time_limit', 'PUT', SetTaskTimeLimit, {}),
-            ('task/task/jobtest', 'POST', RunJobTest, {})
+            (u'worker/tasks/jobtest', u'POST', RunJobTest, {}),
         ]
 
         ApiView.register_api(module, rules)

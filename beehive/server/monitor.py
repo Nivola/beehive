@@ -45,6 +45,6 @@ if __name__ == '__main__':
 
     import beecell.server.gevent_ssl
     from gevent import monkey; monkey.patch_all()
-    from beehive.module.monitor.consumer import start_monitor_consumer
+    from beehive_monitor.consumer import start_monitor_consumer
 
     start_monitor_consumer(params)

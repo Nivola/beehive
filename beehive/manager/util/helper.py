@@ -308,6 +308,8 @@ class BeehiveHelper(object):
         update = get_value(config, u'update', False)
         api_config = get_value(config, u'api', {})
 
+        self.logger.debug(api_config)
+
         # set operation user
         operation.user = (api_config.get(u'user', None), u'localhost', None)
         self.set_permissions(classes=self.classes)        
@@ -348,9 +350,9 @@ class BeehiveHelper(object):
             
             if update is False:
                 # append system user config
-                config[u'config'].append({u'group':u'api', 
+                config[u'config'].append({u'group':u'api',
                                           u'name':u'user', 
-                                          u'value':{u'name':user[u'user'], 
+                                          u'value':{u'name':user[u'name'],
                                                     u'pwd':user[u'pwd']}})
                 # append catalog config
                 config[u'config'].append({u'group':u'api', 
