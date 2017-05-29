@@ -101,6 +101,7 @@ class BeehiveApp(Flask):
         
         # base logging
         loggers = [self.logger,
+                   logging.getLogger(u'oauthlib'),
                    logging.getLogger(u'beehive'),
                    logging.getLogger(u'beehive.db'),
                    logging.getLogger(u'beecell'),
