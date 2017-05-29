@@ -20,6 +20,7 @@ from beecell.simple import truncate
 from beecell.db import ModelError
 from uuid import uuid4
 from beehive.common.data import operation, query, transaction
+from beehive.common.model import AbstractDbManager
 
 Base = declarative_base()
 
@@ -201,7 +202,8 @@ class Group(Base):
     name = Column(String(80), unique=True)
     description = Column(String(255))
     creation_date = Column(DateTime())
-    modification_date = Column(DateTime())     
+    modification_date = Column(DateTime())
+    active = Column(Boolean())
     member = relationship(u'User', secondary=group_user,
                           backref=backref(u'group', lazy=u'dynamic'))
     role = relationship(u'Role', secondary=role_group,
@@ -215,6 +217,7 @@ class Group(Base):
         self.description = description
         self.member = member
         self.role = role
+        self.active = True
         
         self.creation_date = datetime.datetime.today()
         self.modification_date = self.creation_date        
@@ -308,12 +311,12 @@ class SysObjectPermission(Base):
                     self.id, self.obj.type.objtype, self.obj.type.objdef, 
                     self.obj.objid, self.action.value)
 
-class AuthDbManager(AbstractAuthDbManager):
-    """                                                                                            
+class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
+    """Authorization db manager                                                                                    
     """
     def __init__(self, session=None):
         self.logger = logging.getLogger(self.__class__.__module__+ \
-                                        '.'+self.__class__.__name__)        
+                                        u'.'+self.__class__.__name__)        
         
         self._session = session
 
@@ -861,14 +864,42 @@ class AuthDbManager(AbstractAuthDbManager):
     #
     @query
     def count_role(self):
-        """Coint system object.
-        """   
-        session = self.get_session()
-        res = session.query(func.count(Role.id))
-        
-        self.logger.debug('Count roles: %s' % res)
-        return res    
+        """Count role.
+        """
+        return self.count_entites(User)      
     
+    @watch
+    def get_roles(self, *args, **kvargs):
+        """Get scopes
+        
+        :param int oid: entity id. [optional]
+        :param str objid: entity authorization id. [optional]
+        :param str uuid: entity uuid. [optional]
+        :param str name: entity name. [optional]      
+        :param active: role status [Optional]
+        :param expiry_date: list role with expiry_date >= expiry_date [Optional]
+        :param page: entities list page to show [default=0]
+        :param size: number of entities to show in list per page [default=0]
+        :param order: sort order [default=DESC]
+        :param field: sort field [default=id]        
+        :raises QueryError: raise :class:`QueryError`
+        """
+        def filters(query, *args, **kvargs):
+            '''# get filter field
+            active = kvargs.get(u'active', None)
+            expiry_date = kvargs.get(u'expiry_date', None) 
+            
+            # create query
+            if active is not None:
+                query = query.filter_by(active=active)            
+            if expiry_date is not None:
+                query = query.filter_by(expiry_date>=expiry_date)'''
+            return query       
+
+        res, total = self.get_paginated_entities(Role, filters, *args, **kvargs)
+        return res, total  
+    
+    '''
     @query
     def get_role(self, oid=None, objid=None, name=None, uuid=None,
                  page=0, size=10, order=u'DESC', field=u'id'):
@@ -906,11 +937,11 @@ class AuthDbManager(AbstractAuthDbManager):
         role = role.order_by(u'%s %s' % (field, order))[start:end]            
             
         self.logger.debug('Get roles: %s' % truncate(role))
-        return role, total
+        return role, total'''
     
     @query
     def get_role_permissions(self, names=None, page=0, size=10, order=u'DESC', 
-                             field=u'id'):
+                             field=u'id', *args, **kvargs):
         """Get role permissions.
         
         :param names: list of roles name
@@ -955,12 +986,12 @@ class AuthDbManager(AbstractAuthDbManager):
                 from_statement(text(" ".join(sql))).\
                 params(role_names=names).all()
         
-        self.logger.debug('Get role %s permissions: %s' % (names, 
-                                                           truncate(query)))
+        self.logger.debug(u'Get role %s permissions: %s' % 
+                          (names, truncate(query)))
         return query, total
 
     @query
-    def get_role_permissions2(self, names):
+    def get_role_permissions2(self, names, *args, **kvargs):
         """Get role permissions.
         
         :param names: role name list
@@ -993,7 +1024,7 @@ class AuthDbManager(AbstractAuthDbManager):
         
     @query
     def get_permission_roles(self, perm,  page=0, size=10, order=u'DESC', 
-                        field=u'id'):
+                             field=u'id', *args, **kvargs):
         """Get roles related to a permission.
         
         :param perm: permission instance
@@ -1035,6 +1066,34 @@ class AuthDbManager(AbstractAuthDbManager):
         self.logger.debug(u'Add role : %s' % (data))
         return data
 
+    @watch
+    def update_role(self, *args, **kvargs):
+        """Update role. Extend :function:`update_entity`
+
+        :param int oid: entity id. [optional]
+        :param str objid: entity authorization id. [optional]
+        :param str uuid: entity uuid. [optional]
+        :param str name: entity name. [optional]
+        :param description: role description. [optional]
+        :raises TransactionError: raise :class:`TransactionError`
+        """
+        res = self.update_entity(Role, *args, **kvargs)
+        return res  
+    
+    @watch
+    def remove_role(self, *args, **kvargs):
+        """Remove role.
+        
+        :param int oid: entity id. [optional]
+        :param str objid: entity authorization id. [optional]
+        :param str uuid: entity uuid. [optional]
+        :param str name: entity name. [optional]
+        :raises TransactionError: raise :class:`TransactionError`        
+        """
+        res = self.remove_entity(Role, *args, **kvargs)
+        return res
+
+    '''
     @transaction
     def update_role(self, oid=None, objid=None, name=None, new_name=None, 
                     new_description=None):
@@ -1099,7 +1158,7 @@ class AuthDbManager(AbstractAuthDbManager):
             return True
         else:
             self.logger.error("No role found")
-            raise ModelError('No role found')
+            raise ModelError('No role found')'''
 
     @transaction
     def append_role_permissions(self, role, perms):
@@ -1151,14 +1210,42 @@ class AuthDbManager(AbstractAuthDbManager):
     #
     @query
     def count_group(self):
-        """Count groups.
-        """   
-        session = self.get_session()
-        res = session.query(func.count(Group.id))
-        
-        self.logger.debug(u'Count groups: %s' % res)
-        return res        
+        """Count group.
+        """
+        return self.count_entites(User)      
     
+    @watch
+    def get_groups(self, *args, **kvargs):
+        """Get scopes
+        
+        :param int oid: entity id. [optional]
+        :param str objid: entity authorization id. [optional]
+        :param str uuid: entity uuid. [optional]
+        :param str name: entity name. [optional]      
+        :param active: group status [Optional]
+        :param expiry_date: list group with expiry_date >= expiry_date [Optional]
+        :param page: entities list page to show [default=0]
+        :param size: number of entities to show in list per page [default=0]
+        :param order: sort order [default=DESC]
+        :param field: sort field [default=id]        
+        :raises QueryError: raise :class:`QueryError`
+        """
+        def filters(query, *args, **kvargs):
+            '''# get filter field
+            active = kvargs.get(u'active', None)
+            expiry_date = kvargs.get(u'expiry_date', None) 
+            
+            # create query
+            if active is not None:
+                query = query.filter_by(active=active)            
+            if expiry_date is not None:
+                query = query.filter_by(expiry_date>=expiry_date)'''
+            return query       
+
+        res, total = self.get_paginated_entities(Group, filters, *args, **kvargs)
+        return res, total 
+    
+    '''
     @query
     def get_group(self, name=None, oid=None, objid=None, uuid=None,
                   page=0, size=10, order=u'DESC', field=u'id'):
@@ -1196,11 +1283,11 @@ class AuthDbManager(AbstractAuthDbManager):
         group = group.order_by(u'%s %s' % (field, order))[start:end]
         
         self.logger.debug(u'Get groups: %s' % truncate(group))
-        return group, total
+        return group, total'''
         
     @query
     def get_group_roles(self, group,  page=0, size=10, order=u'DESC', 
-                        field=u'id'):
+                        field=u'id', *args, **kvargs):
         """Get roles of a group.
         
         :param group: Orm Group istance
@@ -1225,7 +1312,8 @@ class AuthDbManager(AbstractAuthDbManager):
         return roles, len(group.role)
 
     @query
-    def get_role_groups(self, role, page=0, size=10, order=u'DESC', field=u'id'):
+    def get_role_groups(self, role, page=0, size=10, order=u'DESC', field=u'id', 
+                        *args, **kvargs):
         """Get groups of a role.
         
         :param role: Orm Role istance
@@ -1249,7 +1337,7 @@ class AuthDbManager(AbstractAuthDbManager):
 
     @query
     def get_group_users(self, group, page=0, size=10, order=u'DESC', 
-                          field=u'id'):
+                          field=u'id', *args, **kvargs):
         """Get users of a group.
         
         :param group: Orm Group istance
@@ -1271,7 +1359,8 @@ class AuthDbManager(AbstractAuthDbManager):
         return members, len(group.member)
         
     @query
-    def get_user_groups(self, user, page=0, size=10, order=u'DESC', field=u'id'):
+    def get_user_groups(self, user, page=0, size=10, order=u'DESC', field=u'id', 
+                        *args, **kvargs):
         """Get groups of a user.
         
         :param user: Orm User istance
@@ -1295,7 +1384,7 @@ class AuthDbManager(AbstractAuthDbManager):
         
     @query
     def get_group_permissions(self, group, page=0, size=10, order=u'DESC', 
-                             field=u'id'):
+                             field=u'id', *args, **kvargs):
         """Get group permissions.
         
         :param group: Orm Group istance
@@ -1316,16 +1405,21 @@ class AuthDbManager(AbstractAuthDbManager):
         roles = []
         for role in group.role:
             roles.append(role.name)
-            
-        perms, total = self.get_role_permissions(names=roles, page=page, 
-                                                 size=size, order=order, 
-                                                 field=field)
+        
+        if len(roles) == 0:
+            self.logger.warn(u'Group %s has no roles associated' % group.id)
+            total = 0
+            perms = []
+        else:
+            perms, total = self.get_role_permissions(names=roles, page=page, 
+                                                     size=size, order=order, 
+                                                     field=field)
 
         self.logger.debug(u'Get group %s perms : %s' % (group, truncate(perms)))
         return perms, total
     
     @query
-    def get_group_permissions2(self, group):
+    def get_group_permissions2(self, group, *args, **kvargs):
         """Get group permissions.
         
         :param group: Orm Group istance
@@ -1370,6 +1464,24 @@ class AuthDbManager(AbstractAuthDbManager):
         self.logger.debug('Add group: %s' % (data))
         return data
         
+    @watch
+    def update_group(self, *args, **kvargs):
+        """Update group. Extend :function:`update_entity`
+
+        :param kvargs str: date to update. {u'name':, u'desc':, u'active':, 
+            u'password':, u'expiry_date':}  
+        """
+        res = self.update_entity(Group, *args, **kvargs)
+        return res  
+    
+    @watch
+    def remove_group(self, *args, **kvargs):
+        """Remove group.
+        """
+        res = self.remove_entity(Group, *args, **kvargs)
+        return res        
+    
+    '''
     @transaction
     def update_group(self, oid=None, new_name=None, new_description=None):
         """Update a group.
@@ -1419,7 +1531,7 @@ class AuthDbManager(AbstractAuthDbManager):
         # delete object type
         session.delete(group)
         
-        return True
+        return True'''
          
     @transaction
     def append_group_role(self, group, role):
@@ -1506,14 +1618,42 @@ class AuthDbManager(AbstractAuthDbManager):
     #
     @query
     def count_user(self):
-        """Coint user.
-        """   
-        session = self.get_session()
-        res = session.query(func.count(User.id))
-        
-        self.logger.debug(u'Count users: %s' % res)
-        return res        
+        """Count user.
+        """
+        return self.count_entites(User)      
     
+    @watch
+    def get_users(self, *args, **kvargs):
+        """Get scopes
+        
+        :param int oid: entity id. [optional]
+        :param str objid: entity authorization id. [optional]
+        :param str uuid: entity uuid. [optional]
+        :param str name: entity name. [optional]      
+        :param active: user status [Optional]
+        :param expiry_date: list user with expiry_date >= expiry_date [Optional]
+        :param page: entities list page to show [default=0]
+        :param size: number of entities to show in list per page [default=0]
+        :param order: sort order [default=DESC]
+        :param field: sort field [default=id]        
+        :raises QueryError: raise :class:`QueryError`
+        """
+        def filters(query, *args, **kvargs):
+            # get filter field
+            active = kvargs.get(u'active', None)
+            expiry_date = kvargs.get(u'expiry_date', None) 
+            
+            # create query
+            if active is not None:
+                query = query.filter_by(active=active)            
+            if expiry_date is not None:
+                query = query.filter_by(expiry_date>=expiry_date)
+            return query       
+
+        res, total = self.get_paginated_entities(User, filters, *args, **kvargs)
+        return res, total
+    
+    '''
     @query
     def get_user(self, name=None, oid=None, objid=None, uuid=None, active=None,
                  expiry_date=None, page=0, size=10, order=u'DESC', field=u'id'):
@@ -1557,11 +1697,11 @@ class AuthDbManager(AbstractAuthDbManager):
         user = user.order_by(u'%s %s' % (field, order))[start:end]
         
         self.logger.debug(u'Get users: %s' % truncate(user))
-        return user, total
+        return user, total'''
 
     @query
-    def get_user_roles(self, user,  page=0, size=10, order=u'DESC', 
-                       field=u'id'):
+    def get_user_roles(self, user=None, page=0, size=10, order=u'DESC', 
+                       field=u'id', *args, **kvargs):
         """Get roles of a user.
         
         :param user: Orm User istance
@@ -1577,23 +1717,17 @@ class AuthDbManager(AbstractAuthDbManager):
         
         start = size * page
         end = size * (page + 1)
-        #, RoleUser.expiry_date
+
         roles = session.query(Role).join(RoleUser)\
                        .filter(RoleUser.user_id == user.id)\
                        .order_by(u'role.%s %s' % (field, order))[start:end]        
-        
-        #roles = session.query(Role).join(User.role)\
-        #               .filter(User.id == user.id)\
-        #               .order_by(u'role.%s %s' % (field, order))[start:end]
-        
-        #roles = user.role.order_by(u'%s %s' % (field, order))[start:end]        
-        
+
         self.logger.debug(u'Get user %s roles: %s' % (user, truncate(roles)))
         return roles, len(roles)
     
     @query
-    def get_user_roles_with_expiry(self, user,  page=0, size=10, order=u'DESC', 
-                                   field=u'id'):
+    def get_user_roles_with_expiry(self, user=None, page=0, size=10, order=u'DESC', 
+                                   field=u'id', *args, **kvargs):
         """Get roles of a user with expiry date
         
         :param user: Orm User istance
@@ -1609,7 +1743,7 @@ class AuthDbManager(AbstractAuthDbManager):
         
         start = size * page
         end = size * (page + 1)
-        #, RoleUser.expiry_date
+
         roles = session.query(Role,RoleUser.expiry_date).join(RoleUser)\
                        .filter(RoleUser.user_id == user.id)\
                        .order_by(u'role.%s %s' % (field, order))[start:end]        
@@ -1618,7 +1752,8 @@ class AuthDbManager(AbstractAuthDbManager):
         return roles, len(roles)    
     
     @query
-    def get_role_users(self, role, page=0, size=10, order=u'DESC', field=u'id'):
+    def get_role_users(self, role=None, page=0, size=10, order=u'DESC', field=u'id', 
+                       *args, **kvargs):
         """Get role users.
         
         :param role: Orm Role istance
@@ -1648,7 +1783,7 @@ class AuthDbManager(AbstractAuthDbManager):
         
     @query
     def get_user_permissions(self, user, page=0, size=10, order=u'DESC', 
-                             field=u'id'):
+                             field=u'id', *args, **kvargs):
         """Get user permissions.
         
         :param user: Orm User istance
@@ -1677,16 +1812,21 @@ class AuthDbManager(AbstractAuthDbManager):
         for group in user.group:
             for role in group.role:
                 roles.append(role.name)       
-            
-        perms, total = self.get_role_permissions(names=roles, page=page, 
-                                                 size=size, order=order, 
-                                                 field=field)
+
+        if len(roles) == 0:
+            self.logger.warn(u'User %s has no roles associated' % user.id)
+            total = 0
+            perms = []
+        else:
+            perms, total = self.get_role_permissions(names=roles, page=page, 
+                                                     size=size, order=order, 
+                                                     field=field)
         
-        self.logger.debug('Get user %s perms: %s' % (user.name, truncate(perms)))
+        self.logger.debug(u'Get user %s perms: %s' % (user.name, truncate(perms)))
         return perms, total
         
     @query
-    def get_user_permissions2(self, user):
+    def get_user_permissions2(self, user, *args, **kvargs):
         """Get user permissions.
         
         :param user: Orm User istance
@@ -1733,12 +1873,12 @@ class AuthDbManager(AbstractAuthDbManager):
         return res
 
     @transaction
-    def add_user(self, objid, username, active=True, password=None, 
+    def add_user(self, objid, name, active=True, password=None, 
                  description=u'', expiry_date=None):
         """Add user.
         
         :param objid: authorization id
-        :param username: name of the user
+        :param name: name of the user
         :param active: set if user is active [default=True]
         :param password: user password [optional]
         :param description: user description [default='']
@@ -1750,106 +1890,47 @@ class AuthDbManager(AbstractAuthDbManager):
         """
         session = self.get_session()
         # verify if object already exists
-        user = session.query(User).filter_by(name=username).first()
+        user = session.query(User).filter_by(name=name).first()
         if user is not None:
             self.logger.error(u'User %s already exists' % user)
             raise ModelError(u'User %s already exists' % user, code=409)  
         
-        data = User(objid, username, active=active, password=password, 
+        data = User(objid, name, active=active, password=password, 
                     description=description, expiry_date=expiry_date)
         session.add(data)
         session.flush()
         self.logger.debug(u'Add user: %s' % (data))
         return data
-
-    @transaction
-    def update_user(self, oid=None, objid=None, uuid=None, name=None, 
-                    new_name=None, new_description=None, new_active=None, 
-                    new_password=None, new_expiry_date=None):
-        """Update a user.
-        
-        :param oid: user id [optional]
-        :param objid: user authorization id [optional]
-        :param uuid: user uuid [optional]
-        :param name: name of the user [Optional]
-        :param new_name: new user name [optional]
-        :param new_description: new user description [optional]
-        :param new_active: new user status [optional]
-        :param new_password: new user password [optional]
-        :param new_expiry_date: user expiry date [optional]. Set using a 
-                datetime object                 
-        :return: True if operation is successful, False otherwise
-        :rtype: bool
-        :raises TransactionError: raise :class:`TransactionError`
-        """
-        session = self.get_session()
-        
-        if oid is not None:
-            user = session.query(User).filter_by(id=oid)
-        elif objid is not None:
-            user = session.query(User).filter_by(objid=objid)
-        elif uuid is not None:
-            user = session.query(User).filter_by(uuid=uuid)            
-        elif name is not None:
-            user = session.query(User).filter_by(name=name)  
-          
-        data = {}
-        if new_name is not None: 
-            data[u'name'] = new_name              
-        if new_description is not None: 
-            data[u'description'] = new_description
-        if new_active is not None:  
-            data[u'active'] = new_active                
-        if new_password is not None: 
-            data[u'password'] = sha256_crypt.encrypt(new_password)
-        if new_expiry_date is not None: 
-            data[u'expiry_date'] = new_expiry_date
-        
-        if user.first() is not None:
-            data[u'modification_date'] = datetime.datetime.today()
-            user.update(data)
-            
-        self.logger.debug(u'Update user %s|%s|%s with data: %s' % 
-                          (oid, objid, name, data))
-        return True
     
-    @transaction
-    def remove_user(self, oid=None, objid=None, uuid=None, name=None):
-        """Remove a user. Specify at least user id or user name.
-        
-        :param oid: user id [optional]
-        :param objid: user authorization id [optional]
-        :param uuid: user uuid [optional]
-        :param name: name of the user [Optional]
-        :return: True if operation is successful, False otherwise
-        :rtype: bool
+    @watch
+    def update_user(self, *args, **kvargs):
+        """Update user. Extend :function:`update_entity`
+
+        :param name: name of the user
+        :param active: set if user is active [optional]
+        :param password: user password [optional]
+        :param desc: user description [optional]
+        :param expiry_date: user expiry date. Set using a datetime object 
+            [optional]
+        :param kvargs str: date to update. {u'name':, u'desc':, u'active':, 
+            u'password':, u'expiry_date':}
         :raises TransactionError: raise :class:`TransactionError`
         """
-        session = self.get_session()   
+        res = self.update_entity(User, *args, **kvargs)
+        return res  
+    
+    @watch
+    def remove_user(self, *args, **kvargs):
+        """Remove user.
         
-        if oid is not None:
-            user = session.query(User).filter_by(id=oid).first()
-        elif objid is not None:
-            user = session.query(User).filter_by(objid=objid).first()
-        elif uuid is not None:
-            user = session.query(User).filter_by(uuid=uuid).first()          
-        elif name is not None:
-            user = session.query(User).filter_by(name=name).first()
-        
-        if user is None:
-            self.logger.error(u'User does not exist')
-            raise ModelError(u'User does not exist')        
-        
-        # remove role associated
-        rus = session.query(RoleUser).filter_by(user_id=user.id).all()
-        for ru in rus:
-            session.delete(ru)
-        
-        # delete object type
-        session.delete(user)
-        
-        self.logger.debug(u'Remove user: %s' % (user))
-        return True
+        :param int oid: entity id. [optional]
+        :param str objid: entity authorization id. [optional]
+        :param str uuid: entity uuid. [optional]
+        :param str name: entity name. [optional]
+        :raises TransactionError: raise :class:`TransactionError`  
+        """
+        res = self.remove_entity(User, *args, **kvargs)
+        return res
     
     @transaction
     def expire_users(self, expiry_date):

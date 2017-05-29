@@ -38,7 +38,7 @@ class AuthManager(ApiManager):
             
             Ex. page=2 order=ASC field=name
         users get <id>
-        users add <name> <password> [<storetype> default=u'DBUSER']
+        users add <name> <password> [<expiry-date>=dd-mm-yyyy] [<storetype> default=u'DBUSER']
         users add-admin <name> <password>
         users update <id> [name=<name>] [desc=<desc>] [password=<password>] [active=<active>]
         users delete <id>
@@ -573,9 +573,10 @@ class AuthManager(ApiManager):
     def update_group(self, oid, *args):
         params = self.get_query_params(*args)
         data = {
-            "group":{
-                "name":params.get(u'name', None),
-                "desc":params.get(u'desc', None)
+            u'group':{
+                u'name':params.get(u'name', None),
+                u'desc':params.get(u'desc', None),
+                u'active':params.get(u'active', None),
             }
         }
         uri = u'%s/groups/%s/' % (self.authuri, oid)

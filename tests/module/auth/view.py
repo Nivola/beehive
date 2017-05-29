@@ -497,7 +497,7 @@ def test_suite():
         
         #'test_refresh',
         #'test_exist_identity',
-        #'test_get_identities',
+        'test_get_identities',
         #'test_get_identity',
         #'test_delete_identity',
         

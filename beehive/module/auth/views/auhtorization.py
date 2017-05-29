@@ -5,57 +5,19 @@ Created on Jan 12, 2017
 """
 from re import match
 from flask import request
+from datetime import datetime
 from beecell.simple import get_value, str2bool
 from beehive.common.apimanager import ApiView, ApiManagerError
 
 class AuthApiView(ApiView):
     def get_user(self, controller, oid):
-        """
-        """        
-        # get obj by uuid
-        if match(u'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', str(oid)):
-            obj, total = controller.get_users(uuid=oid)
-        # get link by id
-        elif match(u'[0-9]+', str(oid)):
-            obj, total = controller.get_users(oid=int(oid))
-        # get obj by name
-        else:
-            obj, total = controller.get_users(name=oid)
-        if total == 0:
-            raise ApiManagerError(u'User %s not found' % oid, code=404)
-        return obj[0]
+        return self.get_entity(u'User', controller.get_users, lambda x: x[0][0], oid)
     
     def get_role(self, controller, oid):
-        """
-        """        
-        # get obj by uuid
-        if match(u'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', str(oid)):
-            obj, total = controller.get_roles(uuid=oid)
-        # get link by id
-        elif match(u'[0-9]+', str(oid)):
-            obj, total = controller.get_roles(oid=int(oid))
-        # get obj by name
-        else:
-            obj, total = controller.get_roles(name=oid)        
-        if total == 0:
-            raise ApiManagerError(u'Role %s not found' % oid, code=404)
-        return obj[0]
+        return self.get_entity(u'Role', controller.get_roles, lambda x: x[0][0], oid)
     
     def get_group(self, controller, oid):
-        """
-        """        
-        # get obj by uuid
-        if match(u'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', str(oid)):
-            obj, total = controller.get_groups(uuid=oid)
-        # get link by id
-        elif match(u'[0-9]+', str(oid)):
-            obj, total = controller.get_groups(oid=int(oid))
-        # get obj by name
-        else:
-            obj, total = controller.get_groups(name=oid)        
-        if total == 0:
-            raise ApiManagerError(u'Group %s not found' % oid, code=404)
-        return obj[0]
+        return self.get_entity(u'Group', controller.get_groups, lambda x: x[0][0], oid)
     
     def get_object(self, controller, oid):
         obj, total = controller.objects.get(oid=oid)        
@@ -184,7 +146,6 @@ class UpdateUser(AuthApiView):
     def dispatch(self, controller, data, oid, *args, **kwargs):
         data = get_value(data, u'user', None, exception=True)
         new_name = get_value(data, u'name', None)
-        new_storetype = get_value(data, u'storetype', None)
         new_description = get_value(data, u'desc', None)
         new_active = get_value(data, u'active', None)
         new_password = get_value(data, u'password', None)
@@ -192,6 +153,9 @@ class UpdateUser(AuthApiView):
         new_expiry_date = get_value(data, u'expiry-date', None)
         if new_active is not None:
             new_active = str2bool(new_active)
+        if new_expiry_date is not None:
+            g, m, y = new_expiry_date.split(u'-')
+            new_expiry_date = datetime(int(y), int(m), int(g))
         
         user = self.get_user(controller, oid)
         
@@ -212,12 +176,11 @@ class UpdateUser(AuthApiView):
                     resp[u'role.remove'].append(res)
         
         # update user
-        res = user.update(new_name=new_name,
-                          new_storetype=new_storetype,
-                          new_description=new_description,
-                          new_active=new_active, 
-                          new_password=new_password,
-                          new_expiry_date=new_expiry_date)
+        res = user.update(name=new_name,
+                          description=new_description,
+                          active=new_active, 
+                          password=new_password,
+                          expiry_date=new_expiry_date)
         resp[u'update'] = res
         return resp
 
@@ -286,69 +249,6 @@ class GetRole(AuthApiView):
         res = obj.info()      
         resp = {u'role':res} 
         return resp
-
-'''
-class GetRolePerms(AuthApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):
-        page = request.args.get(u'page', 0)
-        size = request.args.get(u'size', 10)
-        order = request.args.get(u'order', u'DESC')
-        field = request.args.get(u'field', u'id')
-        if field not in [u'subsystem', u'type', u'id', u'objid', u'aid', 
-                         u'action']:
-            field = u'id'
-        if field == u'subsystem':
-            field = u'objtype'
-        elif field == u'type':
-            field = u'objdef' 
-        
-        role = self.get_role(controller, oid)
-        objs, total = role.get_permissions(page=int(page), size=int(size), 
-                                           order=order, field=field)
-
-        resp = {u'perms':objs, 
-                u'count':len(objs),
-                u'page':page,
-                u'total':total}
-        return resp
-    
-class GetRoleUsers(AuthApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):
-        page = request.args.get(u'page', 0)
-        size = request.args.get(u'size', 10)
-        order = request.args.get(u'order', u'DESC')
-        field = request.args.get(u'field', u'id')
-        if field not in [u'id', u'objid', u'name']:
-            field = u'id'
-            
-        objs, total = controller.get_users(role=oid, page=int(page), 
-                                           size=int(size), order=order, 
-                                           field=field)
-        res = [r.info() for r in objs]
-        resp = {u'users':res,
-                u'count':len(res),
-                u'page':page,
-                u'total':total}         
-        return resp   
-    
-class GetRoleGroups(AuthApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):
-        page = request.args.get(u'page', 0)
-        size = request.args.get(u'size', 10)
-        order = request.args.get(u'order', u'DESC')
-        field = request.args.get(u'field', u'id')
-        if field not in [u'id', u'objid', u'name']:
-            field = u'id'
-        
-        objs, total = controller.get_groups(role=oid, page=int(page), 
-                                           size=int(size), order=order, 
-                                           field=field)
-        res = [r.info() for r in objs]
-        resp = {u'groups':res, 
-                u'count':len(res),
-                u'page':page,
-                u'total':total}       
-        return resp'''
 
 class CreateRole(AuthApiView):
     """
@@ -421,8 +321,8 @@ class UpdateRole(AuthApiView):
                 resp[u'perm.remove'] = res
         
         # update role
-        res = role.update(new_name=new_name, 
-                          new_description=new_description)        
+        res = role.update(name=new_name, 
+                          description=new_description)        
         resp[u'update'] = res
         return resp
 
@@ -463,51 +363,6 @@ class GetGroup(AuthApiView):
         resp = {u'group':res} 
         return resp
 
-'''
-class GetGroupPerms(AuthApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):
-        page = request.args.get(u'page', 0)
-        size = request.args.get(u'size', 10)
-        order = request.args.get(u'order', u'DESC')
-        field = request.args.get(u'field', u'id')
-        if field not in [u'subsystem', u'type', u'id', u'objid', u'aid', 
-                         u'action']:
-            field = u'id'
-        if field == u'subsystem':
-            field = u'objtype'
-        elif field == u'type':
-            field = u'objdef' 
-        
-        group = self.get_group(controller, oid)
-        objs, total = group.get_permissions(page=int(page), size=int(size), 
-                                           order=order, field=field)
-
-        resp = {u'perms':objs, 
-                u'count':len(objs),
-                u'page':page,
-                u'total':total}
-        return resp
-    
-class GetGroupUsers(AuthApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):
-        page = request.args.get(u'page', 0)
-        size = request.args.get(u'size', 10)
-        order = request.args.get(u'order', u'DESC')
-        field = request.args.get(u'field', u'id')
-        if field not in [u'id', u'objid', u'name']:
-            field = u'id'
-            
-        objs, total = controller.get_users(group=oid, page=int(page), 
-                                           size=int(size), order=order, 
-                                           field=field)
-        res = [r.info() for r in objs]
-        resp = {u'users':res,
-                u'count':len(res),
-                u'page':page,
-                u'total':total}         
-        return resp
-'''
-
 class CreateGroup(AuthApiView):
     """
     :param data: {
@@ -534,6 +389,7 @@ class UpdateGroup(AuthApiView):
         u'group':{
             u'name':, 
             u'desc':,
+            u'active':,
             u'users':{
                 u'append':[<id>, <uuid>, <name>], 
                 u'remove':[<id>, <uuid>, <name>]
@@ -549,6 +405,7 @@ class UpdateGroup(AuthApiView):
         data = get_value(data, u'group', None, exception=True)
         new_name = get_value(data, u'name', None)
         new_description = get_value(data, u'desc', None)
+        new_active = get_value(data, u'active', None)
         group_role = get_value(data, u'roles', None)
         group_user = get_value(data, u'users', None)
         
@@ -587,8 +444,9 @@ class UpdateGroup(AuthApiView):
                     resp[u'user.remove'].append(res)                    
         
         # update group
-        res = group.update(new_name=new_name, 
-                           new_description=new_description)        
+        res = group.update(name=new_name, 
+                           description=new_description,
+                           active=new_active)        
         resp[u'update'] = res
         return resp
 
@@ -782,9 +640,6 @@ class AuthorizationAPI(ApiView):
         rules = [
             (u'%s/users' % base, u'GET', ListUsers, {}),
             (u'%s/users/<oid>' % base, u'GET', GetUser, {}),
-            #(u'%s/users/<oid>/roles' % base, u'GET', GetUserRoles, {}),
-            #(u'%s/users/<oid>/perms' % base, u'GET', GetUserPerms, {}),
-            #(u'%s/users/<oid>/groups' % base, u'GET', GetUserGroups, {}),
             (u'%s/users/<oid>/attributes' % base, u'GET', GetUserAtributes, {}),
             (u'%s/users' % base, u'POST', CreateUser, {}),
             (u'%s/users/<oid>' % base, u'PUT', UpdateUser, {}),
@@ -794,18 +649,12 @@ class AuthorizationAPI(ApiView):
             
             (u'%s/roles' % base, u'GET', ListRoles, {}),
             (u'%s/roles/<oid>' % base, u'GET', GetRole, {}),
-            #(u'%s/roles/<oid>/perms' % base, u'GET', GetRolePerms, {}),
-            #(u'%s/roles/<oid>/users' % base, u'GET', GetRoleUsers, {}),
-            #(u'%s/roles/<oid>/groups' % base, u'GET', GetRoleGroups, {}),
             (u'%s/roles' % base, u'POST', CreateRole, {}),
             (u'%s/roles/<oid>' % base, u'PUT', UpdateRole, {}),
             (u'%s/roles/<oid>' % base, u'DELETE', DeleteRole, {}),
             
             (u'%s/groups' % base, u'GET', ListGroups, {}),
             (u'%s/groups/<oid>' % base, u'GET', GetGroup, {}),
-            #(u'%s/groups/<oid>/perms' % base, u'GET', GetGroupPerms, {}),
-            #(u'%s/groups/<oid>/users' % base, u'GET', GetGroupUsers, {}),
-            #(u'%s/groups/<oid>/roles' % base, u'GET', GetGroupRoles, {}),
             (u'%s/groups' % base, u'POST', CreateGroup, {}),
             (u'%s/groups/<oid>' % base, u'PUT', UpdateGroup, {}),
             (u'%s/groups/<oid>' % base, u'DELETE', DeleteGroup, {}),             

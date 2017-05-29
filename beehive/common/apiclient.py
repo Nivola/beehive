@@ -170,7 +170,7 @@ class BeehiveApiClient(object):
             return signature64
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
-            raise BeehiveApiClientError("Error signing data: %s" % data)
+            raise BeehiveApiClientError(u'Error signing data: %s' % data)
 
     '''
     @watch

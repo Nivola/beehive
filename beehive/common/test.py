@@ -135,6 +135,7 @@ class BeehiveTestCase(unittest.TestCase):
         """Invoke api 
     
         """
+        global uid, seckey
         base_headers =  {u'Accept':u'application/json'}
         if auth_method == u'keyauth':
             sign = self.auth_client.sign_request(seckey, path)
