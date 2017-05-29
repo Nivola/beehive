@@ -22,7 +22,9 @@ from uuid import uuid4
 from beehive.common.data import operation, query, transaction
 from beehive.common.model import AbstractDbManager
 
-Base = declarative_base()
+#Base = declarative_base()
+
+from beehive.common.model import Base
 
 logger = logging.getLogger(__name__)
 
@@ -315,47 +317,9 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
     """Authorization db manager                                                                                    
     """
     def __init__(self, session=None):
-        self.logger = logging.getLogger(self.__class__.__module__+ \
-                                        u'.'+self.__class__.__name__)        
-        
-        self._session = session
-
-    def __del__(self):
-        pass
-
-    def __repr__(self):
-        return u"<AuthDbManager id='%s'>" % id(self)
-
-    def get_session(self):
-        if self._session is None:
-            return operation.session
-        else:
-            return self._session
-
-    @staticmethod
-    def create_table(db_uri):
-        """Create all tables in the engine. This is equivalent to "Create Table"
-        statements in raw SQL."""
-        try:
-            engine = create_engine(db_uri)
-            Base.metadata.create_all(engine)
-            logger.info(u'Create auth tables on : %s' % db_uri)
-            del engine
-        except exc.DBAPIError, e:
-            raise AuthDbManagerError(e)
+        AbstractDbManager.__init__(self, session)
+        AbstractAuthDbManager.__init__(self, session)
     
-    @staticmethod
-    def remove_table(db_uri):
-        """ Remove all tables in the engine. This is equivalent to "Drop Table"
-        statements in raw SQL."""
-        try:
-            engine = create_engine(db_uri)
-            Base.metadata.drop_all(engine)
-            logger.info(u'Remove auth tables from : %s' % db_uri)
-            del engine
-        except exc.DBAPIError, e:
-            raise AuthDbManagerError(e)
-
     def set_initial_data(self):
         """Set initial data.
         """

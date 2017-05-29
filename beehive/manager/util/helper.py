@@ -179,6 +179,9 @@ class BeehiveHelper(object):
                     controller.set_superadmin_permissions()
                     msgs.extend(res)
                     
+                elif module.name == u'Oauth2Module':
+                    controller.set_superadmin_permissions()                   
+                    
                 elif module.name == u'CatalogModule':
                     res = self.__create_main_catalogs(controller, config, 
                                                  config_db_manager)

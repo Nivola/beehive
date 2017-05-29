@@ -324,7 +324,7 @@ class Catalog(ApiObject):
     def set_admin_permissions(self, role_name, args):
         """ """
         try:
-            role, total = self.dbauth.get_role(name=role_name)
+            role, total = self.dbauth.get_roles(name=role_name)
             perms, total = self.dbauth.get_permission_by_object(
                                     objid=self._get_value(self.objdef, args),
                                     objtype=None, 
@@ -611,7 +611,7 @@ class CatalogEndpoint(ApiObject):
     def set_admin_permissions(self, role_name, args):
         """ """
         try:
-            role, total = self.dbauth.get_role(name=role_name)
+            role, total = self.dbauth.get_roles(name=role_name)
             perms, total = self.dbauth.get_permission_by_object(
                                     objid=self._get_value(self.objdef, args),
                                     objtype=None, 

@@ -105,6 +105,9 @@ class BeehiveApp(Flask):
                    logging.getLogger(u'beehive.db'),
                    logging.getLogger(u'beecell'),
                    logging.getLogger(u'beedrones'),
+                   logging.getLogger(u'beehive_oauth2'),
+                   logging.getLogger(u'beehive_monitor'),
+                   logging.getLogger(u'beehive_service'),
                    logging.getLogger(u'beehive_resource')]
         LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, 
                                           u'%s/%s.log' % (self.log_path, logname),

@@ -19,8 +19,6 @@ logger = logging.getLogger(__name__)
 class AbstractDbManager(object):
     """Abstarct db manager
     """
-    name = u''
-    
     def __init__(self, session=None):
         self.logger = logging.getLogger(self.__class__.__module__+ \
                                         u'.'+self.__class__.__name__)        
@@ -202,7 +200,7 @@ class AbstractDbManager(object):
         session = self.get_session()
         
         # create entity
-        record = entityclass(*args)
+        record = entityclass(*args, **kvargs)
         session.add(record)
         session.flush()
         

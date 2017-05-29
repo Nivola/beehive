@@ -149,9 +149,6 @@ class AuthController(ApiController):
         :return: identity
         :raise ApiManagerError:
         """
-        self.logger.warn(user)
-        self.logger.warn(pwd)
-        self.logger.warn(user_ip)
         name, domain = user.split(u'@')
         identity = self.simple_http_login(name, domain, pwd, user_ip)
 
@@ -239,7 +236,7 @@ class AuthController(ApiController):
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        params = {u'name':name, u'description':desc}
+        params = {u'name':name, u'description':description}
         
         # check authorization
         self.check_authorization(Role.objtype, Role.objdef, None, u'insert')            
@@ -247,7 +244,7 @@ class AuthController(ApiController):
         try:
             objid = id_gen()
             role = self.dbauth.add_role(objid, name, description)
-            self.logger.warn(role)
+            
             # add object and permission
             Role(self).register_object([objid], desc=description)
             
@@ -1715,6 +1712,44 @@ class User(AuthObject):
         }
 
     @watch
+    def delete(self):
+        """Delete entity.
+        
+        :return: True if role deleted correctly
+        :rtype: bool
+        :raises ApiManagerError: raise :class:`ApiManagerError`
+        """
+        params = {u'id':self.oid}
+        
+        if self.delete_object is None:
+            raise ApiManagerError(u'Delete is not supported for %s:%s' % 
+                                  (self.objtype, self.objdef))        
+        
+        # verify permissions
+        self.controller.check_authorization(self.objtype, self.objdef, 
+                                            self.objid, u'delete')
+                
+        try:
+            # remove associated roles
+            roles, total = self.dbauth.get_user_roles(user=self.model, size=1000)
+            for role in roles:
+                res = self.dbauth.remove_user_role(self.model, role)
+            
+            # delete user
+            res = self.delete_object(oid=self.oid)
+            if self.register is True:
+                # remove object and permissions
+                self.deregister_object([self.objid])
+            
+            self.logger.debug(u'Delete %s: %s' % (self.objdef, self.oid))
+            self.send_event(u'remove', params=params)
+            return res
+        except TransactionError as ex:
+            self.send_event(u'remove', params=params, exception=ex)         
+            self.logger.error(ex, exc_info=1)
+            raise ApiManagerError(ex, code=ex.code)
+
+    @watch
     def get_attribs(self):
         attrib = [{u'name':a.name, u'value':a.value, u'desc':a.desc}
                    for a in self.model.attrib]
@@ -2023,6 +2058,44 @@ class Group(AuthObject):
                 u'modified':modification_date
             }
         }
+
+    @watch
+    def delete(self):
+        """Delete entity.
+        
+        :return: True if role deleted correctly
+        :rtype: bool
+        :raises ApiManagerError: raise :class:`ApiManagerError`
+        """
+        params = {u'id':self.oid}
+        
+        if self.delete_object is None:
+            raise ApiManagerError(u'Delete is not supported for %s:%s' % 
+                                  (self.objtype, self.objdef))        
+        
+        # verify permissions
+        self.controller.check_authorization(self.objtype, self.objdef, 
+                                            self.objid, u'delete')
+                
+        try:
+            # remove associated roles
+            roles, total = self.dbauth.get_group_roles(group=self.model, size=1000)
+            for role in roles:
+                res = self.dbauth.remove_group_role(self.model, role)
+            
+            # delete user
+            res = self.delete_object(oid=self.oid)
+            if self.register is True:
+                # remove object and permissions
+                self.deregister_object([self.objid])
+            
+            self.logger.debug(u'Delete %s: %s' % (self.objdef, self.oid))
+            self.send_event(u'remove', params=params)
+            return res
+        except TransactionError as ex:
+            self.send_event(u'remove', params=params, exception=ex)         
+            self.logger.error(ex, exc_info=1)
+            raise ApiManagerError(ex, code=ex.code)
 
     @watch
     def append_role(self, role_id):

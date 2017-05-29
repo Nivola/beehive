@@ -1153,7 +1153,7 @@ class ApiController(object):
             return res, total
         except QueryError as ex:
             object_class(self).send_event(u'list', params=params, exception=ex)            
-            self.logger.error(ex, exc_info=1)
+            self.logger.warn(ex)
             return [], 0    
 
 class ApiEvent(object):
@@ -1505,7 +1505,7 @@ class ApiObject(object):
                 
                 self.logger.debug('Register api object: %s' % objs)
             except (QueryError, TransactionError) as ex:
-                self.logger.warn(ex.value)
+                self.logger.warn(ex.desc)
                 #raise ApiManagerError(ex)
                 
         # use httpclient
@@ -1560,7 +1560,7 @@ class ApiObject(object):
                                   (self.objtype, self.objdef, objs))
             except (QueryError, TransactionError) as ex:
                 self.logger.error('Register api object: %s - ERROR' % (ex.desc))
-                raise ApiManagerError(ex.desc, code=2020)
+                raise ApiManagerError(ex.desc, code=400)
         # use httpclient
         else:
             # add object and permissions
