@@ -69,33 +69,6 @@ class Logout(ApiView):
         resp = res      
         return resp
 
-#
-# identity
-#
-class ListIdentities(ApiView):
-    def dispatch(self, controller, data, *args, **kwargs):
-        res = controller.get_identities()
-        resp = {u'identities':res,
-                u'count':len(res)}
-        return resp
-
-class GetIdentity(ApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):      
-        data = controller.get_identity(oid)
-        res = {
-            u'uid':data[u'uid'], 
-            u'user':data[u'user'][u'name'],
-            u'timestamp':data[u'timestamp'], 
-            u'ttl':data[u'ttl'], 
-            u'ip':data[u'ip']}
-        resp = {u'identity':res}        
-        return resp
-
-class DeleteIdentity(ApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):
-        resp = controller.remove_identity(oid)
-        return (resp, 204)
-
 class KeyAuthApi(ApiView):
     """Asymmetric key authentication API
     """
@@ -108,10 +81,6 @@ class KeyAuthApi(ApiView):
             (u'%s/login/refresh' % base, u'PUT', LoginRefresh, {}),
             (u'%s/login/<oid>' % base, u'GET', LoginExists, {}),
             (u'%s/logout' % base, u'DELETE', Logout, {}),
-            
-            (u'%s/identities' % base, u'GET', ListIdentities, {}),
-            (u'%s/identities/<oid>' % base, u'GET', GetIdentity, {}),
-            (u'%s/identities/<oid>' % base, u'DELETE', DeleteIdentity, {})
         ]
         
         ApiView.register_api(module, rules)

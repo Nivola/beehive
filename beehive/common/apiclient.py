@@ -996,7 +996,8 @@ class BeehiveApiClient(object):
         self.logger.debug(u'Add system user: %s' % str(name))
         return res
     
-    def update_user(self, name, new_name, new_pwd, uid=None, seckey=None):
+    def update_user(self, name, new_name, new_pwd, new_desc, 
+                    uid=None, seckey=None):
         """Update user
         
         :raise BeehiveApiClientError:
@@ -1004,7 +1005,8 @@ class BeehiveApiClient(object):
         data = {
             u'user':{
                 u'name':new_name,
-                u'password':new_pwd
+                u'password':new_pwd,
+                u'desc':new_desc,
             }
         } 
         uri = u'/v1.0/auth/users/%s/' % name

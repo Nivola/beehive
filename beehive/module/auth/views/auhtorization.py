@@ -33,6 +33,55 @@ class AuthApiView(ApiView):
         return obj[0]
 
 #
+# authentication domains
+#
+class ListDomains(ApiView):
+    def dispatch(self, controller, data, *args, **kwargs):
+        auth_providers = controller.module.authentication_manager.auth_providers
+        res = []
+        for domain, auth_provider in auth_providers.iteritems():
+            res.append([domain, auth_provider.__class__.__name__])
+        resp = {u'domains':res,
+                u'count':len(res)}
+        return resp
+
+#
+# identity
+#
+class ListIdentities(ApiView):
+    def dispatch(self, controller, data, *args, **kwargs):
+        identities = controller.get_identities()
+        res = [{
+            u'uid':i[u'uid'],
+            u'type':i[u'type'],
+            u'user':i[u'user'][u'name'],
+            u'timestamp':i[u'timestamp'], 
+            u'ttl':i[u'ttl'], 
+            u'ip':i[u'ip']
+        } for i in identities]
+        resp = {u'identities':res,
+                u'count':len(res)}
+        return resp
+
+class GetIdentity(ApiView):
+    def dispatch(self, controller, data, oid, *args, **kwargs):      
+        data = controller.get_identity(oid)
+        res = {
+            u'uid':data[u'uid'],
+            u'type':data[u'type'],
+            u'user':data[u'user'][u'name'],
+            u'timestamp':data[u'timestamp'], 
+            u'ttl':data[u'ttl'], 
+            u'ip':data[u'ip']}
+        resp = {u'identity':res}
+        return resp
+
+class DeleteIdentity(ApiView):
+    def dispatch(self, controller, data, oid, *args, **kwargs):
+        resp = controller.remove_identity(oid)
+        return (resp, 204)
+
+#
 # user
 #
 class ListUsers(AuthApiView):
@@ -638,6 +687,12 @@ class AuthorizationAPI(ApiView):
     def register_api(module):
         base = u'auth'
         rules = [
+            (u'%s/domains' % base, u'GET', ListDomains, {u'secure':False}),
+            
+            (u'%s/identities' % base, u'GET', ListIdentities, {}),
+            (u'%s/identities/<oid>' % base, u'GET', GetIdentity, {}),
+            (u'%s/identities/<oid>' % base, u'DELETE', DeleteIdentity, {}),            
+            
             (u'%s/users' % base, u'GET', ListUsers, {}),
             (u'%s/users/<oid>' % base, u'GET', GetUser, {}),
             (u'%s/users/<oid>/attributes' % base, u'GET', GetUserAtributes, {}),

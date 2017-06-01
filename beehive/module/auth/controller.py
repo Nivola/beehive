@@ -549,7 +549,7 @@ class AuthController(ApiController):
         self.module.redis_manager.setex(self.prefix + uid, self.expire, val)
         if expire is False:
             self.module.redis_manager.persist(self.prefix + uid)
-        self.logger.debug(u'Set identity %s in redis' % uid)
+        self.logger.info(u'Set identity %s in redis' % uid)
         User(self).send_event(u'identity.add', params={u'uid':uid})
     
     @watch
@@ -623,16 +623,14 @@ class AuthController(ApiController):
             for key in self.module.redis_manager.keys(self.prefix+'*'):
                 identity = self.module.redis_manager.get(key)
                 data = pickle.loads(identity)
-                ttl = self.module.redis_manager.ttl(key)
-                res.append({u'uid':data[u'uid'], u'user':data[u'user'][u'name'],
-                            u'timestamp':data[u'timestamp'], u'ttl':ttl, 
-                            u'ip':data[u'ip']})
+                data[u'ttl'] = self.module.redis_manager.ttl(key)
+                res.append(data)
         except Exception as ex:
             self.logger.error(u'No identities found: %s' % ex)
             raise ApiManagerError(u'No identities found')
         
         User(self).send_event(u'identity.list', params={}) 
-        self.logger.debug(u'Get identities from redis: %s' % (res))
+        self.logger.debug(u'Get identities from redis: %s' % truncate(res))
         return res    
     
     @watch
@@ -690,6 +688,7 @@ class AuthController(ApiController):
             self.set_identity(uid, identity, expire=expire)
     
             res = {u'uid':uid,
+                   u'type':u'keyauth',
                    u'user':user.get_dict(),
                    u'timestamp':timestamp,
                    u'pubkey':pubkey,

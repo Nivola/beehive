@@ -17,6 +17,7 @@ from kombu import Exchange, Queue
 from kombu import Connection, exceptions
 from signal import *
 import pprint
+from beecell.db.manager import RedisManager
 
 logger = logging.getLogger(__name__)
 
@@ -148,8 +149,11 @@ class EventProducerRedis(EventProducer):
         self.exchange = Exchange(self.redis_channel, type=u'direct',
                                  delivery_mode=1)
         self.routing_key = u'%s.key' % self.redis_channel
-        self.queue = Queue(u'%s-queue' % self.redis_channel, self.exchange,
-                           routing_key=self.routing_key)
+
+        self.queue = Queue(self.redis_channel, exchange=self.exchange)
+        self.queue.declare(channel=self.conn.channel())
+        server = RedisManager(redis_uri)
+        server.delete(self.redis_channel)
     
     def _send(self, event_type, data, source, dest, framework):
         if framework == u'kombu':
@@ -166,7 +170,7 @@ class EventProducerRedis(EventProducer):
                                  serializer=u'json',
                                  compression=u'bzip2',
                                  exchange=self.exchange,
-                                 declare=[self.exchange,self.queue],
+                                 declare=[self.exchange],
                                  routing_key=self.routing_key,
                                  expiration=60,
                                  delivery_mode=1)

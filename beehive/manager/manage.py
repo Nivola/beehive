@@ -27,6 +27,7 @@ from beehive.manager.ops.create import create_main
 from beehive.manager.ops.create import create_client
 from beecell.logger.helper import LoggerHelper
 from beehive.manager.ops.config import ConfigManager
+from beehive.manager.ops.oauth2 import Oaut2hManager
 
 VERSION = u'1.0.0'
 
@@ -47,6 +48,9 @@ def load_config(file_config):
     f.close()
     return auth_config
 
+def get_params(args):
+    return {}
+
 def main(run_path, argv):
     """
     SECTIONs:
@@ -59,6 +63,23 @@ def main(run_path, argv):
         resource
         scheduler
         provider
+        
+    PARAMs:
+        <custom section param>, ..
+        
+    Examples:
+    
+    Generic help:
+    $ manage.py -h                                     
+    
+    <SECTION> help:
+    $ manage.py -h <SECTION>
+    
+    Use <SECTION> commands in environment test:
+    $ manage.py -e test <SECTION> [PARAMs]...
+    
+    Use <SECTION> commands in environment test. Format results in json:
+    $ manage.py -e test -f json <SECTION> [PARAMs]...         
     """
     logger = logging.getLogger(__name__)
     file_config = u'/etc/beehive/manage.conf'
@@ -72,6 +93,7 @@ def main(run_path, argv):
         u'subsystem':None,
         u'client':None,
         u'auth':AuthManager,
+        u'oauth2':Oaut2hManager,
         u'catalog':CatalogManager,
         u'event':EventManager,
         u'monitor':MonitorManager,
@@ -83,7 +105,7 @@ def main(run_path, argv):
         u'nsx':NsxManager,
         u'openstack':OpenstackManager,
         u'native.vsphere':NativeVsphereManager,
-        u'native.openstack':NativeOpenstackManager
+        u'native.openstack':NativeOpenstackManager,
     }
     
     try:
@@ -102,6 +124,14 @@ def main(run_path, argv):
         print(ComponentManager.__doc__)
         print(main.__doc__)
         return 0    
+    
+    if u'help' in args:
+        print(ComponentManager.__doc__)
+        if sections.get(section, None) is not None:
+            print(bcolors.OKBLUE + sections[section].__doc__ + bcolors.ENDC)
+        else:
+            print(bcolors.OKBLUE + main.__doc__ + bcolors.ENDC)
+        return 0
     
     for opt, arg in opts:
         if opt in (u'-h', u'--help'):
@@ -122,7 +152,11 @@ def main(run_path, argv):
         elif opt in (u'-f', u'--format'):
             frmt = arg
         elif opt in (u'-o', u'--color'):
-            color = arg            
+            color = arg
+            
+    # set format with param
+    if (args[-1] in ComponentManager.formats) is True:
+        frmt = args.pop(-1)   
 
     # load configuration
     if os.path.exists(file_config):
@@ -143,8 +177,12 @@ def main(run_path, argv):
     loggers = [
         logger,
         logging.getLogger(u'beecell'),
-        #logging.getLogger(u'sqlalchemy'),
+        logging.getLogger(u'py.warnings'),
         logging.getLogger(u'beehive'),
+        logging.getLogger(u'beehive_oauth2'),
+        logging.getLogger(u'beehive_resource'),
+        logging.getLogger(u'beehive_monitor'),
+        logging.getLogger(u'beehive_service'),
         logging.getLogger(u'beedrones'),
     ]
     lfrmt = u'%(asctime)s - %(levelname)s - ' \
@@ -161,9 +199,18 @@ def main(run_path, argv):
                                       u'%s/manage.watch.log' % auth_config[u'log'], 
                                       1024*1024, 5, lfrmt)
 
+    logging.captureWarnings(True)
+    logger.warn(u'pippo')
+
     try:
         manager = main
         
+        if section not in sections:
+            raise Exception(u'ERROR : section %s does not exist' % section)
+        manager = sections[section]
+        retcode = manager.main(auth_config, frmt, opts, args, env)
+        
+        '''
         if section == u'platform':
             manager = PlatformManager
             retcode = PlatformManager.main(auth_config, frmt, opts, args, env, 
@@ -177,28 +224,33 @@ def main(run_path, argv):
                 
         elif section == u'auth':
             manager = AuthManager
-            retcode = AuthManager.main(auth_config, frmt, opts, args, env, 
-                                       AuthManager)
+            retcode = manager.main(auth_config, frmt, opts, args, env, 
+                                   manager)
+            
+        elif section == u'oauth2':
+            manager = Oaut2hManager
+            retcode = manager.main(auth_config, frmt, opts, args, env, 
+                                   manager)           
             
         elif section == u'catalog':
             manager = CatalogManager
-            retcode = CatalogManager.main(auth_config, frmt, opts, args, env, 
-                                          CatalogManager)            
+            retcode = manager.main(auth_config, frmt, opts, args, env, 
+                                   manager)          
 
         elif section == u'event':
             manager = EventManager
-            retcode = EventManager.main(auth_config, frmt, opts, args, env, 
-                                        EventManager)
+            retcode = manager.main(auth_config, frmt, opts, args, env, 
+                                   manager)
 
         elif section == u'monitor':
             manager = MonitorManager
-            retcode = MonitorManager.main(auth_config, frmt, opts, args, env, 
-                                          MonitorManager)
+            retcode = manager.main(auth_config, frmt, opts, args, env, 
+                                   manager)
             
         elif section == u'resource':
             manager = ResourceManager
-            retcode = ResourceManager.main(auth_config, frmt, opts, args, env, 
-                                           ResourceManager)
+            retcode = manager.main(auth_config, frmt, opts, args, env, 
+                                   manager)
             
         elif section == u'scheduler':
             manager = SchedulerManager
@@ -210,8 +262,8 @@ def main(run_path, argv):
 
         elif section == u'config':
             manager = ConfigManager
-            retcode = ConfigManager.main(auth_config, frmt, opts, args, env, 
-                                         ConfigManager)
+            retcode = manager.main(auth_config, frmt, opts, args, env, 
+                                   manager)
             
         elif section == u'provider':
             manager = ProviderManager
@@ -264,16 +316,17 @@ def main(run_path, argv):
                                                   orchestrator_id=cid)            
             
         else:
-            raise Exception(u'ERROR : section in wrong')
+            raise Exception(u'ERROR : section in wrong')'''
                     
     except Exception as ex:
         line = [u'='] * 50
         #print(bcolors.FAIL + bcolors.BOLD + u'    ' + u''.join(line))
         #print(u'     %s' % (ex))
         #print(u'    ' + u''.join(line) + bcolors.ENDC)
-        print(u'')
-        print(bcolors.FAIL + bcolors.BOLD + u'    %s' % (ex) + bcolors.ENDC)
-        print(ComponentManager.__doc__)
+        #print(u'')
+        print(bcolors.FAIL + u'   ERROR : ' + bcolors.ENDC +
+              bcolors.FAIL + bcolors.BOLD + str(ex) + bcolors.ENDC)
+        #print(ComponentManager.__doc__)
         print(u'')
         #print(bcolors.OKBLUE + manager.__doc__ + bcolors.ENDC)
         logger.error(ex, exc_info=1)

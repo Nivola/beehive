@@ -7,8 +7,9 @@ from logging import getLogger
 import gevent
 from kombu.pools import producers
 from kombu import Connection, exceptions
-from kombu import Exchange
+from kombu import Exchange, Queue
 from beehive.module.catalog.common import CatalogEndpoint
+from beecell.db.manager import RedisManager
 
     
 class CatalogProducer(object):
@@ -59,7 +60,12 @@ class CatalogProducerRedis(CatalogProducer):
         self.conn = Connection(redis_uri)
         self.exchange = Exchange(self.redis_channel, type=u'direct',
                                  delivery_mode=1)
-        self.routing_key = u'%s.key' % self.redis_channel        
+        self.routing_key = u'%s.key' % self.redis_channel
+        
+        self.queue = Queue(self.redis_channel, exchange=self.exchange)
+        self.queue.declare(channel=self.conn.channel())
+        server = RedisManager(redis_uri)
+        server.delete(self.redis_channel)
     
     def _send(self, name, desc, service, catalog, uri):
         try:

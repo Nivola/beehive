@@ -33,6 +33,10 @@ class AuthManager(ApiManager):
         simplehttp domains
         simplehttp login <name>@<domain> <password> <user-ip>        
         
+        identities.list
+        identities.get <oid>
+        identities.delete <oid>
+        
         users list <field>=<value>    field: page, size, order, field, role, group
             field can be: id, objid, uuid, name, description, creation_date, modification_date
             
@@ -123,17 +127,17 @@ class AuthManager(ApiManager):
         actions = {
             u'sessions.list': self.get_sessions,        
            
-            u'keyauth.domains': self.login_domains,
             u'keyauth.login': self.login_user,
             u'keyauth.token': self.verify_token,
             u'keyauth.logout': self.logout_user,
             
-            u'simplehttp.domains': self.simplehttp_login_domains,
             u'simplehttp.login': self.simplehttp_login_user,            
             
             u'identities.list': self.get_identities,
             u'identities.get': self.get_identity,
             u'identities.delete': self.delete_identity,
+            
+            u'domains.list': self.login_domains,
             
             u'users.list': self.get_users,
             u'users.get': self.get_user,
@@ -181,6 +185,19 @@ class AuthManager(ApiManager):
             u'actions.list': self.get_actions,
         }
         return actions
+    
+    #
+    # authentication domains
+    #
+    def login_domains(self):
+        uri = u'%s/domains/' % (self.authuri)
+        res = self._call(uri, u'GET')
+        self.logger.info(u'Get domains: %s' % truncate(res))
+        domains = []
+        for item in res[u'domains']:
+            domains.append({u'domain':item[0],
+                            u'type':item[1]})
+        self.result(domains, headers=[u'domain', u'type'])    
     
     #
     # actions
@@ -705,16 +722,6 @@ class AuthManager(ApiManager):
     #
     # keyauth login
     #
-    def login_domains(self):
-        uri = u'%s/login/domains/' % (self.baseuri)
-        res = self._call(uri, u'GET')
-        self.logger.info(u'Get domains: %s' % truncate(res))
-        domains = []
-        for item in res[u'domains']:
-            domains.append({u'domain':item[0],
-                            u'type':item[1]})
-        self.result(domains, headers=[u'domain', u'type'])
-        
     def login_user(self, user, pwd):
         data = {u'user':user, u'password':pwd}
         uri = u'%s/login/' % (self.baseuri)
@@ -765,22 +772,24 @@ class AuthManager(ApiManager):
         self.result(res)
 
     #
-    # keyauth identities
+    # identities
     #    
     def get_identities(self):
-        uri = u'%s/identities/' % (self.baseuri)
+        uri = u'%s/identities/' % (self.authuri)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get identities: %s' % truncate(res))
-        self.result(res, headers=[u'uid', u'user', u'ip', u'ttl', u'timestamp'])
+        self.result(res, key=u'identities', headers=[u'uid', u'type', u'user', 
+                    u'ip', u'ttl', u'timestamp'])
     
     def get_identity(self, oid):
-        uri = u'%s/identities/%s/' % (self.baseuri, oid)
+        uri = u'%s/identities/%s/' % (self.authuri, oid)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get identity: %s' % truncate(res))
-        self.result(res, headers=[u'uid', u'user', u'ip', u'ttl', u'timestamp'])
+        self.result(res, key=u'identity', headers=[u'uid', u'type', u'user', 
+                    u'ip', u'ttl', u'timestamp'])
         
     def delete_identity(self, oid):
-        uri = u'%s/identities/%s/' % (self.baseuri, oid)
+        uri = u'%s/identities/%s/' % (self.authuri, oid)
         res = self._call(uri, u'DELETE')
         self.logger.info(u'Delete identity: %s' % truncate(res))
         self.result({u'identity':oid}, headers=[u'identity']) 

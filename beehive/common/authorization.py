@@ -1880,6 +1880,9 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             u'password':, u'expiry_date':}
         :raises TransactionError: raise :class:`TransactionError`
         """
+        # generate new salt, and hash a password
+        if u'password' in kvargs:
+            kvargs[u'password'] = sha256_crypt.encrypt(kvargs[u'password'])
         res = self.update_entity(User, *args, **kvargs)
         return res  
     

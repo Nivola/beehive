@@ -92,27 +92,19 @@ class ComponentManager(object):
     OPTIONs:
         -c, --config        json auth config file [default=/etc/beehive/manage.conf]
         -f, --format        output format: json, yaml, custom, table [default]
-        -h, --help          manager help
+        -h, --help          get beehive <SECTION> help
         -e, --env           set environment to use. Ex. test, lab, prod
+    
+    PARAMs:
+        <custom param>, ..  <SECTION> params 
+        HELP                get beehive <SECTION> help
     
     Exit status:
         0  if OK,
-        1  if problems occurred
-        
-    Examples:
-    
-    Generic help:
-    $ manage.py -h                                     
-    
-    <SECTION> help:
-    $ manage.py -h <SECTION>
-    
-    Use <SECTION> commands in environment test:
-    $ manage.py -e test <SECTION> [PARAMs]...
-    
-    Use <SECTION> commands in environment test. Format results in json:
-    $ manage.py -e test -f json <SECTION> [PARAMs]...   
+        1  if problems occurred  
     """
+    formats = [u'json', u'yaml', u'table', u'custom']
+    
     def __init__(self, auth_config, env, frmt):
         self.logger = getLogger(self.__class__.__module__+ \
                                 u'.'+self.__class__.__name__)
@@ -337,13 +329,22 @@ class ComponentManager(object):
         f.close() 
     
     @staticmethod
-    def main(auth_config, frmt, opts, args, env, component_class, 
-             *vargs, **kvargs):
+    def get_params(args):
+        return {}
+    
+    @classmethod
+    def main(cls, auth_config, frmt, opts, args, env, *vargs, **kvargs):
         """Component main
         
         :param auth_config: {u'pwd': u'..', 
                              u'endpoint': u'http://10.102.160.240:6060/api/', 
                              u'user': u'admin@local'}
+        :param frt:
+        :param opts:
+        :param args:
+        :param env:
+        :param vargs: custom params
+        :param kvargs: custom dict params
         """
         #try:
         #    args[1]
@@ -353,9 +354,10 @@ class ComponentManager(object):
         #    return 0
 
         logger.debug(u'Format %s' % frmt)
-        logger.debug(u'Get component class %s' % component_class)
-        
-        client = component_class(auth_config, env, frmt=frmt, *vargs, **kvargs)
+        logger.debug(u'Get component class %s' % cls.__name__)
+
+        kvargs = cls.get_params(args)
+        client = cls(auth_config, env, frmt=frmt, *vargs, **kvargs)
         actions = client.actions()
         logger.debug(u'Available actions %s' % actions.keys())
         #PrettyPrinter(width=200).pformat(actions.keys()))
@@ -364,7 +366,7 @@ class ComponentManager(object):
             entity = args.pop(0)
             logger.debug(u'Get entity %s' % entity)
         else: 
-            raise Exception(u'ERROR: ENTITY is not specified')
+            raise Exception(u'Entity must be specified')
             return 1
 
         if len(args) > 0:
@@ -372,7 +374,7 @@ class ComponentManager(object):
             logger.debug(u'Get operation %s' % operation)
             action = u'%s.%s' % (entity, operation)
         else: 
-            raise Exception(u'ERROR: command is not specified')
+            raise Exception(u'Command must be specified')
             return 1
         
         #print(u'platform %s %s response:' % (entity, operation))
@@ -383,7 +385,7 @@ class ComponentManager(object):
             func = actions[action]
             func(*args)
         else:
-            raise Exception(u'ERROR: Entity and/or command are not correct')      
+            raise Exception(u'Entity and/or command are not correct')      
             return 1
             
         return 0

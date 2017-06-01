@@ -280,6 +280,13 @@ class NativeOpenstackManager(ApiManager):
         SystemActions(self, u'system', self.client.system).register()
         SgActions(self, u'security-group', self.client.network.security_group).register()
     
+    @staticmethod
+    def get_params(args):
+        try: cid = int(args.pop(0))
+        except:
+            raise Exception(u'ERROR : Openstack id is missing')
+        return {u'orchestrator_id':cid}     
+    
     def actions(self):
         return self.__actions
     

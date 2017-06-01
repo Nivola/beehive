@@ -36,7 +36,6 @@ from beehive.common.apiclient import BeehiveApiClient, BeehiveApiClientError
 from beehive.common.config import ConfigDbManager
 from beehive.common.authorization import AuthDbManager
 from beehive.common.event import EventProducerRedis
-from pandas.core.algorithms import isin
 try:
     from beecell.server.uwsgi_server.wrapper import uwsgi_util
 except:

@@ -88,6 +88,8 @@ class PlatformManager(ComponentManager):
             u'redis.inspect': self.redis_inspect,
             u'redis.query': self.redis_query,
             u'redis.delete': self.redis_delete_key,
+            u'redis.client': self.redis_client_list,
+            u'redis.flush': self.redis_flush,
             
             u'mysql.ping': self.mysql_ping,
 
@@ -451,6 +453,20 @@ class PlatformManager(ComponentManager):
             return server.size()
         self.__run_redis_cmd(func, dbs=range(0,8))
         
+    def redis_client_list(self):
+        """Config of redis instances
+        """
+        def func(server):
+            return server.server.client_list()
+        self.__run_redis_cmd(func)         
+        
+    def redis_flush(self):
+        """Config of redis instances
+        """
+        def func(server):
+            return server.server.flushall()
+        self.__run_redis_cmd(func)  
+    
     def redis_inspect(self, pattern=u'*'):
         """Inspect redis instances
         """

@@ -125,6 +125,13 @@ class VsphereManager(ApiManager):
         for class_name, other_headers in self.class_names:
             Actions(self, class_name, other_headers).register()
     
+    @staticmethod
+    def get_params(args):
+        try: cid = int(args.pop(0))
+        except:
+            raise Exception(u'ERROR : Orchestrator id is missing')
+        return {u'containerid':cid}
+    
     def actions(self):
         return self.__actions
     
@@ -164,6 +171,13 @@ class NsxManager(ApiManager):
         
         for class_name, other_headers in self.class_names:
             Actions(self, class_name, other_headers).register()            
+    
+    @staticmethod
+    def get_params(args):
+        try: cid = int(args.pop(0))
+        except:
+            raise Exception(u'ERROR : Orchestrator id is missing')
+        return {u'containerid':cid}    
     
     def actions(self):
         return self.__actions

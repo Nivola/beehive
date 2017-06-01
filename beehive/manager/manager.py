@@ -2,27 +2,27 @@
 '''
 @author: darkbk
 
-use: init_cloudapi.py <cmd> PARAMS
+use: init_beehive.py <cmd> PARAMS
 
 cmd: 
-    configure <component> - setup cloudapi server instances cofigurations.
+    configure <component> - setup beehive server instances cofigurations.
                             <component> : apicore|resource|service|bpm
     configure-portal      - setup portal server instances cofigurations
-    auth                  - setup cloudapi auth module and main roles and users
-    catalog               - setup cloudapi catalog module
-    config                - setup cloudapi config module
-    resource              - setup cloudapi resource module
-    platform              - setup cloudapi platform module
-    service               - setup cloudapi service module
-    process               - setup cloudapi process module
-    event                 - setup cloudapi event module
+    auth                  - setup beehive auth module and main roles and users
+    catalog               - setup beehive catalog module
+    config                - setup beehive config module
+    resource              - setup beehive resource module
+    platform              - setup beehive platform module
+    service               - setup beehive service module
+    process               - setup beehive process module
+    event                 - setup beehive event module
     admin                 - setup cloduapi admin module
     scheduler             - setup cloduapi scheduler module
-    apicore               - setup cloudapi config, amdin, event, scheduler modules
+    apicore               - setup beehive config, amdin, event, scheduler modules
     bpm                   - setup cloduapi bpm module
     monitor               - setup cloduapi monitor module
     plugin <module> <plugin class fullpath>
-              - setup cloudapi plugin
+              - setup beehive plugin
     
     init
     
@@ -41,8 +41,8 @@ import traceback
 import getopt
 import ujson as json
 from beecell.logger import LoggerHelper
-from gibboncloudapi.module.base import ApiManager
-from gibboncloudapi.util.data import operation
+from gibbonbeehive.module.base import ApiManager
+from gibbonbeehive.util.data import operation
 from beecell.simple import import_class, dynamic_import
 from beecell.simple import id_gen
 
@@ -56,13 +56,13 @@ containers = []
 def init_auth(logger, db_uri):
     # create configuration tables
     try:
-        from gibboncloudapi.common import ConfigDbManager 
+        from gibbonbeehive.common import ConfigDbManager 
         
         # create api manager
         params = {'api_name':'auth',
                   'api_id':'process',
                   'database_uri':db_uri,
-                  'api_module':['gibboncloudapi.module.process.mod.ConfigModule'],
+                  'api_module':['gibbonbeehive.module.process.mod.ConfigModule'],
                   'api_plugin':[],
                   'api_subsystem':'process'}
         manager = ApiManager(params)        
@@ -81,9 +81,9 @@ def init_auth(logger, db_uri):
         
         # set configurations
         #
-        # populate table for cloudapi
+        # populate table for beehive
         #
-        app = 'cloudapi'
+        app = 'beehive'
         
         # - redis
         #res = config.add(app, 'redis', 'redis_01', '10.102.47.208;6379;0')
@@ -102,17 +102,17 @@ def init_auth(logger, db_uri):
             res = config.add(app, 'auth', auth['domain'], json.dumps(auth)) 
             logger.debug('Add auth domain: %s' % res)
         
-        # - cloudapi queue        
+        # - beehive queue        
         for queue in queues:
-            res = config.add('cloudapi', 'queue', queue['name'], json.dumps(queue))
+            res = config.add('beehive', 'queue', queue['name'], json.dumps(queue))
             logger.debug('Add queue: %s' % res)        
         
         # - tcp proxy
-        #res = config.add('cloudapi', 'tcpproxy', 'proxy01', '10.102.47.208')
+        #res = config.add('beehive', 'tcpproxy', 'proxy01', '10.102.47.208')
         #logger.debug('Add tcp proxy: %s' % res)    
     
         # - http proxy
-        #res = config.add('cloudapi', 'httpproxy', 'proxy02', 'http://10.102.162.5:3128')
+        #res = config.add('beehive', 'httpproxy', 'proxy02', 'http://10.102.162.5:3128')
         #logger.debug('Add http proxy: %s' % res)
     except:
         msg = traceback.format_exc()
@@ -123,13 +123,13 @@ def init_auth(logger, db_uri):
         operation.session = None
     
     try:
-        from gibboncloudapi.module.auth.model import AuthDbManager        
+        from gibbonbeehive.module.auth.model import AuthDbManager        
         
         # create api manager
         params = {'api_name':'auth',
                   'api_id':'process',
                   'database_uri':db_uri,
-                  'api_module':['gibboncloudapi.module.auth.mod.AuthModule'],
+                  'api_module':['gibbonbeehive.module.auth.mod.AuthModule'],
                   'api_plugin':[],
                   'api_subsystem':'process'}
         manager = ApiManager(params)
@@ -196,13 +196,13 @@ def init_auth(logger, db_uri):
 def init_catalog(logger, db_uri):
     # create configuration tables
     try:
-        from gibboncloudapi.module.catalog.model import CatalogDbManager 
+        from gibbonbeehive.module.catalog.model import CatalogDbManager 
         
         # create api manager
         params = {'api_name':'catalog',
                   'api_id':'auth',
                   'database_uri':db_uri,
-                  'api_module':['gibboncloudapi.module.catalog.mod.CatalogModule'],
+                  'api_module':['gibbonbeehive.module.catalog.mod.CatalogModule'],
                   'api_plugin':[],
                   'api_subsystem':'catalog'}
         manager = ApiManager(params)
@@ -248,13 +248,13 @@ def init_catalog(logger, db_uri):
 
 def configure(logger, db_uri):
     try:
-        from gibboncloudapi.common import ConfigDbManager 
+        from gibbonbeehive.common import ConfigDbManager 
         
         # create api manager
-        params = {'api_name':'cloudapi',
+        params = {'api_name':'beehive',
                   'api_id':'process',
                   'database_uri':db_uri,
-                  'api_module':['gibboncloudapi.module.process.mod.ConfigModule'],
+                  'api_module':['gibbonbeehive.module.process.mod.ConfigModule'],
                   'api_plugin':[],
                   'api_subsystem':'process'}
         manager = ApiManager(params)        
@@ -273,9 +273,9 @@ def configure(logger, db_uri):
         
         # set configurations
         #
-        # populate table for cloudapi
+        # populate table for beehive
         #
-        app = 'cloudapi'
+        app = 'beehive'
         
         # - api user
         res = config.add(app, 'auth', 'api_user', json.dumps(api_user))
@@ -297,28 +297,28 @@ def configure(logger, db_uri):
         logger.info('Add scheduler configuration: %s' % res)        
         
         # - tcp proxy
-        res = config.add('cloudapi', 'tcpproxy', 'proxy01', '10.102.47.208')
+        res = config.add('beehive', 'tcpproxy', 'proxy01', '10.102.47.208')
         logger.debug('Add tcp proxy: %s' % res)    
     
         # - http proxy
-        res = config.add('cloudapi', 'httpproxy', 'proxy02', 'http://10.102.162.5:3128')
+        res = config.add('beehive', 'httpproxy', 'proxy02', 'http://10.102.162.5:3128')
         logger.debug('Add http proxy: %s' % res)
         
         # - endpoint
         for endpoint in endpoints:
-            res = config.add('cloudapi', 'endpoint', endpoint['name'], 
+            res = config.add('beehive', 'endpoint', endpoint['name'], 
                              json.dumps(endpoint))
             logger.debug('Add endpoint: %s' % res)
         
         # - gateway
         for gw in gateways:
-            res = config.add('cloudapi', 'gateway', gw['name'], 
+            res = config.add('beehive', 'gateway', gw['name'], 
                              json.dumps(gw))
             logger.debug('Add gateway: %s' % res)        
         
-        # - cloudapi queue        
+        # - beehive queue        
         for queue in queues:
-            res = config.add('cloudapi', 'queue', queue['name'], json.dumps(queue))
+            res = config.add('beehive', 'queue', queue['name'], json.dumps(queue))
             logger.debug('Add queue: %s' % res)      
     except:
         msg = traceback.format_exc()
@@ -330,13 +330,13 @@ def configure(logger, db_uri):
         
 def configure_portal(logger, db_uri):
     try:
-        from gibboncloudapi.common import ConfigDbManager 
+        from gibbonbeehive.common import ConfigDbManager 
         
         # create api manager
-        params = {'api_name':'cloudapi',
+        params = {'api_name':'beehive',
                   'api_id':'process',
                   'database_uri':db_uri,
-                  'api_module':['gibboncloudapi.module.process.mod.ConfigModule'],
+                  'api_module':['gibbonbeehive.module.process.mod.ConfigModule'],
                   'api_plugin':[],
                   'api_subsystem':'process'}
         manager = ApiManager(params)        
@@ -358,7 +358,7 @@ def configure_portal(logger, db_uri):
         '''
         # log
         logconf = {'gibbon.portal':('DEBUG', 'log/portal2.log'),
-                   'gibbon.cloudapi':('DEBUG', 'log/portal2.log'),
+                   'gibbon.beehive':('DEBUG', 'log/portal2.log'),
                    'gibbon.cloud':('DEBUG', 'log/portal2.log'),
                    'gibbon.util':('DEBUG', 'log/portal2.log'),
                    'gibbon.util.watch':('DEBUG', 'log/portal2.watch.log', 
@@ -400,13 +400,13 @@ def configure_portal(logger, db_uri):
 
 def init_config(logger, db_uri):
     try:
-        #from gibboncloudapi.common.auth import AuthDbManager        
+        #from gibbonbeehive.common.auth import AuthDbManager        
         
         # create api manager
-        params = {'api_name':'cloudapi',
+        params = {'api_name':'beehive',
                   'api_id':'process',
                   'database_uri':db_uri,
-                  'api_module':['gibboncloudapi.module.config.mod.ConfigModule'],
+                  'api_module':['gibbonbeehive.module.config.mod.ConfigModule'],
                   'api_plugin':[],
                   'api_subsystem':'process'}
         manager = ApiManager(params)
@@ -434,13 +434,13 @@ def init_config(logger, db_uri):
 
 def init_process(logger, db_uri):
     try:
-        from gibboncloudapi.module.process.model import ProcessDbManager
+        from gibbonbeehive.module.process.model import ProcessDbManager
         
         # create api manager
-        params = {'api_name':'cloudapi',
+        params = {'api_name':'beehive',
                   'api_id':'process',
                   'database_uri':db_uri,
-                  'api_module':['gibboncloudapi.module.process.mod.ProcessModule'],
+                  'api_module':['gibbonbeehive.module.process.mod.ProcessModule'],
                   'api_plugin':[],
                   'api_subsystem':'process'}
         manager = ApiManager(params)
@@ -465,9 +465,9 @@ def init_process(logger, db_uri):
 
         # register main task type
         proc_manager = ProcessDbManager()
-        proc_manager.add_task_type('start', 'gibboncloudapi.common.process.StartTask', type='SYS', desc='')
-        proc_manager.add_task_type('stop', 'gibboncloudapi.common.process.StopTask', type='SYS', desc='')
-        proc_manager.add_task_type('task1', 'gibboncloudapi.common.process.UserTask', type='USER', desc='')
+        proc_manager.add_task_type('start', 'gibbonbeehive.common.process.StartTask', type='SYS', desc='')
+        proc_manager.add_task_type('stop', 'gibbonbeehive.common.process.StopTask', type='SYS', desc='')
+        proc_manager.add_task_type('task1', 'gibbonbeehive.common.process.UserTask', type='USER', desc='')
         
         # create dummy process
         controller.create_dummy_process() 
@@ -481,13 +481,13 @@ def init_process(logger, db_uri):
 
 def init_event(logger, db_uri):
     try:
-        from gibboncloudapi.module.event.model import EventDbManager        
+        from gibbonbeehive.module.event.model import EventDbManager        
         
         # create api manager
-        params = {'api_name':'cloudapi',
+        params = {'api_name':'beehive',
                   'api_id':'process',
                   'database_uri':db_uri,
-                  'api_module':['gibboncloudapi.module.event.mod.EventModule'],
+                  'api_module':['gibbonbeehive.module.event.mod.EventModule'],
                   'api_plugin':[],
                   'api_subsystem':'process'}
         manager = ApiManager(params)
@@ -519,13 +519,13 @@ def init_event(logger, db_uri):
 
 def init_monitor(logger, db_uri, update=False):
     try:
-        from gibboncloudapi.module.monitor.model import MonitorDbManager        
+        from gibbonbeehive.module.monitor.model import MonitorDbManager        
         
         # create api manager
-        params = {'api_name':'cloudapi',
+        params = {'api_name':'beehive',
                   'api_id':'monitor',
                   'database_uri':db_uri,
-                  'api_module':['gibboncloudapi.module.monitor.mod.MonitorModule'],
+                  'api_module':['gibbonbeehive.module.monitor.mod.MonitorModule'],
                   'api_plugin':[],
                   'api_subsystem':'monitor'}
         manager = ApiManager(params)
@@ -558,13 +558,13 @@ def init_monitor(logger, db_uri, update=False):
 
 def init_scheduler(logger, db_uri):
     try:
-        #from gibboncloudapi.module.event.model import EventDbManager        
+        #from gibbonbeehive.module.event.model import EventDbManager        
         
         # create api manager
-        params = {'api_name':'cloudapi',
+        params = {'api_name':'beehive',
                   'api_id':'process',
                   'database_uri':db_uri,
-                  'api_module':['gibboncloudapi.module.scheduler.mod.SchedulerModule'],
+                  'api_module':['gibbonbeehive.module.scheduler.mod.SchedulerModule'],
                   'api_plugin':[],
                   'api_subsystem':'scheduler'}
         manager = ApiManager(params)
@@ -596,13 +596,13 @@ def init_scheduler(logger, db_uri):
 
 def init_platform(logger, db_uri):
     try:
-        from gibboncloudapi.module.platform.model import PlatformDbManager
+        from gibbonbeehive.module.platform.model import PlatformDbManager
         
         # create api manager
-        params = {'api_name':'cloudapi',
+        params = {'api_name':'beehive',
                   'api_id':'platform',
                   'database_uri':db_uri,
-                  'api_module':['gibboncloudapi.module.platform.mod.PlatformModule'],
+                  'api_module':['gibbonbeehive.module.platform.mod.PlatformModule'],
                   'api_plugin':[],
                   'api_subsystem':'platform'}
         manager = ApiManager(params)
@@ -634,14 +634,14 @@ def init_platform(logger, db_uri):
 
 def init_resource(logger, db_uri):
     try:
-        from gibboncloudapi.module.resource.model import ResourceDbManager
+        from gibbonbeehive.module.resource.model import ResourceDbManager
         
         
         # create api manager
-        params = {'api_name':'cloudapi',
+        params = {'api_name':'beehive',
                   'api_id':'process',
                   'database_uri':db_uri,
-                  'api_module':['gibboncloudapi.module.resource.mod.ResourceModule'],
+                  'api_module':['gibbonbeehive.module.resource.mod.ResourceModule'],
                   'api_plugin':[],
                   'api_subsystem':'resource'}
         manager = ApiManager(params)
@@ -653,8 +653,8 @@ def init_resource(logger, db_uri):
         ResourceDbManager.create_table(db_uri)
     
         # create module
-        #from gibboncloudapi.module.resource.mod import ResourceModule
-        #from gibboncloudapi.module.resource.plugins.cloudstack import CloudstackPlugin
+        #from gibbonbeehive.module.resource.mod import ResourceModule
+        #from gibbonbeehive.module.resource.plugins.cloudstack import CloudstackPlugin
         #resource_module = ResourceModule(manager)
         #CloudstackPlugin(resource_module).register()
         resource_module = manager.modules['ResourceModule']
@@ -686,17 +686,17 @@ def init_resource(logger, db_uri):
 
 def update_resource(logger, db_uri):
     try:
-        from gibboncloudapi.module.resource.model import ResourceDbManager
+        from gibbonbeehive.module.resource.model import ResourceDbManager
         
         # create api manager
         params = {'api_name':'beehive',
                   'api_id':'resource',
                   'http-socket':None,
                   'database_uri':db_uri,
-                  'api_module':['gibboncloudapi.module.resource.mod.ResourceModule'],
-                  'api_plugin':[#'ResourceModule,gibboncloudapi.module.resource.plugins.vsphere.VspherePlugin',
-                                'ResourceModule,gibboncloudapi.module.resource.plugins.openstack.OpenstackPlugin',
-                                #'ResourceModule,gibboncloudapi.module.resource.plugins.tenant.TenantPlugin',
+                  'api_module':['gibbonbeehive.module.resource.mod.ResourceModule'],
+                  'api_plugin':[#'ResourceModule,gibbonbeehive.module.resource.plugins.vsphere.VspherePlugin',
+                                'ResourceModule,gibbonbeehive.module.resource.plugins.openstack.OpenstackPlugin',
+                                #'ResourceModule,gibbonbeehive.module.resource.plugins.tenant.TenantPlugin',
                                ],
                   'api_subsystem':'resource'}
         manager = ApiManager(params)
@@ -724,7 +724,7 @@ def update_resource(logger, db_uri):
         
         '''
         objdef = 'tag'
-        class_name = 'gibboncloudapi.module.resource.container.ResourceTag'
+        class_name = 'gibbonbeehive.module.resource.container.ResourceTag'
         desc = 'All the resource tags'
         objaction = '*'
         objid = '*'
@@ -743,12 +743,12 @@ def update_resource(logger, db_uri):
                    'vsphere.nsx.dlr', 
                    'vsphere.nsx.edge', 
                    'openstack.domain.project.security_group']
-        class_names = ['gibboncloudapi.module.resource.plugins.vsphere.container.NsxManager',
-                       'gibboncloudapi.module.resource.plugins.vsphere.container.container.NsxLogicalSwitch',
-                       'gibboncloudapi.module.resource.plugins.vsphere.container.container.NsxSecurityGroup',
-                       'gibboncloudapi.module.resource.plugins.vsphere.container.container.NsxDlr',
-                       'gibboncloudapi.module.resource.plugins.vsphere.container.container.NsxEdge',
-                       'gibboncloudapi.module.resource.plugins.openstack.container.container.OpenstackSecurityGroup']
+        class_names = ['gibbonbeehive.module.resource.plugins.vsphere.container.NsxManager',
+                       'gibbonbeehive.module.resource.plugins.vsphere.container.container.NsxLogicalSwitch',
+                       'gibbonbeehive.module.resource.plugins.vsphere.container.container.NsxSecurityGroup',
+                       'gibbonbeehive.module.resource.plugins.vsphere.container.container.NsxDlr',
+                       'gibbonbeehive.module.resource.plugins.vsphere.container.container.NsxEdge',
+                       'gibbonbeehive.module.resource.plugins.openstack.container.container.OpenstackSecurityGroup']
         descs = ['All the nsx managers',
                  'All the nsx logical switches',
                  'All the nsx security groups',
@@ -780,14 +780,14 @@ def update_resource(logger, db_uri):
 
 def init_service(logger, db_uri):
     try:
-        from gibboncloudapi.module.service.model import ServiceDbManager        
+        from gibbonbeehive.module.service.model import ServiceDbManager        
         
         # create api manager
-        params = {'api_name':'cloudapi',
+        params = {'api_name':'beehive',
                   'api_id':'process',
                   'database_uri':db_uri,
-                  'api_module':['gibboncloudapi.module.service.mod.ServiceModule'],
-                  'api_plugin':['ServiceModule,gibboncloudapi.module.service.plugins.test.TestServicePlugin'],
+                  'api_module':['gibbonbeehive.module.service.mod.ServiceModule'],
+                  'api_plugin':['ServiceModule,gibbonbeehive.module.service.plugins.test.TestServicePlugin'],
                   'api_subsystem':'service'}
         manager = ApiManager(params)
         manager.configure()
@@ -818,13 +818,13 @@ def init_service(logger, db_uri):
 
 def init_admin(logger, db_uri):
     try:
-        #from gibboncloudapi.common.auth import AuthDbManager        
+        #from gibbonbeehive.common.auth import AuthDbManager        
         
         # create api manager
-        params = {'api_name':'cloudapi',
+        params = {'api_name':'beehive',
                   'api_id':'process',
                   'database_uri':db_uri,
-                  'api_module':['gibboncloudapi.module.admin.mod.AdminModule'],
+                  'api_module':['gibbonbeehive.module.admin.mod.AdminModule'],
                   'api_plugin':[],
                   'api_subsystem':'admin'}
         manager = ApiManager(params)
@@ -857,10 +857,10 @@ def init_admin(logger, db_uri):
 def register_service_plugin(logger, db_uri, plugin_class_name):
     try:
         # create api manager
-        params = {'api_name':'cloudapi',
+        params = {'api_name':'beehive',
                   'api_id':'process',
                   'database_uri':db_uri,
-                  'api_module':['gibboncloudapi.module.service.mod.ServiceModule'],
+                  'api_module':['gibbonbeehive.module.service.mod.ServiceModule'],
                   'api_plugin':[],
                   'api_subsystem':'service'}
         manager = ApiManager(params)
@@ -889,10 +889,10 @@ def register_service_plugin(logger, db_uri, plugin_class_name):
 def register_resource_plugin(logger, db_uri, plugin_class_name):
     try:
         # create api manager
-        params = {'api_name':'cloudapi',
+        params = {'api_name':'beehive',
                   'api_id':'process',
                   'database_uri':db_uri,
-                  'api_module':['gibboncloudapi.module.resource.mod.ResourceModule'],
+                  'api_module':['gibbonbeehive.module.resource.mod.ResourceModule'],
                   'api_plugin':[],
                   'api_subsystem':'resource'}
         manager = ApiManager(params)
@@ -946,7 +946,7 @@ def main(run_path, argv):
         return 0
     
     # configure logger
-    logger = logging.getLogger('gibboncloudapi')
+    logger = logging.getLogger('gibbonbeehive')
     #frmt = "%(asctime)s - %(message)s" 
     LoggerHelper.setup_simple_handler(logger, logging.DEBUG, frmt=None)
     logger = logging.getLogger('beecell')
@@ -957,9 +957,9 @@ def main(run_path, argv):
     LoggerHelper.setup_simple_handler(logger, logging.WARN, frmt=None)
     logger = logging.getLogger('beecell.watch')
     LoggerHelper.setup_simple_handler(logger, logging.WARN, frmt=None)
-    logger = logging.getLogger('gibboncloudapi.module.base.ApiClient')
+    logger = logging.getLogger('gibbonbeehive.module.base.ApiClient')
     LoggerHelper.setup_simple_handler(logger, logging.WARN, frmt=None)
-    logger = logging.getLogger('gibboncloudapi.util.auth.AuthClient')
+    logger = logging.getLogger('gibbonbeehive.util.auth.AuthClient')
     LoggerHelper.setup_simple_handler(logger, logging.WARN, frmt=None)
 
     if (cmd == 'configure'):

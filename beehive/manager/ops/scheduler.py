@@ -46,6 +46,12 @@ class SchedulerManager(ApiManager):
         self.sched_headers = [u'name', u'task', u'schedule', u'args', u'kwargs', 
                               u'options', u'last_run_at', u'total_run_count']
 
+    @staticmethod
+    def get_params(args):
+        try: subsystem = args.pop(0)
+        except:
+            raise Exception(u'ERROR : Container id is missing')
+        return {u'subsystem':subsystem}
 
     def actions(self):
         actions = {

@@ -74,20 +74,20 @@ class AuthTestCase(BeehiveTestCase):
     #
     def test_get_identities(self):      
         data = ''
-        uri = u'%s/identities/' % self.baseuri
+        uri = u'%s/identities/' % self.baseuri2
         res = self.invoke(u'auth', uri, u'GET', data=data)
         self.logger.info(json.dumps(res, indent=4))
 
     def test_get_identity(self):
         data = ''
-        uri = u'%s/identities/%s/' % (self.baseuri, tests.test_util.uid)
+        uri = u'%s/identities/%s/' % (self.baseuri2, tests.test_util.uid)
         res = self.invoke(u'auth', uri, u'GET', data=data)
         self.logger.info(json.dumps(res, indent=4))
 
     def test_delete_identity(self):
         data = ''
         identity = u'9sglCzsNTUECVYkC5YDZ'
-        uri = u'%s/identities/%s/' % (self.baseuri, identity)
+        uri = u'%s/identities/%s/' % (self.baseuri2, identity)
         res = self.invoke(u'auth', uri, u'DELETE', data=data)
         self.logger.info(json.dumps(res, indent=4))
         

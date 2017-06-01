@@ -238,6 +238,12 @@ class NativeVsphereManager(ApiManager):
         # custom actions
         ServerActions(self, u'server', self.client.server).register()
         
+    @staticmethod
+    def get_params(args):
+        try: cid = int(args.pop(0))
+        except:
+            raise Exception(u'ERROR : Vcenter id is missing')
+        return {u'orchestrator_id':cid}    
     
     def actions(self):
         return self.__actions

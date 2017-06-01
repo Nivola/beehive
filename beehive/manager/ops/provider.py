@@ -229,6 +229,13 @@ class ProviderManager(ApiManager):
         # custom actions
         #InstanceActions(self, u'instance').register()            
     
+    @staticmethod
+    def get_params(args):
+        try: cid = int(args.pop(0))
+        except:
+            raise Exception(u'ERROR : Provider id is missing')
+        return {u'containerid':cid}
+    
     def actions(self):
         return self.__actions
     
