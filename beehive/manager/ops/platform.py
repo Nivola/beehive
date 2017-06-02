@@ -36,6 +36,8 @@ class PlatformManager(ComponentManager):
         redis inspect
         redis query <pattern>
         redis delete <pattern>
+        redis flush
+        redis client
         
         mysql ping <user> <pwd> <schema>
     
@@ -420,8 +422,17 @@ class PlatformManager(ComponentManager):
                 server = RedisManager(redis_uri)
                 res = func(server)
                 #res = server.ping()
-
-                resp.append({u'host':str(host), u'db':db, u'response':res})
+                
+                if isinstance(res, dict):
+                    for k,v in res.items():
+                        resp.append({u'host':str(host), u'db':db, 
+                                     u'response':u'%s = %s' % (k,v)})
+                elif isinstance(res, list):
+                    for v in res:
+                        resp.append({u'host':str(host), u'db':db, 
+                                     u'response':v})                        
+                else:
+                    resp.append({u'host':str(host), u'db':db, u'response':res})
             self.logger.info(u'Ping redis %s : %s' % (redis_uri, resp))
         self.result(resp, headers=[u'host', u'db', u'response'])
     

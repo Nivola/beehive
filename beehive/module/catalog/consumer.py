@@ -67,7 +67,7 @@ class CatalogConsumer(ConsumerMixin):
                                                  new_name=name, 
                                                  new_desc=desc, 
                                                  new_service=service, 
-                                                 new_catalog=catalog, 
+                                                 new_catalog=catalog_obj.id, 
                                                  new_uri=uri)
             
             self.logger.debug(u'Store endpoint : %s' % endpoint)
