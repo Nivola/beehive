@@ -69,7 +69,7 @@ class Oaut2hManager(ApiManager):
         self.msg = None
         
         self.client_headers = [u'id', u'uuid', u'objid', u'name', 
-                               u'grant_type', u'scopes', u'active']
+                               u'grant_type', u'active']
         self.scope_headers = [u'id', u'uuid', u'objid', u'name', u'desc']        
         self.token_headers = [u'token_type', u'access_token', u'scope',
                               u'user', u'expires_in', u'expires_at']
@@ -153,7 +153,8 @@ class Oaut2hManager(ApiManager):
         uri = u'%s/clients/%s/' % (self.baseuri, client_id)
         res = self._call(uri, u'GET', data=u'')
         self.logger.info(u'Get client: %s' % truncate(res))
-        self.result(res, key=u'client', headers=self.client_headers)
+        self.result(res, key=u'client', headers=self.client_headers, 
+                    details=True)
         
     def add_client(self, subsystem, otype, objid, desc):
         data = {
@@ -200,18 +201,14 @@ class Oaut2hManager(ApiManager):
         uri = u'%s/scopes/%s/' % (self.baseuri, scope_id)
         res = self._call(uri, u'GET', data=u'')
         self.logger.info(u'Get scope: %s' % truncate(res))
-        self.result(res, key=u'scope', headers=self.scope_headers)
+        self.result(res, key=u'scope', headers=self.scope_headers, details=True)
         
-    def add_scope(self, subsystem, otype, objid, desc):
+    def add_scope(self, name, desc):
         data = {
-            u'scopes':[
-                {
-                    u'subsystem':subsystem,
-                    u'type':otype,
-                    u'objid':objid,
-                    u'desc':desc
-                }
-            ]
+            u'scope':{
+                u'name':name,
+                u'desc':desc
+            }
         }
         uri = u'%s/scopes/' % (self.baseuri)
         res = self._call(uri, u'POST', data=data)

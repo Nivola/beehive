@@ -271,8 +271,14 @@ class BeehiveApiClient(object):
             if response.status in [200, 201, 202, 400, 401, 403, 404, 405, 
                                    406, 408, 409, 415]:
                 res = response.read()
-                if content_type == u'application/json':
+                if content_type.find(u'application/json') >= 0:
                     res = json.loads(res)
+
+                # insert for compliance with oauth2 error message
+                if u'error' in res:
+                    res[u'status'] = u'error'
+                    res[u'msg'] = res[u'error_description']
+                    res[u'code'] = response.status
                     
             elif response.status in [204]:
                 res = {u'status':u'ok', u'code':204, u'response':None}
@@ -292,12 +298,12 @@ class BeehiveApiClient(object):
             
             raise BeehiveApiClientError(ex, code=400)
             
-        if res[u'status'] == u'ok':
+        if res.get(u'status', u'') == u'ok':
             elapsed = time() - start
             self.logger.info(u'Response: STATUS=%s, CONTENT-TYPE=%s, RES=%s, '\
                              u'ELAPSED=%s' % (response.status, content_type, 
                              truncate(res), elapsed))
-        elif res[u'status'] == u'error':
+        elif res.get(u'status', u'') == u'error':
             self.logger.error(res[u'msg'])
             raise BeehiveApiClientError(res[u'msg'], code=int(res[u'code']))
         

@@ -33,9 +33,9 @@ class AuthManager(ApiManager):
         simplehttp domains
         simplehttp login <name>@<domain> <password> <user-ip>        
         
-        identities.list
-        identities.get <oid>
-        identities.delete <oid>
+        tokens.list
+        tokens.get <oid>
+        tokens.delete <oid>
         
         users list <field>=<value>    field: page, size, order, field, role, group
             field can be: id, objid, uuid, name, description, creation_date, modification_date
@@ -133,9 +133,9 @@ class AuthManager(ApiManager):
             
             u'simplehttp.login': self.simplehttp_login_user,            
             
-            u'identities.list': self.get_identities,
-            u'identities.get': self.get_identity,
-            u'identities.delete': self.delete_identity,
+            u'tokens.list': self.get_tokens,
+            u'tokens.get': self.get_identity,
+            u'tokens.delete': self.delete_identity,
             
             u'domains.list': self.login_domains,
             
@@ -772,27 +772,27 @@ class AuthManager(ApiManager):
         self.result(res)
 
     #
-    # identities
+    # tokens
     #    
-    def get_identities(self):
-        uri = u'%s/identities/' % (self.authuri)
+    def get_tokens(self):
+        uri = u'%s/tokens/' % (self.authuri)
         res = self._call(uri, u'GET')
-        self.logger.info(u'Get identities: %s' % truncate(res))
-        self.result(res, key=u'identities', headers=[u'uid', u'type', u'user', 
+        self.logger.info(u'Get tokens: %s' % truncate(res))
+        self.result(res, key=u'tokens', headers=[u'token', u'type', u'user', 
                     u'ip', u'ttl', u'timestamp'])
     
     def get_identity(self, oid):
-        uri = u'%s/identities/%s/' % (self.authuri, oid)
+        uri = u'%s/tokens/%s/' % (self.authuri, oid)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get identity: %s' % truncate(res))
-        self.result(res, key=u'identity', headers=[u'uid', u'type', u'user', 
+        self.result(res, key=u'identity', headers=[u'token', u'type', u'user', 
                     u'ip', u'ttl', u'timestamp'])
         
     def delete_identity(self, oid):
-        uri = u'%s/identities/%s/' % (self.authuri, oid)
+        uri = u'%s/tokens/%s/' % (self.authuri, oid)
         res = self._call(uri, u'DELETE')
         self.logger.info(u'Delete identity: %s' % truncate(res))
-        self.result({u'identity':oid}, headers=[u'identity']) 
+        self.result({u'identity':oid}, headers=[u'token']) 
 
 
         

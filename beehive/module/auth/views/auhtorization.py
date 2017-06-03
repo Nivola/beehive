@@ -48,35 +48,35 @@ class ListDomains(ApiView):
 #
 # identity
 #
-class ListIdentities(ApiView):
+class ListTokens(ApiView):
     def dispatch(self, controller, data, *args, **kwargs):
         identities = controller.get_identities()
         res = [{
-            u'uid':i[u'uid'],
+            u'token':i[u'uid'],
             u'type':i[u'type'],
             u'user':i[u'user'][u'name'],
             u'timestamp':i[u'timestamp'], 
             u'ttl':i[u'ttl'], 
             u'ip':i[u'ip']
         } for i in identities]
-        resp = {u'identities':res,
+        resp = {u'tokens':res,
                 u'count':len(res)}
         return resp
 
-class GetIdentity(ApiView):
+class GetToken(ApiView):
     def dispatch(self, controller, data, oid, *args, **kwargs):      
         data = controller.get_identity(oid)
         res = {
-            u'uid':data[u'uid'],
+            u'token':data[u'uid'],
             u'type':data[u'type'],
             u'user':data[u'user'][u'name'],
             u'timestamp':data[u'timestamp'], 
             u'ttl':data[u'ttl'], 
             u'ip':data[u'ip']}
-        resp = {u'identity':res}
+        resp = {u'token':res}
         return resp
 
-class DeleteIdentity(ApiView):
+class DeleteToken(ApiView):
     def dispatch(self, controller, data, oid, *args, **kwargs):
         resp = controller.remove_identity(oid)
         return (resp, 204)
@@ -689,9 +689,9 @@ class AuthorizationAPI(ApiView):
         rules = [
             (u'%s/domains' % base, u'GET', ListDomains, {u'secure':False}),
             
-            (u'%s/identities' % base, u'GET', ListIdentities, {}),
-            (u'%s/identities/<oid>' % base, u'GET', GetIdentity, {}),
-            (u'%s/identities/<oid>' % base, u'DELETE', DeleteIdentity, {}),            
+            (u'%s/tokens' % base, u'GET', ListTokens, {}),
+            (u'%s/tokens/<oid>' % base, u'GET', GetToken, {}),
+            (u'%s/tokens/<oid>' % base, u'DELETE', DeleteToken, {}),            
             
             (u'%s/users' % base, u'GET', ListUsers, {}),
             (u'%s/users/<oid>' % base, u'GET', GetUser, {}),

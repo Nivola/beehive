@@ -1,6 +1,7 @@
 import json
 import yaml
 import os
+from beecell.simple import truncate
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
@@ -232,9 +233,9 @@ class ComponentManager(object):
                 #self.__format(u'===================================', space, u'', None)
         else:
             self.__format(data, space)
-                
+    
     def result(self, data, delta=None, other_headers=[], headers=None, key=None, 
-               fields=None):
+               fields=None, details=False):
         """
         """
         if key is not None:
@@ -257,6 +258,28 @@ class ComponentManager(object):
             
         elif self.format == u'table':
             if data is not None:
+                # convert input data for query with one raw
+                if details is True:
+                    resp = []
+                    
+                    def __format_table_data(k, v):
+                        if isinstance(v, list):
+                            i = 0
+                            for n in v:
+                                __format_table_data(u'%s.%s' % (k,i), n)
+                        elif isinstance(v, dict):
+                            for k1,v1 in v.items():
+                                __format_table_data(u'%s.%s' % (k,k1), v1)
+                        else:
+                            resp.append({u'attrib':k, 
+                                         u'value':truncate(v, size=80)})                        
+                    
+                    for k,v in data.items():
+                        __format_table_data(k, v)
+
+                    data = resp
+                    headers=[u'attrib', u'value']
+
                 if isinstance(data, dict) or isinstance(data, list):
                     self.__tabularprint(data, other_headers=other_headers,
                                         headers=headers, fields=fields)
