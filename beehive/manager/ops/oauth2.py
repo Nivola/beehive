@@ -49,7 +49,16 @@ class Oaut2hManager(ApiManager):
         
     PARAMS:
         tokens create <user> <pwd> <client-conf.json>
+        
+        clients list
+        clients get
+        clients add
+        clients delete <id>
 
+        scopes list
+        scopes get
+        scopes add
+        scopes delete <id>
     """
     def __init__(self, auth_config, env, frmt):
         ApiManager.__init__(self, auth_config, env, frmt)
@@ -61,6 +70,7 @@ class Oaut2hManager(ApiManager):
         
         self.client_headers = [u'id', u'uuid', u'objid', u'name', 
                                u'grant_type', u'scopes', u'active']
+        self.scope_headers = [u'id', u'uuid', u'objid', u'name', u'desc']        
         self.token_headers = [u'token_type', u'access_token', u'scope',
                               u'user', u'expires_in', u'expires_at']
     
@@ -73,6 +83,11 @@ class Oaut2hManager(ApiManager):
             u'clients.get': self.get_client,
             u'clients.add': self.add_client,
             u'clients.delete': self.delete_client,
+            
+            u'scopes.list': self.get_scopes,
+            u'scopes.get': self.get_scope,
+            u'scopes.add': self.add_scope,
+            u'scopes.delete': self.delete_scope,            
         }
         return actions
     
@@ -164,5 +179,50 @@ class Oaut2hManager(ApiManager):
         #self.result(res)
         print(u'Delete client: %s' % client_id)
     
+    #
+    # scopes
+    #    
+    def get_scopes(self, *args):
+        data = self.format_http_get_query_params(*args)
+        params = self.get_query_params(*args)
+        uri = u'%s/scopes/' % (self.baseuri)
+        res = self._call(uri, u'GET', data=data)
+        self.logger.info(u'Get scopes: %s' % truncate(res))
+        print(u'Page: %s' % res[u'page'])
+        print(u'Count: %s' % res[u'count'])
+        print(u'Total: %s' % res[u'total'])
+        print(u'Order: %s %s' % (params.get(u'field', u'id'), 
+                                 params.get(u'order', u'DESC')))
+        print(u'')
+        self.result(res, key=u'scopes', headers=self.scope_headers)
     
+    def get_scope(self, scope_id):
+        uri = u'%s/scopes/%s/' % (self.baseuri, scope_id)
+        res = self._call(uri, u'GET', data=u'')
+        self.logger.info(u'Get scope: %s' % truncate(res))
+        self.result(res, key=u'scope', headers=self.scope_headers)
+        
+    def add_scope(self, subsystem, otype, objid, desc):
+        data = {
+            u'scopes':[
+                {
+                    u'subsystem':subsystem,
+                    u'type':otype,
+                    u'objid':objid,
+                    u'desc':desc
+                }
+            ]
+        }
+        uri = u'%s/scopes/' % (self.baseuri)
+        res = self._call(uri, u'POST', data=data)
+        self.logger.info(u'Add scope: %s' % truncate(res))
+        #self.result(res)
+        print(u'Add scope: %s' % res)
+        
+    def delete_scope(self, scope_id):
+        uri = u'%s/scopes/%s/' % (self.baseuri, scope_id)
+        res = self._call(uri, u'DELETE', data=u'')
+        self.logger.info(u'Delete scope: %s' % truncate(res))
+        #self.result(res)
+        print(u'Delete scope: %s' % scope_id)    
     
