@@ -3,11 +3,11 @@ Created on Jan 16, 2014
 
 @author: darkbk
 '''
-import logging
+from logging import getLogger
 import binascii
 import pickle
 from re import match
-from datetime import datetime
+from datetime import datetime, timedelta
 from ipaddress import IPv4Address, IPv4Network, AddressValueError
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -27,8 +27,8 @@ class AuthenticationManager(object):
     
     """
     def __init__(self, auth_providers):
-        self.logger = logging.getLogger(self.__class__.__module__+ \
-                                        '.'+self.__class__.__name__)        
+        self.logger = getLogger(self.__class__.__module__+ \
+                                u'.'+self.__class__.__name__)        
         
         self.auth_providers = auth_providers
 
@@ -544,9 +544,11 @@ class AuthController(ApiController):
     # identity manipulation methods
     #
     @watch
-    def set_identity(self, uid, identity, expire=True):
+    def set_identity(self, uid, identity, expire=True, expire_time=None):
+        if expire_time is None:
+            expire_time = self.expire
         val = pickle.dumps(identity)
-        self.module.redis_manager.setex(self.prefix + uid, self.expire, val)
+        self.module.redis_manager.setex(self.prefix + uid, expire_time, val)
         if expire is False:
             self.module.redis_manager.persist(self.prefix + uid)
         self.logger.info(u'Set identity %s in redis' % uid)
@@ -565,7 +567,7 @@ class AuthController(ApiController):
             self.module.redis_manager.delete(self.prefix + uid)
             self.logger.debug(u'Remove identity %s from redis' % uid)
             User(self).send_event(u'identity.remove', params={u'uid':uid})      
-            return True
+            return uid
         except Exception as ex:
             err = u'Can not remove identity %s' % uid
             User(self).send_event(u'identity.remove', params={u'uid':uid}, 
@@ -655,7 +657,7 @@ class AuthController(ApiController):
         
         try:
             uid = id_gen(20)
-            timestamp = datetime.now().strftime(u'%y-%m-%d-%H-%M')        
+            timestamp = datetime.now()#.strftime(u'%H-%M_%d-%m-%Y')     
             private_key = rsa.generate_private_key(public_exponent=65537,
                                                    key_size=1024,
                                                    backend=default_backend())        
@@ -687,12 +689,23 @@ class AuthController(ApiController):
                 #expire = False
             self.set_identity(uid, identity, expire=expire)
     
+            '''
             res = {u'uid':uid,
                    u'type':u'keyauth',
                    u'user':user.get_dict(),
                    u'timestamp':timestamp,
                    u'pubkey':pubkey,
                    u'seckey':seckey}
+            '''
+            res = {
+                u'token_type':u'Bearer',
+                u'user':user.get_dict().get(u'id'),
+                u'access_token':uid,
+                u'pubkey':pubkey,
+                u'seckey':seckey,
+                u'expires_in':self.expire,
+                u'expires_at':timestamp+timedelta(seconds=self.expire),
+            }  
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=401)            
@@ -757,7 +770,10 @@ class AuthController(ApiController):
             except Exception as ex:
                 msg = u'Ip address is not provided or syntax is wrong'
                 self.logger.error(msg, exc_info=1)
-                raise ApiManagerError(msg, code=400)                
+                raise ApiManagerError(msg, code=400)
+            
+            self.logger.debug(u'User %s@%s:%s validated' % 
+                              (name, domain, login_ip))        
         except ApiManagerError as ex:
             raise ApiManagerError(ex.value, code=ex.code)
     
@@ -800,7 +816,7 @@ class AuthController(ApiController):
         :param dbuser: database user instance
         :param dbuser_attribs: user attributes as dict
         :return: SystemUser instance, user attributes as dict
-        :raise ApiManagerError:        
+        :raise ApiManagerError:
         """
         opts = {
             u'name':name, 
@@ -858,7 +874,7 @@ class AuthController(ApiController):
         try:
             self.validate_login_params(name, domain, password, login_ip)
         except ApiManagerError as ex:
-            User(self).send_event(u'simplehttp-login.add', params=opts, 
+            User(self).send_event(u'simplehttp.login.add', params=opts, 
                                   exception=ex)
             raise
         
@@ -867,7 +883,7 @@ class AuthController(ApiController):
             dbuser, dbuser_attribs = self.check_login_user(name, domain, 
                                                        password, login_ip)
         except ApiManagerError as ex:
-            User(self).send_event(u'simplehttp-login.add', params=opts, 
+            User(self).send_event(u'simplehttp.login.add', params=opts, 
                                   exception=ex)
             raise
         
@@ -876,7 +892,7 @@ class AuthController(ApiController):
         if u'simplehttp' not in auth_filters:
             msg = u'Simple http authentication is not allowed for user %s' % \
                   user_name
-            User(self).send_event(u'simplehttp-login.add', params=opts, 
+            User(self).send_event(u'simplehttp.login.add', params=opts, 
                                   exception=msg)
             self.logger.error(msg)
             raise ApiManagerError(msg, code=401)
@@ -894,7 +910,7 @@ class AuthController(ApiController):
         if allowed is False:
             msg = u'User %s ip %s can not perform simple http authentication' % \
                   (user_name, login_ip)
-            User(self).send_event(u'simplehttp-login.add', params=opts, 
+            User(self).send_event(u'simplehttp.login.add', params=opts, 
                                   exception=msg)
             self.logger.error(msg)
             raise ApiManagerError(msg, code=401)            
@@ -904,7 +920,7 @@ class AuthController(ApiController):
             user, attrib = self.base_login(name, domain, password, login_ip, 
                                            dbuser, dbuser_attribs)
         except ApiManagerError as ex:
-            User(self).send_event(u'simplehttp-login.add', params=opts, 
+            User(self).send_event(u'simplehttp.login.add', params=opts, 
                                   exception=ex)
             raise
         
@@ -913,7 +929,7 @@ class AuthController(ApiController):
                u'user':user.get_dict(),
                u'timestamp':datetime.now().strftime(u'%y-%m-%d-%H-%M')}        
     
-        User(self).send_event(u'simplehttp-login.add', params=opts)
+        User(self).send_event(u'simplehttp.login.add', params=opts)
         
         return res
     
@@ -942,7 +958,7 @@ class AuthController(ApiController):
         try:
             self.validate_login_params(name, domain, password, login_ip)
         except ApiManagerError as ex:
-            User(self).send_event(u'keyauth-login.add', params=opts, 
+            User(self).send_event(u'keyauth.token.add', params=opts, 
                                   exception=ex)
             raise
         
@@ -951,7 +967,7 @@ class AuthController(ApiController):
             dbuser, dbuser_attribs = self.check_login_user(name, domain, 
                                                        password, login_ip)
         except ApiManagerError as ex:
-            User(self).send_event(u'keyauth-login.add', params=opts, 
+            User(self).send_event(u'keyauth.token.add', params=opts, 
                                   exception=ex)
             raise     
         
@@ -962,13 +978,13 @@ class AuthController(ApiController):
             user, attrib = self.base_login(name, domain, password, login_ip, 
                                            dbuser, dbuser_attribs)
         except ApiManagerError as ex:
-            User(self).send_event(u'keyauth-login.add', params=opts, 
+            User(self).send_event(u'keyauth.token.add', params=opts, 
                                   exception=ex)
         
         # generate asymmetric keys
         res = self._gen_authorizaion_key(user, domain, name, login_ip, attrib)
 
-        User(self).send_event(u'keyauth-login.add', params=opts)
+        User(self).send_event(u'keyauth.token.add', params=opts)
         
         return res
     

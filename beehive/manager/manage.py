@@ -23,11 +23,10 @@ from beehive.manager.ops.monitor import MonitorManager
 from beehive.manager.ops.auth import AuthManager
 from beehive.manager.ops.catalog import CatalogManager
 from beehive.manager.ops.event import EventManager
-from beehive.manager.ops.create import create_main
-from beehive.manager.ops.create import create_client
 from beecell.logger.helper import LoggerHelper
 from beehive.manager.ops.config import ConfigManager
 from beehive.manager.ops.oauth2 import Oaut2hManager
+from beehive.manager.ops.keyauth import KeyauthManager
 
 VERSION = u'1.0.0'
 
@@ -59,6 +58,7 @@ def main(run_path, argv):
         client
         auth
         oauth2
+        keyauth
         monitor
         resource
         scheduler
@@ -94,6 +94,7 @@ def main(run_path, argv):
         u'client':None,
         u'auth':AuthManager,
         u'oauth2':Oaut2hManager,
+        u'keyauth':KeyauthManager,
         u'catalog':CatalogManager,
         u'event':EventManager,
         u'monitor':MonitorManager,

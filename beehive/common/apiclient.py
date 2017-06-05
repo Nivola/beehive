@@ -529,8 +529,9 @@ class BeehiveApiClient(object):
         res = self.send_signed_request(u'auth', u'/v1.0/keyauth/login/', 
                                        u'POST', data=json.dumps(data))
         res = res[u'response']
-        self.logger.info(u'Login user %s with uid: %s' % (self.api_user, res[u'uid']))
-        self.uid = res[u'uid']
+        self.logger.info(u'Login user %s with token: %s' % 
+                         (self.api_user, res[u'access_token']))
+        self.uid = res[u'access_token']
         self.seckey = res[u'seckey']
         self.filter = u'keyauth'
         

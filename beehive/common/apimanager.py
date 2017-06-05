@@ -57,7 +57,7 @@ class ApiManagerError(Exception):
         return u'ApiManagerError: %s' % self.value 
 
     def __str__(self):
-        return u'%s, %s' % (self.value, self.code)
+        return u'%s' % self.value
 
 class ApiManager(object):
     """ """
@@ -1658,7 +1658,7 @@ class ApiObject(object):
         objid = u'*'
         if self.objid is not None: objid = self.objid
         if etype is None: etype = self.SYNC_OPERATION
-        if exception is not None: response = (False, str(exception))
+        if exception is not None: response = (False, exception)
         tmp = op.split(u'.')[-1]
         if tmp in [u'get', u'list']:
             action = u'view'
@@ -2026,7 +2026,6 @@ class ApiView(FlaskView):
                    #u'data':request.data,
                    u'response':response}            
             
-            self.logger.debug(u'Api response code: %s' % code)
             self.logger.debug(u'Api response: %s' % truncate(response))
             
             # redirect to new uri
@@ -2067,7 +2066,9 @@ class ApiView(FlaskView):
                                 mimetype=u'text/plain', 
                                 status=code)
         except Exception as ex:
-            raise ApiManagerError(u'Error creating response - %s' % ex, code=400)
+            msg = u'Error creating response - %s' % ex
+            self.logger.error(msg)
+            raise ApiManagerError(msg, code=400)
     
     def get_entity(self, entity_name, query_func, get_func, oid):
         """Get entity.
@@ -2115,7 +2116,8 @@ class ApiView(FlaskView):
         timeout = gevent.Timeout(module.api_manager.api_timeout)
         timeout.start()
 
-        # set operation id
+        # set operation
+        operation.user = (u'guest', u'localhost', None)
         operation.id = str(uuid4())
         self.logger.info(u'Start new operation [%s]' % (operation.id))
 
@@ -2139,9 +2141,10 @@ class ApiView(FlaskView):
             
             # get request data
             try:
-                data = json.loads(request.data)
-            except:
-                data = None            
+                data = request.data 
+                data = json.loads(data)
+            except (AttributeError, ValueError): 
+                data = None
         
             resp = self.dispatch(controller, data, *args, **kwargs)
             if isinstance(resp, tuple):

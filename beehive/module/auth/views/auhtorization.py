@@ -55,7 +55,7 @@ class ListTokens(ApiView):
             u'token':i[u'uid'],
             u'type':i[u'type'],
             u'user':i[u'user'][u'name'],
-            u'timestamp':i[u'timestamp'], 
+            u'timestamp':i[u'timestamp'].strftime(u'%H-%M_%d-%m-%Y'), 
             u'ttl':i[u'ttl'], 
             u'ip':i[u'ip']
         } for i in identities]
@@ -70,7 +70,7 @@ class GetToken(ApiView):
             u'token':data[u'uid'],
             u'type':data[u'type'],
             u'user':data[u'user'][u'name'],
-            u'timestamp':data[u'timestamp'], 
+            u'timestamp':data[u'timestamp'].strftime(u'%H-%M_%d-%m-%Y'), 
             u'ttl':data[u'ttl'], 
             u'ip':data[u'ip']}
         resp = {u'token':res}
