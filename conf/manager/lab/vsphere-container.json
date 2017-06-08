@@ -1,0 +1,18 @@
+{
+    "vcenter":{
+        "host":"vcenter.nsxlab.local",
+        "user":"administrator@nuvolacsi.local",
+        "pwd":"Vcenterlab$2016",
+        "port":443,
+        "timeout":5,
+        "verified":false
+    },
+    "nsx":{
+        "host":"172.25.3.3",
+        "port":443,
+        "user":"admin",
+        "pwd":"Admin$01",
+        "verified":false,
+        "timeout":5
+    }
+}

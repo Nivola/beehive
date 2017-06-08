@@ -6,7 +6,8 @@ Created on Dec 31, 2014
 from beecell.perf import watch
 from beecell.simple import str2uni, id_gen, truncate
 import ujson as json
-from beehive.common.apimanager import ApiController, ApiManagerError
+from beehive.common.apimanager import ApiController, ApiManagerError,\
+    ApiViewResponse
 from beehive.module.event.model import EventDbManager
 from beecell.db import QueryError
 
@@ -53,8 +54,9 @@ class EventController(ApiController):
             objs = self.can(u'view', u'event', definition=etype)
         else:
             objs = self.can(u'view', u'event')
-        
-        #event_types = objs.keys()
+            
+        # add ApiViewResponse objects definition statically
+        #objs[ApiViewResponse.objdef] = [u'*']
         
         try:
             count, events = self.event_manager.gets(oid=oid, etype=etype, 
@@ -97,7 +99,7 @@ class EventController(ApiController):
 
                 # create needs
                 needs = self.get_needs(i.objid.split(u'//'))
-                
+
                 # check if needs overlaps perms
                 if self.has_needs(needs, objset) is True:
                     res[u'events'].append(obj)
@@ -117,17 +119,44 @@ class EventController(ApiController):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """        
         # verify permissions
+        #objs = self.can(u'view', u'event')
+        #event_types = set(objs.keys())
+        
+        # get available event types
+        try:
+            res = set(self.event_manager.get_types())
+        except QueryError, ex:
+            self.logger.error(ex)
+            raise ApiManagerError(ex)
+        
+        #res = event_types_available.intersection(event_types)
+            
+        self.logger.debug(u'Get event types: %s' % res)
+        return res
+    
+    @watch
+    def get_entity_definitions(self):
+        """Get event entity definition. 
+      
+        :return: List of entity definitions
+        :rtype: list
+        :raises ApiManagerError: raise :class:`ApiManagerError`
+        """        
+        # verify permissions
         objs = self.can(u'view', u'event')
         event_types = set(objs.keys())
         
         # get available event types
         try:
-            event_types_available = set(self.event_manager.get_types())
+            event_types_available = set(self.event_manager.get_entity_definitions())
         except QueryError, ex:
             self.logger.error(ex)
             raise ApiManagerError(ex)
         
         res = event_types_available.intersection(event_types)
+        
+        # add ApiViewResponse objects definition statically
+        #res.append(ApiViewResponse.objdef)
             
-        self.logger.debug('Get event types: %s' % res)
-        return res
+        self.logger.debug(u'Get event entity definitions: %s' % res)
+        return res    

@@ -211,7 +211,12 @@ class NativeVsphereManager(ApiManager):
     SECTION: 
         native.vsphere    
     
-    PARAMs:  
+    PARAMs:
+        servers list
+        servers get <oid>
+        add
+        update
+        delete
     """
     __metaclass__ = abc.ABCMeta
 
@@ -240,7 +245,8 @@ class NativeVsphereManager(ApiManager):
         
     @staticmethod
     def get_params(args):
-        try: cid = int(args.pop(0))
+        print args
+        try: cid = args.pop(0)
         except:
             raise Exception(u'ERROR : Vcenter id is missing')
         return {u'orchestrator_id':cid}    

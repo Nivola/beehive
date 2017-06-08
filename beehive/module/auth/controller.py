@@ -3,93 +3,16 @@ Created on Jan 16, 2014
 
 @author: darkbk
 '''
-from logging import getLogger
-import binascii
-import pickle
-from re import match
-from datetime import datetime, timedelta
-from ipaddress import IPv4Address, IPv4Network, AddressValueError
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import serialization
+from datetime import datetime
 from beecell.auth import extract
-from beecell.auth import AuthError
 from beecell.perf import watch
 from beecell.simple import str2uni, id_gen, truncate
-from socket import gethostbyname
-from beehive.common.apimanager import ApiController, ApiManagerError, ApiObject
+from beehive.common.apimanager import ApiManagerError, ApiObject
 from beecell.db import TransactionError, QueryError
-from beehive.common.data import operation
-from beehive.common.authorization import AuthDbManager
+from beehive.common.controller.authorization import BaseAuthController, \
+     User as BaseUser, Token, AuthObject
 
-class AuthenticationManager(object):
-    """Manager used to login and logout user on authentication provider.
-    
-    """
-    def __init__(self, auth_providers):
-        self.logger = getLogger(self.__class__.__module__+ \
-                                u'.'+self.__class__.__name__)        
-        
-        self.auth_providers = auth_providers
-
-    def __str__(self):
-        return "<AuthenticationManager id:%s>" % id(self)
-
-    @watch
-    def login(self, username, password, domain, ipaddr):
-        """Login user using ldap server.
-        
-        :return: System User
-        :rtype: :class:`SystemUser`
-        :raises AuthError: raise :class:`AuthError`
-        """
-        # get authentication provider
-        try:
-            self.logger.debug(u'Authentication providers: %s' % self.auth_providers)
-            auth_provider = self.auth_providers[domain]
-            self.logger.debug(u'Get authentication provider: %s' % auth_provider)
-        except KeyError:
-            self.logger.error(u'Authentication domain %s does not exist' % domain)
-            raise AuthError(u'', u'Authentication domain %s does not exist' % domain, 
-                            code=10)
-        
-        # login over authentication provider and get user attributes
-        username = u'%s@%s' % (username, domain)
-
-        auth_user = auth_provider.login(username, password)
-
-        # set user ip address
-        auth_user.current_login_ip = ipaddr
-        
-        self.logger.debug(u'Login user: %s' % (username))
-        return auth_user
-    
-    @watch
-    def refresh(self, uid, username, domain):
-        """Refresh user.
-        
-        :return: System User
-        :rtype: :class:`SystemUser`
-        :raises AuthError: raise :class:`AuthError`
-        """
-        # get authentication provider
-        try:
-            self.logger.debug(u'Authentication providers: %s' % self.auth_providers)
-            auth_provider = self.auth_providers[domain]
-            self.logger.debug(u'Get authentication provider: %s' % auth_provider)
-        except KeyError:
-            self.logger.error(u'Authentication domain %s does not exist' % domain)
-            raise AuthError(u'', u'Authentication domain %s does not exist' % domain, 
-                            code=10)
-        
-        # login over authentication provider and get user attributes
-        username = u'%s@%s' % (username, domain)
-        auth_user = auth_provider.refresh(username, uid)
-        
-        self.logger.debug(u'Login user: %s' % (username))
-        return auth_user    
-
-class AuthController(ApiController):
+class AuthController(BaseAuthController):
     """Auth Module controller.
     
     :param module: Beehive module
@@ -97,12 +20,10 @@ class AuthController(ApiController):
     version = u'v1.0'    
     
     def __init__(self, module):
-        ApiController.__init__(self, module)
+        BaseAuthController.__init__(self, module)
         
-        self.dbauth = AuthDbManager()
         self.objects = Objects(self)
-        
-        self.child_classes = [Objects, Role, User, Group]
+        self.child_classes = [Objects, Role, User, Group, Token]
     
     def init_object(self):
         """Register object types, objects and permissions related to module.
@@ -118,41 +39,7 @@ class AuthController(ApiController):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
         
-        # init container
-        for child in self.child_classes:
-            child(self).init_object()
-    
-    def set_superadmin_permissions(self):
-        """ """
-        try:
-            self.set_admin_permissions(u'ApiSuperadmin', [])
-        except (QueryError, TransactionError) as ex:
-            self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=ex.code)    
-    
-    def set_admin_permissions(self, role_name, args):
-        """ """
-        try:
-            for item in self.child_classes:
-                item(self).set_admin_permissions(role_name, args)
-        except (QueryError, TransactionError) as ex:
-            self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=ex.code)
-    
-    @watch
-    def verify_simple_http_credentials(self, user, pwd, user_ip):
-        """Verify simple ahttp credentials.
-        
-        :param user: user
-        :param pwd: password
-        :param user_ip: user ip address
-        :return: identity
-        :raise ApiManagerError:
-        """
-        name, domain = user.split(u'@')
-        identity = self.simple_http_login(name, domain, pwd, user_ip)
-
-        return identity    
+        BaseAuthController.init_object(self)
     
     @watch
     def count(self):
@@ -249,14 +136,14 @@ class AuthController(ApiController):
             Role(self).register_object([objid], desc=description)
             
             self.logger.debug(u'Add new role: %s' % name)
-            Role(self).send_event(u'add', params=params)
+            Role(self).send_event(u'insert', params=params)
             return role.id
         except (TransactionError) as ex:
-            Role(self).send_event(u'add', params=params, exception=ex)           
+            Role(self).send_event(u'insert', params=params, exception=ex)           
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
         except (Exception) as ex:
-            Role(self).send_event(u'add', params=params, exception=ex)        
+            Role(self).send_event(u'insert', params=params, exception=ex)        
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
     
@@ -395,14 +282,14 @@ class AuthController(ApiController):
                                            u'Type of user')            
             
             self.logger.debug(u'Add new user: %s' % name)
-            User(self).send_event(u'add', params=params)
+            User(self).send_event(u'insert', params=params)
             return user.id
         except (TransactionError) as ex:
-            User(self).send_event(u'add', params=params, exception=ex)
+            User(self).send_event(u'insert', params=params, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
         except (Exception) as ex:
-            User(self).send_event(u'add', params=params, exception=ex)
+            User(self).send_event(u'insert', params=params, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
     
@@ -529,571 +416,14 @@ class AuthController(ApiController):
             Group(self).register_object([objid], desc=description)          
             
             self.logger.debug(u'Add new group: %s' % name)
-            Group(self).send_event(u'add', params=params)
+            Group(self).send_event(u'insert', params=params)
             return group.id
         except (TransactionError) as ex:
-            Group(self).send_event(u'add', params=params, exception=ex)
+            Group(self).send_event(u'insert', params=params, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
         except (Exception) as ex:
-            Group(self).send_event(u'add', params=params, exception=ex)
-            self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=400)
-    
-    #
-    # identity manipulation methods
-    #
-    @watch
-    def set_identity(self, uid, identity, expire=True, expire_time=None):
-        if expire_time is None:
-            expire_time = self.expire
-        val = pickle.dumps(identity)
-        self.module.redis_manager.setex(self.prefix + uid, expire_time, val)
-        if expire is False:
-            self.module.redis_manager.persist(self.prefix + uid)
-        self.logger.info(u'Set identity %s in redis' % uid)
-        User(self).send_event(u'identity.add', params={u'uid':uid})
-    
-    @watch
-    def remove_identity(self, uid):
-        if self.module.redis_manager.get(self.prefix + uid) is None:
-            err = u'Identity %s does not exist' % uid
-            User(self).send_event(u'identity.remove', params={u'uid':uid}, 
-                                  exception=err)
-            self.logger.error(err)
-            raise ApiManagerError(err, code=404)            
-        
-        try:
-            self.module.redis_manager.delete(self.prefix + uid)
-            self.logger.debug(u'Remove identity %s from redis' % uid)
-            User(self).send_event(u'identity.remove', params={u'uid':uid})      
-            return uid
-        except Exception as ex:
-            err = u'Can not remove identity %s' % uid
-            User(self).send_event(u'identity.remove', params={u'uid':uid}, 
-                                  exception=err)  
-            self.logger.error(err)
-            raise ApiManagerError(err, code=400)       
-
-    @watch
-    def exist_identity(self, uid):
-        """Get identity
-        :return: True or False
-        :rtype: dict
-        """
-        try:
-            identity = self.module.redis_manager.get(self.prefix + uid)
-        except Exception as ex:
-            self.logger.warn(u'Identity %s retrieve error: %s' % (uid, ex))
-            return False
-        
-        if identity is not None:
-            self.logger.debug(u'Identity %s exists' % (uid))           
-            return True
-        else:
-            self.logger.warn(u'Identity does not %s exists' % (uid))           
-            return False
-
-    @watch
-    def get_identity(self, uid):
-        """Get identity
-        :return: {u'uid':..., u'user':..., u'timestamp':..., u'pubkey':..., 
-                  'seckey':...}
-        :rtype: dict
-        """
-        try:
-            identity = self.module.redis_manager.get(self.prefix + uid)
-        except Exception as ex:
-            self.logger.error(u'Identity %s retrieve error: %s' % (uid, ex))
-            raise ApiManagerError(u'Identity %s retrieve error' % uid, code=404)
-            
-        if identity is not None:
-            data = pickle.loads(identity)
-            data[u'ttl'] = self.module.redis_manager.ttl(self.prefix + uid)
-            self.logger.debug(u'Get identity %s from redis: %s' % 
-                              (uid, truncate(data)))   
-            return data
-        else:
-            self.logger.error(u'Identity %s does not exist or is expired' % uid)
-            raise ApiManagerError(u'Identity %s does not exist or is '\
-                                  u'expired' % uid, code=404)
-
-    @watch
-    def get_identities(self):
-        try:
-            res =  []
-            for key in self.module.redis_manager.keys(self.prefix+'*'):
-                identity = self.module.redis_manager.get(key)
-                data = pickle.loads(identity)
-                data[u'ttl'] = self.module.redis_manager.ttl(key)
-                res.append(data)
-        except Exception as ex:
-            self.logger.error(u'No identities found: %s' % ex)
-            raise ApiManagerError(u'No identities found')
-        
-        User(self).send_event(u'identity.list', params={}) 
-        self.logger.debug(u'Get identities from redis: %s' % truncate(res))
-        return res    
-    
-    @watch
-    def _gen_authorizaion_key(self, user, domain, name, login_ip, attrib):
-        '''Generate asymmetric key for keyauth filter.
-        
-        :param name: user name
-        :param domain: user authentication domain
-        :param password: user password
-        :param login_ip: user login_ip
-        :param attrib: user attributes
-        
-        :raise ApiManagerError: 
-        '''
-        opts = {
-            u'name':name, 
-            u'domain':domain, 
-            u'password':u'xxxxxxx', 
-            u'login_ip':login_ip
-        }
-        user_name = u'%s@%s' % (name, domain) 
-        
-        try:
-            uid = id_gen(20)
-            timestamp = datetime.now()#.strftime(u'%H-%M_%d-%m-%Y')     
-            private_key = rsa.generate_private_key(public_exponent=65537,
-                                                   key_size=1024,
-                                                   backend=default_backend())        
-            public_key = private_key.public_key()
-            pem = public_key.public_bytes(encoding=serialization.Encoding.PEM,
-                        format=serialization.PublicFormat.SubjectPublicKeyInfo)    
-            pubkey = binascii.b2a_base64(pem)
-            pem = private_key.private_bytes(encoding=serialization.Encoding.PEM,
-                        format=serialization.PrivateFormat.TraditionalOpenSSL, 
-                        encryption_algorithm=serialization.NoEncryption())    
-            seckey = binascii.b2a_base64(pem)
-            
-            # create identity
-            identity = {u'uid':uid,
-                        u'type':u'keyauth',
-                        u'user':user.get_dict(),
-                        u'timestamp':timestamp,
-                        u'ip':login_ip,
-                        u'pubkey':pubkey,
-                        u'seckey':seckey}
-            self.logger.debug(u'Create user %s identity: %s' % 
-                              (user_name, truncate(identity)))
-            operation.user = (user_name, login_ip, uid)
-            
-            # save identity in redis
-            expire = True
-            if attrib[u'sys_type'][0] == u'SYS':
-                self.logger.debug(u'Login system user')
-                #expire = False
-            self.set_identity(uid, identity, expire=expire)
-    
-            '''
-            res = {u'uid':uid,
-                   u'type':u'keyauth',
-                   u'user':user.get_dict(),
-                   u'timestamp':timestamp,
-                   u'pubkey':pubkey,
-                   u'seckey':seckey}
-            '''
-            res = {
-                u'token_type':u'Bearer',
-                u'user':user.get_dict().get(u'id'),
-                u'access_token':uid,
-                u'pubkey':pubkey,
-                u'seckey':seckey,
-                u'expires_in':self.expire,
-                u'expires_at':timestamp+timedelta(seconds=self.expire),
-            }  
-        except Exception as ex:
-            self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=401)            
-        
-        return res
-    
-    @watch
-    def _set_user_attribs(self, user, attribs):
-        """Set user attributes"""
-        user.set_attributes(attribs)
-    
-    @watch
-    def _set_user_perms(self, dbuser, user):
-        """Set user permissions """
-        perms = self.dbauth.get_user_permissions2(dbuser)
-        user.set_perms(perms)
-    
-    @watch
-    def _set_user_roles(self, dbuser, user):
-        """Set user roles """    
-        roles, total = self.dbauth.get_user_roles(dbuser)
-        user.set_roles([r.name for r in roles])    
-    
-    #
-    # base inner login
-    #
-    @watch
-    def validate_login_params(self, name, domain, password, login_ip):
-        """Validate main login params.
-        
-        :param name: user name
-        :param domain: user authentication domain
-        :param password: user password
-        :param login_ip: user login_ip
-        
-        :raise ApiManagerError:        
-        """
-        if domain is None:
-            domain = u'local'    
-    
-        # set user in thread local variable
-        operation.user = (u'%s@%s' % (name, domain), login_ip, None)    
-    
-        # Validate input data and login user
-        try:
-            if name.strip() == u'':
-                msg = u'Username is not provided or syntax is wrong'
-                self.logger.error(msg)
-                raise ApiManagerError(msg, code=400)
-            if password.strip() == u'':
-                msg = u'Password is not provided or syntax is wrong'
-                self.logger.error(msg)
-                raise ApiManagerError(msg, code=400)
-            if domain.strip() == u'':
-                msg = u'Domain is not provided or syntax is wrong'
-                self.logger.error(msg)
-                raise ApiManagerError(msg, code=400)
-            
-            try:
-                login_ip = gethostbyname(login_ip)
-                IPv4Address(str2uni(login_ip))
-            except Exception as ex:
-                msg = u'Ip address is not provided or syntax is wrong'
-                self.logger.error(msg, exc_info=1)
-                raise ApiManagerError(msg, code=400)
-            
-            self.logger.debug(u'User %s@%s:%s validated' % 
-                              (name, domain, login_ip))        
-        except ApiManagerError as ex:
-            raise ApiManagerError(ex.value, code=ex.code)
-    
-    @watch
-    def check_login_user(self, name, domain, password, login_ip):
-        """Simple http authentication login.
-        
-        :param name: user name
-        :param domain: user authentication domain
-        :param password: user password
-        :param login_ip: user login_ip
-        
-        :return: database user instance, user attributes as dict
-        :raise ApiManagerError:        
-        """
-        # verify user exists in beehive database
-        try:
-            user_name = u'%s@%s' % (name, domain)
-            dbuser = self.dbauth.get_users(name=user_name)[0][0]
-            # get user attributes
-            dbuser_attribs = {a.name:(a.value, a.desc) for a in dbuser.attrib}
-        except (QueryError, Exception) as ex:
-            msg = u'User %s does not exist' % user_name
-            self.logger.error(msg, exc_info=1)
-            raise ApiManagerError(msg, code=404)
-        
-        self.logger.debug(u'User %s exists' % user_name)
-        
-        return dbuser, dbuser_attribs   
-    
-    @watch
-    def base_login(self, name, domain, password, login_ip, 
-                     dbuser, dbuser_attribs):
-        """Base login.
-        
-        :param name: user name
-        :param domain: user authentication domain
-        :param password: user password
-        :param login_ip: user login_ip
-        :param dbuser: database user instance
-        :param dbuser_attribs: user attributes as dict
-        :return: SystemUser instance, user attributes as dict
-        :raise ApiManagerError:
-        """
-        opts = {
-            u'name':name, 
-            u'domain':domain, 
-            u'password':u'xxxxxxx', 
-            u'login_ip':login_ip
-        }        
-        
-        # login user
-        try:
-            user = self.module.authentication_manager.login(name, password, 
-                                                            domain, login_ip)
-        except (AuthError) as ex:
-            self.logger.error(ex.desc)
-            raise ApiManagerError(ex.desc, code=401)
-        
-        self.logger.info(u'Login user: %s' % user)
-        
-        # append attributes, roles and perms to SystemUser
-        try:
-            # set user attributes
-            #self._set_user_attribs(user, dbuser_attribs)
-            # set user permission
-            self._set_user_perms(dbuser, user)
-            # set user roles
-            self._set_user_roles(dbuser, user)
-        except QueryError as ex:
-            self.logger.error(ex.desc)
-            raise ApiManagerError(ex.desc, code=401)
-        
-        return user, dbuser_attribs
-    #
-    # simple http login
-    #
-    @watch
-    def simple_http_login(self, name, domain, password, login_ip):
-        """Simple http authentication login
-        
-        :param name: user name
-        :param domain: user authentication domain
-        :param password: user password
-        :param login_ip: user login_ip
-        :return: True
-        :raise ApiManagerError:
-        """
-        opts = {
-            u'name':name, 
-            u'domain':domain, 
-            u'password':u'xxxxxxx', 
-            u'login_ip':login_ip
-        }
-        user_name = u'%s@%s' % (name, domain)
-        
-        # validate input params
-        try:
-            self.validate_login_params(name, domain, password, login_ip)
-        except ApiManagerError as ex:
-            User(self).send_event(u'simplehttp.login.add', params=opts, 
-                                  exception=ex)
-            raise
-        
-        # check user
-        try:
-            dbuser, dbuser_attribs = self.check_login_user(name, domain, 
-                                                       password, login_ip)
-        except ApiManagerError as ex:
-            User(self).send_event(u'simplehttp.login.add', params=opts, 
-                                  exception=ex)
-            raise
-        
-        # check user has authentication filter
-        auth_filters = dbuser_attribs.get(u'auth-filters', (u'', None))[0].split(u',')
-        if u'simplehttp' not in auth_filters:
-            msg = u'Simple http authentication is not allowed for user %s' % \
-                  user_name
-            User(self).send_event(u'simplehttp.login.add', params=opts, 
-                                  exception=msg)
-            self.logger.error(msg)
-            raise ApiManagerError(msg, code=401)
-        
-        # check user ip is in allowed cidr
-        auth_cidrs = dbuser_attribs.get(u'auth-cidrs', u'')[0].split(u',')
-        allowed = False
-        for auth_cidr in auth_cidrs:
-            allowed_cidr = IPv4Network(str2uni(auth_cidr))
-            user_ip = IPv4Network(u'%s/32' % login_ip)
-            if user_ip.overlaps(allowed_cidr) is True:
-                allowed = True
-                break
-        
-        if allowed is False:
-            msg = u'User %s ip %s can not perform simple http authentication' % \
-                  (user_name, login_ip)
-            User(self).send_event(u'simplehttp.login.add', params=opts, 
-                                  exception=msg)
-            self.logger.error(msg)
-            raise ApiManagerError(msg, code=401)            
-        
-        # login user
-        try:
-            user, attrib = self.base_login(name, domain, password, login_ip, 
-                                           dbuser, dbuser_attribs)
-        except ApiManagerError as ex:
-            User(self).send_event(u'simplehttp.login.add', params=opts, 
-                                  exception=ex)
-            raise
-        
-        res = {u'uid':id_gen(20),
-               u'type':u'simplehttp',
-               u'user':user.get_dict(),
-               u'timestamp':datetime.now().strftime(u'%y-%m-%d-%H-%M')}        
-    
-        User(self).send_event(u'simplehttp.login.add', params=opts)
-        
-        return res
-    
-    #
-    # keyauth login, logout, refresh_user
-    #
-    @watch
-    def login(self, name, domain, password, login_ip):
-        """Asymmetric keys authentication login
-        
-        :param name: user name
-        :param domain: user authentication domain
-        :param password: user password
-        :param login_ip: user login_ip
-        :return: True
-        :raise ApiManagerError:
-        """
-        opts = {
-            u'name':name, 
-            u'domain':domain, 
-            u'password':u'xxxxxxx', 
-            u'login_ip':login_ip
-        }        
-        
-        # validate input params
-        try:
-            self.validate_login_params(name, domain, password, login_ip)
-        except ApiManagerError as ex:
-            User(self).send_event(u'keyauth.token.add', params=opts, 
-                                  exception=ex)
-            raise
-        
-        # check user
-        try:
-            dbuser, dbuser_attribs = self.check_login_user(name, domain, 
-                                                       password, login_ip)
-        except ApiManagerError as ex:
-            User(self).send_event(u'keyauth.token.add', params=opts, 
-                                  exception=ex)
-            raise     
-        
-        # check user attributes
-        
-        # login user
-        try:
-            user, attrib = self.base_login(name, domain, password, login_ip, 
-                                           dbuser, dbuser_attribs)
-        except ApiManagerError as ex:
-            User(self).send_event(u'keyauth.token.add', params=opts, 
-                                  exception=ex)
-        
-        # generate asymmetric keys
-        res = self._gen_authorizaion_key(user, domain, name, login_ip, attrib)
-
-        User(self).send_event(u'keyauth.token.add', params=opts)
-        
-        return res
-    
-    @watch
-    def logout(self, uid, sign, data):
-        """Logout user
-        """
-        # get identity and verify signature
-        #identity = self.verify_request_signature(uid, sign, data)
-        #operation.user = (identity[u'user'][u'name'], identity[u'ip'], identity[u'uid'])
-        identity = self.get_identity(uid)
-        
-        try:
-            # remove identity from redis
-            self.remove_identity(identity[u'uid'])
-    
-            res = u'Identity %s successfully logout' % identity[u'uid']
-            self.logger.debug(res)
-            User(self).send_event(u'keyauth-login.remove', params={u'uid':uid})
-        except Exception as ex:
-            User(self).send_event(u'keyauth-login.remove', params={u'uid':uid}, 
-                                  exception=ex)
-            self.logger.error(ex.desc)
-            raise ApiManagerError(ex.desc, code=400)
-                
-        return res
-    
-    @watch
-    def refresh_user(self, uid, sign, data):
-        """Refresh permissions stored in redis identity for a logged user
-        """
-        self.logger.info(u'Refresh identity: %s' % uid)        
-        identity = self.get_identity(uid)
-        #user = identity[u'user']
-        
-        user_name = operation.user[0]
-        name, domain = user_name.split(u'@')
-        res = None
-        
-        try:
-            # reresh user in authentication manager
-            user = self.module.authentication_manager.refresh(uid, name, domain)            
-            # get user reference in db
-            dbuser = self.dbauth.get_users(name=user_name)[0]
-            # set user attributes
-            self._set_user_attribs(dbuser, user)
-            # set user permission
-            self._set_user_perms(dbuser, user)
-            # set user roles
-            self._set_user_roles(dbuser, user)
-            
-            # set user in identity
-            identity[u'user'] = user.get_dict()
-            
-            # save identity in redis
-            self.set_identity(uid, identity)
-            
-            res = {u'uid':uid,
-                   u'user':user.get_dict(),
-                   u'timestamp':identity[u'timestamp'],
-                   u'pubkey':identity[u'pubkey'],
-                   u'seckey':identity[u'seckey']}   
-
-            User(self).send_event(u'keyauth-login.modify', params={u'uid':uid})
-        except QueryError as ex:
-            User(self).send_event(u'keyauth-login.modify', params={u'uid':uid}, 
-                                  exception=ex)
-            self.logger.error(ex.desc, exc_info=1)
-            raise ApiManagerError(ex.desc, code=400)
-        except Exception as ex:
-            User(self).send_event(u'keyauth-login.modify', params={u'uid':uid}, 
-                                  exception=ex)
-            self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=400)        
-
-        return res
-
-class AuthObject(ApiObject):
-    objtype = u'auth'
-    objdef = u'abstract'
-    objdesc = u'Authorization abstract object'
-    
-    def __init__(self, controller, oid=None, objid=None, name=None, desc=None, 
-                 active=True, model=None):
-        ApiObject.__init__(self, controller, oid=oid, objid=objid, name=name, 
-                           desc=desc, active=active)
-        self.model = model
-    
-    def __del__(self):
-        pass    
-    
-    @property
-    def dbauth(self):
-        return self.controller.dbauth    
-    
-    def set_admin_permissions(self, role_name, args):
-        """Set admin permissions
-        """
-        try:
-            role, total = self.dbauth.get_roles(name=role_name)
-            perms, total = self.dbauth.get_permission_by_object(
-                                    objid=self._get_value(self.objdef, args),
-                                    objtype=None, 
-                                    objdef=self.objdef,
-                                    action=u'*')            
-            
-            # set container main permissions
-            self.dbauth.append_role_permissions(role[0], perms)
-        except Exception as ex:
+            Group(self).send_event(u'insert', params=params, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
 
@@ -1138,10 +468,10 @@ class Objects(AuthObject):
 
             res = [{u'id':i.id, u'subsystem':i.objtype, u'type':i.objdef}
                     for i in data] #if i.objtype != u'event']
-            self.send_event(u'type.list', params=opts)
+            self.send_event(u'type.view', params=opts)
             return res, total
         except QueryError as ex:
-            self.send_event(u'type.list', params=opts, exception=ex)         
+            self.send_event(u'type.view', params=opts, exception=ex)         
             self.logger.error(ex, exc_info=1)
             return [], 0
     
@@ -1159,10 +489,10 @@ class Objects(AuthObject):
         try:
             data = [(i[u'subsystem'], i[u'type']) for i in obj_types]
             res = self.dbauth.add_object_types(data)
-            self.send_event(u'type.add', params=obj_types)
+            self.send_event(u'type.insert', params=obj_types)
             return [i.id for i in res]
         except TransactionError as ex:
-            self.send_event(u'type.add', params=obj_types, exception=ex)
+            self.send_event(u'type.insert', params=obj_types, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
     
@@ -1185,10 +515,10 @@ class Objects(AuthObject):
         try:  
             res = self.dbauth.remove_object_type(oid=oid, objtype=objtype, 
                                                  objdef=objdef)
-            self.send_event(u'type.add', params=params)          
+            self.send_event(u'type.delete', params=params)          
             return res
         except TransactionError as ex:
-            self.send_event(u'type.add', params=params, exception=ex)
+            self.send_event(u'type.delete', params=params, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -1217,10 +547,10 @@ class Objects(AuthObject):
             if type(data) is not list:
                 data = [data]            
             res = [{u'id':i.id, u'value':i.value} for i in data]
-            self.send_event(u'action.list', params=params)
+            self.send_event(u'action.view', params=params)
             return res
         except QueryError as ex:
-            self.send_event(u'action.list', params=params, exception=ex)
+            self.send_event(u'action.view', params=params, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex)
 
@@ -1238,10 +568,10 @@ class Objects(AuthObject):
 
         try:  
             res = self.dbauth.add_object_actions(actions)
-            self.send_event(u'action.add', params=actions)
+            self.send_event(u'action.insert', params=actions)
             return True
         except TransactionError as ex:
-            self.send_event(u'action.add', params=actions, exception=ex)
+            self.send_event(u'action.insert', params=actions, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
         
@@ -1262,10 +592,10 @@ class Objects(AuthObject):
                 
         try:
             res = self.dbauth.remove_object_action(oid=oid, value=value)
-            self.send_event(u'action.remove', params=params)
+            self.send_event(u'action.delete', params=params)
             return res
         except TransactionError as ex:
-            self.send_event(u'action.remove', params=params, exception=ex)
+            self.send_event(u'action.delete', params=params, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -1308,14 +638,14 @@ class Objects(AuthObject):
                 u'desc':i.desc
             } for i in data]
             self.logger.debug(u'Get objects: %s' % len(res))
-            self.send_event(u'list', params=opts)
+            self.send_event(u'view', params=opts)
             return res, total
         except QueryError as ex:
-            self.send_event(u'list', params=opts, exception=ex)
+            self.send_event(u'view', params=opts, exception=ex)
             self.logger.error(ex.desc, exc_info=1)
             return [], 0
         except Exception as ex:
-            self.send_event(u'list', params=opts, exception=ex)          
+            self.send_event(u'view', params=opts, exception=ex)          
             self.logger.error(ex, exc_info=1)
             return [], 0        
 
@@ -1350,10 +680,10 @@ class Objects(AuthObject):
 
             res = self.dbauth.add_object(data, actions)
             self.logger.debug(u'Add objects: %s' % res)
-            self.send_event(u'add', params=objs)
+            self.send_event(u'insert', params=objs)
             return res
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'add', params=objs, exception=ex)
+            self.send_event(u'insert', params=objs, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)  
 
@@ -1391,10 +721,10 @@ class Objects(AuthObject):
             else:
                 res = self.dbauth.remove_object(oid=oid, objid=objid)
             self.logger.debug(u'Remove objects: %s' % res)
-            self.send_event(u'remove', params=opts)
+            self.send_event(u'delete', params=opts)
             return res
         except TransactionError as ex:
-            self.send_event(u'remove', params=opts, exception=ex)     
+            self.send_event(u'delete', params=opts, exception=ex)     
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)          
 
@@ -1435,10 +765,10 @@ class Objects(AuthObject):
                     i.action.value, i.obj.desc) for i in res]            
 
             self.logger.debug(u'Get permissions: %s' % len(res))
-            self.send_event(u'perms.list', params=opts)          
+            self.send_event(u'perms.view', params=opts)          
             return res
         except QueryError as ex:
-            self.send_event(u'perms.list', params=opts, exception=ex)
+            self.send_event(u'perms.view', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             return []
 
@@ -1502,10 +832,10 @@ class Objects(AuthObject):
                 })
                 
             self.logger.debug(u'Get permissions: %s' % len(res))
-            self.send_event(u'perms.list', params=opts)           
+            self.send_event(u'perms.view', params=opts)           
             return res, total
         except QueryError as ex:
-            self.send_event(u'perms.list', params=opts, exception=ex)
+            self.send_event(u'perms.view', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             return [], 0
 
@@ -1597,10 +927,10 @@ class Role(AuthObject):
                 })                
             self.logger.debug(u'Get role %s permissions: %s' % (
                                         self.name, truncate(role_perms)))
-            self.send_event(u'perms.list', params=opts)           
+            self.send_event(u'perms.view', params=opts)           
             return role_perms, total
         except QueryError as ex:
-            self.send_event(u'perms.list', params=opts, exception=ex)
+            self.send_event(u'perms.view', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             return [], 0    
 
@@ -1632,10 +962,10 @@ class Role(AuthObject):
             
             res = self.dbauth.append_role_permissions(self.model, roleperms)
             self.logger.debug(u'Append role %s permission : %s' % (self.name, perms))
-            self.send_event(u'perms-set.modify', params=opts)            
+            self.send_event(u'perms-set.update', params=opts)            
             return res
         except QueryError as ex:
-            self.send_event(u'perms-set.modify', params=opts, exception=ex)         
+            self.send_event(u'perms-set.update', params=opts, exception=ex)         
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex)
 
@@ -1666,27 +996,27 @@ class Role(AuthObject):
             
             res = self.dbauth.remove_role_permission(self.model, roleperms)
             self.logger.debug(u'Remove role %s permission : %s' % (self.name, perms))
-            self.send_event(u'perms-unset.modify', params=opts)       
+            self.send_event(u'perms-unset.update', params=opts)       
             return res
         except QueryError as ex:
-            self.send_event(u'perms-unset.modify', params=opts, exception=ex)
+            self.send_event(u'perms-unset.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex)
 
-class User(AuthObject):
+class User(BaseUser):
     objdef = u'User'
     objdesc = u'System users'
     
     def __init__(self, controller, oid=None, objid=None, name=None, desc=None, 
                  model=None, active=True):
-        AuthObject.__init__(self, controller, oid=oid, objid=objid, name=name, 
+        BaseUser.__init__(self, controller, oid=oid, objid=objid, name=name, 
                             desc=desc, active=active, model=model)
         
         self.update_object = self.dbauth.update_user
         self.delete_object = self.dbauth.remove_user        
         
         if self.model is not None:
-            self.uuid = self.model.uuid     
+            self.uuid = self.model.uuid
 
     @watch
     def info(self):
@@ -1757,10 +1087,10 @@ class User(AuthObject):
                 self.deregister_object([self.objid])
             
             self.logger.debug(u'Delete %s: %s' % (self.objdef, self.oid))
-            self.send_event(u'remove', params=params)
+            self.send_event(u'delete', params=params)
             return res
         except TransactionError as ex:
-            self.send_event(u'remove', params=params, exception=ex)         
+            self.send_event(u'delete', params=params, exception=ex)         
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -1795,10 +1125,10 @@ class User(AuthObject):
                                                  desc=desc, new_name=new_name)
             self.logger.debug(u'Set user %s attribute %s: %s' % 
                               (self.name, name, value))
-            self.send_event(u'attrib-set.modify', params=opts)
+            self.send_event(u'attrib-set.update', params=opts)
             return res
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'attrib-set.modify', params=opts, exception=ex)
+            self.send_event(u'attrib-set.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
     
@@ -1820,10 +1150,10 @@ class User(AuthObject):
         try:
             res = self.dbauth.remove_user_attribute(self.model, name)
             self.logger.debug(u'Remove user %s attribute %s' % (self.name, name))
-            self.send_event(u'attrib-unset.modify', params=opts)
+            self.send_event(u'attrib-unset.update', params=opts)
             return res
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'attrib-unset.modify', params=opts, exception=ex)
+            self.send_event(u'attrib-unset.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
     
@@ -1846,7 +1176,7 @@ class User(AuthObject):
         try:
             role = self.controller.get_entity(role_id, self.dbauth.get_roles)         
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'role-set.modify', params=opts, exception=ex)
+            self.send_event(u'role-set.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -1867,10 +1197,10 @@ class User(AuthObject):
             else:
                 self.logger.debug(u'Role %s already linked with user %s' % (
                                             role, self.name))
-            self.send_event(u'role-set.modify', params=opts)
+            self.send_event(u'role-set.update', params=opts)
             return res
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'role-set.modify', params=opts, exception=ex)
+            self.send_event(u'role-set.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -1892,7 +1222,7 @@ class User(AuthObject):
         try:
             role = self.controller.get_entity(role_id, self.dbauth.get_roles)          
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'role-unset.modify', params=opts, exception=ex)
+            self.send_event(u'role-unset.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -1903,10 +1233,10 @@ class User(AuthObject):
         try:
             res = self.dbauth.remove_user_role(self.model, role)
             self.logger.debug(u'Remove role %s from user %s' % (role, self.name))
-            self.send_event(u'role-unset.modify', params=opts)           
+            self.send_event(u'role-unset.update', params=opts)           
             return res
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'role-unset.modify', params=opts, exception=ex)         
+            self.send_event(u'role-unset.update', params=opts, exception=ex)         
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -1944,10 +1274,10 @@ class User(AuthObject):
                 })                
             self.logger.debug(u'Get user %s permissions: %s' % (
                                         self.name, truncate(user_perms)))
-            self.send_event(u'perms.list', params=opts)
+            self.send_event(u'perms.view', params=opts)
             return user_perms, total
         except QueryError as ex:
-            self.send_event(u'perms.list', params=opts, exception=ex)
+            self.send_event(u'perms.view', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex)
         return [], 0
@@ -2040,7 +1370,7 @@ class Group(AuthObject):
         self.delete_object = self.dbauth.remove_group
         
         if self.model is not None:
-            self.uuid = self.model.uuid          
+            self.uuid = self.model.uuid
 
     @watch
     def info(self):
@@ -2105,10 +1435,10 @@ class Group(AuthObject):
                 self.deregister_object([self.objid])
             
             self.logger.debug(u'Delete %s: %s' % (self.objdef, self.oid))
-            self.send_event(u'remove', params=params)
+            self.send_event(u'delete', params=params)
             return res
         except TransactionError as ex:
-            self.send_event(u'remove', params=params, exception=ex)         
+            self.send_event(u'delete', params=params, exception=ex)         
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -2130,7 +1460,7 @@ class Group(AuthObject):
         try:
             role = self.controller.get_entity(role_id, self.dbauth.get_roles)
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'role-set.modify', params=opts, exception=ex)
+            self.send_event(u'role-set.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -2146,10 +1476,10 @@ class Group(AuthObject):
             else:
                 self.logger.debug(u'Role %s already linked with group %s' % (
                                             role, self.name))
-            self.send_event(u'role-set.modify', params=opts)
+            self.send_event(u'role-set.update', params=opts)
             return res
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'role-set.modify', params=opts, exception=ex)
+            self.send_event(u'role-set.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -2171,7 +1501,7 @@ class Group(AuthObject):
         try:
             role = self.controller.get_entity(role_id, self.dbauth.get_roles) 
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'role-unset.modify', params=opts, exception=ex)
+            self.send_event(u'role-unset.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -2182,10 +1512,10 @@ class Group(AuthObject):
         try:
             res = self.dbauth.remove_group_role(self.model, role)
             self.logger.debug(u'Remove role %s from group %s' % (role, self.name))
-            self.send_event(u'role-unset.modify', params=opts)          
+            self.send_event(u'role-unset.update', params=opts)          
             return res
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'role-unset.modify', params=opts, exception=ex)        
+            self.send_event(u'role-unset.update', params=opts, exception=ex)        
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -2207,7 +1537,7 @@ class Group(AuthObject):
         try:
             user = self.controller.get_entity(user_id, self.dbauth.get_users)
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'user-set.modify', params=opts, exception=ex)
+            self.send_event(u'user-set.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -2223,10 +1553,10 @@ class Group(AuthObject):
             else:
                 self.logger.debug(u'User %s already linked with group %s' % (
                                             user, self.name))
-            self.send_event(u'user-set.modify', params=opts)
+            self.send_event(u'user-set.update', params=opts)
             return res
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'user-set.modify', params=opts, exception=ex)
+            self.send_event(u'user-set.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -2248,7 +1578,7 @@ class Group(AuthObject):
         try:
             user = self.controller.get_entity(user_id, self.dbauth.get_users)   
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'user-unset.modify', params=opts, exception=ex)
+            self.send_event(u'user-unset.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -2259,10 +1589,10 @@ class Group(AuthObject):
         try:
             res = self.dbauth.remove_group_user(self.model, user)
             self.logger.debug(u'Remove user %s from group %s' % (user, self.name))
-            self.send_event(u'user-unset.modify', params=opts)       
+            self.send_event(u'user-unset.update', params=opts)       
             return res
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'user-unset.modify', params=opts, exception=ex)    
+            self.send_event(u'user-unset.update', params=opts, exception=ex)    
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -2300,10 +1630,10 @@ class Group(AuthObject):
                 })                
             self.logger.debug(u'Get group %s permissions: %s' % (
                                         self.name, truncate(group_perms)))
-            self.send_event(u'perm.list', params=opts)
+            self.send_event(u'perm.view', params=opts)
             return group_perms, total
         except QueryError as ex:
-            self.send_event(u'perm.list', params=opts, exception=ex)
+            self.send_event(u'perm.view', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex)
         return [], 0
@@ -2383,5 +1713,5 @@ class Group(AuthObject):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex)
            
-        
+     
         

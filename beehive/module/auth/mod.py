@@ -1,7 +1,7 @@
-from .controller import AuthenticationManager
 from .controller import AuthController
 from .views import AuthorizationAPI, SimpleHttpAuthApi, KeyAuthApi
 from beehive.common.apimanager import ApiModule
+from beehive.common.controller.authorization import AuthenticationManager
 
 class AuthModule(ApiModule):
     """Beehive Authorization Module

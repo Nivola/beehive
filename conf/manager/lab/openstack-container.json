@@ -1,0 +1,11 @@
+{
+    "api":{
+        "user":"admin",
+        "project":"admin",
+        "domain":"default",
+        "uri":"http://172.25.3.52:5000/v3",
+        "timeout":5,
+        "pwd":"Opstkcs1",
+        "region":"RegionOne"
+    }
+}

@@ -11,7 +11,7 @@ from beecell.simple import import_class, id_gen, random_password, get_value
 from beehive.module.auth.controller import Objects, Role, User
 from beehive.common.apiclient import BeehiveApiClient, BeehiveApiClientError
 from beehive.module.catalog.controller import Catalog
-from beehive.common.config import ConfigDbManager
+from beehive.common.model.config import ConfigDbManager
 from beecell.db.manager import RedisManager
 
 try:

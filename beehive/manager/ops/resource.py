@@ -407,7 +407,8 @@ class ResourceManager(ApiManager):
         uri = u'%s/resource-tags/' % self.baseuri        
         res = self._call(uri, u'POST', data=data)
         self.logger.info(res)
-        self.result(res)
+        res = {u'msg':u'Add tag %s' % res}
+        self.result(res, headers=[u'msg'])
 
     def test_count_tags(self):
         uri = u'%s/resource-tags/count/' % self.baseuri        

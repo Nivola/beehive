@@ -23,6 +23,7 @@ class EventManager(ApiManager):
     
     PARAMS:
         types list
+        entities list
         events list <field>=<value>
         events get <event_id> 
         
@@ -45,11 +46,11 @@ class EventManager(ApiManager):
         self.logger = logger
         self.msg = None
         self.headers = [
-            u'id',
+            #u'id',
             u'event_id',
-            u'objtype',
-            u'objdef',
-            u'objid',
+            #u'objtype',
+            #u'objdef',
+            #u'objid',
             u'type',
             u'date',
             u'data.op',
@@ -61,6 +62,7 @@ class EventManager(ApiManager):
     def actions(self):
         actions = {
             u'types.list': self.get_types,
+            u'entities.list': self.get_entities,
             u'events.list': self.get_events,
             u'events.get': self.get_event
         }
@@ -74,19 +76,28 @@ class EventManager(ApiManager):
         res = self._call(uri, u'GET')
         self.logger.info(u'Get event types: %s' % truncate(res))
         self.result(res, key=u'event-types', headers=[u'event type'])
+        
+    def get_entities(self):
+        uri = u'%s/entities/' % self.baseuri
+        res = self._call(uri, u'GET')
+        self.logger.info(u'Get event entities: %s' % truncate(res))
+        self.result(res, key=u'event-entities', headers=[u'event entity'])        
 
     def get_events(self, *args):
         data = self.format_http_get_query_params(*args)
+        params = self.get_query_params(*args)
         uri = u'%s/' % (self.baseuri)
         res = self._call(uri, u'GET', data=data)
         self.logger.info(u'Get events: %s' % truncate(res))
         print(u'Page: %s' % res[u'page'])
         print(u'Count: %s' % res[u'count'])
         print(u'Total: %s' % res[u'total'])
+        print(u'Order: %s %s' % (params.get(u'field', u'id'), 
+                                 params.get(u'order', u'DESC')))        
         self.result(res, key=u'events', headers=self.headers)
     
     def get_event(self, oid):
         uri = u'%s/%s/' % (self.baseuri, oid)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get event: %s' % truncate(res))
-        self.result(res, key=u'event', headers=self.headers)
+        self.result(res, key=u'event', headers=self.headers, details=True)

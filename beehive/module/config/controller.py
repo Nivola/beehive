@@ -9,7 +9,7 @@ from beecell.auth import extract
 from beecell.perf import watch
 from beecell.simple import id_gen
 from beehive.common.apimanager import ApiController, ApiManagerError, ApiObject
-from beehive.common.config import ConfigDbManager
+from beehive.common.model.config import ConfigDbManager
 from beecell.db import TransactionError
 
 class ConfigController(ApiController):

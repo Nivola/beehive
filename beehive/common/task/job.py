@@ -7,7 +7,7 @@ import ujson as json
 from time import time
 from beehive.common.task import BaseTask
 from celery.utils.log import get_task_logger
-from beehive.common.apimanager import ApiManagerError, ApiEvent
+from beehive.common.apimanager import ApiManagerError, ApiEvent, ApiObject
 from celery.result import AsyncResult, GroupResult
 from beehive.common.data import operation
 from beehive.common.task.manager import task_manager
@@ -287,9 +287,13 @@ class Job(BaseTask):
         response = [status, elapsed]
         if ex is not None:
             response.append(ex)
+        action = task_local.op.split(u'.')[-1]
+        op = task_local.op
+        op = op.replace(action, u'')
         evt = ApiEvent(task_local.controller, oid=None, objid=task_local.objid,
+                       action=action,
                        data={u'opid':task_local.opid, 
-                             u'op':task_local.op,
+                             u'op':op,
                              u'taskid':self.request.id, 
                              u'task':self.name,
                              u'params':self.request.args,
@@ -298,7 +302,7 @@ class Job(BaseTask):
         entity_class = task_local.entity_class
         evt.objtype =  entity_class.objtype
         evt.objdef =  entity_class.objdef
-        evt.publish(entity_class.objtype, u'asyncop')
+        evt.publish(entity_class.objtype, ApiObject.ASYNC_OPERATION)
         
         # log message
         if msg is not None:

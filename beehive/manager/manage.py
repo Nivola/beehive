@@ -54,15 +54,21 @@ def main(run_path, argv):
     """
     SECTIONs:
         platform
-        subsystem
-        client
         auth
         oauth2
         keyauth
+        catalog
+        event
         monitor
         resource
         scheduler
         provider
+        config
+        vsphere
+        nsx
+        openstack
+        native.vsphere
+        native.openstack
         
     PARAMs:
         <custom section param>, ..
@@ -201,7 +207,6 @@ def main(run_path, argv):
                                       1024*1024, 5, lfrmt)
 
     logging.captureWarnings(True)
-    logger.warn(u'pippo')
 
     try:
         manager = main

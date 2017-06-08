@@ -84,7 +84,8 @@ def transaction(fn):
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
             if ex.code not in [409]:
-                logger.error(ex.desc, exc_info=1)
+                #logger.error(ex.desc, exc_info=1)
+                logger.error(ex.desc)
                               
             session.rollback()
             raise TransactionError(ex.desc, code=ex.code)
@@ -93,7 +94,8 @@ def transaction(fn):
             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
-            logger.error(ex.orig, exc_info=1)
+            #logger.error(ex.orig, exc_info=1)
+            logger.error(ex.orig)
 
             session.rollback()
             raise TransactionError(ex.orig)
@@ -102,7 +104,8 @@ def transaction(fn):
             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
-            logger.error(ex.orig, exc_info=1)
+            #logger.error(ex.orig, exc_info=1)
+            logger.error(ex.orig)
                   
             session.rollback()
             raise TransactionError(ex.orig)
@@ -112,7 +115,8 @@ def transaction(fn):
             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
-            logger.error(ex, exc_info=1)
+            #logger.error(ex, exc_info=1)
+            logger.error(ex)
         
             session.rollback()
             raise TransactionError(ex)        
@@ -160,7 +164,7 @@ def query(fn):
             logger.error(u'%s.%s - %s - query - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
-            logger.error(ex.desc, exc_info=1)
+            #logger.error(ex.desc, exc_info=1)
             logger.error(ex.desc)
             raise QueryError(ex.desc, code=ex.code)    
         except DBAPIError as ex:
@@ -168,7 +172,7 @@ def query(fn):
             logger.error(u'%s.%s - %s - query - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
-            logger.error(ex.orig, exc_info=1)
+            #logger.error(ex.orig, exc_info=1)
             logger.error(ex.orig)
             raise QueryError(ex.orig, code=400)
         except Exception as ex:
@@ -176,7 +180,7 @@ def query(fn):
             logger.error(u'%s.%s - %s - query - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
-            logger.error(ex, exc_info=1)
+            #logger.error(ex, exc_info=1)
             logger.error(ex)
 
             raise QueryError(ex, code=400)

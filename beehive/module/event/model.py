@@ -116,16 +116,34 @@ class EventDbManager(object):
         :raise QueryError: if query return error
         """
         session = self.get_session()
-        query = session.query(distinct(DbEvent.objdef)).all()
+        query = session.query(distinct(DbEvent.type)).all()
         res = [i[0] for i in query]
         
         if len(res) == 0:
-            self.logger.error("No event types found")
-            raise SQLAlchemyError("No event types found")            
+            self.logger.error(u'No event types found')
+            raise SQLAlchemyError(u'No event types found')            
         
         self.logger.debug(u'Get event types: %s' % truncate(res))
         
         return res
+    
+    @query
+    def get_entity_definitions(self):
+        """Get event entity definition. 
+        
+        :raise QueryError: if query return error
+        """
+        session = self.get_session()
+        query = session.query(distinct(DbEvent.objdef)).all()
+        res = [i[0].lower() for i in query]
+        
+        if len(res) == 0:
+            self.logger.error(u'No entity definitions found')
+            raise SQLAlchemyError(u'No entity definitions found')            
+        
+        self.logger.debug(u'Get entity definitions: %s' % truncate(res))
+        
+        return res    
 
     @query
     def gets(self, oid=None, etype=None, data=None, 

@@ -1821,6 +1821,51 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         return perms       
         
     @query
+    def get_login_permissions(self, user, *args, **kvargs):
+        """Get login user permissions.
+        
+        :param user: Orm User istance
+        :return: Pandas Series of SysObjectPermission
+        :rtype: pands.Series
+        :raises QueryError: raise :class:`QueryError`
+        """
+        session = self.get_session()
+        
+        if user is None:
+            raise ModelError(u'User is not correct or does not exist')
+        
+        # get all user roles
+        roles = []
+        user_roles = session.query(Role)\
+                            .join(RoleUser)\
+                            .filter(RoleUser.user_id == user.id).all()      
+        for role in user_roles:
+            roles.append(role.name)
+        for group in user.group:
+            for role in group.role:
+                roles.append(role.name)
+
+        # get user permissions from user roles
+        sql = [u'SELECT t4.id as id, t1.id as oid, t1.objid as objid, ',
+               u't2.objtype as objtype, t2.objdef as objdef, ',
+               u't3.id as aid, t3.value as action',
+               u'FROM sysobject t1, sysobject_type t2,',
+               u'sysobject_action t3, sysobject_permission t4,',
+               u'role t5, role_permission t6',
+               u'WHERE t4.obj_id=t1.id and t4.action_id=t3.id and',
+               u't1.type_id=t2.id and t6.role_id = t5.id and',
+               u't6.permission_id=t4.id and t5.name IN :role_name']
+
+        columns = [u'id', u'oid', u'objtype', u'objdef', u'objid', u'aid', 
+                   u'action']
+        perms = session.query(*columns).\
+                from_statement(text(" ".join(sql))).\
+                params(role_name=roles).all()
+
+        self.logger.debug(u'Get user %s perms: %s' % (user, truncate(perms)))
+        return perms
+        
+    @query
     def verify_user_password(self, user, password):
         """Verify user password.
         
@@ -1881,7 +1926,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         :raises TransactionError: raise :class:`TransactionError`
         """
         # generate new salt, and hash a password
-        if u'password' in kvargs:
+        if u'password' in kvargs and kvargs[u'password'] != None:
             kvargs[u'password'] = sha256_crypt.encrypt(kvargs[u'password'])
         res = self.update_entity(User, *args, **kvargs)
         return res  

@@ -100,6 +100,7 @@ class BeehiveApp(Flask):
         logname = uwsgi_util.opt[u'api_id']
         
         # base logging
+        file_name = u'%s/%s.log' % (self.log_path, logname)
         loggers = [self.logger,
                    logging.getLogger(u'oauthlib'),
                    logging.getLogger(u'beehive'),
@@ -110,21 +111,21 @@ class BeehiveApp(Flask):
                    logging.getLogger(u'beehive_monitor'),
                    logging.getLogger(u'beehive_service'),
                    logging.getLogger(u'beehive_resource')]
-        LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, 
-                                          u'%s/%s.log' % (self.log_path, logname),
+        LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, file_name,
                                           formatter=ColorFormatter)      
         
         # transaction and db logging
+        file_name = u'%s/%s.db.log' % (self.log_path, logname)
         loggers = [logging.getLogger(u'beehive.util.data'),
                    logging.getLogger(u'sqlalchemy.engine'),
                    logging.getLogger(u'sqlalchemy.pool')]
-        LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, 
-                                          u'%s/%s.db.log' % (self.log_path, logname))
+        LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, file_name)
         
         # performance logging
+        file_name = u'%s/%s.watch' % (self.log_path, logname)
+        file_name = u'%s/beehive.watch' % (self.log_path)
         loggers = [logging.getLogger(u'beecell.perf')]
-        LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, 
-                                          u'%s/%s.watch' % (self.log_path, logname), 
+        LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, file_name, 
                                           frmt=u'%(asctime)s - %(message)s')        
         
         #from openstack import utils

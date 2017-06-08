@@ -49,6 +49,12 @@ class GetEventTypes(ApiView):
         resp = controller.get_event_types()
         return {u'event-types':resp,
                 u'count':len(resp)}
+        
+class GetEventEntityDefinition(ApiView):
+    def dispatch(self, controller, data, *args, **kwargs):    
+        resp = controller.get_entity_definitions()
+        return {u'event-entities':resp,
+                u'count':len(resp)}        
 
 class GetEvent(ApiView):
     def dispatch(self, controller, data, oid, *args, **kwargs):    
@@ -65,6 +71,7 @@ class EventAPI(ApiView):
         rules = [
             (u'events', u'GET', GetEvents, {}),
             (u'events/types', u'GET', GetEventTypes, {}),
+            (u'events/entities', u'GET', GetEventEntityDefinition, {}),
             (u'events/<oid>', u'GET', GetEvent, {}),
         ]
 

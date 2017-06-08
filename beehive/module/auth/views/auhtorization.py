@@ -69,12 +69,17 @@ class GetToken(ApiView):
         res = {
             u'token':data[u'uid'],
             u'type':data[u'type'],
-            u'user':data[u'user'][u'name'],
+            u'user':data[u'user'],
             u'timestamp':data[u'timestamp'].strftime(u'%H-%M_%d-%m-%Y'), 
             u'ttl':data[u'ttl'], 
             u'ip':data[u'ip']}
         resp = {u'token':res}
         return resp
+
+class LoginExists(ApiView):
+    def dispatch(self, controller, data, oid, *args, **kwargs):
+        resp = controller.exist_identity(oid)
+        return {u'token':oid, u'exist':resp} 
 
 class DeleteToken(ApiView):
     def dispatch(self, controller, data, oid, *args, **kwargs):
@@ -691,7 +696,8 @@ class AuthorizationAPI(ApiView):
             
             (u'%s/tokens' % base, u'GET', ListTokens, {}),
             (u'%s/tokens/<oid>' % base, u'GET', GetToken, {}),
-            (u'%s/tokens/<oid>' % base, u'DELETE', DeleteToken, {}),            
+            (u'%s/tokens/<oid>' % base, u'DELETE', DeleteToken, {}),
+            (u'%s/tokens/<oid>/exist' % base, u'GET', LoginExists, {}),
             
             (u'%s/users' % base, u'GET', ListUsers, {}),
             (u'%s/users/<oid>' % base, u'GET', GetUser, {}),

@@ -325,17 +325,20 @@ class ComponentManager(object):
         
         :return: token
         """
+        token = None
         if os.path.isfile(self.token_file) is True:
             # get token
             f = open(self.token_file, u'r')
             token = f.read()
             f.close()
+        
+        seckey = None
+        if os.path.isfile(self.seckey_file) is True:
             # get secret key
             f = open(self.seckey_file, u'r')
             seckey = f.read()
             f.close()
-            return token, seckey
-        return None, None
+        return token, seckey
     
     def save_token(self, token, seckey):
         """Save token and secret key on a file.
@@ -347,9 +350,10 @@ class ComponentManager(object):
         f.write(token)
         f.close()
         # save secret key
-        f = open(self.seckey_file, u'w')
-        f.write(seckey)
-        f.close() 
+        if seckey is not None:
+            f = open(self.seckey_file, u'w')
+            f.write(seckey)
+            f.close() 
     
     @staticmethod
     def get_params(args):
@@ -421,17 +425,27 @@ class ApiManager(ComponentManager):
         if config[u'endpoint'] is None:
             raise Exception(u'Auth endpoint is not configured')
         
-        self.client = BeehiveApiClient(config[u'endpoint'], 
+        client_config = config.get(u'oauth2-client', None)
+        self.client = BeehiveApiClient(config[u'endpoint'],
+                                       config[u'authtype'],
                                        config[u'user'], 
                                        config[u'pwd'],
-                                       config[u'catalog'])
+                                       config[u'catalog'],
+                                       client_config=client_config)
         self.subsytem = None
         self.baseuri = None
         
-    def _call(self, uri, method, data=u'', headers=None):
         # get token
         self.client.uid, self.client.seckey  = self.get_token()        
+    
+        if self.client.uid is None:
+            # create token
+            self.client.create_token()
         
+            # set token
+            self.save_token(self.client.uid, self.client.seckey)        
+        
+    def _call(self, uri, method, data=u'', headers=None):        
         # make request
         res = self.client.invoke(self.subsystem, uri, method, data=data, 
                                  other_headers=headers, parse=True)

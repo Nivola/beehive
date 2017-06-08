@@ -15,7 +15,7 @@ logger = get_task_logger(__name__)
 # test job
 #
 @task_manager.task(bind=True, base=Job)
-@job(entity_class=TaskManager, job_name=u'manager.jobtest_simple.insert', 
+@job(entity_class=TaskManager, job_name=u'manager.jobtest_simple.add.insert', 
      module=u'SchedulerModule', delta=1)
 def jobtest_simple(self, objid, params):
     """Test job

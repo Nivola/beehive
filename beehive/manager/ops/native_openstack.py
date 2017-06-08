@@ -282,7 +282,7 @@ class NativeOpenstackManager(ApiManager):
     
     @staticmethod
     def get_params(args):
-        try: cid = int(args.pop(0))
+        try: cid = args.pop(0)
         except:
             raise Exception(u'ERROR : Openstack id is missing')
         return {u'orchestrator_id':cid}     

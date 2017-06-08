@@ -54,6 +54,7 @@ class PlatformManager(ComponentManager):
         beehive hosts
         beehive subsystems
         beehive sync
+        beehive pip
         beehive subsystem-create <subsystem>
         beehive instances [details]
         beehive blacklist
@@ -104,7 +105,8 @@ class PlatformManager(ComponentManager):
             u'beehive.configure':self.beehive_configure,
             u'beehive.install':self.beehive_install,
             u'beehive.hosts':self.beehive_hosts,
-            u'beehive.sync':self.beehive_sync,            
+            u'beehive.sync':self.beehive_sync,
+            u'beehive.pip':self.beehive_pip,        
             u'beehive.subsystems': self.beehive_nodes_stats,
             u'beehive.subsystem-create':self.beehive_subsystem,
             u'beehive.instances': self.beehive_nodes_vassals,
@@ -240,7 +242,16 @@ class PlatformManager(ComponentManager):
             u'tags':[u'sync']
         }        
         self.ansible_playbook(u'beehive', run_data, 
-                              playbook=self.beehive_playbook)    
+                              playbook=self.beehive_playbook)
+        
+    def beehive_pip(self):
+        """Sync beehive package an all nodes with remove git repository
+        """
+        run_data = {
+            u'tags':[u'pip']
+        }        
+        self.ansible_playbook(u'beehive', run_data, 
+                              playbook=self.beehive_playbook)   
     
     def beehive_syncdev(self, subsystem, vassal):
         """Sync beehive package an all nodes with local git repository and
