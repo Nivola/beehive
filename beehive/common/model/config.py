@@ -49,6 +49,30 @@ class ConfigDbManager(AbstractDbManager):
     def __init__(self, session=None):
         AbstractDbManager.__init__(self, session)
         
+    @staticmethod
+    def create_table(db_uri):
+        """Create all tables in the engine. This is equivalent to "Create Table"
+        statements in raw SQL."""
+        try:
+            engine = create_engine(db_uri)
+            Base.metadata.create_all(engine)
+            logger.info(u'Create tables on : %s' % (db_uri))
+            del engine
+        except exc.DBAPIError, e:
+            raise Exception(e)
+    
+    @staticmethod
+    def remove_table(db_uri):
+        """ Remove all tables in the engine. This is equivalent to "Drop Table"
+        statements in raw SQL."""
+        try:
+            engine = create_engine(db_uri)
+            Base.metadata.drop_all(engine)
+            logger.info(u'Remove tables from : %s' % (db_uri))
+            del engine
+        except exc.DBAPIError, e:
+            raise Exception(e)        
+        
     @transaction
     def set_initial_data(self):
         session = self.get_session()

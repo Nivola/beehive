@@ -90,7 +90,6 @@ class EventConsumerRedis(ConsumerMixin):
                 status = sevent[u'data'][u'response'][0]
                 if status not in [u'STARTED', u'FAILURE', u'SUCCESS']:
                     return None
-            self.logger.warn(u'Store event : %s' % sevent)
             
             dest = sevent[u'dest']
             objid = dest.pop(u'objid')

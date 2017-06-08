@@ -1,5 +1,5 @@
 from .view import BaseAPI
-from .controller import BaiscController
+from .controller import BasicController
 from beehive.common.apimanager import ApiModule
 
 class BasicModule(ApiModule):
@@ -11,7 +11,7 @@ class BasicModule(ApiModule):
         ApiModule.__init__(self, api_manger, self.name)
         
         self.apis = [BaseAPI]
-        self.controller = BaiscController(self)
+        self.controller = BasicController(self)
 
     def get_controller(self):
         return self.controller

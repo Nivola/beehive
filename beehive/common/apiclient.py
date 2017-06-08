@@ -183,7 +183,7 @@ class BeehiveApiClient(object):
             return signature64
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
-            raise BeehiveApiClientError(u'Error signing data: %s' % data)
+            raise BeehiveApiClientError(u'Error signing data: %s' % data, code=401)
 
     '''
     @watch
@@ -410,7 +410,6 @@ class BeehiveApiClient(object):
         try:
             if parse is True and isinstance(data, dict):
                 data = json.dumps(data)
-                
             res = self.send_request(subsystem, path, method, data, 
                                     self.uid, self.seckey, other_headers)
         except BeehiveApiClientError as ex:
@@ -419,6 +418,8 @@ class BeehiveApiClient(object):
             # Request is not authorized
             if ex.code in [401]:
                 # try to get token and retry api call
+                self.uid = None
+                self.seckey = None
                 self.create_token()
                 res = self.send_request(subsystem, path, method, data, 
                                         self.uid, self.seckey, other_headers)

@@ -183,7 +183,7 @@ class User(Base):
         if password is not None:
             # generate new salt, and hash a password 
             #self.password = sha256_crypt.encrypt(password)
-            self.password = bcrypt.hashpw(password, bcrypt.gensalt(14))
+            self.password = bcrypt.hashpw(str(password), bcrypt.gensalt(14))
     
     def __repr__(self):
         return u"<User id='%s' name='%s' desc='%s' active='%s'>" % (
@@ -1929,7 +1929,8 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         """
         # generate new salt, and hash a password
         if u'password' in kvargs and kvargs[u'password'] != None:
-            kvargs[u'password'] = sha256_crypt.encrypt(kvargs[u'password'])
+            kvargs[u'password'] = bcrypt.hashpw(str(kvargs[u'password']), 
+                                                bcrypt.gensalt(14))
         res = self.update_entity(User, *args, **kvargs)
         return res  
     

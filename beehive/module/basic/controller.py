@@ -8,62 +8,23 @@ from beecell.perf import watch
 from beecell.simple import str2uni, id_gen, truncate
 from beecell.db.manager import SqlManagerError
 from beecell.server.uwsgi_server.resource import UwsgiManager, UwsgiManagerError
-from beehive.common.apimanager import ApiController, ApiManagerError
+from beehive.common.apimanager import ApiController, ApiManagerError,\
+    ApiViewResponse
 from beehive.common.model.config import ConfigDbManager
 from beecell.db import TransactionError, QueryError
 from beehive.common.model.authorization import AuthDbManager
+from beehive.common.controller.authorization import BaseAuthController
 
-class BaiscController(ApiController):
+class BasicController(BaseAuthController):
     """Basic Module controller.
     """
-        
     version = u'v1.0'
     
     def __init__(self, module):
-        ApiController.__init__(self, module)
+        BaseAuthController.__init__(self, module)
         
         self.resource = UwsgiManager()
-        self.dbauth = AuthDbManager()
-
-        self.child_classes = [ApiManagerError]
-    
-    #
-    # init
-    #
-    def init_object(self):
-        """Register object types, objects and permissions related to module.
-        Call this function when initialize system first time.
-        
-        :param args: 
-        """
-        # add actions
-        try:
-            actions = [u'*', u'view', u'insert', u'update', u'delete', u'use']
-            self.dbauth.add_object_actions(actions)
-        except TransactionError as ex:
-            self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=ex.code)
-        
-        # init container
-        for child in self.child_classes:
-            child(self).init_object()
-    
-    def set_superadmin_permissions(self):
-        """ """
-        try:
-            self.set_admin_permissions(u'ApiSuperadmin', [])
-        except (QueryError, TransactionError) as ex:
-            self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=ex.code)    
-    
-    def set_admin_permissions(self, role_name, args):
-        """ """
-        try:
-            for item in self.child_classes:
-                item(self).set_admin_permissions(role_name, args)
-        except (QueryError, TransactionError) as ex:
-            self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=ex.code)
+        self.child_classes = [ApiViewResponse]
 
     #
     # server info

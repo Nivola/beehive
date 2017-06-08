@@ -180,7 +180,10 @@ class BeehiveHelper(object):
                     msgs.extend(res)
                     
                 elif module.name == u'Oauth2Module':
-                    controller.set_superadmin_permissions()                   
+                    controller.set_superadmin_permissions()
+                    
+                elif module.name == u'BasicModule':
+                    controller.set_superadmin_permissions()  
                     
                 elif module.name == u'CatalogModule':
                     res = self.__create_main_catalogs(controller, config, 
@@ -331,7 +334,8 @@ class BeehiveHelper(object):
         # init other subsystem
         else:
             # create api client instance
-            client = BeehiveApiClient(api_config[u'endpoint'], 
+            client = BeehiveApiClient(api_config[u'endpoint'],
+                                      u'keyauth',
                                       api_config[u'user'], 
                                       api_config[u'pwd'],
                                       api_config[u'catalog'])
