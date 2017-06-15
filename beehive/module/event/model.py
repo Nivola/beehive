@@ -228,5 +228,5 @@ class EventDbManager(object):
                     json.dumps(data), json.dumps(source), json.dumps(dest))
         session.add(e)
             
-        self.logger.debug('Add event: %s' % e)
+        self.logger.debug(u'Add event: %s' % truncate(e))
         return e

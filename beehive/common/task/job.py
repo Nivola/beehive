@@ -11,7 +11,7 @@ from beehive.common.apimanager import ApiManagerError, ApiEvent, ApiObject
 from celery.result import AsyncResult, GroupResult
 from beehive.common.data import operation
 from beehive.common.task.manager import task_manager
-from beecell.simple import get_value, import_class
+from beecell.simple import get_value, import_class, nround
 from celery import chord
 from traceback import format_tb
 from beehive.common.task.handler import TaskResult, task_local
@@ -256,7 +256,7 @@ class Job(BaseTask):
         self.app.api_manager.release_session()
 
     def elapsed(self):
-        elapsed = round(time() - task_local.start, 3)
+        elapsed = round(time() - task_local.start, 4)
         return elapsed  
     
     def get_entity_class_name(self):
@@ -269,58 +269,66 @@ class Job(BaseTask):
         return options     
     
     def update(self, status, ex=None, traceback=None, result=None, msg=None):
-        '''# get params from shared data
-        #params = self.get_shared_data()
-        #job_state = get_value(params, u'job_state', u'PROGRESS')
-        # update job status if task failed
-        #if status == u'FAILURE':
-            # set job status
-            params[u'job_state'] = status
-            # save data in shared area
-            self.set_shared_data(params)'''
+        """Update job and jobtask status
         
+        :param status: jobtask status
+        :param ex:
+        :param traceback:
+        :param result: task result. None otherwise task status is SUCCESS
+        :param msg: update message
+        """
+        # get elapsed
         elapsed = self.elapsed()
-        if status == u'PROGRESS' and not self.request.called_directly:
-            self.update_state(state=u'PROGRESS', meta={u'elapsed': elapsed})
+        
+        # log message
+        if msg is not None:
+            if status == u'FAILURE':
+                logger.error(msg, exc_info=1)
+                msg = u'ERROR: %s' % (msg)
+            else:
+                logger.debug(msg)
+        
+        # update task result
+        task_id = self.request.id
+        TaskResult.store(task_id, status=status, traceback=traceback,
+                         retval=result, msg=msg)
+         
+        #if status == u'PROGRESS' and not self.request.called_directly:
+        #    self.update_state(state=u'PROGRESS', meta={u'elapsed': elapsed})
 
         # send event
         response = [status, elapsed]
         if ex is not None:
             response.append(ex)
+        #if task_local.op is None:
+        #    logger.error(u'Task operation is not defined')
+        #    raise JobError(u'Task operation is not defined')
+        
         action = task_local.op.split(u'.')[-1]
         op = task_local.op
-        op = op.replace(action, u'')
+        op = op.replace(u'.%s' % action, u'')
+        data={
+            u'opid':task_local.opid, 
+            u'op':op,
+            u'taskid':self.request.id, 
+            u'task':self.name,
+            u'params':self.request.args,
+            u'response':response,
+            u'msg':msg
+        }        
         evt = ApiEvent(task_local.controller, oid=None, objid=task_local.objid,
-                       action=action,
-                       data={u'opid':task_local.opid, 
-                             u'op':op,
-                             u'taskid':self.request.id, 
-                             u'task':self.name,
-                             u'params':self.request.args,
-                             u'response':response,
-                             u'msg':msg})
+                       action=action, data=data)
         entity_class = task_local.entity_class
-        evt.objtype =  entity_class.objtype
-        evt.objdef =  entity_class.objdef
+        evt.objtype = entity_class.objtype
+        evt.objdef = entity_class.objdef
         evt.publish(entity_class.objtype, ApiObject.ASYNC_OPERATION)
-        
-        # log message
-        if msg is not None:
-            logger.debug(msg)
-        
-        # update task result
-        task_id = self.request.id
-        TaskResult.store(task_id, state=status, traceback=traceback,
-                          retval=result, msg=msg)
         
         # get current job state
         #job = self._query_job(self.app.api_manager.app_id, task_local.opid)
         #job_state = job[u'state']
         
-        if msg is not None and status == u'FAILURE':
-            msg = u'ERROR: %s' % (msg)
-            
-        # update job status only if it is not already FAILURE
+
+        # update job status only if it is not already in FAILURE status
         params = self.get_shared_data()
         job_state = get_value(params, u'job_state', u'PROGRESS')        
         if job_state != u'FAILURE':
@@ -328,16 +336,16 @@ class Job(BaseTask):
             params[u'job_state'] = status
             
             # set start time for job task when status is STARTED
-            if status == u'STARTED':
+            if job_state == u'STARTED':
                 params[u'job_start_time'] = time()
                 elapsed = 0
             # calculate elapsed for job task when status is not STARTED
             else:
                 job_start_time = get_value(params, u'job_start_time', time())
-                elapsed = round(time() - job_start_time, 4)                
+                elapsed = round(time() - job_start_time, 4)
             
             # save data in shared area
-            self.set_shared_data(params)            
+            self.set_shared_data(params)
             
             # set result if status is SUCCESS
             retval = None
@@ -351,11 +359,10 @@ class Job(BaseTask):
                 self.remove_stack()
 
             # store job data
-            #if msg is not None:
-            #    msg = u'[%s - %s] %s' % (self.name, task_id, msg)
             msg = None
-            TaskResult.store(task_local.opid, state=status, retval=retval, 
-                              traceback=traceback, duration=elapsed, msg=msg)
+            TaskResult.store(task_local.opid, status=status, retval=retval, 
+                             inner_type=u'JOB', traceback=traceback, 
+                             duration=elapsed, msg=msg)
             logger.info(u'Job %s status change to %s - %s' % 
                         (task_local.opid, status, elapsed))
         
@@ -400,8 +407,7 @@ class Job(BaseTask):
     
         The return value of this handler is ignored.
         """
-        #logger.info('Task %s.%s : RETRY - %s' % (self.name, task_id, self.elapsed()))
-        self.update('RETRY')
+        self.update(u'RETRY')
     
     def on_success(self, retval, task_id, args, kwargs):
         """Run by the worker if the task executes successfully.
@@ -421,7 +427,8 @@ class JobTask(Job):
     abstract = True
     inner_type = 'JOBTASK'
         
-def job(entity_class=None, job_name=None, module=None, delta=5):
+def job(entity_class=None, job_name=None, module=None, delta=5, op=None, 
+        act=u'use'):
     """Decorator used for workflow main task.
     
     Example::
@@ -433,16 +440,18 @@ def job(entity_class=None, job_name=None, module=None, delta=5):
             pass
 
     :param entity_class: resource class
-    :param job_name: job name
-    :param module: cloudapi module 
+    :param job_name: job name [optional]
+    :param op: operation [default=None]
+    :param act: action (insert, update, delete, view, use) [default=use]
+    :param module: beehive module 
     :param delta: delta time to use when pull remote resource status
     """
     def wrapper(fn):
         @wraps(fn)
         def decorated_view(*args, **kwargs):
             task = args[0]
-            TaskResult.store(task.request.id, state=u'PENDING', retval=None, 
-                              traceback=None)
+            #TaskResult.store(task.request.id, status=u'PENDING', retval=None, 
+            #                 traceback=None)
 
             # setup correct user
             try:
@@ -472,11 +481,17 @@ def job(entity_class=None, job_name=None, module=None, delta=5):
             task_local.user = operation.user
             task.set_shared_data({})
             
+            if task_local.op is None:
+                if op is None:
+                    task_local.op = u'%s.%s' % (entity_class.objdef, act)
+                else:
+                    task_local.op = u'%s.%s.%s' % (entity_class.objdef, op, act)
+            
             #logger.debug(u'Job %s - master task %s' % (task_local.op, 
             #                                           task_local.opid))            
             #res = fn(*args, **kwargs)
             res = fn(*args)
-            task.update(u'STARTED')
+            #task.update(u'STARTED')
             return res
         return decorated_view
     return wrapper
@@ -514,7 +529,7 @@ def job_task(module=''):
             operation.user = params[6]
             operation.session = None            
 
-            task.update(u'PROGRESS')
+            #task.update(u'PROGRESS')
             #logger.debug(u'Job %s - child task %s.%s' % (task_local.op, 
             #                                             task_local.opid, 
             #                                             task.request.id))
@@ -523,6 +538,7 @@ def job_task(module=''):
         return decorated_view
     return wrapper
 
+'''
 def create_job(tasks, *args):
     """
     """
@@ -537,4 +553,4 @@ def create_job(tasks, *args):
                 item.link(last_task)
         last_task = item
     process.link(last_task)
-    return process
+    return process'''

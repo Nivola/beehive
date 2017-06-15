@@ -22,14 +22,16 @@ class SchedulerManager(ApiManager):
         scheduler
     
     PARAMS:
-        <subsystem> manager ping
-        <subsystem> manager stat
-        <subsystem> manager report
-        <subsystem> manager tasks      get available tasks
-        <subsystem> tasks list         get all the task instances
+        <subsystem> worker ping
+        <subsystem> worker stat
+        <subsystem> worker report
+        <subsystem> tasks definitions         get all the task definitions
+        <subsystem> tasks list                get all the task instances
         <subsystem> tasks get <task_id>
         <subsystem> tasks test
         <subsystem> tasks graph <task_id>
+        <subsystem> tasks delete-all
+        <subsystem> tasks delete <task_id>
         <subsystem> schedule list
         <subsystem> schedule get <schedule_name>
         <subsystem> schedule add <schedule_name> <task> \{\"type\":\"timedelta\",\"minutes\":10\} []
@@ -55,17 +57,18 @@ class SchedulerManager(ApiManager):
 
     def actions(self):
         actions = {
-            u'manager.ping': self.ping_task_manager,
-            u'manager.stat': self.stat_task_manager,
-            u'manager.report': self.report_task_manager,
-            u'manager.tasks': self.registered_tasks,            
+            u'worker.ping': self.ping_task_worker,
+            u'worker.stat': self.stat_task_worker,
+            u'worker.report': self.report_task_worker,
+            
+            u'tasks.definitions': self.get_task_definitions,
             u'tasks.list': self.get_all_tasks,
             u'tasks.get': self.get_task,
             u'tasks.status': self.get_task_status,
             u'tasks.graph': self.get_task_graph,
-            u'tasks.delete': self.delete_all_tasks,
+            u'tasks.delete-all': self.delete_all_tasks,
             u'tasks.delete': self.delete_task,
-            u'tasks.test': self.run_job_test,
+            u'tasks.test': self.run_test,
             
             u'schedule.list': self.get_scheduler_entries,
             u'schedule.get': self.get_scheduler_entry,
@@ -75,31 +78,46 @@ class SchedulerManager(ApiManager):
         return actions    
     
     #
-    # task manager
+    # task worker
     #
-    def ping_task_manager(self):
+    def ping_task_worker(self):
         uri = u'/v1.0/worker/ping/'
-        res = self._call(uri, u'GET')
-        self.result(res)
-
-    def stat_task_manager(self):
-        uri = u'/v1.0/worker/stats/'
-        res = self._call(uri, u'GET')
-        self.logger.info(res)
-        self.result(res)
-
-    def report_task_manager(self):
-        uri = u'/v1.0/worker/report/'
-        res = self._call(uri, u'GET')
-        self.logger.info(res)
-        self.result(res)
-    
-    def registered_tasks(self):
-        uri = u'/v1.0/worker/tasks/registered/'
         res = self._call(uri, u'GET')
         self.logger.info(res)
         resp = []
-        for k,v in res[u'tasks'].items():
+        for r in res:
+            resp.append({u'worker':r.keys()[0], u'res':r.values()[0]})
+        self.result(resp, headers=[u'worker', u'res'])
+
+    def stat_task_worker(self):
+        uri = u'/v1.0/worker/stats/'
+        res = self._call(uri, u'GET')
+        self.logger.info(res)
+        resp = []
+        for k,v in res.items():
+            v[u'worker'] = k
+            resp.append(v)        
+        self.result(res, details=True)
+
+    def report_task_worker(self):
+        uri = u'/v1.0/worker/report/'
+        res = self._call(uri, u'GET')
+        self.logger.info(res)
+        resp = []
+        for k,v in res.items():
+            vals = v.values()[0].split(u'\n')
+            row = 0
+            for val in vals:
+                row += 1
+                resp.append({u'worker':u'%s.%s' % (k, row), u'report':val}) 
+        self.result(resp, headers=[u'worker', u'report'])
+    
+    def get_task_definitions(self):
+        uri = u'/v1.0/worker/tasks/definitions/'
+        res = self._call(uri, u'GET')
+        self.logger.info(res)
+        resp = []
+        for k,v in res[u'task-definitions'].items():
             for v1 in v:
                 resp.append({u'worker':k, u'task':v1})
         self.result(resp, headers=[u'worker', u'task'])    
@@ -108,7 +126,8 @@ class SchedulerManager(ApiManager):
         uri = u'/v1.0/worker/tasks/'
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.result(res, key=u'instances', headers=[u'id', u'type', u'state', u'name', u'timestamp'])
+        self.result(res, key=u'task-instances', 
+                    headers=[u'id', u'type', u'state', u'name', u'timestamp'])
         
     def get_task(self, task_id):
         uri = u'/v1.0/worker/tasks/%s/' % task_id
@@ -136,62 +155,8 @@ class SchedulerManager(ApiManager):
         
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.result(res)
-
-    def registered_tasks(self):
-        """TODO"""
-        uri = u'/v1.0/worker/tasks/registered/'
-        
-        res = self._call(uri, u'GET')
-        self.logger.info(res)
-        self.result(res)
-         
-    def active_tasks(self):
-        """TODO"""
-        uri = u'/v1.0/worker/tasks/active/'
-        
-        res = self._call(uri, u'GET')
-        self.logger.info(res)
-        self.result(res)
-        
-    def scheduled_tasks(self):
-        """TODO"""
-        uri = u'/v1.0/worker/tasks/scheduled/'
-        
-        res = self._call(uri, u'GET')
-        self.logger.info(res)
-        self.result(res)
-        
-    def reserved_tasks(self):
-        """TODO"""
-        uri = u'/v1.0/worker/tasks/reserved/'
-        
-        res = self._call(uri, u'GET')
-        self.result(res)
-        
-    def revoked_tasks(self):
-        """TODO"""
-        uri = u'/v1.0/worker/tasks/revoked/'
-        
-        res = self._call(uri, u'GET')
-        self.result(res)
-        
-     
-        
-    def purge_tasks(self):
-        """TODO"""
-        uri = u'/v1.0/worker/tasks/purge/'
-        
-        res = self._call(uri, u'DELETE')
-        self.result(res)      
-
-    def revoke_task(self):
-        """TODO"""
-        uri = u'/v1.0/manager/tasks/revoke/%s/' % task_id
-        
-        res = self._call(uri, u'DELETE')
         self.result(res)'''
-        
+
     def delete_all_tasks(self):
         uri = u'/v1.0/worker/tasks/'
         res = self._call(uri, u'DELETE')
@@ -204,10 +169,15 @@ class SchedulerManager(ApiManager):
         self.logger.info(u'Delete task %s' % task_id)
         self.result(res)
         
-    def run_job_test(self, error=False):
-        data = {u'x':2, u'y':234, u'numbers':[2, 78], u'mul_numbers':[],
-                u'error':str2bool(error)}
-        uri = u'/v1.0/worker/tasks/jobtest/'
+    def run_test(self, error=False):
+        data = {
+            u'x':2, 
+            u'y':234, 
+            u'numbers':[2, 78], 
+            u'mul_numbers':[],
+            u'error':str2bool(error)
+        }
+        uri = u'/v1.0/worker/tasks/test/'
         res = self._call(uri, u'POST', data=data)
         self.logger.info(u'Run job test: %s' % res)
         self.result(res)   
@@ -239,54 +209,3 @@ class SchedulerManager(ApiManager):
         res = self._call(uri, u'DELETE', data=data)
         self.result({u'msg':u'Delete schedule %s' % name}, headers=[u'msg'])
 
-def scheduler_main(auth_config, format, opts, args):
-    """
-    
-    :param auth_config: {u'pwd': u'..', 
-                         u'endpoint': u'http://10.102.160.240:6060/api/', 
-                         u'user': u'admin@local'}
-    """
-    for opt, arg in opts:
-        if opt in (u'-h', u'--help'):
-            print __doc__
-            return 0
-    
-    try:
-        args[1]
-    except:
-        print __doc__
-        return 0
-    
-    client = SchedulerManager(auth_config)
-    
-    actions = client.actions()
-    
-    subsystem = args.pop(0)
-    client.subsystem = subsystem
-    entity = args.pop(0)
-    if len(args) > 0:
-        operation = args.pop(0)
-        action = u'%s.%s' % (entity, operation)
-    else: 
-        raise Exception(u'Scheduler entity and/or command are not correct')
-        return 1
-    
-    if action is not None and action in actions.keys():
-        func = actions[action]
-        res = func(*args)
-    else:
-        raise Exception(u'Scheduler entity and/or command does not exist')
-        return 1
-            
-    if format == u'text':
-        for i in res:
-            pass
-    else:
-        print(u'Scheduler response:')
-        print(u'')
-        if isinstance(client.msg, dict) or isinstance(client.msg, list):
-            client.pp.pprint(client.msg)
-        else:
-            print(client.msg)
-        
-    return 0

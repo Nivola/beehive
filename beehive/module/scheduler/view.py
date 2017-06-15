@@ -84,19 +84,22 @@ class ManagerReport(TaskApiView):
         resp = task_manager.report()
         return resp
     
-class GetTasks(TaskApiView):
+class GetTasksDefinition(TaskApiView):
     def dispatch(self, controller, data, *args, **kwargs):    
         task_manager = controller.get_task_manager()
-        resp = task_manager.get_all_tasks()
-        
-        return resp
+        res = task_manager.get_registered_tasks()
+        resp = {
+            u'task-definitions':res,
+            u'count':len(res)
+        }
+        return resp    
 
 class GetTasksWithDetail(TaskApiView):
     def dispatch(self, controller, data, *args, **kwargs):    
         task_manager = controller.get_task_manager()
         res = task_manager.get_all_tasks(details=True)
         resp = {
-            u'instances':res,
+            u'task-instances':res,
             u'count':len(res)
         }        
         return resp
@@ -105,16 +108,6 @@ class GetTasksCount(TaskApiView):
     def dispatch(self, controller, data, *args, **kwargs):    
         task_manager = controller.get_task_manager()
         resp = task_manager.count_all_tasks()
-        return resp
-    
-class GetTasksRegistered(TaskApiView):
-    def dispatch(self, controller, data, *args, **kwargs):    
-        task_manager = controller.get_task_manager()
-        res = task_manager.get_registered_tasks()
-        resp = {
-            u'tasks':res,
-            u'count':len(res)
-        }
         return resp
     
 class GetTasksActive(TaskApiView):
@@ -145,7 +138,7 @@ class QueryTask(TaskApiView):
     def dispatch(self, controller, data, oid, *args, **kwargs):    
         task_manager = controller.get_task_manager()
         res = task_manager.query_task(oid)
-        resp = {u'instance':res}
+        resp = {u'task-instance':res}
         return resp
     
 class QueryTaskStatus(TaskApiView):
@@ -207,10 +200,10 @@ class SchedulerAPI(ApiView):
     @staticmethod
     def register_api(module):
         rules = [
-            ('scheduler/entries', 'GET', GetSchedulerEntries, {}),
-            ('scheduler/entry/<name>', 'GET', GetSchedulerEntry, {}),
-            ('scheduler/entry', 'POST', CreateSchedulerEntry, {}),
-            ('scheduler/entry', 'DELETE', DeleteSchedulerEntry, {}),
+            (u'scheduler/entries', 'GET', GetSchedulerEntries, {}),
+            (u'scheduler/entry/<name>', 'GET', GetSchedulerEntry, {}),
+            (u'scheduler/entry', 'POST', CreateSchedulerEntry, {}),
+            (u'scheduler/entry', 'DELETE', DeleteSchedulerEntry, {}),
         ]
 
         ApiView.register_api(module, rules)
@@ -220,28 +213,6 @@ class TaskAPI(ApiView):
     """
     @staticmethod
     def register_api(module):
-        '''
-            ('task/ping', 'GET', ManagerPing, {}),
-            ('task/stats', 'GET', ManagerStats, {}),
-            ('task/report', 'GET', ManagerReport, {}),
-            #('task/tasks', 'GET', GetTasks, {}),
-            ('task/tasks', 'GET', GetTasksWithDetail, {}),
-            ('task/tasks/count', 'GET', GetTasksCount, {}),
-            ('task/tasks/registered', 'GET', GetTasksRegistered, {}),
-            ('task/tasks/active', 'GET', GetTasksActive, {}),
-            ('task/tasks/scheduled', 'GET', GetTasksScheduled, {}),
-            ('task/tasks/reserved', 'GET', GetTasksReserved, {}),
-            ('task/tasks/revoked', 'GET', GetTasksRevoked, {}),
-            ('task/task/<oid>', 'GET', QueryTask, {}),
-            #('task/task/<oid>/status', 'GET', QueryChainedTaskStatus, {}),
-            ('task/task/<oid>/graph', 'GET', GetTaskGraph, {}),
-            ('task/tasks', 'DELETE', PurgeAllTasks, {}),
-            ('task/tasks/purge', 'DELETE', PurgeTasks, {}),
-            ('task/task/<oid>', 'DELETE', DeleteTask, {}),
-            ('task/task/<oid>/revoke', 'DELETE', RevokeTask, {}),
-            ('task/task/time_limit', 'PUT', SetTaskTimeLimit, {}),
-            ('task/task/jobtest', 'POST', RunJobTest, {})        
-        '''
         rules = [
             (u'worker/ping', u'GET', ManagerPing, {}),
             (u'worker/stats', u'GET', ManagerStats, {}),
@@ -249,11 +220,11 @@ class TaskAPI(ApiView):
             #(u'worker/tasks', u'GET', GetTasks, {}),
             (u'worker/tasks', u'GET', GetTasksWithDetail, {}),
             (u'worker/tasks/count', u'GET', GetTasksCount, {}),
-            (u'worker/tasks/registered', u'GET', GetTasksRegistered, {}),
-            (u'worker/tasks/active', u'GET', GetTasksActive, {}),
-            (u'worker/tasks/scheduled', u'GET', GetTasksScheduled, {}),
-            (u'worker/tasks/reserved', u'GET', GetTasksReserved, {}),
-            (u'worker/tasks/revoked', u'GET', GetTasksRevoked, {}),
+            (u'worker/tasks/definitions', u'GET', GetTasksDefinition, {}),
+            #(u'worker/tasks/active', u'GET', GetTasksActive, {}),
+            #(u'worker/tasks/scheduled', u'GET', GetTasksScheduled, {}),
+            #(u'worker/tasks/reserved', u'GET', GetTasksReserved, {}),
+            #(u'worker/tasks/revoked', u'GET', GetTasksRevoked, {}),
             (u'worker/tasks/<oid>', u'GET', QueryTask, {}),
             (u'worker/tasks/<oid>/status', u'GET', QueryTaskStatus, {}),
             (u'worker/tasks/<oid>/graph', u'GET', GetTaskGraph, {}),
@@ -261,8 +232,8 @@ class TaskAPI(ApiView):
             (u'worker/tasks/purge', u'DELETE', PurgeTasks, {}),
             (u'worker/tasks/<oid>', u'DELETE', DeleteTask, {}),
             (u'worker/tasks/<oid>/revoke', u'DELETE', RevokeTask, {}),
-            (u'worker/tasks/time-limit', u'PUT', SetTaskTimeLimit, {}),
-            (u'worker/tasks/jobtest', u'POST', RunJobTest, {}),
+            #(u'worker/tasks/time-limit', u'PUT', SetTaskTimeLimit, {}),
+            (u'worker/tasks/test', u'POST', RunJobTest, {}),
         ]
 
         ApiView.register_api(module, rules)

@@ -18,7 +18,7 @@ from beehive.module.event.model import EventDbManager
 from beehive.common.event import EventProducerRedis, Event
 from beehive.common.data import operation
 from beecell.db import TransactionError
-from beehive.common.apimanager import ApiManager
+from beehive.common.apimanager import ApiManager, ApiObject
 
 class EventConsumerError(Exception): pass
 
@@ -66,8 +66,17 @@ class EventConsumerRedis(ConsumerMixin):
         self.logger.error(exc)
  
     def callback(self, event, message):
+        self.log_event(event, message)
         self.store_event(event, message)
         self.publish_event_to_subscriber(event, message)       
+ 
+    def log_event(self, event, message):
+        """Log received event
+        
+        :param event json: event to store
+        :raise EventConsumerError:
+        """
+        self.logger.info(u'Consume event : %s' % event)
  
     def store_event(self, event, message):
         """Store event in db.
@@ -86,7 +95,7 @@ class EventConsumerRedis(ConsumerMixin):
             etype = sevent[u'type']
             
             # for job events save only those with status 'STARTED', 'FAILURE' and 'SUCCESS' 
-            if etype == u'asyncop':
+            if etype == ApiObject.ASYNC_OPERATION:
                 status = sevent[u'data'][u'response'][0]
                 if status not in [u'STARTED', u'FAILURE', u'SUCCESS']:
                     return None
@@ -159,7 +168,7 @@ def start_event_consumer(params, log_path=None):
     #setup_logging(loglevel=u'DEBUG', loggers=[u''])
     
     # internal logger
-    logger = logging.getLogger(u'gibboncloudapi')   
+    logger = logging.getLogger(u'beehive.module.event.manager')   
     
     logger_level = logging.DEBUG
     if log_path is None:
@@ -167,7 +176,8 @@ def start_event_consumer(params, log_path=None):
                                         params[u'api_env'])
     logname = u'%s/%s.event.consumer' % (log_path, params[u'api_id'])
     logger_file = u'%s.log' % logname
-    loggers = [logging.getLogger(), logger]
+    #loggers = [logging.getLogger(), logger]
+    loggers = [logger]
     LoggerHelper.rotatingfile_handler(loggers, logger_level, logger_file)
 
     # performance logging

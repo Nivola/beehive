@@ -15,8 +15,8 @@ logger = get_task_logger(__name__)
 # test job
 #
 @task_manager.task(bind=True, base=Job)
-@job(entity_class=TaskManager, job_name=u'manager.jobtest_simple.add.insert', 
-     module=u'SchedulerModule', delta=1)
+@job(entity_class=TaskManager, module=u'SchedulerModule', 
+     job_name=u'manager.jobtest_simple.insert', delta=1)
 def jobtest_simple(self, objid, params):
     """Test job
     
@@ -33,14 +33,18 @@ def jobtest_simple(self, objid, params):
     return True
 
 @task_manager.task(bind=True, base=Job)
-@job(entity_class=TaskManager, job_name=u'manager.jobtest.add.insert', 
-     module=u'SchedulerModule', delta=1)
+@job(entity_class=TaskManager, module=u'SchedulerModule', 
+     op=u'test', act=u'insert', delta=1)
 def jobtest(self, objid, params):
     """Test job
     
     :param objid: objid of the cloud domain. Ex. 110//2222//334//*
-    :param params: task input params 
-                    {u'x':.., u'y':.., u'numbers':[], u'mul_numbers':[], 
+    :param params: task input params
+    
+                    {u'x':.., 
+                     u'y':..,
+                     u'numbers':[], 
+                     u'mul_numbers':[], 
                      u'error':True}
     """
     ops = self.get_options()
@@ -55,12 +59,13 @@ def jobtest(self, objid, params):
     
     g1.append(test_invoke_job.si(ops))
 
-    Job.create([
+    j = Job.create([
         test_sum2,
         test_sum,
         g1,
         test_add
-    ], ops).delay()
+    ], ops)
+    j.delay()
     return True
 
 @task_manager.task(bind=True, base=JobTask)

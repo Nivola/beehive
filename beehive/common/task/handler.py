@@ -12,6 +12,7 @@ from celery.utils.log import get_task_logger
 from celery.result import AsyncResult, GroupResult
 from celery.signals import task_prerun, task_postrun, task_failure, \
                            task_retry, task_revoked
+from traceback import format_tb
 
 logger = get_task_logger(__name__)
 
@@ -40,9 +41,9 @@ class TaskResult(object):
     
     @staticmethod
     def store(task_id, name=None, hostname=None, args=None, kwargs=None, 
-                          state=None, retval=None, timestamp=None, duration=None, 
-                          childs=None, traceback=None, inner_type=None, msg=None,
-                          jobs=None):
+              status=None, retval=None, timestamp=None, duration=None, 
+              childs=None, traceback=None, inner_type=None, msg=None,
+              jobs=None):
         """Store task result in redis
         """
         _redis = task_manager.api_manager.redis_taskmanager.conn
@@ -50,7 +51,7 @@ class TaskResult(object):
         _prefix = task_manager.conf[u'CELERY_REDIS_RESULT_KEY_PREFIX']
         _expire = task_manager.conf[u'CELERY_REDIS_RESULT_EXPIRES']
         
-        data = {u'id':task_id}
+        data = {u'task_id':task_id}
         
         def set_data(key, value):
             if value is not None:
@@ -61,11 +62,11 @@ class TaskResult(object):
         set_data(u'worker', hostname)
         set_data(u'args', args)
         set_data(u'kwargs', kwargs)
-        set_data(u'state', state)
+        set_data(u'status', status)
         set_data(u'result', retval)
         set_data(u'timestamp', timestamp)
         set_data(u'duration', duration)
-        set_data(u'childs', childs)
+        set_data(u'children', childs)
         set_data(u'jobs', jobs)
         set_data(u'traceback', traceback)
         
@@ -78,16 +79,16 @@ class TaskResult(object):
             result = {
                 u'name':name,
                 u'type':inner_type,
-                u'id':task_id,
+                u'task_id':task_id,
                 u'worker':hostname,
                 u'args':args,
                 u'kwargs':kwargs,
-                u'state':state,
+                u'status':status,
                 u'result':retval,
                 u'traceback':traceback,
                 u'timestamp':timestamp,
                 u'duration':duration,
-                u'childs':childs,
+                u'children':childs,
                 u'jobs':jobs,
                 u'trace':[]}
         
@@ -98,17 +99,30 @@ class TaskResult(object):
         
         # serialize data
         val = json.dumps(result)
+        
         # save data in redis
         _redis.setex(_prefix + task_id, _expire, val)
+        
         # save celery legacy data to redis
-        if state == u'FAILURE':
+        if status == u'FAILURE':
             result = {u'exc_message':u'', u'exc_type':u'Exception'}
         else:
             result = True
-        val = {u'status':state, u'traceback':u'', u'result':result, 
-               u'task_id':task_id, u'children': []}
-        _redis.setex(_legacy_prefix + task_id, _expire, json.dumps(val))
-        logger.debug(u'Save task %s result: %s' % (task_id, truncate(data)))        
+        val = {
+            u'status':status, 
+            u'traceback':u'', 
+            u'result':result, 
+            u'task_id':task_id, 
+            u'children': []
+        }
+        #_redis.setex(_legacy_prefix + task_id, _expire, json.dumps(val))
+        
+        logout = logger.debug
+        if inner_type == u'JOB':
+            logout = logger.info
+            
+        logout(u'Save %s %s result: %s' % (inner_type, task_id, truncate(data)))
+
         return val
 
 @task_prerun.connect
@@ -130,9 +144,11 @@ def task_prerun(**args):
     task.inner_start = time()
     
     # store task
-    TaskResult.store(task_id, task.name, task.request.hostname, vargs, kwargs, 
-                      u'PENDING', None, _timestamp, None, None, None, 
-                      task.inner_type)
+    TaskResult.store(task_id, name=task.name, hostname=task.request.hostname, 
+                     args=vargs, kwargs=kwargs, status=u'STARTED', retval=None, 
+                     timestamp=_timestamp, duration=None, childs=None, 
+                     traceback=None, inner_type=task.inner_type, msg=None, 
+                     jobs=None)
 
 @task_postrun.connect
 def task_postrun(**args):
@@ -140,7 +156,7 @@ def task_postrun(**args):
     task_id = args.get(u'task_id')
     vargs = args.get(u'args')
     kwargs = args.get(u'kwargs')
-    state = args.get(u'state')
+    status = args.get(u'state')
     retval = args.get(u'retval')
     
     # get task childrens
@@ -173,22 +189,56 @@ def task_postrun(**args):
     duration = round(time() - task.inner_start, 3)
 
     # set retval to None when failure occurs
-    if state == u'FAILURE':
+    if status == u'FAILURE':
         retval = None
 
-    # reset state for JOB task to PROGRESS when state is SUCCESS
-    # state SUCCESS will be set when the last child task end
-    if task.inner_type == u'JOB' and task_local.opid == task_id and \
-       state == u'SUCCESS':
-        state = u'PROGRESS'
+    # reset status for JOB task to PROGRESS when status is SUCCESS
+    # status SUCCESS will be set when the last child task end
+    #if task.inner_type == u'JOB' and task_local.opid == task_id and \
+    #   status == u'SUCCESS':
+    if task.inner_type == u'JOB' and status == u'SUCCESS':
+        status = u'PROGRESS'
     
     # store task
-    TaskResult.store(task_id, task.name, task.request.hostname, vargs, kwargs, 
-                      state, retval, None, duration, set(childs), jobs=jobs)
+    TaskResult.store(task_id, name=task.name, hostname=task.request.hostname, 
+                     args=vargs, kwargs=kwargs, status=status, retval=retval, 
+                     timestamp=None, duration=duration, childs=set(childs), 
+                     traceback=None, inner_type=task.inner_type, msg=None, 
+                     jobs=jobs)
 
 @task_failure.connect
-def task_failure(**kwargs):
-    pass
+def task_failure(**args):
+    """Dispatched when a task fails.
+    Sender is the task object executed.
+
+    Provides arguments:
+    - task_id: Id of the task.
+    - exception: Exception instance raised.
+    - args: Positional arguments the task was called with.
+    - kwargs: Keyword arguments the task was called with.
+    - traceback: Stack trace object.
+    - einfo: The billiard.einfo.ExceptionInfo instance.
+    """
+    task_id = args.get(u'task_id')
+    exception = args.get(u'exception')
+    kwargs = args.get(u'kwargs')
+    kwargs = args.get(u'kwargs')
+    traceback = args.get(u'traceback')
+    einfo = args.get(u'einfo')
+    
+    # set status
+    status = u'FAILURE'
+    
+    # get exception info
+    err = str(exception)
+    trace = format_tb(einfo.tb)
+    trace.append(err)    
+
+    # store task
+    TaskResult.store(task_id, name=None, hostname=None, 
+                     args=None, kwargs=None, status=status, retval=None, 
+                     timestamp=None, duration=None, childs=None, 
+                     traceback=trace, inner_type=None, msg=err, jobs=None)    
     
 @task_retry.connect
 def task_retry(**kwargs):

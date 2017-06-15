@@ -172,8 +172,7 @@ class ComponentManager(object):
         else:
             values = data
         if headers is None:
-            headers = [u'id', u'uuid', u'name', u'parent_id', u'parent_name',
-                       u'active', u'date.creation']
+            headers = [u'id', u'uuid', u'name']
         headers.extend(other_headers)
         table = []
         if fields is None:

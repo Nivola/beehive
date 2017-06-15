@@ -122,6 +122,8 @@ class ResourceManager(ApiManager):
             u'containers.tag-add': self.add_container_tag,
             u'containers.tag-delete': self.delete_container_tag,
             u'containers.tags': self.get_container_tag,
+            u'containers.discover-classes':self.discover_container_resource_classess,
+            u'containers.discover':self.discover_container_resources,
             
             u'resources.list': self.get_resources,
             u'resources.types': self.get_resource_types,
@@ -315,13 +317,13 @@ class ResourceManager(ApiManager):
         uri = u'%s/containers/types/' % self.baseuri
         res = self._call(uri, u'GET')
         self.logger.info(u'Get resource container types: %s' % truncate(res))
-        self.result(res)
+        self.result(res, key=u'container-types', headers=[u'category', u'type'])
 
     def get_resource_container(self, value):
         uri = u'%s/containers/%s/' % (self.baseuri, value)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get resource container: %s' % truncate(res))
-        self.result(res, key=u'container', headers=self.cont_headers)
+        self.result(res, key=u'container', headers=self.cont_headers, details=True)
     
     def get_resource_container_rescount(self, value):
         uri = u'%s/containers/%s/count/' % (self.baseuri, value)
@@ -346,7 +348,8 @@ class ResourceManager(ApiManager):
         uri = u'%s/containers/%s/ping/' % (self.baseuri, contid)  
         res = self._call(uri, u'GET')      
         self.logger.info(u'Ping container %s: %s' % (contid, res))
-        self.result(res)      
+        self.result({u'container':contid, u'ping':res}, 
+                    headers=[u'container', u'ping'])      
     
     def add_resource_container(self, ctype, name, conn):
         conn = self.load_config(conn)
@@ -371,7 +374,7 @@ class ResourceManager(ApiManager):
     def get_container_tag(self, contid):
         uri = u'%s/containers/%s/tags/' % (self.baseuri, contid)        
         res = self._call(uri, u'GET')
-        self.result(res)
+        self.result(res, key=u'resource-tags', headers=[u'id', u'uuid', u'value'])
         
     def add_container_tag(self, contid, tag):
         data = {
@@ -394,6 +397,19 @@ class ResourceManager(ApiManager):
         uri = u'%s/containers/%s/tags/' % (self.baseuri, contid)        
         res = self._call(uri, u'PUT', data=data)
         self.result(res)
+        
+    def discover_container_resource_classess(self, contid):
+        uri = u'%s/containers/%s/discover/classes/' % (self.baseuri, contid)        
+        res = self._call(uri, u'GET', data=u'').get(u'discover').get(u'classes')
+        self.result(res, headers=[u'resource class'], fields=[0])
+        
+    def discover_container_resources(self, contid, resclass):
+        uri = u'%s/containers/%s/discover/' % (self.baseuri, contid)        
+        res = self._call(uri, u'GET', data=u'class=%s' % resclass)\
+                  .get(u'discover').get(u'resources')
+        self.result(res, key=u'new', headers=[u'id', u'name', u'parent', u'class'])
+        self.result(res, key=u'died', headers=[u'id', u'name', u'parent', u'class'])
+        self.result(res, key=u'changed', headers=[u'id', u'name', u'parent', u'class'])
 
     #
     # tags
