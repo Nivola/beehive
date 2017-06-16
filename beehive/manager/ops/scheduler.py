@@ -12,7 +12,7 @@ from pprint import PrettyPrinter
 from pandas import DataFrame, set_option
 from beehive.manager import ApiManager
 import sys
-from beecell.simple import str2bool
+from beecell.simple import str2bool, truncate
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +27,10 @@ class SchedulerManager(ApiManager):
         <subsystem> worker report
         <subsystem> tasks definitions         get all the task definitions
         <subsystem> tasks list                get all the task instances
-        <subsystem> tasks get <task_id>
+        <subsystem> tasks get <task_id>       get task details
+        <subsystem> tasks task <task_id>      get task execution trace
+        <subsystem> tasks graph <task_id>     get task execution graph
         <subsystem> tasks test
-        <subsystem> tasks graph <task_id>
         <subsystem> tasks delete-all
         <subsystem> tasks delete <task_id>
         <subsystem> schedule list
@@ -64,7 +65,8 @@ class SchedulerManager(ApiManager):
             u'tasks.definitions': self.get_task_definitions,
             u'tasks.list': self.get_all_tasks,
             u'tasks.get': self.get_task,
-            u'tasks.status': self.get_task_status,
+            u'tasks.trace': self.get_task_trace,
+            #u'tasks.status': self.get_task_status,
             u'tasks.graph': self.get_task_graph,
             u'tasks.delete-all': self.delete_all_tasks,
             u'tasks.delete': self.delete_task,
@@ -127,26 +129,47 @@ class SchedulerManager(ApiManager):
         res = self._call(uri, u'GET')
         self.logger.info(res)
         self.result(res, key=u'task-instances', 
-                    headers=[u'id', u'type', u'state', u'name', u'timestamp'])
+                    headers=[u'task_id', u'type', u'status', u'name', 
+                             u'start_time', u'stop_time', u'elapsed'])
         
     def get_task(self, task_id):
         uri = u'/v1.0/worker/tasks/%s/' % task_id
-        res = self._call(uri, u'GET')
+        res = self._call(uri, u'GET').get(u'task-instance')
         self.logger.info(res)
-        self.result(res, key=u'instance', headers=[u'id', u'type', u'state', u'name', 
-                                  u'timestamp'])
+        resp = []
+        resp.append(res)
+        resp.extend(res.get(u'children'))
+        self.result(resp, headers=[u'task_id', u'type', u'status', u'name', 
+                                  u'start_time', u'stop_time', u'elapsed'])
         
+    def get_task_trace(self, task_id):
+        uri = u'/v1.0/worker/tasks/%s/' % task_id
+        res = self._call(uri, u'GET').get(u'task-instance').get(u'trace')
+        self.logger.info(res)
+        resp = []
+        for i in res:
+            resp.append({u'timestamp':i[0], u'task':i[1], u'task id':i[2], 
+                         u'msg':truncate(i[3], 150)})
+        self.result(resp, headers=[u'timestamp', u'msg'])        
+        
+    '''
     def get_task_status(self, task_id):
         uri = u'/v1.0/worker/tasks/%s/status/' % task_id
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.result(res)        
+        self.result(res)      '''  
         
     def get_task_graph(self, task_id):
         uri = u'/v1.0/worker/tasks/%s/graph/' % task_id
-        res = self._call(uri, u'GET')
+        res = self._call(uri, u'GET').get(u'task-instance-graph')
         self.logger.info(res)
-        self.result(res)
+        print(u'Nodes:')
+        self.result(res, key=u'nodes', headers=[u'details.task_id', 
+                    u'details.type', u'details.status', u'label', 
+                    u'details.start_time', u'details.stop_time', 
+                    u'details.elapsed'])
+        print(u'Links:')
+        self.result(res, key=u'links', headers=[u'source', u'target'])        
 
     '''
     def count_all_tasks(self):

@@ -85,8 +85,9 @@ class BeehiveTestCase(unittest.TestCase):
         # endpoints
         self.endpoints = cfg.get(u'endpoints')
             
-        # redis connection  
-        rhost, rport, db = cfg.get(u'redis-uri').split(u';')
+        # redis connection
+        self.redis_uri = cfg.get(u'redis-uri')
+        rhost, rport, db = self.redis_uri.split(u';')
         self.redis = redis.StrictRedis(host=rhost, port=int(rport), db=int(db))
         
         # celery broker
@@ -102,7 +103,7 @@ class BeehiveTestCase(unittest.TestCase):
         self.ip = self.users.get(current_user).get(u'ip')        
         
         # create auth client
-        self.auth_client = BeehiveApiClient([], None, None)
+        self.auth_client = BeehiveApiClient([], u'keyauth', None, None)
         
         # create api endpoint
         self.api = {}

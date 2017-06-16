@@ -13,6 +13,7 @@ from celery.result import AsyncResult, GroupResult
 from celery.signals import task_prerun, task_postrun, task_failure, \
                            task_retry, task_revoked
 from traceback import format_tb
+from celery.utils import static
 
 logger = get_task_logger(__name__)
 
@@ -41,7 +42,7 @@ class TaskResult(object):
     
     @staticmethod
     def store(task_id, name=None, hostname=None, args=None, kwargs=None, 
-              status=None, retval=None, timestamp=None, duration=None, 
+              status=None, retval=None, start_time=None, stop_time=None, 
               childs=None, traceback=None, inner_type=None, msg=None,
               jobs=None):
         """Store task result in redis
@@ -64,8 +65,8 @@ class TaskResult(object):
         set_data(u'kwargs', kwargs)
         set_data(u'status', status)
         set_data(u'result', retval)
-        set_data(u'timestamp', timestamp)
-        set_data(u'duration', duration)
+        set_data(u'start_time', start_time)
+        set_data(u'stop_time', stop_time)
         set_data(u'children', childs)
         set_data(u'jobs', jobs)
         set_data(u'traceback', traceback)
@@ -86,8 +87,8 @@ class TaskResult(object):
                 u'status':status,
                 u'result':retval,
                 u'traceback':traceback,
-                u'timestamp':timestamp,
-                u'duration':duration,
+                u'start_time':start_time,
+                u'stop_time':stop_time,
                 u'children':childs,
                 u'jobs':jobs,
                 u'trace':[]}
@@ -124,88 +125,140 @@ class TaskResult(object):
         logout(u'Save %s %s result: %s' % (inner_type, task_id, truncate(data)))
 
         return val
+    
+    @staticmethod
+    def task_prerun(**args):
+        # store task
+        #TaskResult.store(task_id, task.name, task.request.hostname, args, kwargs, 
+        #                  'PENDING', None, None, None, None, None, 
+        #                  task.inner_type)
+        
+        task = args.get(u'task')
+        task_id = args.get(u'task_id')
+        vargs = args.get(u'args')
+        kwargs = args.get(u'kwargs')
+        
+        # get task start_time
+        #_start_time = time()
+        #str2uni(datetime.today().strftime(u'%d-%m-%y %H:%M:%S-%f'))
+        
+        # get task initial time
+        #task.inner_start = time()
+        
+        # store task
+        TaskResult.store(task_id, name=task.name, hostname=task.request.hostname, 
+                         args=vargs, kwargs=kwargs, status=u'PENDING', retval=None, 
+                         start_time=None, stop_time=None, childs=None, 
+                         traceback=None, inner_type=task.inner_type, msg=None, 
+                         jobs=None)
+    
+    @staticmethod
+    def task_postrun(**args):
+        task = args.get(u'task')
+        task_id = args.get(u'task_id')
+        vargs = args.get(u'args')
+        kwargs = args.get(u'kwargs')
+        status = args.get(u'state')
+        retval = args.get(u'retval')
+        
+        # get task childrens
+        childrens = task.request.children
+        chord = task.request.chord
+        
+        childs = []
+        jobs = []
+        
+        # get chord callback task
+        chord_callback_task = None
+        if chord is not None:
+            chord_callback_task = chord[u'options'].get(u'task_id', None)
+            childs.append(chord_callback_task)
+        
+        if len(childrens) > 0:
+            for c in childrens:
+                if isinstance(c, AsyncResult):
+                    child_task = TaskResult.get(c.id)
+                    if child_task[u'type'] == u'JOB':
+                        jobs.append(c.id)
+                    else:
+                        childs.append(c.id)
+                elif isinstance(c, GroupResult):
+                    for i in c:
+                        #if i.id != chord_callback_task:
+                        childs.append(i.id)
+    
+        # get task stop_time
+        #duration = round(time() - task.inner_start, 3)
+        stop_time = time()
+    
+        # set retval to None when failure occurs
+        if status == u'FAILURE':
+            retval = None
+    
+        # reset status for JOB task to PROGRESS when status is SUCCESS
+        # status SUCCESS will be set when the last child task end
+        #if task.inner_type == u'JOB' and task_local.opid == task_id and \
+        #   status == u'SUCCESS':
+        if task.inner_type == u'JOB' and status == u'SUCCESS':
+            status = u'PROGRESS'
+        
+        # store task
+        TaskResult.store(task_id, name=task.name, hostname=task.request.hostname, 
+                         args=vargs, kwargs=kwargs, status=status, retval=retval, 
+                         start_time=None, stop_time=stop_time, childs=set(childs), 
+                         traceback=None, inner_type=task.inner_type, msg=None, 
+                         jobs=jobs)
+
+    @staticmethod
+    def task_failure(**args):
+        """Dispatched when a task fails.
+        Sender is the task object executed.
+    
+        Provides arguments:
+        - task_id: Id of the task.
+        - exception: Exception instance raised.
+        - args: Positional arguments the task was called with.
+        - kwargs: Keyword arguments the task was called with.
+        - traceback: Stack trace object.
+        - einfo: The billiard.einfo.ExceptionInfo instance.
+        """
+        task_id = args.get(u'task_id')
+        exception = args.get(u'exception')
+        kwargs = args.get(u'kwargs')
+        kwargs = args.get(u'kwargs')
+        traceback = args.get(u'traceback')
+        einfo = args.get(u'einfo')
+        
+        # set status
+        status = u'FAILURE'
+        
+        # get task stop_time
+        stop_time = time()        
+        
+        # get exception info
+        err = str(exception)
+        trace = format_tb(einfo.tb)
+        trace.append(err)    
+    
+        # store task
+        TaskResult.store(task_id, name=None, hostname=None, 
+                         args=None, kwargs=None, status=status, retval=None, 
+                         start_time=None, stop_time=stop_time, childs=None, 
+                         traceback=trace, inner_type=None, msg=err, jobs=None)  
 
 @task_prerun.connect
 def task_prerun(**args):
-    # store task
-    #TaskResult.store(task_id, task.name, task.request.hostname, args, kwargs, 
-    #                  'PENDING', None, None, None, None, None, 
-    #                  task.inner_type)
-    
-    task = args.get(u'task')
-    task_id = args.get(u'task_id')
-    vargs = args.get(u'args')
-    kwargs = args.get(u'kwargs')
-    
-    # get task timestamp
-    _timestamp = str2uni(datetime.today().strftime(u'%d-%m-%y %H:%M:%S-%f'))
-    
-    # get task initial time
-    task.inner_start = time()
-    
-    # store task
-    TaskResult.store(task_id, name=task.name, hostname=task.request.hostname, 
-                     args=vargs, kwargs=kwargs, status=u'STARTED', retval=None, 
-                     timestamp=_timestamp, duration=None, childs=None, 
-                     traceback=None, inner_type=task.inner_type, msg=None, 
-                     jobs=None)
+    TaskResult.task_prerun(**args)
 
 @task_postrun.connect
 def task_postrun(**args):
-    task = args.get(u'task')
-    task_id = args.get(u'task_id')
-    vargs = args.get(u'args')
-    kwargs = args.get(u'kwargs')
-    status = args.get(u'state')
-    retval = args.get(u'retval')
-    
-    # get task childrens
-    childrens = task.request.children
-    chord = task.request.chord
-    
-    childs = []
-    jobs = []
-    
-    # get chord callback task
-    chord_callback_task = None
-    if chord is not None:
-        chord_callback_task = chord[u'options'].get(u'task_id', None)
-        childs.append(chord_callback_task)
-    
-    if len(childrens) > 0:
-        for c in childrens:
-            if isinstance(c, AsyncResult):
-                child_task = TaskResult.get(c.id)
-                if child_task[u'type'] == u'JOB':
-                    jobs.append(c.id)
-                else:
-                    childs.append(c.id)
-            elif isinstance(c, GroupResult):
-                for i in c:
-                    #if i.id != chord_callback_task:
-                    childs.append(i.id)
+    TaskResult.task_postrun(**args)
 
-    # get task duration
-    duration = round(time() - task.inner_start, 3)
+@task_failure.connect
+def task_failure(**args):
+    TaskResult.task_failure(**args)
 
-    # set retval to None when failure occurs
-    if status == u'FAILURE':
-        retval = None
-
-    # reset status for JOB task to PROGRESS when status is SUCCESS
-    # status SUCCESS will be set when the last child task end
-    #if task.inner_type == u'JOB' and task_local.opid == task_id and \
-    #   status == u'SUCCESS':
-    if task.inner_type == u'JOB' and status == u'SUCCESS':
-        status = u'PROGRESS'
-    
-    # store task
-    TaskResult.store(task_id, name=task.name, hostname=task.request.hostname, 
-                     args=vargs, kwargs=kwargs, status=status, retval=retval, 
-                     timestamp=None, duration=duration, childs=set(childs), 
-                     traceback=None, inner_type=task.inner_type, msg=None, 
-                     jobs=jobs)
-
+'''
 @task_failure.connect
 def task_failure(**args):
     """Dispatched when a task fails.
@@ -237,7 +290,7 @@ def task_failure(**args):
     # store task
     TaskResult.store(task_id, name=None, hostname=None, 
                      args=None, kwargs=None, status=status, retval=None, 
-                     timestamp=None, duration=None, childs=None, 
+                     start_time=None, stop_time=None, childs=None, 
                      traceback=trace, inner_type=None, msg=err, jobs=None)    
     
 @task_retry.connect
@@ -247,3 +300,4 @@ def task_retry(**kwargs):
 @task_revoked.connect
 def task_revoked(**kwargs):
     logger.warn(u'[task_revoked] %s' % kwargs)
+'''

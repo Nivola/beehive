@@ -381,6 +381,8 @@ class TaskManager(ApiObject):
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
+        self.verify_permisssions(u'view')
+        
         try:
             res = []
             manager = self.controller.redis_taskmanager
@@ -401,6 +403,11 @@ class TaskManager(ApiObject):
                     # add time to live
                     val[u'ttl'] = ttl
                     
+                    # add elapsed
+                    val[u'elapsed'] = val[u'stop_time'] - val[u'start_time']
+                    val[u'stop_time'] = self.__convert_timestamp(val[u'stop_time'])
+                    val[u'start_time'] = self.__convert_timestamp(val[u'start_time'])                    
+                    
                     # task status
                     #if tasktype == 'JOB':
                     #    status = self.query_chain_status(tid)[2]            
@@ -410,7 +417,7 @@ class TaskManager(ApiObject):
                         #res = AsyncResult(key, app=task_manager).get()
             
                     # sort task by date
-                    res = sorted(res, key=lambda task: task[u'timestamp'])
+                    res = sorted(res, key=lambda task: task[u'start_time'])
             
             self.logger.debug(u'Get all tasks: %s' % truncate(res))
             return res
@@ -428,28 +435,41 @@ class TaskManager(ApiObject):
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
+        self.verify_permisssions(u'view')
+        
         try:
             res = []
             manager = self.controller.redis_taskmanager
-            res = len(manager.inspect(pattern=self.prefix+'*', debug=False))
+            res = len(manager.inspect(pattern=self.prefix+u'*', debug=False))
             
-            self.logger.debug('Count all tasks: %s' % res)
+            self.logger.debug(u'Count all tasks: %s' % res)
             return res
         except Exception as ex:
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
 
+    def __convert_timestamp(self, timestamp):
+        """
+        """
+        timestamp = datetime.utcfromtimestamp(timestamp)
+        return str2uni(timestamp.strftime(u'%d-%m-%Y %H:%M:%S.%f'))        
+
     def _get_task_info(self, task_id):
         """ """
         manager = self.controller.redis_taskmanager
-        keys = manager.inspect(pattern=self.prefix+'-'+task_id, debug=False)
-        data = manager.query(keys, ttl=True)[self.prefix+'-'+task_id]
+        keys = manager.inspect(pattern=self.prefix+u'-'+task_id, debug=False)
+        data = manager.query(keys, ttl=True)[self.prefix+u'-'+task_id]
         # get task info and time to live
         val = json.loads(data[0])
         ttl = data[1]
         
         # add time to live
-        val[u'ttl'] = ttl        
+        val[u'ttl'] = ttl
+        
+        # add elapsed
+        val[u'elapsed'] = val[u'stop_time'] - val[u'start_time']
+        val[u'stop_time'] = self.__convert_timestamp(val[u'stop_time'])
+        val[u'start_time'] = self.__convert_timestamp(val[u'start_time'])
         
         return val
 
@@ -462,32 +482,32 @@ class TaskManager(ApiObject):
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
         try:
-            child_ids = task[u'childs']
+            child_ids = task[u'children']
             child_index = index + 1
             for child_id in child_ids:
                 try:
                     child = self._get_task_info(child_id)
-                    if len(child[u'childs']) == 0:
+                    if len(child[u'children']) == 0:
                         task_type = u'end'
                     else:
                         task_type = u'inner'
                     graph.add_node(child_id, 
-                                   id=child[u'id'], 
+                                   id=child[u'task_id'], 
                                    label=child[u'name'].split(u'.')[-1],
                                    type=task_type,
                                    details=child)
-                    graph.add_edge(task[u'id'], child_id)
+                    graph.add_edge(task[u'task_id'], child_id)
                     
                     # call get_task_graph with task child
                     self._get_task_graph(child, graph, child_index)
                     child_index += 1
+                    self.logger.debug(u'Get child task %s' % child_id)
                 except:
-                    self.logger.warn('Child task %s does not exist' % child_id)
+                    self.logger.warn(u'Child task %s does not exist' % child_id, exc_info=1)
             
             return graph
         except Exception as ex:
-            import traceback
-            self.logger.error(traceback.format_exc())
+            self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
         
     @watch
@@ -499,14 +519,14 @@ class TaskManager(ApiObject):
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
         try:
-            child_ids = task.pop(u'childs')
+            child_ids = task.pop(u'children')
             if child_ids is not None:
                 for child_id in child_ids:
                     try:
                         child = self._get_task_info(child_id)
                         
-                        if child[u'childs'] is not None and \
-                           len(child[u'childs']) == 0:
+                        if child[u'children'] is not None and \
+                           len(child[u'children']) == 0:
                             child[u'inner_type'] = u'end'
                         else:
                             child[u'inner_type']  = u'inner'
@@ -532,13 +552,13 @@ class TaskManager(ApiObject):
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
         # verify permissions
-        #self.controller.can('view', self.objtype, definition=self.objdef)       
+        self.verify_permisssions(u'view')     
         
         try:
             res = []
             manager = self.controller.redis_taskmanager
-            keys = manager.inspect(pattern=self.prefix+'-'+task_id, debug=False)
-            data = manager.query(keys, ttl=True)[self.prefix+'-'+task_id]
+            keys = manager.inspect(pattern=self.prefix+u'-'+task_id, debug=False)
+            data = manager.query(keys, ttl=True)[self.prefix+u'-'+task_id]
         except Exception as ex:
             err = u'Task %s not found' % task_id
             self.logger.error(err)
@@ -556,9 +576,13 @@ class TaskManager(ApiObject):
             
             # JOB
             if tasktype == u'JOB':
+                # add elapsed
+                val[u'elapsed'] = val[u'stop_time'] - val[u'start_time']
+                val[u'stop_time'] = self.__convert_timestamp(val[u'stop_time'])
+                val[u'start_time'] = self.__convert_timestamp(val[u'start_time'])           
                 try:
                     # get job childs
-                    first_child_id = val.pop(u'childs')[0]
+                    first_child_id = val.pop(u'children')[0]
                     first_child = self._get_task_info(first_child_id)
                     first_child[u'inner_type'] = u'start'
                     childs_index = {first_child_id:first_child}
@@ -566,20 +590,21 @@ class TaskManager(ApiObject):
                     
                     # sort childs by date
                     childs = sorted(childs_index.values(), 
-                                    key=lambda task: task[u'timestamp'])
+                                    key=lambda task: task[u'start_time'])
                     
                     # get childs trace
                     trace = []
                     for c in childs:
                         for t in c[u'trace']:
-                            trace.append((t[0], c[u'name'], c[u'id'], t[1]))
+                            trace.append((t[0], c[u'name'], c[u'task_id'], t[1]))
                     # sort trace
                     val[u'trace'] = sorted(trace, key=lambda row: row[0])                
-                    val[u'childs'] = childs
+                    val[u'children'] = childs
                 except:
-                    val[u'childs'] = None
+                    self.logger.warn(u'', exc_info=1)
+                    val[u'children'] = None
             else:
-                val[u'childs'] = None
+                val[u'children'] = None
                 
             res = val
             self.logger.debug(u'Get task %s info: %s' % (task_id, truncate(res)))
@@ -588,6 +613,7 @@ class TaskManager(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
     
+    '''
     @watch
     def query_task_status(self, task_id):
         """Get task status. 
@@ -597,19 +623,18 @@ class TaskManager(ApiObject):
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
         # verify permissions
-        #self.controller.can('view', self.objtype, definition=self.objdef)       
+        self.verify_permisssions(u'view')     
         
         try:
             res = []
             manager = self.controller.redis_taskmanager
-            keys = manager.inspect(pattern=self.prefix_base+u'-'+task_id, 
-                                   debug=False)
-            data = manager.query(keys, ttl=True)[self.prefix_base+u'-'+task_id]
+            keys = manager.inspect(pattern=self.prefix+u'-'+task_id, debug=False)
+            data = manager.query(keys, ttl=True)[self.prefix+u'-'+task_id]
         except Exception as ex:
             err = u'Task %s not found' % task_id
             self.logger.error(err)
-            raise ApiManagerError(err, code=404)            
-            
+            raise ApiManagerError(err, code=404)                    
+        
         try:
             # get task status
             res = json.loads(data[0])
@@ -633,8 +658,9 @@ class TaskManager(ApiObject):
             stask_id, failed, state = self.query_chain_status(c.task_id)
             return stask_id, failed, state
         
-        return task_id, False, state    
+        return task_id, False, state    '''
     
+    '''
     def _query_task_graph_item(self, task_id):
         res = AsyncResult(task_id, app=task_manager)
         
@@ -643,7 +669,7 @@ class TaskManager(ApiObject):
                 u'traceback':None,
                 u'children':[], 
                 u'id':task_id,
-                u'timestamp':None,
+                u'start_time':None,
                 u'type':None,
                 u'name':None, 
                 u'args':None}
@@ -659,8 +685,8 @@ class TaskManager(ApiObject):
         except: name = None                    
         try: args = result[1]
         except: args = None
-        try: timestamp = result[2]
-        except: timestamp = None
+        try: start_time = result[2]
+        except: start_time = None
         try: elapsed = result[3]
         except: elapsed = None
         try: tasktype = result[4]
@@ -670,7 +696,7 @@ class TaskManager(ApiObject):
         
         resp[u'name'] = name
         resp[u'args'] = args
-        resp[u'timestamp'] = timestamp
+        resp[u'start_time'] = start_time
         resp[u'elapsed'] = elapsed
         resp[u'type'] = tasktype        
         
@@ -679,7 +705,7 @@ class TaskManager(ApiObject):
         elif res.ready() is True:
             resp[u'result'] = result
             
-        return resp    
+        return resp    '''
     
     @watch
     def get_task_graph(self, task_id):
@@ -690,7 +716,7 @@ class TaskManager(ApiObject):
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
         # verify permissions
-        #self.controller.can('view', self.objtype, definition=self.objdef)       
+        self.verify_permisssions(u'view')      
         
         try:
             graph_data = None
@@ -701,7 +727,7 @@ class TaskManager(ApiObject):
             # get task info and time to live
             val = json.loads(data[0])
 
-            childs = val[u'childs']
+            childs = val[u'children']
             tasktype = val[u'type']
             
             # JOB
@@ -710,8 +736,8 @@ class TaskManager(ApiObject):
                 graph = DiGraph(name="Task %s child graph" % val[u'name'])
                 # populate graph
                 child = self._get_task_info(childs[0])
-                graph.add_node(child[u'id'], 
-                               id=child[u'id'], 
+                graph.add_node(child[u'task_id'], 
+                               id=child[u'task_id'], 
                                label=child[u'name'].split(u'.')[-1],
                                type=u'start',
                                details=child)                

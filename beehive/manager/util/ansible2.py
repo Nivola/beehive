@@ -9,6 +9,8 @@ import os
 import json
 from tempfile import NamedTemporaryFile
 from ansible.inventory import Inventory
+#from ansible.inventory.manager import InventoryManager
+#from ansible.vars.manager import VariableManager
 from ansible.vars import VariableManager
 from ansible.parsing.dataloader import DataLoader
 from ansible.executor import playbook_executor
@@ -149,6 +151,7 @@ class Runner(object):
     def get_inventory(self, group=None):
         """Get inventory, using most of above objects
         """
+        #inventory = InventoryManager(self.loader, sources=self.inventory)
         inventory = Inventory(loader=self.loader, 
                               variable_manager=self.variable_manager, 
                               host_list=self.inventory)
@@ -160,6 +163,7 @@ class Runner(object):
     def get_inventory_with_vars(self, group):
         """Get inventory, using most of above objects
         """
+        #inventory = InventoryManager(self.loader, sources=self.inventory)
         inventory = Inventory(loader=self.loader, 
                               variable_manager=self.variable_manager, 
                               host_list=self.inventory)
@@ -204,6 +208,7 @@ class Runner(object):
         os.symlink(u'%s/.ssh' % self.inventory, u'/tmp/.ssh')'''
         
         # Set inventory, using most of above objects
+        #inventory = InventoryManager(self.loader, sources=self.inventory)
         inventory = Inventory(loader=self.loader, 
                               variable_manager=self.variable_manager, 
                               host_list=self.inventory)
@@ -247,6 +252,7 @@ class Runner(object):
         self.options.tags = []        
         
         # Set inventory, using most of above objects
+        #inventory = InventoryManager(self.loader, sources=self.inventory)
         inventory = Inventory(loader=self.loader, 
                               variable_manager=self.variable_manager, 
                               host_list=self.inventory)

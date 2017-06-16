@@ -72,8 +72,14 @@ class Event(object):
         
         :return: dict
         """
-        msg = {u'id':self.id, u'type':self.type, u'creation':self.creation, 
-               u'data':self.data, u'source':self.source, u'dest':self.dest}
+        msg = {
+            u'id':self.id, 
+            u'type':self.type, 
+            u'creation':self.creation, 
+            u'data':self.data, 
+            u'source':self.source, 
+            u'dest':self.dest
+        }
         return msg    
     
     def json(self):
@@ -164,9 +170,10 @@ class EventProducerRedis(EventProducer):
     def _send_kombu(self, event_type, data, source, dest):
         try:
             event = Event(event_type, data, source, dest)
+            val = event.dict()
             with producers[self.conn].acquire() as producer:
                 msg = event.dict()
-                producer.publish(event.dict(),
+                producer.publish(val,
                                  serializer=u'json',
                                  compression=u'bzip2',
                                  exchange=self.exchange,

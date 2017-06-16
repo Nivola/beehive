@@ -16,8 +16,8 @@ logger = get_task_logger(__name__)
 #
 @task_manager.task(bind=True, base=Job)
 @job(entity_class=TaskManager, module=u'SchedulerModule', 
-     job_name=u'manager.jobtest_simple.insert', delta=1)
-def jobtest_simple(self, objid, params):
+     op=u'jobtest2', act=u'insert', delta=1)
+def jobtest2(self, objid, params):
     """Test job
     
     :param objid: objid of the task manager. Ex. 110//2222//334//*
@@ -28,13 +28,13 @@ def jobtest_simple(self, objid, params):
     
     Job.create([
         test_end,
-        test_hello
+        jobtest_task4
     ], ops).delay()
     return True
 
 @task_manager.task(bind=True, base=Job)
 @job(entity_class=TaskManager, module=u'SchedulerModule', 
-     op=u'test', act=u'insert', delta=1)
+     op=u'jobtest', act=u'insert', delta=1)
 def jobtest(self, objid, params):
     """Test job
     
@@ -53,24 +53,24 @@ def jobtest(self, objid, params):
     numbers = params[u'numbers']
     g1 = []
     for i in range(0,len(numbers)):
-        g1.append(test_mul.si(ops, i))
+        g1.append(jobtest_task3.si(ops, i))
     if params[u'error'] is True:
         g1.append(test_raise.si(ops, i))
     
     g1.append(test_invoke_job.si(ops))
 
     j = Job.create([
-        test_sum2,
-        test_sum,
+        jobtest_task2,
+        jobtest_task1,
         g1,
-        test_add
+        jobtest_task0
     ], ops)
     j.delay()
     return True
 
 @task_manager.task(bind=True, base=JobTask)
 @job_task(module=u'SchedulerModule')
-def test_add(self, options):
+def jobtest_task0(self, options):
     """Test job add x and y.
     Read x and y from shared data. Write mul in shared data.
     
@@ -87,13 +87,12 @@ def test_add(self, options):
     data = self.get_shared_data()    
     data[u'mul'] = res
     self.set_shared_data(data)
-    logger.warn(data)
     self.update(u'PROGRESS', msg=u'add %s' % data)
     return res
 
 @task_manager.task(bind=True, base=JobTask)
 @job_task(module=u'SchedulerModule')
-def test_sum(self, options):
+def jobtest_task1(self, options):
     """Test job sum numbers.
     Read mul_numbers from shared data. Write res in shared data.
     
@@ -118,7 +117,7 @@ def test_sum(self, options):
 
 @task_manager.task(bind=True, base=JobTask)
 @job_task(module=u'SchedulerModule')
-def test_sum2(self, options):
+def jobtest_task2(self, options):
     """Test job sum numbers.
     Read mul_numbers from shared data. Write res in shared data.
     
@@ -155,7 +154,7 @@ def test_invoke_job(self, options):
         u'server':operation.user[1], 
         u'identity':operation.user[2]
     }
-    job = jobtest_simple.apply_async(data, user)
+    job = jobtest2.apply_async(data, user)
     job_id = job.id
     self.update(u'PROGRESS')
     
@@ -165,7 +164,7 @@ def test_invoke_job(self, options):
 
 @task_manager.task(bind=True, base=JobTask)
 @job_task(module=u'SchedulerModule')
-def test_mul(self, options, index):
+def jobtest_task3(self, options, index):
     """Test job mul x and y.
     Read numbers and mul from shared data. Write mul_numbers item in shared data.
     
@@ -174,7 +173,6 @@ def test_mul(self, options, index):
     :param index: index of item in numbers list
     """
     data = self.get_shared_data()
-    logger.warn(data)
     numbers = data[u'numbers']
     mul = data[u'mul']
     res = numbers[index] * mul
@@ -198,7 +196,7 @@ def test_raise(self, options, index):
 
 @task_manager.task(bind=True, base=JobTask)
 @job_task(module=u'SchedulerModule')
-def test_hello(self, options):
+def jobtest_task4(self, options):
     """Test job mul x and y.
     Read numbers and mul from shared data. Write mul_numbers item in shared data.
     

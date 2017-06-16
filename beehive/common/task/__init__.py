@@ -41,8 +41,8 @@ class BaseTask(Task):
         val = self._redis.get(self.prefix + task_id)
         if val is not None:
             data = json.loads(val)
-        #logger.debug(u'Get shared data for job %s: %s' % 
-        #             (task_id, truncate(data)))   
+        else:
+            data = {} 
         return data
     
     def set_shared_data(self, task_id, data):

@@ -109,7 +109,8 @@ class GetTasksCount(TaskApiView):
         task_manager = controller.get_task_manager()
         resp = task_manager.count_all_tasks()
         return resp
-    
+
+'''
 class GetTasksActive(TaskApiView):
     def dispatch(self, controller, data, *args, **kwargs):    
         task_manager = controller.get_task_manager()
@@ -133,6 +134,7 @@ class GetTasksRevoked(TaskApiView):
         task_manager = controller.get_task_manager()
         resp = task_manager.get_revoked_tasks()
         return resp
+'''
 
 class QueryTask(TaskApiView):
     def dispatch(self, controller, data, oid, *args, **kwargs):    
@@ -140,17 +142,20 @@ class QueryTask(TaskApiView):
         res = task_manager.query_task(oid)
         resp = {u'task-instance':res}
         return resp
-    
+
+'''
 class QueryTaskStatus(TaskApiView):
     def dispatch(self, controller, data, oid, *args, **kwargs):    
         task_manager = controller.get_task_manager()
-        resp = task_manager.query_task_status(oid)
-        return resp
+        res = task_manager.query_task_status(oid)
+        resp = {u'task-instance-status':res}
+        return resp'''
     
 class GetTaskGraph(TaskApiView):
     def dispatch(self, controller, data, oid, *args, **kwargs):    
         task_manager = controller.get_task_manager()
-        resp = task_manager.get_task_graph(oid)
+        res = task_manager.get_task_graph(oid)
+        resp = {u'task-instance-graph':res}
         return resp    
     
 class PurgeAllTasks(TaskApiView):
@@ -226,7 +231,7 @@ class TaskAPI(ApiView):
             #(u'worker/tasks/reserved', u'GET', GetTasksReserved, {}),
             #(u'worker/tasks/revoked', u'GET', GetTasksRevoked, {}),
             (u'worker/tasks/<oid>', u'GET', QueryTask, {}),
-            (u'worker/tasks/<oid>/status', u'GET', QueryTaskStatus, {}),
+            #(u'worker/tasks/<oid>/status', u'GET', QueryTaskStatus, {}),
             (u'worker/tasks/<oid>/graph', u'GET', GetTaskGraph, {}),
             (u'worker/tasks', u'DELETE', PurgeAllTasks, {}),
             (u'worker/tasks/purge', u'DELETE', PurgeTasks, {}),

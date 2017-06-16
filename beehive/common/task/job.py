@@ -135,7 +135,7 @@ class Job(BaseTask):
                 job = self._query_job(module, job_id, attempt)
                 attempt = job[1]
                 job = job[0]
-                status = job[u'state']
+                status = job[u'status']
                 self.update(u'PROGRESS')
     
             self.update(u'PROGRESS', msg=u'Job %s completed with %s' % 
@@ -154,6 +154,9 @@ class Job(BaseTask):
         else:
             return res
 
+    #
+    # invoke remote job
+    #
     def _query_job(self, module, job_id, attempt):
         """Query remote job status.
         
@@ -165,7 +168,7 @@ class Job(BaseTask):
         try:
             uri = u'/v1.0/worker/tasks/%s/' % job_id
             res = self.api_admin_request(module, uri, u'GET', u'')
-            logger.debug(u'Query job %s: %s' % (job_id, res[u'state']))
+            logger.debug(u'Query job %s: %s' % (job_id, res[u'status']))
         except ApiManagerError as ex:
             # remote job query fails. Return fake state and wait new query
             res = {u'state':u'PROGRESS'}
@@ -217,11 +220,14 @@ class Job(BaseTask):
     #
     def get_shared_data(self):
         """ """
-        return BaseTask.get_shared_data(self, task_local.opid)
+        data = BaseTask.get_shared_data(self, task_local.opid)
+        return data
     
     def set_shared_data(self, data):
         """ """
-        return BaseTask.set_shared_data(self, task_local.opid, data)   
+        current_data = self.get_shared_data()
+        current_data.update(data)
+        return BaseTask.set_shared_data(self, task_local.opid, current_data)   
     
     def remove_shared_area(self):
         """ """
@@ -244,8 +250,11 @@ class Job(BaseTask):
     
     def remove_stack(self):
         """Remove shared memory stack reference from redis"""
-        return BaseTask.remove_stack(self, task_local.opid)  
+        return BaseTask.remove_stack(self, task_local.opid)
 
+    #
+    # db session
+    #
     def get_session(self):
         self.app.api_manager.get_session()
         
@@ -260,43 +269,84 @@ class Job(BaseTask):
         return elapsed  
     
     def get_entity_class_name(self):
-        return task_local.entity_class.__module__ + '.' + task_local.entity_class.__name__
+        return task_local.entity_class.__module__ + u'.' + \
+               task_local.entity_class.__name__
     
     def get_options(self):
         options = (self.get_entity_class_name(), task_local.objid, 
-                   task_local.op, task_local.opid, task_local.start, 
+                   task_local.op, task_local.opid, None, 
                    task_local.delta, task_local.user)
         return options     
     
-    def update(self, status, ex=None, traceback=None, result=None, msg=None):
-        """Update job and jobtask status
+    #
+    # task status management
+    #
+    def update_job(self, params, status, current_time, ex=None, traceback=None, 
+                   result=None, msg=None, start_time=None):
+        """Update job status
+        
+        :param params: variables in shared area
+        :param status: job current status
+        :param start_time: job start time [optional]
+        :param current_time: current time
+        :param ex: exception raised [optional]
+        :param traceback: exception trace [optional]
+        :param result: task result. None otherwise task status is SUCCESS [optional]
+        :param msg: update message [optional]
+        """
+        # update job status only if it is not already in FAILURE status
+        job_status = get_value(params, u'job-status', u'PROGRESS')        
+        if job_status != u'FAILURE':
+            '''# set job status
+            params[u'job-status'] = status
+            
+            # set start time for job task when status is STARTED
+            if job_status == u'STARTED':
+                params[u'job_start_time'] = time()
+                elapsed = 0
+            # calculate elapsed for job task when status is not STARTED
+            else:
+                job_start_time = get_value(params, u'job_start_time', time())
+                elapsed = round(time() - job_start_time, 4)
+            
+            # save data in shared area
+            self.set_shared_data(params)'''
+            
+            # set result if status is SUCCESS
+            retval = None
+            if status == u'SUCCESS':
+                if u'result' in params:
+                    retval = params[u'result']
+                # remove shared area
+                self.remove_shared_area()
+                
+                # remove stack
+                self.remove_stack()
+            else:
+                # set job status
+                params[u'job-status'] = status
+                
+                # save data in shared area
+                self.set_shared_data(params)
+
+            # store job data
+            msg = None
+            TaskResult.store(task_local.opid, status=status, retval=retval, 
+                             inner_type=u'JOB', traceback=traceback, 
+                             stop_time=current_time, start_time=start_time, 
+                             msg=msg)
+            logger.info(u'JOB %s status change to %s' % 
+                        (task_local.opid, status))        
+    
+    def send_job_event(self, status, elapsed, ex=None, msg=None):
+        """Send job update event
         
         :param status: jobtask status
-        :param ex:
-        :param traceback:
-        :param result: task result. None otherwise task status is SUCCESS
-        :param msg: update message
+        :param ex: exception raised [optional]
+        :param elapsed: elapsed time
+        :param result: task result. None otherwise task status is SUCCESS [optional]
+        :param msg: update message [optional]        
         """
-        # get elapsed
-        elapsed = self.elapsed()
-        
-        # log message
-        if msg is not None:
-            if status == u'FAILURE':
-                logger.error(msg, exc_info=1)
-                msg = u'ERROR: %s' % (msg)
-            else:
-                logger.debug(msg)
-        
-        # update task result
-        task_id = self.request.id
-        TaskResult.store(task_id, status=status, traceback=traceback,
-                         retval=result, msg=msg)
-         
-        #if status == u'PROGRESS' and not self.request.called_directly:
-        #    self.update_state(state=u'PROGRESS', meta={u'elapsed': elapsed})
-
-        # send event
         response = [status, elapsed]
         if ex is not None:
             response.append(ex)
@@ -321,51 +371,57 @@ class Job(BaseTask):
         entity_class = task_local.entity_class
         evt.objtype = entity_class.objtype
         evt.objdef = entity_class.objdef
-        evt.publish(entity_class.objtype, ApiObject.ASYNC_OPERATION)
+        evt.publish(entity_class.objtype, ApiObject.ASYNC_OPERATION)        
+    
+    def update(self, status, ex=None, traceback=None, result=None, msg=None,
+               start_time=None):
+        """Update job and jobtask status
         
-        # get current job state
-        #job = self._query_job(self.app.api_manager.app_id, task_local.opid)
-        #job_state = job[u'state']
-        
-
-        # update job status only if it is not already in FAILURE status
+        :param status: jobtask status
+        :param ex: exception raised [optional]
+        :param traceback: exception trace [optional]
+        :param result: task result. None otherwise task status is SUCCESS [optional]
+        :param msg: update message [optional]
+        :param start_time: job task start time [optional]
+        """
+        # get variables from shared area
         params = self.get_shared_data()
-        job_state = get_value(params, u'job_state', u'PROGRESS')        
-        if job_state != u'FAILURE':
-            # set job status
-            params[u'job_state'] = status
-            
-            # set start time for job task when status is STARTED
-            if job_state == u'STARTED':
-                params[u'job_start_time'] = time()
-                elapsed = 0
-            # calculate elapsed for job task when status is not STARTED
-            else:
-                job_start_time = get_value(params, u'job_start_time', time())
-                elapsed = round(time() - job_start_time, 4)
-            
-            # save data in shared area
-            self.set_shared_data(params)
-            
-            # set result if status is SUCCESS
-            retval = None
-            if status == u'SUCCESS':
-                if u'result' in params:
-                    retval = params[u'result']
-                # remove shared area
-                self.remove_shared_area()
-                
-                # remove stack
-                self.remove_stack()
-
-            # store job data
-            msg = None
-            TaskResult.store(task_local.opid, status=status, retval=retval, 
-                             inner_type=u'JOB', traceback=traceback, 
-                             duration=elapsed, msg=msg)
-            logger.info(u'Job %s status change to %s - %s' % 
-                        (task_local.opid, status, elapsed))
         
+        # get job start time
+        job_start_time = params[u'start-time']
+        
+        # get current time
+        current_time = time()
+        
+        # get elapsed
+        elapsed = current_time - float(job_start_time)
+        
+        # update job
+        self.update_job(params, status, current_time, ex, traceback, result, msg)
+        
+        # log message
+        if msg is not None:
+            if status == u'FAILURE':
+                logger.error(msg, exc_info=1)
+                msg = u'ERROR: %s' % (msg)
+            else:
+                logger.debug(msg)
+        
+        # update jobtask result
+        task_id = self.request.id
+        TaskResult.store(task_id, status=status, traceback=traceback,
+                         retval=result, msg=msg, stop_time=current_time,
+                         start_time=start_time)
+         
+        #if status == u'PROGRESS' and not self.request.called_directly:
+        #    self.update_state(state=u'PROGRESS', meta={u'elapsed': elapsed})
+
+        # send event
+        self.send_job_event(status, elapsed, ex, msg)
+    
+    #
+    # handler
+    #
     def after_return(self, *args, **kwargs):
         """Handler called after the task returns.
         """
@@ -450,8 +506,6 @@ def job(entity_class=None, job_name=None, module=None, delta=5, op=None,
         @wraps(fn)
         def decorated_view(*args, **kwargs):
             task = args[0]
-            #TaskResult.store(task.request.id, status=u'PENDING', retval=None, 
-            #                 traceback=None)
 
             # setup correct user
             try:
@@ -476,16 +530,32 @@ def job(entity_class=None, job_name=None, module=None, delta=5, op=None,
             task_local.objid = args[1]
             task_local.op = job_name
             task_local.opid = task.request.id
-            task_local.start = time()
+            #task_local.start = time()
             task_local.delta = delta
             task_local.user = operation.user
-            task.set_shared_data({})
             
             if task_local.op is None:
                 if op is None:
                     task_local.op = u'%s.%s' % (entity_class.objdef, act)
                 else:
-                    task_local.op = u'%s.%s.%s' % (entity_class.objdef, op, act)
+                    task_local.op = u'%s.%s.%s' % (entity_class.objdef, op, act)            
+            
+            # record PENDING task and set start-time
+            start_time = time()
+            status = u'STARTED'
+            params = {
+                u'start-time':start_time,
+                u'job-status':status
+            }
+            task.set_shared_data(params)
+            task.update_job(params, status, start_time, start_time=start_time)
+            
+            # send event
+            task.send_job_event(status, 0, ex=None, msg=None)            
+            
+            #TaskResult.store(task.request.id, status=status, retval=None,
+            #                 start_time=start_time, traceback=None, 
+            #                 inner_type=u'JOB')
             
             #logger.debug(u'Job %s - master task %s' % (task_local.op, 
             #                                           task_local.opid))            
@@ -521,7 +591,7 @@ def job_task(module=''):
             task_local.objid = params[1]
             task_local.op = params[2]
             task_local.opid = params[3]
-            task_local.start = params[4]
+            #task_local.start = params[4]
             task_local.delta = params[5]
             #task_local.inner_type = 'JOBTASK'
 
@@ -533,6 +603,14 @@ def job_task(module=''):
             #logger.debug(u'Job %s - child task %s.%s' % (task_local.op, 
             #                                             task_local.opid, 
             #                                             task.request.id))
+            
+            # record PENDING task and set start-time
+            status = u'PROGRESS'
+            task.update(status, start_time=time(), msg=u'Start jobtask %s.%s' % (task.name, task.request.id))
+            '''start_time = time()            
+            TaskResult.store(task.request.id, status=u'STARTED', retval=None,
+                             start_time=start_time, traceback=None,
+                             inner_type=u'JOBTASK')'''
             res = fn(*args, **kwargs)
             return res
         return decorated_view

@@ -6,7 +6,7 @@ Created on Sep 2, 2013
 import unittest
 from tests.test_util import BeehiveTestCase
 from beehive.common.data import operation
-from beehive.common.authorization import AuthDbManager
+from beehive.common.model.authorization import AuthDbManager
 from beecell.db import QueryError, TransactionError
 from beecell.simple import id_gen
 from beehive.common.test import runtest

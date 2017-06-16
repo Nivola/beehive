@@ -1672,6 +1672,18 @@ class ApiObject(object):
                 role, u'event', self.objdef,
                 self._get_value(self.objdef, args), u'view')        
     
+    @watch
+    def verify_permisssions(self, action):
+        """Short method to verify permissions.
+        
+        :raise ApiManagerError:
+        """        
+        # check authorization
+        self.controller.check_authorization(self.objtype, 
+                                            self.objdef, 
+                                            self.objid,
+                                            action)    
+    
     def get_session(self):
         """open db session"""
         return self.controller.get_session()
@@ -1696,7 +1708,7 @@ class ApiObject(object):
         objid = u'*'
         if self.objid is not None: objid = self.objid
         if etype is None: etype = self.SYNC_OPERATION
-        if exception is not None: response = (False, exception)
+        if exception is not None: response = [False, str(exception)]
         action = op.split(u'.')[-1]
         '''if tmp in [u'get', u'list']:
             action = u'view'
@@ -2307,7 +2319,7 @@ class ApiView(FlaskView):
             operation.perms = None
             
             # get request elapsed time
-            elapsed = nround(time.time() - start, 4)
+            elapsed = round(time.time() - start, 4)
             self.logger.info(u'Invoke api: %s [%s] - STOP - %s' % 
                              (request.path, request.method, elapsed))
             ApiViewResponse(controller).send_event({u'path':request.path,
@@ -2316,7 +2328,7 @@ class ApiView(FlaskView):
                                                    request.data)
         except gevent.Timeout:
             # get request elapsed time
-            elapsed = nround(time.time() - start, 4)
+            elapsed = round(time.time() - start, 4)
             self.logger.error(u'Invoke api: %s [%s] - ERROR - %s' % 
                               (request.path, request.method, elapsed))             
             msg = u'Request %s %s timeout' % (request.path, request.method)
@@ -2329,7 +2341,7 @@ class ApiView(FlaskView):
             return self.get_error(u'Timeout', 408, msg)
         except ApiManagerError as ex:
             # get request elapsed time
-            elapsed = nround(time.time() - start, 4)
+            elapsed = round(time.time() - start, 4)
             self.logger.error(u'Invoke api: %s [%s] - ERROR - %s' % 
                               (request.path, request.method, elapsed))
             ApiViewResponse(controller).send_event({u'path':request.path,
@@ -2341,7 +2353,7 @@ class ApiView(FlaskView):
             return self.get_error(u'ApiManagerError', ex.code, ex.value)     
         except Exception as ex:
             # get request elapsed time
-            elapsed = nround(time.time() - start, 4)
+            elapsed = round(time.time() - start, 4)
             self.logger.error(u'Invoke api: %s [%s] - ERROR - %s' % 
                               (request.path, request.method, elapsed))
             ApiViewResponse(controller).send_event({u'path':request.path,
