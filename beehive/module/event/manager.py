@@ -35,25 +35,26 @@ class EventConsumerRedis(ConsumerMixin):
         self.manager = EventDbManager()
         
         self.redis_uri = self.api_manager.redis_event_uri
-        self.redis_channel = self.api_manager.redis_event_channel
+        self.redis_exchange = self.api_manager.redis_event_exchange
         
-        self.exchange = Exchange(self.redis_channel, type=u'direct', 
-                                 delivery_mode=1)
-        self.queue_name = u'%s.queue' % self.redis_channel   
-        self.routing_key = u'%s.key' % self.redis_channel
+        self.exchange = Exchange(self.redis_exchange, type=u'direct', 
+                                 delivery_mode=1, durable=False)
+        self.queue_name = u'%s.queue' % self.redis_exchange   
+        self.routing_key = u'%s.key' % self.redis_exchange
         self.queue = Queue(self.queue_name, self.exchange,
                            routing_key=self.routing_key)
         
         # subscriber
-        #self.exchange_sub = Exchange(self.redis_channel+u'.sub', type=u'topic',
+        #self.exchange_sub = Exchange(self.redis_exchange+u'.sub', type=u'topic',
         #                             delivery_mode=1)
-        #self.queue_name_sub = u'%s.queue.sub' % self.redis_channel   
-        #self.routing_key_sub = u'%s.sub.key' % self.redis_channel
+        #self.queue_name_sub = u'%s.queue.sub' % self.redis_exchange   
+        #self.routing_key_sub = u'%s.sub.key' % self.redis_exchange
         #self.queue_sub = Queue(self.queue_name_sub, self.exchange_sub,
         #                       routing_key=self.routing_key_sub)
         
         self.event_producer = EventProducerRedis(self.redis_uri,
-                                                 self.redis_channel+u'.sub')
+                                                 self.redis_exchange+u'.sub',
+                                                 framework=u'simple')
         self.conn = Connection(self.redis_uri)
  
     def get_consumers(self, Consumer, channel):
@@ -131,10 +132,9 @@ class EventConsumerRedis(ConsumerMixin):
     
     def __publish_event_simple(self, event_id, event_type, data, source, dest):
         try:
-            self.event_producer.send(event_type, data, source, dest, 
-                                     framework=u'simple')
+            self.event_producer.send(event_type, data, source, dest)
             self.logger.debug(u'Publish event %s to channel %s' % 
-                              (event_id, self.redis_channel))
+                              (event_id, self.redis_exchange))
         except Exception as ex:
             self.logger.error(u'Event %s can not be published: %s' % 
                               (event_id, ex), exc_info=1)      
@@ -159,7 +159,7 @@ class EventConsumerRedis(ConsumerMixin):
                               (event_id, ex), exc_info=1)
         except Exception as ex:
             self.logger.error(u'Event %s can not be published: %s' % 
-                              (event_id, ex), exc_info=1)    
+                              (event_id, ex), exc_info=1)
     
 def start_event_consumer(params, log_path=None):
     """Start event consumer

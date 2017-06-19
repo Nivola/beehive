@@ -185,3 +185,41 @@ def query(fn):
 
             raise QueryError(ex, code=400)
     return query_inner
+
+def trace(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        # get start time
+        start = time()
+        
+        args = list(args)            
+        inst = args.pop(0)
+        
+        try:
+            op = fn.func_defaults[-1]
+        except:
+            op = u'view'
+        if isinstance(op, tuple):
+            op = op[1]
+            entity = op[0]
+            entity_obj = entity(inst)
+        else:
+            op = op
+            entity_obj = inst
+
+        # execute inner function
+        try:
+            ret = fn(inst, *args, **kwargs)
+        
+            # calculate elasped time
+            elapsed = round(time() - start, 4)
+            entity_obj.send_event(op, args=args, params=kwargs, 
+                                  elapsed=elapsed)
+        except Exception as ex:
+            entity_obj.send_event(op, args=args, params=kwargs, 
+                                  exception=ex, elapsed=elapsed)
+            raise
+        
+        return ret
+    return wrapper
+    

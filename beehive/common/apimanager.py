@@ -535,13 +535,14 @@ class ApiManager(object):
                     conf = json.loads(conf[0].value)
                     # set redis manager   
                     self.redis_event_uri = conf[u'uri']
-                    self.redis_event_channel = conf[u'queue']
+                    self.redis_event_exchange = conf[u'queue']
                     # create instance of event producer
                     self.event_producer = EventProducerRedis(
                                                         self.redis_event_uri, 
-                                                        self.redis_event_channel)
-                    self.logger.info(u'Configure queue %s on %s' % 
-                                     (self.redis_event_channel, 
+                                                        self.redis_event_exchange,
+                                                        framework=u'kombu')
+                    self.logger.info(u'Configure exchange %s on %s' % 
+                                     (self.redis_event_exchange, 
                                       self.redis_event_uri))
                     self.logger.info(u'Configure event queue - CONFIGURED')
                 except:
@@ -1264,7 +1265,6 @@ class ApiEvent(object):
                 u'source':self.source, u'dest':self.dest, 
                 u'creation':creation}
 
-    @watch
     def publish(self, objtype, event_type):
         """Publish event to event consumer.
         
@@ -1670,7 +1670,7 @@ class ApiObject(object):
                 self._get_value(self.objdef, args), u'view')
         self.api_client.append_role_permissions(
                 role, u'event', self.objdef,
-                self._get_value(self.objdef, args), u'view')        
+                self._get_value(self.objdef, args), u'view')
     
     @watch
     def verify_permisssions(self, action):
@@ -1692,8 +1692,8 @@ class ApiObject(object):
         """release db session"""
         return self.controller.release_session(dbsession)
     
-    def send_event(self, op, params={}, opid=None, response=True, 
-                   exception=None, etype=None):
+    def send_event(self, op, args=None, params={}, opid=None, response=True, 
+                   exception=None, etype=None, elapsed=0):
         """Publish an event to event queue.
         
         :param op: operation to audit
@@ -1703,6 +1703,7 @@ class ApiObject(object):
         :param exception: exceptione raised [optinal]
         :param etype: event type. Can be ApiObject.SYNC_OPERATION, 
             ApiObject.ASYNC_OPERATION
+        :param elapsed: elapsed time [default=0] 
         """
         if opid is None: opid = operation.id
         objid = u'*'
@@ -1725,7 +1726,9 @@ class ApiObject(object):
         data = {
             u'opid':opid,
             u'op':u'%s.%s' % (self.objdef, op),
+            u'args':args,
             u'params':params,
+            u'elapsed':elapsed,
             u'response':response
         }
         self.event_class(self.controller, objid=objid, data=data, action=action)\
@@ -1911,7 +1914,7 @@ class ApiViewResponse(ApiObject):
     def send_event(self, api, params={}, response=True, exception=None):
         """Publish an event to event queue.
         
-        :param api: api to audit {u'path':.., u'method':..}
+        :param api: api to audit {u'path':.., u'method':.., u'elapsed':..}
         :param params: operation params [default={}]
         :param response: operation response. [default=True]
         :param exception: exceptione raised [optinal]
@@ -1929,12 +1932,14 @@ class ApiViewResponse(ApiObject):
             action = u'delete'
         #else:
         #    action = u'use'
+        elapsed = api.pop(u'elapsed')
         
         # send event
         data = {
             u'opid':operation.id,
             u'op':api,
             u'params':params,
+            u'elapsed':elapsed,
             u'response':response
         }
         self.event_class(self.controller, objid=objid, data=data, action=action)\

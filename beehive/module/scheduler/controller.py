@@ -7,7 +7,7 @@ Created on Nov 14, 2015
 import ujson as json
 from datetime import datetime, timedelta
 import pickle
-from beecell.perf import watch
+#from beecell.perf import watch
 from beecell.simple import str2uni, id_gen, get_attrib, truncate
 from redis_collections import Dict
 from celery.schedules import crontab
@@ -17,6 +17,9 @@ from networkx.readwrite import json_graph
 from beehive.common.apimanager import ApiController, ApiObject, ApiManagerError
 from beehive.module.scheduler.redis_scheduler import RedisScheduleEntry
 from beehive.common.task.manager import task_scheduler, task_manager
+from time import time
+from functools import wraps
+from beehive.common.data import trace
 
 class SchedulerController(ApiController):
     """Scheduler Module controller.
@@ -64,7 +67,7 @@ class Scheduler(ApiObject):
         except:
             pass
 
-    @watch
+    @trace
     def create_update_entry(self, name, task, schedule, args=None, kwargs=None, 
                             options=None, relative=None):
         """Create scheduler entry.
@@ -154,7 +157,7 @@ class Scheduler(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
         
-    @watch
+    @trace
     def get_entries(self, name=None):
         """Get scheduler entries.
         
@@ -181,7 +184,7 @@ class Scheduler(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=404)
         
-    @watch
+    @trace
     def remove_entry(self, name):
         """Remove scheduler entry.
         
@@ -204,7 +207,7 @@ class Scheduler(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
         
-    @watch
+    @trace
     def clear_all_entries(self):
         """Clear all scheduler entries.
         
@@ -245,7 +248,7 @@ class TaskManager(ApiObject):
         #print i.memsample()
         #print i.objgraph()
         
-    @watch
+    @trace
     def ping(self, id=None):
         """Ping all task manager workers.
         
@@ -261,7 +264,7 @@ class TaskManager(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)        
         
-    @watch
+    @trace
     def stats(self):
         """Get stats from all task manager worker
         
@@ -277,7 +280,7 @@ class TaskManager(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
 
-    @watch
+    @trace
     def report(self):
         """
         
@@ -293,7 +296,7 @@ class TaskManager(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)       
     
-    @watch
+    @trace
     def get_registered_tasks(self):
         """
         
@@ -309,7 +312,7 @@ class TaskManager(ApiObject):
             self.logger.error(u'No registered tasks found')
             return []
       
-    @watch
+    @trace
     def get_active_tasks(self):
         """
         
@@ -325,7 +328,7 @@ class TaskManager(ApiObject):
             self.logger.error(u'No active tasks found')
             return []
 
-    @watch
+    @trace
     def get_scheduled_tasks(self):
         """
         
@@ -341,7 +344,7 @@ class TaskManager(ApiObject):
             self.logger.error(u'No scheduled tasks found')
             return []
         
-    @watch
+    @trace
     def get_reserved_tasks(self):
         """
         
@@ -357,7 +360,7 @@ class TaskManager(ApiObject):
             self.logger.error(u'No reserved tasks found')
             return []
         
-    @watch
+    @trace
     def get_revoked_tasks(self):
         """
         
@@ -373,8 +376,8 @@ class TaskManager(ApiObject):
             self.logger.error(u'No revokes tasks found')
             return []
 
-    @watch
-    def get_all_tasks(self, details=False):
+    @trace
+    def get_all_tasks(self, details=False, op=u'view'):
         """Get all task of type TASK and JOB. Inner job task are not returned.
         
         :return: 
@@ -386,7 +389,7 @@ class TaskManager(ApiObject):
         try:
             res = []
             manager = self.controller.redis_taskmanager
-            keys = manager.inspect(pattern=self.prefix+'*', debug=False)
+            keys = manager.inspect(pattern=self.prefix+u'*', debug=False)
             if details is False:
                 for key in keys:
                     key = key[0].lstrip(self.prefix+'-')
@@ -422,12 +425,10 @@ class TaskManager(ApiObject):
             self.logger.debug(u'Get all tasks: %s' % truncate(res))
             return res
         except Exception as ex:
-            import traceback
-            self.logger.warn(traceback.format_exc())
-            self.logger.error(ex)
+            self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=404)
 
-    @watch
+    @trace
     def count_all_tasks(self):
         """
         
@@ -473,7 +474,6 @@ class TaskManager(ApiObject):
         
         return val
 
-    @watch
     def _get_task_graph(self, task, graph, index=1):
         """Get task graph.
    
@@ -510,7 +510,6 @@ class TaskManager(ApiObject):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
         
-    @watch
     def _get_task_childs(self, childs_index, task):
         """Get task childs.
 
@@ -538,12 +537,10 @@ class TaskManager(ApiObject):
                     except:
                         self.logger.warn('Child task %s does not exist' % child_id)                        
         except Exception as ex:
-            import traceback
-            self.logger.error(traceback.format_exc())
             raise ApiManagerError(ex, code=400)        
 
-    @watch
-    def query_task(self, task_id):
+    @trace
+    def query_task(self, task_id, op=u'view'):
         """Get task info. If task type JOB return graph composed by all the job 
         childs.
         
@@ -610,11 +607,11 @@ class TaskManager(ApiObject):
             self.logger.debug(u'Get task %s info: %s' % (task_id, truncate(res)))
             return res
         except Exception as ex:
-            self.logger.error(ex)
+            self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
     
     '''
-    @watch
+    @trace
     def query_task_status(self, task_id):
         """Get task status. 
         
@@ -707,8 +704,8 @@ class TaskManager(ApiObject):
             
         return resp    '''
     
-    @watch
-    def get_task_graph(self, task_id):
+    @trace
+    def get_task_graph(self, task_id, op=u'graph.view'):
         """Get job task child graph
         
         :return: 
@@ -751,13 +748,11 @@ class TaskManager(ApiObject):
             self.logger.debug('Get task %s graph: %s' % (task_id, truncate(res)))
             return res
         except Exception as ex:
-            import traceback
-            self.logger.warn(traceback.format_exc())
-            self.logger.error(ex)
+            self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=404)
 
-    @watch
-    def purge_tasks(self):
+    @trace
+    def purge_tasks(self, op=u'delete'):
         """Discard all waiting tasks.
         
         :return: 
@@ -772,8 +767,8 @@ class TaskManager(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
     
-    @watch
-    def purge_all_tasks(self):
+    @trace
+    def purge_all_tasks(self, op=u'delete'):
         """
         
         :return: 
@@ -809,8 +804,8 @@ class TaskManager(ApiObject):
                 self.logger.debug('Delete task instance %s: %s' % (c.task_id, res))
         return True
     
-    @watch
-    def delete_task_instance(self, task_id, propagate=True):
+    @trace
+    def delete_task_instance(self, task_id, propagate=True, op=u'delete'):
         """Delete task instance result from results db.
         
         :param task_id: id of the task instance
@@ -834,7 +829,7 @@ class TaskManager(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
         
-    @watch
+    @trace
     def revoke_task(self, task_id):
         """Tell all (or specific) workers to revoke a task by id.
         
@@ -852,7 +847,7 @@ class TaskManager(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
         
-    @watch
+    @trace
     def time_limit_task(self, task_name, limit):
         """Tell all (or specific) workers to set time limits for a task by type.
         
@@ -870,7 +865,7 @@ class TaskManager(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
 
-    @watch
+    @trace
     def get_active_queue(self):
         """
         
@@ -889,8 +884,8 @@ class TaskManager(ApiObject):
     #
     # test jobs
     #
-    @watch
-    def run_jobtest(self, params):
+    @trace
+    def run_jobtest(self, params, op=u'test.insert'):
         """Run jobtest task
 
         :param params: task input params

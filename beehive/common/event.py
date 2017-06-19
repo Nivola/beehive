@@ -111,60 +111,63 @@ class EventProducer(object):
     def _send(self, event_type, data, source, dest):
         raise NotImplementedError()
     
-    def send(self, event_type, data, source, dest, framework=u'kombu'):
+    def send(self, event_type, data, source, dest):
         """Send new event.
         
         :param event_type: type of event to send
         :param str data: data to send
         :param source: event source
-        :param dest: event destination
-        :param framework: framework used to manage redis pub sub. 
-            Ex. kombu, simple        
+        :param dest: event destination       
         """
-        gevent.spawn(self._send, event_type, data, source, dest, framework)
+        gevent.spawn(self._send, event_type, data, source, dest)
         
-    def send_sync(self, event_type, data, source, dest, framework=u'kombu'):
+    def send_sync(self, event_type, data, source, dest):
         """Send sync new event.
         
         :param event_type: type of event to send
         :param str data: data to send
         :param source: event source
-        :param dest: event destination
-        :param framework: framework used to manage redis pub sub. 
-            Ex. kombu, simple        
+        :param dest: event destination      
         """
-        self._send(event_type, data, source, dest, framework)          
+        self._send(event_type, data, source, dest)          
         
 class EventProducerRedis(EventProducer):
-    def __init__(self, redis_uri, redis_channel):
+    def __init__(self, redis_uri, redis_exchange, framework=u'kombu'):
         """Redis event producer
         
         :param redis_uri: redis uri
-        :param redis_channel: redis channel
+        :param redis_exchange: redis channel
+        :param framework: framework used to manage redis pub sub. 
+            Ex. kombu, simple         
         """
         EventProducer.__init__(self)
         
         self.redis_uri = redis_uri
-        self.redis_channel = redis_channel
-        # set redis manager
-        host, port, db = parse_redis_uri(redis_uri)
-        self.redis_manager = redis.StrictRedis(
-            host=host, port=int(port), db=int(db))        
+        self.redis_exchange = redis_exchange
+        self.framework = framework
         
-        self.conn = Connection(redis_uri)
-        self.exchange = Exchange(self.redis_channel, type=u'direct',
-                                 delivery_mode=1)
-        self.routing_key = u'%s.key' % self.redis_channel
-
-        self.queue = Queue(self.redis_channel, exchange=self.exchange)
-        self.queue.declare(channel=self.conn.channel())
-        server = RedisManager(redis_uri)
-        server.delete(self.redis_channel)
+        if framework == u'simple':
+            # set redis manager
+            host, port, db = parse_redis_uri(redis_uri)
+            self.redis_manager = redis.StrictRedis(
+                host=host, port=int(port), db=int(db))        
+        
+        elif framework == u'kombu':
+            self.conn = Connection(redis_uri)
+            self.exchange = Exchange(self.redis_exchange, type=u'direct',
+                                     delivery_mode=1, durable=False)
+            self.routing_key = u'%s.key' % self.redis_exchange
     
-    def _send(self, event_type, data, source, dest, framework):
-        if framework == u'kombu':
+            self.queue_name = u'%s.temp' % self.redis_exchange 
+            self.queue = Queue(self.queue_name, exchange=self.exchange)
+            self.queue.declare(channel=self.conn.channel())
+            server = RedisManager(redis_uri)
+            server.delete(self.queue_name)
+    
+    def _send(self, event_type, data, source, dest):
+        if self.framework == u'kombu':
             return self._send_kombu(event_type, data, source, dest)
-        elif framework == u'simple':
+        elif self.framework == u'simple':
             return self._send_simple(event_type, data, source, dest)        
             
     def _send_kombu(self, event_type, data, source, dest):
@@ -194,7 +197,7 @@ class EventProducerRedis(EventProducer):
             # send message
             message = event.json()
             # publish message to redis
-            self.redis_manager.publish(self.redis_channel, message)
+            self.redis_manager.publish(self.redis_exchange, message)
             self.logger.debug(u'Send event %s : %s' % (event.id, message))
         except redis.PubSubError as ex:
             self.logger.error(u'Event can not be send: %s' % ex, exc_info=1)
@@ -250,12 +253,12 @@ class EventProducerZmq(EventProducer):
                 context.term()
 
 class SimpleEventConsumer(object):
-    def __init__(self, redis_uri, redis_channel):
+    def __init__(self, redis_uri, redis_exchange):
         self.logger = logging.getLogger(self.__class__.__module__+ \
                                         u'.'+self.__class__.__name__)
         
         self.redis_uri = redis_uri
-        self.redis_channel = redis_channel     
+        self.redis_exchange = redis_exchange     
         
         # set redis manager
         host, port, db = parse_redis_uri(redis_uri)
@@ -268,10 +271,10 @@ class SimpleEventConsumer(object):
         """
         """
         channel = self.redis.pubsub()
-        channel.subscribe(self.redis_channel)
+        channel.subscribe(self.redis_exchange)
 
         self.logger.info(u'Start event consumer on redis channel %s:%s' % 
-                        (self.redis_uri, self.redis_channel))
+                        (self.redis_uri, self.redis_exchange))
         while True:
             try:
                 msg = channel.get_message()
@@ -286,23 +289,23 @@ class SimpleEventConsumer(object):
                 self.logger.error(u'Error receiving message: %s', exc_info=1)                 
                     
         self.logger.info(u'Stop event consumer on redis channel %s:%s' % 
-                         (self.redis_uri, self.redis_channel))                       
+                         (self.redis_uri, self.redis_exchange))                       
                 
 class SimpleEventConsumerKombu(ConsumerMixin):
-    def __init__(self, connection, redis_channel):
+    def __init__(self, connection, redis_exchange):
         self.logger = logging.getLogger(self.__class__.__module__+ \
                                         u'.'+self.__class__.__name__)
         
         self.connection = connection
 
         # redis
-        self.redis_channel = redis_channel
+        self.redis_exchange = redis_exchange
         
         # kombu channel
-        self.exchange = Exchange(self.redis_channel+u'.sub', type=u'topic',
+        self.exchange = Exchange(self.redis_exchange+u'.sub', type=u'topic',
                                  delivery_mode=1)
-        self.queue_name = u'%s.queue.%s' % (self.redis_channel, id_gen())   
-        self.routing_key = u'%s.sub.key' % self.redis_channel
+        self.queue_name = u'%s.queue.%s' % (self.redis_exchange, id_gen())   
+        self.routing_key = u'%s.sub.key' % self.redis_exchange
         self.queue = Queue(self.queue_name, self.exchange,
                            routing_key=self.routing_key)        
 
@@ -326,7 +329,7 @@ class SimpleEventConsumerKombu(ConsumerMixin):
         message.ack()
                 
     @staticmethod
-    def start_subscriber(event_redis_uri, event_redis_channel):
+    def start_subscriber(event_redis_uri, event_redis_exchange):
         """
         """    
         def terminate(*args):
@@ -337,13 +340,13 @@ class SimpleEventConsumerKombu(ConsumerMixin):
         
         with Connection(event_redis_uri) as conn:
             try:
-                worker = SimpleEventConsumerKombu(conn, event_redis_channel)
+                worker = SimpleEventConsumerKombu(conn, event_redis_exchange)
                 logger.info(u'Start event consumer on redis channel %s:%s' % 
-                                (event_redis_uri, event_redis_channel))
+                                (event_redis_uri, event_redis_exchange))
                 worker.run()
             except KeyboardInterrupt:
                 logger.info(u'Stop event consumer on redis channel %s:%s' % 
-                                (event_redis_uri, event_redis_channel))
+                                (event_redis_uri, event_redis_exchange))
                 
         logger.info(u'Stop event consumer on redis channel %s:%s' % 
-                        (event_redis_uri, event_redis_channel))                
+                        (event_redis_uri, event_redis_exchange))                

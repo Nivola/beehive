@@ -5,9 +5,7 @@ Created on Jun 16, 2017
 '''
 import json
 import unittest
-import tests.test_util
-from tests.test_util import BeehiveTestCase
-from beehive.common.test import runtest
+from beehive.common.test import runtest, BeehiveTestCase
 import logging
 from beecell.logger.helper import LoggerHelper
 from beecell.simple import parse_redis_uri
@@ -44,7 +42,7 @@ class SimpleEventConsumer(object):
                 if msg and msg[u'type'] == u'message':
                     # get event data
                     data = json.loads(msg[u'data'])
-                    
+                    #self.logger.debug(data)
                     etype = data[u'type']
                     data = data[u'data']
                     if etype == u'API':
@@ -59,7 +57,7 @@ class SimpleEventConsumer(object):
                             data[u'taskid'], data[u'response']))
                     elif etype == u'CMD':
                         self.logger.debug(u'%s %s - %s - %s' % (
-                            data[u'opid'], op[u'op'], op[u'response'], 
+                            data[u'opid'], data[u'op'], data[u'response'], 
                             data[u'elapsed']))
                     
                 gevent.sleep(0.05)  # be nice to the system :) 0.05
@@ -104,4 +102,5 @@ def test_suite():
     return unittest.TestSuite(map(SimpleEventConsumerCase, tests))
 
 if __name__ == u'__main__':
-    runtest(test_suite())        
+    runtest(test_suite())  
+          

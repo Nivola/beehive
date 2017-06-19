@@ -193,7 +193,7 @@ class AuthController(BaseAuthController):
     #
     # user manipulation methods
     #
-    @watch
+    @perf
     def get_users(self, *args, **kvargs):
         """Get users or single user.
 
