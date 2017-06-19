@@ -67,7 +67,7 @@ class Scheduler(ApiObject):
         except:
             pass
 
-    @trace
+    @trace(op=u'view')
     def create_update_entry(self, name, task, schedule, args=None, kwargs=None, 
                             options=None, relative=None):
         """Create scheduler entry.
@@ -157,7 +157,7 @@ class Scheduler(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
         
-    @trace
+    @trace(op=u'view')
     def get_entries(self, name=None):
         """Get scheduler entries.
         
@@ -184,7 +184,7 @@ class Scheduler(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=404)
         
-    @trace
+    @trace(op=u'view')
     def remove_entry(self, name):
         """Remove scheduler entry.
         
@@ -207,7 +207,7 @@ class Scheduler(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
         
-    @trace
+    @trace(op=u'view')
     def clear_all_entries(self):
         """Clear all scheduler entries.
         
@@ -248,7 +248,7 @@ class TaskManager(ApiObject):
         #print i.memsample()
         #print i.objgraph()
         
-    @trace
+    @trace(op=u'view')
     def ping(self, id=None):
         """Ping all task manager workers.
         
@@ -264,7 +264,7 @@ class TaskManager(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)        
         
-    @trace
+    @trace(op=u'view')
     def stats(self):
         """Get stats from all task manager worker
         
@@ -280,7 +280,7 @@ class TaskManager(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
 
-    @trace
+    @trace(op=u'view')
     def report(self):
         """
         
@@ -296,7 +296,7 @@ class TaskManager(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)       
     
-    @trace
+    @trace(op=u'view')
     def get_registered_tasks(self):
         """
         
@@ -312,7 +312,7 @@ class TaskManager(ApiObject):
             self.logger.error(u'No registered tasks found')
             return []
       
-    @trace
+    @trace(op=u'view')
     def get_active_tasks(self):
         """
         
@@ -328,7 +328,7 @@ class TaskManager(ApiObject):
             self.logger.error(u'No active tasks found')
             return []
 
-    @trace
+    @trace(op=u'view')
     def get_scheduled_tasks(self):
         """
         
@@ -344,7 +344,7 @@ class TaskManager(ApiObject):
             self.logger.error(u'No scheduled tasks found')
             return []
         
-    @trace
+    @trace(op=u'view')
     def get_reserved_tasks(self):
         """
         
@@ -360,7 +360,7 @@ class TaskManager(ApiObject):
             self.logger.error(u'No reserved tasks found')
             return []
         
-    @trace
+    @trace(op=u'view')
     def get_revoked_tasks(self):
         """
         
@@ -376,8 +376,8 @@ class TaskManager(ApiObject):
             self.logger.error(u'No revokes tasks found')
             return []
 
-    @trace
-    def get_all_tasks(self, details=False, op=u'view'):
+    @trace(op=u'tasks.view')
+    def get_all_tasks(self, details=False):
         """Get all task of type TASK and JOB. Inner job task are not returned.
         
         :return: 
@@ -428,7 +428,7 @@ class TaskManager(ApiObject):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=404)
 
-    @trace
+    @trace(op=u'tasks-count.view')
     def count_all_tasks(self):
         """
         
@@ -539,8 +539,8 @@ class TaskManager(ApiObject):
         except Exception as ex:
             raise ApiManagerError(ex, code=400)        
 
-    @trace
-    def query_task(self, task_id, op=u'view'):
+    @trace(op=u'task.view')
+    def query_task(self, task_id):
         """Get task info. If task type JOB return graph composed by all the job 
         childs.
         
@@ -611,7 +611,7 @@ class TaskManager(ApiObject):
             raise ApiManagerError(ex, code=400)
     
     '''
-    @trace
+    @trace(op=u'view')
     def query_task_status(self, task_id):
         """Get task status. 
         
@@ -704,8 +704,8 @@ class TaskManager(ApiObject):
             
         return resp    '''
     
-    @trace
-    def get_task_graph(self, task_id, op=u'graph.view'):
+    @trace(op=u'task-graph.view')
+    def get_task_graph(self, task_id):
         """Get job task child graph
         
         :return: 
@@ -751,8 +751,8 @@ class TaskManager(ApiObject):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=404)
 
-    @trace
-    def purge_tasks(self, op=u'delete'):
+    @trace(op=u'tasks.delete')
+    def purge_tasks(self):
         """Discard all waiting tasks.
         
         :return: 
@@ -767,8 +767,8 @@ class TaskManager(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
     
-    @trace
-    def purge_all_tasks(self, op=u'delete'):
+    @trace(op=u'tasks.delete')
+    def purge_all_tasks(self):
         """
         
         :return: 
@@ -804,8 +804,8 @@ class TaskManager(ApiObject):
                 self.logger.debug('Delete task instance %s: %s' % (c.task_id, res))
         return True
     
-    @trace
-    def delete_task_instance(self, task_id, propagate=True, op=u'delete'):
+    @trace(op=u'task.delete')
+    def delete_task_instance(self, task_id, propagate=True):
         """Delete task instance result from results db.
         
         :param task_id: id of the task instance
@@ -829,7 +829,7 @@ class TaskManager(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
         
-    @trace
+    @trace(op=u'view')
     def revoke_task(self, task_id):
         """Tell all (or specific) workers to revoke a task by id.
         
@@ -847,7 +847,7 @@ class TaskManager(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
         
-    @trace
+    @trace(op=u'view')
     def time_limit_task(self, task_name, limit):
         """Tell all (or specific) workers to set time limits for a task by type.
         
@@ -865,7 +865,7 @@ class TaskManager(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
 
-    @trace
+    @trace(op=u'view')
     def get_active_queue(self):
         """
         
@@ -884,8 +884,8 @@ class TaskManager(ApiObject):
     #
     # test jobs
     #
-    @trace
-    def run_jobtest(self, params, op=u'test.insert'):
+    @trace(op=u'task.test.insert')
+    def run_jobtest(self, params):
         """Run jobtest task
 
         :param params: task input params

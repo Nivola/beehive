@@ -9,7 +9,7 @@ import logging
 from uuid import uuid4
 from sqlalchemy.exc import IntegrityError, DBAPIError
 from beecell.simple import id_gen
-from beecell.simple import get_member_class
+from beecell.simple import get_member_class, import_class
 from beecell.db import TransactionError, QueryError, ModelError
 from multiprocessing import current_process
 from threading import current_thread
@@ -186,7 +186,44 @@ def query(fn):
             raise QueryError(ex, code=400)
     return query_inner
 
-def trace(fn):
+def trace(entity=None, op=u'view'):
+    """Decorator
+    """
+    def wrapper(fn):
+        @wraps(fn)
+        def decorated(*args, **kwargs):
+            # get start time
+            start = time()
+            
+            args = list(args)            
+            inst = args.pop(0)
+
+            def get_entity(entity):
+                if entity is None:
+                    return inst
+                else:
+                    eclass = import_class(u'%s.%s' % (inst.__module__, entity))
+                    return eclass(inst)
+
+            # execute inner function
+            try:
+                ret = fn(inst, *args, **kwargs)
+            
+                # calculate elasped time
+                elapsed = round(time() - start, 4)
+                get_entity(entity).send_event(op, args=args, params=kwargs, 
+                                      elapsed=elapsed)
+            except Exception as ex:
+                # calculate elasped time
+                elapsed = round(time() - start, 4)
+                get_entity(entity).send_event(op, args=args, params=kwargs, 
+                                      exception=ex, elapsed=elapsed)
+                raise
+            return ret
+        return decorated
+    return wrapper
+
+def trace1(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
         # get start time

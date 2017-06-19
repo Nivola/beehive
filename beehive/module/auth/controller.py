@@ -11,6 +11,7 @@ from beehive.common.apimanager import ApiManagerError, ApiObject
 from beecell.db import TransactionError, QueryError
 from beehive.common.controller.authorization import BaseAuthController, \
      User as BaseUser, Token, AuthObject
+from beehive.common.data import trace
 
 class AuthController(BaseAuthController):
     """Auth Module controller.
@@ -57,7 +58,7 @@ class AuthController(BaseAuthController):
     #
     # role manipulation methods
     #
-    @watch
+    @trace(entity=u'Role', op=u'view')
     def get_roles(self, *args, **kvargs):
         """Get roles or single role.
 
@@ -113,7 +114,7 @@ class AuthController(BaseAuthController):
         res, total = self.get_paginated_objects(Role, get_entities, *args, **kvargs)
         return res, total    
     
-    @watch
+    @trace(entity=u'Role', op=u'insert')
     def add_role(self, name, description=u''):
         """Add new role.
 
@@ -147,7 +148,6 @@ class AuthController(BaseAuthController):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
     
-    @watch
     def add_superadmin_role(self, perms):
         """Add cloudapi admin role with all the required permissions.
         
@@ -166,7 +166,6 @@ class AuthController(BaseAuthController):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
     
-    @watch
     def add_guest_role(self):
         """Add cloudapi admin role with all the required permissions.
         
@@ -178,7 +177,6 @@ class AuthController(BaseAuthController):
         role = self.add_role(u'Guest', u'Beehive guest role')        
         return role
 
-    @watch
     def add_app_role(self, name):
         """Add role used by an app that want to connect to cloudapi 
         to get configuration and make admin action.
@@ -193,7 +191,7 @@ class AuthController(BaseAuthController):
     #
     # user manipulation methods
     #
-    @perf
+    @trace(entity=u'User', op=u'view')
     def get_users(self, *args, **kvargs):
         """Get users or single user.
 
@@ -235,11 +233,11 @@ class AuthController(BaseAuthController):
                 users, total = self.dbauth.get_users(*args, **kvargs)            
             
             return users, total
-        
+        print args, kvargs
         res, total = self.get_paginated_objects(User, get_entities, *args, **kvargs)
         return res, total
 
-    @watch
+    @trace(entity=u'User', op=u'insert')
     def add_user(self, name, storetype, systype, active=True, 
                        password=None, description=u'', expiry_date=None):
         """Add new user.
@@ -293,7 +291,7 @@ class AuthController(BaseAuthController):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
     
-    @watch
+    @trace(entity=u'User', op=u'generic.insert')
     def add_generic_user(self, name, storetype, password=None,
                          description=u'', expiry_date=None):
         """Add cloudapi generic user. A generic user has a default role
@@ -323,7 +321,7 @@ class AuthController(BaseAuthController):
         user.append_role(u'Guest', expiry_date=expiry_date)
         return user.oid
     
-    @watch
+    @trace(entity=u'User', op=u'system.insert')
     def add_system_user(self, name, password=None, description=u''):
         """Add cloudapi system user. A system user is used by a module to 
         call the apis of the other modules.
@@ -350,7 +348,7 @@ class AuthController(BaseAuthController):
     #
     # group manipulation methods
     #
-    @watch
+    @trace(entity=u'Group', op=u'view')
     def get_groups(self, *args, **kvargs):
         """Get groups or single group.
 
@@ -394,7 +392,7 @@ class AuthController(BaseAuthController):
         res, total = self.get_paginated_objects(Group, get_entities, *args, **kvargs)
         return res, total
 
-    @watch
+    @trace(entity=u'Group', op=u'insert')
     def add_group(self, name, description=u''):
         """Add new group.
 
