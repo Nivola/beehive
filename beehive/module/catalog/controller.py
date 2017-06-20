@@ -3,13 +3,14 @@ Created on Jan 16, 2014
 
 @author: darkbk
 '''
-from beecell.perf import watch
+#from beecell.perf import watch
 from beecell.simple import import_class, truncate, id_gen, str2uni
 from beecell.db import ModelError, QueryError, TransactionError
 from beehive.common.apiclient import BeehiveApiClientError
 from beehive.common.apimanager import ApiController, ApiManagerError, ApiObject
 from beehive.module.catalog.model import CatalogDbManager
 from beehive.common.controller.authorization import BaseAuthController
+from beehive.common.data import trace
 
 class CatalogController(BaseAuthController):
     """Catalog Module controller.
@@ -70,6 +71,7 @@ class CatalogController(BaseAuthController):
             raise ApiManagerError(ex, code=ex.code)            
     '''
 
+    @trace(entity=u'Catalog', op=u'insert')
     def add_catalog(self, name, desc, zone):
         """ """
         # check authorization
@@ -93,11 +95,11 @@ class CatalogController(BaseAuthController):
             # create container admin role
             #catalog.add_admin_role(objid, desc)
             
-            Catalog(self).send_event(u'insert', {u'objid':objid, u'name':name})
+            #Catalog(self).send_event(u'insert', {u'objid':objid, u'name':name})
             return catalog.oid
         except (QueryError, TransactionError) as ex:
-            Catalog(self).send_event(u'insert', {u'objid':objid, u'name':name},
-                                     exception=ex)
+            #Catalog(self).send_event(u'insert', {u'objid':objid, u'name':name},
+            #                         exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -109,6 +111,7 @@ class CatalogController(BaseAuthController):
         """Get all catalog services count"""
         return self.manager.count_services()
 
+    @trace(entity=u'Catalog', op=u'view')
     def get_catalogs(self, oid=None, objid=None, name=None, zone=None):
         """Get containers.
         
@@ -121,7 +124,7 @@ class CatalogController(BaseAuthController):
         :raises ApiManagerError: if query empty return error. 
         """
         objs = self.can(u'view', Catalog.objtype, definition=Catalog.objdef)
-        opts = {u'oid':oid, u'objid':objid, u'name':name}
+        #opts = {u'oid':oid, u'objid':objid, u'name':name}
         
         try:
             catalogs = self.manager.get(oid=oid, objid=objid, name=name, zone=zone)
@@ -143,14 +146,14 @@ class CatalogController(BaseAuthController):
                     res.append(obj)              
             
             self.logger.debug('Get catalogs: %s' % truncate(res))
-            Catalog(self).send_event(u'view', opts)            
+            #Catalog(self).send_event(u'view', opts)            
             return res
         except QueryError as ex:
-            Catalog(self).send_event(u'view', opts, exception=ex)   
+            #Catalog(self).send_event(u'view', opts, exception=ex)   
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
         
-    @watch
+    @trace(entity=u'Catalog', op=u'endpoints.view')
     def get_endpoints(self, oid=None, objid=None, name=None, service=None,
                       catalog_id=None):
         """Get endpoints.
@@ -167,8 +170,8 @@ class CatalogController(BaseAuthController):
         objs = self.can(u'view', CatalogEndpoint.objtype, 
                         definition=CatalogEndpoint.objdef)
         objset = set(objs[CatalogEndpoint.objdef.lower()])
-        opts = {u'oid':oid, u'objid':objid, u'name':name, 
-                u'service':service, u'catalog':catalog_id}
+        #opts = {u'oid':oid, u'objid':objid, u'name':name, 
+        #        u'service':service, u'catalog':catalog_id}
         
         try:
             try:
@@ -196,10 +199,10 @@ class CatalogController(BaseAuthController):
                     res.append(obj)
 
             self.logger.debug('Get catalog endpoints: %s..' % str(res)[0:200])
-            Catalog(self).send_event(u'endpoint.view', opts)
+            #Catalog(self).send_event(u'endpoint.view', opts)
             return res
         except QueryError as ex:
-            Catalog(self).send_event(u'endpoint.view', opts, exception=ex)
+            #Catalog(self).send_event(u'endpoint.view', opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)        
         
@@ -237,8 +240,8 @@ class Catalog(ApiObject):
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """    
-        creation_date = str2uni(self.model.creation_date.strftime("%d-%m-%y %H:%M:%S"))
-        modification_date = str2uni(self.model.modification_date.strftime("%d-%m-%y %H:%M:%S"))
+        creation_date = str2uni(self.model.creation_date.strftime(u'%d-%m-%Y %H:%M:%S'))
+        modification_date = str2uni(self.model.modification_date.strftime(u'%d-%m-%Y %H:%M:%S'))
         return {
             u'id':self.oid,
             u'uuid':self.uuid,
@@ -333,7 +336,7 @@ class Catalog(ApiObject):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
 
-    @watch
+    @trace(op=u'update')
     def update(self, new_name=None, new_desc=None, new_zone=None):
         """Update catalog.
 
@@ -344,9 +347,8 @@ class Catalog(ApiObject):
         :raises ApiManagerError: if query empty return error.    
         """
         # check authorization
-        self.controller.check_authorization(self.objtype, self.objdef, 
-                                            self.objid, u'update')
-        opts = {u'name':self.name, u'new_name':new_name, u'new_desc':new_desc}
+        self.self.verify_permisssions(u'update')
+        #opts = {u'name':self.name, u'new_name':new_name, u'new_desc':new_desc}
         
         try:
             res = self.manager.update(oid=self.oid, new_name=new_name, 
@@ -354,14 +356,14 @@ class Catalog(ApiObject):
 
             self.logger.debug('Update container %s: %s' % (self.objid, res))
             
-            self.send_event(u'update', opts)            
+            #self.send_event(u'update', opts)            
             return res
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'update', opts, exception=ex)
+            #self.send_event(u'update', opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
-    @watch
+    @trace(op=u'delete')
     def delete(self):
         """Remove catalog.
         
@@ -370,9 +372,8 @@ class Catalog(ApiObject):
         :raises ApiManagerError: if query empty return error.  
         """
         # check authorization
-        self.controller.check_authorization(self.objtype, self.objdef, 
-                                            self.objid, 'delete')
-        opts = {u'name':self.name}
+        self.self.verify_permisssions(u'delete')
+        #opts = {u'name':self.name}
         
         # remove container admin role
         #self._remove_admin_role(self.objid)
@@ -383,13 +384,14 @@ class Catalog(ApiObject):
             
             res = self.manager.delete(oid=self.oid)
             self.logger.debug('Remove catalog %s' % self.name)
-            self.send_event(u'update', opts)        
+            #self.send_event(u'update', opts)        
             return self.oid
         except (TransactionError, QueryError) as ex:
-            self.send_event(u'update', opts, exception=ex)   
+            #self.send_event(u'update', opts, exception=ex)   
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
+    @trace(op=u'endpoints.insert')
     def add_endpoint(self, name, desc, service, uri, enabled=True):
         """Add endpoint.
         
@@ -402,9 +404,9 @@ class Catalog(ApiObject):
         # check authorization
         self.controller.check_authorization(CatalogEndpoint.objtype, 
                                             CatalogEndpoint.objdef, 
-                                            self.objid, 'insert')
-        opts = {u'objid':objid, u'name':name, u'service':service, u'uri':uri,
-                u'enabled':enabled}
+                                            self.objid, u'insert')
+        #opts = {u'objid':objid, u'name':name, u'service':service, u'uri':uri,
+        #        u'enabled':enabled}
         
         try:
             # create catalog endpoint reference
@@ -417,14 +419,14 @@ class Catalog(ApiObject):
                                                             desc=desc)
             
             self.logger.debug('Add catalog endpoint: %s' % truncate(res))
-            self.send_event(u'endpoint.insert', opts) 
+            #self.send_event(u'endpoint.insert', opts) 
             return res.id
         except (QueryError, TransactionError, ModelError) as ex:
-            self.send_event(u'endpoint.insert', opts, exception=ex)          
+            #self.send_event(u'endpoint.insert', opts, exception=ex)          
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
-    @watch
+    @trace(op=u'endpoints.view')
     def get_endpoints(self, oid=None, objid=None, name=None, service=None):
         """Get endpoints.
 
@@ -439,8 +441,8 @@ class Catalog(ApiObject):
         objs = self.controller.can(u'view', CatalogEndpoint.objtype, 
                                    definition=CatalogEndpoint.objdef)
         objset = set(objs[CatalogEndpoint.objdef.lower()])
-        opts = {u'oid':oid, u'objid':objid, u'name':name, 
-                u'service':service, u'catalog':self.name}
+        #opts = {u'oid':oid, u'objid':objid, u'name':name, 
+        #        u'service':service, u'catalog':self.name}
         
         try:
             try:
@@ -464,13 +466,14 @@ class Catalog(ApiObject):
                     res.append(obj)
 
             self.logger.debug('Get catalog endpoints: %s..' % str(res)[0:200])
-            self.send_event(u'endpoint.view', opts) 
+            #self.send_event(u'endpoint.view', opts) 
             return res
         except QueryError as ex:
-            self.send_event(u'endpoint.view', opts, exception=ex)
+            #self.send_event(u'endpoint.view', opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
+    '''
     @watch
     def authorization(self):
         """Get catalog authorizations.
@@ -496,7 +499,7 @@ class Catalog(ApiObject):
         except (ApiManagerError), ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
-
+    '''
 
 class CatalogEndpoint(ApiObject):
     objtype = u'directory'
@@ -543,8 +546,8 @@ class CatalogEndpoint(ApiObject):
         self.controller.check_authorization(self.objtype, self.objdef, 
                                             self.objid, 'view')
           
-        creation_date = str2uni(self.model.creation_date.strftime("%d-%m-%y %H:%M:%S"))
-        modification_date = str2uni(self.model.modification_date.strftime("%d-%m-%y %H:%M:%S"))   
+        creation_date = str2uni(self.model.creation_date.strftime(u'%d-%m-%Y %H:%M:%S'))
+        modification_date = str2uni(self.model.modification_date.strftime(u'%d-%m-%Y %H:%M:%S'))   
         return {
             u'id':self.oid,
             u'uuid':self.uuid,
@@ -598,7 +601,7 @@ class CatalogEndpoint(ApiObject):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
 
-    @watch
+    @trace(op=u'update')
     def update(self, new_name=None, new_desc=None, new_service=None, new_uri=None,
                new_enabled=None, new_catalog=None):
         """Update catalog service.
@@ -614,11 +617,11 @@ class CatalogEndpoint(ApiObject):
         :raises ApiManagerError: if query empty return error.
         """
         # check authorization
-        self.controller.check_authorization(self.objtype, self.objdef, 
-                                            self.objid, u'update')
-        opts = {u'oid':self.oid, u'name':new_name, u'desc':new_desc,
-                u'uri':new_uri, u'service':new_service, u'enabled':new_enabled, 
-                u'catalog':new_catalog}
+        self.verify_permisssions(u'update')
+
+        #opts = {u'oid':self.oid, u'name':new_name, u'desc':new_desc,
+        #        u'uri':new_uri, u'service':new_service, u'enabled':new_enabled, 
+        #        u'catalog':new_catalog}
         
         try:
             res = self.manager.update_endpoint(oid=self.oid, 
@@ -631,14 +634,14 @@ class CatalogEndpoint(ApiObject):
             
             self.logger.debug('Update catalog %s service %s: %s' % 
                               (self.catalog.name, self.name, res))
-            self.send_event(u'update', opts)
+            #self.send_event(u'update', opts)
             return res
         except TransactionError, ex:
             self.logger.error(ex, exc_info=1)
-            self.send_event(u'update', opts, exception=ex)
+            #self.send_event(u'update', opts, exception=ex)
             raise ApiManagerError(ex, code=ex.code)
 
-    @watch
+    @trace(op=u'delete')
     def delete(self):
         """Remove catalog service.     
         
@@ -647,9 +650,8 @@ class CatalogEndpoint(ApiObject):
         :raises ApiManagerError: if query empty return error.  
         """
         # check authorization
-        self.controller.check_authorization(self.objtype, self.objdef, 
-                                            self.objid, 'delete') 
-        opts = {u'oid':self.oid, u'catalog':self.name}
+        self.verify_permisssions(u'delete')
+        #opts = {u'oid':self.oid, u'catalog':self.name}
 
         try:
             # remove object and permission
@@ -658,14 +660,14 @@ class CatalogEndpoint(ApiObject):
             res = self.manager.delete_endpoint(oid=self.oid)
             self.logger.debug('Remove catalog %s endpoint %s' % 
                               (self.catalog.name, self.name))
-            self.send_event(u'update', opts)
+            #self.send_event(u'update', opts)
             return self.oid
         except (TransactionError, QueryError), ex:
             self.logger.error(ex, exc_info=1)
-            self.send_event(u'update', opts, exception=ex)        
+            #self.send_event(u'update', opts, exception=ex)        
             raise ApiManagerError(ex, code=ex.code)
 
-    @watch
+    '''
     def authorization(self):
         """Get catalog service authorizations       
         
@@ -687,5 +689,6 @@ class CatalogEndpoint(ApiObject):
             return res
         except (BeehiveApiClientError, Exception), ex:
             self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=ex.code) 
+            raise ApiManagerError(ex, code=ex.code)
+    '''
                 

@@ -31,7 +31,7 @@ class DbEvent(Base):
     objdef = Column(String(500))
     objtype = Column(String(45))
     creation = Column(DateTime())
-    data = Column(String(2000), nullable=True)
+    data = Column(String(5000), nullable=True)
     source = Column(String(200), nullable=True)
     dest = Column(String(200), nullable=True)
     

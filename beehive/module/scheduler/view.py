@@ -94,7 +94,7 @@ class GetTasksDefinition(TaskApiView):
         }
         return resp    
 
-class GetTasksWithDetail(TaskApiView):
+class GetAllTasks(TaskApiView):
     def dispatch(self, controller, data, *args, **kwargs):    
         task_manager = controller.get_task_manager()
         res = task_manager.get_all_tasks(details=True)
@@ -161,7 +161,7 @@ class GetTaskGraph(TaskApiView):
 class PurgeAllTasks(TaskApiView):
     def dispatch(self, controller, data, *args, **kwargs):
         task_manager = controller.get_task_manager()
-        resp = task_manager.purge_all_tasks()
+        resp = task_manager.delete_task_instances()
         return (resp, 202)
     
 class PurgeTasks(TaskApiView):
@@ -175,7 +175,8 @@ class DeleteTask(TaskApiView):
         task_manager = controller.get_task_manager()
         resp = task_manager.delete_task_instance(oid)
         return (resp, 202)  
-    
+
+'''
 class RevokeTask(TaskApiView):
     def dispatch(self, controller, data, oid, *args, **kwargs):
         task_manager = controller.get_task_manager()
@@ -191,7 +192,7 @@ class SetTaskTimeLimit(TaskApiView):
             task_name = get_value(data, 'name', '')
             limit = get_value(data, 'value', 0)
             resp = task_manager.time_limit_task(task_name, limit)
-        return resp
+        return resp'''
     
 class RunJobTest(TaskApiView):
     def dispatch(self, controller, data, *args, **kwargs):    
@@ -223,7 +224,7 @@ class TaskAPI(ApiView):
             (u'worker/stats', u'GET', ManagerStats, {}),
             (u'worker/report', u'GET', ManagerReport, {}),
             #(u'worker/tasks', u'GET', GetTasks, {}),
-            (u'worker/tasks', u'GET', GetTasksWithDetail, {}),
+            (u'worker/tasks', u'GET', GetAllTasks, {}),
             (u'worker/tasks/count', u'GET', GetTasksCount, {}),
             (u'worker/tasks/definitions', u'GET', GetTasksDefinition, {}),
             #(u'worker/tasks/active', u'GET', GetTasksActive, {}),
@@ -236,7 +237,7 @@ class TaskAPI(ApiView):
             (u'worker/tasks', u'DELETE', PurgeAllTasks, {}),
             (u'worker/tasks/purge', u'DELETE', PurgeTasks, {}),
             (u'worker/tasks/<oid>', u'DELETE', DeleteTask, {}),
-            (u'worker/tasks/<oid>/revoke', u'DELETE', RevokeTask, {}),
+            #(u'worker/tasks/<oid>/revoke', u'DELETE', RevokeTask, {}),
             #(u'worker/tasks/time-limit', u'PUT', SetTaskTimeLimit, {}),
             (u'worker/tasks/test', u'POST', RunJobTest, {}),
         ]

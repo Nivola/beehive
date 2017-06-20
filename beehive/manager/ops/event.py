@@ -55,6 +55,8 @@ class EventManager(ApiManager):
             u'date',
             u'data.op',
             u'data.opid',
+            u'data.elapsed',
+            u'data.response',
             u'source.user',
             u'source.ip'
         ]

@@ -7,9 +7,10 @@ from beecell.perf import watch
 from beecell.simple import str2uni, id_gen, truncate
 import ujson as json
 from beehive.common.apimanager import ApiController, ApiManagerError,\
-    ApiViewResponse
+    ApiViewResponse, ApiObject
 from beehive.module.event.model import EventDbManager
 from beecell.db import QueryError
+from beehive.common.data import trace
 
 class EventController(ApiController):
     """Event Module controller.
@@ -20,6 +21,8 @@ class EventController(ApiController):
         ApiController.__init__(self, module)
 
         self.event_manager = EventDbManager()
+        
+        self.child_classes = [GenericEvent]
                 
     def init_object(self):
         """Register object types, objects and permissions related to module.
@@ -27,7 +30,7 @@ class EventController(ApiController):
         """
         pass
     
-    @watch
+    @trace(entity=u'GenericEvent', op=u'view')
     def get_events(self, oid=None, etype=None, data=None, 
                          source=None, dest=None, datefrom=None, dateto=None,
                          page=0, size=10, objid=None, objdef=None, objtype=None):
@@ -76,15 +79,19 @@ class EventController(ApiController):
                    u'page':page,
                    u'total':count}
             for i in events:
-                # check authorization
-                objset = set(objs[i.objdef.lower()])
+                objdef = i.objdef.lower()
+                if objdef not in objs:
+                    continue
                 
-                creation = str2uni(i.creation.strftime("%d-%m-%y %H:%M:%S"))
+                # check authorization
+                objset = set(objs[objdef])
+                
+                creation = str2uni(i.creation.strftime(u'%d-%m-%Y %H:%M:%S.%f'))
                 data = None
                 try:
                     data = json.loads(i.data)
                 except  Exception as ex:
-                    self.logger.warn("Can not parse event data")
+                    self.logger.warn(u'Can not parse event %s data' % i.id, exc_info=1)
                     
                 obj = {u'id':i.id,
                        u'event_id':i.event_id,
@@ -110,7 +117,7 @@ class EventController(ApiController):
             self.logger.error(ex)
             raise ApiManagerError(ex)        
 
-    @watch
+    @trace(entity=u'GenericEvent', op=u'types.view')
     def get_event_types(self):
         """Get event types.
       
@@ -121,6 +128,9 @@ class EventController(ApiController):
         # verify permissions
         #objs = self.can(u'view', u'event')
         #event_types = set(objs.keys())
+        
+        self.check_authorization(GenericEvent.objtype, GenericEvent.objdef, 
+                                 u'*', u'view')
         
         # get available event types
         try:
@@ -134,7 +144,7 @@ class EventController(ApiController):
         self.logger.debug(u'Get event types: %s' % res)
         return res
     
-    @watch
+    @trace(entity=u'GenericEvent', op=u'definitions.view')
     def get_entity_definitions(self):
         """Get event entity definition. 
       
@@ -159,4 +169,10 @@ class EventController(ApiController):
         #res.append(ApiViewResponse.objdef)
             
         self.logger.debug(u'Get event entity definitions: %s' % res)
-        return res    
+        return res
+    
+class GenericEvent(ApiObject):
+    objtype = u'event'
+    objdef = u'GenericEvent'
+    objdesc = u'Generic Event'
+       

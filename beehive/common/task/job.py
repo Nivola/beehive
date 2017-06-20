@@ -347,7 +347,7 @@ class Job(BaseTask):
         :param result: task result. None otherwise task status is SUCCESS [optional]
         :param msg: update message [optional]        
         """
-        response = [status, elapsed]
+        response = [status]
         if ex is not None:
             response.append(ex)
         #if task_local.op is None:
@@ -364,6 +364,7 @@ class Job(BaseTask):
             u'task':self.name,
             u'params':self.request.args,
             u'response':response,
+            u'elapsed':elapsed,
             u'msg':msg
         }        
         evt = ApiEvent(task_local.controller, oid=None, objid=task_local.objid,
