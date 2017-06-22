@@ -483,7 +483,7 @@ class BaseAuthController(ApiController):
     #
     # keyauth login, logout, refresh_user
     #
-    @trace(entity=u'Token', op=u'login.key.insert')
+    #@trace(entity=u'Token', op=u'login.key.insert')
     def gen_authorizaion_key(self, user, domain, name, login_ip, attrib):
         '''Generate asymmetric key for keyauth filter.
         
