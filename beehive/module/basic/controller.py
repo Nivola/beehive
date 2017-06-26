@@ -4,7 +4,7 @@ Created on Apr 1, 2016
 @author: darkbk
 '''
 from beecell.auth import extract
-from beecell.perf import watch
+#from beecell.perf import watch
 from beecell.simple import str2uni, id_gen, truncate
 from beecell.db.manager import SqlManagerError
 from beecell.server.uwsgi_server.resource import UwsgiManager, UwsgiManagerError

@@ -5,7 +5,7 @@ Created on Jan 16, 2014
 '''
 from datetime import datetime
 from beecell.auth import extract
-from beecell.perf import watch
+#from beecell.perf import watch
 from beecell.simple import str2uni, id_gen, truncate
 from beehive.common.apimanager import ApiManagerError, ApiObject
 from beecell.db import TransactionError, QueryError
@@ -42,7 +42,6 @@ class AuthController(BaseAuthController):
         
         BaseAuthController.init_object(self)
     
-    @watch
     def count(self):
         """Count users, groups, roles and objects
         """
@@ -124,7 +123,7 @@ class AuthController(BaseAuthController):
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        params = {u'name':name, u'description':description}
+        #params = {u'name':name, u'description':description}
         
         # check authorization
         self.check_authorization(Role.objtype, Role.objdef, None, u'insert')            
@@ -137,14 +136,14 @@ class AuthController(BaseAuthController):
             Role(self).register_object([objid], desc=description)
             
             self.logger.debug(u'Add new role: %s' % name)
-            Role(self).send_event(u'insert', params=params)
+            #Role(self).send_event(u'insert', params=params)
             return role.id
         except (TransactionError) as ex:
-            Role(self).send_event(u'insert', params=params, exception=ex)           
+            #Role(self).send_event(u'insert', params=params, exception=ex)           
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
         except (Exception) as ex:
-            Role(self).send_event(u'insert', params=params, exception=ex)        
+            #Role(self).send_event(u'insert', params=params, exception=ex)        
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
     
@@ -280,14 +279,14 @@ class AuthController(BaseAuthController):
                                            u'Type of user')            
             
             self.logger.debug(u'Add new user: %s' % name)
-            User(self).send_event(u'insert', params=params)
+            #User(self).send_event(u'insert', params=params)
             return user.id
         except (TransactionError) as ex:
-            User(self).send_event(u'insert', params=params, exception=ex)
+            #User(self).send_event(u'insert', params=params, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
         except (Exception) as ex:
-            User(self).send_event(u'insert', params=params, exception=ex)
+            #User(self).send_event(u'insert', params=params, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
     
@@ -414,14 +413,14 @@ class AuthController(BaseAuthController):
             Group(self).register_object([objid], desc=description)          
             
             self.logger.debug(u'Add new group: %s' % name)
-            Group(self).send_event(u'insert', params=params)
+            #Group(self).send_event(u'insert', params=params)
             return group.id
         except (TransactionError) as ex:
-            Group(self).send_event(u'insert', params=params, exception=ex)
+            #Group(self).send_event(u'insert', params=params, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
         except (Exception) as ex:
-            Group(self).send_event(u'insert', params=params, exception=ex)
+            #Group(self).send_event(u'insert', params=params, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
 
@@ -436,7 +435,7 @@ class Objects(AuthObject):
     #
     # System Object Type manipulation methods
     #    
-    @watch
+    @trace(op=u'types.view')
     def get_type(self, oid=None, objtype=None, objdef=None,
                  page=0, size=10, order=u'DESC', field=u'id'):
         """Get system object type.
@@ -453,8 +452,8 @@ class Objects(AuthObject):
         :raises ApiManagerError if query empty return error.
         :raises ApiAuthorizationError if query empty return error.
         """
-        opts = {u'oid':oid, u'objtype':objtype, u'objdef':objdef,
-                u'page':page, u'size':size, u'order':order, u'field':field}
+        #opts = {u'oid':oid, u'objtype':objtype, u'objdef':objdef,
+        #        u'page':page, u'size':size, u'order':order, u'field':field}
         
         # verify permissions
         self.controller.can(u'view', self.objtype, definition=self.objdef)
@@ -466,14 +465,14 @@ class Objects(AuthObject):
 
             res = [{u'id':i.id, u'subsystem':i.objtype, u'type':i.objdef}
                     for i in data] #if i.objtype != u'event']
-            self.send_event(u'type.view', params=opts)
+            #self.send_event(u'type.view', params=opts)
             return res, total
         except QueryError as ex:
-            self.send_event(u'type.view', params=opts, exception=ex)         
+            #self.send_event(u'type.view', params=opts, exception=ex)         
             self.logger.error(ex, exc_info=1)
             return [], 0
     
-    @watch
+    @trace(op=u'types.insert')
     def add_types(self, obj_types):
         """Add a system object types
         
@@ -487,14 +486,14 @@ class Objects(AuthObject):
         try:
             data = [(i[u'subsystem'], i[u'type']) for i in obj_types]
             res = self.dbauth.add_object_types(data)
-            self.send_event(u'type.insert', params=obj_types)
+            #self.send_event(u'type.insert', params=obj_types)
             return [i.id for i in res]
         except TransactionError as ex:
-            self.send_event(u'type.insert', params=obj_types, exception=ex)
+            #self.send_event(u'type.insert', params=obj_types, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
     
-    @watch
+    @trace(op=u'types.delete')
     def remove_type(self, oid=None, objtype=None, objdef=None):
         """Remove system object type.
         
@@ -505,7 +504,7 @@ class Objects(AuthObject):
         :rtype: bool
         :raises ApiManagerError if query empty return error.
         """
-        params = {u'oid':oid, u'objtype':objtype, u'objdef':objdef}
+        #params = {u'oid':oid, u'objtype':objtype, u'objdef':objdef}
         
         # verify permissions
         self.controller.can(u'delete', self.objtype, definition=self.objdef)
@@ -513,17 +512,17 @@ class Objects(AuthObject):
         try:  
             res = self.dbauth.remove_object_type(oid=oid, objtype=objtype, 
                                                  objdef=objdef)
-            self.send_event(u'type.delete', params=params)          
+            #self.send_event(u'type.delete', params=params)          
             return res
         except TransactionError as ex:
-            self.send_event(u'type.delete', params=params, exception=ex)
+            #self.send_event(u'type.delete', params=params, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
     #
     # System Object Action manipulation methods
     #
-    @watch
+    @trace(op=u'actions.view')
     def get_action(self, oid=None, value=None):
         """Get system object action.
         
@@ -533,7 +532,7 @@ class Objects(AuthObject):
         :rtype: list
         :raises ApiManagerError if query empty return error.
         """
-        params = {u'oid':oid, u'value':value}
+        #params = {u'oid':oid, u'value':value}
         
         # verify permissions
         self.controller.can(u'view', self.objtype, definition=self.objdef)
@@ -545,14 +544,14 @@ class Objects(AuthObject):
             if type(data) is not list:
                 data = [data]            
             res = [{u'id':i.id, u'value':i.value} for i in data]
-            self.send_event(u'action.view', params=params)
+            #self.send_event(u'action.view', params=params)
             return res
         except QueryError as ex:
-            self.send_event(u'action.view', params=params, exception=ex)
+            #self.send_event(u'action.view', params=params, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex)
 
-    @watch
+    @trace(op=u'actions.insert')
     def add_actions(self, actions):
         """Add a system object action
         
@@ -566,14 +565,14 @@ class Objects(AuthObject):
 
         try:  
             res = self.dbauth.add_object_actions(actions)
-            self.send_event(u'action.insert', params=actions)
+            #self.send_event(u'action.insert', params=actions)
             return True
         except TransactionError as ex:
-            self.send_event(u'action.insert', params=actions, exception=ex)
+            #self.send_event(u'action.insert', params=actions, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
         
-    @watch
+    @trace(op=u'actions.delete')
     def remove_action(self, oid=None, value=None):
         """Add a system object action
         
@@ -583,24 +582,24 @@ class Objects(AuthObject):
         :rtype: bool
         :raises ApiManagerError if query empty return error.
         """
-        params = {u'oid':oid, u'value':value}
+        #params = {u'oid':oid, u'value':value}
         
         # verify permissions
         self.controller.can(u'delete', self.objtype, definition=self.objdef)
                 
         try:
             res = self.dbauth.remove_object_action(oid=oid, value=value)
-            self.send_event(u'action.delete', params=params)
+            #self.send_event(u'action.delete', params=params)
             return res
         except TransactionError as ex:
-            self.send_event(u'action.delete', params=params, exception=ex)
+            #self.send_event(u'action.delete', params=params, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
     #
     # System Object manipulation methods
     #
-    @watch
+    @trace(op=u'view')
     def get(self, oid=None, objid=None, objtype=None, objdef=None, 
             page=0, size=10, order=u'DESC', field=u'id'):
         """Get system object filtered by id, by name or by type.
@@ -617,8 +616,8 @@ class Objects(AuthObject):
         :rtype: list
         :raises ApiManagerError if query empty return error.
         """
-        opts = {u'oid':oid, u'objtype':objtype, u'objdef':objdef, u'objid':objid,
-                u'page':page, u'size':size, u'order':order, u'field':field}        
+        #opts = {u'oid':oid, u'objtype':objtype, u'objdef':objdef, u'objid':objid,
+        #        u'page':page, u'size':size, u'order':order, u'field':field}        
         
         # verify permissions
         self.controller.can(u'view', self.objtype, definition=self.objdef)
@@ -636,18 +635,18 @@ class Objects(AuthObject):
                 u'desc':i.desc
             } for i in data]
             self.logger.debug(u'Get objects: %s' % len(res))
-            self.send_event(u'view', params=opts)
+            #self.send_event(u'view', params=opts)
             return res, total
         except QueryError as ex:
-            self.send_event(u'view', params=opts, exception=ex)
+            #self.send_event(u'view', params=opts, exception=ex)
             self.logger.error(ex.desc, exc_info=1)
             return [], 0
         except Exception as ex:
-            self.send_event(u'view', params=opts, exception=ex)          
+            #self.send_event(u'view', params=opts, exception=ex)          
             self.logger.error(ex, exc_info=1)
             return [], 0        
 
-    @watch
+    @trace(op=u'insert')
     def add(self, objs):
         """Add a system object with all the permission related to available 
         action.
@@ -678,14 +677,14 @@ class Objects(AuthObject):
 
             res = self.dbauth.add_object(data, actions)
             self.logger.debug(u'Add objects: %s' % res)
-            self.send_event(u'insert', params=objs)
+            #self.send_event(u'insert', params=objs)
             return res
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'insert', params=objs, exception=ex)
+            #self.send_event(u'insert', params=objs, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)  
 
-    @watch
+    @trace(op=u'delete')
     def remove(self, oid=None, objid=None, objtype=None, objdef=None):
         """Delete system object filtering by id, by name or by type. System 
         remove also all the related permission. 
@@ -703,7 +702,7 @@ class Objects(AuthObject):
         :rtype: bool
         :raises ApiManagerError if query empty return error.
         """
-        opts = {u'oid':oid, u'objid':objid, u'objtype':objtype, u'objdef':objdef}
+        #opts = {u'oid':oid, u'objid':objid, u'objtype':objtype, u'objdef':objdef}
         
         # verify permissions
         self.controller.can(u'delete', self.objtype, definition=self.objdef)
@@ -719,14 +718,14 @@ class Objects(AuthObject):
             else:
                 res = self.dbauth.remove_object(oid=oid, objid=objid)
             self.logger.debug(u'Remove objects: %s' % res)
-            self.send_event(u'delete', params=opts)
+            #self.send_event(u'delete', params=opts)
             return res
         except TransactionError as ex:
-            self.send_event(u'delete', params=opts, exception=ex)     
+            #self.send_event(u'delete', params=opts, exception=ex)     
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)          
 
-    @watch
+    @trace(op=u'perms.view')
     def get_permission(self, permission_id=None, objid=None, objtype=None, 
                              objdef=None, action=None):
         """Get system object permisssion.
@@ -741,8 +740,8 @@ class Objects(AuthObject):
         :rtype: list
         :raises ApiManagerError if query empty return error.
         """
-        opts = {u'permission_id':permission_id, u'objid':objid, 
-                u'objtype':objtype, u'objdef':objdef, u'action':action}
+        #opts = {u'permission_id':permission_id, u'objid':objid, 
+        #        u'objtype':objtype, u'objdef':objdef, u'action':action}
         
         # verify permissions
         self.controller.can(u'view', self.objtype, definition=self.objdef)
@@ -763,13 +762,14 @@ class Objects(AuthObject):
                     i.action.value, i.obj.desc) for i in res]            
 
             self.logger.debug(u'Get permissions: %s' % len(res))
-            self.send_event(u'perms.view', params=opts)          
+            #self.send_event(u'perms.view', params=opts)          
             return res
         except QueryError as ex:
-            self.send_event(u'perms.view', params=opts, exception=ex)
+            #self.send_event(u'perms.view', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             return []
 
+    @trace(op=u'perms.view')
     def get_permissions_with_roles(self, oid=None, objid=None, objtype=None, 
                                    objdef=None, page=0, size=10, order=u'DESC', 
                                    field=u'id'):
@@ -789,7 +789,7 @@ class Objects(AuthObject):
         :rtype: list
         :raises ApiManagerError if query empty return error.
         """
-        opts = {u'objid':objid, u'objtype':objtype, u'objdef':objdef}
+        #opts = {u'objid':objid, u'objtype':objtype, u'objdef':objdef}
         
         # verify permissions
         self.controller.can(u'view', self.objtype, definition=self.objdef)        
@@ -830,10 +830,10 @@ class Objects(AuthObject):
                 })
                 
             self.logger.debug(u'Get permissions: %s' % len(res))
-            self.send_event(u'perms.view', params=opts)           
+            #self.send_event(u'perms.view', params=opts)           
             return res, total
         except QueryError as ex:
-            self.send_event(u'perms.view', params=opts, exception=ex)
+            #self.send_event(u'perms.view', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             return [], 0
 
@@ -853,7 +853,6 @@ class Role(AuthObject):
             self.uuid = self.model.uuid
         self.expiry_date = None
 
-    @watch
     def info(self):
         """Get role info
         
@@ -891,7 +890,7 @@ class Role(AuthObject):
         
         return res
 
-    @watch
+    @trace(op=u'perms.view')
     def get_permissions(self, page=0, size=10, order=u'DESC', field=u'id'):
         """Get users permissions.
 
@@ -899,11 +898,11 @@ class Role(AuthObject):
         :param size: number of perms to show in list per page [default=10]
         :param order: sort order [default=DESC]
         :param size: sort field [default=id]
-        :return: Pandas Series with permissions (id, oid, value, type, aid, action)
-        :rtype: pands.Series
+        :return: dictionary with permissions
+        :rtype: dict
         :raises ApiManagerError: if query empty return error.
         """
-        opts = {u'name':self.name}
+        #opts = {u'name':self.name}
         
         # verify permissions
         self.controller.can(u'view', self.objtype, definition=self.objdef)
@@ -925,14 +924,14 @@ class Role(AuthObject):
                 })                
             self.logger.debug(u'Get role %s permissions: %s' % (
                                         self.name, truncate(role_perms)))
-            self.send_event(u'perms.view', params=opts)           
+            #self.send_event(u'perms.view', params=opts)           
             return role_perms, total
         except QueryError as ex:
-            self.send_event(u'perms.view', params=opts, exception=ex)
+            #self.send_event(u'perms.view', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             return [], 0    
 
-    @watch
+    @trace(op=u'perms.update')
     def append_permissions(self, perms):
         """Append permission to role
         
@@ -943,7 +942,7 @@ class Role(AuthObject):
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        opts = {u'name':self.name}
+        #opts = {u'name':self.name}
         
         # verify permissions
         self.controller.check_authorization(self.objtype, self.objdef, 
@@ -960,13 +959,14 @@ class Role(AuthObject):
             
             res = self.dbauth.append_role_permissions(self.model, roleperms)
             self.logger.debug(u'Append role %s permission : %s' % (self.name, perms))
-            self.send_event(u'perms-set.update', params=opts)            
+            #self.send_event(u'perms-set.update', params=opts)            
             return res
         except QueryError as ex:
-            self.send_event(u'perms-set.update', params=opts, exception=ex)         
+            #self.send_event(u'perms-set.update', params=opts, exception=ex)         
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex)
 
+    @trace(op=u'perms.update')
     def remove_permissions(self, perms):
         """Remove permission from role
         
@@ -1016,7 +1016,6 @@ class User(BaseUser):
         if self.model is not None:
             self.uuid = self.model.uuid
 
-    @watch
     def info(self):
         """Get user info
         
@@ -1054,7 +1053,7 @@ class User(BaseUser):
             }
         }
 
-    @watch
+    @trace(op=u'delete')
     def delete(self):
         """Delete entity.
         
@@ -1062,7 +1061,7 @@ class User(BaseUser):
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        params = {u'id':self.oid}
+        #params = {u'id':self.oid}
         
         if self.delete_object is None:
             raise ApiManagerError(u'Delete is not supported for %s:%s' % 
@@ -1085,21 +1084,21 @@ class User(BaseUser):
                 self.deregister_object([self.objid])
             
             self.logger.debug(u'Delete %s: %s' % (self.objdef, self.oid))
-            self.send_event(u'delete', params=params)
+            #self.send_event(u'delete', params=params)
             return res
         except TransactionError as ex:
-            self.send_event(u'delete', params=params, exception=ex)         
+            #self.send_event(u'delete', params=params, exception=ex)         
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
-    @watch
+    @trace(op=u'attribs-get.update')
     def get_attribs(self):
         attrib = [{u'name':a.name, u'value':a.value, u'desc':a.desc}
                    for a in self.model.attrib]
         self.logger.debug(u'User %s attributes: %s' % (self.name, attrib))
         return attrib   
     
-    @watch
+    @trace(op=u'attribs-set.update')
     def set_attribute(self, name, value, desc='', new_name=None):
         """Set an attribute
         
@@ -1112,7 +1111,7 @@ class User(BaseUser):
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`        
         """
-        opts = {u'name':self.name, u'attrib':name, u'value':value}
+        #opts = {u'name':self.name, u'attrib':name, u'value':value}
         
         # verify permissions
         self.controller.check_authorization(self.objtype, self.objdef, 
@@ -1123,14 +1122,14 @@ class User(BaseUser):
                                                  desc=desc, new_name=new_name)
             self.logger.debug(u'Set user %s attribute %s: %s' % 
                               (self.name, name, value))
-            self.send_event(u'attrib-set.update', params=opts)
+            #self.send_event(u'attrib-set.update', params=opts)
             return res
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'attrib-set.update', params=opts, exception=ex)
+            #self.send_event(u'attrib-set.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
     
-    @watch
+    @trace(op=u'attribs-unset.update')
     def remove_attribute(self, name):
         """Remove an attribute
         
@@ -1139,7 +1138,7 @@ class User(BaseUser):
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`           
         """
-        opts = {u'name':self.name}
+        #opts = {u'name':self.name}
         
         # verify permissions
         self.controller.check_authorization(self.objtype, self.objdef, 
@@ -1148,14 +1147,14 @@ class User(BaseUser):
         try:
             res = self.dbauth.remove_user_attribute(self.model, name)
             self.logger.debug(u'Remove user %s attribute %s' % (self.name, name))
-            self.send_event(u'attrib-unset.update', params=opts)
+            #self.send_event(u'attrib-unset.update', params=opts)
             return res
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'attrib-unset.update', params=opts, exception=ex)
+            #self.send_event(u'attrib-unset.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
     
-    @watch
+    @trace(op=u'roles-set.update')
     def append_role(self, role_id, expiry_date=None):
         """Append role to user.
         
@@ -1165,7 +1164,7 @@ class User(BaseUser):
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        opts = {u'name':self.name, u'role':role_id, u'expiry_date':expiry_date}
+        #opts = {u'name':self.name, u'role':role_id, u'expiry_date':expiry_date}
         
         # verify permissions
         self.controller.check_authorization(self.objtype, self.objdef, 
@@ -1174,7 +1173,7 @@ class User(BaseUser):
         try:
             role = self.controller.get_entity(role_id, self.dbauth.get_roles)         
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'role-set.update', params=opts, exception=ex)
+            #self.send_event(u'role-set.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -1195,14 +1194,14 @@ class User(BaseUser):
             else:
                 self.logger.debug(u'Role %s already linked with user %s' % (
                                             role, self.name))
-            self.send_event(u'role-set.update', params=opts)
+            #self.send_event(u'role-set.update', params=opts)
             return res
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'role-set.update', params=opts, exception=ex)
+            #self.send_event(u'role-set.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
-    @watch
+    @trace(op=u'roles-unset.update')
     def remove_role(self, role_id):
         """Remove role from user.
         
@@ -1211,7 +1210,7 @@ class User(BaseUser):
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        opts = {u'name':self.name, u'role':role_id}
+        #opts = {u'name':self.name, u'role':role_id}
         
         # verify permissions
         self.controller.check_authorization(self.objtype, self.objdef, 
@@ -1220,7 +1219,7 @@ class User(BaseUser):
         try:
             role = self.controller.get_entity(role_id, self.dbauth.get_roles)          
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'role-unset.update', params=opts, exception=ex)
+            #self.send_event(u'role-unset.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -1231,14 +1230,14 @@ class User(BaseUser):
         try:
             res = self.dbauth.remove_user_role(self.model, role)
             self.logger.debug(u'Remove role %s from user %s' % (role, self.name))
-            self.send_event(u'role-unset.update', params=opts)           
+            #self.send_event(u'role-unset.update', params=opts)           
             return res
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'role-unset.update', params=opts, exception=ex)         
+            #self.send_event(u'role-unset.update', params=opts, exception=ex)         
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
-    @watch
+    @trace(op=u'perms.view')
     def get_permissions(self, page=0, size=10, order=u'DESC', field=u'id'):
         """Get users permissions.
 
@@ -1250,7 +1249,7 @@ class User(BaseUser):
         :rtype: pands.Series
         :raises ApiManagerError: if query empty return error.
         """
-        opts = {u'name':self.name}
+        #opts = {u'name':self.name}
         
         # verify permissions
         self.controller.can(u'view', self.objtype, definition=self.objdef)
@@ -1272,15 +1271,15 @@ class User(BaseUser):
                 })                
             self.logger.debug(u'Get user %s permissions: %s' % (
                                         self.name, truncate(user_perms)))
-            self.send_event(u'perms.view', params=opts)
+            #self.send_event(u'perms.view', params=opts)
             return user_perms, total
         except QueryError as ex:
-            self.send_event(u'perms.view', params=opts, exception=ex)
+            #self.send_event(u'perms.view', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex)
         return [], 0
         
-    @watch
+    @trace(op=u'perms.use')
     def can(self, action, objtype, definition=None, name=None, perms=None):
         """Verify if  user can execute an action over a certain object type.
         Specify at least name or perms.
@@ -1349,9 +1348,9 @@ class User(BaseUser):
                 raise Exception(u'User %s can not \'%s\' objects \'%s:%s\'' % 
                                 (self.name, action, objtype, definition))
                 
-            self.send_event(u'can', params=opts)   
+            #self.send_event(u'can', params=opts)   
         except Exception as ex:
-            self.send_event(u'can', params=opts, exception=ex)
+            #self.send_event(u'can', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex)
         
@@ -1370,7 +1369,6 @@ class Group(AuthObject):
         if self.model is not None:
             self.uuid = self.model.uuid
 
-    @watch
     def info(self):
         """Get group info
         
@@ -1402,7 +1400,7 @@ class Group(AuthObject):
             }
         }
 
-    @watch
+    @trace(op=u'delete')
     def delete(self):
         """Delete entity.
         
@@ -1410,7 +1408,7 @@ class Group(AuthObject):
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        params = {u'id':self.oid}
+        #params = {u'id':self.oid}
         
         if self.delete_object is None:
             raise ApiManagerError(u'Delete is not supported for %s:%s' % 
@@ -1433,14 +1431,14 @@ class Group(AuthObject):
                 self.deregister_object([self.objid])
             
             self.logger.debug(u'Delete %s: %s' % (self.objdef, self.oid))
-            self.send_event(u'delete', params=params)
+            #self.send_event(u'delete', params=params)
             return res
         except TransactionError as ex:
-            self.send_event(u'delete', params=params, exception=ex)         
+            #self.send_event(u'delete', params=params, exception=ex)         
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
-    @watch
+    @trace(op=u'roles-set.update')
     def append_role(self, role_id):
         """Append role to group.
         
@@ -1449,7 +1447,7 @@ class Group(AuthObject):
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        opts = {u'name':self.name, u'role':role_id}
+        #opts = {u'name':self.name, u'role':role_id}
         
         # verify permissions
         self.controller.check_authorization(self.objtype, self.objdef, 
@@ -1458,7 +1456,7 @@ class Group(AuthObject):
         try:
             role = self.controller.get_entity(role_id, self.dbauth.get_roles)
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'role-set.update', params=opts, exception=ex)
+            #self.send_event(u'role-set.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -1474,14 +1472,14 @@ class Group(AuthObject):
             else:
                 self.logger.debug(u'Role %s already linked with group %s' % (
                                             role, self.name))
-            self.send_event(u'role-set.update', params=opts)
+            #self.send_event(u'role-set.update', params=opts)
             return res
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'role-set.update', params=opts, exception=ex)
+            #self.send_event(u'role-set.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
-    @watch
+    @trace(op=u'roles-unset.update')
     def remove_role(self, role_id):
         """Remove role from group.
         
@@ -1490,7 +1488,7 @@ class Group(AuthObject):
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        opts = {u'name':self.name, u'role':role_id}
+        #opts = {u'name':self.name, u'role':role_id}
         
         # verify permissions
         self.controller.check_authorization(self.objtype, self.objdef, 
@@ -1499,7 +1497,7 @@ class Group(AuthObject):
         try:
             role = self.controller.get_entity(role_id, self.dbauth.get_roles) 
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'role-unset.update', params=opts, exception=ex)
+            #self.send_event(u'role-unset.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -1510,14 +1508,14 @@ class Group(AuthObject):
         try:
             res = self.dbauth.remove_group_role(self.model, role)
             self.logger.debug(u'Remove role %s from group %s' % (role, self.name))
-            self.send_event(u'role-unset.update', params=opts)          
+            #self.send_event(u'role-unset.update', params=opts)          
             return res
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'role-unset.update', params=opts, exception=ex)        
+            #self.send_event(u'role-unset.update', params=opts, exception=ex)        
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
-    @watch
+    @trace(op=u'users-set.update')
     def append_user(self, user_id):
         """Append user to group.
         
@@ -1526,7 +1524,7 @@ class Group(AuthObject):
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        opts = {u'name':self.name, u'user':user_id}
+        #opts = {u'name':self.name, u'user':user_id}
         
         # verify permissions
         self.controller.check_authorization(self.objtype, self.objdef, 
@@ -1535,7 +1533,7 @@ class Group(AuthObject):
         try:
             user = self.controller.get_entity(user_id, self.dbauth.get_users)
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'user-set.update', params=opts, exception=ex)
+            #self.send_event(u'user-set.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -1551,14 +1549,14 @@ class Group(AuthObject):
             else:
                 self.logger.debug(u'User %s already linked with group %s' % (
                                             user, self.name))
-            self.send_event(u'user-set.update', params=opts)
+            #self.send_event(u'user-set.update', params=opts)
             return res
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'user-set.update', params=opts, exception=ex)
+            #self.send_event(u'user-set.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
-    @watch
+    @trace(op=u'users-unset.update')
     def remove_user(self, user_id):
         """Remove user from group.
         
@@ -1567,7 +1565,7 @@ class Group(AuthObject):
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        opts = {u'name':self.name, u'user':user_id}
+        #opts = {u'name':self.name, u'user':user_id}
         
         # verify permissions
         self.controller.check_authorization(self.objtype, self.objdef, 
@@ -1576,7 +1574,7 @@ class Group(AuthObject):
         try:
             user = self.controller.get_entity(user_id, self.dbauth.get_users)   
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'user-unset.update', params=opts, exception=ex)
+            #self.send_event(u'user-unset.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -1587,14 +1585,14 @@ class Group(AuthObject):
         try:
             res = self.dbauth.remove_group_user(self.model, user)
             self.logger.debug(u'Remove user %s from group %s' % (user, self.name))
-            self.send_event(u'user-unset.update', params=opts)       
+            #self.send_event(u'user-unset.update', params=opts)       
             return res
         except (QueryError, TransactionError) as ex:
-            self.send_event(u'user-unset.update', params=opts, exception=ex)    
+            #self.send_event(u'user-unset.update', params=opts, exception=ex)    
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
-    @watch
+    @trace(op=u'perms.view')
     def get_permissions(self, page=0, size=10, order=u'DESC', field=u'id'):
         """Get groups permissions.
 
@@ -1636,7 +1634,7 @@ class Group(AuthObject):
             raise ApiManagerError(ex)
         return [], 0
         
-    @watch
+    @trace(op=u'perms.use')
     def can(self, action, objtype, definition=None, name=None, perms=None):
         """Verify if  group can execute an action over a certain object type.
         Specify at least name or perms.
@@ -1705,9 +1703,9 @@ class Group(AuthObject):
                 raise Exception(u'Group %s can not \'%s\' objects \'%s:%s\'' % 
                                 (self.name, action, objtype, definition))
                 
-            self.send_event(u'can', params=opts)              
+            #self.send_event(u'can', params=opts)              
         except Exception as ex:
-            self.send_event(u'can', params=opts, exception=ex)  
+            #self.send_event(u'can', params=opts, exception=ex)  
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex)
            

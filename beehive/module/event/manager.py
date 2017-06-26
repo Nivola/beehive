@@ -42,7 +42,8 @@ class EventConsumerRedis(ConsumerMixin):
         self.queue_name = u'%s.queue' % self.redis_exchange   
         self.routing_key = u'%s.key' % self.redis_exchange
         self.queue = Queue(self.queue_name, self.exchange,
-                           routing_key=self.routing_key)
+                           routing_key=self.routing_key,
+                           delivery_mode=1, durable=False)
         
         # subscriber
         #self.exchange_sub = Exchange(self.redis_exchange+u'.sub', type=u'topic',
@@ -77,6 +78,7 @@ class EventConsumerRedis(ConsumerMixin):
         :param event json: event to store
         :raise EventConsumerError:
         """
+        message.ack()        
         self.logger.info(u'Consume event : %s' % event)
  
     def store_event(self, event, message):
@@ -92,7 +94,6 @@ class EventConsumerRedis(ConsumerMixin):
             # clone event
             sevent = deepcopy(event)
 
-            creation = datetime.fromtimestamp(sevent[u'creation'])
             etype = sevent[u'type']
             
             # for job events save only those with status 'STARTED', 'FAILURE' and 'SUCCESS' 
@@ -101,6 +102,7 @@ class EventConsumerRedis(ConsumerMixin):
                 if status not in [u'STARTED', u'FAILURE', u'SUCCESS']:
                     return None
             
+            creation = datetime.fromtimestamp(sevent[u'creation'])
             dest = sevent[u'dest']
             objid = dest.pop(u'objid')
             objdef = dest.pop(u'objdef')
@@ -111,8 +113,6 @@ class EventConsumerRedis(ConsumerMixin):
                              event[u'source'], dest)
             
             self.logger.debug(u'Store event : %s' % sevent)
-            
-            message.ack()
         except (TransactionError, Exception) as ex:
             self.logger.error(u'Error storing event : %s' % ex, exc_info=True)
             raise EventConsumerError(ex)

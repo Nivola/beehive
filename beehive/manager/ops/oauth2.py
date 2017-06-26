@@ -15,7 +15,8 @@ from beehive.manager import ApiManager, ComponentManager
 import sys
 from beecell.simple import truncate
 from re import match
-from beehive.common.jwtclient import JWTClient
+from beehive.common.jwtclient import JWTClient, GrantType
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -29,12 +30,14 @@ class Oaut2hManager(ApiManager):
         
         clients list
         clients get
-        clients add
+        clients add <name> [<authorization_code>|jwt grant code] 
+                    [<redirect_uri>|https://localhost] [<scopes>|beehive]
+                    [<response_type>|code] [<expiry_date>|today+365days]
         clients delete <id>
 
         scopes list
         scopes get
-        scopes add
+        scopes add <name> <desc>
         scopes delete <id>
     """
     def __init__(self, auth_config, env, frmt):
@@ -118,16 +121,24 @@ class Oaut2hManager(ApiManager):
         self.result(res, key=u'client', headers=self.client_headers, 
                     details=True)
         
-    def add_client(self, subsystem, otype, objid, desc):
+    def add_client(self, name, authorization_code=None, 
+                   redirect_uri=u'https://localhost', scopes=u'beehive', 
+                   response_type=u'code', expiry_date=None):
+        if expiry_date is None:
+            expiry_date = datetime.today() + timedelta(days=365)
+            expiry_date = expiry_date.strftime(u'%d-%m-%Y')
+        if authorization_code is None:
+            authorization_code = GrantType.JWT_BEARER
         data = {
-            u'clients':[
-                {
-                    u'subsystem':subsystem,
-                    u'type':otype,
-                    u'objid':objid,
-                    u'desc':desc
-                }
-            ]
+            u'client':{
+                u'name':name,
+                u'grant-type':authorization_code,
+                u'redirect-uri':redirect_uri,
+                u'description':u'Client %s' % name,
+                u'response-type':u'code',
+                u'scopes':scopes,
+                u'expiry-date':expiry_date
+            }
         }
         uri = u'%s/clients/' % (self.baseuri)
         res = self._call(uri, u'POST', data=data)

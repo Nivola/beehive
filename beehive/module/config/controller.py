@@ -6,11 +6,12 @@ Created on Jan 16, 2014
 import logging
 import ujson as json
 from beecell.auth import extract
-from beecell.perf import watch
+#from beecell.perf import watch
 from beecell.simple import id_gen
 from beehive.common.apimanager import ApiController, ApiManagerError, ApiObject
 from beehive.common.model.config import ConfigDbManager
 from beecell.db import TransactionError
+from beehive.common.data import trace
 
 class ConfigController(ApiController):
     """Basic Module controller.
@@ -35,7 +36,7 @@ class ConfigController(ApiController):
     #
     # base configuration
     #
-    @watch
+    @trace(entity=u'Config', op=u'view')
     def get_configs(self, app=None, group=None, name=None):
         """Get generic configuration.
         
@@ -46,7 +47,7 @@ class ConfigController(ApiController):
         :rtype: Config
         :raises ApiManagerError: if query empty return error.
         """
-        params = {u'app':app, u'group':group, u'name':name}
+        #params = {u'app':app, u'group':group, u'name':name}
         
         # verify permissions
         self.can(u'view', Config.objtype, definition=Config.objdef)
@@ -68,14 +69,14 @@ class ConfigController(ApiController):
                 res.append(Config(self, oid=c.id, app=c.app, group=c.group, 
                                   name=c.name, value=value, model=c))
             self.logger.debug('Get generic configuration: %s' % res)
-            Config(self).send_event(u'view', params=params)
+            #Config(self).send_event(u'view', params=params)
             return res
         except (TransactionError, Exception) as ex:
-            Config(self).send_event(u'view', params=params, exception=ex)
+            #Config(self).send_event(u'view', params=params, exception=ex)
             self.logger.error(ex)     
             raise ApiManagerError(ex)
     
-    @watch
+    @trace(entity=u'Config', op=u'insert')
     def add_config(self, app, group, name, value):
         """Add generic configuration.
         
@@ -87,23 +88,24 @@ class ConfigController(ApiController):
         :rtype:  
         :raises ApiManagerError: if query empty return error.
         """
-        params = {u'app':app, u'group':group, u'name':name}
+        #params = {u'app':app, u'group':group, u'name':name}
         
         # verify permissions
-        self.can('insert', Config.objtype, definition=Config.objdef)
+        self.can(u'insert', Config.objtype, definition=Config.objdef)
         
         try:
             c = self.manager.add(app, group, name, value)
             res = Config(self, oid=c.id, app=c.app, group=c.group, 
                          name=c.name, value=c.value, model=c)
             self.logger.debug('Add generic configuration : %s' % res)
-            Config(self).send_event(u'view', params=params)
+            #Config(self).send_event(u'view', params=params)
             return res
         except (TransactionError, Exception) as ex:
-            Config(self).send_event(u'view', params=params, exception=ex)
+            #Config(self).send_event(u'view', params=params, exception=ex)
             self.logger.error(ex)
             raise ApiManagerError(ex)
 
+    '''
     #
     # logger configuration
     #
@@ -194,7 +196,7 @@ class ConfigController(ApiController):
         if port is not None:
             value['port'] = port
         
-        return self.add_config(app, group, domain, json.dumps(value))
+        return self.add_config(app, group, domain, json.dumps(value))'''
 
 class Config(ApiObject):
     objtype = u'config'
@@ -214,7 +216,6 @@ class Config(ApiObject):
     def manager(self):
         return self.controller.manager
     
-    @watch
     def info(self):
         """Get system capabilities.
         
@@ -222,10 +223,16 @@ class Config(ApiObject):
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
-        return {u'id':self.oid, u'app':self.app, u'group':self.group, 
-                u'name':self.name, u'objid':self.objid, u'value':self.value}
+        return {
+            u'id':self.oid, 
+            u'app':self.app, 
+            u'group':self.group, 
+            u'name':self.name, 
+            u'objid':self.objid, 
+            u'value':self.value
+        }
 
-    @watch
+    @trace(op=u'update')
     def update(self, value):
         """Update generic configuration.
             
@@ -235,22 +242,23 @@ class Config(ApiObject):
         :rtype:  
         :raises ApiManagerError: if query empty return error.
         """
-        params = {u'name':self.name, u'value':value}
+        #params = {u'name':self.name, u'value':value}
         
         # verify permissions
-        self.controller.can(u'update', self.objtype, definition=self.objdef)
+        self.verify_permisssions(u'update')
         
         try:
             res = self.manager.update(self.name, value)
             self.logger.debug(u'Update generic configuration %s : %s' % 
                               (self.name, res))
-            self.send_event(u'update', params=params)
+            #self.send_event(u'update', params=params)
             return res
         except (TransactionError, Exception) as ex:
-            self.send_event(u'update', params=params, exception=ex)
+            #self.send_event(u'update', params=params, exception=ex)
             self.logger.error(ex)
             raise ApiManagerError(ex)
     
+    @trace(op=u'delete')
     def delete(self):
         """Update generic configuration.
             
@@ -260,17 +268,17 @@ class Config(ApiObject):
         :rtype:  
         :raises ApiManagerError: if query empty return error.
         """
-        params = {u'name':self.name}
+        #params = {u'name':self.name}
         
         # verify permissions
-        self.controller.can(u'delete', self.objtype, definition=self.objdef)
+        self.verify_permisssions(u'delete')
         
         try:
             res = self.manager.delete(name=self.name)
             self.logger.debug(u'Delete generic configuration %s : %s' % (self.name, res))
-            self.send_event(u'delete', params=params)
+            #self.send_event(u'delete', params=params)
             return res
         except (TransactionError, Exception) as ex:
-            self.send_event(u'delete', params=params, exception=ex)
+            #self.send_event(u'delete', params=params, exception=ex)
             self.logger.error(ex)
             raise ApiManagerError(ex)

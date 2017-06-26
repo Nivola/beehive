@@ -28,7 +28,7 @@ from beecell.auth import extract
 from beecell.simple import str2uni, id_gen, import_class, truncate, get_class_name,\
     parse_redis_uri, get_remote_ip, nround
 from beecell.sendmail import Mailer
-from beehive.common.data import operation
+from beehive.common.data import operation, trace
 from beecell.auth import AuthError, DatabaseAuth, LdapAuth, SystemUser
 from beecell.logger.helper import LoggerHelper
 from beecell.flask.redis_session import RedisSessionInterface
@@ -1027,7 +1027,7 @@ class ApiController(object):
             else:
                 if definition is None:
                     definition = u''
-                raise Exception(u'%s can not \'%s\' objects \'%s:%s\'' % 
+                raise Exception(u'%s can not %s objects %s:%s' % 
                                 (user, action, objtype, definition))      
         except Exception as ex:
             self.logger.error(ex, exc_info=True)
@@ -1185,10 +1185,10 @@ class ApiController(object):
                     res.append(obj)                
             
             self.logger.debug(u'Get entities %s: %s' % (object_class, len(res)))
-            object_class(self).send_event(u'view', params=params)       
+            #object_class(self).send_event(u'view', params=params)       
             return res, total
         except QueryError as ex:
-            object_class(self).send_event(u'view', params=params, exception=ex)            
+            #object_class(self).send_event(u'view', params=params, exception=ex)            
             self.logger.warn(ex)
             return [], 0    
 
@@ -1812,7 +1812,7 @@ class ApiObject(object):
     #
     # update, delete
     #
-    @watch
+    @trace(op=u'update')
     def update(self, *args, **kvargs):
         """Update entity.
         
@@ -1822,8 +1822,8 @@ class ApiObject(object):
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        params = {u'id':self.oid}
-        params.update(kvargs)
+        #params = {u'id':self.oid}
+        #params.update(kvargs)
         
         if self.update_object is None:
             raise ApiManagerError(u'Update is not supported for %s:%s' % 
@@ -1838,14 +1838,14 @@ class ApiObject(object):
             
             self.logger.debug(u'Update %s %s with data %s' % 
                               (self.objdef, self.oid, kvargs))
-            self.send_event(u'update', params=params)
+            #self.send_event(u'update', params=params)
             return res
         except TransactionError as ex:
-            self.send_event(u'update', params=params, exception=ex)        
+            #self.send_event(u'update', params=params, exception=ex)        
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
-    @watch
+    @trace(op=u'delete')
     def delete(self):
         """Delete entity.
         
@@ -1853,7 +1853,7 @@ class ApiObject(object):
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        params = {u'id':self.oid}
+        #params = {u'id':self.oid}
         
         if self.delete_object is None:
             raise ApiManagerError(u'Delete is not supported for %s:%s' % 
@@ -1870,10 +1870,10 @@ class ApiObject(object):
                 self.deregister_object([self.objid])
             
             self.logger.debug(u'Delete %s: %s' % (self.objdef, self.oid))
-            self.send_event(u'delete', params=params)
+            #self.send_event(u'delete', params=params)
             return res
         except TransactionError as ex:
-            self.send_event(u'delete', params=params, exception=ex)         
+            #self.send_event(u'delete', params=params, exception=ex)         
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 

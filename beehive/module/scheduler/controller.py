@@ -67,7 +67,7 @@ class Scheduler(ApiObject):
         except:
             pass
 
-    @trace(op=u'view')
+    @trace(op=u'schedule.insert')
     def create_update_entry(self, name, task, schedule, args=None, kwargs=None, 
                             options=None, relative=None):
         """Create scheduler entry.
@@ -100,6 +100,8 @@ class Scheduler(ApiObject):
         :rtype:
         :raises ApiManagerError: raise :class:`.ApiManagerError`  
         """
+        self.verify_permisssions(u'insert')
+        
         try:
             if schedule['type'] == 'crontab':
                 minute = get_attrib(schedule, 'minute', '*')
@@ -144,20 +146,12 @@ class Scheduler(ApiObject):
                                                                  app=task_scheduler))
             
             self.logger.info("Create scheduler entry: %s" % entry)
-            self.event('scheduler.entry.insert', 
-                       {'name':name, 'task':task, 'schedule':str(schedule),
-                        'args':args}, 
-                       (True))
             return True
         except Exception as ex:
-            self.event('scheduler.entry.insert', 
-                       {'name':name, 'task':task, 'schedule':str(schedule),
-                        'args':args}, 
-                       (False, ex))
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
         
-    @trace(op=u'view')
+    @trace(op=u'schedules.view')
     def get_entries(self, name=None):
         """Get scheduler entries.
         
@@ -166,6 +160,8 @@ class Scheduler(ApiObject):
         :rtype: list
         :raises ApiManagerError: raise :class:`.ApiManagerError`  
         """
+        self.verify_permisssions(u'view')
+        
         try:
             if name is not None:
                 entries = [(name, self.redis_entries.get(name))]
@@ -173,18 +169,12 @@ class Scheduler(ApiObject):
                 entries = self.redis_entries.items()
             
             self.logger.info("Get scheduler entries: %s" % entries)
-            self.event('scheduler.entry.view', 
-                       {'name':name}, 
-                       (True))
             return entries
         except Exception as ex:
-            self.event('scheduler.entry.view', 
-                       {'name':name}, 
-                       (False, ex))
             self.logger.error(ex)
             raise ApiManagerError(ex, code=404)
         
-    @trace(op=u'view')
+    @trace(op=u'schedule.delete')
     def remove_entry(self, name):
         """Remove scheduler entry.
         
@@ -193,21 +183,17 @@ class Scheduler(ApiObject):
         :rtype:
         :raises ApiManagerError: raise :class:`.ApiManagerError`  
         """
+        self.verify_permisssions(u'delete')
+        
         try:
             del self.redis_entries[name]
             self.logger.info("Remove scheduler entry: %s" % name)
-            self.event('scheduler.entry.delete', 
-                       {'name':name}, 
-                       (True))
             return True
         except Exception as ex:
-            self.event('scheduler.entry.delete', 
-                       {'name':name}, 
-                       (False, ex))
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
         
-    @trace(op=u'view')
+    @trace(op=u'schedules.delete')
     def clear_all_entries(self):
         """Clear all scheduler entries.
         
@@ -216,17 +202,13 @@ class Scheduler(ApiObject):
         :rtype:
         :raises ApiManagerError: raise :class:`.ApiManagerError`  
         """
+        self.verify_permisssions(u'delete')
+        
         try:
             res = self.redis_entries.clear()
             self.logger.info("Remove all scheduler entries")
-            self.event('scheduler.entry.delete', 
-                       {}, 
-                       (True))
             return True
         except Exception as ex:
-            self.event('scheduler.entry.delete', 
-                       {}, 
-                       (False, ex))
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)        
         self.redis_entries.clear()
@@ -248,7 +230,7 @@ class TaskManager(ApiObject):
         #print i.memsample()
         #print i.objgraph()
         
-    @trace(op=u'view')
+    @trace(op=u'use')
     def ping(self, id=None):
         """Ping all task manager workers.
         
@@ -256,6 +238,8 @@ class TaskManager(ApiObject):
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
+        self.verify_permisssions(u'use')
+        
         try:
             res = task_manager.control.ping(timeout=0.5)
             self.logger.debug('Ping task manager workers: %s' % res)
@@ -264,7 +248,7 @@ class TaskManager(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)        
         
-    @trace(op=u'view')
+    @trace(op=u'use')
     def stats(self):
         """Get stats from all task manager worker
         
@@ -272,6 +256,8 @@ class TaskManager(ApiObject):
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
+        self.verify_permisssions(u'use')
+        
         try:
             res = self.control.stats()
             self.logger.debug('Get task manager workers stats: %s' % res)
@@ -280,14 +266,16 @@ class TaskManager(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
 
-    @trace(op=u'view')
+    @trace(op=u'use')
     def report(self):
-        """
+        """Get manager worker report
         
         :return: 
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
+        
+        self.verify_permisssions(u'use')
         try:
             res = self.control.report()#.split('/n')
             self.logger.debug('Get task manager report: %s' % res)
@@ -296,14 +284,16 @@ class TaskManager(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)       
     
-    @trace(op=u'view')
+    @trace(op=u'definitions.view')
     def get_registered_tasks(self):
-        """
+        """Get task definitions
         
         :return: 
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
+        self.verify_permisssions(u'view')
+        
         try:
             res = self.control.registered()
             self.logger.debug(u'Get registered tasks: %s' % (res))
@@ -311,7 +301,8 @@ class TaskManager(ApiObject):
         except Exception as ex:
             self.logger.error(u'No registered tasks found')
             return []
-      
+    
+    '''
     @trace(op=u'view')
     def get_active_tasks(self):
         """
@@ -375,6 +366,7 @@ class TaskManager(ApiObject):
         except Exception as ex:
             self.logger.error(u'No revokes tasks found')
             return []
+    '''
 
     @trace(op=u'tasks.view')
     def get_all_tasks(self, details=False):
@@ -761,26 +753,29 @@ class TaskManager(ApiObject):
         """
         try:
             res = task_manager.control.purge()
-            self.logger.debug('Purge waiting task: %s' % (res))
+            self.logger.debug(u'Purge waiting task: %s' % (res))
             return res
         except Exception as ex:
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
     
     @trace(op=u'tasks.delete')
-    def purge_all_tasks(self):
+    def delete_task_instances(self):
         """
         
         :return: 
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
+        # verify permissions
+        self.verify_permisssions(u'delete')
+        
         try:
             res = []
             manager = self.controller.redis_taskmanager
             res = manager.delete(pattern=self.prefix+'*')
             
-            self.logger.debug('Purge all tasks: %s' % res)
+            self.logger.debug(u'Purge all tasks: %s' % res)
             return res
         except Exception as ex:
             self.logger.error(ex)
@@ -814,6 +809,9 @@ class TaskManager(ApiObject):
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
+        # verify permissions
+        self.verify_permisssions(u'delete')        
+        
         try:
             # delete childs
             if propagate is True:
@@ -821,14 +819,15 @@ class TaskManager(ApiObject):
             
             # delete task instance
             manager = self.controller.redis_taskmanager
-            task_name = 'celery-task-meta-%s' % task_id
+            task_name = u'celery-task-meta-%s' % task_id
             res = manager.delete(pattern=task_name)
             self.logger.debug('Delete task instance %s: %s' % (task_id, res))
             return res
         except Exception as ex:
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
-        
+    
+    '''
     @trace(op=u'view')
     def revoke_task(self, task_id):
         """Tell all (or specific) workers to revoke a task by id.
@@ -863,7 +862,7 @@ class TaskManager(ApiObject):
             return res
         except Exception as ex:
             self.logger.error(ex)
-            raise ApiManagerError(ex, code=400)
+            raise ApiManagerError(ex, code=400)'''
 
     @trace(op=u'view')
     def get_active_queue(self):
@@ -873,6 +872,9 @@ class TaskManager(ApiObject):
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
+        # verify permissions
+        self.verify_permisssions(u'view')        
+        
         try:
             res = self.control.active_queues()
             self.logger.debug('Get task manager active queue: %s' % (res))
@@ -899,10 +901,9 @@ class TaskManager(ApiObject):
         :rtype: Task
         :raises ApiManagerError if query empty return error.
         """
-        # check authorization
-        self.controller.check_authorization(self.objtype, 
-                                            self.objdef, 
-                                            u'*', u'use')
+        # verify permissions
+        self.controller.check_authorization(self.objtype, self.objdef, 
+                                            None, u'insert')
         
         from beehive.module.scheduler.tasks import jobtest
 
