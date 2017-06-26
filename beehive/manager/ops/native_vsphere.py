@@ -255,6 +255,71 @@ class ServerActions(Actions):
         }
         self.parent.add_actions(res)
 
+class NetworkActions(Actions):
+    """
+    """
+    def list_dvs(self):
+        objs = self.entity_class.list_distributed_virtual_switches()
+        res = []
+        for obj in objs:
+            res.append(self.entity_class.info_distributed_virtual_switch(obj))        
+        logger.info(res)
+        self.parent.result(res, headers=[u'id', u'name', u'parent',
+                                         u'overallStatus'])
+
+    def get_dvs(self, oid):
+        res = self.entity_class.get_distributed_virtual_switch(oid)
+        res = self.entity_class.detail_distributed_virtual_switch(res)
+        logger.info(res)
+        self.parent.result(res, details=True)
+        
+    def list_networks(self):
+        objs = self.entity_class.list_networks()
+        res = []
+        for obj in objs:
+            res.append(self.entity_class.info_network(obj))        
+        logger.info(res)
+        self.parent.result(res, headers=[u'id', u'name', u'parent',
+                                         u'overallStatus'])
+        
+    def get_network(self, oid):
+        network = self.entity_class.get_network(oid)
+        res = self.entity_class.detail_network(network)
+        logger.info(res)
+        self.parent.result(res, details=True)
+    
+    '''
+    def get_network_servers(self):
+        servers = self.entity_class.get_network_servers('dvportgroup-127')
+        self.logger.info(self.pp.pformat(servers))'''
+    
+    '''
+    def test_create_network(self):
+        name = 'L-dvpg-567_DCCTP-tst-FE-Rupar'
+        desc= name
+        vlan = 567
+        dvs = self.entity_class.get_distributed_virtual_switch('dvs-74')
+        numports = 24
+        res = self.entity_class.create_distributed_port_group(name, desc, 
+                                                              vlan, dvs, 
+                                                              numports)
+        self.logger.info(res)'''
+        
+    def delete_network(self, oid):
+        network = self.entity_class.get_network(oid)
+        res = self.entity_class.remove_network(network)
+        self.logger.info(res)      
+        
+    def register(self):
+        res = {
+            u'dvss.list': self.list_dvs,
+            u'dvss.get': self.get_dvs,
+            u'networks.list': self.list_networks,
+            u'networks.get': self.get_network,
+            u'networks.delete': self.delete_network,
+        }
+        self.parent.add_actions(res)        
+
 class NativeVsphereManager(ApiManager):
     """
     SECTION: 
@@ -267,6 +332,24 @@ class NativeVsphereManager(ApiManager):
         folders list
         folders get <oid>
         folders delete <oid>
+        
+        vapps list
+        vapps get <oid>
+        
+        dvss list
+        dvss get <oid>
+        networks list
+        networks get <oid>
+        
+        clusters list
+        clusters get <oid>
+        hosts list
+        hosts get <oid>
+        rpools list
+        rpools get <oid>
+        
+        datastores list
+        datastores get <oid>        
     
         servers list                                 list severs
         servers get <oid>                            get server details
@@ -276,6 +359,7 @@ class NativeVsphereManager(ApiManager):
                                                      connection 
         servers start <oid>                          start server
         servers stop <oid>                           stop server
+    
     """
     __metaclass__ = abc.ABCMeta
 
@@ -296,6 +380,11 @@ class NativeVsphereManager(ApiManager):
             
             [u'datacenter', self.client.datacenter, [u'id', u'name']],
             [u'folder', self.client.folder, [u'id', u'name', u'type']],
+            [u'vapp', self.client.vapp, [u'id', u'name']],
+            [u'cluster', self.client.cluster, [u'id', u'name']],
+            [u'host', self.client.cluster.host, [u'id', u'name']],
+            [u'rpool', self.client.cluster.resource_pool, [u'id', u'name']],
+            [u'datastore', self.client.datastore, [u'id', u'name']],
             
             [u'server', self.client.server, [u'id', u'name', u'os', u'memory',
                                              u'cpu', u'state', u'template', 
@@ -308,6 +397,7 @@ class NativeVsphereManager(ApiManager):
         
         # custom actions
         ServerActions(self, u'server', self.client.server).register()
+        NetworkActions(self, u'network', self.client.network).register()
         
     @staticmethod
     def get_params(args):
