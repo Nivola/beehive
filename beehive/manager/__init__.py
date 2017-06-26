@@ -166,13 +166,14 @@ class ComponentManager(object):
                 res = res.get(k, {})
         return res
     
-    def __tabularprint(self, data, headers=None, other_headers=[], fields=None):
+    def __tabularprint(self, data, headers=None, other_headers=[], fields=None,
+                       maxsize=20):
         if not isinstance(data, list):
             values = [data]
         else:
             values = data
         if headers is None:
-            headers = [u'id', u'uuid', u'name']
+            headers = [u'id', u'name']
         headers.extend(other_headers)
         table = []
         if fields is None:
@@ -182,9 +183,9 @@ class ComponentManager(object):
             if isinstance(item, dict):
                 for key in fields:
                     val = self.__multi_get(item, key)
-                    raw.append(val)
+                    raw.append(truncate(val, maxsize))
             else:
-                raw.append(item)
+                raw.append(truncate(item, maxsize))
             table.append(raw)
         print(tabulate(table, headers=headers, tablefmt=u'fancy_grid'))
         print(u'')
@@ -257,6 +258,8 @@ class ComponentManager(object):
             
         elif self.format == u'table':
             if data is not None:
+                maxsize = 50
+                
                 # convert input data for query with one raw
                 if details is True:
                     resp = []
@@ -278,10 +281,12 @@ class ComponentManager(object):
 
                     data = resp
                     headers=[u'attrib', u'value']
+                    maxsize = 100
 
                 if isinstance(data, dict) or isinstance(data, list):
                     self.__tabularprint(data, other_headers=other_headers,
-                                        headers=headers, fields=fields)
+                                        headers=headers, fields=fields,
+                                        maxsize=maxsize)
             
         elif self.format == u'custom':       
             self.format_text(data)

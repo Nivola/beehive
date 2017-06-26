@@ -27,6 +27,7 @@ from beecell.logger.helper import LoggerHelper
 from beehive.manager.ops.config import ConfigManager
 from beehive.manager.ops.oauth2 import Oaut2hManager
 from beehive.manager.ops.keyauth import KeyauthManager
+from beehive.manager.ops.native_graphite import NativeGraphiteManager
 
 VERSION = u'1.0.0'
 
@@ -69,6 +70,7 @@ def main(run_path, argv):
         openstack
         native.vsphere
         native.openstack
+        native.graphite
         
     PARAMs:
         <custom section param>, ..
@@ -113,6 +115,7 @@ def main(run_path, argv):
         u'openstack':OpenstackManager,
         u'native.vsphere':NativeVsphereManager,
         u'native.openstack':NativeOpenstackManager,
+        u'native.graphite':NativeGraphiteManager,
     }
     
     try:
@@ -191,6 +194,8 @@ def main(run_path, argv):
         logging.getLogger(u'beehive_monitor'),
         logging.getLogger(u'beehive_service'),
         logging.getLogger(u'beedrones'),
+        logging.getLogger(u'requests'),
+        logging.getLogger(u'urllib3'),
     ]
     lfrmt = u'%(asctime)s - %(levelname)s - ' \
             u'%(name)s.%(funcName)s:%(lineno)d - %(message)s'

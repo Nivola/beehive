@@ -15,16 +15,20 @@ import sys
 import abc
 from beedrones.vsphere.client import VsphereManager
 from beecell.simple import truncate
+from time import sleep
+from pyVmomi import vim
+from beecell.remote import RemoteClient
 
 logger = logging.getLogger(__name__)
 
 class Actions(object):
     """
     """
-    def __init__(self, parent, name, entity_class):
+    def __init__(self, parent, name, entity_class, headers=None):
         self.parent = parent
         self.name = name
         self.entity_class = entity_class
+        self.headers = headers
     
     def get_args(self, args):
         res = {}
@@ -37,6 +41,19 @@ class Actions(object):
             res[k] = v
         return res
     
+    def wait_task(self, task):
+        while task.info.state not in [vim.TaskInfo.State.success,
+                                      vim.TaskInfo.State.error]:
+            logger.info(task.info.state)
+            print(u'*')
+            sleep(1)
+            
+        if task.info.state in [vim.TaskInfo.State.error]:
+            logger.error(task.info.error.msg)
+        if task.info.state in [vim.TaskInfo.State.success]:
+            logger.info(u'Completed')    
+    
+    '''
     def doc(self):
         return """
         %ss list [filters]
@@ -50,19 +67,21 @@ class Actions(object):
         >>> c=base64.b64encode(json.dumps(a))
         >>> json.loads(base64.b64decode(c))        
         
-        """ % (self.name, self.name, self.name, self.name, self.name)
+        """ % (self.name, self.name, self.name, self.name, self.name)'''
     
     def list(self, *args):
         objs = self.entity_class.list(**self.get_args(args))
         res = []
         for obj in objs:
-            res.append(self.entity_class.data(obj))
-        self.parent.result(res)
+            res.append(self.entity_class.info(obj))
+        logger.debug(res)
+        self.parent.result(res, headers=self.headers)
 
     def get(self, oid):
         obj = self.entity_class.get(oid)
-        res = self.entity_class.data(obj)
-        self.parent.result(res)
+        res = self.entity_class.detail(obj)
+        logger.debug(res)
+        self.parent.result(res, details=True)
     
     def add(self, data):
         data = self.parent.load_config(data)
@@ -90,10 +109,9 @@ class Actions(object):
         self.parent.result(res)
 
     def delete(self, oid):
-        uri = u'%s/%ss/%s/' % (self.parent.baseuri, self.name, oid)
-        res = self.parent._call(uri, u'DELETE')
-        self.parent.logger.info(u'Delete %s: %s' % (self.name, oid))
-        self.parent.result(res)
+        obj = self.entity_class.get(oid)
+        task = self.entity_class.remove(obj)
+        self.wait_task(task)
     
     def register(self):
         res = {
@@ -111,16 +129,16 @@ class ServerActions(Actions):
     def get_console(self, oid, *args):
         server = self.entity_class.get_by_morid(oid)
         res = self.entity_class.remote_console(server, **self.get_args(args))
-        self.parent.result(res, delta=60)      
+        self.parent.result(res, delta=60)
     
     def get_guest(self, oid, *args):
         server = self.entity_class.get_by_morid(oid)
-        data = self.entity_class.hardware.get_original_devices(server, 
-                            dev_type=u'vim.vm.device.VirtualVmxnet3')[0].macAddress
-        print data
+        #data = self.entity_class.hardware.get_original_devices(server, 
+        #                    dev_type=u'vim.vm.device.VirtualVmxnet3')[0].macAddress
         res = self.entity_class.guest_info(server)
-        self.parent.result(res)        
+        self.parent.result(res, details=True)        
     
+    """
     def exec_command(self, oid, pwd, *args):
         #nmcli con mod test-lab ipv4.dns "8.8.8.8 8.8.4.4"
         server = self.entity_class.get_by_morid(oid)
@@ -166,7 +184,7 @@ class ServerActions(Actions):
         #res = self.entity_class.guest_read_environment_variable(server,
         #                                                        u'root', pwd)
         res = proc
-        self.parent.result(res)        
+        self.parent.result(res)     """   
     
     def setup_ssh_key(self, oid, pwd):
         key = u'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it'
@@ -177,7 +195,7 @@ class ServerActions(Actions):
     def setup_ssh_pwd(self, oid, pwd, newpwd):
         newpwd = u'prova'
         server = self.entity_class.get_by_morid(oid)
-        res = self.entity_class.guest_setup_admin_apssword(server, u'root', pwd, 
+        res = self.entity_class.guest_setup_admin_password(server, u'root', pwd, 
                                                            newpwd)
         self.parent.result(res)        
     
@@ -195,14 +213,45 @@ class ServerActions(Actions):
                     conn_name=u'net01', user=u'root')
         self.parent.result(res)
     
+    
+    def run_ssh_command(self, oid, user, pwd, cmd):
+        server = self.entity_class.get_by_morid(oid)
+        data = self.entity_class.data(server)
+        client = RemoteClient({u'host':data[u'networks'][0][u'fixed_ips'],
+                               u'port':22})
+        res = client.run_ssh_command(cmd, user, pwd)
+        if res.get(u'stderr' != u''):
+            print(u'Error')
+            print(res.get(u'stderr'))
+        else:
+            for row in res.get(u'stdout'):
+                print(row)
+    
+    #
+    # action
+    #
+    def start(self, oid):
+        server = self.entity_class.get_by_morid(oid)
+        task = self.entity_class.start(server)        
+        self.wait_task(task)
+    
+    def stop(self, oid):
+        server = self.entity_class.get_by_morid(oid)
+        task = self.entity_class.stop(server)        
+        self.wait_task(task)
+    
     def register(self):
         res = {
-            u'%ss.console' % self.name: self.get_console,
-            u'%ss.cmd' % self.name: self.exec_command,
+            #u'%ss.console' % self.name: self.get_console,
+            #u'%ss.cmd' % self.name: self.exec_command,
             u'%ss.guest' % self.name: self.get_guest,
             u'%ss.sshkey' % self.name: self.setup_ssh_key,
             u'%ss.pwd' % self.name: self.setup_ssh_pwd,
             u'%ss.net' % self.name: self.setup_network,
+            
+            u'%ss.cmd' % self.name: self.run_ssh_command,
+            u'%ss.start' % self.name: self.start,
+            u'%ss.stop' % self.name: self.stop,
         }
         self.parent.add_actions(res)
 
@@ -212,11 +261,21 @@ class NativeVsphereManager(ApiManager):
         native.vsphere    
     
     PARAMs:
-        servers list
-        servers get <oid>
-        add
-        update
-        delete
+        datacenters list
+        datacenters get <oid>
+        
+        folders list
+        folders get <oid>
+        folders delete <oid>
+    
+        servers list                                 list severs
+        servers get <oid>                            get server details
+        servers get <oid>                            get server guest tools info
+        #servers delete
+        servers cmd <oid> <usr> <pwd> "<command>"    run a command using ssh 
+                                                     connection 
+        servers start <oid>                          start server
+        servers stop <oid>                           stop server
     """
     __metaclass__ = abc.ABCMeta
 
@@ -233,19 +292,25 @@ class NativeVsphereManager(ApiManager):
 
         self.__actions = {}
         
-        self.entities = {
-            (u'server', self.client.server),
-        }        
+        self.entities = [
+            
+            [u'datacenter', self.client.datacenter, [u'id', u'name']],
+            [u'folder', self.client.folder, [u'id', u'name', u'type']],
+            
+            [u'server', self.client.server, [u'id', u'name', u'os', u'memory',
+                                             u'cpu', u'state', u'template', 
+                                             u'hostname', u'ip_address', 
+                                             u'disk']],
+        ]
         
         for entity in self.entities:
-            Actions(self, entity[0], entity[1]).register()
+            Actions(self, entity[0], entity[1], entity[2]).register()
         
         # custom actions
         ServerActions(self, u'server', self.client.server).register()
         
     @staticmethod
     def get_params(args):
-        print args
         try: cid = args.pop(0)
         except:
             raise Exception(u'ERROR : Vcenter id is missing')

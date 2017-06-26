@@ -452,7 +452,7 @@ class TaskManager(ApiObject):
     def __convert_timestamp(self, timestamp):
         """
         """
-        timestamp = datetime.utcfromtimestamp(timestamp)
+        timestamp = datetime.fromtimestamp(timestamp)
         return str2uni(timestamp.strftime(u'%d-%m-%Y %H:%M:%S.%f'))        
 
     def _get_task_info(self, task_id):
