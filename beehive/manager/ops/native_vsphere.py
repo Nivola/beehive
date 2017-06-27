@@ -323,7 +323,7 @@ class NetworkActions(Actions):
 class NativeVsphereManager(ApiManager):
     """
     SECTION: 
-        native.vsphere    
+        native.vsphere <orchestrator-id>
     
     PARAMs:
         datacenters list
@@ -377,7 +377,6 @@ class NativeVsphereManager(ApiManager):
         self.__actions = {}
         
         self.entities = [
-            
             [u'datacenter', self.client.datacenter, [u'id', u'name']],
             [u'folder', self.client.folder, [u'id', u'name', u'type']],
             [u'vapp', self.client.vapp, [u'id', u'name']],

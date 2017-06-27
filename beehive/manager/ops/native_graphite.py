@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class NativeGraphiteManager(ComponentManager):
     """
     SECTION: 
-        native.graphite
+        native.graphite <orchestrator-id>
         
     PARAMS:
         nodes list                  get list of nodes configured in graphite.

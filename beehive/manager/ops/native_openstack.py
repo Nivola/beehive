@@ -22,10 +22,11 @@ logger = logging.getLogger(__name__)
 class Actions(object):
     """
     """
-    def __init__(self, parent, name, entity_class):
+    def __init__(self, parent, name, entity_class, headers=None):
         self.parent = parent
         self.name = name
         self.entity_class = entity_class
+        self.headers = headers        
     
     def get_args(self, args):
         res = {}
@@ -61,13 +62,13 @@ class Actions(object):
         res = []
         for obj in objs:
             res.append(obj)
-        self.parent.result(res)
+        self.parent.result(res, headers=self.headers)
 
     def get(self, oid):
         obj = self.entity_class.get(oid)
         #res = self.entity_class.data(obj)
         res = obj
-        self.parent.result(res)
+        self.parent.result(res, details=True)
     
     def add(self, data_file):
         data = self.load_config_file(data_file)
@@ -243,9 +244,17 @@ class SgActions(Actions):
 class NativeOpenstackManager(ApiManager):
     """
     SECTION: 
-        native.openstack    
+        native.openstack <orchestrator-id>   
     
-    PARAMs:  
+    PARAMs:
+        projects list
+        projects get
+    
+        networks list
+        networks get
+        
+        servers list
+        servers get
     """
     __metaclass__ = abc.ABCMeta
 
@@ -266,19 +275,22 @@ class NativeOpenstackManager(ApiManager):
 
         self.__actions = {}
         
-        self.entities = {
-            (u'project', self.client.project),
-            (u'network', self.client.network),
-            (u'server', self.client.server),
-        }        
+        self.entities = [
+            [u'project', self.client.project, [u'id', u'parent_id', 
+                                               u'domain_id', u'name', 
+                                               u'enabled']],
+            [u'network', self.client.network, [u'id', u'parent_id', u'name']],
+            [u'server', self.client.server, [u'id', u'parent_id', u'name']]
+        ]
         
         for entity in self.entities:
-            Actions(self, entity[0], entity[1]).register()
+            Actions(self, entity[0], entity[1], entity[2]).register()
         
         # custom actions
-        ServerActions(self, u'server', self.client.server).register()
-        SystemActions(self, u'system', self.client.system).register()
-        SgActions(self, u'security-group', self.client.network.security_group).register()
+        ServerActions(self, u'server', self.client.server, []).register()
+        SystemActions(self, u'system', self.client.system,[]).register()
+        SgActions(self, u'security-group', 
+                  self.client.network.security_group, []).register()
     
     @staticmethod
     def get_params(args):
@@ -292,9 +304,3 @@ class NativeOpenstackManager(ApiManager):
     
     def add_actions(self, actions):
         self.__actions.update(actions)
-
-        
-#doc = NativeVsphereManager.__doc__
-#for entity in NativeVsphereManager.entities:
-#    doc += Actions(None, entity).doc()
-#NativeVsphereManager.__doc__ = doc
