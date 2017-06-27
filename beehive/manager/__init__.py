@@ -269,6 +269,7 @@ class ComponentManager(object):
                             i = 0
                             for n in v:
                                 __format_table_data(u'%s.%s' % (k,i), n)
+                                i += 1
                         elif isinstance(v, dict):
                             for k1,v1 in v.items():
                                 __format_table_data(u'%s.%s' % (k,k1), v1)

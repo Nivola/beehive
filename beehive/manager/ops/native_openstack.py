@@ -112,103 +112,31 @@ class Actions(object):
 class ServerActions(Actions):
     """
     """
-    def get_console(self, oid, *args):
-        server = self.entity_class.get_by_morid(oid)
-        res = self.entity_class.remote_console(server, **self.get_args(args))
-        self.parent.result(res, delta=60)      
-    
-    def get_guest(self, oid, *args):
-        server = self.entity_class.get_by_morid(oid)
-        data = self.entity_class.hardware.get_original_devices(server, 
-                            dev_type=u'vim.vm.device.VirtualVmxnet3')[0].macAddress
-        print data
-        res = self.entity_class.guest_info(server)
-        self.parent.result(res)        
-    
-    def exec_command(self, oid, pwd, *args):
-        #nmcli con mod test-lab ipv4.dns "8.8.8.8 8.8.4.4"
-        server = self.entity_class.get_by_morid(oid)
-        conn_name = u'net01'
-        #conn_name = u'ens160'
-        dev_name = u"`nmcli dev status|grep ethernet|awk '{print $1}'`"
-        ipaddr = u'10.102.184.55/24'
-        macaddr = u'00:50:56:a1:55:4e'
-        gw = u'10.102.184.1'
-        dns = u'10.102.184.2'
-        
-        # delete connection with the same name
-        params = u'con delete %s' % conn_name
-        proc = self.entity_class.guest_execute_command(
-                    server, u'root', pwd, path_to_program=u'/bin/nmcli',
-                    program_arguments=params)        
-        
-        # create new connection
-        #params = u'con add type ethernet con-name %s ifname %s ip4 %s gw4 %s' % (conn_name, dev_name, ipaddr, gw)
-        params = u'con add type ethernet con-name %s ifname "*" mac %s ip4 %s gw4 %s' % (conn_name, macaddr, ipaddr, gw)
-        proc = self.entity_class.guest_execute_command(
-                    server, u'root', pwd, path_to_program=u'/bin/nmcli',
-                    program_arguments=params)
-        
-        # setup dns
-        params = u'con modify %s ipv4.dns "%s"' % (conn_name, dns)
-        proc = self.entity_class.guest_execute_command(
-                    server, u'root', pwd, path_to_program=u'/bin/nmcli',
-                    program_arguments=params)
-        '''
-        # bring up interface
-        params = u'con up %s %s ifname %s' % (conn_name, dev_name)
-        proc = self.entity_class.guest_execute_command(
-                    server, u'root', pwd, path_to_program=u'/bin/nmcli',
-                    program_arguments=params)'''
-        
-        '''# bring up interface
-        params = u'con down %s ifname "*" %s mac %s' % (conn_name, dev_name, macaddr)
-        proc = self.entity_class.guest_execute_command(
-                    server, u'root', pwd, path_to_program=u'/bin/nmcli',
-                    program_arguments=params)    '''      
-        
-        #res = self.entity_class.guest_read_environment_variable(server,
-        #                                                        u'root', pwd)
-        res = proc
-        self.parent.result(res)        
-    
-    def setup_ssh_key(self, oid, pwd):
-        key = u'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it'
-        server = self.entity_class.get_by_morid(oid)
-        res = self.entity_class.guest_setup_ssh_key(server, u'root', pwd, key)
-        self.parent.result(res)
-        
-    def setup_ssh_pwd(self, oid, pwd, newpwd):
-        newpwd = u'prova'
-        server = self.entity_class.get_by_morid(oid)
-        res = self.entity_class.guest_setup_admin_apssword(server, u'root', pwd, 
-                                                           newpwd)
-        self.parent.result(res)        
-    
-    def setup_network(self, oid, pwd, data):
-        data = self.parent.load_config(data)
-        ipaddr = data.get(u'ipaddr')
-        macaddr = data.get(u'macaddr')
-        gw = data.get(u'gw')
-        hostname = data.get(u'name')
-        dns = data.get(u'dns')
-        dns_search = data.get(u'dns-search')
-        server = self.entity_class.get_by_morid(oid)
-        res = self.entity_class.guest_setup_network(server, pwd, ipaddr, 
-                    macaddr, gw, hostname, dns, dns_search, 
-                    conn_name=u'net01', user=u'root')
-        self.parent.result(res)
+    def list(self):
+        res = self.entity_class.list(detail=True)    
+        self.parent.result(res, headers=[u'id', u'tenant_id', u'name',
+            u'OS-EXT-SRV-ATTR:instance_name', u'OS-EXT-STS:power_state'])
     
     def register(self):
         res = {
-            u'%ss.console' % self.name: self.get_console,
-            u'%ss.cmd' % self.name: self.exec_command,
-            u'%ss.guest' % self.name: self.get_guest,
-            u'%ss.sshkey' % self.name: self.setup_ssh_key,
-            u'%ss.pwd' % self.name: self.setup_ssh_pwd,
-            u'%ss.net' % self.name: self.setup_network,
+            u'%ss.list' % self.name: self.list,
         }
         self.parent.add_actions(res)
+        
+class VolumeActions(Actions):
+    """
+    """
+    def list(self):
+        res = self.entity_class.list(detail=True)    
+        self.parent.result(res, headers=
+           [u'id', u'os-vol-tenant-attr:tenant_id', u'name',
+            u'status', u'size', u'bootable'])
+    
+    def register(self):
+        res = {
+            u'%ss.list' % self.name: self.list,
+        }
+        self.parent.add_actions(res)        
         
 class SystemActions(Actions):
     """
@@ -235,9 +163,20 @@ class SgActions(Actions):
         res = self.entity_class.list_logging()
         self.parent.result(res)
     
+    def get(self, oid):
+        res = self.entity_class.get(oid)
+        rules = res.pop(u'security_group_rules')
+        self.parent.result(res, details=True)
+        print(u'Rules:')
+        self.parent.result(rules, headers=[u'id', u'direction', u'protocol',
+                                           u'ethertype', u'remote_group_id',
+                                           u'remote_ip_prefix', u'port_range_min',
+                                           u'port_range_max'])
+    
     def register(self):
         res = {
             u'%ss.log' % self.name: self.list_logging,
+            u'%ss.get' % self.name: self.get,
         }
         self.parent.add_actions(res)        
 
@@ -253,8 +192,32 @@ class NativeOpenstackManager(ApiManager):
         networks list
         networks get
         
+        subnets list
+        subnets get
+        
+        ports list
+        ports get
+        
+        floating-ips list
+        floating-ips get
+        
+        routers list
+        routers get
+        
+        images list
+        images get
+        
+        flavors list
+        flavors get
+        
+        security-groups list
+        security-groups get
+        
         servers list
         servers get
+        
+        volumes list
+        volumes get
     """
     __metaclass__ = abc.ABCMeta
 
@@ -276,11 +239,32 @@ class NativeOpenstackManager(ApiManager):
         self.__actions = {}
         
         self.entities = [
-            [u'project', self.client.project, [u'id', u'parent_id', 
-                                               u'domain_id', u'name', 
-                                               u'enabled']],
-            [u'network', self.client.network, [u'id', u'parent_id', u'name']],
-            [u'server', self.client.server, [u'id', u'parent_id', u'name']]
+            [u'project', self.client.project, 
+             [u'id', u'parent_id', u'domain_id', u'name', u'enabled']],
+            [u'network', self.client.network, 
+             [u'id', u'tenant_id', u'name', u'provider:segmentation_id', 
+              u'router:external', u'shared', u'provider:network_type']],
+            [u'subnet', self.client.network.subnet, 
+             [u'id', u'tenant_id', u'name', u'network_id', u'cidr', 
+              u'enable_dhcp']],
+            [u'port', self.client.network.port, 
+             [u'id', u'tenant_id', u'network_id', u'mac_address', 
+              u'status', u'device_owner']],
+            [u'floating-ip', self.client.network.ip, 
+             [u'id', u'tenant_id', u'status', u'floating_ip_address',
+              u'fixed_ip_address']],
+            [u'router', self.client.network.router, 
+             [u'id', u'tenant_id', u'name', u'ha', u'status']],
+            [u'image', self.client.image, 
+             [u'id', u'name']],
+            [u'flavor', self.client.flavor, 
+             [u'id', u'name']],
+            [u'security-group', self.client.network.security_group, 
+             [u'id', u'tenant_id', u'name']],
+            [u'server', self.client.server, 
+             [u'id', u'parent_id', u'name']],
+            [u'volume', self.client.volume, 
+             [u'id', u'parent_id', u'name']]
         ]
         
         for entity in self.entities:
@@ -288,6 +272,7 @@ class NativeOpenstackManager(ApiManager):
         
         # custom actions
         ServerActions(self, u'server', self.client.server, []).register()
+        VolumeActions(self, u'volume', self.client.volume, []).register()
         SystemActions(self, u'system', self.client.system,[]).register()
         SgActions(self, u'security-group', 
                   self.client.network.security_group, []).register()
