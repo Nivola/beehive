@@ -16,6 +16,7 @@ import abc
 from beedrones.vsphere.client import VsphereManager
 from beedrones.openstack.client import OpenstackManager
 from beecell.simple import truncate
+from beecell.remote import RemoteClient
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +71,7 @@ class Actions(object):
         res = obj
         self.parent.result(res, details=True)
     
+    '''
     def add(self, data_file):
         data = self.load_config_file(data_file)
         obj = self.entity_class.create(*data)
@@ -91,20 +93,19 @@ class Actions(object):
         res = self.parent._call(uri, u'PUT', data=data)
         self.parent.logger.info(u'Update %s: %s' % (self.name, 
                                              truncate(res)))
-        self.parent.result(res)
+        self.parent.result(res)'''
 
     def delete(self, oid):
-        uri = u'%s/%ss/%s/' % (self.parent.baseuri, self.name, oid)
-        res = self.parent._call(uri, u'DELETE')
-        self.parent.logger.info(u'Delete %s: %s' % (self.name, oid))
-        self.parent.result(res)
+        res = self.entity_class.delete(oid)
+        res = {u'msg':u'delete %s %s' % (oid, self.name)}
+        self.parent.result(res, headers=[u'msg'])
     
     def register(self):
         res = {
             u'%ss.list' % self.name: self.list,
             u'%ss.get' % self.name: self.get,
-            u'%ss.add' % self.name: self.add,
-            u'%ss.update' % self.name: self.update,
+            #u'%ss.add' % self.name: self.add,
+            #u'%ss.update' % self.name: self.update,
             u'%ss.delete' % self.name: self.delete
         }
         self.parent.add_actions(res)
@@ -113,13 +114,58 @@ class ServerActions(Actions):
     """
     """
     def list(self):
-        res = self.entity_class.list(detail=True)    
+        res = self.entity_class.list(detail=True)
         self.parent.result(res, headers=[u'id', u'tenant_id', u'name',
-            u'OS-EXT-SRV-ATTR:instance_name', u'OS-EXT-STS:power_state'])
+            u'OS-EXT-SRV-ATTR:instance_name', u'status'])
+    
+    def run_ssh_command(self, oid, user, pwd, cmd):
+        server = self.entity_class.get(oid)
+        ip = server[u'addresses'].values()[0][0][u'addr']
+        client = RemoteClient({u'host':ip,
+                               u'port':22})
+        res = client.run_ssh_command(cmd, user, pwd)
+        if res.get(u'stderr' != u''):
+            print(u'Error')
+            print(res.get(u'stderr'))
+        else:
+            for row in res.get(u'stdout'):
+                print(row)    
+    
+    def start(self, oid):
+        res = self.entity_class.start(oid)
+        res = {u'msg':u'start %s %s' % (oid, self.name)}
+        self.parent.result(res, headers=[u'msg'])
+    
+    def stop(self, oid):
+        res = self.entity_class.stop(oid)
+        res = {u'msg':u'stop %s %s' % (oid, self.name)}
+        self.parent.result(res, headers=[u'msg'])
+        
+    def console(self, oid):
+        res = self.entity_class.get_vnc_console(oid)
+        self.parent.result(res, headers=[u'type', u'url'], maxsize=100)
+        
+    def metatdata(self, oid):
+        res = self.entity_class.get_metadata(oid)
+        resp = []
+        for k,v in res.items():
+            resp.append({u'key':k, u'value':v})
+        self.parent.result(resp, headers=[u'key', u'value'], maxsize=100)        
+        
+    def actions(self, oid):
+        res = self.entity_class.get_actions(oid)
+        self.parent.result(res, headers=[u'start_time', u'request_id', 
+                                         u'action', u'message'], maxsize=200)
     
     def register(self):
         res = {
             u'%ss.list' % self.name: self.list,
+            u'%ss.cmd' % self.name: self.run_ssh_command,
+            u'%ss.start' % self.name: self.start,
+            u'%ss.stop' % self.name: self.stop,
+            u'%ss.console' % self.name: self.console,
+            u'%ss.metadata' % self.name: self.metatdata,
+            u'%ss.actions' % self.name: self.actions,
         }
         self.parent.add_actions(res)
         
@@ -127,10 +173,15 @@ class VolumeActions(Actions):
     """
     """
     def list(self):
-        res = self.entity_class.list(detail=True)    
+        res = self.entity_class.list(detail=True)
+        for item in res:
+            if len(item[u'attachments']) > 0:
+                item[u'server'] = item[u'attachments'][0][u'server_id']
+            else:
+                item[u'server'] = None
         self.parent.result(res, headers=
            [u'id', u'os-vol-tenant-attr:tenant_id', u'name',
-            u'status', u'size', u'bootable'])
+            u'status', u'size', u'bootable', u'server'])
     
     def register(self):
         res = {
@@ -180,6 +231,20 @@ class SgActions(Actions):
         }
         self.parent.add_actions(res)        
 
+class RouterActions(Actions):
+    """
+    """
+    def delete_internal_interface(self, oid, subnet):
+        res = self.entity_class.delete_internal_interface(oid, subnet)
+        res = {u'msg':u'delete interface on subnet %s' % (subnet)}
+        self.parent.result(res, headers=[u'msg'])
+    
+    def register(self):
+        res = {
+            u'%ss.delete-interface' % self.name: self.delete_internal_interface,
+        }
+        self.parent.add_actions(res)    
+
 class NativeOpenstackManager(ApiManager):
     """
     SECTION: 
@@ -187,37 +252,52 @@ class NativeOpenstackManager(ApiManager):
     
     PARAMs:
         projects list
-        projects get
+        projects get <oid>
+        projects delete <oid>
     
         networks list
-        networks get
+        networks get <oid>
+        networks delete <oid>
         
         subnets list
-        subnets get
+        subnets get <oid>
+        subnets delete <oid>
         
-        ports list
-        ports get
+        ports list [network=]
+        ports get <oid>
+        ports delete <oid>
         
         floating-ips list
-        floating-ips get
+        floating-ips get <oid>
         
         routers list
-        routers get
+        routers get <oid>
+        routers delete <oid>
+        routers delete-interface <oid> <subnet>      delete router internal interface
         
         images list
-        images get
+        images get <oid>
         
         flavors list
-        flavors get
+        flavors get <oid>
         
         security-groups list
-        security-groups get
+        security-groups get <oid>
+        security-groups delete <oid>
         
-        servers list
-        servers get
+        servers list                                 list severs
+        servers get <oid>                            get server details
+        servers cmd <oid> <usr> "<pwd>" "<command>"  run a command using ssh 
+                                                     connection 
+        servers start <oid>                          start server
+        servers stop <oid>                           stop server
+        servers actions <oid>                        get server actions
+        servers metadata <oid>                       get server metadata
+        servers delete <oid>                         delete server
         
         volumes list
-        volumes get
+        volumes get <oid>
+        volumes delete <oid>
     """
     __metaclass__ = abc.ABCMeta
 
@@ -248,8 +328,8 @@ class NativeOpenstackManager(ApiManager):
              [u'id', u'tenant_id', u'name', u'network_id', u'cidr', 
               u'enable_dhcp']],
             [u'port', self.client.network.port, 
-             [u'id', u'tenant_id', u'network_id', u'mac_address', 
-              u'status', u'device_owner']],
+             [u'id', u'tenant_id', u'network_id', u'security_groups', 
+              u'mac_address', u'status', u'device_owner']],
             [u'floating-ip', self.client.network.ip, 
              [u'id', u'tenant_id', u'status', u'floating_ip_address',
               u'fixed_ip_address']],
@@ -276,6 +356,7 @@ class NativeOpenstackManager(ApiManager):
         SystemActions(self, u'system', self.client.system,[]).register()
         SgActions(self, u'security-group', 
                   self.client.network.security_group, []).register()
+        RouterActions(self, u'router', self.client.network.router,[]).register()
     
     @staticmethod
     def get_params(args):

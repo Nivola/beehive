@@ -112,6 +112,8 @@ class Actions(object):
         obj = self.entity_class.get(oid)
         task = self.entity_class.remove(obj)
         self.wait_task(task)
+        res = {u'msg':u'Delete %s %s' % (self.name, oid)}
+        self.parent.result(res, headers=[u'msg'])         
     
     def register(self):
         res = {
@@ -308,7 +310,9 @@ class NetworkActions(Actions):
     def delete_network(self, oid):
         network = self.entity_class.get_network(oid)
         res = self.entity_class.remove_network(network)
-        self.logger.info(res)      
+        logger.info(res)
+        res = {u'msg':u'Delete network %s' % oid}
+        self.parent.result(res, headers=[u'msg'])    
         
     def register(self):
         res = {
@@ -319,6 +323,54 @@ class NetworkActions(Actions):
             u'networks.delete': self.delete_network,
         }
         self.parent.add_actions(res)        
+
+class SgActions(Actions):
+    """
+    """
+    def get(self, oid):
+        res = self.entity_class.get(oid)
+        rules = res.pop(u'member')
+        self.parent.result(res, details=True)
+        print(u'Members:')
+        self.parent.result(rules, headers=[u'objectId', u'name', 
+                                           u'objectTypeName'])
+    
+    def delete_member(self, oid, member):
+        res = self.entity_class.delete_member(oid, member)
+        logger.info(res)
+        res = {u'msg':u'Delete security-group %s member %s' % (oid, member)}
+        self.parent.result(res, headers=[u'msg'])
+    
+    def register(self):
+        res = {
+            u'%ss.get' % self.name: self.get,
+            u'%ss.delete-member' % self.name: self.delete_member,
+        }
+        self.parent.add_actions(res)
+        
+class DfwActions(Actions):
+    """
+    """
+    def get(self, oid):
+        res = self.entity_class.get(oid)
+        rules = res.pop(u'member')
+        self.parent.result(res, details=True)
+        print(u'Members:')
+        self.parent.result(rules, headers=[u'objectId', u'name', 
+                                           u'objectTypeName'])
+    
+    def delete_member(self, oid, member):
+        res = self.entity_class.delete_member(oid, member)
+        logger.info(res)
+        res = {u'msg':u'Delete security-group %s member %s' % (oid, member)}
+        self.parent.result(res, headers=[u'msg'])
+    
+    def register(self):
+        res = {
+            u'%ss.get' % self.name: self.get,
+            u'%ss.delete-member' % self.name: self.delete_member,
+        }
+        self.parent.add_actions(res)           
 
 class NativeVsphereManager(ApiManager):
     """
@@ -353,13 +405,22 @@ class NativeVsphereManager(ApiManager):
     
         servers list                                 list severs
         servers get <oid>                            get server details
-        servers get <oid>                            get server guest tools info
-        #servers delete
-        servers cmd <oid> <usr> <pwd> "<command>"    run a command using ssh 
+        servers guest <oid>                          get server guest tools info
+        servers delete                               delete server
+        servers cmd <oid> <usr> "<pwd>" "<command>"  run a command using ssh 
                                                      connection 
         servers start <oid>                          start server
         servers stop <oid>                           stop server
     
+        nsx-lgs list                                 list nsx logical switches
+        nsx-lgs get <oid>                            get nsx logical switch
+        
+        nsx-sgs list                                 list nsx security groups
+        nsx-sgs get <oid>                            get nsx security group        
+        nsx-sgs delete-member <oid> <member>         delete nsx security group member
+        
+        nsx-ipsets list                              ist nsx ipsets
+        nsx-ipsets get <oid>                         get nsx ipset
     """
     __metaclass__ = abc.ABCMeta
 
@@ -378,7 +439,7 @@ class NativeVsphereManager(ApiManager):
         
         self.entities = [
             [u'datacenter', self.client.datacenter, [u'id', u'name']],
-            [u'folder', self.client.folder, [u'id', u'name', u'type']],
+            [u'folder', self.client.folder, [u'id', u'name', u'type', u'parent']],
             [u'vapp', self.client.vapp, [u'id', u'name']],
             [u'cluster', self.client.cluster, [u'id', u'name']],
             [u'host', self.client.cluster.host, [u'id', u'name']],
@@ -389,6 +450,13 @@ class NativeVsphereManager(ApiManager):
                                              u'cpu', u'state', u'template', 
                                              u'hostname', u'ip_address', 
                                              u'disk']],
+                         
+            [u'nsx-lg', self.client.network.nsx.lg, [u'objectId', u'tenantId']],
+            [u'nsx-sg', self.client.network.nsx.sg, [u'objectId', u'name']],
+            [u'nsx-ipset', self.client.network.nsx.ipset, [u'objectId', u'name',
+                                                           u'value']],
+            [u'nsx-dlr', self.client.network.nsx.dlr, [u'objectId', u'name']],
+            [u'nsx-edge', self.client.network.nsx.edge, [u'objectId', u'name']],
         ]
         
         for entity in self.entities:
@@ -397,6 +465,8 @@ class NativeVsphereManager(ApiManager):
         # custom actions
         ServerActions(self, u'server', self.client.server).register()
         NetworkActions(self, u'network', self.client.network).register()
+        SgActions(self, u'nsx-sg', self.client.network.nsx.sg).register()
+        DfwActions(self, u'nsx-dfw', self.client.network.nsx.dfw).register()
         
     @staticmethod
     def get_params(args):

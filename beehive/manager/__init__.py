@@ -235,7 +235,7 @@ class ComponentManager(object):
             self.__format(data, space)
     
     def result(self, data, delta=None, other_headers=[], headers=None, key=None, 
-               fields=None, details=False):
+               fields=None, details=False, maxsize=50):
         """
         """
         if key is not None:
@@ -258,8 +258,6 @@ class ComponentManager(object):
             
         elif self.format == u'table':
             if data is not None:
-                maxsize = 50
-                
                 # convert input data for query with one raw
                 if details is True:
                     resp = []
