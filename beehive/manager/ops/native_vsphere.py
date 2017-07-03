@@ -351,24 +351,114 @@ class SgActions(Actions):
 class DfwActions(Actions):
     """
     """
-    def get(self, oid):
-        res = self.entity_class.get(oid)
-        rules = res.pop(u'member')
-        self.parent.result(res, details=True)
-        print(u'Members:')
-        self.parent.result(rules, headers=[u'objectId', u'name', 
-                                           u'objectTypeName'])
-    
-    def delete_member(self, oid, member):
-        res = self.entity_class.delete_member(oid, member)
+    def __print_sections(self, data, stype):
+        sections = data[stype][u'section']
+        if type(sections) is not list: sections = [sections]
+        for s in sections:
+            rules = s.get(u'rule', [])
+            if type(rules) is not list: rules = [rules]
+            s[u'rules'] = len(rules)
+        self.parent.result(sections, headers=[u'@id', u'@type', u'@timestamp', 
+                                              u'@generationNumber', u'@name',
+                                              u'rules'])
+
+    def get_sections(self):
+        res = self.entity_class.get_config()
+        
+        data = [{u'key':u'contextId', u'value':res[u'contextId']},
+                {u'key':u'@timestamp', u'value':res[u'@timestamp']},
+                {u'key':u'generationNumber', u'value':res[u'generationNumber']}]
+        self.parent.result(data, headers=[u'key', u'value'])
+        
+        print(u'layer3Sections')
+        self.__print_sections(res, u'layer3Sections')
+        print(u'layer2Sections')
+        self.__print_sections(res, u'layer2Sections')     
+        print(u'layer3RedirectSections')
+        self.__print_sections(res, u'layer3RedirectSections')
+
+    def __set_rule_value(self, key, subkey, res):
+        objs = res.pop(key, {}).pop(subkey, None)
+        if objs is None:
+            res[key] = u''  
+        else: 
+            res[key] = u'..'
+        return res
+
+    def __print_rule_datail(self, title, data):
+        print(title)
+        if type(data) is not list: data = [data]
+        self.parent.result(data, headers=[u'type', u'name', u'value'])        
+
+    def get_rules(self, section, rule=None):
+        if rule is None:
+            res = self.entity_class.get_layer3_section(sectionid=section)
+            
+            rules = res.pop(u'rule', [])
+            self.parent.result([res], headers=[u'@id', u'@type', u'@timestamp', 
+                                               u'@generationNumber', u'@name'])
+            
+            print(u'Rules:')
+            for r in rules:
+                r = self.__set_rule_value(u'services', u'service', r)
+                r = self.__set_rule_value(u'sources', u'source', r)
+                r = self.__set_rule_value(u'destinations', u'destination', r)
+                r = self.__set_rule_value(u'appliedToList', u'appliedTo', r)
+            self.parent.result(rules, headers=[u'@id', u'@disabled', u'@logged', 
+                                               u'name', u'direction', u'action', 
+                                               u'packetType', u'sources', 
+                                               u'destinations', u'services',
+                                               u'appliedToList'])
+        else:
+            res = self.entity_class.get_rule(section, rule)
+            #self.parent.result(res, details=True)
+            services = res.pop(u'services', {}).pop(u'service', [])
+            sources = res.pop(u'sources', {}).pop(u'source', [])
+            destinations = res.pop(u'destinations', {}).pop(u'destination', [])
+            appliedToList = res.pop(u'appliedToList', {}).pop(u'appliedTo', [])
+            
+            self.parent.result(res, headers=[u'@id', u'@disabled', u'@logged', 
+                                               u'name', u'direction', u'action', 
+                                               u'packetType'])
+            
+            self.__print_rule_datail(u'sources', sources)
+            self.__print_rule_datail(u'destinations', destinations)
+            self.__print_rule_datail(u'appliedTo', appliedToList)
+            print(u'services')
+            if type(services) is not list: services = [services]
+            self.parent.result(services, headers=[u'protocol', u'subProtocol', 
+                                                  u'destinationPort', 
+                                                  u'protocolName']) 
+
+    def delete_section(self, section):
+        res = self.entity_class.delete_section(section)
         logger.info(res)
-        res = {u'msg':u'Delete security-group %s member %s' % (oid, member)}
+        res = {u'msg':u'Delete section %s' % (section)}
         self.parent.result(res, headers=[u'msg'])
+    
+    def delete_rule(self, section, rule):
+        res = self.entity_class.delete_rule(section, rule)
+        logger.info(res)
+        res = {u'msg':u'Delete section %s rule %s' % (section, rule)}
+        self.parent.result(res, headers=[u'msg'])
+        
+    def get_exclusion_list(self):
+        res = self.entity_class.get_exclusion_list()
+        res = res.get(u'excludeMember', [])
+        resp = []
+        for item in res:
+            resp.append(item[u'member'])
+        logger.info(res)
+        self.parent.result(resp, headers=[u'objectId', u'name', u'scope.name',
+                                          u'objectTypeName', u'revision'])         
     
     def register(self):
         res = {
-            u'%ss.get' % self.name: self.get,
-            u'%ss.delete-member' % self.name: self.delete_member,
+            u'%s.sections' % self.name: self.get_sections,
+            u'%s.rules' % self.name: self.get_rules,
+            u'%s.delete-section' % self.name: self.delete_section,
+            u'%s.delete-rule' % self.name: self.delete_rule,
+            u'%s.exclusion-list' % self.name: self.get_exclusion_list,
         }
         self.parent.add_actions(res)           
 
@@ -419,8 +509,20 @@ class NativeVsphereManager(ApiManager):
         nsx-sgs get <oid>                            get nsx security group        
         nsx-sgs delete-member <oid> <member>         delete nsx security group member
         
-        nsx-ipsets list                              ist nsx ipsets
+        nsx-ipsets list                              list nsx ipsets
         nsx-ipsets get <oid>                         get nsx ipset
+        
+        nsx-dlrs list                                list nsx dlrs
+        nsx-dlrs get <oid>                           get nsx ipset
+        
+        nsx-edges list                               list nsx edges
+        nsx-edges get <oid>                          get nsx ipset
+        
+        nsx-dfw sections                             list dfw sections
+        nsx-dfw rules <section> [<rule>]             list/get dfw rule(s)
+        nsx-dfw delete-section <section>             delete dfw section
+        nsx-dfw delete-rule <section> <rule>         list dfw sections
+        nsx-dfw exclusion-list                       list dfw sections
     """
     __metaclass__ = abc.ABCMeta
 
