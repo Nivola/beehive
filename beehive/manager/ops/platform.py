@@ -640,7 +640,7 @@ class PlatformManager(ComponentManager):
     def cdate(self, date):
         """
         """
-        temp = datetime.utcfromtimestamp(date)
+        temp = datetime.fromtimestamp(date)
         return str2uni(temp.strftime(u'%d-%m-%y %H:%M:%S'))
 
     def get_emperor_vassals(self, details=u'', system=None):

@@ -26,9 +26,8 @@ class NativeGraphiteManager(ComponentManager):
         
     PARAMS:
         nodes list                  get list of nodes configured in graphite.
-        node metrics <platform> <oid> [<type>] [<minutes>]
-                                    get <platform> node <oid> metrics.
-                                    - platform: kvm, vsphere
+        node metrics <oid> [<type>] [<minutes>]
+                                    get node <oid> metrics.
                                     - type: virtual [default], physical
                                     - minutes: 1 [defualt]
 
@@ -37,7 +36,6 @@ class NativeGraphiteManager(ComponentManager):
     def __init__(self, auth_config, env, frmt=u'json', orchestrator_id=None):
         ComponentManager.__init__(self, auth_config, env, frmt)
         
-        self.environment = env
         self.conf = auth_config.get(u'orchestrators')\
                                .get(u'graphite')\
                                .get(orchestrator_id)
@@ -75,21 +73,23 @@ class NativeGraphiteManager(ComponentManager):
     def list_nodes(self):
         """list nodes
         """
-        client = GraphiteManager(self.conf.get(u'host'), self.environment)
+        client = GraphiteManager(self.conf.get(u'host'), 
+                                 env=self.conf.get(u'search-path'))
         res = []
-        for platform in [u'vsphere', u'kvm']:
-            data = client.get_nodes(platform)
-            for item in data:
-                res.append({u'platform':platform, u'node':item})
+        data = client.get_nodes(self.conf.get(u'type'))
+        for item in data:
+            res.append({u'platform':self.conf.get(u'type'), u'node':item})
         self.result(res, headers=[u'platform', u'node'])
     
-    def get_metrics(self, platform, oid, *args):
+    def get_metrics(self, oid, *args):
         """Get node metrics
         """
         args = self.get_args(args)
         ntype = args.get(u'type', u'virtual')
         minutes = args.get(u'minutes', 2)
-        client = GraphiteManager(self.conf.get(u'host'), self.environment)
+        platform = self.conf.get(u'type')
+        client = GraphiteManager(self.conf.get(u'host'), 
+                                 env=self.conf.get(u'search-path'))
         if ntype == u'virtual':
             metrics = client.get_virtual_node_metrics(platform, oid, minutes)
         elif ntype == u'physical':

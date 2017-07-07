@@ -118,9 +118,8 @@ class ComponentManager(object):
         self.token_file = auth_config[u'token_file']
         self.seckey_file = auth_config[u'seckey_file']
         
-        self.perm_headers = [u'id', u'oid', u'subsystem', u'type', u'objid', 
-                             u'aid', u'action']
-        self.perm_fields = [u'0.0', u'0.1', u'0.2', u'0.3', u'0.4', u'0.6']
+        self.perm_headers = [u'id', u'oid', u'objid', u'subsystem', u'type', 
+                             u'aid', u'action', u'desc']
         
     def __jsonprint(self, data):
         data = json.dumps(data, indent=2)

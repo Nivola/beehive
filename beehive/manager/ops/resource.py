@@ -37,18 +37,11 @@ class ResourceManager(ApiManager):
         resource
         
     PARAMS:
-        resources list <field>=<value>    field: name
-                                                 active
-                                                 type
-                                                 container
-                                                 creation-date
-                                                 modification-date
-                                                 attribute
-                                                 parent-id
-                                                 type-filter
-                                                 tags
-            Ex. type-filter=%folder.server% name=tst-b%
-                type=vsphere.datacenter
+        resources list <field>=<value>    field: name, active, type, container, 
+                                                 creation-date, modification-date, 
+                                                 attribute, parent-id, type-filter, tags
+                                          Ex. type-filter=%folder.server% name=tst-b%
+                                              type=vsphere.datacenter
         resources types
         resources get <id|uuid>
         resources tree <id|uuid>
@@ -66,12 +59,14 @@ class ResourceManager(ApiManager):
         containers ping <id>
         containers perms <id>
         containers roles <id>
-        containers add vsphere tst-vecenter-01 \{\"vcenter\":\{\"host\":\"tst-vcenter.tstsddc.csi.it\",\"user\":\"administrator@tstsddc.csi.it\",\"pwd\":\"cs1\$topix\",\"port\":443,\"timeout\":5,\"verified\":false\},\"nsx\":\{\"host\":\"tst-nsxmanager.tstsddc.csi.it\",\"port\":443,\"user\":\"admin\",\"pwd\":\"Cs1\$topix\",\"verified\":false,\"timeout\":5\}\}
-        containers add openstack tst-opstk-redhat-01 \{\"api\":\{\"user\":\"admin\",\"project\":\"admin\",\"domain\":\"default\",\"uri\":\"http://10.102.184.200:5000/v3\",\"timeout\":5,\"pwd\":\"8fAwzAJAHQFMcJfrntpapzDpC\",\"region\":\"regionOne\"\}\}
-        containers delete <id>
-        containers tag-add <id> <tag>
-        containers tag-delete <id> <tag>
-        containers tags <id>
+        containers add <type> <name> <conn.json>    create a new resource container
+                                                    type: vsphere, openstack, provider
+        containers delete <id>                      delete a resource container
+        containers tag-add <id> <tag>               add tag to a resource container
+        containers tag-delete <id> <tag>            remove tag from a resource container
+        containers tags <id>                        get tags of a resource container
+        containers discover-classes <cid>           get container resource classes
+        containers discover <cid> <class>           discover container <class> resources 
         
         tags list
         tags get <tag>
@@ -79,7 +74,7 @@ class ResourceManager(ApiManager):
         tags occurrences 
         tags perms <tag>
         tags add <value>
-        tags update  <value> <new_value>
+        tags update <value> <new_value>
         tags delete <value>
         
         links list
@@ -335,8 +330,7 @@ class ResourceManager(ApiManager):
         uri = u'%s/containers/%s/perms/' % (self.baseuri, value)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get resource container perms: %s' % truncate(res))
-        self.result(res, key=u'perms', headers=self.perm_headers, 
-                    fields=self.perm_fields)
+        self.result(res, key=u'perms', headers=self.perm_headers)
         
     def get_resource_container_roles(self, value):
         uri = u'%s/containers/%s/roles/' % (self.baseuri, value)
@@ -401,15 +395,49 @@ class ResourceManager(ApiManager):
     def discover_container_resource_classess(self, contid):
         uri = u'%s/containers/%s/discover/classes/' % (self.baseuri, contid)        
         res = self._call(uri, u'GET', data=u'').get(u'discover').get(u'classes')
-        self.result(res, headers=[u'resource class'], fields=[0])
+        self.result(res, headers=[u'resource class'], fields=[0], maxsize=200)
         
     def discover_container_resources(self, contid, resclass):
         uri = u'%s/containers/%s/discover/' % (self.baseuri, contid)        
         res = self._call(uri, u'GET', data=u'class=%s' % resclass)\
                   .get(u'discover').get(u'resources')
-        self.result(res, key=u'new', headers=[u'id', u'name', u'parent', u'class'])
-        self.result(res, key=u'died', headers=[u'id', u'name', u'parent', u'class'])
-        self.result(res, key=u'changed', headers=[u'id', u'name', u'parent', u'class'])
+        headers = [u'id', u'name', u'parent', u'class']
+        print(u'New resources')
+        self.result(res, key=u'new', headers=headers)
+        print(u'Died resources')
+        self.result(res, key=u'died', headers=headers)
+        print(u'Changed resources')
+        self.result(res, key=u'changed', headers=headers)
+
+    def synchronize_container_resources(self, contid, resclass):     
+        data = {
+            u'discover':{
+                u'resource_classes':resclass,
+                u'new':True,
+                u'died':True,
+                u'changed':True
+            }
+        }
+        uri = u'%s/containers/%s/discover/' % (self.baseuri, contid)        
+        res = self._call(uri, u'PUT', data=data)
+        self.result(res)
+
+    def get_container_resources_scheduler(self):
+        global contid
+        data = ''
+        uri = u'%s/container/%s/discover/scheduler/' % (self.baseuri, contid)        
+        self.invoke(u'resource', uri, u'GET', data=data)    
+    
+    def create_container_resources_scheduler(self):
+        global contid
+        data = json.dumps({'minutes':5})
+        uri = u'%s/container/%s/discover/scheduler/' % (self.baseuri, contid)        
+        self.invoke(u'resource', uri, u'POST', data=data)
+        
+    def remove_container_resources_scheduler(self):
+        global contid
+        uri = u'%s/container/%s/discover/scheduler/' % (self.baseuri, contid)        
+        self.invoke(u'resource', uri, u'DELETE', data='')
 
     #
     # tags
@@ -458,8 +486,7 @@ class ResourceManager(ApiManager):
         uri = u'%s/resource-tags/%s/perms/' % (self.baseuri, value)        
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.result(res, key=u'perms', headers=self.perm_headers, 
-                    fields=self.perm_fields)
+        self.result(res, key=u'perms', headers=self.perm_headers)
         
     def test_update_tag(self, value, new_value):
         data = {
@@ -520,8 +547,7 @@ class ResourceManager(ApiManager):
         uri = u'%s/resource-links/%s/perms/' % (self.baseuri, oid)        
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.result(res, key=u'perms', headers=self.perm_headers, 
-                    fields=self.perm_fields)
+        self.result(res, key=u'perms', headers=self.perm_headers)
         
     def test_update_link(self, value, new_value):
         data = {

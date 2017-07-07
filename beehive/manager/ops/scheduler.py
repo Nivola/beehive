@@ -150,7 +150,7 @@ class SchedulerManager(ApiManager):
         for i in res:
             resp.append({u'timestamp':i[0], u'task':i[1], u'task id':i[2], 
                          u'msg':truncate(i[3], 150)})
-        self.result(resp, headers=[u'timestamp', u'msg'])        
+        self.result(resp, headers=[u'timestamp', u'msg'], maxsize=200)        
         
     '''
     def get_task_status(self, task_id):
@@ -203,7 +203,7 @@ class SchedulerManager(ApiManager):
         uri = u'/v1.0/worker/tasks/test/'
         res = self._call(uri, u'POST', data=data)
         self.logger.info(u'Run job test: %s' % res)
-        self.result(res)   
+        self.result(res)
 
     #
     # scheduler
