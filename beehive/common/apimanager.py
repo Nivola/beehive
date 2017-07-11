@@ -1052,12 +1052,12 @@ class ApiController(object):
     def get_needs(self, args):
         """"""
         # first item *.*.*.....
-        act_need = ['*' for i in args]
-        needs = ['//'.join(act_need)]
+        act_need = [u'*' for i in args]
+        needs = [u'//'.join(act_need)]
         pos = 0
         for arg in args:
             act_need[pos] = arg
-            needs.append('//'.join(act_need))
+            needs.append(u'//'.join(act_need))
             pos += 1
 
         return set(needs)

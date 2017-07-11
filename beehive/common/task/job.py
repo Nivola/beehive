@@ -110,6 +110,26 @@ class Job(BaseTask):
                                                             method, data,
                                                             other_headers)
 
+    def _query_job(self, module, job_id, attempt):
+        """Query remote job status.
+        
+        :param module: cloudapi module
+        :param task_id: id of the remote job
+        :return: job status. Possible value are: PENDING, PROGRESS, SUCCESS,
+                 FAILURE
+        """
+        try:
+            uri = u'/v1.0/worker/tasks/%s/' % job_id
+            res = self.api_admin_request(module, uri, u'GET', u'')
+            logger.debug(u'Query job %s: %s' % (job_id, res[u'status']))
+        except ApiManagerError as ex:
+            # remote job query fails. Return fake state and wait new query
+            res = {u'state':u'PROGRESS'}
+            #attempt += 1
+            #if attempt > 100:
+            #    res = {u'state':u'FAILURE'}    
+        return res, attempt
+
     def invoke_api(self, module, uri, method, data, other_headers=None):
         """Ivoke cloudapi api.
         
@@ -156,27 +176,7 @@ class Job(BaseTask):
 
     #
     # invoke remote job
-    #
-    def _query_job(self, module, job_id, attempt):
-        """Query remote job status.
-        
-        :param module: cloudapi module
-        :param task_id: id of the remote job
-        :return: job status. Possible value are: PENDING, PROGRESS, SUCCESS,
-                 FAILURE
-        """
-        try:
-            uri = u'/v1.0/worker/tasks/%s/' % job_id
-            res = self.api_admin_request(module, uri, u'GET', u'')
-            logger.debug(u'Query job %s: %s' % (job_id, res[u'status']))
-        except ApiManagerError as ex:
-            # remote job query fails. Return fake state and wait new query
-            res = {u'state':u'PROGRESS'}
-            #attempt += 1
-            #if attempt > 100:
-            #    res = {u'state':u'FAILURE'}    
-        return res, attempt
-    
+    #    
     def wait_for_job_complete(self, task_id):
         """Query celery job and wait until status is not SUCCESS or FAILURE
         
@@ -185,35 +185,41 @@ class Job(BaseTask):
         """
         try:
             # get celery task
-            inner_task = AsyncResult(task_id, app=task_manager)
+            #inner_task = AsyncResult(task_id, app=task_manager)
+            inner_task = TaskResult.get(task_id)
             res = None
             start = time()
             # loop until inner_task finish with success or error
-            while inner_task.status != u'SUCCESS' and inner_task.status != u'FAILURE':
+            #while inner_task.status != u'SUCCESS' and inner_task.status != u'FAILURE':
+            status = inner_task.get(u'status')
+            while status != u'SUCCESS' and status != u'FAILURE':
                 sleep(task_local.delta)
-                inner_task = AsyncResult(task_id, app=task_manager)
+                #inner_task = AsyncResult(task_id, app=task_manager)
+                inner_task = TaskResult.get(task_id)
                 elapsed = time() - start
                 self.update(u'PROGRESS', msg=u'Task %s status %s after %ss' % 
-                             (task_id, inner_task.status, elapsed))
+                             (task_id, status, elapsed))
+                status = inner_task.get(u'status')
             
             elapsed = time() - start
-            if inner_task.failed() is True:
-                logger.error(u'Task %s error after %ss : %s' % 
-                             (task_id, elapsed, inner_task.traceback))
-                raise JobError(inner_task.traceback)
-            elif inner_task.ready() is True:
+            if status == u'FAILURE':
+                logger.error(u'Task %s error after %ss' % 
+                             (task_id, elapsed))
+                raise JobError(u'Task %s error' % task_id)
+            elif status == u'SUCCESS':
                 logger.debug(u'Task %s success after %ss' % 
                              (task_id, elapsed))
-                res = inner_task.get()
+                res = inner_task
             else:
-                logger.error(u'Task %s unknown after %ss' % 
+                logger.error(u'Task %s unknown error after %ss' % 
                              (task_id, elapsed))
                 raise JobError(u'Unknown error with task %s' % task_id)
             
             return res
         except Exception as ex:
-            logger.error(ex, exc_info=1)
-            raise JobError(ex)
+            #logger.error(ex, exc_info=1)
+            logger.error(ex)
+            raise
 
     #
     # shared area
@@ -294,24 +300,10 @@ class Job(BaseTask):
         :param result: task result. None otherwise task status is SUCCESS [optional]
         :param msg: update message [optional]
         """
+        '''
         # update job status only if it is not already in FAILURE status
-        job_status = get_value(params, u'job-status', u'PROGRESS')        
-        if job_status != u'FAILURE':
-            '''# set job status
-            params[u'job-status'] = status
-            
-            # set start time for job task when status is STARTED
-            if job_status == u'STARTED':
-                params[u'job_start_time'] = time()
-                elapsed = 0
-            # calculate elapsed for job task when status is not STARTED
-            else:
-                job_start_time = get_value(params, u'job_start_time', time())
-                elapsed = round(time() - job_start_time, 4)
-            
-            # save data in shared area
-            self.set_shared_data(params)'''
-            
+        job_status = get_value(params, u'job-status', u'PROGRESS')
+        if job_status != u'FAILURE':            
             # set result if status is SUCCESS
             retval = None
             if status == u'SUCCESS':
@@ -335,6 +327,33 @@ class Job(BaseTask):
                              inner_type=u'JOB', traceback=traceback, 
                              stop_time=current_time, start_time=start_time, 
                              msg=msg)
+            if status == u'FAILURE':
+                logger.error(u'JOB %s status change to %s' % 
+                            (task_local.opid, status))
+            else:         
+                logger.info(u'JOB %s status change to %s' % 
+                            (task_local.opid, status))'''
+        # set result if status is SUCCESS
+        retval = None
+        if status == u'SUCCESS':
+            if u'result' in params:
+                retval = params[u'result']
+            # remove shared area
+            self.remove_shared_area()
+            
+            # remove stack
+            self.remove_stack()
+
+        # store job data
+        msg = None
+        TaskResult.store(task_local.opid, status=status, retval=retval, 
+                         inner_type=u'JOB', traceback=traceback, 
+                         stop_time=current_time, start_time=start_time, 
+                         msg=msg)
+        if status == u'FAILURE':
+            logger.error(u'JOB %s status change to %s' % 
+                        (task_local.opid, status))
+        else:         
             logger.info(u'JOB %s status change to %s' % 
                         (task_local.opid, status))        
     
@@ -403,7 +422,8 @@ class Job(BaseTask):
         # log message
         if msg is not None:
             if status == u'FAILURE':
-                logger.error(msg, exc_info=1)
+                #logger.error(msg, exc_info=1)
+                logger.error(msg)
                 msg = u'ERROR: %s' % (msg)
             else:
                 logger.debug(msg)

@@ -94,7 +94,7 @@ def transaction(fn):
             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
-            #logger.error(ex.orig, exc_info=1)
+            logger.error(ex.orig, exc_info=1)
             logger.error(ex.orig)
 
             session.rollback()
@@ -119,7 +119,7 @@ def transaction(fn):
             logger.error(ex)
         
             session.rollback()
-            raise TransactionError(ex)        
+            raise TransactionError(ex)
 
     return transaction_inner
 

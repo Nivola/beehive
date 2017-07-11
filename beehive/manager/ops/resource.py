@@ -66,7 +66,8 @@ class ResourceManager(ApiManager):
         containers tag-delete <id> <tag>            remove tag from a resource container
         containers tags <id>                        get tags of a resource container
         containers discover-classes <cid>           get container resource classes
-        containers discover <cid> <class>           discover container <class> resources 
+        containers discover <cid> <class>           discover container <class> resources
+        containers synchronize <cid> <class>        synchronize container <class> resources
         
         tags list
         tags get <tag>
@@ -119,6 +120,7 @@ class ResourceManager(ApiManager):
             u'containers.tags': self.get_container_tag,
             u'containers.discover-classes':self.discover_container_resource_classess,
             u'containers.discover':self.discover_container_resources,
+            u'containers.synchronize':self.synchronize_container_resources,
             
             u'resources.list': self.get_resources,
             u'resources.types': self.get_resource_types,
@@ -176,7 +178,7 @@ class ResourceManager(ApiManager):
         uri = u'%s/resources/%s/' % (self.baseuri, value)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get resource: %s' % truncate(res))
-        self.result(res, key=u'resource', headers=self.res_headers)
+        self.result(res, key=u'resource', details=True)
     
     def __print_tree(self, resource, space=u'   '):
         for child in resource.get(u'children', []):
@@ -261,7 +263,7 @@ class ResourceManager(ApiManager):
     def get_resource_tag(self, oid):
         uri = u'%s/resources/%s/tags/' % (self.baseuri, oid)        
         res = self._call(uri, u'GET')
-        self.result(res)
+        self.result(res, key=u'resource-tags')
         
     def add_resource_tag(self, oid, tag):
         data = {

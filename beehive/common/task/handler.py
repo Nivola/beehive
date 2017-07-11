@@ -71,40 +71,47 @@ class TaskResult(object):
         set_data(u'jobs', jobs)
         set_data(u'traceback', traceback)
         
-        # get data from redis
-        val = _redis.get(_prefix + task_id)
-        if val is not None:
-            result = json.loads(val)
-            result.update(data)
-        else:
-            result = {
-                u'name':name,
-                u'type':inner_type,
-                u'task_id':task_id,
-                u'worker':hostname,
-                u'args':args,
-                u'kwargs':kwargs,
-                u'status':status,
-                u'result':retval,
-                u'traceback':traceback,
-                u'start_time':start_time,
-                u'stop_time':stop_time,
-                u'children':childs,
-                u'jobs':jobs,
-                u'trace':[]}
+        def update_data(pipe):
+            # get data from redis
+            val = pipe.get(_prefix + task_id)
+            if val is not None:
+                result = json.loads(val)
+                if result.get(u'status') != u'FAILURE':
+                    result.update(data)
+                else:
+                    result.update({u'stop_time':stop_time})
+            else:
+                result = {
+                    u'name':name,
+                    u'type':inner_type,
+                    u'task_id':task_id,
+                    u'worker':hostname,
+                    u'args':args,
+                    u'kwargs':kwargs,
+                    u'status':status,
+                    u'result':retval,
+                    u'traceback':traceback,
+                    u'start_time':start_time,
+                    u'stop_time':stop_time,
+                    u'children':childs,
+                    u'jobs':jobs,
+                    u'trace':[]}
+            
+            # update task trace
+            if msg is not None:
+                _timestamp = str2uni(datetime.today().strftime(u'%d-%m-%y %H:%M:%S-%f'))
+                result[u'trace'].append((_timestamp, msg))
+            
+            # serialize data
+            val = json.dumps(result)
+            
+            # save data in redis
+            pipe.setex(_prefix + task_id, _expire, val)
         
-        # update task trace
-        if msg is not None:
-            _timestamp = str2uni(datetime.today().strftime(u'%d-%m-%y %H:%M:%S-%f'))
-            result[u'trace'].append((_timestamp, msg))
+        # redis transaction
+        _redis.transaction(update_data, _prefix + task_id)
         
-        # serialize data
-        val = json.dumps(result)
-        
-        # save data in redis
-        _redis.setex(_prefix + task_id, _expire, val)
-        
-        # save celery legacy data to redis
+        '''# save celery legacy data to redis
         if status == u'FAILURE':
             result = {u'exc_message':u'', u'exc_type':u'Exception'}
         else:
@@ -116,7 +123,7 @@ class TaskResult(object):
             u'task_id':task_id, 
             u'children': []
         }
-        #_redis.setex(_legacy_prefix + task_id, _expire, json.dumps(val))
+        #_redis.setex(_legacy_prefix + task_id, _expire, json.dumps(val))'''
         
         logout = logger.debug
         if inner_type == u'JOB':
@@ -124,7 +131,7 @@ class TaskResult(object):
             
         logout(u'Save %s %s result: %s' % (inner_type, task_id, truncate(data)))
 
-        return val
+        return None
     
     @staticmethod
     def task_prerun(**args):

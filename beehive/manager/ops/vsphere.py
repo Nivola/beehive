@@ -39,13 +39,14 @@ class Actions(object):
         uri = u'%s/%ss/' % (self.parent.baseuri, self.name)
         res = self.parent._call(uri, u'GET', data=data)
         self.parent.logger.info(u'Get %s: %s' % (self.name, truncate(res)))
-        self.parent.result(res, other_headers=self.headers, key=self.name+u's')
+        self.parent.result(res, other_headers=self.headers, key=self.name+u's',
+                           maxsize=30)
 
     def get(self, oid):
         uri = u'%s/%ss/%s/' % (self.parent.baseuri, self.name, oid)
         res = self.parent._call(uri, u'GET')
         self.parent.logger.info(u'Get %s: %s' % (self.name, truncate(res)))
-        self.parent.result(res, other_headers=self.headers, key=self.name)
+        self.parent.result(res, key=self.name, details=True)
     
     def add(self, data):
         data = self.parent.load_config(data)
@@ -107,7 +108,8 @@ class VsphereManager(ApiManager):
     __metaclass__ = abc.ABCMeta
     
     class_names = [
-        (u'server', []),
+        (u'server', [u'parent_id', u'parent_name', u'details.template', u'details.os', 
+                     u'details.state', u'details.ip_address.0']),
         (u'folder', []),
         (u'network', [])
     ]

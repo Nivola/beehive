@@ -1,14 +1,15 @@
 {
     "env":"test",
     "user":"admin",
-    "schema":"auth",
+    "schema":"resource",
     "test":{
         "cmdb":{
             "uri":null,
             "db_uri":"postgresql+psycopg2://pastext:pent4ho@vm-cmdbuild.csi.it:5432/cmdbprod"
         },
         "db-uris":{
-            "auth":"mysql+pymysql://auth:auth@10.102.184.57:3306/auth"
+            "auth":"mysql+pymysql://auth:auth@10.102.184.57:3306/auth",
+            "resource":"mysql+pymysql://resource:resource@10.102.184.57:3306/resource"
         },
         "redis-uri":"10.102.184.51;6379;0",
         "broker":"redis://10.102.184.51:6379/1",

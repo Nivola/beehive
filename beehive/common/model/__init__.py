@@ -6,10 +6,60 @@ from beecell.simple import truncate
 from beecell.db import ModelError
 from beecell.perf import watch
 from datetime import datetime
+from sqlalchemy import Column, Integer, Float, String, Boolean, Index
+from sqlalchemy.sql import text
+import hashlib
 
 Base = declarative_base()
 
 logger = logging.getLogger(__name__)
+
+class PermTag(Base):
+    __tablename__ = u'perm_tag'
+    __table_args__ = {u'mysql_engine':u'InnoDB'}    
+    
+    id = Column(Integer, primary_key=True)
+    value = Column(String(100), unique = True)
+    explain = Column(String(400))
+    
+    def __init__(self, value, explain=None):
+        """Create new permission tag
+        
+        :param value: tag value
+        """
+        self.value = value
+        self.explain = explain
+    
+    def __repr__(self):
+        return u'<PermTag(%s, %s)>' % (self.id, self.value)
+    
+class PermTagEntity(Base):
+    __tablename__ = u'perm_tag_entity'
+    __table_args__ = {u'mysql_engine':u'InnoDB'}    
+    
+    id = Column(Integer, primary_key=True)
+    tag = Column(Integer)
+    entity = Column(Integer)
+    table = Column(String(50))
+    
+    __table_args__ = (
+        Index(u'idx_tag_entity', u'tag', u'entity', unique=True),
+    )    
+    
+    def __init__(self, tag, entity, table):
+        """Create new permission tag entity association
+        
+        :param tag: tag id
+        :param entity: entity id
+        :param table: entity table
+        """
+        self.tag = tag
+        self.entity = entity
+        self.table = table
+    
+    def __repr__(self):
+        return u'<PermTagEntity(%s, %s, %s, %s)>' % (self.id, self.tag, 
+                                                     self.entity, self.table)
 
 class AbstractDbManager(object):
     """Abstarct db manager
@@ -260,4 +310,102 @@ class AbstractDbManager(object):
         
         self.logger.debug(u'Remove %s %s' % (entityclass.__name__, entity.id))
         return entity.id
+    
+    #
+    # permission tag
+    #
+    def hash_from_permission(self, objdef, objid):
+        """Get hash from entity permission (objdef, objid)
+        
+        :param objdef: enitity permission object type definition
+        :param objid: enitity permission object id
+        """
+        perm = u'%s-%s' % (objdef, objid)
+        tag = hashlib.md5(perm).hexdigest()
+        return tag
+    
+    @transaction
+    def add_perm_tag(self, tag, explain, entity, table, *args, **kvargs):
+        """Add permission tag and entity association.
+        
+        :param tag: tag
+        :param explain: tag explain
+        :param entity: entity id
+        :param table: entity table
+        :return: True
+        :rtype: bool
+        :raises TransactionError: raise :class:`TransactionError`
+        """
+        session = self.get_session()
+        
+        try:
+            # create tag
+            tagrecord = PermTag(tag, explain=explain)
+            session.add(tagrecord)
+            session.flush()
+            self.logger.debug(u'Add tag %s' % (tagrecord))
+        except:
+            # get tag already created
+            self.logger.warn(u'Tag %s already exists' % (tagrecord))
+            session.rollback()
+            tagrecord = session.query(PermTag).filter_by(value=tag).first()
+
+        # create tag entity association
+        try:
+            record = PermTagEntity(tagrecord.id, entity, table)
+            session.add(record)
+            #session.flush()
+            self.logger.debug(u'Add tag %s entity %s association' % (tag, entity))
+        except:
+            self.logger.debug(u'Tag %s entity %s association already exists' % (tag, entity))
+        
+        return record
+    
+    @query
+    def get_tagged_entities(self, entityclass, tags, efilter=u'', 
+                            page=0, size=10, order=u'DESC', field=u'id', 
+                            *args, **kvargs):
+        """Get entities associated with some permission tags
+        
+        :param entityclass: entity model class
+        :param args: custom params
+        :param kvargs: custom params         
+        :param page: users list page to show [default=0]
+        :param size: number of users to show in list per page [default=0]
+        :param order: sort order [default=DESC]
+        :param field: sort field [default=id]
+        :return: list of entityclass
+        :raises QueryError: raise :class:`QueryError`           
+        """
+        session = self.get_session()
+        
+        sql = [u'SELECT t3.*',
+               u'FROM perm_tag t1, perm_tag_entity t2, %s t3',
+               u'WHERE t3.id=t2.entity AND t2.tag=t1.id',
+               u'AND t1.value IN :tags',
+               efilter,
+               u'GROUP BY id',
+               u'ORDER BY %s %s']
+        smtp = text(u' '.join(sql) % (entityclass, field, order))
+
+        query = session.query(u'id', u'uuid', u'objid', u'name', u'ext_id', 
+                              u'desc', u'attribute', u'creation_date', 
+                              u'modification_date', u'type_id', u'container_id', 
+                              u'active', u'parent_id').\
+                from_statement(smtp).\
+                params(tags=tags)
+        
+        #query = self.query_entities(entityclass, session, *args, **kvargs)
+        #query = filters(query, *args, **kvargs)
+
+        # make query
+        start = size * page
+        end = size * (page + 1)
+
+        total = query.count()    
+        res = query[start:end]
+        self.logger.debug(u'Get %ss: %s' % (entityclass, truncate(res)))
+        return res
+
+    
     

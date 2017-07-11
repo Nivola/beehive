@@ -64,7 +64,7 @@ class BeehiveTestCase(unittest.TestCase):
         self.start = time.time()
         
         # ssl
-        path = os.path.dirname(__file__).replace(u'beehive/common', u'tests')
+        path = os.path.dirname(__file__).replace(u'beehive/common', u'beehive/tests')
         pos = path.find(u'tests')
         path = path[:pos+6]
         #keyfile = u'%s/ssl/nginx.key' % path
@@ -221,6 +221,7 @@ def runtest(suite):
     frmt = u'%(asctime)s - %(levelname)s - %(message)s'
     loggers = [
         logging.getLogger(u'beehive'),
+        logging.getLogger(u'beehive_resource'),
         logging.getLogger(u'beecell'),
     ]
     LoggerHelper.file_handler(loggers, logging.DEBUG, log_file, frmt=frmt, 

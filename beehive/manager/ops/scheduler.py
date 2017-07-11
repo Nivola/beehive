@@ -192,18 +192,20 @@ class SchedulerManager(ApiManager):
         self.logger.info(u'Delete task %s' % task_id)
         self.result(res)
         
-    def run_test(self, error=False):
+    def run_test(self, error=False, suberror=False):
         data = {
-            u'x':2, 
+            u'x':2,
             u'y':234, 
             u'numbers':[2, 78], 
             u'mul_numbers':[],
-            u'error':str2bool(error)
+            u'error':str2bool(error),
+            u'suberror':str2bool(suberror)
         }
         uri = u'/v1.0/worker/tasks/test/'
         res = self._call(uri, u'POST', data=data)
         self.logger.info(u'Run job test: %s' % res)
         self.result(res)
+        #self.query_task_status(res[u'jobid'])
 
     #
     # scheduler

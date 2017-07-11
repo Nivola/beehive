@@ -45,9 +45,11 @@ def jobtest(self, objid, params):
                      u'y':..,
                      u'numbers':[], 
                      u'mul_numbers':[], 
-                     u'error':True}
+                     u'error':True,
+                     u'suberror':True}
     """
     ops = self.get_options()
+    params[u'suberror'] = params.get(u'suberror', False)
     self.set_shared_data(params)
     
     numbers = params[u'numbers']
@@ -138,7 +140,6 @@ def jobtest_task2(self, options):
     self.update(u'SUCCESS')
     return True
 
-
 @task_manager.task(bind=True, base=JobTask)
 @job_task(module=u'SchedulerModule')
 def test_invoke_job(self, options):
@@ -205,7 +206,7 @@ def jobtest_task4(self, options):
     :param index: index of item in numbers list
     """
     params = self.get_shared_data()
-    if params[u'error'] is True:
+    if params[u'suberror'] is True:
         logger.error(u'Test error')
         raise Exception(u'Test error')
     logger.warn(u'hello')

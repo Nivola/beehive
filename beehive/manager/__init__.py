@@ -21,6 +21,7 @@ from pygments.filter import Filter
 from pprint import pformat
 from re import match
 from tabulate import tabulate
+from time import sleep
 
 logger = getLogger(__name__)
 
@@ -241,8 +242,9 @@ class ComponentManager(object):
             data = data[key]
     
         if isinstance(data, dict) and u'jobid' in data:
-            print(u'Start JOB: %s' % data.get(u'jobid'))
-            print(u'')
+            jobid = data.get(u'jobid')
+            print(u'Start JOB: %s' % jobid)
+            self.query_task_status(jobid)
             return None
         
         if self.format == u'json':
@@ -460,6 +462,27 @@ class ApiManager(ComponentManager):
         self.save_token(self.client.uid, self.client.seckey)
         
         return res
+    
+    def __query_task_status(self, task_id):
+        uri = u'/v1.0/worker/tasks/%s/' % task_id
+        res = self._call(uri, u'GET').get(u'task-instance')
+        #print res
+        #self.logger.info(res)
+        #resp = []
+        #resp.append(res)
+        #resp.extend(res.get(u'children'))
+        #self.result(resp, headers=[u'task_id', u'type', u'status', u'name', 
+        #                          u'start_time', u'stop_time', u'elapsed'])
+        return res
+        
+    def query_task_status(self, task_id):
+        while(True):
+            res = self.__query_task_status(task_id)
+            status = res[u'status']
+            print status
+            if status in [u'SUCCESS', u'FAILURE']:
+                break
+            sleep(1)
     
     def load_config_file(self, filename):
         """
