@@ -1,0 +1,10 @@
+{
+    "rule":{
+        "tag":"default",
+        "name":"SubnetInnerPing",
+        "super-zone":2992,
+        "source":{"type":"SecurityGroup", "value":3151},
+        "destination":{"type":"Cidr", "value":"10.102.185.0/24"},
+        "service":{"protocol":1, "subprotocol":8}
+    }
+}

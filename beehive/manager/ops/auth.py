@@ -280,7 +280,7 @@ class AuthManager(ApiManager):
         print(u'Order: %s %s' % (params.get(u'field', u'id'), 
                                  params.get(u'order', u'DESC')))
         print(u'')
-        self.result(res, key=u'objects', headers=self.obj_headers)
+        self.result(res, key=u'objects', headers=self.obj_headers, maxsize=200)
     
     def get_object(self, object_id):
         uri = u'%s/objects/%s/' % (self.authuri, object_id)

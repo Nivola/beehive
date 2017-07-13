@@ -1,0 +1,10 @@
+{
+    "rule":{
+        "tag":"default",
+        "name":"DNSTrustUdp",
+        "super-zone":2992,
+        "source":{"type":"SecurityGroup", "value":3151},
+        "destination":{"type":"Cidr", "value":"10.102.184.0/24"},
+        "service":{"port":53, "protocol":17}
+    }
+}

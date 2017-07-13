@@ -1,0 +1,16 @@
+{
+  "site-network":{
+    "tag":"default",
+    "site":2791,
+    "name":"DCCTP-tst-BE",
+    "desc":"DCCTP-tst-BE",
+    "external":false,
+    "vlan":565,
+    "gateway":"10.102.185.1",
+    "subnet":"10.102.185.0/24",
+    "routes":[],
+    "allocation-pools":[{"start":"10.102.185.50", "end":"10.102.185.150"}],
+    "enable-dhcp":true,
+    "dns-nameservers":["10.102.184.2", "10.102.184.3"]
+  }
+}

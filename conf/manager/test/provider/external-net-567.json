@@ -1,0 +1,16 @@
+{
+  "site-network":{
+    "tag":"default",
+    "site":2791,
+    "name":"DCCTP-tst-FE-Rupar",
+    "desc":"DCCTP-tst-FE-Rupar",
+    "external":true,
+    "vlan":568,
+    "gateway":"10.102.189.1",
+    "subnet":"10.102.189.0/25",
+    "routes":[],
+    "allocation-pools":[{"start":"10.102.189.75", "end":"10.102.189.100"}],
+    "enable-dhcp":false,
+    "dns-nameservers":["8.8.8.8", "8.8.8.4"]
+  }
+}

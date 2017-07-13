@@ -1,0 +1,39 @@
+{"site":{
+    "region":385,
+    "name":"siteTO", 
+    "desc":"siteTO",
+    "geo-area":"Turin CSI",
+    "coords":[],
+    "limits":{
+        "cpu":200,
+        "ram":4096,
+        "storage":524288,
+        "instance":5000,
+        "network":4096
+    },
+    "orchestrators":[
+        {
+            "type":"vsphere", 
+            "id":16,
+            "tag":"default",
+            "config":{
+                "datacenter":4, 
+                "resource-pool":{"default":298},
+                "physical-network": 346
+            }
+        },
+        {
+            "type":"openstack", 
+            "id":22,
+            "tag":"default",
+            "config":{
+                "domain":1459, 
+                "availability-zone":{"default":"nova"},
+                "physical-network":"datacentre",
+                "public-network":"internet"
+            }
+        }        
+    ],
+    "networks":[],           
+    "gateways":[]
+}}

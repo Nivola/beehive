@@ -879,10 +879,8 @@ class ApiController(object):
     def init_object(self):
         """Register object types, objects and permissions related to module.
         Call this function when initialize system first time.
-        
-        :param args: 
         """
-        # init container
+        # init controller child classes
         for child in self.child_classes:
             child(self).init_object()    
     
@@ -1462,7 +1460,7 @@ class ApiObject(object):
     def __init__(self, controller, oid=None, objid=None, name=None, 
                  desc=None, active=None):
         self.logger = logging.getLogger(self.__class__.__module__+ \
-                                        '.'+self.__class__.__name__)
+                                        u'.'+self.__class__.__name__)
         
         self.controller = controller
         self.oid = oid
@@ -1472,9 +1470,15 @@ class ApiObject(object):
         self.desc = str2uni(desc)
         self.active = active
         
+        # child classes
+        self.child_classes = []
+        
+        self.register = True
+        
         self._admin_role_prefix = 'admin'
         
-        self.event_class = make_event_class(self.__class__.__module__+'.'+self.__class__.__name__+'Event',
+        self.event_class = make_event_class(self.__class__.__module__+\
+                                            '.'+self.__class__.__name__+'Event',
                                             objdef=self.objdef, 
                                             objdesc=self.objdesc)
     
@@ -1517,136 +1521,98 @@ class ApiObject(object):
             pos += 1
         return '//'.join(data)
 
+    #
+    # authorization
+    #
     def init_object(self):
-        """ """
-        # if module has an instance of dbauth use it, else use rcpclient
-        if 'dbauth' in self.controller.__dict__:
-            try:
-                """
-                # call only once during db initialization
-                """
-                # add object type
-                #class_name = self.__class__.__module__ +'.'+self.__class__.__name__
-                obj_types = [(self.objtype, self.objdef)]
-                self.dbauth.add_object_types(obj_types)
-                
-                # add object and permissions
-                obj_type = self.dbauth.get_object_type(objtype=self.objtype, 
-                                                       objdef=self.objdef)[0][0]
-                objs = [(obj_type, self._get_value(self.objdef, []), self.objdesc)]
-                actions = self.dbauth.get_object_action()
-                self.dbauth.add_object(objs, actions)
-                
-                # register event related to ApiObject
-                self.event_class(self.controller).init_object()
-                
-                self.logger.debug('Register api object: %s' % objs)
-            except (QueryError, TransactionError) as ex:
-                self.logger.warn(ex.desc)
-                #raise ApiManagerError(ex)
-                
-        # use httpclient
-        else:
-            try:
-                """
-                # call only once during db initialization
-                """
-                # add object type
-                #class_name = self.__class__.__module__ +'.'+self.__class__.__name__
-                #obj_types = [(self.objtype, self.objdef, class_name)]
-                #self.rpc_client.add_object_types(self.objtype, self.objdef, class_name)
-                self.api_client.add_object_types(self.objtype, self.objdef)
-                
-                # add object and permissions
-                objs = self._get_value(self.objdef, [])
-                #self.rpc_client.add_object(self.objtype, self.objdef, objs)
-                self.api_client.add_object(self.objtype, self.objdef, objs, self.objdesc)
-                
-                # register event related to ApiObject
-                self.event_class(self.controller).init_object()
-                
-                self.logger.debug('Register api object: %s' % objs)
-            except ApiManagerError as ex:
-                self.logger.warn(ex.value)
-                #raise ApiManagerError(ex)
-                
-            # add full permissions to superadmin role
-            self.set_superadmin_permissions()
+        """Register object types, objects and permissions related to module.
+        Call this function when initialize system first time.
+        """
+        try:
+            """
+            # call only once during db initialization
+            """
+            # add object type
+            #class_name = self.__class__.__module__ +'.'+self.__class__.__name__
+            #obj_types = [(self.objtype, self.objdef, class_name)]
+            #self.rpc_client.add_object_types(self.objtype, self.objdef, class_name)
+            self.api_client.add_object_types(self.objtype, self.objdef)
+            
+            # add object and permissions
+            objs = self._get_value(self.objdef, [])
+            #self.rpc_client.add_object(self.objtype, self.objdef, objs)
+            self.api_client.add_object(self.objtype, self.objdef, objs, self.objdesc)
+            
+            # register event related to ApiObject
+            self.event_class(self.controller).init_object()
+            
+            self.logger.debug(u'Register api object: %s' % objs)
+        except ApiManagerError as ex:
+            self.logger.warn(ex.value)
+            #raise ApiManagerError(ex)
+            
+        # init child classes
+        for child in self.child_classes:
+            child(self.controller, self).init_object()
+            
+        # add full permissions to superadmin role
+        self.set_superadmin_permissions()
 
     def register_object(self, args, desc=u'', objid=None):
         """Register object types, objects and permissions related to module.
         
-        :param args:
+        :param args: objid split by //
+        :param desc: object description
+        :param objid: parent objid
         """
-        self.logger.debug('Register api object - START')
+        self.logger.debug(u'Register api object - START')
         
-        # if module has an instance of dbauth use it, else use rcpclient
-        if 'dbauth' in self.controller.__dict__:
-            try:
-                # add object and permissions
-                obj_type = self.dbauth.get_object_type(objtype=self.objtype, 
-                                                       objdef=self.objdef)[0][0]
-                objs = [(obj_type, self._get_value(self.objdef, args), desc)]
-                actions = self.dbauth.get_object_action()
-                self.dbauth.add_object(objs, actions)
-                
-                # register event related to ApiObject
-                self.event_class(self.controller).register_object(args, desc)                
-                
-                self.logger.debug('Register api object %s:%s %s - STOP' % 
-                                  (self.objtype, self.objdef, objs))
-            except (QueryError, TransactionError) as ex:
-                self.logger.error('Register api object: %s - ERROR' % (ex.desc))
-                raise ApiManagerError(ex.desc, code=400)
-        # use httpclient
-        else:
-            # add object and permissions
-            objs = self._get_value(self.objdef, args)
-            #self.rpc_client.add_object(self.objtype, self.objdef, objs)
-            self.api_client.add_object(self.objtype, self.objdef, objs, desc)
-            
-            # register event related to ApiObject
-            self.event_class(self.controller).register_object(args, desc=desc)
-            
-            self.logger.debug('Register api object: %s:%s %s' % 
-                              (self.objtype, self.objdef, objs))
+        # add object and permissions
+        objs = self._get_value(self.objdef, args)
+        #self.rpc_client.add_object(self.objtype, self.objdef, objs)
+        self.api_client.add_object(self.objtype, self.objdef, objs, desc)
+        
+        # register event related to ApiObject
+        self.event_class(self.controller).register_object(args, desc=desc)
+        
+        self.logger.debug(u'Register api object: %s:%s %s - STOP' % 
+                          (self.objtype, self.objdef, objs))
+        
+        # register child classes
+        if objid == None:
+            objid = self.objid
+        objid = objid + u'//*'
+        
+        for child in self.child_classes:
+            child(self.controller, self).register_object(
+                args, desc=child.objdesc, objid=objid)
             
     def deregister_object(self, args, objid=None):
         """Deregister object types, objects and permissions related to module.
         
-        :param args: 
+        :param args: objid split by //
+        :param objid: parent objid
         """
-        self.logger.debug('Deregister api object - START')
+        self.logger.debug(u'Deregister api object - START')
         
-        # if module has an instance of dbauth use it, else use rcpclient
-        if u'dbauth' in self.controller.__dict__:
-            try:
-                # remove object and permissions
-                obj_type = self.dbauth.get_object_type(objtype=self.objtype, 
-                                                       objdef=self.objdef)[0][0]
-                objid = self._get_value(self.objdef, args)
-                self.dbauth.remove_object(objid=objid, objtype=obj_type)
-                
-                # deregister event related to ApiObject
-                self.event_class(self.controller).deregister_object(args)
-                
-                self.logger.debug('Deregister api object %s:%s %s - STOP' % 
-                                  (self.objtype, self.objdef, objid))                
-            except (QueryError, TransactionError) as ex:
-                self.logger.error('Deregister api object: %s - ERROR' % (ex.desc))
-                raise ApiManagerError(ex.desc, code=2021)
-        # use httpclient
-        else:
-            # add object and permissions
-            objid = self._get_value(self.objdef, args)
-            #self.rpc_client.remove_object(self.objtype, self.objdef, objid)
-            self.api_client.remove_object(self.objtype, self.objdef, objid)
-            
-            # deregister event related to ApiObject
-            self.event_class(self.controller).deregister_object(args)            
-            
-            self.logger.debug('Deregister api object %s:%s %s - STOP' % 
-                              (self.objtype, self.objdef, objid))
+        # define objid
+        if objid == None:
+            objid = self.objid
+        objid = objid + u'//*'
+        
+        for child in self.child_classes:
+            child(self.controller, self).deregister_object(args, objid=objid)
+        
+        # remove object and permissions
+        objid = self._get_value(self.objdef, args)
+        #self.rpc_client.remove_object(self.objtype, self.objdef, objid)
+        self.api_client.remove_object(self.objtype, self.objdef, objid)
+        
+        # deregister event related to ApiObject
+        self.event_class(self.controller).deregister_object(args)            
+        
+        self.logger.debug(u'Deregister api object %s:%s %s - STOP' % 
+                          (self.objtype, self.objdef, objid))       
     
     def set_superadmin_permissions(self):
         """ """

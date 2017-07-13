@@ -1,0 +1,35 @@
+{
+    "instance":{
+        "type":"openstack",
+        "super-zone":2992,
+        "availability-zone":2995,
+        "vpc":3010,
+        "tag":"default",                    
+        "name":"instance-openstack01",
+        "description":"instance-openstack01",
+        "flavor":3289,
+        "image":3370,
+        "admin-pass":"mypass",
+        "networks":[
+            {
+                "id":2887
+            }
+        ],
+        "storage": [
+            {   
+                "volume_size":"50"
+            }
+        ],                    
+        "security-groups": [3151],
+        "user-data": "eyJwdWJrZXkiOiAic3NoLXJzYSBBQUFBQjNOemFDMXljMkVBQUFBREFRQUJBQUFDQVFEcE4zNlJNakJOcFE5bFR2YmRNamJrVTZPeXl0WDc4UlhLaVZOTUJVMDd2Qng2UkV3R1dneXRnKzhyRzFwcUZBdW82VTNsUjFxMjVkcFBEUXRLOERhZDY4TVBIRnlkZnYwV0FZT0c2WTAyai9wUUtKREdQaGJlU1lTMFhGNEYvejRVeFk2Y1hCOFVkemtVU0t0SWc5M1lDVGt6YlFZNitBUE9ZL0s5cTFiMlp4VEVFQkRRZ1dlblp3NE1jbVNiYVMrQVl3bWlnU0piNXNGTWV4SlJLWkNkWEVTZ1FjU21Va1FGaVhSUU5KTWxnUFpCbkljYkdsdTVVQTlHNW93TE02TFQxMWJQUVByUk9xbWhjU0dvUXRZcTgzUkdOWDVLZ3dlMDBwcWVvL0crU1V0Y1FScDVKdFdJRTliTGVhWFJJaFp1SW5yYlAwcm1IeUNRaEJlWkRDUHIxbXcyWURaVjlGYmIwOC9xd2JxMVVZdVV6Ulh4WHJvWDFGNy9tenR5WFF0N280QWpYV3BleUJjY1IwbmtBeVpjYW5PdnZKSnZvSXdMb0RxYnNaYXFDbGRRSkN2dGIxV05YOXVrY2U1VG9XMXk4MFJjZjFHWnJyWFJUczJjQWJ1YlVreFlRYUxRUUFwVm5HSUplbFI5Qmx2Ujd4c21mUTVZNXdvZGVMZkVncXcyaE56SkVlS0tIczV4bnBjZ0c5aVhWdlcxVHIwR2YrVXNZMFVJb2daNkJDc3RmUjU5bFBBdDFJUmFZVkN2Z0hzSG00aG1yMHlNdlV3R0hyb3p0cmphNTBYSHA5aDB6L0VXQXQ1Nm5pb09KY09UbG9BSXBBSTA1ejRaOTg1YllXZ0ZrOGovMUxrRURLSDlidXE1bUhMd042OU83SlBOOFhhRHhCcTl4cVNQOXc9PSBzZXJnaW8udG9uYW5pQGNzaS5pdCJ9",
+        "metadata":{
+            "My Server Name" : "Apache1"
+        },
+        "personality": [
+            {
+                "path": "/etc/banner.txt",
+                "contents": "dsdsd=="
+            }
+        ]
+    }
+}

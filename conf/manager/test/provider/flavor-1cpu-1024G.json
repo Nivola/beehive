@@ -1,0 +1,16 @@
+{
+    "flavor":{
+        "tag":"default",
+        "name":"flavor-1cpu-1024G",
+        "desc":"flavor-1cpu-1024G",
+        "super-zone":2992,
+        "memory":2048,
+        "disk":10,
+        "vcpus":1,
+        "bandwidth":1000,
+        "flavors":[
+            {"zone-id":2995, "cid":16, "datastores":[316,319], "version":"vmx-11"},
+            {"zone-id":2995, "cid":22, "flavor-id":2029}
+        ]
+   }
+}

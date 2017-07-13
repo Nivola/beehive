@@ -885,18 +885,18 @@ class BeehiveApiClient(object):
                               u'type':objdef,
                               u'objid':objid})
             uri = u'/v1.0/auth/objects/'           
-            res = self.invoke(u'auth', uri, u'GET', data, parse=True)
+            res = self.invoke(u'auth', uri, u'GET', data, parse=True).get(u'objects')
         except:
-            self.logger.warn(u'Object %s can not be removed' % objid)
+            self.logger.warn(u'Object %s:%s can not be removed' % (objdef, objid))
             return False
         
         if len(res) <= 0:
-            self.logger.warn(u'Object %s can not be removed' % objid)
+            self.logger.warn(u'Object %s:%s can not be removed' % (objdef, objid))
             return False            
         
         # remove object
         #uri = u'/api/auth/object/%s/' % res[0][0]
-        uri = u'/v1.0/auth/objects/%s/' % res[0][0]
+        uri = u'/v1.0/auth/objects/%s/' % res[0][u'id']
         res = self.invoke(u'auth', uri, u'DELETE', data, parse=True)
         self.logger.debug(u'Remove object: %s:%s %s' % (objtype, objdef, objid))
         return res

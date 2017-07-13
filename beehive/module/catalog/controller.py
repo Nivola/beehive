@@ -9,7 +9,8 @@ from beecell.db import ModelError, QueryError, TransactionError
 from beehive.common.apiclient import BeehiveApiClientError
 from beehive.common.apimanager import ApiController, ApiManagerError, ApiObject
 from beehive.module.catalog.model import CatalogDbManager
-from beehive.common.controller.authorization import BaseAuthController
+from beehive.common.controller.authorization import BaseAuthController,\
+    AuthObject
 from beehive.common.data import trace
 
 class CatalogController(BaseAuthController):
@@ -29,6 +30,7 @@ class CatalogController(BaseAuthController):
     def get_container_class(self, name):
         return self.container_classes[name]
 
+    '''
     def init_object(self):
         """Register object types, objects and permissions related to module.
         Call this function when initialize system first time.
@@ -36,6 +38,7 @@ class CatalogController(BaseAuthController):
         # register childs
         for child in self.child_classes:
             child(self).init_object()
+    '''
 
     '''
     @distributed_query
@@ -206,7 +209,7 @@ class CatalogController(BaseAuthController):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)        
         
-class Catalog(ApiObject):
+class Catalog(AuthObject):
     objtype = u'directory'
     objdef = u'Catalog'
     objuri = u'catalog'
@@ -217,17 +220,20 @@ class Catalog(ApiObject):
         """ """
         ApiObject.__init__(self, controller, oid=oid, objid=objid, name=name, 
                            desc=desc, active=active)
-        self.catalog_classes = [CatalogEndpoint]
+        #self.catalog_classes = [CatalogEndpoint]
         self.model = model
         self.objuri = u'/%s/%s/%s' % (self.controller.version, self.objuri, self.oid)
         
         if self.model is not None:
             self.zone = self.model.zone
             self.uuid = self.model.uuid
+            
+        # child classes
+        self.child_classes = [CatalogEndpoint]        
     
-    @property
-    def dbauth(self):
-        return self.controller.dbauth    
+    #@property
+    #def dbauth(self):
+    #    return self.controller.dbauth    
     
     @property
     def manager(self):
@@ -275,6 +281,7 @@ class Catalog(ApiObject):
                 info[u'services'][item.service] = [item.endpoint]
         return info
 
+    '''
     def init_object(self):
         """Register object types, objects and permissions related to module.
         Call this function when initialize system first time.
@@ -335,6 +342,7 @@ class Catalog(ApiObject):
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
+    '''
 
     @trace(op=u'update')
     def update(self, new_name=None, new_desc=None, new_zone=None):
@@ -347,7 +355,7 @@ class Catalog(ApiObject):
         :raises ApiManagerError: if query empty return error.    
         """
         # check authorization
-        self.self.verify_permisssions(u'update')
+        self.verify_permisssions(u'update')
         #opts = {u'name':self.name, u'new_name':new_name, u'new_desc':new_desc}
         
         try:
@@ -372,7 +380,7 @@ class Catalog(ApiObject):
         :raises ApiManagerError: if query empty return error.  
         """
         # check authorization
-        self.self.verify_permisssions(u'delete')
+        self.verify_permisssions(u'delete')
         #opts = {u'name':self.name}
         
         # remove container admin role
@@ -501,7 +509,7 @@ class Catalog(ApiObject):
             raise ApiManagerError(ex, code=ex.code)
     '''
 
-class CatalogEndpoint(ApiObject):
+class CatalogEndpoint(AuthObject):
     objtype = u'directory'
     objdef = u'Catalog.Endpoint'
     objuri = u'endpoint'

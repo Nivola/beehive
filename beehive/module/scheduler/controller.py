@@ -34,13 +34,14 @@ class SchedulerController(ApiController):
     def add_service_class(self, name, version, service_class):
         self.service_classes.append(service_class)
 
+    '''
     def init_object(self):
         """Register object types, objects and permissions related to module.
         Call this function when initialize system first time.
         """
         # register all child class
         for child_class in self.child_classes:
-            child_class(self).init_object()
+            child_class(self).init_object()'''
 
     def get_task_manager(self):
         return TaskManager(self)

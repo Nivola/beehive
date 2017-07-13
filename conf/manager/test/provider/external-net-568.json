@@ -1,0 +1,16 @@
+{
+  "site-network":{
+    "tag":"default",
+    "site":2791,
+    "name":"DCCTP-tst-FE-Internet",
+    "desc":"DCCTP-tst-FE-Internet",
+    "external":true,
+    "vlan":568,
+    "gateway":"158.102.68.225",
+    "subnet":"158.102.68.224/28",
+    "routes":[],
+    "allocation-pools":[{"start":"158.102.68.226", "end":"158.102.68.230"}],
+    "enable-dhcp":false,
+    "dns-nameservers":["8.8.8.8", "8.8.8.4"]
+  }
+}

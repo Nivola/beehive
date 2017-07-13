@@ -1,0 +1,14 @@
+{
+    "image":{
+        "tag":"default",
+        "name":"image-centos7",
+        "desc":"image-centos7",
+        "super-zone":2992,
+        "os":"Centos",
+        "os-ver":"7.1",
+        "templates":[
+           {"zone-id":2995, "cid":16, "template-id":3328, "admin-pwd":"cs1$topix"},
+           {"zone-id":2995, "cid":22, "template-id":2002}
+        ]
+   }
+}

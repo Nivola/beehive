@@ -23,12 +23,6 @@ class EventController(ApiController):
         self.event_manager = EventDbManager()
         
         self.child_classes = [GenericEvent]
-                
-    def init_object(self):
-        """Register object types, objects and permissions related to module.
-        Call this function when initialize system first time.
-        """
-        pass
     
     @trace(entity=u'GenericEvent', op=u'view')
     def get_events(self, oid=None, etype=None, data=None, 

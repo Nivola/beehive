@@ -698,6 +698,99 @@ class AuthObject(ApiObject):
     def dbauth(self):
         return self.controller.dbauth    
     
+    #
+    # authorization
+    #
+    def init_object(self):
+        """Register object types, objects and permissions related to module.
+        Call this function when initialize system first time.
+        """
+        try:
+            """
+            # call only once during db initialization
+            """
+            # add object type
+            #class_name = self.__class__.__module__ +'.'+self.__class__.__name__
+            obj_types = [(self.objtype, self.objdef)]
+            self.dbauth.add_object_types(obj_types)
+            
+            # add object and permissions
+            obj_type = self.dbauth.get_object_type(
+                objtype=self.objtype, objdef=self.objdef)[0][0]
+            objs = [(obj_type, self._get_value(self.objdef, []), self.objdesc)]
+            actions = self.dbauth.get_object_action()
+            self.dbauth.add_object(objs, actions)
+            
+            # register event related to ApiObject
+            self.event_class(self.controller).init_object()
+            
+            self.logger.debug(u'Register api object: %s' % objs)
+        except (QueryError, TransactionError) as ex:
+            self.logger.warn(ex.desc)
+            #raise ApiManagerError(ex)
+            
+        # init child classes
+        for child in self.child_classes:
+            child(self.controller, self).init_object()          
+    
+    def register_object(self, args, desc=u'', objid=None):
+        """Register object types, objects and permissions related to module.
+        
+        :param args: objid split by //
+        :param desc: object description
+        :param objid: parent objid
+        """
+        self.logger.debug(u'Register api object - START')
+        
+        try:
+            # add object and permissions
+            obj_type = self.dbauth.get_object_type(objtype=self.objtype, 
+                                                   objdef=self.objdef)[0][0]
+            objs = [(obj_type, self._get_value(self.objdef, args), desc)]
+            actions = self.dbauth.get_object_action()
+            self.dbauth.add_object(objs, actions)
+            
+            # register event related to ApiObject
+            self.event_class(self.controller).register_object(args, desc)                
+            
+            self.logger.debug(u'Register api object %s:%s %s - STOP' % 
+                              (self.objtype, self.objdef, objs))
+        except (QueryError, TransactionError) as ex:
+            self.logger.error(u'Register api object: %s - ERROR' % (ex.desc))
+            raise ApiManagerError(ex.desc, code=400)
+        
+        # register child classes
+        for child in self.child_classes:
+            child(self.controller, self).register_object(args, desc=child.objdesc)
+    
+    def deregister_object(self, args, objid=None):
+        """Deregister object types, objects and permissions related to module.
+        
+        :param args: objid split by //
+        :param objid: parent objid
+        """
+        self.logger.debug(u'Deregister api object - START')
+        
+        try:
+            # remove object and permissions
+            obj_type = self.dbauth.get_object_type(objtype=self.objtype, 
+                                                   objdef=self.objdef)[0][0]
+            objid = self._get_value(self.objdef, args)
+            self.dbauth.remove_object(objid=objid, objtype=obj_type)
+            
+            # deregister event related to ApiObject
+            self.event_class(self.controller).deregister_object(args)
+            
+            self.logger.debug(u'Deregister api object %s:%s %s - STOP' % 
+                              (self.objtype, self.objdef, objid))                
+        except (QueryError, TransactionError) as ex:
+            self.logger.error(u'Deregister api object: %s - ERROR' % (ex.desc))
+            raise ApiManagerError(ex.desc, code=400)
+        
+        # deregister child classes
+        for child in self.child_classes:
+            child(self.controller, self).deregister_object(args)        
+    
     def set_admin_permissions(self, role_name, args):
         """Set admin permissions
         """
@@ -711,6 +804,12 @@ class AuthObject(ApiObject):
             
             # set container main permissions
             self.dbauth.append_role_permissions(role[0], perms)
+            
+            # set child resources permissions
+            for child in self.child_classes:
+                res = child(self.controller, self)
+                res.set_admin_permissions(role_name, self._get_value(
+                            res.objdef, args).split(u'//'))            
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)    

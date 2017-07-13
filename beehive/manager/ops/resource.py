@@ -94,10 +94,10 @@ class ResourceManager(ApiManager):
         self.subsystem = u'resource'
         self.logger = logger
         self.msg = None
-        self.res_headers = [u'id', u'uuid', u'definition', u'name', u'parent_id', 
+        self.res_headers = [u'id', u'uuid', u'definition', u'name', u'parent_id',
                             u'parent_name', u'active', u'date.creation']
-        self.cont_headers = [u'id', u'uuid', u'category', u'name', u'active', 
-                             u'date.creation']
+        self.cont_headers = [u'id', u'uuid', u'category', u'definition', 
+                             u'name', u'active', u'date.creation']
         self.tag_headers = [u'id', u'uuid', u'value']
         self.link_headers = [u'id', u'uuid', u'name', u'active', 
                              u'details.start_resource.id', 
@@ -252,13 +252,15 @@ class ResourceManager(ApiManager):
         uri = u'%s/resources/' % (self.baseuri)
         res = self._call(uri, u'POST', data=data)
         self.logger.info(u'Add resource: %s' % truncate(res))
-        self.result(res)
+        res = {u'msg':u'Add resource %s' % res}
+        self.result(res, headers=[u'msg'])
         
     def delete_resource(self, oid):
         uri = u'%s/resources/%s/' % (self.baseuri, oid)
         self._call(uri, u'DELETE')
         self.logger.info(u'Delete resource: %s' % oid)
-        self.result(True)
+        res = {u'msg':u'Delete resource %s' % oid}
+        self.result(res, headers=[u'msg'])
 
     def get_resource_tag(self, oid):
         uri = u'%s/resources/%s/tags/' % (self.baseuri, oid)        
@@ -350,7 +352,7 @@ class ResourceManager(ApiManager):
     def add_resource_container(self, ctype, name, conn):
         conn = self.load_config(conn)
         data = {
-            u'containers':{
+            u'container':{
                 u'type':ctype, 
                 u'name':name, 
                 u'conn':conn
@@ -359,13 +361,15 @@ class ResourceManager(ApiManager):
         uri = u'%s/containers/' % (self.baseuri)
         res = self._call(uri, u'POST', data=data)
         self.logger.info(u'Add resource container: %s' % res)
-        self.result(res)
+        res = {u'msg':u'Add container %s' % res}
+        self.result(res, headers=[u'msg'])
         
     def delete_resource_container(self, oid):
         uri = u'%s/containers/%s/' % (self.baseuri, oid)
         self._call(uri, u'DELETE')
         self.logger.info(u'Delete resource container: %s' % oid)
-        self.result(True)
+        res = {u'msg':u'Delete container %s' % oid}
+        self.result(res, headers=[u'msg'])
 
     def get_container_tag(self, contid):
         uri = u'%s/containers/%s/tags/' % (self.baseuri, contid)        
@@ -505,7 +509,8 @@ class ResourceManager(ApiManager):
         uri = u'%s/resource-tags/%s/' % (self.baseuri, value)        
         res = self._call(uri, u'DELETE')
         self.logger.info(res)
-        self.result(res)
+        res = {u'msg':u'Delete tag %s' % value}
+        self.result(res, headers=[u'msg'])
         
     #
     # links
@@ -519,7 +524,8 @@ class ResourceManager(ApiManager):
         uri = u'%s/resource-links/' % self.baseuri        
         res = self._call(uri, u'POST', data=data)
         self.logger.info(res)
-        self.result(res)
+        res = {u'msg':u'Add link %s' % res}
+        self.result(res, headers=[u'msg'])
 
     def test_count_links(self):
         uri = u'%s/resource-links/count/' % self.baseuri        
@@ -566,7 +572,8 @@ class ResourceManager(ApiManager):
         uri = u'%s/resource-links/%s/' % (self.baseuri, value)        
         res = self._call(uri, u'DELETE')
         self.logger.info(res)
-        self.result(res)
+        res = {u'msg':u'Delete link %s' % value}
+        self.result(res, headers=[u'msg'])
 
         
         

@@ -430,7 +430,7 @@ class Objects(AuthObject):
     
     def __init__(self, controller):
         AuthObject.__init__(self, controller, oid=u'', name=u'', desc=u'', 
-                            active=u'')
+                            active=True)
     
     #
     # System Object Type manipulation methods
@@ -860,10 +860,6 @@ class Role(AuthObject):
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
-        # verify permissions
-        self.controller.check_authorization(self.objtype, self.objdef, 
-                                            self.objid, u'view')
-           
         creation_date = str2uni(self.model.creation_date\
                                 .strftime(u'%d-%m-%Y %H:%M:%S'))
         modification_date = str2uni(self.model.modification_date\
@@ -902,11 +898,6 @@ class Role(AuthObject):
         :rtype: dict
         :raises ApiManagerError: if query empty return error.
         """
-        #opts = {u'name':self.name}
-        
-        # verify permissions
-        self.controller.can(u'view', self.objtype, definition=self.objdef)
-                
         try:  
             perms, total = self.dbauth.get_role_permissions([self.name], 
                             page=page, size=size, order=order, field=field)      
@@ -942,8 +933,6 @@ class Role(AuthObject):
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        #opts = {u'name':self.name}
-        
         # verify permissions
         self.controller.check_authorization(self.objtype, self.objdef, 
                                             self.objid, u'update')
@@ -977,8 +966,6 @@ class Role(AuthObject):
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        opts = {u'name':self.name}
-        
         # verify permissions
         self.controller.check_authorization(self.objtype, self.objdef, 
                                             self.objid, u'update')
@@ -994,10 +981,10 @@ class Role(AuthObject):
             
             res = self.dbauth.remove_role_permission(self.model, roleperms)
             self.logger.debug(u'Remove role %s permission : %s' % (self.name, perms))
-            self.send_event(u'perms-unset.update', params=opts)       
+            #self.send_event(u'perms-unset.update', params=opts)       
             return res
         except QueryError as ex:
-            self.send_event(u'perms-unset.update', params=opts, exception=ex)
+            #self.send_event(u'perms-unset.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex)
 
@@ -1079,9 +1066,8 @@ class User(BaseUser):
             
             # delete user
             res = self.delete_object(oid=self.oid)
-            if self.register is True:
-                # remove object and permissions
-                self.deregister_object([self.objid])
+            # remove object and permissions
+            self.deregister_object([self.objid])
             
             self.logger.debug(u'Delete %s: %s' % (self.objdef, self.oid))
             #self.send_event(u'delete', params=params)
@@ -1426,9 +1412,8 @@ class Group(AuthObject):
             
             # delete user
             res = self.delete_object(oid=self.oid)
-            if self.register is True:
-                # remove object and permissions
-                self.deregister_object([self.objid])
+            # remove object and permissions
+            self.deregister_object([self.objid])
             
             self.logger.debug(u'Delete %s: %s' % (self.objdef, self.oid))
             #self.send_event(u'delete', params=params)

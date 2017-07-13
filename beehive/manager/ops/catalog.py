@@ -88,12 +88,14 @@ class CatalogManager(ApiManager):
     def add_catalog(self, name, zone):
         res = self.client.create_catalog(name, zone)
         self.logger.info(u'Add catalog: %s' % truncate(res))
-        self.result(res)
+        res = {u'msg':u'Add catalog %s' % res}
+        self.result(res, headers=[u'msg'])
         
     def delete_catalog(self, catalog_id):
         res = self.client.delete_catalog(catalog_id)
         self.logger.info(u'Delete catalog: %s' % truncate(res))
-        self.result(res)
+        res = {u'msg':u'Delete catalog %s' % res}
+        self.result(res, headers=[u'msg'])
     
     #
     # endpoints
@@ -119,12 +121,14 @@ class CatalogManager(ApiManager):
             logger.error(ex, exc_info=1)
             res = self.client.create_endpoint(catalog, name, service, uri)
         self.logger.info(u'Add endpoint: %s' % truncate(res))
-        self.result(res)
+        res = {u'msg':u'Add catalog endpoint %s' % res}
+        self.result(res, headers=[u'msg'])
         
     def delete_endpoint(self, endpoint_id):
         res = self.client.delete_endpoint(endpoint_id)
         self.logger.info(u'Delete endpoint: %s' % truncate(res))
-        self.result(res)
+        res = {u'msg':u'Delete catalog endpoint %s' % res}
+        self.result(res, headers=[u'msg'])
         
     def ping_endpoint(self, endpoint_id):
         endpoint = self.client.get_endpoint(endpoint_id).get(u'endpoint')\

@@ -379,14 +379,18 @@ class AbstractDbManager(object):
         """
         session = self.get_session()
         
+        start = size * page
+        end = size * (page + 1)        
+        
         sql = [u'SELECT t3.*',
                u'FROM perm_tag t1, perm_tag_entity t2, %s t3',
                u'WHERE t3.id=t2.entity AND t2.tag=t1.id',
                u'AND t1.value IN :tags',
                efilter,
                u'GROUP BY id',
-               u'ORDER BY %s %s']
-        smtp = text(u' '.join(sql) % (entityclass, field, order))
+               u'ORDER BY %s %s',
+               u'LIMIT %s,%s']
+        smtp = text(u' '.join(sql) % (entityclass, field, order, start, end))
 
         query = session.query(u'id', u'uuid', u'objid', u'name', u'ext_id', 
                               u'desc', u'attribute', u'creation_date', 
@@ -399,11 +403,10 @@ class AbstractDbManager(object):
         #query = filters(query, *args, **kvargs)
 
         # make query
-        start = size * page
-        end = size * (page + 1)
 
-        total = query.count()    
-        res = query[start:end]
+
+        #total = query.count()    
+        res = query.all()
         self.logger.debug(u'Get %ss: %s' % (entityclass, truncate(res)))
         return res
 
