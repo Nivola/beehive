@@ -1,0 +1,108 @@
+swagger: 2.0
+info:
+  title: Beehive API
+  description: API description in Markdown.
+  contact:
+    responsibleOrganization: ME
+    responsibleDeveloper: Me
+    email: me@me.com
+    url: www.me.com
+  license:
+    name: MIT
+    url: https://github.com/swagger-api/swagger-ui/blob/master/LICENSE    
+  termsOfService: http://me.com/terms
+  version: 1.0.0
+host: tst-beehive
+schemes: 
+  - http,
+  - https
+consumes:
+  - application/json
+  - application/xml
+produces:
+  - application/json
+  - application/xml  
+securityDefinitions:
+  BasicAuth:
+    type: basic
+  ApiKeyAuth:
+    type: apiKey
+    in: header
+    name: uid
+  OAuth2:
+    type: oauth2
+    flow: accessCode
+    authorizationUrl: https://<hostname>/v1.0/oauth2/authorize/
+    tokenUrl: https://<hostname>/v1.0/oauth2/token/
+    scopes:
+      auth: authorization scope
+      beehive: beehive ecosystem
+# Descriptions of common responses
+responses:
+  Default:
+    description: Default error response
+    schema:
+      $ref: "#/definitions/Error"
+  InternalServerError:
+    description: The operation failed. An unexpected exception occurred while 
+                 executing the operation. The response-body contains details 
+                 about the error.
+  BadRequest:
+    description: The specified resource was not found
+  NotFound:
+    description: The operation failed.The requested resource was not found.
+  Unauthorized:
+    description: The operation failed. The operation requires an 
+                 Authentication header to be set. If this was present 
+                 in the request, the supplied credentials are not valid 
+                 or the user is not authorized to perform this operation.
+  Forbidden:
+    description: The operation is forbidden and should not be re-attempted. This 
+                 does not imply an issue with authentication not authorization, 
+                 it is an operation that is not allowed. Example. deleting a 
+                 task that is part of a running process is not allowed and will 
+                 never be allowed, regardless of the user or process/task state.
+  MethodAotAllowed:
+    description: The operation failed. The used method is not allowed for this 
+                 resource. E.g. trying to update (PUT) a deployment-resource 
+                 will result in a 405 status.               
+  NotAcceptable:
+    description: Not acceptable  
+  Timeout:
+    description: Operation timeout  
+  Conflict:
+    description: The operation failed. The operation causes an update of a 
+                 resource that has been updated by another operation, which 
+                 makes the update no longer valid. Can also indicate a resource 
+                 that is being created in a collection where a resource with 
+                 that identifier already exists.               
+  UnsupportedMediaType:
+    description: The operation failed. The request body contains an unsupported 
+                 media type. Also occurs when the request-body JSON contains an 
+                 unknown attribute or value that doesn’t have the right 
+                 format/type to be accepted.
+definitions:
+  # Schema for error response body
+  Error:
+    type: object
+    required: [status, api, operation, exception, code, msg]
+    properties:
+      status:
+        type: string
+        default: error
+      api:
+        type: string
+        example: /v1.0/path/
+      operation:
+        type: string
+        default: GET
+      exception:
+        type: string
+        example: ApiManagerException
+      code:
+        type: integer
+        example: <http error code> 
+      msg:
+        type: string
+        example: Some error  
+                   

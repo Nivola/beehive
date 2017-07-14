@@ -18,8 +18,9 @@ from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA256
 from Crypto.Signature import PKCS1_v1_5
 from flask import request, Response
-from flask.views import MethodView as FlaskMethodView
-from flask.views import View as FlaskView
+#from flask.views import MethodView as FlaskMethodView
+#from flask.views import View as FlaskView
+from flask.views import MethodView as FlaskView
 from random import randint
 from beecell.perf import watch
 from beecell.db import TransactionError, QueryError
@@ -37,6 +38,7 @@ from beehive.common.apiclient import BeehiveApiClient, BeehiveApiClientError
 from beehive.common.model.config import ConfigDbManager
 from beehive.common.model.authorization import AuthDbManager
 from beehive.common.event import EventProducerRedis
+from flasgger import Swagger, utils
 try:
     from beecell.server.uwsgi_server.wrapper import uwsgi_util
 except:
@@ -85,6 +87,51 @@ class ApiManager(object):
         except:
             self.app_uri = None
         
+        # swagger reference
+        template = {
+            "swagger": "2.0",
+            "info": {
+                "title": "My API",
+                "description": "API for my data",
+                "contact": {
+                    "responsibleOrganization": "ME",
+                    "responsibleDeveloper": "Me",
+                    "email": "me@me.com",
+                    "url": "www.me.com",
+                },
+                "termsOfService": "http://me.com/terms",
+                "version": "1.0.0"
+            },
+            "host": "mysite.com",  # overrides localhost:500
+            "basePath": "/v1.0/api/",  # base bash for blueprint registration
+            "schemes": [
+                "http",
+                "https"
+            ],
+            "operationId": "getmyData",
+            "securityDefinitions":{
+                "BasicAuth":{
+                    "type": "basic"
+                },
+                "ApiKeyAuth":{
+                    "type": "apiKey",
+                    "in": "header",
+                    "name": "X-API-Key"
+                },
+                "OAuth2":{
+                    "type": "oauth2",
+                    "flow": "accessCode",
+                    "authorizationUrl": "https://<hostname>/v1.0/oauth2/authorize/",
+                    "tokenUrl": "https://<hostname>/v1.0/oauth2/token/",
+                    "scopes":{
+                        "auth": "authorization",
+                        "beehive": "beehive ecosystem"
+                    }
+                }
+            }
+        }
+        self.swagger = Swagger(self.app, template_file=u'swagger.yml')
+        
         # instance configuration
         self.http_socket = self.params.get(u'http-socket')
         self.server_name = hostname
@@ -131,7 +178,7 @@ class ApiManager(object):
         
         # database manager
         self.db_manager = None
-        database_uri = self.params.get('database_uri')
+        database_uri = self.params.get(u'database_uri')
         if database_uri != None:
             self.create_pool_engine((database_uri, 5, 10, 10, 1800))
         
@@ -1911,6 +1958,64 @@ class ApiViewResponse(ApiObject):
         self.event_class(self.controller, objid=objid, data=data, action=action)\
             .publish(self.objtype, self.API_OPERATION)
 
+http_method_funcs = frozenset(['get', 'post', 'head', 'options',
+                               'delete', 'put', 'trace', 'patch'])
+
+import flask
+class MethodViewType2(type):
+
+    def __new__(cls, name, bases, d):
+        rv = type.__new__(cls, name, bases, d)
+        
+        if 'methods' not in d:
+            methods = set(rv.methods or [])
+            for key in d:
+                
+                if key in http_method_funcs:
+                    methods.add(key.upper())
+            # If we have no method at all in there we don't want to
+            # add a method list.  (This is for instance the case for
+            # the base class or another subclass of a base method view
+            # that does not introduce new methods).
+            if methods:
+                rv.methods = sorted(methods)
+        print "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ %s" % rv
+        return rv
+    
+flask.views.MethodViewType = MethodViewType2 
+
+'''
+from flask._compat import with_metaclass
+from flask.views import View
+class MethodView(with_metaclass(MethodViewType, View)):
+    """Like a regular class-based view but that dispatches requests to
+    particular methods.  For instance if you implement a method called
+    :meth:`get` it means you will response to ``'GET'`` requests and
+    the :meth:`dispatch_request` implementation will automatically
+    forward your request to that.  Also :attr:`options` is set for you
+    automatically::
+
+        class CounterAPI(MethodView):
+
+            def get(self):
+                return session.get('counter', 0)
+
+            def post(self):
+                session['counter'] = session.get('counter', 0) + 1
+                return 'OK'
+
+        app.add_url_rule('/counter', view_func=CounterAPI.as_view('counter'))
+    """
+    def dispatch_request(self, *args, **kwargs):
+        meth = getattr(self, request.method.lower(), None)
+        # If the request method is HEAD and we don't have a handler for it
+        # retry with GET.
+        if meth is None and request.method == 'HEAD':
+            meth = getattr(self, 'get', None)
+        assert meth is not None, 'Unimplemented method %r' % request.method
+        return meth(*args, **kwargs)
+'''
+
 class ApiView(FlaskView):
     """ """
     prefix = u'identity:'
@@ -1926,6 +2031,11 @@ class ApiView(FlaskView):
         FlaskView.__init__(self, *argc, **argv)
         self.logger = logging.getLogger(self.__class__.__module__+ \
                                         u'.'+self.__class__.__name__)
+        
+        #self.get.__func__.__doc__ = self.__class__.__doc__
+        #self.put.__func__.__doc__ = self.__class__.__doc__
+        #self.post.__func__.__doc__ = self.__class__.__doc__
+        #self.delete.__func__.__doc__ = self.__class__.__doc__
     
     def _get_response_mime_type(self):
         """ """
@@ -2149,11 +2259,13 @@ class ApiView(FlaskView):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         try:
-            res = {u'status':u'ok',
-                   u'api':request.path,
-                   u'operation':request.method,
-                   #u'data':request.data,
-                   u'response':response}            
+            if isinstance(response, dict):
+                self.response_mime = u'application/json'
+                res = {u'status':u'ok',
+                       u'api':request.path,
+                       u'operation':request.method,
+                       #u'data':request.data,
+                       u'response':response}            
             
             self.logger.debug(u'Api response: %s' % truncate(response))
             
@@ -2276,7 +2388,12 @@ class ApiView(FlaskView):
             except (AttributeError, ValueError): 
                 data = None
         
-            resp = self.dispatch(controller, data, *args, **kwargs)
+            # dispatch request
+            meth = getattr(self, request.method.lower(), None)
+            if meth is None:
+                meth = self.dispatch
+            resp = meth(controller, data, *args, **kwargs)
+            
             if isinstance(resp, tuple):
                 if len(resp) == 3:
                     res = self.get_response(resp[0], code=resp[1], 
@@ -2359,18 +2476,41 @@ class ApiView(FlaskView):
         # get app
         app = module.api_manager.app
         
+        # get swagger
+        #swagger = module.api_manager.swagger
+        
         # regiter routes
         view_num = 0
         for rule in rules:
             uri = u'/%s/%s/' % (version, rule[0])
-            defaults = {'module':module}
+            defaults = {u'module':module}
             defaults.update(rule[3])
-            view_name = "%s-%s" % (get_class_name(rule[2]), view_num)
+            view_name = u'%s-%s' % (get_class_name(rule[2]), view_num)
             view_func = rule[2].as_view(str(view_name))
+
+            # setup flask route
             app.add_url_rule(uri,
                              methods=[rule[1]],
                              view_func=view_func, 
                              defaults=defaults)
+            
+            #print view_func.__dict__
+            
+            '''
+            # add class method relative to http method
+            meth = getattr(rule[2], rule[1].lower(), None)
+            print "$$$$$$$$$$$$$$$$ %s" % view_func
+            #print "$$$$$$$$$$$$$$$$ %s %s %s" % (rule[2], rule[1].lower(), meth)
+            #view_func.__doc__ = rule[2].__doc__
+            klass = view_func.__dict__.get('view_class', None)
+            method = klass.__dict__.get(rule[1].lower())
+            print klass, method, id(meth)
+            
+            meth.__func__.__doc__ = rule[2].__doc__
+            #setattr(ApiView, the_name, classmethod(func))
+            import inspect
+            print inspect.getdoc(meth)'''
+            
             view_num += 1
             logger.debug('Add route: %s %s' % (uri, rule[1]))
             

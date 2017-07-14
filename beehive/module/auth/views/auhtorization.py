@@ -36,7 +36,56 @@ class AuthApiView(ApiView):
 # authentication domains
 #
 class ListDomains(ApiView):
-    def dispatch(self, controller, data, *args, **kwargs):
+    def get(self, controller, data, *args, **kwargs):
+        """
+        List authentication domains
+        Call this api to list authentication domains
+        ---
+        tags:
+          - Authorization api
+        responses:
+          500:
+            $ref: "#/responses/InternalServerError"
+          400:
+            $ref: "#/responses/BadRequest"
+          408:
+            $ref: "#/responses/Timeout"
+          415:
+            $ref: "#/responses/UnsupportedMediaType"
+          200:
+            description: Domains list
+            schema:
+              type: object
+              required:
+              - status
+              - api
+              - operation
+              - response
+              properties:
+                status:
+                  type: string
+                  default: ok
+                api:
+                  type: string
+                  example: /v1.0/path/
+                operation:
+                  type: string
+                  default: GET
+                response:
+                  type: object
+                  required:
+                  - domains
+                  properties:
+                    domains:
+                      type: array
+                      items:
+                        type: array
+                        items:
+                          type: string
+                        example:
+                        - local
+                        - DatabaseAuth
+        """
         auth_providers = controller.module.authentication_manager.auth_providers
         res = []
         for domain, auth_provider in auth_providers.iteritems():
@@ -49,7 +98,75 @@ class ListDomains(ApiView):
 # identity
 #
 class ListTokens(ApiView):
-    def dispatch(self, controller, data, *args, **kwargs):
+    def get(self, controller, data, *args, **kwargs):
+        """
+        List authentication tokens
+        Call this api to list authentication tokens
+        ---
+        deprecated: false
+        tags:
+          - Authorization api
+        security:
+          - ApiKeyAuth: []
+          - OAuth2: [auth, beehive]
+        responses:
+          500:
+            $ref: "#/responses/InternalServerError"
+          400:
+            $ref: "#/responses/BadRequest"
+          401:
+            $ref: "#/responses/Unauthorized"
+          408:
+            $ref: "#/responses/Timeout"
+          415:
+            $ref: "#/responses/UnsupportedMediaType"    
+          200:
+            description: Tokens list
+            schema:
+              type: object
+              required: [status, api, operation, response]
+              properties:
+                status:
+                  type: string
+                  default: ok
+                api:
+                  type: string
+                  example: /v1.0/path/
+                operation:
+                  type: string
+                  default: GET 
+                response:
+                  type: object
+                  required: [tokens, count]
+                  properties:
+                    count:
+                      type: intger
+                      example: 1
+                    tokens:
+                      type: array
+                      items:
+                        type: object
+                        required: [ip, ttl, token, user, timestamp, type]
+                        properties:
+                          ip:
+                            type: string
+                            example: pc160234.csi.it
+                          ttl:
+                            type: integer
+                            example: 3600
+                          token:
+                            type: string
+                            example: 28ff1dd5-5520-42f3-a361-c58f19d20b7c
+                          user:
+                            type: string
+                            example: admin@loca
+                          timestamp:
+                            type: string
+                            example: 19-23_14-07-2017
+                          type:
+                            type: string
+                            example: keyauth
+        """        
         identities = controller.get_identities()
         res = [{
             u'token':i[u'uid'],
@@ -64,7 +181,105 @@ class ListTokens(ApiView):
         return resp
 
 class GetToken(ApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):      
+    def get(self, controller, data, oid, *args, **kwargs):
+        """
+        Get authentication token
+        Call this api to get authentication token
+        ---
+        deprecated: false
+        tags:
+          - Authorization api
+        security:
+          - ApiKeyAuth: []
+          - OAuth2: [auth, beehive]
+        parameters:
+        - in: path
+          name: oid
+          type: string
+          required: true
+          description: Token id          
+        responses:
+          500:
+            $ref: "#/responses/InternalServerError"
+          400:
+            $ref: "#/responses/BadRequest"
+          401:
+            $ref: "#/responses/Unauthorized"
+          406:
+            $ref: "#/responses/NotAcceptable"
+          408:
+            $ref: "#/responses/Timeout"
+          409:
+            $ref: "#/responses/Conflict"
+          415:
+            $ref: "#/responses/UnsupportedMediaType"
+          default: 
+            $ref: "#/responses/Default"          
+          200:
+            description: Tokens list
+            schema:
+              type: object
+              required: [status, api, operation, response]
+              properties:
+                status:
+                  type: string
+                  default: ok
+                api:
+                  type: string
+                  example: /v1.0/path/
+                operation:
+                  type: string
+                  default: GET 
+                response:
+                  type: object
+                  required: [token]
+                  properties:
+                    token:
+                      type: object
+                      required: [ip, ttl, token, user, timestamp, type]
+                      properties:
+                        ip:
+                          type: string
+                          example: pc160234.csi.it
+                        ttl:
+                          type: integer
+                          example: 3600
+                        token:
+                          type: string
+                          example: 28ff1dd5-5520-42f3-a361-c58f19d20b7c
+                        timestamp:
+                          type: string
+                          example: 19-23_14-07-2017
+                        type:
+                          type: string
+                          example: keyauth                            
+                        user:
+                          type: object
+                          required: [name, roles, perms]
+                          properties:
+                            name:                          
+                              type: string
+                              example: admin@local
+                            roles:
+                              type: array
+                              items:
+                                type: string
+                              example:
+                              - ApiSuperadmin
+                              - Guest
+                            perms:
+                              type: string
+                              example: HCbbbUr9kWFCl.....                           
+                            attribute:
+                              type: string
+                              example: ...                       
+                            active:
+                              type: boolean
+                              example: true                          
+                            id:
+                              type: string
+                              example: 146ca8fc-57af-4705-a859-31ab8e8ac0e                            
+        """                
         data = controller.get_identity(oid)
         res = {
             u'token':data[u'uid'],
@@ -77,12 +292,12 @@ class GetToken(ApiView):
         return resp
 
 class LoginExists(ApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):
+    def get(self, controller, data, oid, *args, **kwargs):
         resp = controller.exist_identity(oid)
         return {u'token':oid, u'exist':resp} 
 
 class DeleteToken(ApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):
+    def delete(self, controller, data, oid, *args, **kwargs):
         resp = controller.remove_identity(oid)
         return (resp, 204)
 

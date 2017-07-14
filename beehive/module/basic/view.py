@@ -5,39 +5,127 @@ Created on Apr 01, 2016
 '''
 from beehive.common.apimanager import ApiView
 
-
 class ServerPing(ApiView):
-    def dispatch(self, controller, data, *args, **kwargs):    
+    def get(self, controller, data, *args, **kwargs):
+        """
+        Server ping api
+        Call this api to ping server
+        ---
+        tags:
+          - Basic server api
+        definitions:
+          Error:
+            type: object
+            properties:
+              status:
+                type: string
+                default: error
+              api:
+                type: string
+                example: /v1.0/server/ping/
+              operation:
+                type: string
+                default: GET
+              exception:
+                type: string
+                example: ApiManagerException
+              code:
+                type: integer
+                default: 400
+              msg:
+                type: string
+                example: Problem during ping           
+        produces:
+          - application/json
+          - application/xml
+        responses:
+          500:
+            description: Internal server error
+          400:
+            description: Bad request
+            schema:
+              $ref: "#/definitions/Error"            
+          200:
+            description: Ping response
+            schema:
+              type: object
+              required:
+              - status
+              - api
+              - operation
+              - response              
+              properties:
+                status:
+                  type: string
+                  default: ok
+                api:
+                  type: string
+                  example: /v1.0/path/
+                operation:
+                  type: string
+                  default: GET
+                response:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      example: beehive
+                    id:
+                      type: string
+                      example: auth-01
+        """
         resp = controller.ping()
         return resp
 
 class ServerInfo(ApiView):
-    def dispatch(self, controller, data, *args, **kwargs):    
+    def get(self, controller, data, *args, **kwargs):
+        """
+
+        """  
         resp = controller.info()
         return resp
 
 class ServerProcessTree(ApiView):
-    def dispatch(self, controller, data, *args, **kwargs):    
+    def dispatch(self, controller, data, *args, **kwargs):
+        """
+        bla bla
+        ---
+        """        
         resp = controller.processes()
         return resp
     
 class ServerWorkers(ApiView):
-    def dispatch(self, controller, data, *args, **kwargs):    
+    def get(self, controller, data, *args, **kwargs):
+        """
+
+        """        
         resp = controller.workers()
         return resp
 
 class ServerConfigs(ApiView):
-    def dispatch(self, controller, data, *args, **kwargs):    
+    def dispatch(self, controller, data, *args, **kwargs):
+        """
+        bla bla
+        ---
+        """        
         resp = controller.get_configs()
         return resp
 
 class ServerUwsgiConfigs(ApiView):
-    def dispatch(self, controller, data, *args, **kwargs):    
+    def dispatch(self, controller, data, *args, **kwargs):
+        """
+        bla bla
+        ---
+        """        
         resp = controller.get_uwsgi_configs()
         return resp
     
 class ServerReload(ApiView):
-    def dispatch(self, controller, data, *args, **kwargs):    
+    def dispatch(self, controller, data, *args, **kwargs):
+        """
+        bla bla
+        ---
+        """        
         resp = controller.reload()
         return resp
 
@@ -45,7 +133,11 @@ class ServerReload(ApiView):
 # flask inspection
 #
 class ServerFlaskSessions(ApiView):
-    def dispatch(self, controller, data, *args, **kwargs):   
+    def dispatch(self, controller, data, *args, **kwargs):
+        """
+        bla bla
+        ---
+        """        
         app = controller.module.api_manager.app
         res = app.session_interface.list_sessions()
         resp = {u'sessions':res,
@@ -57,16 +149,28 @@ class ServerFlaskSessions(ApiView):
 #
 class PingDatabase(ApiView):
     def dispatch(self, controller, data, *args, **kwargs):
+        """
+        bla bla
+        ---
+        """        
         res = controller.database_ping()
         return res
 
 class ListDatabaseTables(ApiView):
     def dispatch(self, controller, data, *args, **kwargs):
+        """
+        bla bla
+        ---
+        """        
         res = controller.database_tables()
         return res
     
 class GetDatabaseTable(ApiView):
     def dispatch(self, controller, data, table, *args, **kwargs):
+        """
+        bla bla
+        ---
+        """        
         res = controller.database_query(table_name=table, 
                                      where=None, fields='*', 
                                      rows=100, offset=0)
@@ -74,6 +178,10 @@ class GetDatabaseTable(ApiView):
     
 class GetDatabaseTableRecord(ApiView):
     def dispatch(self, controller, data, table, row, offset, *args, **kwargs):
+        """
+        bla bla
+        ---
+        """        
         res = controller.database_query(table_name=table, 
                                      where=None, fields='*', 
                                      rows=int(row), 
@@ -82,11 +190,48 @@ class GetDatabaseTableRecord(ApiView):
     
 class GetDatabaseTableRecordCount(ApiView):
     def dispatch(self, controller, data, table, *args, **kwargs):
+        """
+        bla bla
+        ---
+        """
         res = controller.database_count(table_name=table, where=None)        
         return res
     
 class GetDatabaseTableRecordDesc(ApiView):
     def dispatch(self, controller, data, table, *args, **kwargs):
+        """
+        bla bla
+        ---
+        tags:
+          - users
+        parameters:
+          - name: team_id
+            in: path
+            description: ID of team (type any number)
+            required: true
+            type: int32
+        definitions:
+          User:
+            type: object
+            properties:
+              name:
+                type: string
+              team:
+                type: int32
+        responses:
+          200:
+            description: Returns a list of users
+            schema:
+              id: Users
+              type: object
+              properties:
+                users:
+                  type: array
+                  items:
+                    $ref: '#/definitions/User'
+            examples:
+              users: [{'name': 'Russel Allen', 'team': 66}]        
+        """
         res = controller.database_table_desc(table)
         return res
 
@@ -99,19 +244,20 @@ class BaseAPI(ApiView):
             (u'server/ping', u'GET', ServerPing, {u'secure':False}),
             (u'server', u'GET', ServerInfo, {u'secure':False}),
             (u'server/processes', u'GET', ServerProcessTree, {}),
-            (u'server/workers', u'GET', ServerWorkers, {}),
+            (u'server/workers', u'GET', ServerWorkers, {u'secure':False}),
             (u'server/configs', u'GET', ServerConfigs, {}),
             (u'server/uwsgi/configs', u'GET', ServerUwsgiConfigs, {}),          
             (u'server/reload', u'PUT', ServerReload, {}),
             
             (u'server/sessions', u'GET', ServerFlaskSessions, {}),
             
-            (u'server/db/ping', u'GET', PingDatabase, {}),
-            (u'server/db/tables', u'GET', ListDatabaseTables, {}),
-            (u'server/db/table/<table>', u'GET', GetDatabaseTable, {}),
-            (u'server/db/table/<table>/<row>/<offset>', u'GET', GetDatabaseTableRecord, {}),
-            (u'server/db/table/<table>/count', u'GET', GetDatabaseTableRecordCount, {}),
-            (u'server/db/table/<table>/desc', u'GET', GetDatabaseTableRecordDesc, {})
+            
+            #(u'server/db/ping', u'GET', PingDatabase, {}),
+            #(u'server/db/tables', u'GET', ListDatabaseTables, {}),
+            #(u'server/db/table/<table>', u'GET', GetDatabaseTable, {}),
+            #(u'server/db/table/<table>/<row>/<offset>', u'GET', GetDatabaseTableRecord, {}),
+            #(u'server/db/table/<table>/count', u'GET', GetDatabaseTableRecordCount, {}),
+            #(u'server/db/table/<table>/desc', u'GET', GetDatabaseTableRecordDesc, {})
         ]
 
         ApiView.register_api(module, rules)
