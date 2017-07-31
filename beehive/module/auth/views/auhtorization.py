@@ -52,39 +52,23 @@ class ListDomains(ApiView):
             $ref: "#/responses/Timeout"
           415:
             $ref: "#/responses/UnsupportedMediaType"
+          default: 
+            $ref: "#/responses/Default"            
           200:
             description: Domains list
             schema:
               type: object
-              required:
-              - status
-              - api
-              - operation
-              - response
+              required: [domains]
               properties:
-                status:
-                  type: string
-                  default: ok
-                api:
-                  type: string
-                  example: /v1.0/path/
-                operation:
-                  type: string
-                  default: GET
-                response:
-                  type: object
-                  required:
-                  - domains
-                  properties:
-                    domains:
-                      type: array
-                      items:
-                        type: array
-                        items:
-                          type: string
-                        example:
-                        - local
-                        - DatabaseAuth
+                domains:
+                  type: array
+                  items:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                    - local
+                    - DatabaseAuth
         """
         auth_providers = controller.module.authentication_manager.auth_providers
         res = []
@@ -119,53 +103,42 @@ class ListTokens(ApiView):
           408:
             $ref: "#/responses/Timeout"
           415:
-            $ref: "#/responses/UnsupportedMediaType"    
+            $ref: "#/responses/UnsupportedMediaType"
+          default: 
+            $ref: "#/responses/Default"            
           200:
             description: Tokens list
             schema:
               type: object
-              required: [status, api, operation, response]
+              required: [tokens, count]
               properties:
-                status:
-                  type: string
-                  default: ok
-                api:
-                  type: string
-                  example: /v1.0/path/
-                operation:
-                  type: string
-                  default: GET 
-                response:
-                  type: object
-                  required: [tokens, count]
-                  properties:
-                    count:
-                      type: intger
-                      example: 1
-                    tokens:
-                      type: array
-                      items:
-                        type: object
-                        required: [ip, ttl, token, user, timestamp, type]
-                        properties:
-                          ip:
-                            type: string
-                            example: pc160234.csi.it
-                          ttl:
-                            type: integer
-                            example: 3600
-                          token:
-                            type: string
-                            example: 28ff1dd5-5520-42f3-a361-c58f19d20b7c
-                          user:
-                            type: string
-                            example: admin@loca
-                          timestamp:
-                            type: string
-                            example: 19-23_14-07-2017
-                          type:
-                            type: string
-                            example: keyauth
+                count:
+                  type: integer
+                  example: 1
+                tokens:
+                  type: array
+                  items:
+                    type: object
+                    required: [ip, ttl, token, user, timestamp, type]
+                    properties:
+                      ip:
+                        type: string
+                        example: pc160234.csi.it
+                      ttl:
+                        type: integer
+                        example: 3600
+                      token:
+                        type: string
+                        example: 28ff1dd5-5520-42f3-a361-c58f19d20b7c
+                      user:
+                        type: string
+                        example: admin@loca
+                      timestamp:
+                        type: string
+                        example: 19-23_14-07-2017
+                      type:
+                        type: string
+                        example: keyauth
         """        
         identities = controller.get_identities()
         res = [{
@@ -209,76 +182,59 @@ class GetToken(ApiView):
             $ref: "#/responses/NotAcceptable"
           408:
             $ref: "#/responses/Timeout"
-          409:
-            $ref: "#/responses/Conflict"
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
           default: 
-            $ref: "#/responses/Default"          
+            $ref: "#/responses/Default"
           200:
             description: Tokens list
             schema:
               type: object
-              required: [status, api, operation, response]
+              required: [token]
               properties:
-                status:
-                  type: string
-                  default: ok
-                api:
-                  type: string
-                  example: /v1.0/path/
-                operation:
-                  type: string
-                  default: GET 
-                response:
+                token:
                   type: object
-                  required: [token]
+                  required: [ip, ttl, token, user, timestamp, type]
                   properties:
+                    ip:
+                      type: string
+                      example: pc160234.csi.it
+                    ttl:
+                      type: integer
+                      example: 3600
                     token:
+                      type: string
+                      example: 28ff1dd5-5520-42f3-a361-c58f19d20b7c
+                    timestamp:
+                      type: string
+                      example: 19-23_14-07-2017
+                    type:
+                      type: string
+                      example: keyauth                            
+                    user:
                       type: object
-                      required: [ip, ttl, token, user, timestamp, type]
+                      required: [name, roles, perms]
                       properties:
-                        ip:
+                        name:                          
                           type: string
-                          example: pc160234.csi.it
-                        ttl:
-                          type: integer
-                          example: 3600
-                        token:
+                          example: admin@local
+                        roles:
+                          type: array
+                          items:
+                            type: string
+                          example:
+                          - ApiSuperadmin
+                          - Guest
+                        perms:
                           type: string
-                          example: 28ff1dd5-5520-42f3-a361-c58f19d20b7c
-                        timestamp:
+                          example: HCbbbUr9kWFCl.....                           
+                        attribute:
                           type: string
-                          example: 19-23_14-07-2017
-                        type:
+                          example: ...                       
+                        active:
+                          type: boolean
+                          example: true                          
+                        id:
                           type: string
-                          example: keyauth                            
-                        user:
-                          type: object
-                          required: [name, roles, perms]
-                          properties:
-                            name:                          
-                              type: string
-                              example: admin@local
-                            roles:
-                              type: array
-                              items:
-                                type: string
-                              example:
-                              - ApiSuperadmin
-                              - Guest
-                            perms:
-                              type: string
-                              example: HCbbbUr9kWFCl.....                           
-                            attribute:
-                              type: string
-                              example: ...                       
-                            active:
-                              type: boolean
-                              example: true                          
-                            id:
-                              type: string
-                              example: 146ca8fc-57af-4705-a859-31ab8e8ac0e                            
+                          example: 146ca8fc-57af-4705-a859-31ab8e8ac0e                            
         """                
         data = controller.get_identity(oid)
         res = {

@@ -45,7 +45,7 @@ class BeehiveApiClient(object):
     
     Use:
     
-    .. code-block:: python    
+    .. code-block:: python
     
     
     """
@@ -289,18 +289,29 @@ class BeehiveApiClient(object):
 
                 # insert for compliance with oauth2 error message
                 if u'error' in res:
-                    res[u'status'] = u'error'
-                    res[u'msg'] = res[u'error_description']
+                    #res[u'status'] = u'error'
+                    res[u'message'] = res[u'error_description']
+                    res[u'description'] = res[u'error_description']
                     res[u'code'] = response.status
                     
             elif response.status in [204]:
-                res = {u'status':u'ok', u'code':204, u'response':None}
+                #res = {u'status':u'ok', u'code':204, u'response':None}
+                res = {}
             elif response.status in [500]:
-                res = {u'status':u'error',u'code':500, u'msg':u'Internal Server Error'}
+                #res = {u'status':u'error',u'code':500, u'msg':u'Internal Server Error'}
+                res = {u'code':500, 
+                       u'message':u'Internal Server Error',
+                       u'description':u'Internal Server Error'}
             elif response.status in [501]:
-                res = {u'status':u'error',u'code':501, u'msg':u'Not Implemented'}
+                #res = {u'status':u'error',u'code':501, u'msg':u'Not Implemented'}
+                res = {u'code':501, 
+                       u'message':u'Not Implemented',
+                       u'description':u'Not Implemented'}
             elif response.status in [503]:
-                res = {u'status':u'error',u'code':503, u'msg':u'Service Unavailable'}
+                #res = {u'status':u'error',u'code':503, u'msg':u'Service Unavailable'}
+                res = {u'code':503, 
+                       u'message':u'Service Unavailable',
+                       u'description':u'Service Unavailable'}
             conn.close()
         except Exception as ex:
             elapsed = time() - start
@@ -311,14 +322,17 @@ class BeehiveApiClient(object):
             
             raise BeehiveApiClientError(ex, code=400)
             
-        if res.get(u'status', u'') == u'ok':
+        #if res.get(u'status', u'') == u'ok':
+        if response.status in [200, 201, 202]:
+            res[u'status'] = u'ok'
             elapsed = time() - start
             self.logger.info(u'Response: STATUS=%s, CONTENT-TYPE=%s, RES=%s, '\
                              u'ELAPSED=%s' % (response.status, content_type, 
                              truncate(res), elapsed))
-        elif res.get(u'status', u'') == u'error':
-            self.logger.error(res[u'msg'])
-            raise BeehiveApiClientError(res[u'msg'], code=int(res[u'code']))
+        #elif res.get(u'status', u'') == u'error':
+        else:
+            self.logger.error(res[u'message'])
+            raise BeehiveApiClientError(res[u'message'], code=int(res[u'code']))
         
         return res
     
@@ -356,6 +370,7 @@ class BeehiveApiClient(object):
                                port=port, data=data, headers=headers)
         return res
     
+    '''
     @watch
     def get_api_doc(self, subsystem, path, method, data=u'', sync=True, 
                     title=u'', desc= u'', output={}):
@@ -392,7 +407,7 @@ class BeehiveApiClient(object):
         output = sjson.dumps(output, indent=2).split(u'\n')
         output = map(lambda x: u'      %s' % x, output)
         doc.extend(output)
-        return u'\n'.join(doc)
+        return u'\n'.join(doc)'''
 
     @watch    
     def invoke(self, subsystem, path, method, data=u'', other_headers=None,
@@ -432,7 +447,8 @@ class BeehiveApiClient(object):
         #    raise BeehiveApiClientError(res[u'msg'], code=res[u'code'])
         #else:
         self.logger.info(u'Send request to %s using uid %s' % (path, self.uid))
-        return res[u'response']
+        return res
+        #return res[u'response']
     
     #
     # authentication request

@@ -39,7 +39,73 @@ class CatalogApiView(ApiView):
 # catalog
 #
 class ListCatalogs(CatalogApiView):
-    def dispatch(self, controller, data, *args, **kwargs):
+    def get(self, controller, data, *args, **kwargs):
+        """
+        List catalogs
+        Call this api to list all the existing catalogs
+        ---
+        deprecated: false
+        tags:
+          - Catalog api
+        security:
+          - ApiKeyAuth: []
+          - OAuth2: [auth, beehive]
+        responses:
+          500:
+            $ref: "#/responses/InternalServerError"
+          400:
+            $ref: "#/responses/BadRequest"
+          401:
+            $ref: "#/responses/Unauthorized"
+          408:
+            $ref: "#/responses/Timeout"
+          415:
+            $ref: "#/responses/UnsupportedMediaType"
+          default: 
+            $ref: "#/responses/Default" 
+          200:
+            description: Catalogs list
+            schema:
+              type: object
+              required: [catalogs, count]
+              properties:
+                count:
+                  type: integer
+                  example: 1
+                catalogs:
+                  type: array
+                  items:
+                    type: object
+                    required: [id, objid, name, desc, date, type, definition, active, uri, zone]
+                    properties:
+                      id:
+                        type: int
+                        example: 1
+                      objid:
+                        type: str
+                        example: 396587362
+                      name:
+                        type: string
+                        example: beehive
+                      desc:
+                        type: string
+                        example: beehive
+                      active:
+                        type: bool
+                        example: true
+                      type:
+                        type: string
+                        example: directory
+                      definition:
+                        type: string
+                        example: catalog
+                      uri:
+                        type: string
+                        example: /v1.0/catalog/1
+                      zone:
+                        type: string
+                        example: internal
+        """            
         headers = request.headers
         name = get_attrib(headers, u'name', None)
         catalogs = controller.get_catalogs(name=name)
@@ -49,14 +115,14 @@ class ListCatalogs(CatalogApiView):
         return resp
 
 class GetCatalog(CatalogApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):
+    def get(self, controller, data, oid, *args, **kwargs):
         catalog = self.get_catalog(controller, oid)
         res = catalog.detail()
         resp = {u'catalog':res}        
         return resp
               
 class GetCatalogPerms(CatalogApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):
+    def get(self, controller, data, oid, *args, **kwargs):
         catalog = self.get_catalog(controller, oid)
         res = catalog.authorization()
         resp = {u'perms':res,
@@ -65,11 +131,8 @@ class GetCatalogPerms(CatalogApiView):
 
 class CreateCatalog(CatalogApiView):
     """
-        {u'name':u'cloudapi', 
-         u'desc':u'cloudapi catalog',
-         u'zone':u'internal'}
     """
-    def dispatch(self, controller, data, *args, **kwargs):
+    def post(self, controller, data, *args, **kwargs):
         data = get_value(data, u'catalog', None, exception=True)
         name = get_value(data, u'name', None, exception=True)
         desc = get_value(data, u'desc', None, exception=True)
@@ -81,7 +144,7 @@ class CreateCatalog(CatalogApiView):
 class UpdateCatalog(CatalogApiView):
     """ Update Catalog 
     """            
-    def dispatch(self, controller, data, oid, *args, **kwargs):
+    def put(self, controller, data, oid, *args, **kwargs):
         catalog = self.get_catalog(controller, oid)
         data = get_value(data, u'catalog', None, exception=True)
         name = get_value(data, u'name', None)
@@ -91,7 +154,7 @@ class UpdateCatalog(CatalogApiView):
         return resp
     
 class DeleteCatalog(CatalogApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):
+    def delete(self, controller, data, oid, *args, **kwargs):
         catalog = self.get_catalog(controller, oid)
         resp = catalog.delete()
         return (resp, 204)
@@ -100,7 +163,7 @@ class DeleteCatalog(CatalogApiView):
 # service
 #
 class ListEndpoints(CatalogApiView):
-    def dispatch(self, controller, data, *args, **kwargs):
+    def get(self, controller, data, *args, **kwargs):
         headers = request.headers
         name = get_attrib(headers, u'name', None)
         service = get_attrib(headers, u'service', None)       
@@ -114,14 +177,14 @@ class ListEndpoints(CatalogApiView):
         return resp
 
 class GetEndpoint(CatalogApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):      
+    def get(self, controller, data, oid, *args, **kwargs):      
         endpoint = self.get_endpoint(controller, oid)
         res = endpoint.detail()
         resp = {u'endpoint':res}        
         return resp
               
 class GetEndpointPerms(CatalogApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):
+    def get(self, controller, data, oid, *args, **kwargs):
         endpoint = self.get_endpoint(controller, oid)
         res = endpoint.authorization()
         resp = {u'perms':res,
@@ -130,17 +193,8 @@ class GetEndpointPerms(CatalogApiView):
 
 class CreateEndpoint(CatalogApiView):
     """
-        {
-            u'endpoint':{
-                u'name':u'auth-01', 
-                u'desc':u'Authorization endpoint 01', 
-                u'service':u'auth', 
-                u'uri':u'http://localhost:6060/api/auth/', 
-                u'enabled':True                   
-            }
-        }
     """
-    def dispatch(self, controller, data, *args, **kwargs):
+    def post(self, controller, data, *args, **kwargs):
         data = get_value(data, u'endpoint', None, exception=True)
         catalog = get_value(data, u'catalog', None, exception=True)
         name = get_value(data, u'name', None, exception=True)
@@ -155,7 +209,7 @@ class CreateEndpoint(CatalogApiView):
 class UpdateEndpoint(CatalogApiView):
     """ Update Endpoint 
     """            
-    def dispatch(self, controller, data, oid, *args, **kwargs):
+    def update(self, controller, data, oid, *args, **kwargs):
         data = get_value(data, u'endpoint', None, exception=True)
         catalog = get_value(data, u'catalog', None)
         name = get_value(data, u'name', None)
@@ -170,7 +224,7 @@ class UpdateEndpoint(CatalogApiView):
         return resp
     
 class DeleteEndpoint(CatalogApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):
+    def delete(self, controller, data, oid, *args, **kwargs):
         endpoint = self.get_endpoint(controller, oid)
         resp = endpoint.delete()
         return (resp, 204)

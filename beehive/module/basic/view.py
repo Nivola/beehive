@@ -12,67 +12,46 @@ class ServerPing(ApiView):
         Call this api to ping server
         ---
         tags:
-          - Basic server api
-        definitions:
-          Error:
-            type: object
-            properties:
-              status:
-                type: string
-                default: error
-              api:
-                type: string
-                example: /v1.0/server/ping/
-              operation:
-                type: string
-                default: GET
-              exception:
-                type: string
-                example: ApiManagerException
-              code:
-                type: integer
-                default: 400
-              msg:
-                type: string
-                example: Problem during ping           
+          - Basic server api      
         produces:
           - application/json
           - application/xml
         responses:
           500:
-            description: Internal server error
+            $ref: "#/responses/InternalServerError"
           400:
-            description: Bad request
-            schema:
-              $ref: "#/definitions/Error"            
+            $ref: "#/responses/BadRequest"
+          401:
+            $ref: "#/responses/Unauthorized"
+          403:
+            $ref: "#/responses/Forbidden"
+          404:
+            $ref: "#/responses/NotFound"
+          405:
+            $ref: "#/responses/MethodAotAllowed" 
+          408:
+            $ref: "#/responses/Timeout"
+          410:
+            $ref: "#/responses/Gone"            
+          415:
+            $ref: "#/responses/UnsupportedMediaType"
+          422:
+            $ref: "#/responses/UnprocessableEntity"
+          429:
+            $ref: "#/responses/TooManyRequests"           
+          default: 
+            $ref: "#/responses/Default"          
           200:
             description: Ping response
             schema:
               type: object
-              required:
-              - status
-              - api
-              - operation
-              - response              
               properties:
-                status:
+                name:
                   type: string
-                  default: ok
-                api:
+                  example: beehive
+                id:
                   type: string
-                  example: /v1.0/path/
-                operation:
-                  type: string
-                  default: GET
-                response:
-                  type: object
-                  properties:
-                    name:
-                      type: string
-                      example: beehive
-                    id:
-                      type: string
-                      example: auth-01
+                  example: auth-01
         """
         resp = controller.ping()
         return resp

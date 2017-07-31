@@ -5,7 +5,7 @@ info:
   contact:
     responsibleOrganization: ME
     responsibleDeveloper: Me
-    email: me@me.com
+    email: me@csi.it
     url: www.me.com
   license:
     name: MIT
@@ -81,28 +81,25 @@ responses:
                  media type. Also occurs when the request-body JSON contains an 
                  unknown attribute or value that doesn’t have the right 
                  format/type to be accepted.
+  Gone:
+    description: Indicates that the resource at this end point is no longer available.
+  UnprocessableEntity:
+    description: The request was well-formed but was unable to be followed due to semantic errors.
+  TooManyRequests:
+    description: The user has sent too many requests in a given amount of time
 definitions:
   # Schema for error response body
   Error:
     type: object
-    required: [status, api, operation, exception, code, msg]
+    required: [code, message, description]
     properties:
-      status:
-        type: string
-        default: error
-      api:
-        type: string
-        example: /v1.0/path/
-      operation:
-        type: string
-        default: GET
-      exception:
-        type: string
-        example: ApiManagerException
       code:
         type: integer
-        example: <http error code> 
-      msg:
+        example: "<http error code>"
+      message:
         type: string
-        example: Some error  
+        example: Some error
+      description:
+        type: string
+        example: Some error description        
                    

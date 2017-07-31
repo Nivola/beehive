@@ -334,7 +334,7 @@ class PlatformManager(ComponentManager):
                     res = json.loads(response.read())
                     # close connections
                     http.close()
-                    if res[u'status'] == u'ok':
+                    if response.status_code == 200:
                         resp.append({u'subsystem':vassal[0], u'instance':vassal[1], 
                                      u'host':host, u'port':port, u'ping':True, 
                                      u'status':u'UP'})

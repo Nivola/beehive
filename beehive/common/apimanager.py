@@ -88,48 +88,6 @@ class ApiManager(object):
             self.app_uri = None
         
         # swagger reference
-        template = {
-            "swagger": "2.0",
-            "info": {
-                "title": "My API",
-                "description": "API for my data",
-                "contact": {
-                    "responsibleOrganization": "ME",
-                    "responsibleDeveloper": "Me",
-                    "email": "me@me.com",
-                    "url": "www.me.com",
-                },
-                "termsOfService": "http://me.com/terms",
-                "version": "1.0.0"
-            },
-            "host": "mysite.com",  # overrides localhost:500
-            "basePath": "/v1.0/api/",  # base bash for blueprint registration
-            "schemes": [
-                "http",
-                "https"
-            ],
-            "operationId": "getmyData",
-            "securityDefinitions":{
-                "BasicAuth":{
-                    "type": "basic"
-                },
-                "ApiKeyAuth":{
-                    "type": "apiKey",
-                    "in": "header",
-                    "name": "X-API-Key"
-                },
-                "OAuth2":{
-                    "type": "oauth2",
-                    "flow": "accessCode",
-                    "authorizationUrl": "https://<hostname>/v1.0/oauth2/authorize/",
-                    "tokenUrl": "https://<hostname>/v1.0/oauth2/token/",
-                    "scopes":{
-                        "auth": "authorization",
-                        "beehive": "beehive ecosystem"
-                    }
-                }
-            }
-        }
         self.swagger = Swagger(self.app, template_file=u'swagger.yml')
         
         # instance configuration
@@ -2214,13 +2172,18 @@ class ApiView(FlaskView):
         headers = {u'Cache-Control':u'no-store',
                    u'Pragma':u'no-cache'}        
         
-        error = {u'status':u'error', 
+        '''error = {u'status':u'error', 
                  u'api':request.path,
                  u'operation':request.method,
                  #u'data':request.data,
                  u'exception':exception,
                  u'code':code, 
-                 u'msg':str(msg)}
+                 u'msg':str(msg)}'''
+        error = {
+            u'code':code, 
+            u'message':str(msg),
+            u'description':u'%s - %s' % (exception, msg)
+        }
         self.logger.error(u'Api response: %s' % truncate(error))
             
         if code in [400, 401, 403, 404, 405, 406, 408, 409, 415, 500]:
@@ -2261,11 +2224,12 @@ class ApiView(FlaskView):
         try:
             if isinstance(response, dict):
                 self.response_mime = u'application/json'
-                res = {u'status':u'ok',
+                '''res = {u'status':u'ok',
                        u'api':request.path,
                        u'operation':request.method,
                        #u'data':request.data,
-                       u'response':response}            
+                       u'response':response}'''
+                res = response       
             
             self.logger.debug(u'Api response: %s' % truncate(response))
             
