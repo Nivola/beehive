@@ -39,6 +39,124 @@ operation.session = None
 operation.user = None # (username, userip, uid)
 operation.perms = None
 
+operation.transaction = None
+
+def netsted_transaction(fn):
+    """Use this decorator to transform a function that contains delete, insert
+    and update statement in a transaction.
+    """
+    @wraps(fn)
+    def netsted_transaction_inner(*args, **kwargs): #1
+        start = time()
+        stmp_id = id_gen()
+        session = operation.session
+        sessionid = id(session)
+        
+        commit = False
+        if operation.transaction is None:
+            operation.transaction = id_gen()
+            commit = True
+            logger.debug(u'Create transaction %s' % operation.transaction)
+        else:
+            logger.debug(u'Use transaction %s' % operation.transaction)
+        
+        # set distributed transaction id to 0 for single transaction
+        try:
+            operation.id
+        except: 
+            operation.id = str(uuid4())
+            
+        try:
+            # get runtime info
+            cp = current_process()
+            ct = current_thread()              
+            
+            # format request params
+            params = []
+            for item in args:
+                params.append(unicode(item))
+            for k,v in kwargs.iteritems():
+                params.append(u"'%s':'%s'" % (k, v))
+                
+            # call internal function
+            res = fn(*args, **kwargs)
+            
+            if commit is True:
+                session.commit()
+                logger.debug(u'Commit transaction %s' % operation.transaction)
+                operation.transaction = None
+                
+            elapsed = round(time() - start, 4)
+            logger.debug(u'%s.%s - %s - transaction - %s - %s - OK - %s' % (
+                         operation.id, stmp_id, sessionid, fn.__name__, 
+                         params,  elapsed))
+                        
+            return res
+        except ModelError as ex:
+            elapsed = round(time() - start, 4)
+            logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
+                         operation.id, stmp_id, sessionid, fn.__name__, 
+                         params, elapsed))
+            if ex.code not in [409]:
+                #logger.error(ex.desc, exc_info=1)
+                logger.error(ex.desc)
+            
+            #session.rollback()
+            rollback(session, commit)
+            raise TransactionError(ex.desc, code=ex.code)
+        except IntegrityError as ex:
+            elapsed = round(time() - start, 4)
+            logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
+                         operation.id, stmp_id, sessionid, fn.__name__, 
+                         params, elapsed))
+            logger.error(ex.orig, exc_info=1)
+            logger.error(ex.orig)
+
+            #session.rollback()
+            rollback(session, commit)
+            raise TransactionError(ex.orig)
+        except DBAPIError as ex:
+            elapsed = round(time() - start, 4)
+            logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
+                         operation.id, stmp_id, sessionid, fn.__name__, 
+                         params, elapsed))
+            #logger.error(ex.orig, exc_info=1)
+            logger.error(ex.orig)
+                  
+            #session.rollback()
+            rollback(session, commit)
+            raise TransactionError(ex.orig)
+        except TransactionError as ex:
+            elapsed = round(time() - start, 4)
+            logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
+                         operation.id, stmp_id, sessionid, fn.__name__, 
+                         params, elapsed))
+            #logger.error(ex.orig, exc_info=1)
+            logger.error(ex.orig)
+                  
+            #session.rollback()
+            rollback(session, commit)
+            raise
+        except Exception as ex:
+            elapsed = round(time() - start, 4)
+            logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
+                         operation.id, stmp_id, sessionid, fn.__name__, 
+                         params, elapsed))
+            #logger.error(ex, exc_info=1)
+            logger.error(ex)
+        
+            #session.rollback()
+            rollback(session, commit)
+            raise TransactionError(ex)
+
+    return netsted_transaction
+
+def rollback(session, status):
+    if status is True:
+        session.rollback()
+        logger.warn(u'Rollback transaction %s' % operation.transaction)
+        operation.transaction = None        
+
 def transaction(fn):
     """Use this decorator to transform a function that contains delete, insert
     and update statement in a transaction.
