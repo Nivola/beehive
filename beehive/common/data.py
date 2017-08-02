@@ -41,6 +41,7 @@ operation.perms = None
 
 operation.transaction = None
 
+
 def netsted_transaction(fn):
     """Use this decorator to transform a function that contains delete, insert
     and update statement in a transaction.
