@@ -20,7 +20,7 @@ class GetSchedulerEntries(TaskApiView):
         ---
         deprecated: false
         tags:
-          - Scheduler api
+          - scheduler
         security:
           - ApiKeyAuth: []
           - OAuth2: [auth, beehive]

@@ -16,6 +16,12 @@ host: tst-beehive
 schemes: 
   - http,
   - https
+tags:
+  - name: scheduler
+    description: scheduler and task manager api
+    externalDocs:
+      url: http://bo
+      description: "bo"
 consumes:
   - application/json
   - application/xml
