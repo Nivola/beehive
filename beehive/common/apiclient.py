@@ -545,7 +545,7 @@ class BeehiveApiClient(object):
             data[u'login-ip'] = login_ip
         res = self.send_request(u'auth', u'/v1.0/simplehttp/login/', 
                                 u'POST', data=json.dumps(data))
-        res = res[u'response']
+        #res = res[u'response']
         self.logger.info(u'Login user %s: %s' % (self.api_user, res[u'uid']))
         self.uid = None
         self.seckey = None
@@ -571,7 +571,7 @@ class BeehiveApiClient(object):
                 data[u'login-ip'] = login_ip
             res = self.send_request(u'auth', u'/v1.0/keyauth/token/', 
                                     u'POST', data=json.dumps(data))
-            res = res[u'response']
+            #res = res[u'response']
             self.logger.info(u'Login user %s with token: %s' % 
                              (self.api_user, res[u'access_token']))
             self.uid = res[u'access_token']

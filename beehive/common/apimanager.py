@@ -27,7 +27,7 @@ from beecell.db import TransactionError, QueryError
 from beecell.db.manager import MysqlManager, SqlManagerError, RedisManager
 from beecell.auth import extract
 from beecell.simple import str2uni, id_gen, import_class, truncate, get_class_name,\
-    parse_redis_uri, get_remote_ip, nround
+    parse_redis_uri, get_remote_ip, nround, str2bool
 from beecell.sendmail import Mailer
 from beehive.common.data import operation, trace
 from beecell.auth import AuthError, DatabaseAuth, LdapAuth, SystemUser
@@ -36,7 +36,7 @@ from beecell.flask.redis_session import RedisSessionInterface
 import gevent
 from beehive.common.apiclient import BeehiveApiClient, BeehiveApiClientError
 from beehive.common.model.config import ConfigDbManager
-from beehive.common.model.authorization import AuthDbManager
+from beehive.common.model.authorization import AuthDbManager, Role
 from beehive.common.event import EventProducerRedis
 from flasgger import Swagger, utils
 try:
@@ -136,7 +136,7 @@ class ApiManager(object):
         
         # database manager
         self.db_manager = None
-        database_uri = self.params.get(u'database_uri')
+        database_uri = self.params.get(u'database_uri', None)
         if database_uri != None:
             self.create_pool_engine((database_uri, 5, 10, 10, 1800))
         
@@ -163,7 +163,7 @@ class ApiManager(object):
             pool_size = dbconf[2]
             max_overflow = dbconf[3]
             pool_recycle = dbconf[4]
-            self.db_manager = MysqlManager('db_manager01', db_uri, 
+            self.db_manager = MysqlManager(u'db_manager01', db_uri, 
                                            connect_timeout=connect_timeout)
             self.db_manager.create_pool_engine(pool_size=pool_size, 
                                                max_overflow=max_overflow, 
@@ -186,7 +186,14 @@ class ApiManager(object):
         except SqlManagerError as ex:
             self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex)
-            
+        
+    def is_engine_configured(self):    
+        """Return True if database engine is configured
+        """
+        if self.db_manager is not None:
+            return True
+        return False
+        
     def get_session(self):
         """open db session"""
         try:
@@ -400,7 +407,7 @@ class ApiManager(object):
 
         self.logger.info(u'Configure server - CONFIGURE')
 
-        if self.db_manager is not None:
+        if self.is_engine_configured() is True:
             # open db session
             self.get_session()
             operation.perms = None
@@ -711,6 +718,14 @@ class ApiManager(object):
     def register_catalog(self):
         """Create endpoint instance in catalog
         """
+        register = self.params.get(u'register-catalog', True)
+        register = str2bool(register)
+        
+        # skip catalog registration - usefool for temporary instance
+        if register is False:
+            return
+        
+        # register catalog
         catalog = self.catalog
         service = self.app_subsytem
         uri = self.app_uri        
@@ -721,6 +736,14 @@ class ApiManager(object):
     def register_monitor(self):
         """Register instance in monitor
         """
+        register = self.params.get(u'register-monitor', True)
+        register = str2bool(register)
+        
+        # skip monitor registration - usefool for temporary instance
+        if register is False:
+            return
+        
+        # register monitor        
         self.monitor_producer.send(self.app_endpoint_id, self.app_desc, 
                                    self.app_name, {u'uri':self.app_uri})
         self.logger.info(u'Register %s instance in monitor' % self.app_endpoint_id)
@@ -846,7 +869,10 @@ class ApiController(object):
             self.expire = self.module.api_manager.expire
         except:
             self.prefix = None
-            self.expire = None           
+            self.expire = None
+            
+        # db manager
+        self.dbmanager = None
             
     def __repr__(self):
         return "<%s id='%s'>" % (self.__class__.__module__+u'.'+
@@ -856,9 +882,9 @@ class ApiController(object):
     def redis_manager(self):
         return self.module.redis_manager   
 
-    @property
-    def job_manager(self):
-        return self.module.job_manager
+    #@property
+    #def job_manager(self):
+    #    return self.module.job_manager
     
     @property
     def mailer(self):
@@ -877,17 +903,16 @@ class ApiController(object):
     def redis_scheduler(self):
         return self.module.api_manager.redis_scheduler
     
-    '''def init_object(self):
-        """ """
-        raise NotImplementedError()'''
-    
     def init_object(self):
         """Register object types, objects and permissions related to module.
         Call this function when initialize system first time.
         """
+        self.logger.info(u'Init %s - START' % self)
+        self.logger.info(u'Init childs: %s' % self.child_classes)
         # init controller child classes
         for child in self.child_classes:
-            child(self).init_object()    
+            child(self).init_object()
+        self.logger.info(u'Init %s - STOP' % self)
     
     def get_session(self):
         """open db session"""
@@ -1065,7 +1090,6 @@ class ApiController(object):
 
         return set(needs)
 
-    @watch
     def check_authorization(self, objtype, objdef, objid, action):
         """This method combine can, get_needs and has_needs, Use when you want
         to verify overlap between needs and permissions for a unique object.
@@ -1074,7 +1098,7 @@ class ApiController(object):
         :param definition: object definition. Es. 'container.org.group.vm' [optional]                                    
         :param action: object action. Es. \*, view, insert, update, delete, use
         :param objid: object unique id. Es. \*//\*//\*, nome1//nome2//\*, nome1//nome2//nome3        
-        :return: True if needs and permissions overlap
+        :return: True if permissions overlap
         """
         try:
             objs = self.can(action, objtype, definition=objdef)
@@ -1088,7 +1112,7 @@ class ApiController(object):
                     objid = u'*'
                 else:
                     objid = objid + u'//*'
-            needs = self.get_needs(objid.split('//'))
+            needs = self.get_needs(objid.split(u'//'))
             
             # check if needs overlaps perms
             res = self.has_needs(needs, objset)
@@ -1113,6 +1137,7 @@ class ApiController(object):
     #
     # helper model get method
     #
+    '''
     def get_entity(self, oid, query_func):
         """Parse oid and get entity entity by name or by model id or by uuid
         
@@ -1132,6 +1157,39 @@ class ApiController(object):
         else:
             entity = query_func(name=oid)[0][0]
         return entity    
+    ''' 
+    
+    def get_object(self, object_class, model_class, oid):
+        """Get single object by oid (id, uuid, name) if exists
+        
+        :param object_class: Controller ApiObject Extension class
+        :param model_class: Model ApiObject Extension class
+        :param oid: entity model id or name or uuid  
+        :return: object
+        :raises ApiManagerError: raise :class:`ApiManagerError`        
+        """
+        # check authorization
+        self.controller.check_authorization(object_class.objtype, 
+                                            object_class.objdef, 
+                                            self.objid, u'view')
+        
+        try:
+            entity = self.manager.get_entity(model_class, oid)
+            try: objid=entity.objid
+            except: objid=None
+            try: active=entity.active
+            except: active=None
+            res = object_class(self, oid=object.id, objid=objid, 
+                           name=entity.name, active=active, 
+                           desc=entity.desc, model=entity)
+            self.logger.debug(u'Get %s : %s' % 
+                              (object_class, res))
+            return res
+        except QueryError as ex:         
+            self.logger.error(ex)
+            entity_name =  object_class.__name__
+            raise ApiManagerError(u'%s %s not found' % (entity_name, oid), 
+                                  code=404)       
     
     def get_paginated_objects(self, object_class, get_entities, 
                               page=0, size=10, order=u'DESC', field=u'id', 
@@ -1149,9 +1207,56 @@ class ApiController(object):
         :return: (list of object_class instances, total)
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        params = {u'page':page, u'size':size, u'order':order, u'field':field}
-        params.update(kvargs)
+        res = []
         
+        # verify permissions
+        objs = self.can(u'view', object_class.objtype, 
+                        definition=object_class.objdef)
+        objs = objs.get(object_class.objdef.lower())
+        
+        # create permission tags
+        tags = []
+        for p in objs:
+            tags.append(self.manager.hash_from_permission(object_class.objdef, p))
+        self.logger.debug(u'Permission tags to apply: %s' % tags)       
+                
+        try:
+            entities, total = get_entities(tags=tags, page=page, size=size, 
+                order=order, field=field, *args, **kvargs)
+            
+            for entity in entities:
+                try: objid=entity.objid
+                except: objid=None
+                try: active=entity.active
+                except: active=None
+                obj = object_class(self, oid=entity.id, objid=objid, 
+                               name=entity.name, active=active, 
+                               desc=entity.desc, model=entity)
+                res.append(obj)             
+            
+            self.logger.debug(u'Get %s (total:%s): %s' % 
+                              (object_class, total, truncate(res)))
+            return res, total
+        except QueryError as ex:         
+            self.logger.warn(ex)
+            return [], 0    
+    
+    def get_paginated_objects2(self, object_class, get_entities, 
+                              page=0, size=10, order=u'DESC', field=u'id', 
+                              *args, **kvargs):
+        """Get objects with pagination
+
+        :param object_class: ApiObject Extension class
+        :param get_entities: model get_entities function. Return (entities, total)
+        :param page: objects list page to show [default=0]
+        :param size: number of objects to show in list per page [default=0]
+        :param order: sort order [default=DESC]
+        :param field: sort field [default=id]
+        :param args: custom params
+        :param kvargs: custom params
+        :return: (list of object_class instances, total)
+        :raises ApiManagerError: raise :class:`ApiManagerError`
+        """
         # verify permissions
         objs = self.can(u'view', object_class.objtype, 
                         definition=object_class.objdef)
@@ -1181,19 +1286,17 @@ class ApiController(object):
                     except: active=None                    
                     obj = object_class(self, oid=entity.id, objid=objid, 
                                name=entity.name, active=active, 
-                               desc=entity.description, model=entity)
+                               desc=entity.desc, model=entity)
                     # set expiry_date
                     if expiry_date is not None:
                         obj.expiry_date = expiry_date
                     res.append(obj)                
             
             self.logger.debug(u'Get entities %s: %s' % (object_class, len(res)))
-            #object_class(self).send_event(u'view', params=params)       
             return res, total
-        except QueryError as ex:
-            #object_class(self).send_event(u'view', params=params, exception=ex)            
+        except QueryError as ex:         
             self.logger.warn(ex)
-            return [], 0    
+            return [], 0
 
 class ApiEvent(object):
     """Generic event.
@@ -1228,16 +1331,16 @@ class ApiEvent(object):
         return "<ApiEvent id='%s' objid='%s'>" % (self.oid, self.objid)
     
     @property
-    def dbauth(self):
-        return self.controller.dbauth    
+    def dbmanager(self):
+        return self.controller.dbmanager    
     
     @property
     def api_client(self):
         return self.controller.module.api_manager.api_client 
     
-    @property
-    def job_manager(self):
-        return self.controller.module.job_manager    
+    #@property
+    #def job_manager(self):
+    #    return self.controller.module.job_manager    
     
     @staticmethod
     def get_type(self):
@@ -1253,16 +1356,13 @@ class ApiEvent(object):
             pos += 1
         return '//'.join(data)
 
-    @watch
     def info(self):
         """Get event infos.
         
         :return: Dictionary with info.
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
-        """
-        # verify permissions
-        self.controller.can(u'view', self.objtype, definition=self.objdef)        
+        """  
         creation = str2uni(self.creation.strftime(u'%d-%m-%Y %H:%M:%S'))
         return {u'id':self.oid, u'objid':self.objid, u'data':self.data, 
                 u'source':self.source, u'dest':self.dest, 
@@ -1294,147 +1394,43 @@ class ApiEvent(object):
                                 u'is not configured - %s' % ex)
 
     def init_object(self):
-        """ """
-        # if module has an instance of dbauth use it, else use rcpclient
-        if 'dbauth' in self.controller.__dict__:
-            try:
-                """
-                # call only once during db initialization
-                """
-                # add object type
-                #class_name = self.__class__.__module__ + '.' + self.__class__.__name__
-                obj_types = [(self.objtype, self.objdef)]
-                self.dbauth.add_object_types(obj_types)
-                
-                # add object and permissions
-                obj_type = self.dbauth.get_object_type(objtype=self.objtype, 
-                                                       objdef=self.objdef)[0][0]
-                objs = [(obj_type, self._get_value(self.objdef, []), self.objdesc+" events")]
-                actions = self.dbauth.get_object_action()
-                self.dbauth.add_object(objs, actions)
-                
-                self.logger.debug('Register api object: %s' % objs)
-            except (QueryError, TransactionError) as ex:
-                self.logger.error(ex, exc_info=True)
-                raise ApiManagerError(ex)
-        # use httpclient
-        else:
-            """
-            # call only once during db initialization
-            """
-            # add object type
-            #class_name = self.__class__.__module__ + '.' + self.__class__.__name__
-            #obj_types = [(self.objtype, self.objdef, class_name)]
-            #self.rpc_client.add_object_types(self.objtype, self.objdef, class_name)
-            self.api_client.add_object_types(self.objtype, self.objdef)
-            
-            # add object and permissions
-            objs = self._get_value(self.objdef, [])
-            #self.rpc_client.add_object(self.objtype, self.objdef, objs)
-            self.api_client.add_object(self.objtype, self.objdef, objs, self.objdesc+" events")
-            
-            self.logger.debug('Register api object: %s' % objs)            
-        '''
-        # use rpcclient
-        else:
-            """
-            # call only once during db initialization
-            """
-            # add object type
-            class_name = self.__class__.__module__ + '.' + self.__class__.__module__+'.'+self.__class__.__name__
-            #obj_types = [(self.objtype, self.objdef, class_name)]
-            #self.rpc_client.add_object_types(self.objtype, self.objdef, class_name)
-            self.rpc_httpclient.add_object_types(self.objtype, self.objdef, class_name)
-            
-            # add object and permissions
-            objs = self._get_value(self.objdef, [])
-            #self.rpc_client.add_object(self.objtype, self.objdef, objs)
-            self.rpc_httpclient.add_object(self.objtype, self.objdef, objs)
-            
-            self.logger.debug('Register api object: %s' % objs)
-        '''
+        """Call only once during db initialization"""
+        # add object type
+        self.api_client.add_object_types(self.objtype, self.objdef)
+        
+        # add object and permissions
+        objs = self._get_value(self.objdef, [])
+        self.api_client.add_object(self.objtype, self.objdef, objs, 
+                                   self.objdesc+u' events')
+        
+        self.logger.debug(u'Register api object: %s' % objs)
 
     def register_object(self, args, desc=u'', objid=None):
         """Register object types, objects and permissions related to module.
         
         :param args:
         """
-        # if module has an instance of dbauth use it, else use rcpclient
-        if 'dbauth' in self.controller.__dict__:
-            try:
-                # add object and permissions
-                obj_type = self.dbauth.get_object_type(objtype=self.objtype, 
-                                                       objdef=self.objdef)[0][0]
-                objs = [(obj_type, self._get_value(self.objdef, args), 
-                         u'%s events' % desc)]
-                actions = self.dbauth.get_object_action()
-                self.dbauth.add_object(objs, actions)
-                
-                self.logger.debug('Register api object: %s:%s %s' % 
-                                  (self.objtype, self.objdef, objs))
-            except (QueryError, TransactionError) as ex:
-                self.logger.error(ex, exc_info=True)
-                raise ApiManagerError(ex)
-        # use httpclient
-        else:
-            # add object and permissions
-            objs = self._get_value(self.objdef, args)
-            #self.rpc_client.add_object(self.objtype, self.objdef, objs)
-            self.api_client.add_object(self.objtype, self.objdef, objs, 
-                                       u'%s events' % desc)
-            
-            self.logger.debug('Register api object: %s:%s %s' % 
-                              (self.objtype, self.objdef, objs))
-        '''
-        # use rpcclient
-        else:
-            # add object and permissions
-            objs = self._get_value(self.objdef, args)
-            #self.rpc_client.add_object(self.objtype, self.objdef, objs)
-            self.rpc_httpclient.add_object(self.objtype, self.objdef, objs)
-            
-            self.logger.debug('Register api object: %s:%s %s' % 
-                              (self.objtype, self.objdef, objs))
-        '''
+        # add object and permissions
+        objs = self._get_value(self.objdef, args)
+        #self.rpc_client.add_object(self.objtype, self.objdef, objs)
+        self.api_client.add_object(self.objtype, self.objdef, objs, 
+                                   u'%s events' % desc)
+        
+        self.logger.debug(u'Register api object: %s:%s %s' % 
+                          (self.objtype, self.objdef, objs))
 
     def deregister_object(self, args, objid=None):
         """Deregister object types, objects and permissions related to module.
         
         :param args: 
         """
-        # if module has an instance of dbauth use it, else use rcpclient
-        if 'dbauth' in self.controller.__dict__:
-            try:
-                # remove object and permissions
-                obj_type = self.dbauth.get_object_type(objtype=self.objtype, 
-                                                       objdef=self.objdef)[0][0]
-                objid = self._get_value(self.objdef, args)
-                self.dbauth.remove_object(objid=objid, objtype=obj_type)
-                self.logger.debug('Deregister api object: %s:%s %s' % 
-                                  (self.objtype, self.objdef, objid))
-            except (QueryError, TransactionError) as ex:
-                self.logger.error(ex, exc_info=True)
-                raise ApiManagerError(ex)
-        # use httpclient
-        else:
-            # add object and permissions
-            objid = self._get_value(self.objdef, args)
-            #self.rpc_client.remove_object(self.objtype, self.objdef, objid)
-            self.api_client.remove_object(self.objtype, self.objdef, objid)
-            
-            self.logger.debug('Deregister api object: %s:%s %s' % 
-                              (self.objtype, self.objdef, objid))
-        '''            
-        # use rpcclient
-        else:
-            # add object and permissions
-            objid = self._get_value(self.objdef, args)
-            #self.rpc_client.remove_object(self.objtype, self.objdef, objid)
-            self.rpc_httpclient.remove_object(self.objtype, self.objdef, objid)
-            
-            self.logger.debug('Deregister api object: %s:%s %s' % 
-                              (self.objtype, self.objdef, objid))
-        '''
+        # remove object and permissions
+        objid = self._get_value(self.objdef, args)
+        #self.rpc_client.remove_object(self.objtype, self.objdef, objid)
+        self.api_client.remove_object(self.objtype, self.objdef, objid)
+        
+        self.logger.debug(u'Deregister api object: %s:%s %s' % 
+                          (self.objtype, self.objdef, objid))
     
     def get_session(self):
         """open db session"""
@@ -1444,8 +1440,71 @@ class ApiEvent(object):
         """release db session"""
         return self.controller.release_session(dbsession)
 
-def make_event_class(name, **kwattrs):
-    return type(name, (ApiEvent,), dict(**kwattrs))
+class ApiInternalEvent(ApiEvent):
+    def __init__(self, *args, **kvargs):
+        ApiEvent.__init__(self, *args, **kvargs)
+        self.auth_db_manager = AuthDbManager()
+    
+    def init_object(self):
+        """Call only once during db initialization"""
+        try:
+            # call only once during db initialization
+            # add object type
+            obj_types = [(self.objtype, self.objdef)]
+            self.auth_db_manager.add_object_types(obj_types)
+            
+            # add object and permissions
+            obj_type = self.auth_db_manager.get_object_type(
+                objtype=self.objtype, objdef=self.objdef)[0][0]
+            objs = [(obj_type, self._get_value(self.objdef, []), 
+                     self.objdesc+u' events')]
+            actions = self.auth_db_manager.get_object_action()
+            self.auth_db_manager.add_object(objs, actions)
+            
+            self.logger.debug(u'Register api object: %s' % objs)
+        except (QueryError, TransactionError) as ex:
+            self.logger.error(ex, exc_info=True)
+            raise ApiManagerError(ex)
+
+    def register_object(self, args, desc=u'', objid=None):
+        """Register object types, objects and permissions related to module.
+        
+        :param args:
+        """
+        try:
+            # add object and permissions
+            obj_type = self.auth_db_manager.get_object_type(
+                objtype=self.objtype, objdef=self.objdef)[0][0]
+            objs = [(obj_type, self._get_value(self.objdef, args), 
+                     u'%s events' % desc)]
+            actions = self.auth_db_manager.get_object_action()
+            self.auth_db_manager.add_object(objs, actions)
+            
+            self.logger.debug(u'Register api object: %s:%s %s' % 
+                              (self.objtype, self.objdef, objs))
+        except (QueryError, TransactionError) as ex:
+            self.logger.error(ex, exc_info=True)
+            raise ApiManagerError(ex)
+
+    def deregister_object(self, args, objid=None):
+        """Deregister object types, objects and permissions related to module.
+        
+        :param args: 
+        """
+        try:
+            # remove object and permissions
+            obj_type = self.auth_db_manager.get_object_type(
+                objtype=self.objtype, objdef=self.objdef)[0][0]
+            objid = self._get_value(self.objdef, args)
+            self.auth_db_manager.remove_object(objid=objid, objtype=obj_type)
+            self.logger.debug('Deregister api object: %s:%s %s' % 
+                              (self.objtype, self.objdef, objid))
+        except (QueryError, TransactionError) as ex:
+            self.logger.error(ex, exc_info=True)
+            raise ApiManagerError(ex)
+
+def make_event_class(name, event_class, **kwattrs):
+    return type(str(name), (event_class,), dict(**kwattrs))
 
 class ApiObject(object):
     """ """
@@ -1456,49 +1515,58 @@ class ApiObject(object):
     
     update_object = None
     delete_object = None
-    register = False
+    register = True
     
     API_OPERATION = u'API'
     SYNC_OPERATION = u'CMD'
     ASYNC_OPERATION = u'JOB'
     
+    event_ref_class = ApiEvent
+    
     def __init__(self, controller, oid=None, objid=None, name=None, 
-                 desc=None, active=None):
+                 desc=None, active=None, model=None):
         self.logger = logging.getLogger(self.__class__.__module__+ \
                                         u'.'+self.__class__.__name__)
         
         self.controller = controller
-        self.oid = oid
-        self.uuid = None
-        self.name = str2uni(name)
+        self.model = model # db model if exist
+        self.oid = oid # object internal db id
         self.objid = str2uni(objid)
+        self.name = str2uni(name)
         self.desc = str2uni(desc)
         self.active = active
+        
+        # object uri
+        self.objuri = u'/%s/%s/%s' % (self.controller.version, self.objuri, self.oid)
+        
+        # object uuid
+        self.uuid = None
+        if self.model is not None:
+            self.uuid = self.model.uuid        
         
         # child classes
         self.child_classes = []
         
-        self.register = True
+        #self.register = True
         
-        self._admin_role_prefix = 'admin'
+        self._admin_role_prefix = u'admin'
         
-        self.event_class = make_event_class(self.__class__.__module__+\
-                                            '.'+self.__class__.__name__+'Event',
-                                            objdef=self.objdef, 
-                                            objdesc=self.objdesc)
+        self.event_class = make_event_class(
+            self.__class__.__module__+u'.'+self.__class__.__name__+u'Event',
+            self.event_ref_class, objdef=self.objdef, objdesc=self.objdesc)
     
     def __repr__(self):
-        return "<%s id='%s' objid='%s' name='%s'>" % (
+        return "<%s id=%s objid=%s name=%s>" % (
                         self.__class__.__module__+'.'+self.__class__.__name__, 
                         self.oid, self.objid, self.name)
  
     @property
-    def dbauth(self):
-        return self.controller.dbauth
+    def manager(self):
+        return self.controller.manager
     
-    @property
-    def job_manager(self):
-        return self.controller.module.job_manager    
+    #@property
+    #def job_manager(self):
+    #    return self.controller.module.job_manager    
 
     @property
     def api_client(self):
@@ -1511,9 +1579,11 @@ class ApiObject(object):
     
     def get_user(self):
         """ """
-        user = {u'user':operation.user[0],
-                u'server':operation.user[1],
-                u'identity':operation.user[2]}
+        user = {
+            u'user':operation.user[0],
+            u'server':operation.user[1],
+            u'identity':operation.user[2]
+        }
         return user
     
     @staticmethod
@@ -1527,20 +1597,64 @@ class ApiObject(object):
         return '//'.join(data)
 
     #
+    # info
+    #
+    def info(self):
+        """Get object info
+        
+        :return: Dictionary with object info.
+        :rtype: dict        
+        :raises ApiManagerError: raise :class:`.ApiManagerError`
+        """
+        creation_date = str2uni(self.model.creation_date\
+                                .strftime(u'%d-%m-%Y %H:%M:%S'))
+        modification_date = str2uni(self.model.modification_date\
+                                    .strftime(u'%d-%m-%Y %H:%M:%S'))
+        res = {
+            u'id':self.oid, 
+            u'uuid':self.uuid,
+            u'objid':self.objid,             
+            u'type':self.objtype,
+            u'definition':self.objdef, 
+            u'name':self.name, 
+            u'desc':self.desc,
+            u'uri':self.objuri, 
+            u'active':self.active,
+            u'date':{
+                u'creation':creation_date,
+                u'modified':modification_date
+            }
+        }
+        
+        if self.model.expiry_date is not None:
+            expiry_date = str2uni(self.model.expiry_date\
+                                  .strftime(u'%d-%m-%Y %H:%M:%S'))
+            res[u'date'][u'expiry'] = expiry_date
+        
+        return res
+
+    def detail(self):
+        """Get object extended info
+        
+        :return: Dictionary with object detail.
+        :rtype: dict        
+        :raises ApiManagerError: raise :class:`.ApiManagerError`
+        """
+        return self.info()
+
+    #
     # authorization
     #
     def init_object(self):
         """Register object types, objects and permissions related to module.
         Call this function when initialize system first time.
         """
+        self.logger.info(u'Init api object %s.%s - START' % 
+                          (self.objtype, self.objdef))
+        
         try:
-            """
             # call only once during db initialization
-            """
             # add object type
-            #class_name = self.__class__.__module__ +'.'+self.__class__.__name__
-            #obj_types = [(self.objtype, self.objdef, class_name)]
-            #self.rpc_client.add_object_types(self.objtype, self.objdef, class_name)
             self.api_client.add_object_types(self.objtype, self.objdef)
             
             # add object and permissions
@@ -1551,7 +1665,8 @@ class ApiObject(object):
             # register event related to ApiObject
             self.event_class(self.controller).init_object()
             
-            self.logger.debug(u'Register api object: %s' % objs)
+            self.logger.info(u'Init api object %s.%s - STOP' % 
+                              (self.objtype, self.objdef))
         except ApiManagerError as ex:
             self.logger.warn(ex.value)
             #raise ApiManagerError(ex)
@@ -1562,6 +1677,45 @@ class ApiObject(object):
             
         # add full permissions to superadmin role
         self.set_superadmin_permissions()
+
+    def get_all_valid_objids(self, args):
+        """Get a list of authorization ids that map object
+        
+        :param args: objid split by //
+        :return: list of valid objids
+        """
+        # first item *.*.*.....
+        act_obj = [u'*' for i in args]
+        objdis = [u'//'.join(act_obj)]
+        pos = 0
+        for arg in args:
+            act_obj[pos] = arg
+            objdis.append(u'//'.join(act_obj))
+            pos += 1
+    
+        return objdis    
+    
+    def register_object_permtags(self, args):
+        """Register object permission tags. Create new permission tags in 
+        perm_tag if they do not already exist. Create association between
+        permission tags and object in perm_tag_entity.
+        
+        :param args: objid split by //
+        :param objtable: name of the table where object is stored
+        """
+        if self.oid is not None:
+            ids = self.get_all_valid_objids(args)
+            for i in ids:
+                perm = u'%s-%s' % (self.objdef, i)
+                tag = self.manager.hash_from_permission(self.objdef, i)
+                table = self.objdef
+                self.manager.add_perm_tag(tag, perm, self.oid, table)
+            
+    def deregister_object_permtags(self):
+        """Deregister object permission tags.
+        """
+        table = self.objdef
+        self.manager.delete_perm_tag(self, self.oid, table)
 
     def register_object(self, args, desc=u'', objid=None):
         """Register object types, objects and permissions related to module.
@@ -1583,6 +1737,9 @@ class ApiObject(object):
         self.logger.debug(u'Register api object: %s:%s %s - STOP' % 
                           (self.objtype, self.objdef, objs))
         
+        # register permission tags
+        self.register_object_permtags(args)
+        
         # register child classes
         if objid == None:
             objid = self.objid
@@ -1599,6 +1756,9 @@ class ApiObject(object):
         :param objid: parent objid
         """
         self.logger.debug(u'Deregister api object - START')
+        
+        # deregister permission tags
+        self.deregister_object_permtags(args)        
         
         # define objid
         if objid == None:
@@ -1643,17 +1803,17 @@ class ApiObject(object):
                 role, u'event', self.objdef,
                 self._get_value(self.objdef, args), u'view')
     
-    @watch
     def verify_permisssions(self, action):
         """Short method to verify permissions.
         
+        :parm action: action to verify. Can be *, view, insert, update, delete, 
+            use
+        :return: True if permissions overlap
         :raise ApiManagerError:
         """        
         # check authorization
-        self.controller.check_authorization(self.objtype, 
-                                            self.objdef, 
-                                            self.objid,
-                                            action)    
+        self.controller.check_authorization(
+            self.objtype, self.objdef, self.objid, action)    
     
     def get_session(self):
         """open db session"""
@@ -1682,16 +1842,6 @@ class ApiObject(object):
         if etype is None: etype = self.SYNC_OPERATION
         if exception is not None: response = [False, str(exception)]
         action = op.split(u'.')[-1]
-        '''if tmp in [u'get', u'list']:
-            action = u'view'
-        elif tmp in [u'add']:
-            action = u'insert'
-        elif tmp in [u'modify']:
-            action = u'update'
-        elif tmp in [u'remove']:
-            action = u'delete'
-        else:
-            action = u'use'''
         
         # send event
         data = {
@@ -1801,8 +1951,7 @@ class ApiObject(object):
                                   (self.objtype, self.objdef))
         
         # verify permissions
-        self.controller.check_authorization(self.objtype, self.objdef, 
-                                            self.objid, u'update')
+        self.verify_permisssions(u'update')
                 
         try:  
             res = self.update_object(oid=self.oid, *args, **kvargs)
@@ -1831,8 +1980,7 @@ class ApiObject(object):
                                   (self.objtype, self.objdef))        
         
         # verify permissions
-        self.controller.check_authorization(self.objtype, self.objdef, 
-                                            self.objid, u'delete')
+        self.verify_permisssions(u'delete')
                 
         try:  
             res = self.delete_object(oid=self.oid)
@@ -1848,36 +1996,191 @@ class ApiObject(object):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
-class ApiViewResponse(ApiObject):
-    objtype = u'api'
-    objdef = u'Response'
-    objdesc = u'Api Response'
+class ApiInternalObject(ApiObject):
+    objtype = u'auth'
+    objdef = u'abstract'
+    objdesc = u'Authorization abstract object'
     
-    def __init__(self, controller, oid=None, objid=None, name=None, desc=None, 
-                 active=True):
-        ApiObject.__init__(self, controller, oid=oid, objid=objid, name=name, 
-                           desc=desc, active=active)
+    event_ref_class = ApiInternalEvent
+    
+    def __init__(self, *args, **kvargs):
+        ApiObject.__init__(self, *args, **kvargs)
+        self.auth_db_manager = AuthDbManager()    
+    
+    #
+    # authorization
+    #
+    def init_object(self):
+        """Register object types, objects and permissions related to module.
+        Call this function when initialize system first time.
+        """
+        self.logger.info(u'Init api object %s.%s - START' % 
+                          (self.objtype, self.objdef))
         
-    def __del__(self):
-        pass
+        try:
+            # call only once during db initialization
+            # add object type
+            obj_types = [(self.objtype, self.objdef)]
+            self.auth_db_manager.add_object_types(obj_types)
+            
+            # add object and permissions
+            obj_type = self.auth_db_manager.get_object_type(
+                objtype=self.objtype, objdef=self.objdef)[0][0]
+            objs = [(obj_type, self._get_value(self.objdef, []), self.objdesc)]
+            actions = self.auth_db_manager.get_object_action()
+            self.auth_db_manager.add_object(objs, actions)
+            
+            # register event related to ApiObject
+            self.event_class(self.controller).init_object()
+            
+            self.logger.info(u'Init api object %s.%s - STOP' % 
+                              (self.objtype, self.objdef))
+        except (QueryError, TransactionError) as ex:
+            self.logger.warn(ex.desc)
+            
+        # init child classes
+        for child in self.child_classes:
+            child(self.controller, self).init_object()
     
-    @property
-    def dbauth(self):
-        return self.controller.dbauth    
+    def register_object(self, args, desc=u'', objid=None):
+        """Register object types, objects and permissions related to module.
+        
+        :param args: objid split by //
+        :param desc: object description
+        :param objid: parent objid
+        """
+        self.logger.debug(u'Register api object - START')
+        
+        try:
+            # add object and permissions
+            obj_type = self.auth_db_manager.get_object_type(objtype=self.objtype, 
+                                                   objdef=self.objdef)[0][0]
+            objs = [(obj_type, self._get_value(self.objdef, args), desc)]
+            actions = self.auth_db_manager.get_object_action()
+            self.auth_db_manager.add_object(objs, actions)
+            
+            # register event related to ApiObject
+            self.event_class(self.controller).register_object(args, desc)                
+            
+            self.logger.debug(u'Register api object %s:%s %s - STOP' % 
+                              (self.objtype, self.objdef, objs))
+        except (QueryError, TransactionError) as ex:
+            self.logger.error(u'Register api object: %s - ERROR' % (ex.desc))
+            raise ApiManagerError(ex.desc, code=400)       
+        
+        # register permission tags
+        self.register_object_permtags(args)
+        
+        # register child classes
+        for child in self.child_classes:
+            child(self.controller, self).register_object(args, desc=child.objdesc)
+    
+    def deregister_object(self, args, objid=None):
+        """Deregister object types, objects and permissions related to module.
+        
+        :param args: objid split by //
+        :param objid: parent objid
+        """
+        self.logger.debug(u'Deregister api object - START')
+        
+        try:
+            # remove object and permissions
+            obj_type = self.auth_db_manager.get_object_type(
+                objtype=self.objtype, objdef=self.objdef)[0][0]
+            objid = self._get_value(self.objdef, args)
+            self.auth_db_manager.remove_object(objid=objid, objtype=obj_type)
+            
+            # deregister event related to ApiObject
+            self.event_class(self.controller).deregister_object(args)
+            
+            self.logger.debug(u'Deregister api object %s:%s %s - STOP' % 
+                              (self.objtype, self.objdef, objid))                
+        except (QueryError, TransactionError) as ex:
+            self.logger.error(u'Deregister api object: %s - ERROR' % (ex.desc))
+            raise ApiManagerError(ex.desc, code=400)
+        
+        # deregister permission tags
+        self.deregister_object_permtags(args)        
+        
+        # deregister child classes
+        for child in self.child_classes:
+            child(self.controller, self).deregister_object(args)        
     
     def set_admin_permissions(self, role_name, args):
         """Set admin permissions
         """
         try:
-            role, total = self.dbauth.get_roles(name=role_name)
-            perms, total = self.dbauth.get_permission_by_object(
+            role = self.auth_db_manager.get_entity(Role, role_name)
+            perms, total = self.auth_db_manager.get_permission_by_object(
                                     objid=self._get_value(self.objdef, args),
                                     objtype=None, 
                                     objdef=self.objdef,
                                     action=u'*')            
             
             # set container main permissions
-            self.dbauth.append_role_permissions(role[0], perms)
+            self.auth_db_manager.append_role_permissions(role, perms)
+            
+            # set child resources permissions
+            for child in self.child_classes:
+                res = child(self.controller, self)
+                res.set_admin_permissions(role_name, self._get_value(
+                            res.objdef, args).split(u'//'))            
+        except Exception as ex:
+            self.logger.error(ex, exc_info=1)
+            raise ApiManagerError(ex, code=400)
+
+class ApiViewResponse(ApiObject):
+    objtype = u'api'
+    objdef = u'Response'
+    objdesc = u'Api Response'
+    
+    event_ref_class = ApiInternalEvent
+    
+    def __init__(self, *args, **kvargs):
+        ApiObject.__init__(self, *args, **kvargs)
+        self.auth_db_manager = AuthDbManager()    
+    
+    @property
+    def manager(self):
+        return self.controller.manager    
+    
+    def init_object(self):
+        """Register object types, objects and permissions related to module.
+        Call this function when initialize system first time.
+        """
+        try:
+            # call only once during db initialization
+            # add object type
+            obj_types = [(self.objtype, self.objdef)]
+            self.auth_db_manager.add_object_types(obj_types)
+            
+            # add object and permissions
+            obj_type = self.auth_db_manager.get_object_type(
+                objtype=self.objtype, objdef=self.objdef)[0][0]
+            objs = [(obj_type, self._get_value(self.objdef, []), self.objdesc)]
+            actions = self.auth_db_manager.get_object_action()
+            self.auth_db_manager.add_object(objs, actions)
+            
+            # register event related to ApiObject
+            self.event_class(self.controller).init_object()
+            
+            self.logger.debug(u'Register api object: %s' % objs)
+        except (QueryError, TransactionError) as ex:
+            self.logger.warn(ex.desc)    
+    
+    def set_admin_permissions(self, role_name, args):
+        """Set admin permissions
+        """
+        try:
+            role = self.auth_db_manager.get_entity(Role, role_name)
+            perms, total = self.auth_db_manager.get_permission_by_object(
+                                    objid=self._get_value(self.objdef, args),
+                                    objtype=None, 
+                                    objdef=self.objdef,
+                                    action=u'*')            
+            
+            # set container main permissions
+            self.auth_db_manager.append_role_permissions(role, perms)
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
@@ -1916,6 +2219,7 @@ class ApiViewResponse(ApiObject):
         self.event_class(self.controller, objid=objid, data=data, action=action)\
             .publish(self.objtype, self.API_OPERATION)
 
+'''
 http_method_funcs = frozenset(['get', 'post', 'head', 'options',
                                'delete', 'put', 'trace', 'patch'])
 
@@ -1941,6 +2245,7 @@ class MethodViewType2(type):
         return rv
     
 flask.views.MethodViewType = MethodViewType2 
+'''
 
 '''
 from flask._compat import with_metaclass

@@ -8,7 +8,8 @@ from beecell.simple import import_class, truncate, id_gen, str2uni
 from beecell.db import ModelError, QueryError, TransactionError
 from beehive.common.apiclient import BeehiveApiClientError
 from beehive.common.apimanager import ApiController, ApiManagerError, ApiObject
-from beehive.module.catalog.model import CatalogDbManager
+from beehive.module.catalog.model import CatalogDbManager, \
+    Catalog as ModelCatalog, CatalogEndpoint as ModelEndpoint
 from beehive.common.controller.authorization import BaseAuthController,\
     AuthObject
 from beehive.common.data import trace
@@ -108,11 +109,21 @@ class CatalogController(BaseAuthController):
 
     def count_all_catalogs(self):
         """Get all catalogs count"""
-        return self.manager.count()
+        return self.manager.count_entities(ModelCatalog)
 
     def count_all_catalog_services(self):
         """Get all catalog services count"""
-        return self.manager.count_services()
+        return self.manager.count_entities(ModelEndpoint)
+
+    @trace(entity=u'Catalog', op=u'view')
+    def get_catalog(self, oid):
+        """Get single catalog.
+
+        :param oid: entity model id or name or uuid         
+        :return: Catalog
+        :raises ApiManagerError: raise :class:`ApiManagerError`
+        """
+        return self.get_object(Catalog, ModelCatalog, oid) 
 
     @trace(entity=u'Catalog', op=u'view')
     def get_catalogs(self, oid=None, objid=None, name=None, zone=None):
@@ -156,7 +167,17 @@ class CatalogController(BaseAuthController):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
         
-    @trace(entity=u'Catalog', op=u'endpoints.view')
+    @trace(entity=u'CatalogEndpoint', op=u'view')
+    def get_endpoint(self, oid):
+        """Get single catalog endpoint.
+
+        :param oid: entity model id or name or uuid         
+        :return: Group
+        :raises ApiManagerError: raise :class:`ApiManagerError`
+        """
+        return self.get_object(CatalogEndpoint, ModelEndpoint, oid)         
+        
+    @trace(entity=u'CatalogEndpoint', op=u'view')
     def get_endpoints(self, oid=None, objid=None, name=None, service=None,
                       catalog_id=None):
         """Get endpoints.
@@ -173,8 +194,6 @@ class CatalogController(BaseAuthController):
         objs = self.can(u'view', CatalogEndpoint.objtype, 
                         definition=CatalogEndpoint.objdef)
         objset = set(objs[CatalogEndpoint.objdef.lower()])
-        #opts = {u'oid':oid, u'objid':objid, u'name':name, 
-        #        u'service':service, u'catalog':catalog_id}
         
         try:
             try:
@@ -197,7 +216,7 @@ class CatalogController(BaseAuthController):
                     catalog = cat_idx[i.catalog_id]
                     obj = CatalogEndpoint(self, catalog, oid=i.id, 
                                           objid=i.objid, name=i.name, 
-                                          desc=i.desc, active=i.enabled, model=i)
+                                          desc=i.desc, active=i.active, model=i)
                     # append endpoint   
                     res.append(obj)
 
@@ -215,60 +234,33 @@ class Catalog(AuthObject):
     objuri = u'catalog'
     objdesc = u'Catalog'
     
-    def __init__(self, controller, oid=None, objid=None, name=None, desc=None, 
-                 active=None, model=None):
+    def __init__(self, *args, **kvargs):
         """ """
-        ApiObject.__init__(self, controller, oid=oid, objid=objid, name=name, 
-                           desc=desc, active=active)
-        #self.catalog_classes = [CatalogEndpoint]
-        self.model = model
-        self.objuri = u'/%s/%s/%s' % (self.controller.version, self.objuri, self.oid)
+        AuthObject.__init__(self, *args, **kvargs)
+
+        #self.objuri = u'/%s/%s/%s' % (self.controller.version, self.objuri, self.oid)
         
         if self.model is not None:
             self.zone = self.model.zone
-            self.uuid = self.model.uuid
             
         # child classes
-        self.child_classes = [CatalogEndpoint]        
-    
-    #@property
-    #def dbauth(self):
-    #    return self.controller.dbauth    
-    
-    @property
-    def manager(self):
-        return self.controller.manager
+        self.child_classes = [CatalogEndpoint]
 
     def info(self):
-        """Get system capabilities.
+        """Get object info
         
-        :return: Dictionary with system capabilities.
+        :return: Dictionary with object info.
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
-        """    
-        creation_date = str2uni(self.model.creation_date.strftime(u'%d-%m-%Y %H:%M:%S'))
-        modification_date = str2uni(self.model.modification_date.strftime(u'%d-%m-%Y %H:%M:%S'))
-        return {
-            u'id':self.oid,
-            u'uuid':self.uuid,
-            u'type':self.objtype, 
-            u'definition':self.objdef, 
-            u'name':self.name, 
-            u'objid':self.objid, 
-            u'desc':self.desc, 
-            u'uri':self.objuri, 
-            u'zone':self.zone, 
-            u'active':self.active, 
-            u'date':{
-                u'creation':creation_date,
-                u'modification':modification_date
-            }
-        }
+        """
+        info = self.info()
+        info.update({u'zone':self.zone})
+        return info
 
     def detail(self):
-        """Get system details.
+        """Get object extended info
         
-        :return: Dictionary with system capabilities.
+        :return: Dictionary with object detail.
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
@@ -282,68 +274,6 @@ class Catalog(AuthObject):
         return info
 
     '''
-    def init_object(self):
-        """Register object types, objects and permissions related to module.
-        Call this function when initialize system first time.
-        
-        :param args: 
-        """
-        ApiObject.init_object(self)
-            
-        # register catalog managed endpoints
-        for catalog_class in self.catalog_classes:
-            catalog_class(self.controller, self).init_object()
-            
-        # add full permissions to superadmin role
-        #self.set_superadmin_permissions()
-
-    def register_object(self, args, desc=u''):
-        """Register object types, objects and permissions related to module.
-        
-        :param args: 
-        """
-        ApiObject.register_object(self, args, desc=self.desc)
-        
-        # register catalog managed endpoints
-        for catalog_class in self.catalog_classes:
-            i = catalog_class.objdesc.index(u' ')
-            desc = u'%s%s' % (self.desc, catalog_class.objdesc[i:])
-            catalog_class(self.controller, self).register_object(args, desc=desc)           
-            
-    def deregister_object(self, args):
-        """Deregister object types, objects and permissions related to module.
-        
-        :param args: 
-        """
-        ApiObject.deregister_object(self, args)
-        
-        # deregister catalog managed endpoints
-        for catalog_class in self.catalog_classes:
-            catalog_class(self.controller, self).deregister_object(args)
-
-    def set_admin_permissions(self, role_name, args):
-        """ """
-        try:
-            role, total = self.dbauth.get_roles(name=role_name)
-            perms, total = self.dbauth.get_permission_by_object(
-                                    objid=self._get_value(self.objdef, args),
-                                    objtype=None, 
-                                    objdef=self.objdef,
-                                    action=u'*')            
-            
-            # set container main permissions
-            self.dbauth.append_role_permissions(role[0], perms)
-
-            # set catalog child resources permissions
-            for catalog_class in self.catalog_classes:
-                res = catalog_class(self.controller, self)
-                res.set_admin_permissions(role_name, self._get_value(
-                            res.objdef, args).split(u'//'))
-        except Exception as ex:
-            self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=400)
-    '''
-
     @trace(op=u'update')
     def update(self, new_name=None, new_desc=None, new_zone=None):
         """Update catalog.
@@ -381,11 +311,6 @@ class Catalog(AuthObject):
         """
         # check authorization
         self.verify_permisssions(u'delete')
-        #opts = {u'name':self.name}
-        
-        # remove container admin role
-        #self._remove_admin_role(self.objid)
-
         try:
             # create object and permission
             self.deregister_object([self.objid])
@@ -398,13 +323,18 @@ class Catalog(AuthObject):
             #self.send_event(u'update', opts, exception=ex)   
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
+    '''
 
     @trace(op=u'endpoints.insert')
-    def add_endpoint(self, name, desc, service, uri, enabled=True):
+    def add_endpoint(self, name, desc, service, uri, active=True):
         """Add endpoint.
         
-        :param endpoint: Service endpoint
-        :return: True if success
+        :param name: endpoint name
+        :param desc: endpoint desc
+        :param service: endpoint service
+        :param uri: endpoint uri
+        :param active: endpoint status
+        :return: endpoint id
         :rtype: bool 
         :raises ApiManagerError: raise :class:`ApiManagerError`
         :raises ApiAuthorizationError: raise :class:`ApiAuthorizationError`
@@ -413,24 +343,20 @@ class Catalog(AuthObject):
         self.controller.check_authorization(CatalogEndpoint.objtype, 
                                             CatalogEndpoint.objdef, 
                                             self.objid, u'insert')
-        #opts = {u'objid':objid, u'name':name, u'service':service, u'uri':uri,
-        #        u'enabled':enabled}
         
         try:
             # create catalog endpoint reference
-            objid = "%s//%s" % (self.objid, id_gen())            
+            objid = u'%s//%s' % (self.objid, id_gen())            
             res = self.manager.add_endpoint(objid, name, service, desc, self.oid, 
-                                            uri, enabled)
+                                            uri, active)
             
             # create object and permission
-            CatalogEndpoint(self.controller).register_object(objid.split('//'), 
-                                                            desc=desc)
+            CatalogEndpoint(self.controller).register_object(
+                objid.split(u'//'), desc=desc)
             
-            self.logger.debug('Add catalog endpoint: %s' % truncate(res))
-            #self.send_event(u'endpoint.insert', opts) 
+            self.logger.debug(u'Add catalog endpoint: %s' % truncate(res))
             return res.id
-        except (QueryError, TransactionError, ModelError) as ex:
-            #self.send_event(u'endpoint.insert', opts, exception=ex)          
+        except (QueryError, TransactionError, ModelError) as ex:      
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -469,7 +395,7 @@ class Catalog(AuthObject):
                 if self.controller.has_needs(needs, objset) is True:
                     obj = CatalogEndpoint(self.controller, self, oid=i.id, 
                                          objid=i.objid, name=i.name, desc=i.desc, 
-                                         active=i.enabled, model=i)
+                                         active=i.active, model=i)
                     # append endpoint   
                     res.append(obj)
 
@@ -518,10 +444,11 @@ class CatalogEndpoint(AuthObject):
     def __init__(self, controller, catalog=None, oid=None, objid=None, name=None, 
                  desc=None, active=None, model=None):
         """ """
-        ApiObject.__init__(self, controller, oid=oid, objid=objid, name=name, 
-                           desc=desc, active=active)
+        AuthObject.__init__(self, controller, oid=oid, objid=objid, name=name, 
+                           desc=desc, active=active, model=model)
+        
         self.catalog = catalog
-        self.model = model
+
         if self.model is not None:
             self.endpoint = self.model.uri
             self.service = self.model.service
@@ -531,92 +458,46 @@ class CatalogEndpoint(AuthObject):
             self.objuri = u'%s/%s/%s' % (self.catalog.objuri, self.objuri, self.oid)
     
     def __repr__(self):
-        return "<%s id='%s' objid='%s' name='%s' catalog='%s'>" % (
+        return "<%s id=%s objid=%s name=%s catalog=%s>" % (
                     self.__class__.__name__, self.oid, self.objid,
                     self.name, self.catalog.name)
 
-    @property
-    def dbauth(self):
-        return self.controller.dbauth
-    
-    @property
-    def manager(self):
-        return self.controller.manager
-
     def info(self):
-        """Get endpoint infos.
+        """Get object info
         
-        :return: Dictionary with system capabilities.
+        :return: Dictionary with object info.
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
-        # verify permissions
-        self.controller.check_authorization(self.objtype, self.objdef, 
-                                            self.objid, 'view')
-          
-        creation_date = str2uni(self.model.creation_date.strftime(u'%d-%m-%Y %H:%M:%S'))
-        modification_date = str2uni(self.model.modification_date.strftime(u'%d-%m-%Y %H:%M:%S'))   
-        return {
-            u'id':self.oid,
-            u'uuid':self.uuid,
-            u'type':self.objtype, 
-            u'definition':self.objdef, 
-            u'name':self.name, 
-            u'objid':self.objid, 
-            u'desc':self.desc,
+        info = self.info()
+        info.update({
             u'catalog':self.catalog.name, 
             u'catalog_id':self.catalog.oid,
             u'uri':self.objuri, 
             u'service':self.model.service,
-            u'endpoint':self.model.uri,
-            u'active':self.active, 
-            u'date':{
-                u'creation':creation_date,
-                u'modification':modification_date
-            }
-        }
-    
+            u'endpoint':self.model.uri            
+        })
+        return info
+
     def detail(self):
-        """Get endpoint details.
+        """Get object extended info
         
-        :return: Dictionary with system capabilities.
+        :return: Dictionary with object detail.
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
-        return self.info()
+        info = self.info()
+        return info
 
-    def init_object(self):
-        """Register object types, objects and permissions related to module.
-        Call this function when initialize system first time.
-        
-        :param args: 
-        """
-        ApiObject.init_object(self)
-
-    def set_admin_permissions(self, role_name, args):
-        """ """
-        try:
-            role, total = self.dbauth.get_roles(name=role_name)
-            perms, total = self.dbauth.get_permission_by_object(
-                                    objid=self._get_value(self.objdef, args),
-                                    objtype=None, 
-                                    objdef=self.objdef,
-                                    action=u'*')            
-            
-            # set container main permissions
-            self.dbauth.append_role_permissions(role[0], perms)
-        except Exception as ex:
-            self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=400)
-
+    '''
     @trace(op=u'update')
     def update(self, new_name=None, new_desc=None, new_service=None, new_uri=None,
-               new_enabled=None, new_catalog=None):
+               new_active=None, new_catalog=None):
         """Update catalog service.
 
         :param new_name str: new  name. [optional]
         :param new_desc str: new description [optional]
-        :param new_enabled bool:  Status. If True is active [optional]
+        :param new_active bool:  Status. If True is active [optional]
         :param new_uri str: new uri [optional]
         :param new_service str: new service [optional]
         :param new_catalog: endpoint catalog id [optional]
@@ -628,7 +509,7 @@ class CatalogEndpoint(AuthObject):
         self.verify_permisssions(u'update')
 
         #opts = {u'oid':self.oid, u'name':new_name, u'desc':new_desc,
-        #        u'uri':new_uri, u'service':new_service, u'enabled':new_enabled, 
+        #        u'uri':new_uri, u'service':new_service, u'active':new_active, 
         #        u'catalog':new_catalog}
         
         try:
@@ -638,7 +519,7 @@ class CatalogEndpoint(AuthObject):
                                                new_service=new_service,
                                                new_uri=new_uri,
                                                new_catalog=new_catalog,
-                                               new_enabled=new_enabled)         
+                                               new_active=new_active)         
             
             self.logger.debug('Update catalog %s service %s: %s' % 
                               (self.catalog.name, self.name, res))
@@ -674,6 +555,7 @@ class CatalogEndpoint(AuthObject):
             self.logger.error(ex, exc_info=1)
             #self.send_event(u'update', opts, exception=ex)        
             raise ApiManagerError(ex, code=ex.code)
+    '''
 
     '''
     def authorization(self):

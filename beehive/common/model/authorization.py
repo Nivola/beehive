@@ -20,11 +20,11 @@ from beecell.perf import watch
 from beecell.simple import truncate
 from beecell.db import ModelError
 from uuid import uuid4
-from beehive.common.data import operation, query, transaction
+from beehive.common.data import operation, query, netsted_transaction
 
 #Base = declarative_base()
 
-from beehive.common.model import Base, AbstractDbManager
+from beehive.common.model import Base, AbstractDbManager, ApiObject
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +32,28 @@ logger = logging.getLogger(__name__)
 #role_user = Table('roles_users', Base.metadata,
 #    Column('user_id', Integer(), ForeignKey('user.id')),
 #    Column('role_id', Integer(), ForeignKey('role.id')))
+
+# Many-to-Many Relationship among groups and system roles
+role_group = Table('roles_groups', Base.metadata,
+    Column('group_id', Integer(), ForeignKey('group.id')),
+    Column('role_id', Integer(), ForeignKey('role.id')))
+
+# Many-to-Many Relationship among groups and users
+group_user = Table('groups_users', Base.metadata,
+    Column('group_id', Integer, ForeignKey('group.id')),
+    Column('user_id', Integer, ForeignKey('user.id')))
+
+# Many-to-Many Relationship among system roles and objects permissions
+role_permission = Table('role_permission', Base.metadata,
+    Column('role_id', Integer, ForeignKey('role.id')),
+    Column('permission_id', Integer, ForeignKey('sysobject_permission.id'))
+)
+
+# Many-to-Many Relationship among system role_templates and policies
+role_template_policy = Table('role_template_policy', Base.metadata,
+    Column('role_template_id', Integer, ForeignKey('role_template.id')),
+    Column('policy_id', Integer, ForeignKey('syspolicy.id'))
+)
 
 class RoleUser(Base):
     __tablename__ = u'roles_users'
@@ -59,51 +81,35 @@ class RoleUser(Base):
         return u"<RoleUser user='%s' role='%s' expiry='%s'>" % (self.user_id,
                 self.role_id, self.expiry_date)    
 
-# Many-to-Many Relationship among groups and system roles
-role_group = Table('roles_groups', Base.metadata,
-    Column('group_id', Integer(), ForeignKey('group.id')),
-    Column('role_id', Integer(), ForeignKey('role.id')))
+# Systems role templates
+class RoleTemplate(Base, ApiObject):
+    __tablename__ = u'role_template'
 
-# Many-to-Many Relationship among groups and users
-group_user = Table('groups_users', Base.metadata,
-    Column('group_id', Integer, ForeignKey('group.id')),
-    Column('user_id', Integer, ForeignKey('user.id')))
+    policy = relationship(u'SysPolicy', secondary=role_template_policy,
+                          backref=backref(u'role_template', lazy=u'dynamic'))
 
-# Many-to-Many Relationship among system roles and objects permissions
-role_permission = Table('role_permission', Base.metadata,
-    Column('role_id', Integer, ForeignKey('role.id')),
-    Column('permission_id', Integer, ForeignKey('sysobject_permission.id'))
-)
+    def __init__(self, objid, name, policy, desc=u'', active=True):
+        ApiObject.__init__(self, objid, name, desc, active)
+        
+        self.policy = policy 
 
 # Systems roles
-class Role(Base):
+class Role(Base, ApiObject):
     __tablename__ = u'role'
-    __table_args__ = {u'mysql_engine':u'InnoDB'}
-        
-    id = Column(Integer(), primary_key=True)
-    uuid = Column(String(50), unique=True)
-    objid = Column(String(400))
-    name = Column(String(80), unique=True)
-    description = Column(String(255))
-    creation_date = Column(DateTime())
-    modification_date = Column(DateTime())    
+
     permission = relationship(u'SysObjectPermission', secondary=role_permission,
                               backref=backref(u'role', lazy=u'dynamic'))
     user = relationship(u'RoleUser', back_populates=u'role')
+    template = Column(Integer())
 
-    def __init__(self, objid, name, permission, description=u''):
-        self.uuid = str(uuid4())
-        self.objid = objid
-        self.name = name
-        self.description = description
+    def __init__(self, objid, name, permission, desc=u'', active=True):
+        ApiObject.__init__(self, objid, name, desc, active)
+        
         self.permission = permission
-
-        self.creation_date = datetime.datetime.today()
-        self.modification_date = self.creation_date        
     
-    def __repr__(self):
-        return u"<Role id='%s' name='%s' desc='%s')>" % (
-                    self.id, self.name, self.description)
+    #def __repr__(self):
+    #    return u"<Role id='%s' name='%s' desc='%s')>" % (
+    #                self.id, self.name, self.desc)
 
 # Systems roles
 class UserAttribute(Base):
@@ -129,53 +135,36 @@ class UserAttribute(Base):
         self.desc = desc
     
     def __repr__(self):
-        return "<UserAttribute id='%s' user='%s' name='%s' value='%s'>" % (
+        return "<UserAttribute id=%s user=%s name=%s value=%s>" % (
                     self.id, self.user_id, self.name, self.value)
 
-class User(Base):
+class User(Base, ApiObject):
     """User
     
     :param type: can be DBUSER, LDAPUSER 
     """
     __tablename__ = u'user'
-    __table_args__ = {u'mysql_engine':u'InnoDB'}    
-    
-    id = Column(Integer, primary_key=True)
-    uuid = Column(String(50), unique=True)
-    objid = Column(String(400))
-    name = Column(String(50), unique=True)
-    description = Column(String(255))
-    creation_date = Column(DateTime())
-    modification_date = Column(DateTime())
-    expiry_date = Column(DateTime())
+
     password = Column(String(150))
-    #role = relationship('Role', secondary=role_user,
-    #                    backref=backref('user', lazy='dynamic'))
     role = relationship(u'RoleUser', back_populates=u'user')
     attrib = relationship(u'UserAttribute')
-    active = Column(Boolean())
 
-    def __init__(self, objid, username, active=True, password=None, 
-                 description=u'', expiry_date=None):
+    def __init__(self, objid, name, active=True, password=None, 
+                 desc=u'', expiry_date=None):
         """Create new user
         
         :param objid: authorization id
         :param username: name of the user
         :param active: set if user is active [default=True]
         :param password: user password [optional]
-        :param description: user description [default='']
+        :param desc: user desc [default='']
         :param expiry_date: user expiry date [default=365 days]. Set using a 
                 datetime object
         """
-        self.uuid = str(uuid4())
-        self.objid = objid
-        self.name = username
-        self.role = []
-        self.active = active
-        self.description = description
+        ApiObject.__init__(self, objid, name, desc, active)
         
-        self.creation_date = datetime.datetime.today()
-        self.modification_date = self.creation_date
+        self.role = []
+        
         if expiry_date is None:
             expiry_date = datetime.datetime.today()+datetime.timedelta(days=365)
         self.expiry_date = expiry_date
@@ -185,50 +174,39 @@ class User(Base):
             #self.password = sha256_crypt.encrypt(password)
             self.password = bcrypt.hashpw(str(password), bcrypt.gensalt(14))
     
-    def __repr__(self):
-        return u"<User id='%s' name='%s' desc='%s' active='%s'>" % (
-                    self.id, self.name, self.description, self.active)
+    #def __repr__(self):
+    #    return u"<User id='%s' name='%s' desc='%s' active='%s'>" % (
+    #                self.id, self.name, self.desc, self.active)
 
-    @watch
     def _check_password(self, password):
         # verifying the password
         res = bcrypt.checkpw(str(password), str(self.password))
         #res = sha256_crypt.verify(password, self.password)
         return res
 
-class Group(Base):
+class Group(Base, ApiObject):
     __tablename__ = u'group'
-    __table_args__ = {u'mysql_engine':u'InnoDB'}    
-        
-    id = Column(Integer(), primary_key=True)
-    uuid = Column(String(50), unique=True)
-    objid = Column(String(400))
-    name = Column(String(80), unique=True)
-    description = Column(String(255))
-    creation_date = Column(DateTime())
-    modification_date = Column(DateTime())
-    active = Column(Boolean())
+
     member = relationship(u'User', secondary=group_user,
                           backref=backref(u'group', lazy=u'dynamic'))
     role = relationship(u'Role', secondary=role_group,
                         backref=backref(u'group', lazy=u'dynamic'))    
     
     #init member value to an empty list when creating a group
-    def __init__(self, objid, name, member=[], role=[], description=None):
-        self.uuid = str(uuid4())
-        self.objid = objid
-        self.name = name
-        self.description = description
+    def __init__(self, objid, name, member=[], role=[], desc=None, active=True, 
+                 expiry_date=None):
+        ApiObject.__init__(self, objid, name, desc, active)
+        
         self.member = member
         self.role = role
-        self.active = True
-        
-        self.creation_date = datetime.datetime.today()
-        self.modification_date = self.creation_date        
+      
+        if expiry_date is None:
+            expiry_date = datetime.datetime.today()+datetime.timedelta(days=365)
+        self.expiry_date = expiry_date      
     
-    def __repr__(self):
-        return u"<Group id='%s' name='%s' desc='%s'>" % (
-                    self.id, self.name, self.description)
+    #def __repr__(self):
+    #    return u"<Group id='%s' name='%s' desc='%s'>" % (
+    #                self.id, self.name, self.desc)
 
 # System object types
 class SysObjectType(Base):
@@ -253,32 +231,24 @@ class SysObjectType(Base):
         self.creation_date = datetime.datetime.today()   
     
     def __repr__(self):
-        return u"<SysObjectType id='%s' type='%s' def='%s'>" % (
+        return u"<SysObjectType id=%s type=%s def=%s>" % (
                     self.id, self.objtype, self.objdef)
 
 # System objects
-class SysObject(Base):
+class SysObject(Base, ApiObject):
     __tablename__ = u'sysobject'
-    __table_args__ = {u'mysql_engine':u'InnoDB'}    
-    
-    id = Column(Integer, primary_key=True)
-    uuid = Column(String(50), unique=True)
-    objid = Column(String(500), default=u'')
-    desc = Column(String(100), default=u'')
-    type_id = Column(Integer(), ForeignKey(u'sysobject_type.id'))
-    type = relationship(u"SysObjectType", backref=u"sysobject")
-    creation_date = Column(DateTime())
-    modification_date = Column(DateTime())    
 
-    def __init__(self, otype, objid, desc=''):
-        self.objid = objid
-        self.type = otype
-        self.desc = desc
-        self.creation_date = datetime.datetime.today()
-        self.modification_date = self.creation_date        
+    name = Column(String(100))
+    type_id = Column(Integer(), ForeignKey(u'sysobject_type.id'))
+    type = relationship(u"SysObjectType", backref=u"sysobject") 
+
+    def __init__(self, otype, objid, desc=u''):
+        ApiObject.__init__(self, objid, u'', desc, True)
+        
+        self.type = otype     
     
     def __repr__(self):
-        return u"<SysObject id='%s' type='%s' def='%s' objid='%s'>" % (
+        return u"<SysObject id=%s type=%s def=%s objid=%s>" % (
                     self.id, self.type.objtype, self.type.objdef, self.objid)
 
 # System object actions
@@ -293,7 +263,7 @@ class SysObjectAction(Base):
         self.value = value
     
     def __repr__(self):
-        return u"<SysObjectAction id='%s' value='%s'>" % (self.id, self.value)
+        return u"<SysObjectAction id=%s value=%s>" % (self.id, self.value)
 
 # System object permissions
 class SysObjectPermission(Base):
@@ -311,9 +281,29 @@ class SysObjectPermission(Base):
         self.action = action
         
     def __repr__(self):
-        return u"<SysObjectPermission id='%s' type='%s' def='%s' objid='%s' action='%s'>" % (
+        return u"<SysObjectPermission id=%s type=%s def=%s objid=%s action=%s>" % (
                     self.id, self.obj.type.objtype, self.obj.type.objdef, 
                     self.obj.objid, self.action.value)
+        
+# System object policy
+class SysPolicy(Base):
+    __tablename__ = u'syspolicy'
+    __table_args__ = {u'mysql_engine':u'InnoDB'}    
+    
+    id = Column(Integer, primary_key=True)
+    type_id = Column(Integer(), ForeignKey(u'sysobject_type.id'))
+    type = relationship(u"SysObjectType", backref=u"sysobject_type") 
+    action_id = Column(Integer(), ForeignKey(u'sysobject_action.id'))
+    action = relationship(u'SysObjectAction')
+
+    def __init__(self, type, action):
+        self.type = type
+        self.action = action
+        
+    def __repr__(self):
+        return u"<SysPolicy id=%s type=%s def=%s action=%s>" % (
+                    self.id, self.type.objtype, self.type.objdef, 
+                    self.action.value)        
 
 class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
     """Authorization db manager                                                                                    
@@ -325,7 +315,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
     def set_initial_data(self):
         """Set initial data.
         """
-        @transaction(self.get_session())
+        @netsted_transaction(self.get_session())
         def func(session):
             # object actions
             actions = [u'*', u'view', u'insert', u'update', u'delete', u'use']
@@ -381,7 +371,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug('Get object types: %s' % truncate(ot))
         return ot, total
 
-    @transaction
+    @netsted_transaction
     def add_object_types(self, items):
         """Add a list of system object types.
         
@@ -404,10 +394,10 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         session.add_all(data)
         session.flush()
         
-        self.logger.debug('Add object types: %s' % data)
+        self.logger.debug(u'Add object types: %s' % data)
         return data
 
-    @transaction
+    @netsted_transaction
     def remove_object_type(self, oid=None, objtype=None, objdef=None):
         """Remove system object type.
         
@@ -462,7 +452,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug('Get object action: %s' % truncate(oa))
         return oa
 
-    @transaction
+    @netsted_transaction
     def add_object_actions(self, items):
         """Add a list of system object actions.
         
@@ -481,7 +471,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug('Add object action: %s' % data)
         return data
 
-    @transaction
+    @netsted_transaction
     def remove_object_action(self, oid=None, value=None):
         """Remove system object action.
         
@@ -581,7 +571,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug(u'Get objects: %s' % truncate(res))
         return res, total
 
-    @transaction
+    @netsted_transaction
     def add_object(self, objs, actions):
         """Add a system object.
         
@@ -599,24 +589,24 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
                              filter_by(objid=obj[1]). \
                              filter_by(type=obj[0]).first()
             if sysobj is not None:
-                self.logger.error("Object %s already exists" % sysobj)
-                raise ModelError('Object %s already exists' % sysobj, code=409)
+                self.logger.error(u'Object %s already exists' % sysobj)
+                raise ModelError(u'Object %s already exists' % sysobj, code=409)
             
             # add object
             sysobj = SysObject(obj[0], obj[1], desc=obj[2])
             session.add(sysobj)
             session.flush()
-            self.logger.debug('Add system object: %s' % sysobj)
+            self.logger.debug(u'Add system object: %s' % sysobj)
             
             # add permissions
             for action in actions: 
                 perm = SysObjectPermission(sysobj, action)
                 session.add(perm)
-            self.logger.debug('Add system object %s permissions' % sysobj.id)
+            self.logger.debug(u'Add system object %s permissions' % sysobj.id)
         
         return sysobj.id
 
-    @transaction
+    @netsted_transaction
     def update_object(self, new_objid, oid=None, objid=None, objtype=None):
         """Delete system object filtering by id, by name or by type.
         
@@ -647,7 +637,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug('Update objects: %s' % data)
         return True
 
-    @transaction
+    @netsted_transaction
     def remove_object(self, oid=None, objid=None, objtype=None):
         """Delete system object filtering by id, by name or by type.
         
@@ -828,42 +818,27 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
     #
     # Role manipulation methods
     #
-    @query
-    def count_role(self):
-        """Count role.
-        """
-        return self.count_entites(User)      
-    
-    @watch
     def get_roles(self, *args, **kvargs):
-        """Get scopes
+        """Get roles
         
-        :param int oid: entity id. [optional]
-        :param str objid: entity authorization id. [optional]
-        :param str uuid: entity uuid. [optional]
-        :param str name: entity name. [optional]      
-        :param active: role status [Optional]
-        :param expiry_date: list role with expiry_date >= expiry_date [Optional]
-        :param page: entities list page to show [default=0]
-        :param size: number of entities to show in list per page [default=0]
+        :param tags: list of permission tags
+        :param name: name like [optional]
+        :param active: active [optional]
+        :param creation_date: creation_date [optional]
+        :param modification_date: modification_date [optional]
+        :param expiry_date: expiry_date [optional]       
+        :param page: users list page to show [default=0]
+        :param size: number of users to show in list per page [default=0]
         :param order: sort order [default=DESC]
-        :param field: sort field [default=id]        
+        :param field: sort field [default=id]
+        :return: list of :class:`Role`   
         :raises QueryError: raise :class:`QueryError`
         """
-        def filters(query, *args, **kvargs):
-            '''# get filter field
-            active = kvargs.get(u'active', None)
-            expiry_date = kvargs.get(u'expiry_date', None) 
-            
-            # create query
-            if active is not None:
-                query = query.filter_by(active=active)            
-            if expiry_date is not None:
-                query = query.filter_by(expiry_date>=expiry_date)'''
-            return query       
-
-        res, total = self.get_paginated_entities(Role, filters, *args, **kvargs)
-        return res, total  
+        filters = []
+        res, total = self.get_paginated_entities(Role, filters=filters, 
+                                                 *args, **kvargs)     
+        
+        return res, total
     
     '''
     @query
@@ -1015,24 +990,20 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug('Get permission %s roles: %s' % (perm, truncate(roles)))
         return roles, total       
         
-    @transaction
-    def add_role(self, objid, name, description):
+    def add_role(self, objid, name, desc):
         """Add a role.
         
+        :param objid: role objid
         :param name: role name
-        :param description: role descriptionuser_type
+        :param permissions: list of permission
+        :param desc: role desc
         :return: True if operation is successful, False otherwise
         :rtype: bool
         :raises TransactionError: raise :class:`TransactionError`
         """
-        session = self.get_session()       
-        data = Role(objid, name, [], description=description)
-        session.add(data)
-        session.flush()
-        self.logger.debug(u'Add role : %s' % (data))
-        return data
+        res = self.add_entity(Role, objid, name, [], desc=desc, active=True)
+        return res
 
-    @watch
     def update_role(self, *args, **kvargs):
         """Update role. Extend :function:`update_entity`
 
@@ -1040,13 +1011,12 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         :param str objid: entity authorization id. [optional]
         :param str uuid: entity uuid. [optional]
         :param str name: entity name. [optional]
-        :param description: role description. [optional]
+        :param desc: role desc. [optional]
         :raises TransactionError: raise :class:`TransactionError`
         """
         res = self.update_entity(Role, *args, **kvargs)
         return res  
     
-    @watch
     def remove_role(self, *args, **kvargs):
         """Remove role.
         
@@ -1060,16 +1030,16 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         return res
 
     '''
-    @transaction
+    @netsted_transaction
     def update_role(self, oid=None, objid=None, name=None, new_name=None, 
-                    new_description=None):
+                    new_desc=None):
         """Update a role.
         
         :param oid: role id [optional] 
         :param objid: role objid [optional] 
         :param name: role name [optional] 
         :param new_name: new role name [optional] 
-        :param new_description: new role description [optional]
+        :param new_desc: new role desc [optional]
         :return: True if operation is successful, False otherwise
         :rtype: bool
         :raises TransactionError: raise :class:`TransactionError`
@@ -1092,8 +1062,8 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         data = {}
         if new_name is not None: 
             data['name'] = new_name
-        if new_description  is not None:
-            data['description'] = new_description
+        if new_desc  is not None:
+            data['desc'] = new_desc
         if new_name is not None or new_description is not None:
             data['modification_date'] = datetime.datetime.today()
             role.update(data)
@@ -1101,7 +1071,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug('Update role %s with data %s' % (name, data))
         return True
     
-    @transaction
+    @netsted_transaction
     def remove_role(self, role_id=None, name=None):
         """Remove a role. Specify at least role id or role name.
         
@@ -1126,7 +1096,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             self.logger.error("No role found")
             raise ModelError('No role found')'''
 
-    @transaction
+    @netsted_transaction
     def append_role_permissions(self, role, perms):
         """Append permission to role
         
@@ -1150,7 +1120,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug(u'Append to role %s permissions: %s' % (role, perms))
         return append_perms
     
-    @transaction
+    @netsted_transaction
     def remove_role_permission(self, role, perms):
         """Remove permission from role
  
@@ -1182,34 +1152,26 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
     
     @watch
     def get_groups(self, *args, **kvargs):
-        """Get scopes
+        """Get groups
         
-        :param int oid: entity id. [optional]
-        :param str objid: entity authorization id. [optional]
-        :param str uuid: entity uuid. [optional]
-        :param str name: entity name. [optional]      
-        :param active: group status [Optional]
-        :param expiry_date: list group with expiry_date >= expiry_date [Optional]
-        :param page: entities list page to show [default=0]
-        :param size: number of entities to show in list per page [default=0]
+        :param tags: list of permission tags
+        :param name: name like [optional]
+        :param active: active [optional]
+        :param creation_date: creation_date [optional]
+        :param modification_date: modification_date [optional]
+        :param expiry_date: expiry_date [optional]       
+        :param page: users list page to show [default=0]
+        :param size: number of users to show in list per page [default=0]
         :param order: sort order [default=DESC]
-        :param field: sort field [default=id]        
+        :param field: sort field [default=id]
+        :return: list of :class:`Role`   
         :raises QueryError: raise :class:`QueryError`
         """
-        def filters(query, *args, **kvargs):
-            '''# get filter field
-            active = kvargs.get(u'active', None)
-            expiry_date = kvargs.get(u'expiry_date', None) 
-            
-            # create query
-            if active is not None:
-                query = query.filter_by(active=active)            
-            if expiry_date is not None:
-                query = query.filter_by(expiry_date>=expiry_date)'''
-            return query       
-
-        res, total = self.get_paginated_entities(Group, filters, *args, **kvargs)
-        return res, total 
+        filters = []
+        res, total = self.get_paginated_entities(Group, filters=filters, 
+                                                 *args, **kvargs)     
+        
+        return res, total
     
     '''
     @query
@@ -1409,38 +1371,32 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug(u'Get group %s perms : %s' % (group, truncate(perms)))
         return perms    
     
-    @transaction
-    def add_group(self, objid, name, description=u'', members=[], roles=[]):
+    @netsted_transaction
+    def add_group(self, objid, name, desc=u'', members=[], roles=[]):
         """Add group.
         
         :param objid: group objid
         :param name: name of the group
         :param members: List with User instances. [Optional]
         :param roles: List with Role instances. [Optional]
-        :param description: User description. [Optional]
+        :param desc: group desc. [Optional]
         :return: True if password is correct
         :rtype: bool
         :raises TransactionError: raise :class:`TransactionError`
         """
-        session = self.get_session()     
-        data = Group(objid, name, member=members, role=roles, 
-                     description=description)    
-        session.add(data)
-        session.flush()
-        self.logger.debug('Add group: %s' % (data))
-        return data
+        res = self.add_entity(Group, objid, name, member=members, role=roles, 
+                              desc=desc, active=True, expiry_date=None)
+        return res    
         
-    @watch
     def update_group(self, *args, **kvargs):
         """Update group. Extend :function:`update_entity`
 
-        :param kvargs str: date to update. {u'name':, u'desc':, u'active':, 
+        :param kvargs str: data to update. {u'name':, u'desc':, u'active':, 
             u'password':, u'expiry_date':}  
         """
         res = self.update_entity(Group, *args, **kvargs)
         return res  
     
-    @watch
     def remove_group(self, *args, **kvargs):
         """Remove group.
         """
@@ -1448,13 +1404,13 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         return res        
     
     '''
-    @transaction
-    def update_group(self, oid=None, new_name=None, new_description=None):
+    @netsted_transaction
+    def update_group(self, oid=None, new_name=None, new_desc=None):
         """Update a group.
         
         :param name: name of the group
         :param new_name: new user name [optional]
-        :param description: User description. [Optional]
+        :param desc: User description. [Optional]
         :return: True if operation is successful, False otherwise
         :rtype: bool
         :raises TransactionError: raise :class:`TransactionError`
@@ -1473,7 +1429,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug('Update group %s with data : %s' % (oid, data))
         return True
         
-    @transaction
+    @netsted_transaction
     def remove_group(self, group_id=None, name=None):
         """Remove a group. Specify at least group id or group name.
         
@@ -1499,7 +1455,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         
         return True'''
          
-    @transaction
+    @netsted_transaction
     def append_group_role(self, group, role):
         """Append a role to an group
         
@@ -1519,7 +1475,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             self.logger.debug(u'Append group %s role : %s' % (group, role))
             return role.id
         
-    @transaction
+    @netsted_transaction
     def remove_group_role(self, group, role):
         """Remove role from group
  
@@ -1539,7 +1495,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             self.logger.warn(u'Role %s does not exist in group %s' % (role, group))
             return False
         
-    @transaction
+    @netsted_transaction
     def append_group_user(self, group, user):
         """Append a user to an group
         
@@ -1559,7 +1515,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             self.logger.debug(u'Append user %s role : %s' % (group, user))
             return user.id
 
-    @transaction
+    @netsted_transaction
     def remove_group_user(self, group, user):
         """Remove user from group
  
@@ -1582,41 +1538,33 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
     #
     # User manipulation methods
     #
-    @query
     def count_user(self):
         """Count user.
         """
-        return self.count_entites(User)      
+        return self.count_entites(User)
     
-    @watch
     def get_users(self, *args, **kvargs):
-        """Get scopes
+        """Get users
         
-        :param int oid: entity id. [optional]
-        :param str objid: entity authorization id. [optional]
-        :param str uuid: entity uuid. [optional]
-        :param str name: entity name. [optional]      
-        :param active: user status [Optional]
-        :param expiry_date: list user with expiry_date >= expiry_date [Optional]
-        :param page: entities list page to show [default=0]
-        :param size: number of entities to show in list per page [default=0]
+        :param tags: list of permission tags
+        :param name: name like [optional]
+        :param active: active [optional]
+        :param creation_date: creation_date [optional]
+        :param modification_date: modification_date [optional]
+        :param expiry_date: expiry_date [optional]       
+        :param page: users list page to show [default=0]
+        :param size: number of users to show in list per page [default=0]
         :param order: sort order [default=DESC]
-        :param field: sort field [default=id]        
+        :param field: sort field [default=id]
+        :return: list of :class:`Role`   
         :raises QueryError: raise :class:`QueryError`
         """
-        def filters(query, *args, **kvargs):
-            # get filter field
-            active = kvargs.get(u'active', None)
-            expiry_date = kvargs.get(u'expiry_date', None) 
-            
-            # create query
-            if active is not None:
-                query = query.filter_by(active=active)            
-            if expiry_date is not None:
-                query = query.filter_by(expiry_date>=expiry_date)
-            return query       
-
-        res, total = self.get_paginated_entities(User, filters, *args, **kvargs)
+        filters = []
+        if u'expiry_date' in kvargs:
+            filters.append(u'AND expiry_date>=:expiry_date')
+        res, total = self.get_paginated_entities(User, filters=filters, 
+                                                 *args, **kvargs)     
+        
         return res, total
     
     '''
@@ -1883,47 +1831,36 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug(u'Verify user %s password: %s' % (user, res))
         return res
 
-    @transaction
     def add_user(self, objid, name, active=True, password=None, 
-                 description=u'', expiry_date=None):
+                 desc=u'', expiry_date=None):
         """Add user.
         
         :param objid: authorization id
         :param name: name of the user
         :param active: set if user is active [default=True]
         :param password: user password [optional]
-        :param description: user description [default='']
+        :param desc: user desc [default='']
         :param expiry_date: user expiry date [default=365 days]. Set using a 
                 datetime object                      
         :return: True if operation is successful, False otherwise
         :rtype: bool
         :raises TransactionError: raise :class:`TransactionError`
         """
-        session = self.get_session()
-        # verify if object already exists
-        user = session.query(User).filter_by(name=name).first()
-        if user is not None:
-            self.logger.error(u'User %s already exists' % user)
-            raise ModelError(u'User %s already exists' % user, code=409)  
-        
-        data = User(objid, name, active=active, password=password, 
-                    description=description, expiry_date=expiry_date)
-        session.add(data)
-        session.flush()
-        self.logger.debug(u'Add user: %s' % (data))
-        return data
+        res = self.add_entity(User, objid, name, active=active, 
+                              password=password, desc=desc, 
+                              expiry_date=expiry_date)
+        return res    
     
-    @watch
     def update_user(self, *args, **kvargs):
         """Update user. Extend :function:`update_entity`
 
         :param name: name of the user
         :param active: set if user is active [optional]
         :param password: user password [optional]
-        :param desc: user description [optional]
+        :param desc: user desc [optional]
         :param expiry_date: user expiry date. Set using a datetime object 
             [optional]
-        :param kvargs str: date to update. {u'name':, u'desc':, u'active':, 
+        :param kvargs str: data to update. {u'name':, u'desc':, u'active':, 
             u'password':, u'expiry_date':}
         :raises TransactionError: raise :class:`TransactionError`
         """
@@ -1934,7 +1871,6 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         res = self.update_entity(User, *args, **kvargs)
         return res  
     
-    @watch
     def remove_user(self, *args, **kvargs):
         """Remove user.
         
@@ -1947,7 +1883,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         res = self.remove_entity(User, *args, **kvargs)
         return res
     
-    @transaction
+    @netsted_transaction
     def expire_users(self, expiry_date):
         """Disable a user that is expired.
         
@@ -1963,7 +1899,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug(u'Disable exipred users: %s' % (res))
         return res    
         
-    @transaction
+    @netsted_transaction
     def append_user_role(self, user, role, expiry_date=None):
         """Append a role to an user
         
@@ -1991,7 +1927,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             self.logger.debug(u'Append user %s role: %s' % (user, role))
             return role.id
     
-    @transaction
+    @netsted_transaction
     def remove_user_role(self, user, role):
         """Remove role from user
  
@@ -2014,7 +1950,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             self.logger.warn(u'Role %s doesn''t exists in user %s' % (role, user))
             return False
         
-    @transaction
+    @netsted_transaction
     def remove_expired_user_role(self, expiry_date):
         """Remove roles from users where association is expired
  
@@ -2036,14 +1972,14 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug(u'Remove expired roles from users: %s' % (res))
         return res
         
-    @transaction
+    @netsted_transaction
     def set_user_attribute(self, user, name, value=None, desc=None, new_name=None):
         """Append an attribute to a user
         
         :param user: User instance
         :param name: attribute name
         :param value: attribute value
-        :param desc: attribute description
+        :param desc: attribute desc
         :return: True if operation is successful, False otherwise
         :rtype: bool
         :raises TransactionError: raise :class:`TransactionError`
@@ -2071,7 +2007,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             self.logger.debug('Append user %s attribute: %s' % (user.name, attrib))
         return attrib
     
-    @transaction
+    @netsted_transaction
     def remove_user_attribute(self, user, name):
         """Remove an attribute from a user
  

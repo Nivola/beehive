@@ -296,8 +296,8 @@ class ComponentManager(object):
         elif self.format == u'doc':
             print(data)
         
-        if delta is not None:
-            sleep(delta)
+        #if delta is not None:
+        #    sleep(delta)
             
     def load_config(self, file_config):
         f = open(file_config, 'r')

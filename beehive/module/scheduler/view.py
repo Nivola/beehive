@@ -57,7 +57,7 @@ class GetSchedulerEntries(TaskApiView):
                       kwargs:
                         type: object
                       last_run_at:
-                        type: int
+                        type: integer
                         example: 1459755371
                       name:
                         type: string
@@ -71,7 +71,7 @@ class GetSchedulerEntries(TaskApiView):
                         type: string
                         example: tasks.discover_vsphere
                       total_run_count:
-                        type: int
+                        type: integer
                         example: 679
         """
         scheduler = controller.get_scheduler()
@@ -237,7 +237,8 @@ class GetAllTasks(TaskApiView):
                         type: string
                         example: celery@tst-beehive-02
                       elapsed:
-                        type: double
+                        type: number
+                        format: float
                         example: 0.0474607944
                       result:
                         type: boolean

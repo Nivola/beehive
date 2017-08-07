@@ -25,6 +25,7 @@ class BasicController(BaseAuthController):
         
         self.resource = UwsgiManager()
         self.child_classes = [ApiViewResponse]
+        self.logger.warn(self.child_classes)
 
     #
     # server info

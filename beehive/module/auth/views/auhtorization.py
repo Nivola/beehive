@@ -10,14 +10,14 @@ from beecell.simple import get_value, str2bool
 from beehive.common.apimanager import ApiView, ApiManagerError
 
 class AuthApiView(ApiView):
-    def get_user(self, controller, oid):
+    '''def get_user(self, controller, oid):
         return self.get_entity(u'User', controller.get_users, lambda x: x[0][0], oid)
     
     def get_role(self, controller, oid):
         return self.get_entity(u'Role', controller.get_roles, lambda x: x[0][0], oid)
     
     def get_group(self, controller, oid):
-        return self.get_entity(u'Group', controller.get_groups, lambda x: x[0][0], oid)
+        return self.get_entity(u'Group', controller.get_groups, lambda x: x[0][0], oid)'''
     
     def get_object(self, controller, oid):
         obj, total = controller.objects.get(oid=oid)        
@@ -261,7 +261,7 @@ class DeleteToken(ApiView):
 # user
 #
 class ListUsers(AuthApiView):
-    def dispatch(self, controller, data, *args, **kwargs):
+    def get(self, controller, data, *args, **kwargs):
         group = request.args.get(u'group', None)
         role = request.args.get(u'role', None)
         active = request.args.get(u'active', None)
@@ -273,10 +273,9 @@ class ListUsers(AuthApiView):
         if field not in [u'id', u'objid', u'name']:
             field = u'id'
             
-        objs, total = controller.get_users(role=role, group=group, active=active,
-                                           expiry_date=expiry_date,
-                                           page=int(page), size=int(size), 
-                                           order=order, field=field)
+        objs, total = controller.get_users(
+            role=role, group=group, active=active, expiry_date=expiry_date,
+            page=int(page), size=int(size), order=order, field=field)
         res = [r.info() for r in objs]
         resp = {u'users':res,
                 u'count':len(res),
@@ -285,8 +284,8 @@ class ListUsers(AuthApiView):
         return resp
 
 class GetUser(AuthApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):      
-        obj = self.get_user(controller, oid)
+    def get(self, controller, data, oid, *args, **kwargs):      
+        obj = self.controller.get_user(oid)
         res = obj.info()
         #res[u'perms'] = obj.get_permissions()
         #res[u'groups'] = obj.get_groups()
@@ -295,8 +294,8 @@ class GetUser(AuthApiView):
         return resp
 
 class GetUserAtributes(AuthApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):      
-        user = self.get_user(controller, oid)
+    def get(self, controller, data, oid, *args, **kwargs):      
+        user = self.controller.get_user(oid)
         objs = user.get_attribs()
         #res = [r.info() for r in objs]
         res = objs
@@ -322,7 +321,7 @@ class CreateUser(AuthApiView):
         }
     }
     """
-    def dispatch(self, controller, data, *args, **kwargs):
+    def post(self, controller, data, *args, **kwargs):
         data = get_value(data, u'user', None, exception=True)
         username = get_value(data, u'name', None, exception=True)
         password = get_value(data, u'password', None)
@@ -368,7 +367,7 @@ class UpdateUser(AuthApiView):
         }
     }
     """
-    def dispatch(self, controller, data, oid, *args, **kwargs):
+    def put(self, controller, data, oid, *args, **kwargs):
         data = get_value(data, u'user', None, exception=True)
         new_name = get_value(data, u'name', None)
         new_description = get_value(data, u'desc', None)
@@ -382,7 +381,7 @@ class UpdateUser(AuthApiView):
             g, m, y = new_expiry_date.split(u'-')
             new_expiry_date = datetime(int(y), int(m), int(g))
         
-        user = self.get_user(controller, oid)
+        user = self.controller.get_user(oid)
         
         resp = {u'update':None, u'role.append':[], u'role.remove':[]}
         
@@ -420,27 +419,27 @@ class CreateUserAttribute(AuthApiView):
         }
     }
     """
-    def dispatch(self, controller, data, oid, *args, **kwargs):
+    def post(self, controller, data, oid, *args, **kwargs):
         data = get_value(data, u'user-attribute', None, exception=True)
         name = get_value(data, u'name', None, exception=True)
         new_name = get_value(data, u'new_name', None)
         value = get_value(data, u'value', None, exception=True)
         desc = get_value(data, u'desc', None, exception=True)
-        user = self.get_user(controller, oid)
+        user = self.controller.get_user(oid)
         attr = user.set_attribute(name, value=value, 
                                   desc=desc, new_name=new_name)
         resp = (attr.name, attr.value, attr.desc)
         return (resp, 201)
 
 class DeleteUserAttribute(AuthApiView):
-    def dispatch(self, controller, data, oid, aid, *args, **kwargs):
-        user = self.get_user(controller, oid)
+    def delete(self, controller, data, oid, aid, *args, **kwargs):
+        user = self.controller.get_user(oid)
         resp = user.remove_attribute(aid)
         return (resp, 204)
 
 class DeleteUser(AuthApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):
-        user = self.get_user(controller, oid)
+    def delete(self, controller, data, oid, *args, **kwargs):
+        user = self.controller.get_user(oid)
         resp = user.delete()
         return (resp, 204)
 
@@ -448,7 +447,7 @@ class DeleteUser(AuthApiView):
 # role
 #
 class ListRoles(AuthApiView):
-    def dispatch(self, controller, data, *args, **kwargs):
+    def get(self, controller, data, *args, **kwargs):
         user = request.args.get(u'user', None)
         group = request.args.get(u'group', None)
         page = request.args.get(u'page', 0)
@@ -458,9 +457,10 @@ class ListRoles(AuthApiView):
         if field not in [u'id', u'objid', u'name']:
             field = u'id'
                     
-        objs, total = controller.get_roles(user=user, group=group, 
-                                           page=int(page), size=int(size), 
-                                           order=order, field=field)
+        objs, total = controller.get_roles(
+            user=user, group=group, page=int(page), size=int(size), 
+            order=order, field=field)
+        
         res = [r.info() for r in objs]
         resp = {u'roles':res, 
                 u'count':len(res),
@@ -469,8 +469,8 @@ class ListRoles(AuthApiView):
         return resp
 
 class GetRole(AuthApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):      
-        obj = self.get_role(controller, oid)
+    def get(self, controller, data, oid, *args, **kwargs):      
+        obj = self.controller.get_role(oid)
         res = obj.info()      
         resp = {u'role':res} 
         return resp
@@ -488,7 +488,7 @@ class CreateRole(AuthApiView):
     Use type when you want to create role with pre defined permissions.
     - type = app - create an app role  
     """
-    def dispatch(self, controller, data, *args, **kwargs):
+    def post(self, controller, data, *args, **kwargs):
         data = get_value(data, u'role', None, exception=True)
         rolename = get_value(data, u'name', None, exception=True)
         description = get_value(data, u'desc', u'Role %s' % rolename)
@@ -517,13 +517,13 @@ class UpdateRole(AuthApiView):
                 u'remove':[]}}
     }
     """
-    def dispatch(self, controller, data, oid, *args, **kwargs):
+    def put(self, controller, data, oid, *args, **kwargs):
         data = get_value(data, u'role', None, exception=True)
         new_name = get_value(data, u'name', None)
         new_description = get_value(data, u'desc', None)
         role_perm = get_value(data, u'perms', None)
         
-        role = self.get_role(controller, oid)
+        role = self.controller.get_role(oid)
         
         resp = {u'update':None, u'perm.append':None, u'perm.remove':None}
         
@@ -552,8 +552,8 @@ class UpdateRole(AuthApiView):
         return resp
 
 class DeleteRole(AuthApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):
-        role = self.get_role(controller, oid)
+    def delete(self, controller, data, oid, *args, **kwargs):
+        role = self.controller.get_role(oid)
         resp = role.delete()
         return (resp, 204)
 
@@ -561,7 +561,7 @@ class DeleteRole(AuthApiView):
 # group
 #
 class ListGroups(AuthApiView):
-    def dispatch(self, controller, data, *args, **kwargs):
+    def get(self, controller, data, *args, **kwargs):
         user = request.args.get(u'user', None)
         role = request.args.get(u'role', None)        
         page = request.args.get(u'page', 0)
@@ -571,9 +571,10 @@ class ListGroups(AuthApiView):
         if field not in [u'id', u'objid', u'name']:
             field = u'id'
                     
-        objs, total = controller.get_groups(role=role, user=user,
-                                            page=int(page), size=int(size), 
-                                            order=order, field=field)
+        objs, total = controller.get_groups(
+            role=role, user=user, page=int(page), size=int(size), 
+            order=order, field=field)
+        
         res = [r.info() for r in objs]
         resp = {u'groups':res, 
                 u'count':len(res),
@@ -582,8 +583,8 @@ class ListGroups(AuthApiView):
         return resp
 
 class GetGroup(AuthApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):      
-        obj = self.get_group(controller, oid)
+    def get(self, controller, data, oid, *args, **kwargs):      
+        obj = self.controller.get_group(oid)
         res = obj.info()      
         resp = {u'group':res} 
         return resp
@@ -600,7 +601,7 @@ class CreateGroup(AuthApiView):
     Use type when you want to create group with pre defined permissions.
     - type = app - create an app group  
     """
-    def dispatch(self, controller, data, *args, **kwargs):
+    def post(self, controller, data, *args, **kwargs):
         data = get_value(data, u'group', None, exception=True)
         groupname = get_value(data, u'name', None, exception=True)
         description = get_value(data, u'desc', u'Group %s' % groupname)
@@ -626,7 +627,7 @@ class UpdateGroup(AuthApiView):
         }
     }
     """
-    def dispatch(self, controller, data, oid, *args, **kwargs):
+    def put(self, controller, data, oid, *args, **kwargs):
         data = get_value(data, u'group', None, exception=True)
         new_name = get_value(data, u'name', None)
         new_description = get_value(data, u'desc', None)
@@ -634,7 +635,7 @@ class UpdateGroup(AuthApiView):
         group_role = get_value(data, u'roles', None)
         group_user = get_value(data, u'users', None)
         
-        group = self.get_group(controller, oid)
+        group = self.controller.get_group(oid)
         
         resp = {u'update':None,
                 u'role.append':[], u'role.remove':[], 
@@ -676,7 +677,7 @@ class UpdateGroup(AuthApiView):
         return resp
 
 class DeleteGroup(AuthApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):
+    def delete(self, controller, data, oid, *args, **kwargs):
         group = self.get_group(controller, oid)
         resp = group.delete()
         return (resp, 204)

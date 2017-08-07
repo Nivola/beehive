@@ -16,6 +16,7 @@ from beehive.common.data import operation
 from beehive.module.catalog.controller import CatalogController, Catalog, CatalogEndpoint
 from beecell.db import TransactionError
 from beehive.common.apimanager import ApiManager
+from beehive.module.catalog.model import Catalog as ModelCatalog
 
 class CatalogConsumerError(Exception): pass
 
@@ -48,27 +49,27 @@ class CatalogConsumer(ConsumerMixin):
             catalog = endpoint[u'catalog']
             uri = endpoint[u'uri']
             
-            catalog_obj = self.manager.get(name=catalog)[0]            
+            catalog_obj = self.manager.get_entity(ModelCatalog, catalog)        
             
             try:
                 objid = u'%s//%s' % (catalog_obj.objid, id_gen())
                 res = self.manager.add_endpoint(objid, name, service, desc, 
-                                            catalog_obj.id, uri, enabled=True)
+                                            catalog_obj.id, uri, active=True)
                 controller = CatalogController(None)
                 obj = CatalogEndpoint(controller, Catalog(controller), 
                                       oid=res.id, objid=res.objid, 
                                       name=res.name, desc=res.desc, 
-                                      active=res.enabled, model=res)
+                                      active=res.active, model=res)
                 # create object and permission
                 obj.register_object(objid.split(u'//'), desc=endpoint[u'desc'])
             except (TransactionError) as ex:
                 if ex.code == 409:
-                    self.manager.update_endpoint(name=name, 
-                                                 new_name=name, 
-                                                 new_desc=desc, 
-                                                 new_service=service, 
-                                                 new_catalog=catalog_obj.id, 
-                                                 new_uri=uri)
+                    self.manager.update_endpoint(oid=catalog_obj.id, 
+                                                 name=name, 
+                                                 desc=desc, 
+                                                 service=service, 
+                                                 catalog=catalog_obj.id, 
+                                                 uri=uri)
             
             self.logger.debug(u'Store endpoint : %s' % endpoint)
         except (TransactionError, Exception) as ex:

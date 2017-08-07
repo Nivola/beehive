@@ -13,182 +13,125 @@ from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship
 from beecell.db import ModelError
 from uuid import uuid4
-from beehive.common.data import operation, transaction, query
+from beehive.common.data import operation, netsted_transaction, query
+from beehive.common.model import Base, AbstractDbManager, ApiObject
 
-Base = declarative_base()
+#Base = declarative_base()
 
 logger = logging.getLogger(__name__)
 
-class Catalog(Base):
+class Catalog(Base, ApiObject):
     __tablename__ = 'catalog'
-    __table_args__ = {'mysql_engine':'InnoDB'}
     
-    id = Column(Integer, primary_key=True)
-    uuid = Column(String(50), unique=True)
-    objid = Column(String(400))
-    name = Column(String(30), unique=True, nullable=False)
     desc = Column(String(50), nullable=False)
     zone = Column(String(50), nullable=False)
-    creation_date = Column(DateTime())
-    modification_date = Column(DateTime())
     
-    def __init__(self, objid, name, desc, zone):
-        self.uuid = str(uuid4())
-        self.objid = objid
-        self.name = name
-        self.desc = desc
+    def __init__(self, objid, name, desc, zone, active=True):
+        ApiObject.__init__(self, objid, name, desc, active)
+
         self.zone = zone
-        self.creation_date = datetime.today()
-        self.modification_date = self.creation_date
 
     def __repr__(self):
         return "Catalog(%s, %s)" % (self.id, self.name)
 
-class CatalogEndpoint(Base):
+class CatalogEndpoint(Base, ApiObject):
     __tablename__ = 'catalog_endpoint'
-    __table_args__ = {'mysql_engine':'InnoDB'}
-    
-    id = Column(Integer, primary_key=True)
-    uuid = Column(String(50), unique = True)
-    objid = Column(String(400))
+
     catalog_id = Column(Integer(), ForeignKey('catalog.id'))
     catalog = relationship("Catalog")
-    name = Column(String(50), nullable=False, unique=True)
     service = Column(String(30), nullable=False)
-    desc = Column(String(100), nullable=False)
     uri = Column(String(100), nullable=False)
-    enabled = Column(Boolean, nullable=False)
     creation_date = Column(DateTime())
     modification_date = Column(DateTime())
     
-    def __init__(self, objid, name, service, desc, catalog, uri, enabled=True):
-        self.uuid = str(uuid4())
-        self.objid = objid
-        self.name = name
+    def __init__(self, objid, name, service, desc, catalog, uri, active=True):
+        ApiObject.__init__(self, objid, name, desc, active)
+        
         self.service = service
         self.desc = desc
         self.catalog_id = catalog
         self.uri = uri
-        self.enabled = enabled
-        self.creation_date = datetime.today()
-        self.modification_date = self.creation_date
 
     def __repr__(self):
         return u'CatalogEndpoint(%s, %s, %s, %s)' % \
                 (self.id, self.name, self.service, self.catalog)
 
-class CatalogDbManagerError(Exception): pass
-class CatalogDbManager(object):
+class CatalogDbManager(AbstractDbManager):
     """
     """
-    def __init__(self, session=None):
-        """ """
-        self.logger = logging.getLogger(self.__class__.__module__+ \
-                                        u'.'+self.__class__.__name__)
-        
-        self._session = session
-    
-    def __repr__(self):
-        return "<CatalogDbManager id='%s'>" % id(self)
-    
-    def get_session(self):
-        if self._session is None:
-            return operation.session
-        else:
-            return self._session    
-    
-    @staticmethod
-    def create_table(db_uri):
-        """Create all tables in the engine. This is equivalent to "Create Table"
-        statements in raw SQL."""
-        try:
-            engine = create_engine(db_uri)
-            Base.metadata.create_all(engine)
-            logger.info('Create catalog tables on : %s' % db_uri)
-            del engine
-        except exc.DBAPIError, e:
-            raise CatalogDbManagerError(e)
-    
-    @staticmethod
-    def remove_table(db_uri):
-        """ Remove all tables in the engine. This is equivalent to "Drop Table"
-        statements in raw SQL."""
-        try:
-            engine = create_engine(db_uri)
-            Base.metadata.drop_all(engine)
-            logger.info('Remove catalog tables on : %s' % db_uri)
-            del engine
-        except exc.DBAPIError, e:
-            raise CatalogDbManagerError(e)
-        
-    @transaction
-    def set_initial_data(self):
-        session = self.get_session()
-        # set host type
-        """
-        data = [HostType('vSphere-vCenter'),
-                HostType('vSphere-esxi'),
-                HostType('qemu-kvm'),
-                HostType('xen'),
-                HostType('hyperv'),
-                HostType('cloudstack-mgmt'),]
-        """
-        data = []
-        session.add_all(data)
 
     #
     # catalog
     #
-    @query
-    def count(self):
-        """Get catalogs count.
-        
-        :rtype: int
-        :raises QueryError: raise :class:`QueryError`  
-        """
-        session = self.get_session()
-        res = session.query(Catalog).count()
-
-        self.logger.debug('Get catalogs count: %s' % res)
-        return res     
-    
-    @query    
-    def get(self, oid=None, objid=None, uuid=None, name=None, zone=None):
+    def get(self, *args, **kvargs):
         """Get catalog.
         
         Raise QueryError if query return error.
         
-        :param oid: catalog id [optional]
-        :param objid: catalog objid [optional]
-        :param uuid: catalog uuid [optional]
-        :param name: catalog name [optional]
+        :param tags: list of permission tags
+        :param name: name like [optional]
+        :param active: active [optional]
+        :param creation_date: creation_date [optional]
+        :param modification_date: modification_date [optional]
+        :param expiry_date: expiry_date [optional]       
+        :param page: users list page to show [default=0]
+        :param size: number of users to show in list per page [default=0]
+        :param order: sort order [default=DESC]
+        :param field: sort field [default=id]
+        :return: list of Catalog     
+        :raises QueryError: raise :class:`QueryError`
+        """
+        filters = []
+        if u'zone' in kvargs:
+            filters = [u'AND zone=:zone']
+        
+        res, total = self.get_paginated_entities(Catalog, filters=filters, 
+                                                 *args, **kvargs)     
+        return res
+        #return res, total
+    
+    def add(self, objid, name, desc, zone):
+        """Add catalog.
+  
+        :param name: catalog name
+        :param desc: catalog description
         :param zone: catalog zone. Value like internal or external
-        :return: list of :class:`Catalog`
+        :return: :class:`Catalog`
         :raises TransactionError: raise :class:`TransactionError`
-        """           
-        session = self.get_session()
-        query = session.query(Catalog)
-        if oid is not None:
-            query = query.filter_by(id=oid)
-        if objid is not None:
-            query = query.filter_by(objid=objid)
-        if uuid is not None:
-            query = query.filter_by(uuid=uuid)            
-        if name is not None:
-            query = query.filter_by(name=name)
-        if zone is not None:
-            query = query.filter_by(zone=zone)
-        
-        res = query.all()
-        
-        if len(res) == 0:
-            self.logger.error(u'No catalogs found')
-            raise SQLAlchemyError(u'No catalogs found')            
-            
-        self.logger.debug(u'Get catalogs: %s' % res)
+        """
+        res = self.add_entity(Catalog, objid, name, desc, zone)
         return res
         
-    @transaction
+    def update(self, *args, **kvargs):
+        """Update catalog.
+
+        :param int oid: entity id. [optional]
+        :param str objid: entity authorization id. [optional]
+        :param str uuid: entity uuid. [optional]
+        :param str name: entity name [optional]
+        :param new_name: catalog name [optional]
+        :param new_desc: catalog description [optional]
+        :param new_zone: catalog zone. Value like internal or external
+        :return: :class:`Catalog`
+        :raises TransactionError: raise :class:`TransactionError`
+        """
+        res = self.update_entity(Catalog, *args, **kvargs)
+        return res  
+    
+    def remove(self, *args, **kvargs):
+        """Remove catalog.
+        :param int oid: entity id. [optional]
+        :param str objid: entity authorization id. [optional]
+        :param str uuid: entity uuid. [optional]
+        :param str name: entity name [optional]
+        :return: :class:`Catalog`
+        :raises TransactionError: raise :class:`TransactionError`
+        """
+        res = self.remove_entity(Catalog, *args, **kvargs)
+        return res    
+    
+    '''
+    @netsted_transaction
     def add(self, objid, name, desc, zone):
         """Add catalog.
   
@@ -206,7 +149,7 @@ class CatalogDbManager(object):
         self.logger.debug('Add catalog: %s' % cat)
         return cat
     
-    @transaction
+    @netsted_transaction
     def update(self, oid=None, name=None, new_name=None, new_desc=None, 
                new_zone=None):
         """Update catalog.
@@ -240,7 +183,7 @@ class CatalogDbManager(object):
         self.logger.debug('Update catalog %s, %s : %s' % (oid, name, data))
         return res
         
-    @transaction
+    @netsted_transaction
     def delete(self, oid=None, name=None):
         """Delete catalog.
 
@@ -266,63 +209,39 @@ class CatalogDbManager(object):
             
         self.logger.debug('Delete catalog: %s' % obj)
         return res
+    '''
     
     #
     # CatalogEndpoint
     #
-    @query
-    def count_endpoint(self):
-        """Get endpoint count.
+    def get_endpoints(self, *args, **kvargs):
+        """Get endpoints.
         
-        :rtype: int
-        :raises QueryError: raise :class:`QueryError`  
+        :param tags: list of permission tags
+        :param name: name like [optional]
+        :param active: active [optional]
+        :param creation_date: creation_date [optional]
+        :param modification_date: modification_date [optional]
+        :param expiry_date: expiry_date [optional]       
+        :param page: users list page to show [default=0]
+        :param size: number of users to show in list per page [default=0]
+        :param order: sort order [default=DESC]
+        :param field: sort field [default=id]
+        :return: list of :class:`CatalogEndpoint`            
+        :raises QueryError: raise :class:`QueryError`
         """
-        session = self.get_session()
-        res = session.query(CatalogEndpoint).count()
-
-        self.logger.debug('Get endpoint count: %s' % res)
-        return res    
-    
-    @query    
-    def get_endpoints(self, oid=None, objid=None, name=None, service=None, 
-                     catalog=None):
-        """Get endpoint.
+        filters = []
+        if u'service' in kvargs:
+            filters.append(u'AND service=:service')
+        if u'catalog' in kvargs:
+            filters.append(u'AND catalog_id=:catalog')        
         
-        Raise QueryError if query return error.
-        
-        :param oid: endpoint id [optional]
-        :param objid: endpoint objid [optional]
-        :param name: endpoint name [optional]
-        :param service: service service [optional]
-        :param catalog: endpoint catalog id [optional]        
-        :return: list of :class:`CatalogEndpoint`
-        :raises TransactionError: raise :class:`TransactionError`
-        """           
-        session = self.get_session()
-        query = session.query(CatalogEndpoint)
-        if oid is not None:
-            query = query.filter_by(id=oid)
-        if objid is not None:
-            query = query.filter_by(objid=objid)
-        if name is not None:
-            query = query.filter_by(name=name)
-        if service is not None:
-            query = query.filter_by(service=service)
-        if catalog is not None:
-            query = query.filter_by(catalog_id=catalog)
-
-        res = query.all()
-            
-        if len(res) == 0:
-            self.logger.error("No endpoint found - (oid:%s, objid:%s, name:%s, service:%s, catalog:%s)" % 
-                              (oid, objid, name, service, catalog)) 
-            raise SQLAlchemyError("No endpoint found")            
-            
-        self.logger.debug('Get endpoint: %s' % res)
+        res, total = self.get_paginated_entities(CatalogEndpoint, filters=filters, 
+                                                 *args, **kvargs)     
         return res
+        #return res, total    
         
-    @transaction
-    def add_endpoint(self, objid, name, service, desc, catalog, uri, enabled=True):
+    def add_endpoint(self, objid, name, service, desc, catalog, uri, active=True):
         """Add endpoint.
   
         :param objid: endpoint objid
@@ -331,30 +250,19 @@ class CatalogDbManager(object):
         :param desc: endpoint description
         :param catalog: instance of Catalog
         :param uri: endpoint uri
-        :param enabled: endpoint state: True or False
+        :param active: endpoint state: True or False
         :return: :class:`CatalogEndpoint`
         :raises TransactionError: raise :class:`TransactionError`
         """        
-        session = self.get_session()
-        
-        # verify if endpoint already exists
-        res = session.query(CatalogEndpoint).filter_by(name=name).first()
-        if res is not None:
-            self.logger.warn(u'Endpoint %s already exists' % name)
-            raise ModelError(u'Endpoint %s already exists' % name, code=409)
-        
-        ser = CatalogEndpoint(objid, name, service, desc, catalog, uri, 
-                              enabled=enabled)
-        session.add(ser)
-        session.flush()
-        
-        self.logger.debug(u'Add endpoint: %s' % ser)
-        return ser
+        res = self.add_entity(CatalogEndpoint, objid, name, service, desc, 
+                              catalog, uri, active)
+        return res
     
-    @transaction
+    '''
+    @netsted_transaction
     def update_endpoint(self, oid=None, name=None, new_name=None, new_desc=None, 
                        new_service=None, new_catalog=None, new_uri=None, 
-                       new_enabled=None, new_objid=None):
+                       new_active=None, new_objid=None):
         """Update endpoint.
 
         :param oid: endpoint id [optional]
@@ -364,7 +272,7 @@ class CatalogDbManager(object):
         :param new_service: service service [optional]
         :param new_catalog: endpoint catalog id [optional]
         :param new_uri: endpoint uri [optional]
-        :param new_enabled: endpoint enabled [optional]
+        :param new_active: endpoint active [optional]
         :return: :class:`CatalogEndpoint`
         :raises TransactionError: raise :class:`TransactionError`
         """        
@@ -388,14 +296,14 @@ class CatalogDbManager(object):
             data['catalog_id'] = new_catalog
         if new_uri is not None:
             data['uri'] = new_uri
-        if new_enabled is not None:
-            data['enabled'] = new_enabled
+        if new_active is not None:
+            data['active'] = new_active
         res = obj.update(data)
             
         self.logger.debug('Update endpoint %s, %s : %s' % (oid, name, data))
         return res
         
-    @transaction
+    @netsted_transaction
     def delete_endpoint(self, oid=None, name=None):
         """Delete endpoint.
 
@@ -420,5 +328,5 @@ class CatalogDbManager(object):
         res = session.delete(obj)
             
         self.logger.debug('Delete endpoint: %s' % obj)
-        return res    
+        return res    '''
     

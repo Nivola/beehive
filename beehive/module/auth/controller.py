@@ -12,6 +12,8 @@ from beecell.db import TransactionError, QueryError
 from beehive.common.controller.authorization import BaseAuthController, \
      User as BaseUser, Token, AuthObject
 from beehive.common.data import trace
+from beehive.common.model.authorization import User as ModelUser, \
+    Role as ModelRole, Group as ModelGroup, SysObject as ModelObject
 
 class AuthController(BaseAuthController):
     """Auth Module controller.
@@ -35,7 +37,7 @@ class AuthController(BaseAuthController):
         # add actions
         try:
             actions = [u'*', u'view', u'insert', u'update', u'delete', u'use']
-            self.dbauth.add_object_actions(actions)
+            self.manager.add_object_actions(actions)
         except TransactionError as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
@@ -46,10 +48,10 @@ class AuthController(BaseAuthController):
         """Count users, groups, roles and objects
         """
         try:
-            res = {u'users':self.dbauth.count_user(),
-                   u'groups':self.dbauth.count_group(),
-                   u'roles':self.dbauth.count_role(),
-                   u'objects':self.dbauth.count_object()}
+            res = {u'users':self.manager.count_entities(ModelUser),
+                   u'groups':self.manager.count_entities(ModelGroup),
+                   u'roles':self.manager.count_entities(ModelRole),
+                   u'objects':self.manager.count_entities(ModelObject)}
             return res
         except QueryError as ex:
             raise ApiManagerError(ex, code=ex.code)
@@ -57,6 +59,16 @@ class AuthController(BaseAuthController):
     #
     # role manipulation methods
     #
+    @trace(entity=u'Role', op=u'view')
+    def get_role(self, oid):
+        """Get single role.
+
+        :param oid: entity model id or name or uuid         
+        :return: Role
+        :raises ApiManagerError: raise :class:`ApiManagerError`
+        """
+        return self.get_object(Role, ModelRole, oid)
+    
     @trace(entity=u'Role', op=u'view')
     def get_roles(self, *args, **kvargs):
         """Get roles or single role.
@@ -87,30 +99,31 @@ class AuthController(BaseAuthController):
                 objtype = permission[2]
                 objdef = permission[3]
                 action = permission[6]
-                perm = self.dbauth.get_permission_by_object(objid=objid,
-                                                            objtype=objtype, 
-                                                            objdef=objdef,
-                                                            action=action)[0]
-                roles, total = self.dbauth.get_permission_roles(
+                perm = self.manager.get_permission_by_object(
+                    objid=objid, objtype=objtype,  objdef=objdef, action=action)[0]
+                roles, total = self.manager.get_permission_roles(
                     perm, *args, **kvargs)
 
             # search roles by user
             elif user is not None:
-                kvargs[u'user'] = self.get_entity(user, self.dbauth.get_users)
-                roles, total = self.dbauth.get_user_roles_with_expiry(*args, **kvargs)
+                kvargs[u'user'] = self.manager.get_entity(ModelUser, user)
+                #self.get_entity(user, self.manager.get_users)
+                roles, total = self.manager.get_user_roles_with_expiry(*args, **kvargs)
 
             # search roles by group
             elif group is not None:
-                kvargs[u'group'] = self.get_entity(group, self.dbauth.get_groups)
-                roles, total = self.dbauth.get_group_roles(*args, **kvargs)
+                kvargs[u'group'] = self.manager.get_entity(ModelUser, group)
+                #kvargs[u'group'] = self.get_entity(group, self.manager.get_groups)
+                roles, total = self.manager.get_group_roles(*args, **kvargs)
             
             # get all roles
             else:
-                roles, total = self.dbauth.get_roles(*args, **kvargs)            
+                roles, total = self.manager.get_roles(*args, **kvargs)
             
             return roles, total
         
-        res, total = self.get_paginated_objects(Role, get_entities, *args, **kvargs)
+        res, total = self.get_paginated_objects(Role, get_entities, 
+                                                *args, **kvargs)
         return res, total    
     
     @trace(entity=u'Role', op=u'insert')
@@ -123,27 +136,22 @@ class AuthController(BaseAuthController):
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        #params = {u'name':name, u'description':description}
-        
         # check authorization
         self.check_authorization(Role.objtype, Role.objdef, None, u'insert')            
 
         try:
             objid = id_gen()
-            role = self.dbauth.add_role(objid, name, description)
+            role = self.manager.add_role(objid, name, description)
             
             # add object and permission
-            Role(self).register_object([objid], desc=description)
-            
+            Role(self, oid=role.id).register_object([objid], desc=description)
+
             self.logger.debug(u'Add new role: %s' % name)
-            #Role(self).send_event(u'insert', params=params)
             return role.id
-        except (TransactionError) as ex:
-            #Role(self).send_event(u'insert', params=params, exception=ex)           
+        except (TransactionError) as ex:       
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
         except (Exception) as ex:
-            #Role(self).send_event(u'insert', params=params, exception=ex)        
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
     
@@ -159,7 +167,7 @@ class AuthController(BaseAuthController):
         
         # append permissions
         try:
-            self.dbauth.append_role_permissions(role, perms)
+            self.manager.append_role_permissions(role, perms)
             return role
         except (QueryError, TransactionError) as ex:
             self.logger.error(ex, exc_info=1)
@@ -191,6 +199,16 @@ class AuthController(BaseAuthController):
     # user manipulation methods
     #
     @trace(entity=u'User', op=u'view')
+    def get_user(self, oid):
+        """Get single user.
+
+        :param oid: entity model id or name or uuid         
+        :return: User
+        :raises ApiManagerError: raise :class:`ApiManagerError`
+        """
+        return self.get_object(User, ModelUser, oid)    
+    
+    @trace(entity=u'User', op=u'view')
     def get_users(self, *args, **kvargs):
         """Get users or single user.
 
@@ -216,24 +234,25 @@ class AuthController(BaseAuthController):
             
             # search users by role
             if role:
-                kvargs[u'role'] = self.get_entity(role, self.dbauth.get_roles)
-                users, total = self.dbauth.get_role_users(*args, **kvargs)
+                kvargs[u'role'] = self.manager.get_entity(ModelRole, role)
+                users, total = self.manager.get_role_users(*args, **kvargs)
 
             # search users by group
             elif group is not None:
-                kvargs[u'group'] = self.get_entity(group, self.dbauth.get_groups)
-                users, total = self.dbauth.get_group_users(*args, **kvargs)
+                kvargs[u'group'] = self.manager.get_entity(ModelGroup, group)
+                users, total = self.manager.get_group_users(*args, **kvargs)
             
             # get all users
             else:
                 if expiry_date is not None:
                     g, m, y = expiry_date.split(u'-')
                     kvargs[u'expiry_date'] = datetime(int(y), int(m), int(g))
-                users, total = self.dbauth.get_users(*args, **kvargs)            
+                users, total = self.manager.get_users(*args, **kvargs)            
             
             return users, total
         print args, kvargs
-        res, total = self.get_paginated_objects(User, get_entities, *args, **kvargs)
+        res, total = self.get_paginated_objects(User, get_entities, 
+                                                *args, **kvargs)
         return res, total
 
     @trace(entity=u'User', op=u'insert')
@@ -253,10 +272,6 @@ class AuthController(BaseAuthController):
         :return: user id
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        params = {u'name':name, u'description':description, 
-                  u'storetype':storetype, u'systype':systype, u'active':active, 
-                  u'expiry_date':expiry_date}
-        
         # check authorization
         self.check_authorization(User.objtype, User.objdef, None, u'insert')
         
@@ -265,28 +280,25 @@ class AuthController(BaseAuthController):
             if expiry_date is not None:
                 g, m, y = expiry_date.split(u'-')
                 expiry_date = datetime(int(y), int(m), int(g))
-            user = self.dbauth.add_user(objid, name, active=active, 
+            user = self.manager.add_user(objid, name, active=active, 
                                         password=password, 
-                                        description=description, 
+                                        desc=description, 
                                         expiry_date=expiry_date)
             # add object and permission
-            User(self).register_object([objid], desc=description)
+            User(self, oid=user.id).register_object([objid], desc=description)
             
             # add default attributes
-            self.dbauth.set_user_attribute(user, u'store_type', storetype, 
+            self.manager.set_user_attribute(user, u'store_type', storetype, 
                                            u'Type of user store')
-            self.dbauth.set_user_attribute(user, u'sys_type', systype, 
+            self.manager.set_user_attribute(user, u'sys_type', systype, 
                                            u'Type of user')            
             
             self.logger.debug(u'Add new user: %s' % name)
-            #User(self).send_event(u'insert', params=params)
             return user.id
         except (TransactionError) as ex:
-            #User(self).send_event(u'insert', params=params, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
         except (Exception) as ex:
-            #User(self).send_event(u'insert', params=params, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
     
@@ -348,6 +360,16 @@ class AuthController(BaseAuthController):
     # group manipulation methods
     #
     @trace(entity=u'Group', op=u'view')
+    def get_group(self, oid):
+        """Get single group.
+
+        :param oid: entity model id or name or uuid         
+        :return: Group
+        :raises ApiManagerError: raise :class:`ApiManagerError`
+        """
+        return self.get_object(Group, ModelGroup, oid)    
+    
+    @trace(entity=u'Group', op=u'view')
     def get_groups(self, *args, **kvargs):
         """Get groups or single group.
 
@@ -371,20 +393,20 @@ class AuthController(BaseAuthController):
             
             # search groups by role
             if role:
-                kvargs[u'role'] = self.get_entity(role, self.dbauth.get_roles)
-                groups, total = self.dbauth.get_role_groups(*args, **kvargs)
+                kvargs[u'role'] = self.manager.get_entity(ModelRole, role)
+                groups, total = self.manager.get_role_groups(*args, **kvargs)
 
             # search groups by user
             elif user is not None:
-                kvargs[u'user'] = self.get_entity(user, self.dbauth.get_users)
-                groups, total = self.dbauth.get_user_groups(*args, **kvargs)
+                kvargs[u'user'] = self.manager.get_entity(ModelUser, user)
+                groups, total = self.manager.get_user_groups(*args, **kvargs)
             
             # get all groups
             else:
                 #if expiry_date is not None:
                 #    g, m, y = expiry_date.split(u'-')
                 #    kvargs[u'expiry_date'] = datetime(int(y), int(m), int(g))
-                groups, total = self.dbauth.get_groups(*args, **kvargs)            
+                groups, total = self.manager.get_groups(*args, **kvargs)            
             
             return groups, total
         
@@ -401,26 +423,22 @@ class AuthController(BaseAuthController):
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        params = {u'name':name, u'description':description}
-        
         # check authorization
         self.check_authorization(Group.objtype, Group.objdef, None, u'insert')
         
         try:
             objid = id_gen()
-            group = self.dbauth.add_group(objid, name, description=description)
+            group = self.manager.add_group(objid, name, desc=description)
+            
             # add object and permission
-            Group(self).register_object([objid], desc=description)          
+            Group(self, oid=group.id).register_object([objid], desc=description)          
             
             self.logger.debug(u'Add new group: %s' % name)
-            #Group(self).send_event(u'insert', params=params)
             return group.id
         except (TransactionError) as ex:
-            #Group(self).send_event(u'insert', params=params, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
         except (Exception) as ex:
-            #Group(self).send_event(u'insert', params=params, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
 
@@ -459,7 +477,7 @@ class Objects(AuthObject):
         self.controller.can(u'view', self.objtype, definition=self.objdef)
 
         try:  
-            data, total = self.dbauth.get_object_type(
+            data, total = self.manager.get_object_type(
                         oid=oid, objtype=objtype, objdef=objdef, 
                         page=page, size=size, order=order, field=field)
 
@@ -485,7 +503,7 @@ class Objects(AuthObject):
         self.controller.can(u'insert', self.objtype, definition=self.objdef)
         try:
             data = [(i[u'subsystem'], i[u'type']) for i in obj_types]
-            res = self.dbauth.add_object_types(data)
+            res = self.manager.add_object_types(data)
             #self.send_event(u'type.insert', params=obj_types)
             return [i.id for i in res]
         except TransactionError as ex:
@@ -510,7 +528,7 @@ class Objects(AuthObject):
         self.controller.can(u'delete', self.objtype, definition=self.objdef)
                 
         try:  
-            res = self.dbauth.remove_object_type(oid=oid, objtype=objtype, 
+            res = self.manager.remove_object_type(oid=oid, objtype=objtype, 
                                                  objdef=objdef)
             #self.send_event(u'type.delete', params=params)          
             return res
@@ -538,7 +556,7 @@ class Objects(AuthObject):
         self.controller.can(u'view', self.objtype, definition=self.objdef)
                 
         try:  
-            data = self.dbauth.get_object_action(oid=oid, value=value)
+            data = self.manager.get_object_action(oid=oid, value=value)
             if data is None:
                 raise QueryError(u'No data found')
             if type(data) is not list:
@@ -564,11 +582,9 @@ class Objects(AuthObject):
         self.controller.can(u'insert', self.objtype, definition=self.objdef)
 
         try:  
-            res = self.dbauth.add_object_actions(actions)
-            #self.send_event(u'action.insert', params=actions)
+            res = self.manager.add_object_actions(actions)
             return True
         except TransactionError as ex:
-            #self.send_event(u'action.insert', params=actions, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
         
@@ -582,17 +598,13 @@ class Objects(AuthObject):
         :rtype: bool
         :raises ApiManagerError if query empty return error.
         """
-        #params = {u'oid':oid, u'value':value}
-        
         # verify permissions
         self.controller.can(u'delete', self.objtype, definition=self.objdef)
                 
         try:
-            res = self.dbauth.remove_object_action(oid=oid, value=value)
-            #self.send_event(u'action.delete', params=params)
+            res = self.manager.remove_object_action(oid=oid, value=value)
             return res
         except TransactionError as ex:
-            #self.send_event(u'action.delete', params=params, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -616,14 +628,11 @@ class Objects(AuthObject):
         :rtype: list
         :raises ApiManagerError if query empty return error.
         """
-        #opts = {u'oid':oid, u'objtype':objtype, u'objdef':objdef, u'objid':objid,
-        #        u'page':page, u'size':size, u'order':order, u'field':field}        
-        
         # verify permissions
         self.controller.can(u'view', self.objtype, definition=self.objdef)
                 
         try:
-            data,total = self.dbauth.get_object(oid=oid, objid=objid, 
+            data,total = self.manager.get_object(oid=oid, objid=objid, 
                     objtype=objtype, objdef=objdef, page=page, size=size,
                     order=order, field=field)
                     
@@ -635,14 +644,11 @@ class Objects(AuthObject):
                 u'desc':i.desc
             } for i in data]
             self.logger.debug(u'Get objects: %s' % len(res))
-            #self.send_event(u'view', params=opts)
             return res, total
         except QueryError as ex:
-            #self.send_event(u'view', params=opts, exception=ex)
             self.logger.error(ex.desc, exc_info=1)
             return [], 0
-        except Exception as ex:
-            #self.send_event(u'view', params=opts, exception=ex)          
+        except Exception as ex:        
             self.logger.error(ex, exc_info=1)
             return [], 0        
 
@@ -666,16 +672,16 @@ class Objects(AuthObject):
                 
         try:
             # get actions
-            actions = self.dbauth.get_object_action()            
+            actions = self.manager.get_object_action()            
             
             # create objects
             data = []
             for obj in objs:
-                obj_type, total = self.dbauth.get_object_type(
+                obj_type, total = self.manager.get_object_type(
                     objtype=obj[u'subsystem'], objdef=obj[u'type'])
                 data.append((obj_type[0], obj[u'objid'], obj[u'desc']))
 
-            res = self.dbauth.add_object(data, actions)
+            res = self.manager.add_object(data, actions)
             self.logger.debug(u'Add objects: %s' % res)
             #self.send_event(u'insert', params=objs)
             return res
@@ -710,13 +716,13 @@ class Objects(AuthObject):
         try:
             if objtype is not None or objdef is not None:
                 # get object types
-                obj_types = self.dbauth.get_object_type(objtype=objtype, 
+                obj_types = self.manager.get_object_type(objtype=objtype, 
                                                         objdef=objdef)
                 for obj_type in obj_types:            
-                    res = self.dbauth.remove_object(oid=oid, objid=objid, 
+                    res = self.manager.remove_object(oid=oid, objid=objid, 
                                                     objtype=obj_type)
             else:
-                res = self.dbauth.remove_object(oid=oid, objid=objid)
+                res = self.manager.remove_object(oid=oid, objid=objid)
             self.logger.debug(u'Remove objects: %s' % res)
             #self.send_event(u'delete', params=opts)
             return res
@@ -748,14 +754,14 @@ class Objects(AuthObject):
                 
         try:
             if permission_id is not None:
-                res = self.dbauth.get_permission_by_id(permission_id=permission_id)
+                res = self.manager.get_permission_by_id(permission_id=permission_id)
             elif objid is not None or objtype is not None or objdef is not None:
-                res = self.dbauth.get_permission_by_object(objid=objid, 
+                res = self.manager.get_permission_by_object(objid=objid, 
                                                            objtype=objtype, 
                                                            objdef=objdef,
                                                            action=action)
             else:
-                res = self.dbauth.get_permission_by_id()
+                res = self.manager.get_permission_by_id()
             
             res = [(i.id, i.obj.id, i.obj.type.objtype, i.obj.type.objdef,
                     i.obj.objid, i.action.id, 
@@ -797,12 +803,12 @@ class Objects(AuthObject):
         try:
             res = []
             if oid is not None:
-                perms = self.dbauth.get_permission_by_id(permission_id=oid)
+                perms = self.manager.get_permission_by_id(permission_id=oid)
                 total = 1
             
             # get permissions
             else:
-                perms, total = self.dbauth.get_permission_by_object(
+                perms, total = self.manager.get_permission_by_object(
                             objid=objid, objid_filter=None, objtype=objtype, 
                             objdef=objdef, objdef_filter=None, action=None,
                             page=page, size=size, order=order, field=field)
@@ -810,11 +816,11 @@ class Objects(AuthObject):
             for p in perms:
                 try:
                     #roles = [(r.id, r.name, r.description) for r in 
-                    #         self.dbauth.get_permission_roles(p)]
+                    #         self.manager.get_permission_roles(p)]
                     roles = [{u'id':r.id, 
                               u'name':r.name, 
-                              u'desc':r.description} for r in 
-                             self.dbauth.get_permission_roles(p)]
+                              u'desc':r.desc} for r in 
+                             self.manager.get_permission_roles(p)]
                 except:
                     roles = []
                 res.append({
@@ -846,11 +852,11 @@ class Role(AuthObject):
         AuthObject.__init__(self, controller, oid=oid, objid=objid, name=name, 
                             desc=desc, active=active, model=model)
         
-        self.update_object = self.dbauth.update_role
-        self.delete_object = self.dbauth.remove_role        
+        self.update_object = self.manager.update_role
+        self.delete_object = self.manager.remove_role
         
-        if self.model is not None:
-            self.uuid = self.model.uuid
+        #if self.model is not None:
+        #    self.uuid = self.model.uuid
         self.expiry_date = None
 
     def info(self):
@@ -899,7 +905,7 @@ class Role(AuthObject):
         :raises ApiManagerError: if query empty return error.
         """
         try:  
-            perms, total = self.dbauth.get_role_permissions([self.name], 
+            perms, total = self.manager.get_role_permissions([self.name], 
                             page=page, size=size, order=order, field=field)      
             role_perms = []
             for i in perms:
@@ -941,12 +947,12 @@ class Role(AuthObject):
             # get permissions
             roleperms = []
             for perm in perms:
-                perms, total = self.dbauth.get_permission_by_object(
+                perms, total = self.manager.get_permission_by_object(
                         objid=perm[4], objtype=perm[2], objdef=perm[3],
                         action=perm[6], size=1000)
                 roleperms.extend(perms)
             
-            res = self.dbauth.append_role_permissions(self.model, roleperms)
+            res = self.manager.append_role_permissions(self.model, roleperms)
             self.logger.debug(u'Append role %s permission : %s' % (self.name, perms))
             #self.send_event(u'perms-set.update', params=opts)            
             return res
@@ -974,12 +980,12 @@ class Role(AuthObject):
             # get permissions
             roleperms = []
             for perm in perms:
-                perms, total = self.dbauth.get_permission_by_object(
+                perms, total = self.manager.get_permission_by_object(
                         objid=perm[4], objtype=perm[2], objdef=perm[3],
                         action=perm[6], size=1000)
                 roleperms.extend(perms)        
             
-            res = self.dbauth.remove_role_permission(self.model, roleperms)
+            res = self.manager.remove_role_permission(self.model, roleperms)
             self.logger.debug(u'Remove role %s permission : %s' % (self.name, perms))
             #self.send_event(u'perms-unset.update', params=opts)       
             return res
@@ -997,11 +1003,11 @@ class User(BaseUser):
         BaseUser.__init__(self, controller, oid=oid, objid=objid, name=name, 
                             desc=desc, active=active, model=model)
         
-        self.update_object = self.dbauth.update_user
-        self.delete_object = self.dbauth.remove_user        
+        self.update_object = self.manager.update_user
+        self.delete_object = self.manager.remove_user        
         
-        if self.model is not None:
-            self.uuid = self.model.uuid
+        #if self.model is not None:
+        #    self.uuid = self.model.uuid
 
     def info(self):
         """Get user info
@@ -1060,9 +1066,9 @@ class User(BaseUser):
                 
         try:
             # remove associated roles
-            roles, total = self.dbauth.get_user_roles(user=self.model, size=1000)
+            roles, total = self.manager.get_user_roles(user=self.model, size=1000)
             for role in roles:
-                res = self.dbauth.remove_user_role(self.model, role)
+                res = self.manager.remove_user_role(self.model, role)
             
             # delete user
             res = self.delete_object(oid=self.oid)
@@ -1104,7 +1110,7 @@ class User(BaseUser):
                                             self.objid, u'update')
 
         try:
-            res = self.dbauth.set_user_attribute(self.model, name, value=value, 
+            res = self.manager.set_user_attribute(self.model, name, value=value, 
                                                  desc=desc, new_name=new_name)
             self.logger.debug(u'Set user %s attribute %s: %s' % 
                               (self.name, name, value))
@@ -1131,7 +1137,7 @@ class User(BaseUser):
                                             self.objid, u'update')
 
         try:
-            res = self.dbauth.remove_user_attribute(self.model, name)
+            res = self.manager.remove_user_attribute(self.model, name)
             self.logger.debug(u'Remove user %s attribute %s' % (self.name, name))
             #self.send_event(u'attrib-unset.update', params=opts)
             return res
@@ -1157,7 +1163,8 @@ class User(BaseUser):
                                             self.objid, u'update')
                 
         try:
-            role = self.controller.get_entity(role_id, self.dbauth.get_roles)         
+            role = self.manager.get_entity(ModelRole, role_id)
+            #role = self.controller.get_entity(role_id, self.manager.get_roles)         
         except (QueryError, TransactionError) as ex:
             #self.send_event(u'role-set.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
@@ -1172,8 +1179,8 @@ class User(BaseUser):
             if expiry_date is not None:
                 g, m, y = expiry_date.split(u'-')
                 expiry_date_obj = datetime(int(y), int(m), int(g))
-            res = self.dbauth.append_user_role(self.model, role, 
-                                               expiry_date=expiry_date_obj)
+            res = self.manager.append_user_role(self.model, role, 
+                                                expiry_date=expiry_date_obj)
             if res is True: 
                 self.logger.debug(u'Append role %s to user %s' % (
                                             role, self.name))
@@ -1203,7 +1210,8 @@ class User(BaseUser):
                                             self.objid, u'update')
                 
         try:
-            role = self.controller.get_entity(role_id, self.dbauth.get_roles)          
+            role = self.manager.get_entity(ModelRole, role_id)
+            #role = self.controller.get_entity(role_id, self.manager.get_roles)          
         except (QueryError, TransactionError) as ex:
             #self.send_event(u'role-unset.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
@@ -1214,7 +1222,7 @@ class User(BaseUser):
                                             role.objid, u'view')
 
         try:
-            res = self.dbauth.remove_user_role(self.model, role)
+            res = self.manager.remove_user_role(self.model, role)
             self.logger.debug(u'Remove role %s from user %s' % (role, self.name))
             #self.send_event(u'role-unset.update', params=opts)           
             return res
@@ -1241,7 +1249,7 @@ class User(BaseUser):
         self.controller.can(u'view', self.objtype, definition=self.objdef)
                 
         try:  
-            perms, total = self.dbauth.get_user_permissions(self.model, 
+            perms, total = self.manager.get_user_permissions(self.model, 
                             page=page, size=size, order=order, field=field)      
             user_perms = []
             for i in perms:
@@ -1349,11 +1357,11 @@ class Group(AuthObject):
         AuthObject.__init__(self, controller, oid=oid, objid=objid, name=name, 
                             desc=desc, active=active, model=model)
         
-        self.update_object = self.dbauth.update_group
-        self.delete_object = self.dbauth.remove_group
+        self.update_object = self.manager.update_group
+        self.delete_object = self.manager.remove_group
         
-        if self.model is not None:
-            self.uuid = self.model.uuid
+        #if self.model is not None:
+        #    self.uuid = self.model.uuid
 
     def info(self):
         """Get group info
@@ -1406,9 +1414,9 @@ class Group(AuthObject):
                 
         try:
             # remove associated roles
-            roles, total = self.dbauth.get_group_roles(group=self.model, size=1000)
+            roles, total = self.manager.get_group_roles(group=self.model, size=1000)
             for role in roles:
-                res = self.dbauth.remove_group_role(self.model, role)
+                res = self.manager.remove_group_role(self.model, role)
             
             # delete user
             res = self.delete_object(oid=self.oid)
@@ -1439,7 +1447,8 @@ class Group(AuthObject):
                                             self.objid, u'update')
                 
         try:
-            role = self.controller.get_entity(role_id, self.dbauth.get_roles)
+            role = self.manager.get_entity(ModelRole, role_id)
+            #role = self.controller.get_entity(role_id, self.manager.get_roles)
         except (QueryError, TransactionError) as ex:
             #self.send_event(u'role-set.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
@@ -1450,7 +1459,7 @@ class Group(AuthObject):
                                             role.objid, u'view')
 
         try:
-            res = self.dbauth.append_group_role(self.model, role)
+            res = self.manager.append_group_role(self.model, role)
             if res is True: 
                 self.logger.debug(u'Append role %s to group %s' % (
                                             role, self.name))
@@ -1480,7 +1489,8 @@ class Group(AuthObject):
                                             self.objid, u'update')
                 
         try:
-            role = self.controller.get_entity(role_id, self.dbauth.get_roles) 
+            role = self.manager.get_entity(ModelRole, role_id)
+            #role = self.controller.get_entity(role_id, self.manager.get_roles) 
         except (QueryError, TransactionError) as ex:
             #self.send_event(u'role-unset.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
@@ -1491,7 +1501,7 @@ class Group(AuthObject):
                                             role.objid, u'view')
 
         try:
-            res = self.dbauth.remove_group_role(self.model, role)
+            res = self.manager.remove_group_role(self.model, role)
             self.logger.debug(u'Remove role %s from group %s' % (role, self.name))
             #self.send_event(u'role-unset.update', params=opts)          
             return res
@@ -1516,7 +1526,8 @@ class Group(AuthObject):
                                             self.objid, u'update')
                 
         try:
-            user = self.controller.get_entity(user_id, self.dbauth.get_users)
+            user = self.manager.get_entity(ModelUser, user_id)
+            #user = self.controller.get_entity(user_id, self.manager.get_users)
         except (QueryError, TransactionError) as ex:
             #self.send_event(u'user-set.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
@@ -1527,7 +1538,7 @@ class Group(AuthObject):
                                             user.objid, u'view')
 
         try:
-            res = self.dbauth.append_group_user(self.model, user)
+            res = self.manager.append_group_user(self.model, user)
             if res is True: 
                 self.logger.debug(u'Append user %s to group %s' % (
                                             user, self.name))
@@ -1557,7 +1568,8 @@ class Group(AuthObject):
                                             self.objid, u'update')
                 
         try:
-            user = self.controller.get_entity(user_id, self.dbauth.get_users)   
+            user = self.manager.get_entity(ModelUser, user_id)
+            #user = self.controller.get_entity(user_id, self.manager.get_users)   
         except (QueryError, TransactionError) as ex:
             #self.send_event(u'user-unset.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
@@ -1568,7 +1580,7 @@ class Group(AuthObject):
                                             user.objid, u'view')
 
         try:
-            res = self.dbauth.remove_group_user(self.model, user)
+            res = self.manager.remove_group_user(self.model, user)
             self.logger.debug(u'Remove user %s from group %s' % (user, self.name))
             #self.send_event(u'user-unset.update', params=opts)       
             return res
@@ -1595,7 +1607,7 @@ class Group(AuthObject):
         self.controller.can(u'view', self.objtype, definition=self.objdef)
                 
         try:  
-            perms, total = self.dbauth.get_group_permissions(self.model, 
+            perms, total = self.manager.get_group_permissions(self.model, 
                             page=page, size=size, order=order, field=field)
             group_perms = []
             for i in perms:

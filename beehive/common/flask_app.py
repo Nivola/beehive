@@ -42,8 +42,14 @@ class BeehiveApp(Flask):
         
         self.app_name = uwsgi_util.opt[u'api_name']
         self.app_id = uwsgi_util.opt[u'api_id']
-        self.log_path = u'/var/log/%s/%s' % (uwsgi_util.opt[u'api_package'], 
-                                             uwsgi_util.opt[u'api_env'])
+        
+        # api instance static config
+        self.params = uwsgi_util.opt
+        
+        # set logging path
+        log_path = u'/var/log/%s/%s' % (self.params[u'api_package'], 
+                                        self.params[u'api_env'])        
+        self.log_path = self.params.get(u'api_log', log_path)
 
         def error(e):
             error = {u'status':u'error', 
@@ -66,8 +72,7 @@ class BeehiveApp(Flask):
         start = time()
         
         # api manager reference
-        params = uwsgi_util.opt
-        self.api_manager = ApiManager(params, app=self, 
+        self.api_manager = ApiManager(self.params, app=self, 
                                       hostname=self.server_name)
 
         # server configuration

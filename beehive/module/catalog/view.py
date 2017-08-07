@@ -10,7 +10,8 @@ from beecell.simple import get_attrib
 from beehive.common.apimanager import ApiView, ApiManagerError
 
 class CatalogApiView(ApiView):
-    def get_catalog(self, controller, oid):
+    pass
+    '''def get_catalog(self, controller, oid):
         # get obj by uuid
         if match(u'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', str(oid)):
             objs = controller.get_catalogs(uuid=oid)
@@ -33,7 +34,7 @@ class CatalogApiView(ApiView):
             service = controller.get_endpoints(name=oid)
         if len(service) == 0:
             raise ApiManagerError('Service %s not found' % oid, code=404)
-        return service[0]
+        return service[0]'''
         
 #
 # catalog
@@ -79,10 +80,10 @@ class ListCatalogs(CatalogApiView):
                     required: [id, objid, name, desc, date, type, definition, active, uri, zone]
                     properties:
                       id:
-                        type: int
+                        type: integer
                         example: 1
                       objid:
-                        type: str
+                        type: string
                         example: 396587362
                       name:
                         type: string
@@ -91,7 +92,7 @@ class ListCatalogs(CatalogApiView):
                         type: string
                         example: beehive
                       active:
-                        type: bool
+                        type: boolean
                         example: true
                       type:
                         type: string
@@ -116,7 +117,7 @@ class ListCatalogs(CatalogApiView):
 
 class GetCatalog(CatalogApiView):
     def get(self, controller, data, oid, *args, **kwargs):
-        catalog = self.get_catalog(controller, oid)
+        catalog = self.controller.get_catalog(oid)
         res = catalog.detail()
         resp = {u'catalog':res}        
         return resp
@@ -150,7 +151,7 @@ class UpdateCatalog(CatalogApiView):
         name = get_value(data, u'name', None)
         desc = get_value(data, u'desc', None)
         zone = get_value(data, u'zone', None)
-        resp = catalog.update(new_name=name, new_desc=desc, new_zone=zone)
+        resp = catalog.update(name=name, desc=desc, zone=zone)
         return resp
     
 class DeleteCatalog(CatalogApiView):
@@ -160,7 +161,7 @@ class DeleteCatalog(CatalogApiView):
         return (resp, 204)
 
 #
-# service
+# endpoint
 #
 class ListEndpoints(CatalogApiView):
     def get(self, controller, data, *args, **kwargs):
@@ -178,7 +179,7 @@ class ListEndpoints(CatalogApiView):
 
 class GetEndpoint(CatalogApiView):
     def get(self, controller, data, oid, *args, **kwargs):      
-        endpoint = self.get_endpoint(controller, oid)
+        endpoint = self.controller.get_endpoint(oid)
         res = endpoint.detail()
         resp = {u'endpoint':res}        
         return resp
@@ -201,9 +202,9 @@ class CreateEndpoint(CatalogApiView):
         desc = get_value(data, u'desc', None, exception=True)
         service = get_value(data, u'service', None, exception=True)
         uri = get_value(data, u'uri', None, exception=True)
-        enabled = get_value(data, u'enabled', True)
+        active = get_value(data, u'active', True)
         catalog_obj = self.get_catalog(controller, catalog)
-        resp = catalog_obj.add_endpoint(name, desc, service, uri, enabled)
+        resp = catalog_obj.add_endpoint(name, desc, service, uri, active)
         return (resp, 201)
 
 class UpdateEndpoint(CatalogApiView):
@@ -216,11 +217,11 @@ class UpdateEndpoint(CatalogApiView):
         desc = get_value(data, u'desc', None)
         service = get_value(data, u'service', None)
         uri = get_value(data, u'uri', None)
-        enabled = get_value(data, u'enabled', None)
+        active = get_value(data, u'active', None)
         endpoint = self.get_endpoint(controller, oid)
-        resp = endpoint.update(new_name=name, new_desc=desc, 
-                               new_service=service, new_uri=uri,
-                               new_enabled=enabled, new_catalog=catalog)
+        resp = endpoint.update(name=name, desc=desc, 
+                               service=service, uri=uri,
+                               active=active, catalog=catalog)
         return resp
     
 class DeleteEndpoint(CatalogApiView):
@@ -230,26 +231,26 @@ class DeleteEndpoint(CatalogApiView):
         return (resp, 204)
 
 class CatalogAPI(ApiView):
-    """
+    """CatalogAPI
     """
     @staticmethod
     def register_api(module):
         rules = [
-            ('catalogs', 'GET', ListCatalogs, {}),
-            ('catalog/<oid>', 'GET', GetCatalog, {}),
+            (u'catalogs', u'GET', ListCatalogs, {}),
+            (u'catalog/<oid>', u'GET', GetCatalog, {}),
             #('catalog/<oid>/<zone>', 'GET', FilterCatalog, {}),
-            ('catalog/<oid>/perms', 'GET', GetCatalogPerms, {}),
-            ('catalog', 'POST', CreateCatalog, {}),
-            ('catalog/<oid>', 'PUT', UpdateCatalog, {}),
-            ('catalog/<oid>', 'DELETE', DeleteCatalog, {}),
+            (u'catalog/<oid>/perms', u'GET', GetCatalogPerms, {}),
+            (u'catalog', u'POST', CreateCatalog, {}),
+            (u'catalog/<oid>', u'PUT', UpdateCatalog, {}),
+            (u'catalog/<oid>', u'DELETE', DeleteCatalog, {}),
             #('catalog/<oid>/services', 'GET', GetCatalogServices, {}),
 
-            ('catalog/endpoints', 'GET', ListEndpoints, {}),
-            ('catalog/endpoint/<oid>', 'GET', GetEndpoint, {}),
-            ('catalog/endpoint/<oid>/perms', 'GET', GetEndpointPerms, {}),
-            ('catalog/endpoint', 'POST', CreateEndpoint, {}),
-            ('catalog/endpoint/<oid>', 'PUT', UpdateEndpoint, {}),
-            ('catalog/endpoint/<oid>', 'DELETE', DeleteEndpoint, {}),
+            (u'catalog/endpoints', u'GET', ListEndpoints, {}),
+            (u'catalog/endpoint/<oid>', u'GET', GetEndpoint, {}),
+            (u'catalog/endpoint/<oid>/perms', u'GET', GetEndpointPerms, {}),
+            (u'catalog/endpoint', u'POST', CreateEndpoint, {}),
+            (u'catalog/endpoint/<oid>', u'PUT', UpdateEndpoint, {}),
+            (u'catalog/endpoint/<oid>', u'DELETE', DeleteEndpoint, {}),
         ]
 
         ApiView.register_api(module, rules)

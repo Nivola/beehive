@@ -9,7 +9,8 @@ import ujson as json
 from logging import getLogger
 from beecell.auth import AuthError
 #from beecell.perf import watch
-from beehive.common.apimanager import ApiController, ApiManagerError, ApiObject
+from beehive.common.apimanager import ApiController, ApiManagerError, ApiObject,\
+    ApiEvent, ApiInternalEvent, ApiInternalObject
 from beehive.common.model.authorization import AuthDbManager
 from beecell.db import QueryError, TransactionError
 from ipaddress import IPv4Address, IPv4Network
@@ -95,7 +96,7 @@ class BaseAuthController(ApiController):
     def __init__(self, module):
         ApiController.__init__(self, module)
         
-        self.dbauth = AuthDbManager()
+        self.manager = AuthDbManager()
     
     '''
     def init_object(self):
@@ -321,7 +322,7 @@ class BaseAuthController(ApiController):
         # verify user exists in beehive database
         try:
             user_name = u'%s@%s' % (name, domain)
-            dbuser = self.dbauth.get_users(name=user_name)[0][0]
+            dbuser = self.manager.get_users(name=user_name)[0][0]
             # get user attributes
             dbuser_attribs = {a.name:(a.value, a.desc) for a in dbuser.attrib}
         except (QueryError, Exception) as ex:
@@ -384,15 +385,15 @@ class BaseAuthController(ApiController):
     
     def __set_user_perms(self, dbuser, user):
         """Set user permissions """
-        #perms = self.dbauth.get_user_permissions2(dbuser)
-        perms = self.dbauth.get_login_permissions(dbuser)
+        #perms = self.manager.get_user_permissions2(dbuser)
+        perms = self.manager.get_login_permissions(dbuser)
         compress_perms = binascii.b2a_base64(compress(json.dumps(perms)))
         user.set_perms(compress_perms)
         #user.set_perms(perms)
     
     def __set_user_roles(self, dbuser, user):
         """Set user roles """    
-        roles, total = self.dbauth.get_user_roles(dbuser)
+        roles, total = self.manager.get_user_roles(dbuser)
         user.set_roles([r.name for r in roles])      
     
     #
@@ -646,7 +647,7 @@ class BaseAuthController(ApiController):
             # reresh user in authentication manager
             user = self.module.authentication_manager.refresh(uid, name, domain)            
             # get user reference in db
-            dbuser = self.dbauth.get_users(name=user_name)[0]
+            dbuser = self.manager.get_users(name=user_name)[0]
             # set user attributes
             #self.__set_user_attribs(dbuser, user)
             # set user permission
@@ -678,156 +679,16 @@ class BaseAuthController(ApiController):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)        
 
-        return res
+        return res    
     
-class AuthObject(ApiObject):
-    objtype = u'auth'
-    objdef = u'abstract'
-    objdesc = u'Authorization abstract object'
-    
-    def __init__(self, controller, oid=None, objid=None, name=None, desc=None, 
-                 active=True, model=None):
-        ApiObject.__init__(self, controller, oid=oid, objid=objid, name=name, 
-                           desc=desc, active=active)
-        self.model = model
-    
-    def __del__(self):
-        pass
-    
-    @property
-    def dbauth(self):
-        return self.controller.dbauth    
-    
-    #
-    # authorization
-    #
-    def init_object(self):
-        """Register object types, objects and permissions related to module.
-        Call this function when initialize system first time.
-        """
-        try:
-            """
-            # call only once during db initialization
-            """
-            # add object type
-            #class_name = self.__class__.__module__ +'.'+self.__class__.__name__
-            obj_types = [(self.objtype, self.objdef)]
-            self.dbauth.add_object_types(obj_types)
-            
-            # add object and permissions
-            obj_type = self.dbauth.get_object_type(
-                objtype=self.objtype, objdef=self.objdef)[0][0]
-            objs = [(obj_type, self._get_value(self.objdef, []), self.objdesc)]
-            actions = self.dbauth.get_object_action()
-            self.dbauth.add_object(objs, actions)
-            
-            # register event related to ApiObject
-            self.event_class(self.controller).init_object()
-            
-            self.logger.debug(u'Register api object: %s' % objs)
-        except (QueryError, TransactionError) as ex:
-            self.logger.warn(ex.desc)
-            #raise ApiManagerError(ex)
-            
-        # init child classes
-        for child in self.child_classes:
-            child(self.controller, self).init_object()          
-    
-    def register_object(self, args, desc=u'', objid=None):
-        """Register object types, objects and permissions related to module.
-        
-        :param args: objid split by //
-        :param desc: object description
-        :param objid: parent objid
-        """
-        self.logger.debug(u'Register api object - START')
-        
-        try:
-            # add object and permissions
-            obj_type = self.dbauth.get_object_type(objtype=self.objtype, 
-                                                   objdef=self.objdef)[0][0]
-            objs = [(obj_type, self._get_value(self.objdef, args), desc)]
-            actions = self.dbauth.get_object_action()
-            self.dbauth.add_object(objs, actions)
-            
-            # register event related to ApiObject
-            self.event_class(self.controller).register_object(args, desc)                
-            
-            self.logger.debug(u'Register api object %s:%s %s - STOP' % 
-                              (self.objtype, self.objdef, objs))
-        except (QueryError, TransactionError) as ex:
-            self.logger.error(u'Register api object: %s - ERROR' % (ex.desc))
-            raise ApiManagerError(ex.desc, code=400)
-        
-        # register child classes
-        for child in self.child_classes:
-            child(self.controller, self).register_object(args, desc=child.objdesc)
-    
-    def deregister_object(self, args, objid=None):
-        """Deregister object types, objects and permissions related to module.
-        
-        :param args: objid split by //
-        :param objid: parent objid
-        """
-        self.logger.debug(u'Deregister api object - START')
-        
-        try:
-            # remove object and permissions
-            obj_type = self.dbauth.get_object_type(objtype=self.objtype, 
-                                                   objdef=self.objdef)[0][0]
-            objid = self._get_value(self.objdef, args)
-            self.dbauth.remove_object(objid=objid, objtype=obj_type)
-            
-            # deregister event related to ApiObject
-            self.event_class(self.controller).deregister_object(args)
-            
-            self.logger.debug(u'Deregister api object %s:%s %s - STOP' % 
-                              (self.objtype, self.objdef, objid))                
-        except (QueryError, TransactionError) as ex:
-            self.logger.error(u'Deregister api object: %s - ERROR' % (ex.desc))
-            raise ApiManagerError(ex.desc, code=400)
-        
-        # deregister child classes
-        for child in self.child_classes:
-            child(self.controller, self).deregister_object(args)        
-    
-    def set_admin_permissions(self, role_name, args):
-        """Set admin permissions
-        """
-        try:
-            role, total = self.dbauth.get_roles(name=role_name)
-            perms, total = self.dbauth.get_permission_by_object(
-                                    objid=self._get_value(self.objdef, args),
-                                    objtype=None, 
-                                    objdef=self.objdef,
-                                    action=u'*')            
-            
-            # set container main permissions
-            self.dbauth.append_role_permissions(role[0], perms)
-            
-            # set child resources permissions
-            for child in self.child_classes:
-                res = child(self.controller, self)
-                res.set_admin_permissions(role_name, self._get_value(
-                            res.objdef, args).split(u'//'))            
-        except Exception as ex:
-            self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=400)    
+class AuthObject(ApiInternalObject):
+    pass
     
 class User(AuthObject):
     objdef = u'User'
     objdesc = u'System users'
     
-    def __init__(self, controller, oid=None, objid=None, name=None, desc=None, 
-                 model=None, active=True):
-        AuthObject.__init__(self, controller, oid=oid, objid=objid, name=name, 
-                            desc=desc, active=active, model=model)    
-    
 class Token(AuthObject):
     objdef = u'Token'
     objdesc = u'Authorization Token'
-    
-    def __init__(self, controller, oid=None, objid=None, name=None, desc=None, 
-                 model=None, active=True):
-        AuthObject.__init__(self, controller, oid=oid, objid=objid, name=name, 
-                            desc=desc, active=active, model=model)   
+        
