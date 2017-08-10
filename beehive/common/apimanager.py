@@ -27,7 +27,7 @@ from beecell.db import TransactionError, QueryError
 from beecell.db.manager import MysqlManager, SqlManagerError, RedisManager
 from beecell.auth import extract
 from beecell.simple import str2uni, id_gen, import_class, truncate, get_class_name,\
-    parse_redis_uri, get_remote_ip, nround, str2bool
+    parse_redis_uri, get_remote_ip, nround, str2bool, format_date
 from beecell.sendmail import Mailer
 from beehive.common.data import operation, trace
 from beecell.auth import AuthError, DatabaseAuth, LdapAuth, SystemUser
@@ -43,6 +43,7 @@ try:
     from beecell.server.uwsgi_server.wrapper import uwsgi_util
 except:
     pass
+from re import escape
 
 class ApiManagerError(Exception):
     """Main excpetion raised by api manager and childs
@@ -1108,7 +1109,7 @@ class ApiController(object):
     
             # create needs
             if action == u'insert':
-                if objid is None:
+                if objid is None or objid == u'*':
                     objid = u'*'
                 else:
                     objid = objid + u'//*'
@@ -1118,13 +1119,9 @@ class ApiController(object):
             res = self.has_needs(needs, objset)
             if res is False:
                 raise ApiManagerError('')
-            #self.logger.debug("%s can '%s' objects '%s:%s' '%s'" % (
-            #        (operation.user[0], operation.user[1]), action, objtype, 
-            #        objdef, objid))
         except ApiManagerError:
-            msg = "%s can not '%s' objects '%s:%s' '%s'" % (
-                    (operation.user[0], operation.user[1]), action, objtype, 
-                    objdef, objid)
+            msg = "Identity %s can not '%s' objects '%s:%s' '%s'" % (
+                    operation.user[2], action, objtype, objdef, objid)
             self.logger.error(msg)
             raise ApiManagerError(msg, code=401)
         return res
@@ -1137,111 +1134,85 @@ class ApiController(object):
     #
     # helper model get method
     #
-    '''
-    def get_entity(self, oid, query_func):
-        """Parse oid and get entity entity by name or by model id or by uuid
+    def get_entity(self, entity_class, model_class, oid):
+        """Get single entity by oid (id, uuid, name) if exists
         
-        :param oid: entity model id or name or uuid
-        :param query_func: query functions
-        :return: entity
-        :raises QueryError: raise :class:`QueryError`
-        """
-        # get obj by uuid
-        if match(u'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-'\
-                 u'[0-9a-f]{4}-[0-9a-f]{12}', str(oid)):
-            entity = query_func(uuid=oid)[0][0]
-        # get obj by id
-        elif match(u'[0-9]+', str(oid)):
-            entity = query_func(oid=oid)[0][0]
-        # get obj by name
-        else:
-            entity = query_func(name=oid)[0][0]
-        return entity    
-    ''' 
-    
-    def get_object(self, object_class, model_class, oid):
-        """Get single object by oid (id, uuid, name) if exists
-        
-        :param object_class: Controller ApiObject Extension class
+        :param entity_class: Controller ApiObject Extension class
         :param model_class: Model ApiObject Extension class
         :param oid: entity model id or name or uuid  
         :return: object
         :raises ApiManagerError: raise :class:`ApiManagerError`        
         """
-        # check authorization
-        self.controller.check_authorization(object_class.objtype, 
-                                            object_class.objdef, 
-                                            self.objid, u'view')
-        
         try:
             entity = self.manager.get_entity(model_class, oid)
-            try: objid=entity.objid
-            except: objid=None
-            try: active=entity.active
-            except: active=None
-            res = object_class(self, oid=object.id, objid=objid, 
-                           name=entity.name, active=active, 
+            
+            # check authorization
+            self.check_authorization(entity_class.objtype, entity_class.objdef, 
+                                     entity.objid, u'view')
+            
+            res = entity_class(self, oid=entity.id, objid=entity.objid, 
+                           name=entity.name, active=entity.active, 
                            desc=entity.desc, model=entity)
             self.logger.debug(u'Get %s : %s' % 
-                              (object_class, res))
+                              (entity_class, res))
             return res
         except QueryError as ex:         
-            self.logger.error(ex)
-            entity_name =  object_class.__name__
+            self.logger.error(ex, exc_info=1)
+            entity_name =  entity_class.__name__
             raise ApiManagerError(u'%s %s not found' % (entity_name, oid), 
                                   code=404)       
     
-    def get_paginated_objects(self, object_class, get_entities, 
-                              page=0, size=10, order=u'DESC', field=u'id', 
-                              *args, **kvargs):
-        """Get objects with pagination
+    def get_paginated_entities(self, entity_class, get_entities, 
+            page=0, size=10, order=u'DESC', field=u'id', *args, **kvargs):
+        """Get entities with pagination
 
-        :param object_class: ApiObject Extension class
+        :param entity_class: ApiObject Extension class
         :param get_entities: model get_entities function. Return (entities, total)
+        :param name: name like [optional]
+        :param active: active [optional]
+        :param creation_date: creation_date [optional]
+        :param modification_date: modification_date [optional]
         :param page: objects list page to show [default=0]
         :param size: number of objects to show in list per page [default=0]
         :param order: sort order [default=DESC]
         :param field: sort field [default=id]
         :param args: custom params
         :param kvargs: custom params
-        :return: (list of object_class instances, total)
+        :return: (list of entity_class instances, total)
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         res = []
         
         # verify permissions
-        objs = self.can(u'view', object_class.objtype, 
-                        definition=object_class.objdef)
-        objs = objs.get(object_class.objdef.lower())
+        objs = self.can(u'view', entity_class.objtype, 
+                        definition=entity_class.objdef)
+        objs = objs.get(entity_class.objdef.lower())
         
         # create permission tags
         tags = []
         for p in objs:
-            tags.append(self.manager.hash_from_permission(object_class.objdef, p))
-        self.logger.debug(u'Permission tags to apply: %s' % tags)       
+            tags.append(self.manager.hash_from_permission(entity_class.objdef, p))
+        self.logger.debug(u'Permission tags to apply: %s' % tags)
                 
         try:
             entities, total = get_entities(tags=tags, page=page, size=size, 
                 order=order, field=field, *args, **kvargs)
             
             for entity in entities:
-                try: objid=entity.objid
-                except: objid=None
-                try: active=entity.active
-                except: active=None
-                obj = object_class(self, oid=entity.id, objid=objid, 
-                               name=entity.name, active=active, 
+                obj = entity_class(self, oid=entity.id, objid=entity.objid, 
+                               name=entity.name, active=entity.active, 
                                desc=entity.desc, model=entity)
                 res.append(obj)             
             
             self.logger.debug(u'Get %s (total:%s): %s' % 
-                              (object_class, total, truncate(res)))
+                              (entity_class, total, truncate(res)))
             return res, total
         except QueryError as ex:         
             self.logger.warn(ex)
             return [], 0    
     
-    def get_paginated_objects2(self, object_class, get_entities, 
+    '''
+    def get_paginated_entities2(self, object_class, get_entities, 
                               page=0, size=10, order=u'DESC', field=u'id', 
                               *args, **kvargs):
         """Get objects with pagination
@@ -1296,7 +1267,7 @@ class ApiController(object):
             return res, total
         except QueryError as ex:         
             self.logger.warn(ex)
-            return [], 0
+            return [], 0'''
 
 class ApiEvent(object):
     """Generic event.
@@ -1606,10 +1577,6 @@ class ApiObject(object):
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
-        creation_date = str2uni(self.model.creation_date\
-                                .strftime(u'%d-%m-%Y %H:%M:%S'))
-        modification_date = str2uni(self.model.modification_date\
-                                    .strftime(u'%d-%m-%Y %H:%M:%S'))
         res = {
             u'id':self.oid, 
             u'uuid':self.uuid,
@@ -1621,15 +1588,14 @@ class ApiObject(object):
             u'uri':self.objuri, 
             u'active':self.active,
             u'date':{
-                u'creation':creation_date,
-                u'modified':modification_date
+                u'creation':format_date(self.model.creation_date),
+                u'modified':format_date(self.model.modification_date),
+                u'expiry':None
             }
         }
         
         if self.model.expiry_date is not None:
-            expiry_date = str2uni(self.model.expiry_date\
-                                  .strftime(u'%d-%m-%Y %H:%M:%S'))
-            res[u'date'][u'expiry'] = expiry_date
+            res[u'date'][u'expiry'] = format_date(self.model.expiry_date)
         
         return res
 
@@ -1714,8 +1680,12 @@ class ApiObject(object):
     def deregister_object_permtags(self):
         """Deregister object permission tags.
         """
+        ids = self.get_all_valid_objids(self.objid.split(u'//'))
+        tags = []
+        for i in ids:
+            tags.append(self.manager.hash_from_permission(self.objdef, i))    
         table = self.objdef
-        self.manager.delete_perm_tag(self, self.oid, table)
+        self.manager.delete_perm_tag(self.oid, table, tags)
 
     def register_object(self, args, desc=u'', objid=None):
         """Register object types, objects and permissions related to module.
@@ -1758,7 +1728,7 @@ class ApiObject(object):
         self.logger.debug(u'Deregister api object - START')
         
         # deregister permission tags
-        self.deregister_object_permtags(args)        
+        self.deregister_object_permtags()
         
         # define objid
         if objid == None:
@@ -1770,7 +1740,6 @@ class ApiObject(object):
         
         # remove object and permissions
         objid = self._get_value(self.objdef, args)
-        #self.rpc_client.remove_object(self.objtype, self.objdef, objid)
         self.api_client.remove_object(self.objtype, self.objdef, objid)
         
         # deregister event related to ApiObject
@@ -1840,7 +1809,7 @@ class ApiObject(object):
         objid = u'*'
         if self.objid is not None: objid = self.objid
         if etype is None: etype = self.SYNC_OPERATION
-        if exception is not None: response = [False, str(exception)]
+        if exception is not None: response = [False, exception]
         action = op.split(u'.')[-1]
         
         # send event
@@ -1943,9 +1912,6 @@ class ApiObject(object):
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        #params = {u'id':self.oid}
-        #params.update(kvargs)
-        
         if self.update_object is None:
             raise ApiManagerError(u'Update is not supported for %s:%s' % 
                                   (self.objtype, self.objdef))
@@ -1973,8 +1939,6 @@ class ApiObject(object):
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        #params = {u'id':self.oid}
-        
         if self.delete_object is None:
             raise ApiManagerError(u'Delete is not supported for %s:%s' % 
                                   (self.objtype, self.objdef))        
@@ -1989,11 +1953,9 @@ class ApiObject(object):
                 self.deregister_object([self.objid])
             
             self.logger.debug(u'Delete %s: %s' % (self.objdef, self.oid))
-            #self.send_event(u'delete', params=params)
-            return res
+            return None
         except TransactionError as ex:
-            #self.send_event(u'delete', params=params, exception=ex)         
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex.desc, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
 class ApiInternalObject(ApiObject):
@@ -2083,6 +2045,9 @@ class ApiInternalObject(ApiObject):
         """
         self.logger.debug(u'Deregister api object - START')
         
+        # deregister permission tags
+        self.deregister_object_permtags()
+        
         try:
             # remove object and permissions
             obj_type = self.auth_db_manager.get_object_type(
@@ -2097,10 +2062,7 @@ class ApiInternalObject(ApiObject):
                               (self.objtype, self.objdef, objid))                
         except (QueryError, TransactionError) as ex:
             self.logger.error(u'Deregister api object: %s - ERROR' % (ex.desc))
-            raise ApiManagerError(ex.desc, code=400)
-        
-        # deregister permission tags
-        self.deregister_object_permtags(args)        
+            raise ApiManagerError(ex.desc, code=400)       
         
         # deregister child classes
         for child in self.child_classes:
@@ -2194,7 +2156,7 @@ class ApiViewResponse(ApiObject):
         :param exception: exceptione raised [optinal]
         """
         objid = u'*'
-        if exception is not None: response = (False, exception)
+        if exception is not None: response = (False, escape(str(exception)))
         method = api[u'method']
         if method in [u'GET']:
             action = u'view'
@@ -2527,6 +2489,11 @@ class ApiView(FlaskView):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         try:
+            if response is None:
+                return Response(response=u'', 
+                                mimetype=u'text/plain', 
+                                status=code)
+            
             if isinstance(response, dict):
                 self.response_mime = u'application/json'
                 '''res = {u'status':u'ok',
@@ -2580,6 +2547,32 @@ class ApiView(FlaskView):
             self.logger.error(msg)
             raise ApiManagerError(msg, code=400)
     
+    def format_paginated_response(self, response, entity, page, total, 
+                                  field=u'id', order=u'DESC'):
+        """Format response with pagination info
+        
+        :param response: response
+        :param entity: entity like users
+        :param page: page number
+        :param total: total response records that user can view
+        :param field: sorting field
+        :param order: sorting order
+        :return: dict with data
+        """
+        resp = {
+            entity:response,
+            u'count':len(response),
+            u'page':page,
+            u'total':total,
+            u'sort':{
+                u'field':field,
+                u'order':order           
+            }
+        }
+        
+        return resp
+    
+    '''
     def get_entity(self, entity_name, query_func, get_func, oid):
         """Get entity.
         
@@ -2610,7 +2603,7 @@ class ApiView(FlaskView):
             raise ApiManagerError(u'%s %s not found' % (entity_name, oid), 
                                   code=404)
         self.logger.debug(u'Get %s %s' % (entity_name, oid))
-        return res  
+        return res  '''
     
     def dispatch(self, controller, data, *args, **kwargs):
         """http inner function. Override to implement apis.
@@ -2634,6 +2627,8 @@ class ApiView(FlaskView):
             # set operation
             operation.user = (u'guest', u'localhost', None)
             operation.id = request.headers.get(u'request-id', str(uuid4()))
+            operation.transaction = None
+            
             self.logger.info(u'Start new operation [%s]' % (operation.id))
             
             self.logger.info(u'Invoke api: %s [%s] - START' % 
@@ -2751,7 +2746,7 @@ class ApiView(FlaskView):
         # regiter routes
         view_num = 0
         for rule in rules:
-            uri = u'/%s/%s/' % (version, rule[0])
+            uri = u'/%s/%s' % (version, rule[0])
             defaults = {u'module':module}
             defaults.update(rule[3])
             view_name = u'%s-%s' % (get_class_name(rule[2]), view_num)

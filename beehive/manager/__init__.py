@@ -93,7 +93,7 @@ class ComponentManager(object):
     
     OPTIONs:
         -c, --config        json auth config file [default=/etc/beehive/manage.conf]
-        -f, --format        output format: json, yaml, custom, table [default]
+        -f, --format        output format: native, json, yaml, custom, table [default]
         -h, --help          get beehive <SECTION> help
         -e, --env           set environment to use. Ex. test, lab, prod
     
@@ -105,7 +105,7 @@ class ComponentManager(object):
         0  if OK,
         1  if problems occurred  
     """
-    formats = [u'json', u'yaml', u'table', u'custom']
+    formats = [u'json', u'yaml', u'table', u'custom', u'native']
     
     def __init__(self, auth_config, env, frmt):
         self.logger = getLogger(self.__class__.__module__+ \
@@ -238,8 +238,18 @@ class ComponentManager(object):
                fields=None, details=False, maxsize=50):
         """
         """
+        orig_data = data
+        
+        if self.format == u'native':
+            if data is not None:
+                if isinstance(data, dict) or isinstance(data, list):
+                    self.__jsonprint(data)          
+        
         if key is not None:
             data = data[key]
+        elif u'msg' in data:
+            maxsize = 200
+            headers = [u'msg']
     
         if isinstance(data, dict) and u'jobid' in data:
             jobid = data.get(u'jobid')
@@ -250,7 +260,7 @@ class ComponentManager(object):
         if self.format == u'json':
             if data is not None:
                 if isinstance(data, dict) or isinstance(data, list):
-                    self.__jsonprint(data)                
+                    self.__jsonprint(data)         
             
         elif self.format == u'yaml':
             if data is not None:
@@ -284,6 +294,13 @@ class ComponentManager(object):
                     maxsize = 100
 
                 if isinstance(data, dict) or isinstance(data, list):
+                    if u'page' in orig_data:
+                        print(u'Page: %s' % orig_data[u'page'])
+                        print(u'Count: %s' % orig_data[u'count'])
+                        print(u'Total: %s' % orig_data[u'total'])
+                        print(u'Order: %s %s' % (orig_data.get(u'sort').get(u'field'), 
+                                                 orig_data.get(u'sort').get(u'order')))
+                        print(u'')                    
                     self.__tabularprint(data, other_headers=other_headers,
                                         headers=headers, fields=fields,
                                         maxsize=maxsize)

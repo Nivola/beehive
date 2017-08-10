@@ -36,7 +36,8 @@ class BeehiveTestCase(unittest.TestCase):
     """To execute this test you need a mysql instance, a user and a 
     database associated to the user.
     """    
-    logger = logging.getLogger(u'beehive.test')
+    logger = logging.getLogger(u'beehive.test.log')
+    runlogger = logging.getLogger(u'beehive.test.run')
     pp = pprint.PrettyPrinter(width=200)
     
     #credentials = u'%s:%s' % (user1, pwd1)
@@ -59,8 +60,10 @@ class BeehiveTestCase(unittest.TestCase):
         return config
 
     def setUp(self):
-        logging.getLogger(u'beehive.test')\
-               .info(u'========== %s ==========' % self.id()[9:])
+        logging.getLogger(u'beehive.test.log')\
+            .info(u'========== %s ==========' % self.id()[9:])
+        logging.getLogger(u'beehive.test.run')\
+            .info(u'========== %s ==========' % self.id()[9:])            
         self.start = time.time()
         
         # ssl
@@ -114,8 +117,10 @@ class BeehiveTestCase(unittest.TestCase):
         
     def tearDown(self):
         elapsed = round(time.time() - self.start, 4)
-        logging.getLogger(u'beehive.test')\
-               .info(u'========== %s ========== : %ss\n' % (self.id()[9:], elapsed))
+        logging.getLogger(u'beehive.test.log')\
+            .info(u'========== %s ========== : %ss\n' % (self.id()[9:], elapsed))
+        logging.getLogger(u'beehive.test.run')\
+            .info(u'========== %s ========== : %ss\n' % (self.id()[9:], elapsed))            
     
     def open_mysql_session(self, db_uri):
         engine = create_engine(db_uri)
@@ -153,44 +158,55 @@ class BeehiveTestCase(unittest.TestCase):
             path = u'%s?%s' % (path, filter)
         if isinstance(data, dict):
             data = json.dumps(data)
-            
+        
+        self.runlogger.info(u'path: %s' % path)
+        self.runlogger.info(u'method: %s' % method)
+        self.runlogger.info(u'data: %s' % data)
+        self.runlogger.info(u'headers: %s' % base_headers)
         res = self.api[api].run_http_request2(path, method, data=data, 
                                               headers=base_headers)
-        if res is not None:
-            return res[u'response']
+        self.runlogger.info(u'res: %s' % res)
+        return res
+        #if res is not None:
+        #    return res[u'response']
 
     def invoke_no_sign(self, api, path, method, data=u'', headers={}, filter=None):
         """Invoke api without sign"""
         base_headers =  {u'Accept':u'application/json'}
         base_headers.update(headers)
+        if isinstance(data, dict):
+            data = json.dumps(data)
         if filter is not None:
             if isinstance(filter, dict):
                 filter = urllib.urlencode(filter)
             path = u'%s?%s' % (path, filter)
+            
+        self.runlogger.info(u'path: %s' % path)
+        self.runlogger.info(u'method: %s' % method)
+        self.runlogger.info(u'data: %s' % data)
+        self.runlogger.info(u'headers: %s' % base_headers)
         res = self.api[api].run_http_request2(path, method, data=data, 
                                               headers=base_headers)
-        return res[u'response']    
+        self.runlogger.info(u'res: %s' % res)
+        return res  
 
     #
     # keyauth
     #
     def test_login(self):
-        global uid, seckey   
+        global uid, seckey
         data = {u'user':self.user, 
                 u'password':self.pwd, 
                 u'login_ip':self.ip}
-        path = u'/v1.0/keyauth/login/'
+        path = u'/v1.0/keyauth/login'
         base_headers = {u'Accept':u'application/json'}
-        res = self.api[u'auth'].run_http_request2(path, u'POST', 
-                                                  data=json.dumps(data), 
-                                                  headers=base_headers)
-        #self.logger.info(json.dumps(res, indent=4)) 
-        res = res[u'response']
+        res = self.invoke_no_sign(u'auth', path, u'POST', data=data, 
+                                  headers=base_headers, filter=None)
         uid = res[u'uid']
         seckey = res[u'seckey']
 
     def test_logout(self):
-        self.invoke(u'auth', u'/v1.0/keyauth/logout/', u'DELETE', data='')
+        self.invoke(u'auth', u'/v1.0/keyauth/logout', u'DELETE', data='')
 
     #
     # simplehttp
@@ -198,7 +214,7 @@ class BeehiveTestCase(unittest.TestCase):
     def test_simple_http_login(self):
         global uid, seckey   
         user = u'%s:%s' % (self.user, self.pwd)
-        path = u'/v1.0/simplehttp/login/'
+        path = u'/v1.0/simplehttp/login'
         base_headers = {u'Accept':u'application/json',}
         data = {u'user':self.user, 
                 u'password':self.pwd, 
@@ -213,6 +229,7 @@ class BeehiveTestCase(unittest.TestCase):
 def runtest(suite):
     log_file = u'/tmp/test.log'
     watch_file = u'/tmp/test.watch'
+    run_file = u'/tmp/test.run'
     
     logging.captureWarnings(True)    
     
@@ -231,6 +248,12 @@ def runtest(suite):
     ]
     LoggerHelper.file_handler(loggers, logging.DEBUG, watch_file, 
                               frmt=u'%(message)s', formatter=ColorFormatter)
+    
+    loggers = [
+        logging.getLogger(u'beehive.test.run'),
+    ]
+    LoggerHelper.file_handler(loggers, logging.INFO, run_file, 
+                              frmt=u'%(message)s', formatter=ColorFormatter)    
     
     # run test suite
     #alltests = unittest.TestSuite(suite)

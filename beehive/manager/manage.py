@@ -210,7 +210,6 @@ def main(run_path, argv):
     LoggerHelper.rotatingfile_handler(loggers, logging.ERROR, 
                                       u'%s/manage.watch.log' % auth_config[u'log'], 
                                       1024*1024, 5, lfrmt)
-
     logging.captureWarnings(True)
 
     try:
@@ -220,115 +219,6 @@ def main(run_path, argv):
             raise Exception(u'ERROR : section %s does not exist' % section)
         manager = sections[section]
         retcode = manager.main(auth_config, frmt, opts, args, env)
-        
-        '''
-        if section == u'platform':
-            manager = PlatformManager
-            retcode = PlatformManager.main(auth_config, frmt, opts, args, env, 
-                                           PlatformManager)
-    
-        elif section == u'subsystem':
-            retcode = create_main(auth_config, frmt, args)
-        
-        elif section == u'client':
-            retcode = create_client(auth_config, frmt, args)
-                
-        elif section == u'auth':
-            manager = AuthManager
-            retcode = manager.main(auth_config, frmt, opts, args, env, 
-                                   manager)
-            
-        elif section == u'oauth2':
-            manager = Oaut2hManager
-            retcode = manager.main(auth_config, frmt, opts, args, env, 
-                                   manager)           
-            
-        elif section == u'catalog':
-            manager = CatalogManager
-            retcode = manager.main(auth_config, frmt, opts, args, env, 
-                                   manager)          
-
-        elif section == u'event':
-            manager = EventManager
-            retcode = manager.main(auth_config, frmt, opts, args, env, 
-                                   manager)
-
-        elif section == u'monitor':
-            manager = MonitorManager
-            retcode = manager.main(auth_config, frmt, opts, args, env, 
-                                   manager)
-            
-        elif section == u'resource':
-            manager = ResourceManager
-            retcode = manager.main(auth_config, frmt, opts, args, env, 
-                                   manager)
-            
-        elif section == u'scheduler':
-            manager = SchedulerManager
-            try: subsystem = args.pop(0)
-            except:
-                raise Exception(u'ERROR : Container id is missing')  
-            retcode = SchedulerManager.main(auth_config, frmt, opts, args, env, 
-                                            SchedulerManager, subsystem=subsystem)
-
-        elif section == u'config':
-            manager = ConfigManager
-            retcode = manager.main(auth_config, frmt, opts, args, env, 
-                                   manager)
-            
-        elif section == u'provider':
-            manager = ProviderManager
-            try: cid = int(args.pop(0))
-            except:
-                raise Exception(u'ERROR : Provider id is missing')                
-            retcode = ProviderManager.main(auth_config, frmt, opts, args, env, 
-                                           ProviderManager, containerid=cid)
-            
-        elif section == u'vsphere':
-            manager = VsphereManager
-            try: cid = int(args.pop(0))
-            except:
-                raise Exception(u'ERROR : Orchestrator id is missing')              
-            retcode = VsphereManager.main(auth_config, frmt, opts, args, env, 
-                                          VsphereManager, containerid=cid)
-            
-        elif section == u'nsx':
-            manager = NsxManager
-            try: cid = int(args.pop(0))
-            except:
-                raise Exception(u'ERROR : Orchestrator id is missing')              
-            retcode = NsxManager.main(auth_config, frmt, opts, args, env, 
-                                          NsxManager, containerid=cid)
-            
-        elif section == u'openstack':
-            manager = OpenstackManager
-            try: cid = int(args.pop(0))
-            except:
-                raise Exception(u'ERROR : Orchestrator id is missing')              
-            retcode = OpenstackManager.main(auth_config, frmt, opts, args, env, 
-                                            OpenstackManager, containerid=cid)            
-            
-        elif section == u'native.vsphere':
-            manager = NativeVsphereManager
-            try: cid = args.pop(0)
-            except:
-                raise Exception(u'ERROR : Vcenter id is missing')              
-            retcode = NativeVsphereManager.main(auth_config, frmt, opts, args, env, 
-                                                NativeVsphereManager, 
-                                                orchestrator_id=cid)
-            
-        elif section == u'native.openstack':
-            manager = NativeOpenstackManager
-            try: cid = args.pop(0)
-            except:
-                raise Exception(u'ERROR : Openstack id is missing')              
-            retcode = NativeOpenstackManager.main(auth_config, frmt, opts, args, env, 
-                                                  NativeOpenstackManager, 
-                                                  orchestrator_id=cid)            
-            
-        else:
-            raise Exception(u'ERROR : section in wrong')'''
-                    
     except Exception as ex:
         line = [u'='] * 50
         #print(bcolors.FAIL + bcolors.BOLD + u'    ' + u''.join(line))

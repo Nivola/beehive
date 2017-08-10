@@ -82,7 +82,7 @@ class CatalogDbManager(AbstractDbManager):
         :raises QueryError: raise :class:`QueryError`
         """
         filters = []
-        if u'zone' in kvargs:
+        if u'zone' in kvargs and kvargs.get(u'zone') is not None:
             filters = [u'AND zone=:zone']
         
         res, total = self.get_paginated_entities(Catalog, filters=filters, 
@@ -109,16 +109,16 @@ class CatalogDbManager(AbstractDbManager):
         :param str objid: entity authorization id. [optional]
         :param str uuid: entity uuid. [optional]
         :param str name: entity name [optional]
-        :param new_name: catalog name [optional]
-        :param new_desc: catalog description [optional]
-        :param new_zone: catalog zone. Value like internal or external
+        :param name: catalog name [optional]
+        :param desc: catalog description [optional]
+        :param zone: catalog zone. Value like internal or external
         :return: :class:`Catalog`
         :raises TransactionError: raise :class:`TransactionError`
         """
         res = self.update_entity(Catalog, *args, **kvargs)
         return res  
     
-    def remove(self, *args, **kvargs):
+    def delete(self, *args, **kvargs):
         """Remove catalog.
         :param int oid: entity id. [optional]
         :param str objid: entity authorization id. [optional]
@@ -231,9 +231,9 @@ class CatalogDbManager(AbstractDbManager):
         :raises QueryError: raise :class:`QueryError`
         """
         filters = []
-        if u'service' in kvargs:
+        if u'service' in kvargs and kvargs.get(u'service') is not None:
             filters.append(u'AND service=:service')
-        if u'catalog' in kvargs:
+        if u'catalog' in kvargs and kvargs.get(u'catalog') is not None:
             filters.append(u'AND catalog_id=:catalog')        
         
         res, total = self.get_paginated_entities(CatalogEndpoint, filters=filters, 
@@ -257,6 +257,36 @@ class CatalogDbManager(AbstractDbManager):
         res = self.add_entity(CatalogEndpoint, objid, name, service, desc, 
                               catalog, uri, active)
         return res
+    
+    def update_endpoint(self, *args, **kvargs):
+        """Update catalog endpoint.
+
+        :param int oid: entity id. [optional]
+        :param str objid: entity authorization id. [optional]
+        :param str uuid: entity uuid. [optional]
+        :param name: endpoint name [optional]
+        :param desc: endpoint description [optional]
+        :param service: service service [optional]
+        :param catalog: endpoint catalog id [optional]
+        :param uri: endpoint uri [optional]
+        :param active: endpoint active [optional]
+        :return: :class:`Catalog`
+        :raises TransactionError: raise :class:`TransactionError`
+        """
+        res = self.update_entity(CatalogEndpoint, *args, **kvargs)
+        return res  
+    
+    def delete_endpoint(self, *args, **kvargs):
+        """Remove catalog endpoint.
+        :param int oid: entity id. [optional]
+        :param str objid: entity authorization id. [optional]
+        :param str uuid: entity uuid. [optional]
+        :param str name: entity name [optional]
+        :return: :class:`Catalog`
+        :raises TransactionError: raise :class:`TransactionError`
+        """
+        res = self.remove_entity(CatalogEndpoint, *args, **kvargs)
+        return res        
     
     '''
     @netsted_transaction

@@ -245,6 +245,9 @@ class Catalog(AuthObject):
             
         # child classes
         self.child_classes = [CatalogEndpoint]
+        
+        self.update_object = self.manager.update
+        self.delete_object = self.manager.delete
 
     def info(self):
         """Get object info
@@ -456,6 +459,9 @@ class CatalogEndpoint(AuthObject):
         
         if self.catalog is not None:
             self.objuri = u'%s/%s/%s' % (self.catalog.objuri, self.objuri, self.oid)
+            
+        self.update_object = self.manager.update_endpoint
+        self.delete_object = self.manager.delete_endpoint            
     
     def __repr__(self):
         return "<%s id=%s objid=%s name=%s catalog=%s>" % (
@@ -473,7 +479,6 @@ class CatalogEndpoint(AuthObject):
         info.update({
             u'catalog':self.catalog.name, 
             u'catalog_id':self.catalog.oid,
-            u'uri':self.objuri, 
             u'service':self.model.service,
             u'endpoint':self.model.uri            
         })

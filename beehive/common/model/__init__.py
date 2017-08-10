@@ -98,25 +98,24 @@ class PermTagEntity(Base):
                                                      self.entity, self.type)
 
 class PaginatedQueryGenerator(object):
-    def __init__(self, entity, session):
+    def __init__(self, entity, session, other_entities=[]):
         """Use this class to generate and configure query with pagination
         and filtering based on tagged entity.
         Base table : perm_tag t1, perm_tag_entity t2, {entitytable} t3
         
-        :param entity: entity
+        :param entity: main mapper entity
+        :param other_entities: other mapper entities [optional] [default=[]]
         """
         self.logger = logging.getLogger(self.__class__.__module__+ \
                                         u'.'+self.__class__.__name__)         
         
         self.session = session
         self.entity = entity
+        self.other_entities = other_entities
         self.other_tables = []
         self.other_filters = []
-        self.base_fields = [
-            u'id', u'uuid', u'objid', u'name', u'desc', 
-            u'active', u'creation_date', u'modification_date', 
-            u'expiry_date'
-        ]
+        self.filter_fields = []
+        self.select_fields = [u't3.*']
     
     def set_pagination(self, page=0, size=10, order=u'DESC', field=u'id'):
         """Set pagiantion params
@@ -140,31 +139,46 @@ class PaginatedQueryGenerator(object):
         :param str alias: table alias
         """
         self.other_tables.append([table, alias])
+        
+    def add_select_field(self, field):
+        """Append field to add after SELECT
+        
+        :param str field: field with syntax <table_ alias>.<field>
+        """
+        self.select_fields.append(field)
+    
+    def add_filter_by_field(self, field, kvargs, custom_filter=None):
+        """Add where condition like AND t3.<field>=:<field> if <field> in kvargs
+        and not None. If you want a different filter syntax use custom_filter.
+        
+        :param field: field to search in kvargs
+        :param kvargs: query custom params
+        :param custom_filter: custom string filter [optional]
+        """
+        if field in kvargs and kvargs.get(field) is not None:
+            if custom_filter is None:    
+                self.other_filters.append(
+                    u'AND t3.{field}=:{field}'.format(field=field))
+            else:
+                self.other_filters.append(custom_filter)
     
     def add_filter(self, sqlfilter):
         """Append filter to query
         
         :param str sqlfilter: sql filter like 'AND t3.id=101'
         """
-        self.other_filters.append(sqlfilter)
-        
-    def add_fields(self, fields):
-        """Add fields that you espect query returns
-        
-        :param list fields: list of fields to add to those returned by query
-        """
-        self.base_fields.extend(fields)            
-    
+        self.other_filters.append(sqlfilter)          
+
     def base_stmp(self, count=False):
         """
         """
-        fields = u't3.*'
+        fields = u', '.join(self.select_fields)
         if count is True:
             fields = u'count(t3.id) as count'
         
         sql = [
             u'SELECT {fields}',
-            u'FROM perm_tag t1, perm_tag_entity t2, {table} t3'
+            u'FROM perm_tag t1, perm_tag_entity t2, `{table}` t3'
         ]
         # append other tables
         for table in self.other_tables:
@@ -212,14 +226,18 @@ class PaginatedQueryGenerator(object):
         # make query
         stmp = self.base_stmp()
 
-        query = self.session.query(self.entity).\
+        # set query entities
+        entities = [self.entity]
+        entities.extend(self.other_entities)
+
+        query = self.session.query(*entities).\
                 from_statement(stmp).\
                 params(tags=tags, **kvargs)
-        #self.logger.warn(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
+        self.logger.warn(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
         query = query.all()
         
         self.logger.debug(u'Get %ss (total:%s): %s' % 
-                          (self.entity, total, truncate(query)))
+                          (self.entity.__name__, total, truncate(query)))
         return query, total
 
 class AbstractDbManager(object):
@@ -324,7 +342,7 @@ class AbstractDbManager(object):
             raise ModelError(msg, code=404)
                  
         self.logger.debug(u'Get %s: %s' % (entityclass.__name__, truncate(entity)))
-        return entity
+        return query
     
     @query
     def get_entity(self, entityclass, oid):
@@ -347,7 +365,7 @@ class AbstractDbManager(object):
         # get obj by name
         else:
             entity = self.query_entities(entityclass, session, name=oid)
-        return entity
+        return entity.first()
     
     @query
     def get_entities(self, entityclass, filters, *args, **kvargs):
@@ -413,12 +431,11 @@ class AbstractDbManager(object):
     
     @query
     def get_paginated_entities(self, entity, tags=[], page=0, size=10, 
-            order=u'DESC', field=u'id', filters=[], other_fields=[], 
-            *args, **kvargs):
+            order=u'DESC', field=u'id', filters=[], tables=[], *args, **kvargs):
         """Get entities associated with some permission tags
         
+        :param tables: sql tables to add (table_name, alias) [optional]
         :param filters: sql filters to apply [optional]
-        :param other_fields: other fields to return [optional]
         :param args: custom params
         :param kvargs: custom params        
         :param entity: entity
@@ -427,7 +444,6 @@ class AbstractDbManager(object):
         :param active: active [optional]
         :param creation_date: creation_date [optional]
         :param modification_date: modification_date [optional]
-        :param expiry_date: expiry_date [optional]       
         :param page: users list page to show [default=0]
         :param size: number of users to show in list per page [default=0]
         :param order: sort order [default=DESC]
@@ -438,20 +454,16 @@ class AbstractDbManager(object):
         session = self.get_session()
         
         query = PaginatedQueryGenerator(entity, session)
+        # set tables
+        for table, alias in tables:
+            query.add_table(table, alias)        
         # set filters
-        if u'name' in kvargs:
-            query.add_filter(u'AND t3.name=:name')        
-        if u'active' in kvargs:
-            query.add_filter(u'AND t3.active=:active')
-        if u'creation_date' in kvargs:
-            query.add_filter(u'AND t3.creation_date=:creation_date')
-        if u'modification_date' in kvargs:
-            query.add_filter(u'AND t3.modification_date=:modification_date') 
-        #if u'expiry_date' in kvargs:
-        #    query.add_filter(u'AND expiry_date=:expiry_date') 
+        query.add_filter_by_field(u'name', kvargs)
+        query.add_filter_by_field(u'active', kvargs)
+        query.add_filter_by_field(u'creation_date', kvargs)
+        query.add_filter_by_field(u'modification_date', kvargs)
         for item in filters:
             query.add_filter(item)
-        query.add_fields(other_fields)
         query.set_pagination(page=page, size=size, order=order, field=field)
         res = query.run(tags, *args, **kvargs)
         return res
@@ -474,7 +486,7 @@ class AbstractDbManager(object):
         session.add(record)
         session.flush()
         
-        self.logger.debug(u'Add %s: %s' % (entityclass, record))
+        self.logger.debug(u'Add %s: %s' % (entityclass.__name__, record))
         return record
     
     @netsted_transaction
@@ -587,26 +599,36 @@ class AbstractDbManager(object):
         return record
     
     @netsted_transaction
-    def delete_perm_tag(self, entity, type):
+    def delete_perm_tag(self, entity, etype, tags):
         """Remove permission tag entity association.
         
         :param entity: entity id
-        :param type: entity type
+        :param etype: entity type
+        :param tags: list of associated permission tags
         :return: True
         :rtype: bool
         :raises TransactionError: raise :class:`TransactionError`
         """
         session = self.get_session()
         
-        # create tag entity association
+        # remove tag entity association
         items = session.query(PermTagEntity)\
                        .filter_by(entity=entity)\
-                       .filter_by(type=type).all()
+                       .filter_by(type=etype).all()
         for item in items:
             session.delete(item)
+        session.flush()
         self.logger.debug(u'Delete tag entity %s.%s association' % (entity, type))
         
-        # TODO: remove unused tag
-        
+        # remove unused tag
+        for tag in tags:           
+            tagrecord = session.query(PermTag).filter_by(value=tag).first()
+            tagusage = session.query(PermTagEntity).filter_by(tag=tagrecord.id).all()
+            if len(tagusage) > 0:
+                self.logger.warn(u'Tag %s is used by other entities' % tag)
+            else:
+                session.delete(tagrecord)
+                self.logger.debug(u'Delete tag %s' % tag)
+
         return True
     

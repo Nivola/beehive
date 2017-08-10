@@ -15,11 +15,16 @@ schemes:
   - http
   - https
 tags:
+  - name: base
+    description: base api
   - name: scheduler
     description: scheduler and task manager api
-    externalDocs:
-      url: http://bo
-      description: "bo"
+  - name: authorization
+    description: authorization api
+  - name: catalog
+    description: catalog api
+  - name: event
+    description: event api
 consumes:
   - application/json
   - application/xml

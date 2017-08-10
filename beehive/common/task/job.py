@@ -542,6 +542,7 @@ def job(entity_class=None, job_name=None, module=None, delta=5, op=None,
             operation.perms = []
             operation.user = (user, server, identity)
             operation.session = None
+            operation.transaction = None 
             
             if module != None:
                 mod = task.app.api_manager.modules[module]
@@ -618,7 +619,8 @@ def job_task(module=''):
 
             operation.perms = []
             operation.user = params[6]
-            operation.session = None            
+            operation.session = None
+            operation.transaction = None       
 
             #task.update(u'PROGRESS')
             #logger.debug(u'Job %s - child task %s.%s' % (task_local.op, 

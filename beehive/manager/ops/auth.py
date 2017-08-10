@@ -34,8 +34,9 @@ class AuthManager(ApiManager):
         tokens get <token>
         tokens delete <token>
         
-        users list <field>=<value>    field: page, size, order, field, role, group
-            field can be: id, objid, uuid, name, description, creation_date, modification_date
+        users list <field>=<value>    field: page, size, order, field, role, group, expiry-date
+            field can be: id, objid, uuid, name, description, creation_date, modification_date, expiry_date, active
+            expiry-date syntax: dd-mm-yyyy
             
             Ex. page=2 order=ASC field=name
         users get <id>
@@ -43,14 +44,14 @@ class AuthManager(ApiManager):
         users add-admin <name> <password>
         users update <id> [name=<name>] [desc=<desc>] [password=<password>] [active=<active>]
         users delete <id>
-        users add-role <id> <role>
+        users add-role <id> <role> <expiry-date>    expiry-date syntax: dd-mm-yyyy
         users delete-role <id> <role>
         users attribs <id>
         users attrib-add <id> <name> <value> <desc>
         users attrib-delete <id> <attrib>        
         
         roles list <field>=<value>    field: page, size, order, field, user, group
-            field can be: id, objid, uuid, name, description, creation_date, modification_date
+            field can be: id, objid, uuid, name, description, creation_date, modification_date, expiry_date, active
             
             Ex. page=2 order=ASC field=name
         roles get <id>
@@ -61,14 +62,14 @@ class AuthManager(ApiManager):
         roles delete-perm <id> <subsystem> <ptype> <objid> <action>        
         
         groups list <field>=<value>    field: page, size, order, field, role, user
-            field can be: id, objid, uuid, name, description, creation_date, modification_date
+            field can be: id, objid, uuid, name, description, creation_date, modification_date, expiry_date, active
             
             Ex. page=2 order=ASC field=name
         groups get <id>
-        groups add <name> <desc>
-        groups update <id> [name=<name>] [desc=<desc>]
+        groups add <name> <desc> [<expiry-date>=dd-mm-yyyy]
+        groups update <id> [name=<name>] [desc=<desc>] [active=<active>]
         groups delete <id>
-        groups add-role <id> <role>
+        groups add-role <id> <role> <expiry-date>    expiry-date syntax: dd-mm-yyyy
         groups delete-role <id> <role> 
         groups add-user <id> <user>
         groups delete-user <id> <user>
@@ -106,7 +107,7 @@ class AuthManager(ApiManager):
         self.logger = logger
         self.msg = None
         
-        self.obj_headers = [u'id', u'objid', u'subsystem', u'type', u'desc']
+        self.obj_headers = [u'id', u'uuid', u'objid', u'subsystem', u'type', u'desc']
         self.type_headers = [u'id', u'subsystem', u'type']
         self.act_headers = [u'id', u'value']
         self.perm_headers = [u'id', u'oid', u'objid', u'subsystem', u'type', 
@@ -118,7 +119,8 @@ class AuthManager(ApiManager):
                              u'date.creation', u'date.modified', u'date.expiry',
                              u'desc']
         self.group_headers = [u'id', u'uuid', u'objid', u'name', u'active', 
-                              u'date.creation', u'date.modified', u'desc']
+                              u'date.creation', u'date.modified', u'date.expiry',
+                              u'desc']
     
     def actions(self):
         actions = {
@@ -185,7 +187,7 @@ class AuthManager(ApiManager):
     # authentication domains
     #
     def login_domains(self):
-        uri = u'%s/domains/' % (self.authuri)
+        uri = u'%s/domains' % (self.authuri)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get domains: %s' % res)
         domains = []
@@ -198,7 +200,7 @@ class AuthManager(ApiManager):
     # actions
     #        
     def get_actions(self):
-        uri = u'%s/objects/actions/' % (self.authuri)
+        uri = u'%s/objects/actions' % (self.authuri)
         res = self._call(uri, u'GET', data=u'')
         self.logger.info(u'Get object: %s' % res)
         self.result(res, key=u'object-actions', headers=self.act_headers)     
@@ -209,22 +211,16 @@ class AuthManager(ApiManager):
     def get_perms(self, *args):
         data = self.format_http_get_query_params(*args)
         params = self.get_query_params(*args)
-        uri = u'%s/objects/perms/' % (self.authuri)
+        uri = u'%s/objects/perms' % (self.authuri)
         res = self._call(uri, u'GET', data=data)
         self.logger.info(u'Get objects: %s' % res)
-        print(u'Page: %s' % res[u'page'])
-        print(u'Count: %s' % res[u'count'])
-        print(u'Total: %s' % res[u'total'])
-        print(u'Order: %s %s' % (params.get(u'field', u'id'), 
-                                 params.get(u'order', u'DESC')))
-        print(u'')
         self.result(res, key=u'perms', headers=self.perm_headers)
     
     def get_perm(self, perm_id):
-        uri = u'%s/objects/perms/%s/' % (self.authuri, perm_id)
+        uri = u'%s/objects/perms/%s' % (self.authuri, perm_id)
         res = self._call(uri, u'GET', data=u'')
         self.logger.info(u'Get object perm: %s' % res)
-        self.result(res, key=u'perm', headers=self.perm_headers)    
+        self.result(res, key=u'perm', headers=self.perm_headers, details=True)    
     
     #
     # object types
@@ -232,18 +228,12 @@ class AuthManager(ApiManager):
     def get_object_types(self, *args):
         data = self.format_http_get_query_params(*args)
         params = self.get_query_params(*args)
-        uri = u'%s/objects/types/' % (self.authuri)
+        uri = u'%s/objects/types' % (self.authuri)
         res = self._call(uri, u'GET', data=data)
         self.logger.info(u'Get objects: %s' % res)
-        print(u'Page: %s' % res[u'page'])
-        print(u'Count: %s' % res[u'count'])
-        print(u'Total: %s' % res[u'total'])
-        print(u'Order: %s %s' % (params.get(u'field', u'id'), 
-                                 params.get(u'order', u'DESC')))
-        print(u'')
         self.result(res, key=u'object-types', headers=self.type_headers)
 
-    def add_object_type(self, subsystem, otype):
+    def add_object_type(self, subsystem, otype, *args):
         data = {
             u'object-types':[
                 {
@@ -252,14 +242,14 @@ class AuthManager(ApiManager):
                 }
             ]
         }
-        uri = u'%s/objects/types/' % (self.authuri)
+        uri = u'%s/objects/types' % (self.authuri)
         res = self._call(uri, u'POST', data=data)
         self.logger.info(u'Add object: %s' % res)
         #self.result(res)
         print(u'Add object type: %s' % res)
         
-    def delete_object_type(self, object_id):
-        uri = u'%s/objects/types/%s/' % (self.authuri, object_id)
+    def delete_object_type(self, object_id, *args):
+        uri = u'%s/objects/types/%s' % (self.authuri, object_id)
         res = self._call(uri, u'DELETE', data=u'')
         self.logger.info(u'Delete object: %s' % res)
         #self.result(res)
@@ -271,22 +261,16 @@ class AuthManager(ApiManager):
     def get_objects(self, *args):
         data = self.format_http_get_query_params(*args)
         params = self.get_query_params(*args)
-        uri = u'%s/objects/' % (self.authuri)
+        uri = u'%s/objects' % (self.authuri)
         res = self._call(uri, u'GET', data=data)
         self.logger.info(u'Get objects: %s' % res)
-        print(u'Page: %s' % res[u'page'])
-        print(u'Count: %s' % res[u'count'])
-        print(u'Total: %s' % res[u'total'])
-        print(u'Order: %s %s' % (params.get(u'field', u'id'), 
-                                 params.get(u'order', u'DESC')))
-        print(u'')
         self.result(res, key=u'objects', headers=self.obj_headers, maxsize=200)
     
     def get_object(self, object_id):
-        uri = u'%s/objects/%s/' % (self.authuri, object_id)
+        uri = u'%s/objects/%s' % (self.authuri, object_id)
         res = self._call(uri, u'GET', data=u'')
         self.logger.info(u'Get object: %s' % res)
-        self.result(res, key=u'object', headers=self.obj_headers)
+        self.result(res, key=u'object', headers=self.obj_headers, details=True)
         
     def add_object(self, subsystem, otype, objid, desc):
         data = {
@@ -299,14 +283,14 @@ class AuthManager(ApiManager):
                 }
             ]
         }
-        uri = u'%s/objects/' % (self.authuri)
+        uri = u'%s/objects' % (self.authuri)
         res = self._call(uri, u'POST', data=data)
         self.logger.info(u'Add object: %s' % res)
         #self.result(res)
         print(u'Add object: %s' % res)
         
     def delete_object(self, object_id):
-        uri = u'%s/objects/%s/' % (self.authuri, object_id)
+        uri = u'%s/objects/%s' % (self.authuri, object_id)
         res = self._call(uri, u'DELETE', data=u'')
         self.logger.info(u'Delete object: %s' % res)
         #self.result(res)
@@ -318,26 +302,18 @@ class AuthManager(ApiManager):
     def get_users(self, *args):
         data = self.format_http_get_query_params(*args)
         params = self.get_query_params(*args)
-        uri = u'%s/users/' % (self.authuri)
+        uri = u'%s/users' % (self.authuri)
         res = self._call(uri, u'GET', data=data)
-        self.logger.info(u'Get users: %s' % res)
-        print(u'Page: %s' % res[u'page'])
-        print(u'Count: %s' % res[u'count'])
-        print(u'Total: %s' % res[u'total'])
-        print(u'Order: %s %s' % (params.get(u'field', u'id'), 
-                                 params.get(u'order', u'DESC')))
-        print(u'')        
+        self.logger.info(u'Get users: %s' % res)  
         self.result(res, key=u'users', headers=self.user_headers)
     
-    def get_user(self, user_id):
-        uri = u'%s/users/%s/' % (self.authuri, user_id)
+    def get_user(self, user_id, *args):
+        uri = u'%s/users/%s' % (self.authuri, user_id)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get user: %s' % res)
-        self.result(res, key=u'user', headers=self.user_headers)
+        self.result(res, key=u'user', headers=self.user_headers, details=True)
         
-    def add_user(self, name, pwd, expiry_date=None, storetype=u'DBUSER'):
-        if not match(u'[a-zA-z0-9]+@[a-zA-z0-9]+', name):
-            raise Exception(u'Name is not correct. Name syntax is <name>@<domain>')
+    def add_user(self, name, pwd, expiry_date=None, storetype=u'DBUSER', *args):
         data = {
             u'user':{
                 u'name':name,
@@ -347,15 +323,12 @@ class AuthManager(ApiManager):
                 u'generic':True,
                 u'expiry-date':expiry_date}
         }
-        uri = u'%s/users/' % (self.authuri)
+        uri = u'%s/users' % (self.authuri)
         res = self._call(uri, u'POST', data=data)
         self.logger.info(u'Add user: %s' % res)
-        #self.result(res)
-        print(u'Add user: %s' % res)
+        self.result({u'msg':u'Add user: %s' % res[u'uuid']})
         
-    def add_system_user(self, name, pwd):
-        if not match(u'[a-zA-z0-9]+@[a-zA-z0-9]+', name):
-            raise Exception(u'Name is not correct. Name syntax is <name>@<domain>')        
+    def add_system_user(self, name, pwd, *args):
         data = {
             u'user':{
                 u'name':name,
@@ -364,13 +337,12 @@ class AuthManager(ApiManager):
                 u'system':True
             }
         }
-        uri = u'%s/users/' % (self.authuri)
+        uri = u'%s/users' % (self.authuri)
         res = self._call(uri, u'POST', data=data)
         self.logger.info(u'Add user: %s' % res)
-        #self.result(res)
-        print(u'Add user: %s' % res)
+        self.result({u'msg':u'Add user: %s' % res[u'uuid']})
 
-    def update_user(self, oid, *args):
+    def update_user(self, user_id, *args):
         params = self.get_query_params(*args)
         name = params.get(u'name', None)
         if name is not None and not match(u'[a-zA-z0-9]+@[a-zA-z0-9]+', name):
@@ -384,20 +356,18 @@ class AuthManager(ApiManager):
                 u'expiry-date':params.get(u'expiry_date', None)
             }
         }
-        uri = u'%s/users/%s/' % (self.authuri, oid)
+        uri = u'%s/users/%s' % (self.authuri, user_id)
         res = self._call(uri, u'PUT', data=data)
         self.logger.info(u'Update user: %s' % res)
-        #self.result(res)
-        print(u'Update user: %s' % res)
+        self.result({u'msg':u'Update user %s' % (user_id)})
 
-    def delete_user(self, user_id):
-        uri = u'%s/users/%s/' % (self.authuri, user_id)
+    def delete_user(self, user_id, *args):
+        uri = u'%s/users/%s' % (self.authuri, user_id)
         res = self._call(uri, u'DELETE', data=u'')
         self.logger.info(u'Delete user: %s' % res)
-        #self.result(res)
-        print(u'Delete user: %s' % user_id)
+        self.result({u'msg':u'Delete user: %s' % user_id})
     
-    def add_user_role(self, oid, role, expiry):
+    def add_user_role(self, oid, role, expiry, *args):
         data = {
             u'user':{
                 u'roles':{
@@ -406,13 +376,12 @@ class AuthManager(ApiManager):
                 },
             }
         }
-        uri = u'%s/users/%s/' % (self.authuri, oid)
+        uri = u'%s/users/%s' % (self.authuri, oid)
         res = self._call(uri, u'PUT', data=data)
         self.logger.info(u'Update user roles: %s' % res)
-        #self.result(res)
-        print(u'Update user roles: %s' % res)
+        self.result({u'msg':u'Add user role: %s' % res[u'role.append']})
 
-    def delete_user_role(self, oid, role):
+    def delete_user_role(self, oid, role, *args):
         data = {
             u'user':{
                 u'roles':{
@@ -421,20 +390,19 @@ class AuthManager(ApiManager):
                 },
             }
         }
-        uri = u'%s/users/%s/' % (self.authuri, oid)
+        uri = u'%s/users/%s' % (self.authuri, oid)
         res = self._call(uri, u'PUT', data=data)
         self.logger.info(u'Update user roles: %s' % res)
-        #self.result(res)
-        print(u'Update user roles: %s' % res)    
+        self.result({u'msg':u'Add user role: %s' % res[u'role.remove']})  
     
-    def get_user_attribs(self, user_id):
-        uri = u'%s/users/%s/attributes/' % (self.authuri, user_id)
+    def get_user_attribs(self, user_id, *args):
+        uri = u'%s/users/%s/attributes' % (self.authuri, user_id)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get user attributes: %s' % res)
         self.result(res, key=u'user-attributes', 
                     headers=[u'name', u'value', u'desc'])    
     
-    def add_user_attrib(self, oid, name, value, desc):
+    def add_user_attrib(self, oid, name, value, desc, *args):
         data = {
             u'user-attribute':{
                 u'name':name,
@@ -442,18 +410,16 @@ class AuthManager(ApiManager):
                 u'desc':desc
             }
         }
-        uri = u'%s/users/%s/attributes/' % (self.authuri, oid)
+        uri = u'%s/users/%s/attributes' % (self.authuri, oid)
         res = self._call(uri, u'POST', data=data)
         self.logger.info(u'Add user attribute: %s' % res)
-        #self.result(res)
-        print(u'Add user attribute %s: %s' % (name, res))        
+        self.result({u'msg':u'Add/update user attrib %s' % name})     
     
-    def delete_user_attrib(self, oid, attrib):
-        uri = u'%s/users/%s/attributes/%s/' % (self.authuri, oid, attrib)
+    def delete_user_attrib(self, oid, attrib, *args):
+        uri = u'%s/users/%s/attributes/%s' % (self.authuri, oid, attrib)
         res = self._call(uri, u'dELETE', data=u'')
         self.logger.info(u'Add user attribute: %s' % res)
-        #self.result(res)
-        print(u'Delete user attribute %s' % (attrib))     
+        self.result({u'msg':u'Delete user attrib %s' % attrib})
     
     #
     # roles
@@ -461,90 +427,75 @@ class AuthManager(ApiManager):
     def get_roles(self, *args):
         data = self.format_http_get_query_params(*args)
         params = self.get_query_params(*args)
-        uri = u'%s/roles/' % (self.authuri)
+        uri = u'%s/roles' % (self.authuri)
         res = self._call(uri, u'GET', data=data)
         self.logger.info(u'Get roles: %s' % res)
-        print(u'Page: %s' % res[u'page'])
-        print(u'Count: %s' % res[u'count'])
-        print(u'Total: %s' % res[u'total'])
-        print(u'Order: %s %s' % (params.get(u'field', u'id'), 
-                                 params.get(u'order', u'DESC')))
-        print(u'')        
         self.result(res, key=u'roles', headers=self.role_headers)
     
-    def get_role(self, role_id):
-        uri = u'%s/roles/%s/' % (self.authuri, role_id)
+    def get_role(self, role_id, *args):
+        uri = u'%s/roles/%s' % (self.authuri, role_id)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get role: %s' % res)
-        self.result(res, key=u'role', headers=self.role_headers)
+        self.result(res, key=u'role', headers=self.role_headers, details=True)
         
-    def add_role(self, name, desc):
+    def add_role(self, name, desc, *args):
         data = {
             u'role':{
                 u'name':name,
                 u'desc':desc
             }
         }
-        uri = u'%s/roles/' % (self.authuri)
+        uri = u'%s/roles' % (self.authuri)
         res = self._call(uri, u'POST', data=data)
         self.logger.info(u'Add role: %s' % res)
-        #self.result(res)
-        print(u'Add role: %s' % res)
+        self.result({u'msg':u'Add role: %s' % res[u'uuid']})
 
-    def update_role(self, oid, *args):
+    def update_role(self, role_id, *args):
         params = self.get_query_params(*args)
         data = {
-            "role":{
-                "name":params.get(u'name', None),
-                "desc":params.get(u'desc', None)
+            u'role':{
+                u'name':params.get(u'name', None),
+                u'desc':params.get(u'desc', None)
             }
         }
-        uri = u'%s/roles/%s/' % (self.authuri, oid)
+        uri = u'%s/roles/%s' % (self.authuri, role_id)
         res = self._call(uri, u'PUT', data=data)
         self.logger.info(u'Update role: %s' % res)
-        #self.result(res)
-        print(u'Update role: %s' % res)
+        self.result({u'msg':u'Update role %s' % (role_id)})
 
-    def add_role_perm(self, oid, subsystem, ptype, objid, action):
+    def add_role_perm(self, roleid, permid, *args):
         data = {
             u'role':{
                 u'perms':{
-                    u'append':[
-                        (0, 0, subsystem, ptype, objid, 0, action)
-                    ],
+                    u'append':[permid],
                     u'remove':[]
                 }
             }
         }
-        uri = u'%s/roles/%s/' % (self.authuri, oid)
+        uri = u'%s/roles/%s' % (self.authuri, roleid)
         res = self._call(uri, u'PUT', data=data)
         self.logger.info(u'Update role perms: %s' % res)
-        #self.result(res)
-        print(u'Update role: %s' % res)
+        self.result({u'msg':u'Add role perms: %s' % res[u'perm.append']})
         
-    def delete_role_perm(self, oid, subsystem, ptype, objid, action):
+    def delete_role_perm(self, roleid, permid, *args):
         data = {
-            "role":{
-                "perms":{
-                    "append":[],
-                    "remove":[
-                        (0, 0, subsystem, ptype, objid, 0, action)                        
-                    ]
+            u'role':{
+                u'perms':{
+                    u'append':[],
+                    u'remove':[permid]
                 }
             }
         }
-        uri = u'%s/roles/%s/' % (self.authuri, oid)
+        uri = u'%s/roles/%s' % (self.authuri, roleid)
         res = self._call(uri, u'PUT', data=data)
         self.logger.info(u'Update role perms: %s' % res)
-        #self.result(res)
-        print(u'Update role: %s' % res)
+        self.result({u'msg':u'Remove role perms: %s' % res[u'perm.remove']})
 
-    def delete_role(self, role_id):
-        uri = u'%s/roles/%s/' % (self.authuri, role_id)
+    def delete_role(self, role_id, *args):
+        uri = u'%s/roles/%s' % (self.authuri, role_id)
         res = self._call(uri, u'DELETE', data=u'')
         self.logger.info(u'Delete role: %s' % res)
-        #self.result(res)
-        print(u'Delete role: %s' % role_id)
+        self.result({u'msg':u'Delete role: %s' % role_id})
         
     #
     # groups
@@ -552,35 +503,30 @@ class AuthManager(ApiManager):
     def get_groups(self, *args):
         data = self.format_http_get_query_params(*args)
         params = self.get_query_params(*args)
-        uri = u'%s/groups/' % (self.authuri)
+        uri = u'%s/groups' % (self.authuri)
         res = self._call(uri, u'GET', data=data)
         self.logger.info(u'Get groups: %s' % res)
-        print(u'Page: %s' % res[u'page'])
-        print(u'Count: %s' % res[u'count'])
-        print(u'Total: %s' % res[u'total'])
-        print(u'Order: %s %s' % (params.get(u'field', u'id'), 
-                                 params.get(u'order', u'DESC')))
-        print(u'')        
         self.result(res, key=u'groups', headers=self.group_headers)
     
     def get_group(self, group_id):
-        uri = u'%s/groups/%s/' % (self.authuri, group_id)
+        uri = u'%s/groups/%s' % (self.authuri, group_id)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get group: %s' % res)
-        self.result(res, key=u'group', headers=self.group_headers)
+        self.result(res, key=u'group', headers=self.group_headers, details=True)
         
-    def add_group(self, name, desc):
+    def add_group(self, name, desc, expiry_date=None):
         data = {
-            "group":{
-                "name":name,
-                "desc":desc
+            u'group':{
+                u'name':name,
+                u'desc':desc,
+                u'active':True,
+                u'expiry-date':expiry_date
             }
         }
-        uri = u'%s/groups/' % (self.authuri)
+        uri = u'%s/groups' % (self.authuri)
         res = self._call(uri, u'POST', data=data)
         self.logger.info(u'Add group: %s' % res)
-        #self.result(res)
-        print(u'Add group: %s' % res)
+        self.result({u'msg':u'Add group %s' % (res[u'uuid'])})
 
     def update_group(self, oid, *args):
         params = self.get_query_params(*args)
@@ -591,11 +537,10 @@ class AuthManager(ApiManager):
                 u'active':params.get(u'active', None),
             }
         }
-        uri = u'%s/groups/%s/' % (self.authuri, oid)
+        uri = u'%s/groups/%s' % (self.authuri, oid)
         res = self._call(uri, u'PUT', data=data)
         self.logger.info(u'Update group: %s' % res)
-        #self.result(res)
-        print(u'Update group: %s' % res)
+        self.result({u'msg':u'Update group %s' % (oid)})
         
     def add_group_role(self, oid, role):
         data = {
@@ -608,11 +553,10 @@ class AuthManager(ApiManager):
                 },
             }
         }
-        uri = u'%s/groups/%s/' % (self.authuri, oid)
+        uri = u'%s/groups/%s' % (self.authuri, oid)
         res = self._call(uri, u'PUT', data=data)
         self.logger.info(u'Update group roles: %s' % res)
-        #self.result(res)
-        print(u'Update group roles: %s' % res)
+        self.result({u'msg':u'Add group role: %s' % res[u'role.remove']})
 
     def delete_group_role(self, oid, role):
         data = {
@@ -625,11 +569,10 @@ class AuthManager(ApiManager):
                 },
             }
         }
-        uri = u'%s/groups/%s/' % (self.authuri, oid)
+        uri = u'%s/groups/%s' % (self.authuri, oid)
         res = self._call(uri, u'PUT', data=data)
         self.logger.info(u'Update group roles: %s' % res)
-        #self.result(res)
-        print(u'Update group roles: %s' % res)
+        self.result({u'msg':u'Remove group role: %s' % res[u'role.remove']})
 
     def add_group_user(self, oid, user):
         data = {
@@ -642,11 +585,10 @@ class AuthManager(ApiManager):
                 },
             }
         }
-        uri = u'%s/groups/%s/' % (self.authuri, oid)
+        uri = u'%s/groups/%s' % (self.authuri, oid)
         res = self._call(uri, u'PUT', data=data)
         self.logger.info(u'Update group users: %s' % res)
-        #self.result(res)
-        print(u'Update group users: %s' % res)
+        self.result({u'msg':u'Add group %s user: %s' % (oid, res[u'user.append'])})
 
     def delete_group_user(self, oid, user):
         data = {
@@ -659,24 +601,22 @@ class AuthManager(ApiManager):
                 },
             }
         }
-        uri = u'%s/groups/%s/' % (self.authuri, oid)
+        uri = u'%s/groups/%s' % (self.authuri, oid)
         res = self._call(uri, u'PUT', data=data)
         self.logger.info(u'Update group users: %s' % res)
-        #self.result(res)
-        print(u'Update group users: %s' % res)
+        self.result({u'msg':u'Remove group %s user: %s' % (oid, res[u'user.delete'])})
 
     def delete_group(self, group_id):
-        uri = u'%s/groups/%s/' % (self.authuri, group_id)
+        uri = u'%s/groups/%s' % (self.authuri, group_id)
         res = self._call(uri, u'DELETE', data=u'')
         self.logger.info(u'Delete group: %s' % res)
-        #self.result(res)
-        print(u'Delete group: %s' % group_id)
+        self.result({u'msg':u'Delete group %s' % (group_id)})
     
     #
     # sessions
     #
     def get_sessions(self):
-        uri = u'/v1.0/server/sessions/'
+        uri = u'/v1.0/server/sessions'
         res = self._call(uri, u'GET', data=u'')
         self.logger.info(u'Get sessions: %s' % res)
         res = [{u'id':truncate(i[u'sid']),
@@ -695,7 +635,7 @@ class AuthManager(ApiManager):
     # simplehttp login
     #
     def simplehttp_login_domains(self):
-        uri = u'%s/login/domains/' % (self.simplehttp_uri)
+        uri = u'%s/login/domains' % (self.simplehttp_uri)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get domains: %s' % res)
         domains = []
@@ -706,7 +646,7 @@ class AuthManager(ApiManager):
         
     def simplehttp_login_user(self, user, pwd, ip):
         data = {u'user':user, u'password':pwd, u'login-ip':ip}
-        uri = u'%s/login/' % (self.simplehttp_uri)
+        uri = u'%s/login' % (self.simplehttp_uri)
         res = self.client.send_signed_request(
                 u'auth', uri, u'POST', data=json.dumps(data))
         res = res[u'response']
@@ -718,21 +658,21 @@ class AuthManager(ApiManager):
     # tokens
     #    
     def get_auth_tokens(self):
-        uri = u'%s/tokens/' % (self.authuri)
+        uri = u'%s/tokens' % (self.authuri)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get tokens: %s' % res)
         self.result(res, key=u'tokens', headers=[u'token', u'type', u'user', 
                     u'ip', u'ttl', u'timestamp'])
     
     def get_auth_token(self, oid):
-        uri = u'%s/tokens/%s/' % (self.authuri, oid)
+        uri = u'%s/tokens/%s' % (self.authuri, oid)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get identity: %s' % res)
         self.result(res, key=u'token', headers=[u'token', u'type', u'user', 
                     u'ip', u'ttl', u'timestamp'], details=True)
         
     def delete_auth_token(self, oid):
-        uri = u'%s/tokens/%s/' % (self.authuri, oid)
+        uri = u'%s/tokens/%s' % (self.authuri, oid)
         res = self._call(uri, u'DELETE')
         self.logger.info(u'Delete identity: %s' % res)
         self.result({u'token':oid}, headers=[u'token']) 

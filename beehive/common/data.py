@@ -9,10 +9,11 @@ import logging
 from uuid import uuid4
 from sqlalchemy.exc import IntegrityError, DBAPIError
 from beecell.simple import id_gen
-from beecell.simple import get_member_class, import_class
+from beecell.simple import import_class
 from beecell.db import TransactionError, QueryError, ModelError
 from multiprocessing import current_process
 from threading import current_thread
+from re import escape
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +39,7 @@ operation.id = None # uuid4
 operation.session = None
 operation.user = None # (username, userip, uid)
 operation.perms = None
-
 operation.transaction = None
-
 
 def netsted_transaction(fn):
     """Use this decorator to transform a function that contains delete, insert
@@ -69,8 +68,8 @@ def netsted_transaction(fn):
             
         try:
             # get runtime info
-            cp = current_process()
-            ct = current_thread()              
+            #cp = current_process()
+            #ct = current_thread()              
             
             # format request params
             params = []
@@ -132,8 +131,8 @@ def netsted_transaction(fn):
             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
-            logger.error(ex.orig, exc_info=1)
-            logger.error(ex.orig)
+            logger.error(ex.desc, exc_info=1)
+            logger.error(ex.desc)
                   
             #session.rollback()
             rollback(session, commit)
@@ -228,7 +227,6 @@ def transaction(fn):
                   
             session.rollback()
             raise TransactionError(ex.orig)
-        
         except Exception as ex:
             elapsed = round(time() - start, 4)
             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
@@ -335,47 +333,10 @@ def trace(entity=None, op=u'view'):
             except Exception as ex:
                 # calculate elasped time
                 elapsed = round(time() - start, 4)
+                ex_escaped = escape(str(ex))
                 get_entity(entity).send_event(op, args=args, params=kwargs, 
-                                      exception=ex, elapsed=elapsed)
+                                      exception=ex_escaped, elapsed=elapsed)
                 raise
             return ret
         return decorated
     return wrapper
-
-def trace1(fn):
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        # get start time
-        start = time()
-        
-        args = list(args)            
-        inst = args.pop(0)
-        
-        try:
-            op = fn.func_defaults[-1]
-        except:
-            op = u'view'
-        if isinstance(op, tuple):
-            op = op[1]
-            entity = op[0]
-            entity_obj = entity(inst)
-        else:
-            op = op
-            entity_obj = inst
-
-        # execute inner function
-        try:
-            ret = fn(inst, *args, **kwargs)
-        
-            # calculate elasped time
-            elapsed = round(time() - start, 4)
-            entity_obj.send_event(op, args=args, params=kwargs, 
-                                  elapsed=elapsed)
-        except Exception as ex:
-            entity_obj.send_event(op, args=args, params=kwargs, 
-                                  exception=ex, elapsed=elapsed)
-            raise
-        
-        return ret
-    return wrapper
-    
