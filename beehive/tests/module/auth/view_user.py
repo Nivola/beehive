@@ -7,14 +7,7 @@ import json
 import unittest
 from beehive.common.test import runtest, BeehiveTestCase
 
-seckey = None
-objid = None
-
-obj = 31813
-
 class AuthObjectTestCase(BeehiveTestCase):
-    """To execute this test you need a cloudstack instance.
-    """
     def setUp(self):
         BeehiveTestCase.setUp(self)
         
@@ -33,10 +26,23 @@ class AuthObjectTestCase(BeehiveTestCase):
     def tearDown(self):
         BeehiveTestCase.tearDown(self)
 
+    def test_get_roles(self):
+        self.call(u'auth', u'/v1.0/auth/roles', u'get', {}, 
+                  **self.users[u'admin'])
+
+    def test_get_users(self):
+        self.call(u'auth', u'/v1.0/auth/users', u'get', {}, 
+                  **self.users[u'admin'])
+        
+    def test_get_user(self):
+        self.call(u'auth', u'/v1.0/auth/users/{oid}', u'get', {u'oid':4}, 
+                  **self.users[u'admin'])
+
 def test_suite():
     tests = [
-        u'test_login',
-        #u'test_logout',
+        u'test_get_roles',
+        u'test_get_users',
+        u'test_get_user',
     ]
     return unittest.TestSuite(map(AuthObjectTestCase, tests))
 

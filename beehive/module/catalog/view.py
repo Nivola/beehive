@@ -62,8 +62,6 @@ class ListCatalogs(CatalogApiView):
             $ref: "#/responses/Timeout"
           415:
             $ref: "#/responses/UnsupportedMediaType"
-          default: 
-            $ref: "#/responses/Default" 
           200:
             description: Catalogs list
             schema:

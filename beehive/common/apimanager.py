@@ -1586,7 +1586,7 @@ class ApiObject(object):
             u'name':self.name, 
             u'desc':self.desc,
             u'uri':self.objuri, 
-            u'active':self.active,
+            u'active':str2bool(self.active),
             u'date':{
                 u'creation':format_date(self.model.creation_date),
                 u'modified':format_date(self.model.modification_date),
@@ -2452,6 +2452,9 @@ class ApiView(FlaskView):
             u'description':u'%s - %s' % (exception, msg)
         }
         self.logger.error(u'Api response: %s' % truncate(error))
+        
+        if self.response_mime == u'*/*':
+            self.response_mime = u'application/json'
             
         if code in [400, 401, 403, 404, 405, 406, 408, 409, 415, 500]:
             status = code

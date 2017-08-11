@@ -65,9 +65,7 @@ class ListDomains(ApiView):
           422:
             $ref: "#/responses/UnprocessableEntity"
           429:
-            $ref: "#/responses/TooManyRequests"           
-          default: 
-            $ref: "#/responses/Default"          
+            $ref: "#/responses/TooManyRequests"       
           200:
             description: Domains list
             schema:
@@ -129,9 +127,7 @@ class ListTokens(ApiView):
           422:
             $ref: "#/responses/UnprocessableEntity"
           429:
-            $ref: "#/responses/TooManyRequests"           
-          default: 
-            $ref: "#/responses/Default"        
+            $ref: "#/responses/TooManyRequests"
           200:
             description: Tokens list
             schema:
@@ -219,9 +215,7 @@ class GetToken(ApiView):
           422:
             $ref: "#/responses/UnprocessableEntity"
           429:
-            $ref: "#/responses/TooManyRequests"           
-          default: 
-            $ref: "#/responses/Default"
+            $ref: "#/responses/TooManyRequests"
           200:
             description: Tokens list
             schema:
@@ -315,68 +309,52 @@ class ListUsers(AuthApiView):
             in: query
             required: false
             description: Filter user by group
-            schema:
-              type : string
-              example: 4
+            type: string
           - name: role
             in: query
             required: false
             description: Filter user by role
-            schema:
-              type : string
-              example: 4
+            type: string
           - name: active
             in: query
             required: false
             description: Filter user by status
-            schema:
-              type : boolean
-              example: true
+            type: boolean
           - name: expiry-date
             in: query
             required: false
             description: Filter user with expiry-date >= 
-            schema:
-              type : string
-              format: date
-              example:
+            type: string
+            format: date
           - name: page
             in: query
             required: false
             description: Set list page
-            schema:
-              type : integer
-              example: 0
-              default: 0
+            type: integer
+            default: 0
           - name: size
             in: query
             required: false
             description: Set list page size
-            schema:
-              type : integer
-              example: 10
-              minimum: 0
-              maximum: 100
-              default: 10
+            type: integer
+            minimum: 0
+            maximum: 100
+            default: 10
           - name: order
             in: query
             required: false
             description: Set list order
-            schema:
-              type : string
-              enum: 
+            type: string
+            enum: 
               - ASC
               - DESC
-              example: ASC
-              default: ASC
-          - name: order
+            default: DESC
+          - name: field
             in: query
             required: false
             description: Set list order field
-            schema:
-              type : string
-              example: id
-              default: id              
+            type: string
+            default: id              
         responses:
           500:
             $ref: "#/responses/InternalServerError"
@@ -386,8 +364,6 @@ class ListUsers(AuthApiView):
             $ref: "#/responses/Unauthorized"
           403:
             $ref: "#/responses/Forbidden"
-          404:
-            $ref: "#/responses/NotFound"
           405:
             $ref: "#/responses/MethodAotAllowed" 
           408:
@@ -399,14 +375,12 @@ class ListUsers(AuthApiView):
           422:
             $ref: "#/responses/UnprocessableEntity"
           429:
-            $ref: "#/responses/TooManyRequests"           
-          default: 
-            $ref: "#/responses/Default"   
+            $ref: "#/responses/TooManyRequests" 
           200:
             description: success
             schema:
               type: object
-              required: [users, count, page, total]
+              required: [users, count, page, total, sort]
               properties:
                 count:
                   type: integer
@@ -417,6 +391,19 @@ class ListUsers(AuthApiView):
                 total:
                   type: integer
                   example: 10
+                sort:
+                  type: object
+                  required: [field, order]
+                  properties:
+                    order:
+                      type: string
+                      enum: 
+                        - ASC
+                        - DESC
+                      example: DESC                      
+                    field:
+                      type: string
+                      example: id          
                 users:
                   type: array
                   items:
@@ -457,15 +444,15 @@ class ListUsers(AuthApiView):
                           creation:
                             type: string
                             format: date-time
-                            example: 1990-12-31T23:59:60Z
+                            example: 1990-12-31T23:59:59Z
                           modified:
                             type: string
                             format: date-time
-                            example: 1990-12-31T23:59:60Z                          
+                            example: 1990-12-31T23:59:59Z                          
                           expiry:              
                             type: string
                             format: date-time
-                            example: 1990-12-31T23:59:60Z                        
+                            example: 1990-12-31T23:59:59Z                        
         """
         group = request.args.get(u'group', None)
         role = request.args.get(u'role', None)
@@ -498,6 +485,13 @@ class GetUser(AuthApiView):
         security:
           - ApiKeyAuth: []
           - OAuth2: [auth, beehive]
+        parameters:
+          - in: path
+            name: oid
+            required: true
+            type: integer
+            minimum: 1
+            description: The user id          
         responses:
           500:
             $ref: "#/responses/InternalServerError"
@@ -520,9 +514,7 @@ class GetUser(AuthApiView):
           422:
             $ref: "#/responses/UnprocessableEntity"
           429:
-            $ref: "#/responses/TooManyRequests"           
-          default: 
-            $ref: "#/responses/Default"   
+            $ref: "#/responses/TooManyRequests"
           200:
             description: success
             schema:
@@ -530,8 +522,6 @@ class GetUser(AuthApiView):
               required: [user]
               properties:
                 user:
-                  type: array
-                  items:
                     type: object
                     required: [id, uuid, objid, type, definition, name, desc, uri, active, date]
                     properties:
@@ -569,15 +559,15 @@ class GetUser(AuthApiView):
                           creation:
                             type: string
                             format: date-time
-                            example: 1990-12-31T23:59:60Z
+                            example: 1990-12-31T23:59:59Z
                           modified:
                             type: string
                             format: date-time
-                            example: 1990-12-31T23:59:60Z                          
+                            example: 1990-12-31T23:59:59Z                          
                           expiry:              
                             type: string
                             format: date-time
-                            example: 1990-12-31T23:59:60Z                        
+                            example: 1990-12-31T23:59:59Z                        
         """        
         obj = controller.get_user(oid)
         res = obj.info()
@@ -629,9 +619,7 @@ class CreateUser(AuthApiView):
           422:
             $ref: "#/responses/UnprocessableEntity"
           429:
-            $ref: "#/responses/TooManyRequests"           
-          default: 
-            $ref: "#/responses/Default"   
+            $ref: "#/responses/TooManyRequests"
           200:
             description: success
             schema:

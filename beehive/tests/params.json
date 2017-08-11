@@ -14,12 +14,7 @@
         "redis-uri":"10.102.184.51;6379;0",
         "broker":"redis://10.102.184.51:6379/1",
         "endpoints":{
-            "auth":"http://10.102.184.52:6060",
-            "event":"http://10.102.184.52:6070",
-            "resource":"http://10.102.184.52:6090",
-            "resource2":"http://10.102.184.52:6062",
-            "service":"http://10.102.184.52:6110",
-            "monitor":"http://10.102.184.52:6080" 
+            "auth":"http://10.102.184.52:6060"
         },
         "users":{
             "admin":{
@@ -27,9 +22,9 @@
                 "pwd":"testlab",
                 "ip":"158.102.160.234"
             },
-            "camunda":{
-                "user":"camunda@local",
-                "pwd":"camunda1",
+            "test":{
+                "user":"test1@local",
+                "pwd":"testlab",
                 "ip":"158.102.160.234"  
             }
         }

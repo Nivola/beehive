@@ -34,9 +34,7 @@ class GetSchedulerEntries(TaskApiView):
           408:
             $ref: "#/responses/Timeout"
           415:
-            $ref: "#/responses/UnsupportedMediaType"
-          default: 
-            $ref: "#/responses/Default"             
+            $ref: "#/responses/UnsupportedMediaType"          
           200:
             description: Entries list
             schema:
@@ -176,9 +174,7 @@ class GetAllTasks(TaskApiView):
           408:
             $ref: "#/responses/Timeout"
           415:
-            $ref: "#/responses/UnsupportedMediaType"
-          default: 
-            $ref: "#/responses/Default"             
+            $ref: "#/responses/UnsupportedMediaType"         
           200:
             description: Task instances list
             schema:

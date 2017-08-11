@@ -38,9 +38,7 @@ class ServerPing(ApiView):
           422:
             $ref: "#/responses/UnprocessableEntity"
           429:
-            $ref: "#/responses/TooManyRequests"           
-          default: 
-            $ref: "#/responses/Default"          
+            $ref: "#/responses/TooManyRequests"   
           200:
             description: Ping response
             schema:

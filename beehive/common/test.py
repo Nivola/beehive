@@ -28,14 +28,17 @@ from sqlalchemy.orm import sessionmaker
 from beecell.test.runner import TextTestRunner
 from beecell.remote import RemoteClient
 from base64 import b64encode
+import requests
+from beecell.swagger import ApiValidator
+from flex.core import load
+from requests.auth import HTTPBasicAuth
 
 seckey = None
 uid = None
 
+logger = logging.getLogger(__name__)
+
 class BeehiveTestCase(unittest.TestCase):
-    """To execute this test you need a mysql instance, a user and a 
-    database associated to the user.
-    """    
     logger = logging.getLogger(u'beehive.test.log')
     runlogger = logging.getLogger(u'beehive.test.run')
     pp = pprint.PrettyPrinter(width=200)
@@ -44,28 +47,8 @@ class BeehiveTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        pass
-        #cls._connection = createExpensiveConnectionObject()
+        self = cls
 
-    @classmethod
-    def tearDownClass(cls):
-        pass
-        #cls._connection.destroy()
-
-    def load_config(self, file_config):
-        f = open(file_config, u'r')
-        config = f.read()
-        config = json.loads(config)
-        f.close()
-        return config
-
-    def setUp(self):
-        logging.getLogger(u'beehive.test.log')\
-            .info(u'========== %s ==========' % self.id()[9:])
-        logging.getLogger(u'beehive.test.run')\
-            .info(u'========== %s ==========' % self.id()[9:])            
-        self.start = time.time()
-        
         # ssl
         path = os.path.dirname(__file__).replace(u'beehive/common', u'beehive/tests')
         pos = path.find(u'tests')
@@ -76,10 +59,7 @@ class BeehiveTestCase(unittest.TestCase):
         certfile = None
 
         # load config
-        
         config = self.load_config(u'%s/params.json' % path)
-        #for k,v in self.load_config():
-        #    setattr(self, k, v)
         
         env = config.get(u'env')
         current_user = config.get(u'user')
@@ -110,15 +90,42 @@ class BeehiveTestCase(unittest.TestCase):
         
         # create api endpoint
         self.api = {}
+        self.schema = {}
         for subsystem,endpoint in self.endpoints.items():
             self.api[subsystem] = RemoteClient(endpoint, 
                                                keyfile=keyfile, 
                                                certfile=certfile)
+            self.schema[subsystem] = self.validate_swagger_schema(endpoint)
+
+    @classmethod
+    def tearDownClass(cls):
+        pass
+        #cls._connection.destroy()
+
+    @classmethod
+    def load_config(cls, file_config):
+        f = open(file_config, u'r')
+        config = f.read()
+        config = json.loads(config)
+        f.close()
+        return config
+
+    @classmethod
+    def validate_swagger_schema(cls, endpoint):
+        schema_uri = u'%s/apispec_1.json' % endpoint
+        schema = load(schema_uri)
+        logger.info(u'Load swagger schema from %s' % endpoint)
+        return schema
+        
+    def setUp(self):
+        logger.info(u'========== %s ==========' % self.id()[9:])
+        logging.getLogger(u'beehive.test.run')\
+            .info(u'========== %s ==========' % self.id()[9:])            
+        self.start = time.time()
         
     def tearDown(self):
         elapsed = round(time.time() - self.start, 4)
-        logging.getLogger(u'beehive.test.log')\
-            .info(u'========== %s ========== : %ss\n' % (self.id()[9:], elapsed))
+        logger.info(u'========== %s ========== : %ss\n' % (self.id()[9:], elapsed))
         logging.getLogger(u'beehive.test.run')\
             .info(u'========== %s ========== : %ss\n' % (self.id()[9:], elapsed))            
     
@@ -135,6 +142,40 @@ class BeehiveTestCase(unittest.TestCase):
                                   autocommit=False, 
                                   autoflush=False)
         return db_session
+    
+    def call(self, subsystem, path, method, params={}, base_headers={},
+             user=None, pwd=None, *args, **kvargs):
+        validate = False
+        res = None
+        
+        try:
+            auth = None
+            uri = path.format(**params)
+    
+            endpoint = self.endpoints[subsystem]
+            schema = self.schema[subsystem]
+    
+            self.runlogger.info(u'path: %s' % path)
+            self.runlogger.info(u'method: %s' % method)
+            self.runlogger.info(u'data: %s' % params)
+            self.runlogger.info(u'headers: %s' % base_headers)
+    
+            if user is not None:
+                auth = HTTPBasicAuth(user, pwd)
+            response = requests.get(endpoint + uri, auth=auth)
+            res = response.json()
+            
+            # validate with swagger schema
+            validator = ApiValidator(schema, path, method)
+            validate = validator.validate(response)
+            self.runlogger.info(u'response code: %s' % response.status_code)
+            self.runlogger.info(u'response: %s' % response.text)
+        except:
+            logger.error(u'', exc_info=1)
+            self.runlogger.error(u'', exc_info=1)
+        
+        self.assert_(validate, True)
+        return res
     
     def invoke(self, api, path, method, data=u'', headers={}, filter=None,
                auth_method=u'keyauth', credentials=None):
@@ -193,7 +234,7 @@ class BeehiveTestCase(unittest.TestCase):
     #
     # keyauth
     #
-    def test_login(self):
+    def test_get_keyauth_token(self):
         global uid, seckey
         data = {u'user':self.user, 
                 u'password':self.pwd, 
@@ -202,11 +243,9 @@ class BeehiveTestCase(unittest.TestCase):
         base_headers = {u'Accept':u'application/json'}
         res = self.invoke_no_sign(u'auth', path, u'POST', data=data, 
                                   headers=base_headers, filter=None)
-        uid = res[u'uid']
+        print res
+        uid = res[u'access_token']
         seckey = res[u'seckey']
-
-    def test_logout(self):
-        self.invoke(u'auth', u'/v1.0/keyauth/logout', u'DELETE', data='')
 
     #
     # simplehttp

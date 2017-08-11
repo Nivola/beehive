@@ -4,7 +4,7 @@ info:
   description: API description in Markdown.
   contact:
     email: me@csi.it
-    url: www.me.com
+    url: http://www.me.com
   license:
     name: MIT
     url: https://github.com/swagger-api/swagger-ui/blob/master/LICENSE    
@@ -48,54 +48,74 @@ securityDefinitions:
       beehive: beehive ecosystem
 # Descriptions of common responses
 responses:
-  Default:
-    description: Default error response
-    schema:
-      $ref: "#/definitions/Error"
   InternalServerError:
     description: The operation failed. An unexpected exception occurred while 
                  executing the operation. The response-body contains details 
-                 about the error.
+                 about the error.               
   BadRequest:
     description: The specified resource was not found
+    schema:
+      $ref: "#/definitions/Error"        
   NotFound:
     description: The operation failed.The requested resource was not found.
+    schema:
+      $ref: "#/definitions/Error"        
   Unauthorized:
     description: The operation failed. The operation requires an 
                  Authentication header to be set. If this was present 
                  in the request, the supplied credentials are not valid 
                  or the user is not authorized to perform this operation.
+    schema:
+      $ref: "#/definitions/Error"                 
   Forbidden:
     description: The operation is forbidden and should not be re-attempted. This 
                  does not imply an issue with authentication not authorization, 
                  it is an operation that is not allowed. Example. deleting a 
                  task that is part of a running process is not allowed and will 
                  never be allowed, regardless of the user or process/task state.
+    schema:
+      $ref: "#/definitions/Error"                     
   MethodAotAllowed:
     description: The operation failed. The used method is not allowed for this 
                  resource. E.g. trying to update (PUT) a deployment-resource 
-                 will result in a 405 status.               
+                 will result in a 405 status.
+    schema:
+      $ref: "#/definitions/Error"                     
   NotAcceptable:
-    description: Not acceptable  
+    description: Not acceptable
+    schema:
+      $ref: "#/definitions/Error"        
   Timeout:
-    description: Operation timeout  
+    description: Operation timeout
+    schema:
+      $ref: "#/definitions/Error"        
   Conflict:
     description: The operation failed. The operation causes an update of a 
                  resource that has been updated by another operation, which 
                  makes the update no longer valid. Can also indicate a resource 
                  that is being created in a collection where a resource with 
-                 that identifier already exists.               
+                 that identifier already exists.
+    schema:
+      $ref: "#/definitions/Error"
   UnsupportedMediaType:
     description: The operation failed. The request body contains an unsupported 
                  media type. Also occurs when the request-body JSON contains an 
                  unknown attribute or value that doesn’t have the right 
                  format/type to be accepted.
+    schema:
+      $ref: "#/definitions/Error"
   Gone:
     description: Indicates that the resource at this end point is no longer available.
+    schema:
+      $ref: "#/definitions/Error"
   UnprocessableEntity:
     description: The request was well-formed but was unable to be followed due to semantic errors.
+    schema:
+      $ref: "#/definitions/Error"
   TooManyRequests:
     description: The user has sent too many requests in a given amount of time
+    schema:
+      $ref: "#/definitions/Error"
 definitions:
   # Schema for error response body
   Error:
@@ -110,5 +130,5 @@ definitions:
         example: Some error
       description:
         type: string
-        example: Some error description        
+        example: Some error description
                    
