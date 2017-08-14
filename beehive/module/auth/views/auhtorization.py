@@ -279,6 +279,14 @@ class GetToken(ApiView):
         resp = {u'token':res}
         return resp
 
+class TokenRefresh(ApiView):
+    def dispatch(self, controller, data, oid, *args, **kwargs):
+        uid, sign, data = self.get_current_identity()
+        # refresh user permisssions
+        res = controller.refresh_user(oid, sign, data)
+        resp = res      
+        return resp
+
 class LoginExists(ApiView):
     def get(self, controller, data, oid, *args, **kwargs):
         resp = controller.exist_identity(oid)
@@ -880,6 +888,166 @@ class DeleteRole(AuthApiView):
 #
 class ListGroups(AuthApiView):
     def get(self, controller, data, *args, **kwargs):
+        """
+        List groups
+        Call this api to list groups
+        ---
+        deprecated: false
+        tags:
+          - authorization
+        security:
+          - ApiKeyAuth: []
+          - OAuth2: [auth, beehive]
+        parameters:
+          - name: user
+            in: query
+            required: false
+            description: Filter group by user
+            type: string
+          - name: role
+            in: query
+            required: false
+            description: Filter group by role
+            type: string
+          - name: active
+            in: query
+            required: false
+            description: Filter group by status
+            type: boolean
+          - name: expiry-date
+            in: query
+            required: false
+            description: Filter group with expiry-date >= 
+            type: string
+            format: date
+          - name: page
+            in: query
+            required: false
+            description: Set list page
+            type: integer
+            default: 0
+          - name: size
+            in: query
+            required: false
+            description: Set list page size
+            type: integer
+            minimum: 0
+            maximum: 100
+            default: 10
+          - name: order
+            in: query
+            required: false
+            description: Set list order
+            type: string
+            enum: 
+              - ASC
+              - DESC
+            default: DESC
+          - name: field
+            in: query
+            required: false
+            description: Set list order field
+            type: string
+            default: id              
+        responses:
+          500:
+            $ref: "#/responses/InternalServerError"
+          400:
+            $ref: "#/responses/BadRequest"
+          401:
+            $ref: "#/responses/Unauthorized"
+          403:
+            $ref: "#/responses/Forbidden"
+          405:
+            $ref: "#/responses/MethodAotAllowed" 
+          408:
+            $ref: "#/responses/Timeout"
+          410:
+            $ref: "#/responses/Gone"            
+          415:
+            $ref: "#/responses/UnsupportedMediaType"
+          422:
+            $ref: "#/responses/UnprocessableEntity"
+          429:
+            $ref: "#/responses/TooManyRequests" 
+          200:
+            description: success
+            schema:
+              type: object
+              required: [groups, count, page, total, sort]
+              properties:
+                count:
+                  type: integer
+                  example: 1
+                page:
+                  type: integer
+                  example: 0
+                total:
+                  type: integer
+                  example: 10
+                sort:
+                  type: object
+                  required: [field, order]
+                  properties:
+                    order:
+                      type: string
+                      enum: 
+                        - ASC
+                        - DESC
+                      example: DESC                      
+                    field:
+                      type: string
+                      example: id          
+                groups:
+                  type: array
+                  items:
+                    type: object
+                    required: [id, uuid, objid, type, definition, name, desc, uri, active, date]
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      uuid:
+                        type: string
+                        example: 4cdf0ea4-159a-45aa-96f2-708e461130e1                        
+                      objid:
+                        type: string
+                        example: 396587362//3328462822
+                      type:
+                        type: string
+                        example: auth
+                      definition:
+                        type: string
+                        example: group                        
+                      name:
+                        type: string
+                        example: beehive
+                      desc:
+                        type: string
+                        example: beehive
+                      uri:
+                        type: string
+                        example: /v1.0/auth/groups                        
+                      active:
+                        type: boolean
+                        example: true
+                      date:
+                        type: object
+                        required: [creation, modified, expiry]
+                        properties:
+                          creation:
+                            type: string
+                            format: date-time
+                            example: 1990-12-31T23:59:59Z
+                          modified:
+                            type: string
+                            format: date-time
+                            example: 1990-12-31T23:59:59Z                          
+                          expiry:              
+                            type: string
+                            format: date-time
+                            example: 1990-12-31T23:59:59Z                        
+        """        
         user = request.args.get(u'user', None)
         role = request.args.get(u'role', None)
         active = request.args.get(u'active', None)
@@ -1185,6 +1353,7 @@ class AuthorizationAPI(ApiView):
             
             (u'%s/tokens' % base, u'GET', ListTokens, {}),
             (u'%s/tokens/<oid>' % base, u'GET', GetToken, {}),
+            (u'%s/tokens/<oid>/refresh' % base, u'PUT', TokenRefresh, {}),
             (u'%s/tokens/<oid>' % base, u'DELETE', DeleteToken, {}),
             (u'%s/tokens/<oid>/exist' % base, u'GET', LoginExists, {}),
             

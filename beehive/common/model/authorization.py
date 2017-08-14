@@ -3,8 +3,8 @@ Created on Jan 25, 2014
 
 @author: darkbk
 '''
+import ujson as json
 import logging
-import pandas as pd
 import datetime
 #from passlib.hash import sha256_crypt
 import bcrypt
@@ -28,16 +28,6 @@ from beehive.common.model import Base, AbstractDbManager, ApiObject,\
     PaginatedQueryGenerator
 
 logger = logging.getLogger(__name__)
-
-# Many-to-Many Relationship among users and system roles
-#role_user = Table('roles_users', Base.metadata,
-#    Column('user_id', Integer(), ForeignKey('user.id')),
-#    Column('role_id', Integer(), ForeignKey('role.id')))
-
-# Many-to-Many Relationship among groups and system roles
-#role_group = Table('roles_groups', Base.metadata,
-#    Column('group_id', Integer(), ForeignKey('group.id')),
-#    Column('role_id', Integer(), ForeignKey('role.id')))
 
 # Many-to-Many Relationship among groups and users
 group_user = Table('groups_users', Base.metadata,
@@ -205,6 +195,12 @@ class User(Base, ApiObject):
     #def __repr__(self):
     #    return u"<User id='%s' name='%s' desc='%s' active='%s'>" % (
     #                self.id, self.name, self.desc, self.active)
+
+    def __str__(self):
+        return json.dumps({u'user':{u'id':self.id,
+                                    u'name':self.name,
+                                    u'desc':self.desc,
+                                    u'active':self.active}})
 
     def _check_password(self, password):
         # verifying the password

@@ -2499,11 +2499,6 @@ class ApiView(FlaskView):
             
             if isinstance(response, dict):
                 self.response_mime = u'application/json'
-                '''res = {u'status':u'ok',
-                       u'api':request.path,
-                       u'operation':request.method,
-                       #u'data':request.data,
-                       u'response':response}'''
                 res = response       
             
             self.logger.debug(u'Api response: %s' % truncate(response))

@@ -22,16 +22,21 @@ import time
 import json
 import urllib
 import redis
+import re
 from beecell.logger import LoggerHelper
 from sqlalchemy import create_engine, exc
 from sqlalchemy.orm import sessionmaker
 from beecell.test.runner import TextTestRunner
-from beecell.remote import RemoteClient
+from beecell.remote import RemoteClient, ServerErrorException,\
+    UnsupporteMediaTypeException, ConflictException, TimeoutException,\
+    NotAcceptableException, MethodNotAllowedException, NotFoundException,\
+    ForbiddenException, BadRequestException, UnauthorizedException
 from base64 import b64encode
 import requests
 from beecell.swagger import ApiValidator
 from flex.core import load
 from requests.auth import HTTPBasicAuth
+from requests import Request, Session
 
 seckey = None
 uid = None
@@ -47,6 +52,9 @@ class BeehiveTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        logger.info(u'########## Testplan %s - START ##########' % cls.__name__)
+        logging.getLogger(u'beehive.test.run')\
+            .info(u'########## Testplan %s - START ##########' % cls.__name__)
         self = cls
 
         # ssl
@@ -81,9 +89,6 @@ class BeehiveTestCase(unittest.TestCase):
         
         # get users
         self.users = cfg.get(u'users')
-        self.user = self.users.get(current_user).get(u'user')
-        self.pwd = self.users.get(current_user).get(u'pwd')
-        self.ip = self.users.get(current_user).get(u'ip')        
         
         # create auth client
         self.auth_client = BeehiveApiClient([], u'keyauth', None, None)
@@ -99,8 +104,9 @@ class BeehiveTestCase(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        pass
-        #cls._connection.destroy()
+        logger.info(u'########## Testplan %s - STOP ##########' % cls.__name__)
+        logging.getLogger(u'beehive.test.run')\
+            .info(u'########## Testplan %s - STOP ##########' % cls.__name__) 
 
     @classmethod
     def load_config(cls, file_config):
@@ -143,40 +149,124 @@ class BeehiveTestCase(unittest.TestCase):
                                   autoflush=False)
         return db_session
     
-    def call(self, subsystem, path, method, params={}, base_headers={},
-             user=None, pwd=None, *args, **kvargs):
+    def call(self, subsystem, path, method, params={}, headers={},
+             user=None, pwd=None, data={}, *args, **kvargs):
         validate = False
         res = None
-        
+
         try:
             auth = None
             uri = path.format(**params)
+            data = json.dumps(data)
     
             endpoint = self.endpoints[subsystem]
             schema = self.schema[subsystem]
+            headers[u'Content-Type'] = u'application/json'
     
-            self.runlogger.info(u'path: %s' % path)
+            self.runlogger.info(u'endpoint: %s' % endpoint)
+            self.runlogger.info(u'path: %s' % uri)
             self.runlogger.info(u'method: %s' % method)
-            self.runlogger.info(u'data: %s' % params)
-            self.runlogger.info(u'headers: %s' % base_headers)
+            self.runlogger.info(u'params: %s' % params)
+            self.runlogger.info(u'data: %s' % data)
+            self.runlogger.info(u'headers: %s' % headers)
     
             if user is not None:
                 auth = HTTPBasicAuth(user, pwd)
-            response = requests.get(endpoint + uri, auth=auth)
-            res = response.json()
+            s = Session()
+            req = Request(method, endpoint + uri, auth=auth, data=data, 
+                          headers=headers)
+            prepped = s.prepare_request(req)
+            response = s.send(prepped,
+                stream=None,
+                verify=False,
+                proxies=None,
+                cert=None,
+                timeout=5
+            )
+            self.runlogger.info(u'response code: %s' % response.status_code)            
+            
+            # evaluate response status
+            # BAD_REQUEST     400     HTTP/1.1, RFC 2616, Section 10.4.1
+            if response.status_code == 400:
+                res = response.json().get(u'message')
+                raise BadRequestException(res)
+      
+            # UNAUTHORIZED           401     HTTP/1.1, RFC 2616, Section 10.4.2
+            elif response.status_code == 401:
+                res = response.json().get(u'message')  
+                raise UnauthorizedException(res)
+            
+            # PAYMENT_REQUIRED       402     HTTP/1.1, RFC 2616, Section 10.4.3
+            
+            # FORBIDDEN              403     HTTP/1.1, RFC 2616, Section 10.4.4
+            elif response.status_code == 403:
+                res = response.json().get(u'message')      
+                raise ForbiddenException(res)
+            
+            # NOT_FOUND              404     HTTP/1.1, RFC 2616, Section 10.4.5
+            elif response.status_code == 404:
+                res = response.json().get(u'message')        
+                raise NotFoundException(res)
+            
+            # METHOD_NOT_ALLOWED     405     HTTP/1.1, RFC 2616, Section 10.4.6
+            elif response.status_code == 405:
+                res = response.json().get(u'message')    
+                raise MethodNotAllowedException(res)
+            
+            # NOT_ACCEPTABLE         406     HTTP/1.1, RFC 2616, Section 10.4.7
+            elif response.status_code == 406:
+                res = response.json().get(u'message')       
+                raise NotAcceptableException(res)
+            
+            # PROXY_AUTHENTICATION_REQUIRED     407     HTTP/1.1, RFC 2616, Section 10.4.8
+            
+            # REQUEST_TIMEOUT        408
+            elif response.status_code == 408:
+                raise TimeoutException(u'Timeout')
+            
+            # CONFLICT               409
+            elif response.status_code == 409:
+                res = response.json().get(u'message')    
+                raise ConflictException(res)
+            
+            # UNSUPPORTED_MEDIA_TYPE 415
+            elif response.status_code == 415:
+                res = response.json().get(u'message')    
+                raise UnsupporteMediaTypeException(res)
+            
+            # INTERNAL SERVER ERROR  500
+            elif response.status_code == 500:
+                raise ServerErrorException(u'Internal server error')
+            
+            # NO_CONTENT             204    HTTP/1.1, RFC 2616, Section 10.2.5            
+            elif response.status_code == 204:
+                res = None          
+                
+            # OK                     200    HTTP/1.1, RFC 2616, Section 10.2.1
+            # CREATED                201    HTTP/1.1, RFC 2616, Section 10.2.2
+            # ACCEPTED               202    HTTP/1.1, RFC 2616, Section 10.2.3
+            # NON_AUTHORITATIVE_INFORMATION    203    HTTP/1.1, RFC 2616, Section 10.2.4
+            # RESET_CONTENT          205    HTTP/1.1, RFC 2616, Section 10.2.6
+            # PARTIAL_CONTENT        206    HTTP/1.1, RFC 2616, Section 10.2.7
+            # MULTI_STATUS           207    WEBDAV RFC 2518, Section 10.2
+            elif re.match(u'20[0-9]+', str(response.status_code)):
+                res = response.json()
+            
+            self.runlogger.info(u'response: %s' % response.text)            
             
             # validate with swagger schema
             validator = ApiValidator(schema, path, method)
             validate = validator.validate(response)
-            self.runlogger.info(u'response code: %s' % response.status_code)
-            self.runlogger.info(u'response: %s' % response.text)
+            self.runlogger.info(u'validate: %s' % validate) 
         except:
             logger.error(u'', exc_info=1)
             self.runlogger.error(u'', exc_info=1)
+            raise
         
-        self.assert_(validate, True)
+        self.assertEqual(validate, True)
         return res
     
+    '''
     def invoke(self, api, path, method, data=u'', headers={}, filter=None,
                auth_method=u'keyauth', credentials=None):
         """Invoke api 
@@ -229,7 +319,7 @@ class BeehiveTestCase(unittest.TestCase):
         res = self.api[api].run_http_request2(path, method, data=data, 
                                               headers=base_headers)
         self.runlogger.info(u'res: %s' % res)
-        return res  
+        return res  '''
 
     #
     # keyauth
@@ -238,7 +328,7 @@ class BeehiveTestCase(unittest.TestCase):
         global uid, seckey
         data = {u'user':self.user, 
                 u'password':self.pwd, 
-                u'login_ip':self.ip}
+                u'login-ip':self.ip}
         path = u'/v1.0/keyauth/login'
         base_headers = {u'Accept':u'application/json'}
         res = self.invoke_no_sign(u'auth', path, u'POST', data=data, 
@@ -265,7 +355,7 @@ class BeehiveTestCase(unittest.TestCase):
         uid = None
         seckey = None
 
-def runtest(suite):
+def runtest(testcase_class, tests):
     log_file = u'/tmp/test.log'
     watch_file = u'/tmp/test.watch'
     run_file = u'/tmp/test.run'
@@ -296,10 +386,10 @@ def runtest(suite):
     
     # run test suite
     #alltests = unittest.TestSuite(suite)
-    alltests = suite
+    #alltests = suite
     #print alltests
     runner = unittest.TextTestRunner(verbosity=2)
-    runner.run(alltests)
+    runner.run(unittest.TestSuite(map(testcase_class, tests)))
     #suite.run()
         
         

@@ -3,7 +3,7 @@ Created on May 24, 2015
 
 @author: darkbk
 '''
-import ujson as json
+import json
 import time
 import logging
 import redis
@@ -18,6 +18,27 @@ from kombu import Connection, exceptions
 from signal import *
 import pprint
 from beecell.db.manager import RedisManager
+
+class ComplexEncoder(json.JSONEncoder):
+    def default(self, o):
+        try:
+            return json.dumps(o)
+        except TypeError:
+            return str(o)
+        
+        # Let the base class default method raise the TypeError
+        return json.JSONEncoder.default(self, o)
+
+def _dumps(s):
+    return json.dumps(s, cls=ComplexEncoder)
+
+"""Register a custom encoder/decoder for JSON serialization."""
+from kombu import serialization
+from kombu.utils import json as _json
+
+serialization.register('json', _dumps, _json.loads,
+                       content_type='application/json',
+                       content_encoding='utf-8')
 
 logger = logging.getLogger(__name__)
 

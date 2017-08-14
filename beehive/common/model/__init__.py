@@ -44,7 +44,7 @@ class ApiObject(object):
         self.modification_date = self.creation_date
         
     def __repr__(self):
-        return u"<%s id=%s uuid=%s obid=%s name=%s active=%s>" % (
+        return u'<%s id=%s, uuid=%s, obid=%s, name=%s, active=%s>' % (
                     self.__class__.__name__, self.id, self.uuid, self.objid, 
                     self.name, self.active)      
 
