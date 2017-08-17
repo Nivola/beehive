@@ -184,7 +184,7 @@ class BaseAuthController(ApiController):
             self.module.redis_manager.delete(self.prefix + uid)
             self.logger.debug(u'Remove identity %s from redis' % uid)
             #User(self).send_event(u'identity.delete', params={u'uid':uid})      
-            return uid
+            return None
         except Exception as ex:
             err = u'Can not remove identity %s' % uid
             #User(self).send_event(u'identity.delete', params={u'uid':uid}, 
@@ -557,6 +557,45 @@ class BaseAuthController(ApiController):
         return res    
     
     @trace(entity=u'Token', op=u'login.keyauth.insert')
+    def create_keyauth_token(self, user=None, password=None, login_ip=None):
+        """Create asymmetric keys authentication token
+        
+        :param user: user name with authentication domain <user>@<domain>
+        :param password: user password
+        :param login_ip: user login_ip
+        :return: True
+        :raise ApiManagerError:
+        """
+        name, domain = user.split(u'@')
+        
+        # validate input params
+        try:
+            self.validate_login_params(name, domain, password, login_ip)
+        except ApiManagerError as ex:
+            raise
+        
+        # check user
+        try:
+            dbuser, dbuser_attribs = self.check_login_user(name, domain, 
+                                                       password, login_ip)
+        except ApiManagerError as ex:
+            raise     
+        
+        # check user attributes
+        
+        # login user
+        try:
+            user, attrib = self.base_login(name, domain, password, login_ip, 
+                                           dbuser, dbuser_attribs)
+        except ApiManagerError as ex:
+            raise
+        
+        # generate asymmetric keys
+        res = self.gen_authorizaion_key(user, domain, name, login_ip, attrib)
+
+        return res    
+    
+    @trace(entity=u'Token', op=u'login.keyauth.insert')
     def login(self, name, domain, password, login_ip):
         """Asymmetric keys authentication login
         
@@ -631,7 +670,7 @@ class BaseAuthController(ApiController):
             self.logger.error(ex.desc)
             raise ApiManagerError(ex.desc, code=400)
                 
-        return res
+        return None
     
     @trace(entity=u'Token', op=u'refresh.keyauth.insert')
     def refresh_user(self, uid, sign, data):

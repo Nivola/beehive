@@ -30,7 +30,8 @@ consumes:
   - application/xml
 produces:
   - application/json
-  - application/xml  
+  - application/xml
+  - text/plain
 securityDefinitions:
   BasicAuth:
     type: basic

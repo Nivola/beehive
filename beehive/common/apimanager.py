@@ -44,6 +44,9 @@ try:
 except:
     pass
 from re import escape
+from marshmallow import fields, Schema
+from marshmallow.validate import OneOf, Range
+from marshmallow.decorators import post_load
 
 class ApiManagerError(Exception):
     """Main excpetion raised by api manager and childs
@@ -1590,7 +1593,7 @@ class ApiObject(object):
             u'date':{
                 u'creation':format_date(self.model.creation_date),
                 u'modified':format_date(self.model.modification_date),
-                u'expiry':None
+                u'expiry':u''
             }
         }
         
@@ -1809,7 +1812,7 @@ class ApiObject(object):
         objid = u'*'
         if self.objid is not None: objid = self.objid
         if etype is None: etype = self.SYNC_OPERATION
-        if exception is not None: response = [False, exception]
+        if exception is not None: response = (False, escape(str(exception)))
         action = op.split(u'.')[-1]
         
         # send event
@@ -2091,6 +2094,18 @@ class ApiInternalObject(ApiObject):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
 
+class PaginatedSchema(Schema):
+    size = fields.Integer(missing=10, validate=Range(min=0, max=200,
+                                                     error=u'Size is out from range'))
+    page = fields.Integer(missing=0, validate=Range(min=0, max=1000,
+                                                     error=u'Page is out from range'))
+    order = fields.String(validate=OneOf([u'ASC', u'asc', u'DESC', u'desc'],
+                                         error=u'Order can be asc, ASC, desc, DESC'),
+                          missing=u'DESC')
+    field = fields.String(validate=OneOf([u'id', u'uuid', u'objid', u'name'],
+                                         error=u'Field can be id, uuid, objid, name'),
+                          missing=u'id')
+
 class ApiViewResponse(ApiObject):
     objtype = u'api'
     objdef = u'Response'
@@ -2245,6 +2260,9 @@ class ApiView(FlaskView):
     """ """
     prefix = u'identity:'
     expire = 3600
+    input_schema = None
+    query_schema = None
+    
     RESPONSE_MIME_TYPE = [
         u'application/json', 
         u'application/bson', 
@@ -2265,7 +2283,7 @@ class ApiView(FlaskView):
     def _get_response_mime_type(self):
         """ """
         try:
-            self.response_mime = request.headers[u'Accept']
+            self.response_mime = request.headers[u'Content-Type']
         except:
             self.response_mime = u'application/json'
         
@@ -2545,8 +2563,8 @@ class ApiView(FlaskView):
             self.logger.error(msg)
             raise ApiManagerError(msg, code=400)
     
-    def format_paginated_response(self, response, entity, page, total, 
-                                  field=u'id', order=u'DESC'):
+    def format_paginated_response(self, response, entity, total, page=None, 
+                                  field=u'id', order=u'DESC', **kvargs):
         """Format response with pagination info
         
         :param response: response
@@ -2569,39 +2587,6 @@ class ApiView(FlaskView):
         }
         
         return resp
-    
-    '''
-    def get_entity(self, entity_name, query_func, get_func, oid):
-        """Get entity.
-        
-        :param entity_name: entity name
-        :param query_func: query function. Ex. controller.get_users
-        :param get_func: function used to get entity from  query. 
-            Ex. lambda x: x[0][0]
-        :param oid: entity id like oid, uuid, name
-        :return: enitty
-        :raises ApiManagerError: raise :class:`ApiManagerError`
-        """        
-        # get obj by uuid
-        if match(u'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-'\
-                 u'[0-9a-f]{12}', str(oid)):
-            obj = query_func(uuid=oid)
-            self.logger.debug(u'Get entity by uuid')
-        # get obj by id
-        elif match(u'[0-9]+', str(oid)):
-            obj = query_func(oid=int(oid))
-            self.logger.debug(u'Get entity by model id')
-        # get obj by name
-        else:
-            obj = query_func(name=oid)
-            self.logger.debug(u'Get entity by name')
-        try:
-            res = get_func(obj)
-        except:
-            raise ApiManagerError(u'%s %s not found' % (entity_name, oid), 
-                                  code=404)
-        self.logger.debug(u'Get %s %s' % (entity_name, oid))
-        return res  '''
     
     def dispatch(self, controller, data, *args, **kwargs):
         """http inner function. Override to implement apis.
@@ -2649,6 +2634,24 @@ class ApiView(FlaskView):
                 data = json.loads(data)
             except (AttributeError, ValueError): 
                 data = None
+                
+            # validate query data
+            if self.query_schema is not None:
+                parsed = self.query_schema().load(request.args.to_dict())
+                if len(parsed.errors.keys()) > 0:
+                    self.logger.error(parsed.errors)
+                    raise ApiManagerError(parsed.errors.values(), code=400)
+                data = parsed.data
+                self.logger.debug(u'Query after schema validation: %s' % data)      
+                
+            # validate data
+            if self.input_schema is not None:
+                parsed = self.input_schema().load(data)
+                if len(parsed.errors.keys()) > 0:
+                    self.logger.error(parsed.errors)
+                    raise ApiManagerError(parsed.errors.values(), code=400)
+                data = parsed.data
+                self.logger.debug(u'Data after schema validation: %s' % data)
         
             # dispatch request
             meth = getattr(self, request.method.lower(), None)
@@ -2700,7 +2703,7 @@ class ApiView(FlaskView):
                                                     u'code':ex.code}, 
                                                    request.data,
                                                    exception=ex.value)            
-            return self.get_error(u'ApiManagerError', ex.code, ex.value)     
+            return self.get_error(u'ApiManagerError', ex.code, ex.value)
         except Exception as ex:
             # get request elapsed time
             elapsed = round(time.time() - start, 4)

@@ -36,33 +36,36 @@ import requests
 from beecell.swagger import ApiValidator
 from flex.core import load
 from requests.auth import HTTPBasicAuth
-from requests import Request, Session
+#from requests import Request, Session
 
 seckey = None
-uid = None
+token = None
 
 logger = logging.getLogger(__name__)
+
+def assert_exception(exception):
+    def wrapper(fn):
+        def decorated(self, *args, **kwargs):
+            self.assertRaises(exception, fn, self, *args, **kwargs)
+        return decorated
+    return wrapper
 
 class BeehiveTestCase(unittest.TestCase):
     logger = logging.getLogger(u'beehive.test.log')
     runlogger = logging.getLogger(u'beehive.test.run')
     pp = pprint.PrettyPrinter(width=200)
     
-    #credentials = u'%s:%s' % (user1, pwd1)
-
     @classmethod
     def setUpClass(cls):
-        logger.info(u'########## Testplan %s - START ##########' % cls.__name__)
+        logger.info(u'#################### Testplan %s - START ####################' % cls.__name__)
         logging.getLogger(u'beehive.test.run')\
-            .info(u'########## Testplan %s - START ##########' % cls.__name__)
+            .info(u'#################### Testplan %s - START ####################' % cls.__name__)
         self = cls
 
         # ssl
         path = os.path.dirname(__file__).replace(u'beehive/common', u'beehive/tests')
         pos = path.find(u'tests')
         path = path[:pos+6]
-        #keyfile = u'%s/ssl/nginx.key' % path
-        #certfile = u'%s/ssl/nginx.key' % path
         keyfile = None
         certfile = None
 
@@ -70,9 +73,9 @@ class BeehiveTestCase(unittest.TestCase):
         config = self.load_config(u'%s/params.json' % path)
         
         env = config.get(u'env')
-        current_user = config.get(u'user')
         current_schema = config.get(u'schema')
         cfg = config.get(env)
+        
         # endpoints
         self.endpoints = cfg.get(u'endpoints')
             
@@ -104,9 +107,9 @@ class BeehiveTestCase(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        logger.info(u'########## Testplan %s - STOP ##########' % cls.__name__)
+        logger.info(u'#################### Testplan %s - STOP ####################' % cls.__name__)
         logging.getLogger(u'beehive.test.run')\
-            .info(u'########## Testplan %s - STOP ##########' % cls.__name__) 
+            .info(u'#################### Testplan %s - STOP ####################' % cls.__name__) 
 
     @classmethod
     def load_config(cls, file_config):
@@ -149,40 +152,66 @@ class BeehiveTestCase(unittest.TestCase):
                                   autoflush=False)
         return db_session
     
-    def call(self, subsystem, path, method, params={}, headers={},
-             user=None, pwd=None, data={}, *args, **kvargs):
+    def create_keyauth_token(self, user, pwd):
+        global token, seckey
+        data = {u'user':user, u'password':pwd}
+        headers = {u'Content-Type':u'application/json'}
+        endpoint = self.endpoints[u'auth']
+        uri = u'/v1.0/keyauth/token'
+        response = requests.request(u'post', endpoint + uri, 
+                                    data=json.dumps(data), headers=headers,
+                                    timeout=5, verify=False)
+        res = response.json()
+        token = res[u'access_token']
+        seckey = res[u'seckey']         
+    
+    def call(self, subsystem, path, method, params=None, headers=None,
+             user=None, pwd=None, auth=None, data=None, query=None,  
+             *args, **kvargs):
+        global token, seckey
+        
         validate = False
         res = None
 
         try:
-            auth = None
-            uri = path.format(**params)
-            data = json.dumps(data)
+            cred = None
+            uri = path
+            if params is not None:
+                uri = path.format(**params)
+            
+            if data is not None:
+                data = json.dumps(data)
+    
+            if headers is None:
+                headers = {}
     
             endpoint = self.endpoints[subsystem]
             schema = self.schema[subsystem]
-            headers[u'Content-Type'] = u'application/json'
+            headers[u'Content-Type'] = u'application/json'            
     
-            self.runlogger.info(u'endpoint: %s' % endpoint)
-            self.runlogger.info(u'path: %s' % uri)
-            self.runlogger.info(u'method: %s' % method)
-            self.runlogger.info(u'params: %s' % params)
-            self.runlogger.info(u'data: %s' % data)
-            self.runlogger.info(u'headers: %s' % headers)
-    
-            if user is not None:
-                auth = HTTPBasicAuth(user, pwd)
-            s = Session()
-            req = Request(method, endpoint + uri, auth=auth, data=data, 
-                          headers=headers)
-            prepped = s.prepare_request(req)
-            response = s.send(prepped,
-                stream=None,
-                verify=False,
-                proxies=None,
-                cert=None,
-                timeout=5
-            )
+            if user is not None and auth == u'simplehttp':
+                cred = HTTPBasicAuth(user, pwd)
+            elif user is not None and auth == u'keyauth':
+                if token is None:
+                    self.create_keyauth_token(user, pwd)
+                sign = self.auth_client.sign_request(seckey, uri)
+                headers.update({u'uid':token, u'sign':sign})
+            
+            self.runlogger.info(u'endpoint:      %s' % endpoint)
+            self.runlogger.info(u'path:          %s' % uri)
+            self.runlogger.info(u'method:        %s' % method)
+            self.runlogger.info(u'user:          %s' % user)
+            self.runlogger.info(u'auth:          %s' % auth)
+            self.runlogger.info(u'params:        %s' % params)
+            self.runlogger.info(u'query:         %s' % query)
+            self.runlogger.info(u'data:          %s' % data)            
+            self.runlogger.info(u'headers:       %s' % headers)            
+            
+            # execute request
+            response = requests.request(method, endpoint + uri, auth=cred, 
+                                   params=query, data=data, headers=headers,
+                                   timeout=5, verify=False) 
+            
             self.runlogger.info(u'response code: %s' % response.status_code)            
             
             # evaluate response status
@@ -252,12 +281,12 @@ class BeehiveTestCase(unittest.TestCase):
             elif re.match(u'20[0-9]+', str(response.status_code)):
                 res = response.json()
             
-            self.runlogger.info(u'response: %s' % response.text)            
+            self.runlogger.info(u'response:      %s' % response.text)            
             
             # validate with swagger schema
             validator = ApiValidator(schema, path, method)
             validate = validator.validate(response)
-            self.runlogger.info(u'validate: %s' % validate) 
+            self.runlogger.info(u'validate:      %s' % validate) 
         except:
             logger.error(u'', exc_info=1)
             self.runlogger.error(u'', exc_info=1)
@@ -321,6 +350,7 @@ class BeehiveTestCase(unittest.TestCase):
         self.runlogger.info(u'res: %s' % res)
         return res  '''
 
+    '''
     #
     # keyauth
     #
@@ -353,7 +383,7 @@ class BeehiveTestCase(unittest.TestCase):
                                                   headers=base_headers)
         res = res[u'response']
         uid = None
-        seckey = None
+        seckey = None'''
 
 def runtest(testcase_class, tests):
     log_file = u'/tmp/test.log'
@@ -385,11 +415,5 @@ def runtest(testcase_class, tests):
                               frmt=u'%(message)s', formatter=ColorFormatter)    
     
     # run test suite
-    #alltests = unittest.TestSuite(suite)
-    #alltests = suite
-    #print alltests
     runner = unittest.TextTestRunner(verbosity=2)
     runner.run(unittest.TestSuite(map(testcase_class, tests)))
-    #suite.run()
-        
-        

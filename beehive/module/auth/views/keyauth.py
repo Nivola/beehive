@@ -7,15 +7,36 @@ from flask import request
 from beecell.simple import get_value, str2bool, get_remote_ip
 from beehive.common.apimanager import ApiView, ApiManagerError
 from beehive.common.data import operation
+#from flasgger import Swagger, SwaggerView, Schema, fields
+from marshmallow import fields, Schema, validates, ValidationError
 
 #
 # token
 #
+def get_ip():
+    return get_remote_ip(request)
+
+class UserSchema(Schema):
+    user = fields.String(required=True, 
+                error_messages={u'required': u'user is required.'})
+    password = fields.String(required=True, 
+                error_messages={u'required': u'password is required.'})
+    login_ip = fields.String(load_from=u'login-ip', missing=get_ip)
+    
+    @validates(u'user')
+    def validate_user(self, value):
+        try:
+            value.index(u'@')
+        except ValueError:
+            raise ValidationError(u'User syntax must be <user>@<domain>')
+
 class CreateToken(ApiView):
+    input_schema = UserSchema
+    
     def post(self, controller, data, *args, **kwargs):
         """
-        List groups
-        Call this api to list groups
+        Create keyauth token
+        Call this api to create keyauth token
         ---
         deprecated: false
         tags:
@@ -32,10 +53,13 @@ class CreateToken(ApiView):
               properties:
                 user:
                   type: string
+                  example: test@local
                 password:
                   type: string
+                  example: xxxxxxxxxx
                 login-ip:
-                  type: string      
+                  type: string
+                  example: 10.1.1.1
         responses:
           500:
             $ref: "#/responses/InternalServerError"
@@ -84,27 +108,13 @@ class CreateToken(ApiView):
                 user:
                   type: string
                   example: 6d960236-d280-46d2-817d-f3ce8f0aeff7
-        """        
-        user = get_value(data, u'user', None, exception=True)
-        password = get_value(data, u'password', None, exception=True)
-        login_ip = get_value(data, u'login-ip', get_remote_ip(request))
-        
-        try:
-            name_domain = user.split(u'@')
-            name = name_domain[0]
-            try:
-                domain = name_domain[1]
-            except:
-                domain = u'local'
-        except:
-            ApiManagerError(u'User must be <user>@<domain>')
-
+        """
         innerperms = [
             (1, 1, u'auth', u'objects', u'ObjectContainer', u'*', 1, u'*'),
             (1, 1, u'auth', u'role', u'RoleContainer', u'*', 1, u'*'),
             (1, 1, u'auth', u'user', u'UserContainer', u'*', 1, u'*')]
         operation.perms = innerperms     
-        res = controller.login(name, domain, password, login_ip)
+        res = controller.create_keyauth_token(**data)
         resp = res       
         return resp
     

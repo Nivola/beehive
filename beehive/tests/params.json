@@ -16,15 +16,23 @@
             "auth":"http://10.102.184.52:6060"
         },
         "users":{
+            "admin1":{
+                "user":"admin@local",
+                "pwd":"testlab",
+                "ip":"158.102.160.234",
+                "auth":"simplehttp"
+            },        
             "admin":{
                 "user":"admin@local",
                 "pwd":"testlab",
-                "ip":"158.102.160.234"
+                "ip":"158.102.160.234",
+                "auth":"keyauth"
             },
             "test":{
                 "user":"test1@local",
                 "pwd":"testlab",
-                "ip":"158.102.160.234"  
+                "ip":"158.102.160.234",
+                "auth":"keyauth"
             }
         }
     },

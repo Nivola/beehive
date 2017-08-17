@@ -98,7 +98,7 @@ def netsted_transaction(fn):
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
             if ex.code not in [409]:
-                logger.error(ex.desc, exc_info=1)
+                #logger.error(ex.desc, exc_info=1)
                 logger.error(ex.desc)
             
             #session.rollback()
@@ -109,29 +109,29 @@ def netsted_transaction(fn):
             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
-            logger.error(ex.orig, exc_info=1)
-            logger.error(ex.orig)
+            #logger.error(ex.orig, exc_info=1)
+            logger.error(ex.message)
 
             #session.rollback()
             rollback(session, commit)
-            raise TransactionError(ex.orig)
+            raise TransactionError(ex.message)
         except DBAPIError as ex:
             elapsed = round(time() - start, 4)
             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
-            logger.error(ex.orig, exc_info=1)
-            logger.error(ex.orig)
+            #logger.error(ex.orig, exc_info=1)
+            logger.error(ex.message)
                   
             #session.rollback()
             rollback(session, commit)
-            raise TransactionError(ex.orig)
+            raise TransactionError(ex.message)
         except TransactionError as ex:
             elapsed = round(time() - start, 4)
             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
-            logger.error(ex.desc, exc_info=1)
+            #logger.error(ex.desc, exc_info=1)
             logger.error(ex.desc)
                   
             #session.rollback()
@@ -142,7 +142,7 @@ def netsted_transaction(fn):
             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
-            logger.error(ex, exc_info=1)
+            #logger.error(ex, exc_info=1)
             logger.error(ex)
         
             #session.rollback()
@@ -212,21 +212,21 @@ def transaction(fn):
             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
-            logger.error(ex.orig, exc_info=1)
-            logger.error(ex.orig)
+            #logger.error(ex, exc_info=1)
+            logger.error(ex.message)
 
             session.rollback()
-            raise TransactionError(ex.orig)
+            raise TransactionError(ex.message)
         except DBAPIError as ex:
             elapsed = round(time() - start, 4)
             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
             #logger.error(ex.orig, exc_info=1)
-            logger.error(ex.orig)
+            logger.error(ex.message)
                   
             session.rollback()
-            raise TransactionError(ex.orig)
+            raise TransactionError(ex.message)
         except Exception as ex:
             elapsed = round(time() - start, 4)
             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
@@ -281,7 +281,7 @@ def query(fn):
             logger.error(u'%s.%s - %s - query - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
-            logger.error(ex.desc, exc_info=1)
+            #logger.error(ex.desc, exc_info=1)
             logger.error(ex.desc)
             raise QueryError(ex.desc, code=ex.code)    
         except DBAPIError as ex:
@@ -289,15 +289,15 @@ def query(fn):
             logger.error(u'%s.%s - %s - query - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
-            logger.error(ex.orig, exc_info=1)
-            logger.error(ex.orig)
-            raise QueryError(ex.orig, code=400)
+            #logger.error(ex.message, exc_info=1)
+            logger.error(ex.message)
+            raise QueryError(ex.message, code=400)
         except Exception as ex:
             elapsed = round(time() - start, 4)
             logger.error(u'%s.%s - %s - query - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
-            logger.error(ex, exc_info=1)
+            #logger.error(ex, exc_info=1)
             logger.error(ex)
 
             raise QueryError(ex, code=400)

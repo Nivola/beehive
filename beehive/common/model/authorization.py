@@ -158,8 +158,6 @@ class UserAttribute(Base):
 
 class User(Base, ApiObject):
     """User
-    
-    :param type: can be DBUSER, LDAPUSER 
     """
     __tablename__ = u'user'
 
@@ -191,16 +189,6 @@ class User(Base, ApiObject):
             # generate new salt, and hash a password 
             #self.password = sha256_crypt.encrypt(password)
             self.password = bcrypt.hashpw(str(password), bcrypt.gensalt(14))
-    
-    #def __repr__(self):
-    #    return u"<User id='%s' name='%s' desc='%s' active='%s'>" % (
-    #                self.id, self.name, self.desc, self.active)
-
-    def __str__(self):
-        return json.dumps({u'user':{u'id':self.id,
-                                    u'name':self.name,
-                                    u'desc':self.desc,
-                                    u'active':self.active}})
 
     def _check_password(self, password):
         # verifying the password
@@ -1421,43 +1409,54 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         return True'''
          
     @netsted_transaction
-    def append_group_role(self, group, role):
+    def append_group_role(self, group, role, expiry_date=None):
         """Append a role to an group
         
-        :param group: Group instance
+        :param group: group instance
         :param role: Role instance
+        :param expiry_date: role association expiry date [default=365 days]
         :return: True if operation is successful, False otherwise
         :rtype: bool
         :raises TransactionError: raise :class:`TransactionError`
         """
         session = self.get_session()
-        # append role to user if it doesn't already appended
-        if role.group.filter_by(name=group.name).first() is not None:
+        
+        # append role to group if it doesn't already appended
+        ru = session.query(RoleGroup).filter_by(group_id=group.id)\
+                                    .filter_by(role_id=role.id)
+        if ru.first() is not None:
             self.logger.warn(u'Role %s already exists in group %s' % (role, group))
             return False
         else:
-            group.role.append(role)
-            self.logger.debug(u'Append group %s role : %s' % (group, role))
+            if expiry_date is None:
+                expiry_date = datetime.datetime.today()+datetime.timedelta(days=365)
+            ru = RoleGroup(group.id, role.id, expiry_date)
+            session.add(ru)
+            session.flush()            
+            self.logger.debug(u'Append group %s role: %s' % (group, role))
             return role.id
-        
+
     @netsted_transaction
     def remove_group_role(self, group, role):
         """Remove role from group
  
-        :param group: Group instance
+        :param group: group instance
         :param role: Role instance
         :return: True if operation is successful, False otherwise
         :rtype: bool
         :raises TransactionError: raise :class:`TransactionError`
         """
         session = self.get_session()
-        # remove role form user if it exists
-        if role.group.filter_by(name=group.name).first():
-            group.role.remove(role)
-            self.logger.debug(u'Remove group %s role : %s' % (group, role))
+        
+        # remove role from group if it exists
+        ru = session.query(RoleGroup).filter_by(group_id=group.id)\
+                                    .filter_by(role_id=role.id).first()
+        if ru is not None:
+            session.delete(ru)
+            self.logger.debug(u'Remove group %s role: %s' % (group, role))
             return role.id
         else:
-            self.logger.warn(u'Role %s does not exist in group %s' % (role, group))
+            self.logger.warn(u'Role %s doesn''t exists in group %s' % (role, group))
             return False
         
     @netsted_transaction

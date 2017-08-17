@@ -6,7 +6,7 @@ Created on Jan 16, 2014
 from datetime import datetime
 from beecell.auth import extract
 #from beecell.perf import watch
-from beecell.simple import str2uni, id_gen, truncate
+from beecell.simple import str2uni, id_gen, truncate, str2bool, format_date
 from beehive.common.apimanager import ApiManagerError, ApiObject
 from beecell.db import TransactionError, QueryError
 from beehive.common.controller.authorization import BaseAuthController, \
@@ -125,11 +125,11 @@ class AuthController(BaseAuthController):
                                                 *args, **kvargs)
         return res, total    
     
-    def add_base_role(self, name, description=u''):
+    def add_base_role(self, name, desc=u''):
         """Add new role.
 
         :param name: name of the role
-        :param description: role description. [Optional]
+        :param desc: role desc. [Optional]
         :return: True if role added correctly
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
@@ -139,10 +139,10 @@ class AuthController(BaseAuthController):
 
         try:
             objid = id_gen()
-            role = self.manager.add_role(objid, name, description)
+            role = self.manager.add_role(objid, name, desc)
             
             # add object and permission
-            Role(self, oid=role.id).register_object([objid], desc=description)
+            Role(self, oid=role.id).register_object([objid], desc=desc)
 
             self.logger.debug(u'Add new role: %s' % name)
             return role
@@ -154,7 +154,7 @@ class AuthController(BaseAuthController):
             raise ApiManagerError(ex, code=400)
     
     @trace(entity=u'Role', op=u'insert')
-    def add_role(self, name, description=u''):
+    def add_role(self, name=None, desc=u''):
         """Add role.
         
         :return: True if role added correctly
@@ -162,7 +162,7 @@ class AuthController(BaseAuthController):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # add role
-        role = self.add_base_role(name, description)        
+        role = self.add_base_role(name, desc)        
         return role.uuid
     
     @trace(entity=u'Role', op=u'admin.insert')
@@ -267,22 +267,20 @@ class AuthController(BaseAuthController):
                                                 *args, **kvargs)
         return res, total
 
-    def add_base_user(self, name, storetype, systype, active=True, password=None, 
-                 description=u'', expiry_date=None, is_generic=False, 
-                 is_admin=False):
+    @trace(entity=u'User', op=u'insert')
+    def add_user(self, name=None, storetype=None, active=True, password=None, 
+                 desc=u'', expiry_date=None, base=False, system=False):
         """Add new user.
 
         :param name: name of the user
         :param storetype: type of the user store. Can be DBUSER, LDAPUSER
-        :param systype: type of user. User can be a human USER or a system 
-                        module SYS
         :param active: User status. If True user is active [Optional] [Default=True]
-        :param description: User description. [Optional]
+        :param desc: User desc. [Optional]
         :param password: Password of the user. Set only for user like 
                          <user>@local [Optional]
         :param expiry_date: user expiry date. Set as gg-mm-yyyy [default=365 days]
-        :param is_generic: if True create a private role for the user [default=False]
-        :param is_admin: if True assign super admin role [default=False]        
+        :param base: if True create a private role for the user [default=False]
+        :param system: if True assign super admin role [default=False]        
         :return: user id
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
@@ -291,112 +289,40 @@ class AuthController(BaseAuthController):
         
         try:
             objid = id_gen()
-            if expiry_date is not None:
-                g, m, y = expiry_date.split(u'-')
-                expiry_date = datetime(int(y), int(m), int(g))
+            #if expiry_date is not None:
+            #    g, m, y = expiry_date.split(u'-')
+            #    expiry_date = datetime(int(y), int(m), int(g))
             user = self.manager.add_user(objid, name, active=active, 
                                          password=password, 
-                                         desc=description, 
+                                         desc=desc, 
                                          expiry_date=expiry_date,
-                                         is_generic=is_generic,
-                                         is_admin=is_admin)
+                                         is_generic=base,
+                                         is_admin=system)
             # add object and permission
             obj = User(self, oid=user.id, objid=user.objid, name=user.name, 
                        desc=user.desc, model=user, active=user.active)
             
-            obj.register_object([objid], desc=description)
+            obj.register_object([objid], desc=desc)
             
             # add default attributes
+            if system is True:
+                systype = u'SYS'
+                storetype = u'DBUSER'
+            else:
+                systype = u'USER'
             self.manager.set_user_attribute(user, u'store_type', storetype, 
                                            u'Type of user store')
             self.manager.set_user_attribute(user, u'sys_type', systype, 
                                            u'Type of user')            
             
             self.logger.debug(u'Add new user: %s' % name)
-            return obj
+            return obj.uuid
         except (TransactionError) as ex:
             self.logger.error(ex.desc, exc_info=1)
             raise ApiManagerError(ex.desc, code=ex.code)
         except (Exception) as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
-    
-    @trace(entity=u'User', op=u'insert')
-    def add_user(self, name, storetype, systype, active=True, password=None, 
-                 description=u'', expiry_date=None):
-        """Add new user.
-
-        :param name: name of the user
-        :param storetype: type of the user store. Can be DBUSER, LDAPUSER
-        :param systype: type of user. User can be a human USER or a system 
-                        module SYS
-        :param active: User status. If True user is active [Optional] [Default=True]
-        :param description: User description. [Optional]
-        :param password: Password of the user. Set only for user like 
-                         <user>@local [Optional]
-        :param expiry_date: user expiry date. Set as gg-mm-yyyy [default=365 days]
-        :return: user id
-        :raises ApiManagerError: raise :class:`ApiManagerError`
-        """
-        user = self.add_base_user(name, storetype, systype, active=active, 
-                      password=password, description=description,
-                      expiry_date=expiry_date)
-        
-        return user.uuid
-    
-    @trace(entity=u'User', op=u'generic.insert')
-    def add_generic_user(self, name, storetype, password=None,
-                         description=u'', expiry_date=None):
-        """Add cloudapi generic user. A generic user has a default role
-        associated and the guest role. A generic user role has no permissions
-        associated.
-        
-        :param name: user name
-        :param storetype: type of the user. Can be DBUSER, LDAPUSER
-        :param password: user password for DBUSER
-        :param description: User description. [Optional]
-        :param expiry_date: user expiry date. Set as gg-mm-yyyy [default=365 days]     
-        :return: user id
-        :raises ApiManagerError: raise :class:`ApiManagerError`
-        """
-        # create user
-        user = self.add_base_user(name, storetype, u'USER', active=True, 
-                      password=password, description=description,
-                      expiry_date=expiry_date, is_generic=True)
-
-        '''
-        # create user role
-        self.add_role(u'User%sRole' % user.id, u'User %s private role' % name)
-        
-        # append role to user
-        expiry_date = u'31-12-2099'
-        user.append_role(u'User%sRole' % user.id)
-        user.append_role(u'Guest', expiry_date=expiry_date)'''
-        return user.uuid
-    
-    @trace(entity=u'User', op=u'system.insert')
-    def add_system_user(self, name, password=None, description=u''):
-        """Add cloudapi system user. A system user is used by a module to 
-        call the apis of the other modules.
-        
-        :param name: user name
-        :param password: user password for DBUSER
-        :param description: User description. [Optional]        
-        :return: user id
-        :raises ApiManagerError: raise :class:`ApiManagerError`
-        """
-        # create user
-        user = self.add_base_user(name, u'DBUSER', u'SYS', active=True, 
-                      password=password, description=description, is_admin=True)
-        
-        '''
-        # create user role
-        #self.add_role(u'%sRole' % name.split(u'@')[0], u'User %s private role' % name)
-        
-        # append role to user
-        expiry_date = u'31-12-2099'
-        user.append_role(u'ApiSuperadmin', expiry_date=expiry_date)'''
-        return user.uuid
     
     #
     # group manipulation methods
@@ -424,7 +350,7 @@ class AuthController(BaseAuthController):
         :param size: number of groups to show in list per page [default=0]
         :param order: sort order [default=DESC]
         :param field: sort field [default=id]       
-        :return: tupla (id, name, type, active, description, attribute
+        :return: tupla (id, name, type, active, desc, attribute
                         creation_date, modification_date)
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
@@ -457,12 +383,12 @@ class AuthController(BaseAuthController):
         return res, total
 
     @trace(entity=u'Group', op=u'insert')
-    def add_group(self, name, description=u'', active=None, expiry_date=None):
+    def add_group(self, name=None, desc=u'', active=None, expiry_date=None):
         """Add new group.
 
         :param name: name of the group
         :param active: Group status. If True user is active [Optional] [Default=True]
-        :param description: Group description. [Optional]
+        :param desc: Group desc. [Optional]
         :param expiry_date: Group expiry date. Set as gg-mm-yyyy [default=365 days]
         :return: group id
         :raises ApiManagerError: raise :class:`ApiManagerError`
@@ -472,11 +398,11 @@ class AuthController(BaseAuthController):
         
         try:
             objid = id_gen()
-            group = self.manager.add_group(objid, name, desc=description, 
+            group = self.manager.add_group(objid, name, desc=desc, 
                                            active=active, expiry_date=expiry_date)
             
             # add object and permission
-            Group(self, oid=group.id).register_object([objid], desc=description)          
+            Group(self, oid=group.id).register_object([objid], desc=desc)          
             
             self.logger.debug(u'Add new group: %s' % name)
             return group.uuid
@@ -490,6 +416,7 @@ class AuthController(BaseAuthController):
 class Objects(AuthObject):
     objdef = u'Objects'
     objdesc = u'Authorization objects'
+    objuri = u'objects'    
     
     def __init__(self, controller):
         AuthObject.__init__(self, controller, oid=u'', name=u'', desc=u'', 
@@ -501,13 +428,13 @@ class Objects(AuthObject):
     # System Object Type manipulation methods
     #    
     @trace(op=u'types.view')
-    def get_type(self, oid=None, objtype=None, objdef=None,
+    def get_type(self, oid=None, subsystem=None, type=None,
                  page=0, size=10, order=u'DESC', field=u'id'):
         """Get system object type.
         
         :param oid: id of the system object type [optional]
-        :param objtype: type of the system object type [optional]
-        :param objdef: definition of the system object type [optional]
+        :param subsystem: type of the system object type [optional]
+        :param type: definition of the system object type [optional]
         :param page: type list page to show [default=0]
         :param size: number of types to show in list per page [default=10]
         :param order: sort order [default=DESC]
@@ -522,13 +449,17 @@ class Objects(AuthObject):
 
         try:  
             data, total = self.manager.get_object_type(
-                        oid=oid, objtype=objtype, objdef=objdef, 
+                        oid=oid, objtype=subsystem, objdef=type, 
                         page=page, size=size, order=order, field=field)
 
             res = [{
                 u'id':i.id, 
                 u'subsystem':i.objtype, 
-                u'type':i.objdef}
+                u'type':i.objdef,
+                u'date':{
+                    u'creation':format_date(i.creation_date)
+                }                
+            }
             for i in data] #if i.objtype != u'event']
 
             return res, total
@@ -653,7 +584,7 @@ class Objects(AuthObject):
         """Get system object filtered by id
         
         :param oid: object id
-        :return: dict with object description
+        :return: dict with object desc
         :raises ApiManagerError if query empty return error.
         """
         # verify permissions
@@ -668,7 +599,12 @@ class Objects(AuthObject):
                 u'subsystem':data.type.objtype,
                 u'type':data.type.objdef,
                 u'objid':data.objid,
-                u'desc':data.desc
+                u'desc':data.desc,
+                u'active':str2bool(data.active),
+                u'date':{
+                    u'creation':format_date(data.creation_date),
+                    u'modified':format_date(data.modification_date)
+                }                
             }
             self.logger.debug(u'Get object: %s' % res)
             return res
@@ -677,13 +613,13 @@ class Objects(AuthObject):
             raise ApiManagerError(u'Object %s not found' % (oid), code=404)    
     
     @trace(op=u'view')
-    def get_objects(self, objid=None, objtype=None, objdef=None, 
+    def get_objects(self, objid=None, subsystem=None, type=None, 
             page=0, size=10, order=u'DESC', field=u'id'):
         """Get system object with some filter.
 
         :param objid: Total or partial objid [optional]
-        :param objtype: type of the system object [optional]
-        :param objdef: definition of the system object [optional]
+        :param subsystem: type of the system object [optional]
+        :param type: definition of the system object [optional]
         :param page: object list page to show [default=0]
         :param size: number of object to show in list per page [default=0]
         :param order: sort order [default=DESC]
@@ -697,7 +633,7 @@ class Objects(AuthObject):
                 
         try:
             data, total = self.manager.get_object(objid=objid, 
-                    objtype=objtype, objdef=objdef, page=page, size=size,
+                    objtype=subsystem, objdef=type, page=page, size=size,
                     order=order, field=field)
                     
             res = [{
@@ -706,7 +642,12 @@ class Objects(AuthObject):
                 u'subsystem':i.type.objtype,
                 u'type':i.type.objdef,
                 u'objid':i.objid,
-                u'desc':i.desc
+                u'desc':i.desc,
+                u'active':str2bool(i.active),
+                u'date':{
+                    u'creation':format_date(i.creation_date),
+                    u'modified':format_date(i.modification_date)
+                }
             } for i in data]
             self.logger.debug(u'Get objects: %s' % len(res))
             return res, total
@@ -834,7 +775,7 @@ class Objects(AuthObject):
         TODO: manage permission and role query with a single model function
         
         :param oid: permission id
-        :return: dict with permission description
+        :return: dict with permission desc
         :raises ApiManagerError if query empty return error.
         """
         # verify permissions
@@ -866,19 +807,20 @@ class Objects(AuthObject):
             raise ApiManagerError(u'Permission %s not found' % (oid), code=404)
 
     @trace(op=u'perms.view')
-    def get_permissions(self, objid=None, objtype=None, 
-            objdef=None, page=0, size=10, order=u'DESC', field=u'id'):
+    def get_permissions(self, objid=None, subsystem=None, 
+            type=None, page=0, size=10, order=u'DESC', field=u'id',
+            **kvargs):
         """Get system object permisssions with roles.
         TODO: manage permission and role query with a single model function
         
         :param objid: Total or partial objid [optional]
-        :param objtype str: Object type [optional]
-        :param objdef str: Object definition [optional]
+        :param subsystem str: Object type [optional]
+        :param type str: Object definition [optional]
         :param page: perm list page to show [default=0]
         :param size: number of perms to show in list per page [default=10]
         :param order: sort order [default=DESC]
         :param size: sort field [default=id]        
-        :return: list of dict with permission description
+        :return: list of dict with permission desc
         :raises ApiManagerError if query empty return error.
         """
         # verify permissions
@@ -887,8 +829,8 @@ class Objects(AuthObject):
         try:
             res = []
             perms, total = self.manager.get_permissions(
-                            objid=objid, objid_filter=None, objtype=objtype, 
-                            objdef=objdef, objdef_filter=None, action=None,
+                            objid=objid, objid_filter=None, objtype=subsystem, 
+                            objdef=type, objdef_filter=None, action=None,
                             page=page, size=size, order=order, field=field)
                 
             for p in perms:
@@ -969,7 +911,8 @@ class Role(AuthObject):
         return res'''
 
     @trace(op=u'perms.view')
-    def get_permissions(self, page=0, size=10, order=u'DESC', field=u'id'):
+    def get_permissions(self, page=0, size=10, order=u'DESC', field=u'id',
+                        **kvargs):
         """Get users permissions.
 
         :param page: perm list page to show [default=0]
@@ -1179,14 +1122,14 @@ class User(BaseUser):
         return attrib
     
     @trace(op=u'attribs-set.update')
-    def set_attribute(self, name, value, desc='', new_name=None):
+    def set_attribute(self, name=None, value=None, desc='', new_name=None):
         """Set an attribute
         
         :param user: User instance
         :param name: attribute name
-        :param new_name: new attribute name
+        :param new_name: new attribute name [optional]
         :param value: attribute value
-        :param desc: attribute description
+        :param desc: attribute desc
         :return: True if attribute added correctly
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`        
@@ -1282,7 +1225,8 @@ class User(BaseUser):
             raise ApiManagerError(ex, code=ex.code)
 
     @trace(op=u'perms.view')
-    def get_permissions(self, page=0, size=10, order=u'DESC', field=u'id'):
+    def get_permissions(self, page=0, size=10, order=u'DESC', field=u'id',
+                        **kvargs):
         """Get users permissions.
 
         :param page: perm list page to show [default=0]
@@ -1589,7 +1533,8 @@ class Group(AuthObject):
             raise ApiManagerError(ex, code=ex.code)
 
     @trace(op=u'perms.view')
-    def get_permissions(self, page=0, size=10, order=u'DESC', field=u'id'):
+    def get_permissions(self, page=0, size=10, order=u'DESC', field=u'id',
+                        **kvargs):
         """Get groups permissions.
 
         :param page: perm list page to show [default=0]
