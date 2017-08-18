@@ -7,25 +7,29 @@ from re import match
 from flask import request
 from datetime import datetime
 from beecell.simple import get_value, str2bool, AttribException
-from beehive.common.apimanager import ApiView, ApiManagerError, PaginatedSchema
-from marshmallow import fields, Schema
+from beehive.common.apimanager import ApiView, ApiManagerError, PaginatedRequestQuerySchema,\
+    PaginatedResponseSchema, ApiObjectResponseSchema, SwaggerApiView,\
+    CreateApiObjectResponseSchema, GetApiObjectRequestSchema
+from flasgger import fields, Schema
 from marshmallow.validate import OneOf, Range, Length
 from marshmallow.decorators import post_load, validates
 from marshmallow.exceptions import ValidationError
+from beecell.swagger import SwaggerHelper
+from flasgger.marshmallow_apispec import SwaggerView
 
-class BaseSchemaCreateParam(Schema):
+class BaseCreateRequestSchema(Schema):
     name = fields.String(required=True,
                 error_messages={u'required': u'name is required.'})
     desc = fields.String(required=True, 
                 error_messages={u'required': u'desc is required.'})
     
-class BaseSchemaUpdateParam(Schema):
-    name = fields.String()
-    desc = fields.String()    
+class BaseUpdateRequestSchema(Schema):
+    name = fields.String(context=u'body')
+    desc = fields.String(context=u'body')    
     
-class BaseSchemaExtendedParam(Schema):
+class BaseCreateExtendedParamRequestSchema(Schema):
     active = fields.Boolean(missing=True)
-    expiry_date = fields.String(load_from=u'expiry-date', missing=None)
+    expiry_date = fields.String(load_from=u'expirydate', missing=None)
     
     @post_load
     def make_expiry_date(self, data):
@@ -37,7 +41,7 @@ class BaseSchemaExtendedParam(Schema):
             data[u'expiry_date'] = expiry_date
         return data
 
-class BaseSchemaUpdateParamMulti(Schema):
+class BaseUpdateMultiRequestSchema(Schema):
     append = fields.List(fields.String())
     remove = fields.List(fields.String())
 
@@ -355,276 +359,63 @@ class DeleteToken(ApiView):
 #
 # user
 #
-class UserQuerySchema(PaginatedSchema):
-    group = fields.String()
-    role = fields.String()
-    active = fields.Boolean()
-    expiry_date = fields.String(load_from=u'expiry-date')
+## list
+class ListUsersRequestSchema(PaginatedRequestQuerySchema):
+    group = fields.String(context=u'query')
+    role = fields.String(context=u'query')
+    active = fields.Boolean(context=u'query')
+    expiry_date = fields.String(load_from=u'expirydate', default=u'2099-12-31',
+                                context=u'query')
 
-class ListUsers(ApiView):
-    query_schema = UserQuerySchema
+class ListUsersResponseSchema(PaginatedResponseSchema):
+    users = fields.Nested(ApiObjectResponseSchema, many=True)
+
+class ListUsers(SwaggerApiView):
+    tags = [u'authorization']
+    definitions = {
+        u'ListUsersResponseSchema': ListUsersResponseSchema,
+    }
+    parameters = SwaggerHelper().get_parameters(ListUsersRequestSchema)
+    parameters_schema = ListUsersRequestSchema
+    responses = SwaggerApiView.setResponses({
+        200: {
+            u'description': u'success',
+            u'schema': ListUsersResponseSchema
+        }
+    })
     
     def get(self, controller, data, *args, **kwargs):
         """
         List users
         Call this api to list users
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-          - name: group
-            in: query
-            required: false
-            description: Filter user by group
-            type: string
-          - name: role
-            in: query
-            required: false
-            description: Filter user by role
-            type: string
-          - name: active
-            in: query
-            required: false
-            description: Filter user by status
-            type: boolean
-          - name: expiry-date
-            in: query
-            required: false
-            description: Filter user with expiry-date >= 
-            type: string
-            format: date
-          - name: page
-            in: query
-            required: false
-            description: Set list page
-            type: integer
-            default: 0
-          - name: size
-            in: query
-            required: false
-            description: Set list page size
-            type: integer
-            minimum: 0
-            maximum: 100
-            default: 10
-          - name: order
-            in: query
-            required: false
-            description: Set list order
-            type: string
-            enum: 
-              - ASC
-              - DESC
-            default: DESC
-          - name: field
-            in: query
-            required: false
-            description: Set list order field
-            type: string
-            default: id              
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests" 
-          200:
-            description: success
-            schema:
-              type: object
-              required: [users, count, page, total, sort]
-              properties:
-                count:
-                  type: integer
-                  example: 1
-                page:
-                  type: integer
-                  example: 0
-                total:
-                  type: integer
-                  example: 10
-                sort:
-                  type: object
-                  required: [field, order]
-                  properties:
-                    order:
-                      type: string
-                      enum: 
-                        - ASC
-                        - DESC
-                      example: DESC                      
-                    field:
-                      type: string
-                      example: id          
-                users:
-                  type: array
-                  items:
-                    type: object
-                    required: [id, uuid, objid, type, definition, name, desc, uri, active, date]
-                    properties:
-                      id:
-                        type: integer
-                        example: 1
-                      uuid:
-                        type: string
-                        example: 4cdf0ea4-159a-45aa-96f2-708e461130e1                        
-                      objid:
-                        type: string
-                        example: 396587362//3328462822
-                      type:
-                        type: string
-                        example: auth
-                      definition:
-                        type: string
-                        example: User                        
-                      name:
-                        type: string
-                        example: beehive
-                      desc:
-                        type: string
-                        example: beehive
-                      uri:
-                        type: string
-                        example: /v1.0/auth/users                        
-                      active:
-                        type: boolean
-                        example: true
-                      date:
-                        type: object
-                        required: [creation, modified, expiry]
-                        properties:
-                          creation:
-                            type: string
-                            format: date-time
-                            example: 1990-12-31T23:59:59Z
-                          modified:
-                            type: string
-                            format: date-time
-                            example: 1990-12-31T23:59:59Z                          
-                          expiry:              
-                            type: string
-                            format: date-time
-                            example: 1990-12-31T23:59:59Z                        
         """
         objs, total = controller.get_users(**data)
         res = [r.info() for r in objs]
 
         return self.format_paginated_response(res, u'users', total, **data)
 
-class GetUser(ApiView):
+## get
+class GetUserResponseSchema(Schema):
+    user = fields.Nested(ApiObjectResponseSchema)
+
+class GetUser(SwaggerApiView):
+    tags = [u'authorization']
+    definitions = {
+        u'GetUserResponseSchema': GetUserResponseSchema,
+    }
+    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
+    responses = SwaggerApiView.setResponses({
+        200: {
+            u'description': u'success',
+            u'schema': GetUserResponseSchema
+        }
+    })    
+    
     def get(self, controller, data, oid, *args, **kwargs):
         """
         Get user
         Call this api to get user by id, uuid or name
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-          - in: path
-            name: oid
-            required: true
-            type: string
-            description: The user id          
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          404:
-            $ref: "#/responses/NotFound"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests"
-          200:
-            description: success
-            schema:
-              type: object
-              required: [user]
-              properties:
-                user:
-                    type: object
-                    required: [id, uuid, objid, type, definition, name, desc, uri, active, date]
-                    properties:
-                      id:
-                        type: integer
-                        example: 1
-                      uuid:
-                        type: string
-                        example: 4cdf0ea4-159a-45aa-96f2-708e461130e1                        
-                      objid:
-                        type: string
-                        example: 396587362//3328462822
-                      type:
-                        type: string
-                        example: auth
-                      definition:
-                        type: string
-                        example: User                        
-                      name:
-                        type: string
-                        example: beehive
-                      desc:
-                        type: string
-                        example: beehive
-                      uri:
-                        type: string
-                        example: /v1.0/auth/users                        
-                      active:
-                        type: boolean
-                        example: true
-                      date:
-                        type: object
-                        required: [creation, modified, expiry]
-                        properties:
-                          creation:
-                            type: string
-                            format: date-time
-                            example: 1990-12-31T23:59:59Z
-                          modified:
-                            type: string
-                            format: date-time
-                            example: 1990-12-31T23:59:59Z                          
-                          expiry:              
-                            type: string
-                            format: date-time
-                            example: 1990-12-31T23:59:59Z
-        """        
+        """
         obj = controller.get_user(oid)
         res = obj.info()
         #res[u'perms'] = obj.get_permissions()
@@ -633,79 +424,44 @@ class GetUser(ApiView):
         resp = {u'user':res} 
         return resp
 
-class GetUserAtributes(ApiView):
+## list attributes
+class GetUserAtributesParamResponseSchema(Schema):
+    name = fields.String(required=True, default=u'test')
+    value = fields.String(required=True, default=u'test')
+    desc = fields.String(required=True, default=u'test')
+
+class GetUserAtributesResponseSchema(Schema):
+    count = fields.Integer(required=True, defaut=0)
+    user_attributes = fields.Nested(GetUserAtributesParamResponseSchema,
+                                    many=True)
+
+class GetUserAtributes(SwaggerApiView):
+    tags = [u'authorization']
+    definitions = {
+        u'GetUserAtributesResponseSchema': GetUserAtributesResponseSchema,
+    }
+    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
+    responses = SwaggerApiView.setResponses({
+        200: {
+            u'description': u'success',
+            u'schema': GetUserAtributesResponseSchema
+        }
+    })     
+    
     def get(self, controller, data, oid, *args, **kwargs):
         """
-        Get user
-        Call this api to get user by id, uuid or name
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-          - in: path
-            name: oid
-            required: true
-            type: string
-            description: The user id          
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          404:
-            $ref: "#/responses/NotFound"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests"
-          200:
-            description: success
-            schema:
-              type: object
-              required: [user-attributes]
-              properties:
-                count:
-                  type: integer
-                  example: 2
-                user-attributes:
-                  type: array
-                  items:
-                    type: object
-                    required: [name, value, desc]
-                    properties:
-                      name:
-                        type: string
-                        example: test
-                      value:
-                        type: string
-                        example: test
-                      desc:
-                        type: string
-                        example: test
+        Get user attributes
+        Call this api to get user attributes
         """
         user = controller.get_user(oid)
         res = user.get_attribs()
-        resp = {u'user-attributes':res,
+        resp = {u'user_attributes':res,
                 u'count':len(res)} 
         return resp
 
-class UserSchemaCreateParam(BaseSchemaCreateParam, BaseSchemaExtendedParam):
+## create
+class CreateUserParamRequestSchema(BaseCreateRequestSchema, 
+                                   BaseCreateExtendedParamRequestSchema):
     password = fields.String(validate=Length(min=10, max=20),
                              error=u'Password must be at least 8 characters')
     storetype = fields.String(validate=OneOf([u'DBUSER', u'LDAPUSER', u'SPID'],
@@ -719,98 +475,43 @@ class UserSchemaCreateParam(BaseSchemaCreateParam, BaseSchemaExtendedParam):
         if not match(u'[a-zA-z0-9]+@[a-zA-z0-9]+', value):
             raise ValidationError(u'User name syntax must be <name>@<domain>') 
 
-class UserSchemaCreate(Schema):
-    user = fields.Nested(UserSchemaCreateParam)
+class CreateUserRequestSchema(Schema):
+    user = fields.Nested(CreateUserParamRequestSchema, context=u'body')
+    
+class CreateUserBodyRequestSchema(Schema):
+    body = fields.Nested(CreateUserRequestSchema, context=u'body')
 
-class CreateUser(ApiView):
-    input_schema = UserSchemaCreate
+class CreateUser(SwaggerApiView):
+    tags = [u'authorization']
+    definitions = {
+        u'CreateUserRequestSchema': CreateUserRequestSchema,
+        u'CreateApiObjectResponseSchema':CreateApiObjectResponseSchema
+    }
+    parameters = SwaggerHelper().get_parameters(CreateUserBodyRequestSchema)
+    parameters_schema = CreateUserRequestSchema
+    responses = SwaggerApiView.setResponses({
+        201: {
+            u'description': u'success',
+            u'schema': CreateApiObjectResponseSchema
+        }
+    })
     
     def post(self, controller, data, *args, **kwargs):
         """
         Create a user
-        Call this api to create a user
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-          - in : body
-            name: body
-            schema:
-              type: object
-              required: [user]
-              properties:
-                user:
-                  type: object
-                  required: [name, desc]
-                  properties:
-                    name:
-                      type: string
-                      example: test
-                    desc:
-                      type: string
-                      example: test
-                    active:
-                      type: boolean
-                      example: true
-                    expiry-date:
-                      type: string
-                      format: date
-                      example: 1990-12-31  
-                    password:
-                      type: string
-                      example: xxxxxx
-                    storetype:
-                      type: string
-                      enum: [DBUSER, LDAPUSER', SPID]
-                      example: DBUSER
-                    base:
-                      type: boolean
-                      example: true
-                    system:
-                      type: boolean
-                      example: false
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          404:
-            $ref: "#/responses/NotFound"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests"
-          201:
-            description: success
-            schema:
-              type: object
-              required: [uuid]
-              properties:
-                uuid:
-                  type: string
-                  example: 6d960236-d280-46d2-817d-f3ce8f0aeff7                 
+        Call this api to create a user               
         """
         resp = controller.add_user(**data.get(u'user'))
         return ({u'uuid':resp}, 201)
+
+## update
+class UpdateUserParamRoleRequestSchema(Schema):
+    append = fields.List(fields.List(fields.String()))
+    remove = fields.List(fields.String())
     
-class UserSchemaUpdateParam(BaseSchemaUpdateParam, BaseSchemaExtendedParam):
-    roles = fields.Nested(BaseSchemaUpdateParamMulti)
+class UpdateUserParamRequestSchema(BaseUpdateRequestSchema, 
+                                   BaseCreateExtendedParamRequestSchema):
+    roles = fields.Nested(UpdateUserParamRoleRequestSchema)
     password = fields.String(validate=Length(min=10, max=20),
                              error=u'Password must be at least 8 characters')
     
@@ -819,115 +520,42 @@ class UserSchemaUpdateParam(BaseSchemaUpdateParam, BaseSchemaExtendedParam):
         if not match(u'[a-zA-z0-9]+@[a-zA-z0-9]+', value):
             raise ValidationError(u'User name syntax must be <name>@<domain>')     
 
-class UserSchemaUpdate(Schema):
-    user = fields.Nested(UserSchemaUpdateParam)
+class UpdateUserRequestSchema(Schema):
+    user = fields.Nested(UpdateUserParamRequestSchema)
+
+class UpdateUserBodyRequestSchema(GetApiObjectRequestSchema):
+    body = fields.Nested(UpdateUserRequestSchema, context=u'body')
     
-class UpdateUser(ApiView):
-    input_schema = UserSchemaUpdate    
+class UpdateUserResponseSchema(Schema):
+    update = fields.Integer(default=67)
+    role_append = fields.List(fields.String, dump_to=u'role_append')
+    role_remove = fields.List(fields.String, dump_to=u'role_remove')
+    
+class UpdateUser(SwaggerApiView):
+    tags = [u'authorization']
+    definitions = {
+        u'UpdateUserRequestSchema':UpdateUserRequestSchema,
+        u'UpdateUserResponseSchema':UpdateUserResponseSchema
+    }
+    parameters = SwaggerHelper().get_parameters(UpdateUserBodyRequestSchema)
+    parameters_schema = UpdateUserRequestSchema
+    responses = SwaggerApiView.setResponses({
+        200: {
+            u'description': u'success',
+            u'schema': UpdateUserResponseSchema
+        }
+    })    
 
     def put(self, controller, data, oid, *args, **kwargs):
         """
         Update user
         Call this api to update a user
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-          - in: path
-            name: oid
-            type: string
-            required: true
-            description: user id          
-          - in : body
-            name: body
-            schema:
-              type: object
-              required: [user]
-              properties:
-                user:
-                  type: object
-                  required: []
-                  properties:
-                    name:
-                      type: string
-                      example: test
-                    desc:
-                      type: string
-                      example: test
-                    active:
-                      type: boolean
-                      example: true
-                    expiry-date:
-                      type: string
-                      format: date
-                      example: 1990-12-31T
-                    password:
-                      type: string
-                      example: xxxxxx                     
-                    roles:
-                      type: object
-                      required: []
-                      properties:
-                        append:
-                          type: array
-                          items:
-                            type: string
-                            example: Guest
-                        remove:  
-                          type: array
-                          items:
-                            type: string
-                            example: Guest        
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests" 
-          200:
-            description: success
-            schema:
-              type: object
-              required: [update, role-append, role-remove]
-              properties:
-                update:            
-                  type: integer
-                  example: 67
-                role-append:
-                  type: array
-                  items:
-                    type: integer
-                    example: 18             
-                role-remove:
-                  type: array
-                  items:
-                    type: integer
-                    example: 18
         """
         data = data.get(u'user')
         role = data.pop(u'roles', None)
         user = controller.get_user(oid)
         
-        resp = {u'update':None, u'role-append':[], u'role-remove':[]}
+        resp = {u'update':None, u'role_append':[], u'role_remove':[]}
         
         # append, remove role
         if role is not None:
@@ -935,196 +563,102 @@ class UpdateUser(ApiView):
             if u'append' in role:
                 for role, expiry in role.get(u'append'):
                     res = user.append_role(role, expiry_date=expiry)
-                    resp[u'role-append'].append(res)
+                    resp[u'role_append'].append(res)
         
             # remove role
             if u'remove' in role:
                 for role in role.get(u'remove'):
                     res = user.remove_role(role)
-                    resp[u'role-remove'].append(res)
+                    resp[u'role_remove'].append(res)
         
         # update user
         res = user.update(**data)
         resp[u'update'] = res
         return resp
 
+## create attributes
 class UserAttribSchemaCreateParam(Schema):
     name = fields.String(required=True)
     new_name = fields.String()
     value = fields.String(required=True)
     desc = fields.String(required=True)
 
-class UserAttribSchemaCreate(Schema):
+class CreateUserAttributeRequestSchema(Schema):
     user_attribute = fields.Nested(UserAttribSchemaCreateParam,
                                    load_from=u'user-attribute')
 
-class CreateUserAttribute(ApiView):
-    input_schema = UserAttribSchemaCreate
+class CreateUserAttributeBodyRequestSchema(GetApiObjectRequestSchema):
+    body = fields.Nested(CreateUserAttributeRequestSchema, context=u'body')
+
+class CreateUserAttributeResponseSchema(Schema):
+    name = fields.String(required=True, default=u'test')
+    value = fields.String(required=True, default=u'test')
+    desc = fields.String(required=True, default=u'test')
+
+class CreateUserAttribute(SwaggerApiView):
+    tags = [u'authorization']
+    definitions = {
+        u'CreateUserAttributeRequestSchema': CreateUserAttributeRequestSchema,
+        u'CreateUserAttributeResponseSchema': CreateUserAttributeResponseSchema
+    }
+    parameters = SwaggerHelper().get_parameters(CreateUserAttributeBodyRequestSchema)
+    parameters_schema = CreateUserAttributeRequestSchema
+    responses = SwaggerApiView.setResponses({
+        201: {
+            u'description': u'success',
+            u'schema': CreateUserAttributeResponseSchema
+        }
+    })       
 
     def post(self, controller, data, oid, *args, **kwargs):
         """
         Delete user
         Call this api to delete a user
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-        - in: path
-          name: oid
-          type: string
-          required: true
-          description: user id          
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          404:
-            $ref: "#/responses/NotFound"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests"
-          201:
-            description: success
-            schema:
-              type: object
-              required: [user-attribute]
-              properties:
-                user-attribute:
-                  type: object
-                  required: [name, value, desc]
-                  properties:
-                    name:
-                      type: string
-                      example: test
-                    value:
-                      type: string
-                      example: test
-                    desc:
-                      type: string
-                      example: test
-                    new_name:
-                      type: string
-                      example: new_test
         """
         user = controller.get_user(oid)
         attr = user.set_attribute(**data.get(u'user_attribute'))
         resp = {u'name':attr.name, u'value':attr.value, u'desc':attr.desc}
         return (resp, 201)
 
-class DeleteUserAttribute(ApiView):
+## delete attributes
+class DeleteUserAttributeRequestSchema(GetApiObjectRequestSchema):
+    aid = fields.String(required=True, description=u'attribute name',
+                        context=u'path')
+
+class DeleteUserAttribute(SwaggerApiView):
+    tags = [u'authorization']
+    definitions = {}
+    parameters = SwaggerHelper().get_parameters(DeleteUserAttributeRequestSchema)
+    responses = SwaggerApiView.setResponses({
+        204: {
+            u'description': u'no response'
+        }
+    })    
+    
     def delete(self, controller, data, oid, aid, *args, **kwargs):
         """
         Delete user attribute
-        Call this api to delete a user attribute
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-        - in: path
-          name: oid
-          type: string
-          required: true
-          description: user id
-        - in: path
-          name: aid
-          type: string
-          required: true
-          description: attribute id
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          404:
-            $ref: "#/responses/NotFound"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests"
-          204:
-            description: No response        
+        Call this api to delete a user attribute   
         """        
         user = controller.get_user(oid)
         resp = user.remove_attribute(aid)
         return (resp, 204)
 
-class DeleteUser(ApiView):
+## delete
+class DeleteUser(SwaggerApiView):
+    tags = [u'authorization']
+    definitions = {}
+    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
+    responses = SwaggerApiView.setResponses({
+        204: {
+            u'description': u'no response'
+        }
+    })      
+    
     def delete(self, controller, data, oid, *args, **kwargs):
         """
         Delete user
-        Call this api to delete a user
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-        - in: path
-          name: oid
-          type: string
-          required: true
-          description: user id          
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          404:
-            $ref: "#/responses/NotFound"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests"
-          204:
-            description: No response        
+        Call this api to delete a user 
         """
         user = controller.get_user(oid)
         resp = user.delete()
@@ -1133,444 +667,139 @@ class DeleteUser(ApiView):
 #
 # role
 #
-class RoleQuerySchema(PaginatedSchema):
-    group = fields.String()
-    user = fields.String()
+## list
+class ListRolesRequestSchema(PaginatedRequestQuerySchema):
+    user = fields.String(context=u'query')
+    group = fields.String(context=u'query')
 
-class ListRoles(ApiView):
-    query_schema = RoleQuerySchema
+class ListRolesResponseSchema(PaginatedResponseSchema):
+    roles = fields.Nested(ApiObjectResponseSchema, many=True)
+
+class ListRoles(SwaggerApiView):
+    tags = [u'authorization']
+    definitions = {
+        u'ListRolesResponseSchema': ListRolesResponseSchema,
+    }
+    parameters = SwaggerHelper().get_parameters(ListRolesRequestSchema)
+    parameters_schema = ListRolesRequestSchema
+    responses = SwaggerApiView.setResponses({
+        200: {
+            u'description': u'success',
+            u'schema': ListRolesResponseSchema
+        }
+    })
     
     def get(self, controller, data, *args, **kwargs):
         """
         List roles
         Call this api to list roles
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-          - name: user
-            in: query
-            required: false
-            description: Filter role by user
-            type: string
-          - name: group
-            in: query
-            required: false
-            description: Filter role by role
-            type: string
-          - name: page
-            in: query
-            required: false
-            description: Set list page
-            type: integer
-            default: 0
-          - name: size
-            in: query
-            required: false
-            description: Set list page size
-            type: integer
-            minimum: 0
-            maximum: 100
-            default: 10
-          - name: order
-            in: query
-            required: false
-            description: Set list order
-            type: string
-            enum: 
-              - ASC
-              - DESC
-            default: DESC
-          - name: field
-            in: query
-            required: false
-            description: Set list order field
-            type: string
-            default: id              
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests" 
-          200:
-            description: success
-            schema:
-              type: object
-              required: [roles, count, page, total, sort]
-              properties:
-                count:
-                  type: integer
-                  example: 1
-                page:
-                  type: integer
-                  example: 0
-                total:
-                  type: integer
-                  example: 10
-                sort:
-                  type: object
-                  required: [field, order]
-                  properties:
-                    order:
-                      type: string
-                      enum: 
-                        - ASC
-                        - DESC
-                      example: DESC                      
-                    field:
-                      type: string
-                      example: id          
-                roles:
-                  type: array
-                  items:
-                    type: object
-                    required: [id, uuid, objid, type, definition, name, desc, uri, active, date]
-                    properties:
-                      id:
-                        type: integer
-                        example: 1
-                      uuid:
-                        type: string
-                        example: 4cdf0ea4-159a-45aa-96f2-708e461130e1                        
-                      objid:
-                        type: string
-                        example: 396587362//3328462822
-                      type:
-                        type: string
-                        example: auth
-                      definition:
-                        type: string
-                        example: role                        
-                      name:
-                        type: string
-                        example: beehive
-                      desc:
-                        type: string
-                        example: beehive
-                      uri:
-                        type: string
-                        example: /v1.0/auth/roles                        
-                      active:
-                        type: boolean
-                        example: true
-                      date:
-                        type: object
-                        required: [creation, modified]
-                        properties:
-                          creation:
-                            type: string
-                            format: date-time
-                            example: 1990-12-31T23:59:59Z
-                          modified:
-                            type: string
-                            format: date-time
-                            example: 1990-12-31T23:59:59Z                          
-                          expiry:              
-                            type: string
-                            example: 1990-12-31T23:59:59Z
         """      
         objs, total = controller.get_roles(**data)
         
         res = [r.info() for r in objs]
         return self.format_paginated_response(res, u'roles', total, **data)
 
-class GetRole(ApiView):
+class GetRoleResponseSchema(Schema):
+    role = fields.Nested(ApiObjectResponseSchema)
+
+class GetRole(SwaggerApiView):
+    tags = [u'authorization']
+    definitions = {
+        u'GetRoleResponseSchema': GetRoleResponseSchema,
+    }
+    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
+    responses = SwaggerApiView.setResponses({
+        200: {
+            u'description': u'success',
+            u'schema': GetRoleResponseSchema
+        }
+    })      
+    
     def get(self, controller, data, oid, *args, **kwargs):
         """
         Get role
         Call this api to get a role
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-        - in: path
-          name: oid
-          type: string
-          required: true
-          description: role id          
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          404:
-            $ref: "#/responses/NotFound"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests"
-          200:
-            description: success
-            schema:
-              type: object
-              required: [role]
-              properties:      
-                role:
-                    type: object
-                    required: [id, uuid, objid, type, definition, name, desc, uri, active, date]
-                    properties:
-                      id:
-                        type: integer
-                        example: 1
-                      uuid:
-                        type: string
-                        example: 4cdf0ea4-159a-45aa-96f2-708e461130e1                        
-                      objid:
-                        type: string
-                        example: 396587362//3328462822
-                      type:
-                        type: string
-                        example: auth
-                      definition:
-                        type: string
-                        example: role                        
-                      name:
-                        type: string
-                        example: beehive
-                      desc:
-                        type: string
-                        example: beehive
-                      uri:
-                        type: string
-                        example: /v1.0/auth/roles                        
-                      active:
-                        type: boolean
-                        example: true
-                      date:
-                        type: object
-                        required: [creation, modified]
-                        properties:
-                          creation:
-                            type: string
-                            format: date-time
-                            example: 1990-12-31T23:59:59Z
-                          modified:
-                            type: string
-                            format: date-time
-                            example: 1990-12-31T23:59:59Z                          
-                          expiry:
-                            type: string
-                            example: 1990-12-31T23:59:59Z 
         """             
         obj = controller.get_role(oid)
         res = obj.info()      
         resp = {u'role':res} 
         return resp
 
-class RoleSchemaCreateParam(BaseSchemaCreateParam):
-    pass
+## create
+class CreateRoleRequestSchema(Schema):
+    role = fields.Nested(BaseCreateRequestSchema, context=u'body')
+    
+class CreateRoleBodyRequestSchema(Schema):
+    body = fields.Nested(CreateRoleRequestSchema, context=u'body')
 
-class RoleSchemaCreate(Schema):
-    role = fields.Nested(RoleSchemaCreateParam)
-
-class CreateRole(ApiView):
-    input_schema = RoleSchemaCreate
+class CreateRole(SwaggerApiView):
+    tags = [u'authorization']
+    definitions = {
+        u'CreateRoleRequestSchema': CreateRoleRequestSchema,
+        u'CreateApiObjectResponseSchema':CreateApiObjectResponseSchema
+    }
+    parameters = SwaggerHelper().get_parameters(CreateRoleBodyRequestSchema)
+    parameters_schema = CreateRoleRequestSchema
+    responses = SwaggerApiView.setResponses({
+        201: {
+            u'description': u'success',
+            u'schema': CreateApiObjectResponseSchema
+        }
+    })
 
     def post(self, controller, data, *args, **kwargs):
         """
         Create role
         Call this api to create a role
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-          - in : body
-            name: body
-            schema:
-              type: object
-              required: [role]
-              properties:
-                role:
-                  type: object
-                  required: [name, desc]
-                  properties:
-                    name:
-                      type: string
-                      example: test
-                    desc:
-                      type: string
-                      example: test
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests" 
-          201:
-            description: success
-            schema:
-              type: object
-              required: [uuid]
-              properties:
-                uuid:            
-                  type: string
-                  format: uuid
-                  example: 6d960236-d280-46d2-817d-f3ce8f0aeff7
         """
         resp = controller.add_role(**data.get(u'role'))
         return ({u'uuid':resp}, 201)
 
-class RoleSchemaUpdateParamMulti(Schema):
-    append = fields.List(fields.Integer())
-    remove = fields.List(fields.Integer())
+## update
+class UpdateRoleParamPermRequestSchema(Schema):
+    append = fields.List(fields.String())
+    remove = fields.List(fields.String())
     
-class RoleSchemaUpdateParam(BaseSchemaUpdateParam):
-    perms = fields.Nested(RoleSchemaUpdateParamMulti)
+class UpdateRoleParamRequestSchema(BaseUpdateRequestSchema, 
+                                   BaseCreateExtendedParamRequestSchema):
+    perms = fields.Nested(UpdateRoleParamPermRequestSchema) 
 
-class RoleSchemaUpdate(Schema):
-    role = fields.Nested(RoleSchemaUpdateParam)    
+class UpdateRoleRequestSchema(Schema):
+    role = fields.Nested(UpdateRoleParamRequestSchema)
+
+class UpdateRoleBodyRequestSchema(GetApiObjectRequestSchema):
+    body = fields.Nested(UpdateRoleRequestSchema, context=u'body')
     
-class UpdateRole(ApiView):
-    input_schema = RoleSchemaUpdate
+class UpdateRoleResponseSchema(Schema):
+    update = fields.Integer(default=67)
+    perm_append = fields.List(fields.String, dump_to=u'perm_append')
+    perm_remove = fields.List(fields.String, dump_to=u'perm_remove')
+    
+class UpdateRole(SwaggerApiView):
+    tags = [u'authorization']
+    definitions = {
+        u'UpdateRoleRequestSchema':UpdateRoleRequestSchema,
+        u'UpdateRoleResponseSchema':UpdateRoleResponseSchema
+    }
+    parameters = SwaggerHelper().get_parameters(UpdateRoleBodyRequestSchema)
+    parameters_schema = UpdateRoleRequestSchema
+    responses = SwaggerApiView.setResponses({
+        200: {
+            u'description': u'success',
+            u'schema': UpdateRoleResponseSchema
+        }
+    })
 
     def put(self, controller, data, oid, *args, **kwargs):
         """
         Update role
         Call this api to update a role
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-          - in: path
-            name: oid
-            type: string
-            required: true
-            description: role id          
-          - in : body
-            name: body
-            schema:
-              type: object
-              required: [role]
-              properties:
-                role:
-                  type: object
-                  required: []
-                  properties:
-                    name:
-                      type: string
-                      example: test
-                    desc:
-                      type: string
-                      example: test
-                    perms:
-                      type: object
-                      required: []
-                      properties:
-                        append:
-                          type: array
-                          items:
-                            type: integer
-                            example: 2
-                        remove:  
-                          type: array
-                          items:
-                            type: integer
-                            example: 2             
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests" 
-          200:
-            description: success
-            schema:
-              type: object
-              required: [update, perm-append, perm-remove]
-              properties:
-                update:            
-                  type: integer
-                  example: 67
-                perm-append:
-                  type: array
-                  items:
-                    type: integer
-                    example: 18             
-                perm-remove:
-                  type: array
-                  items:
-                    type: integer
-                    example: 18  
         """
         data = data.get(u'role')
         role_perm = data.pop(u'perms', None)
         role = controller.get_role(oid)
         
-        resp = {u'update':None, u'perm-append':[], u'perm-remove':[]}
+        resp = {u'update':None, u'perm_append':[], u'perm_remove':[]}
         
         # append, remove role
         if role_perm is not None:
@@ -1580,7 +809,7 @@ class UpdateRole(ApiView):
                 for perm in role_perm.get(u'append'):
                     perms.append(perm)
                 res = role.append_permissions(perms)
-                resp[u'perm-append'] = res
+                resp[u'perm_append'] = res
         
             # remove role
             if u'remove' in role_perm:
@@ -1588,57 +817,29 @@ class UpdateRole(ApiView):
                 for perm in role_perm.get(u'remove'):
                     perms.append(perm)
                 res = role.remove_permissions(perms)
-                resp[u'perm-remove'] = res
+                resp[u'perm_remove'] = res
         
         # update role
         res = role.update(**data)        
         resp[u'update'] = res
         return resp
 
-class DeleteRole(ApiView):
+## delete
+class DeleteRole(SwaggerApiView):
+    tags = [u'authorization']
+    definitions = {}
+    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
+    responses = SwaggerApiView.setResponses({
+        204: {
+            u'description': u'no response'
+        }
+    })
+    
     def delete(self, controller, data, oid, *args, **kwargs):
         """
         Delete role
         Call this api to delete a role
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-        - in: path
-          name: oid
-          type: string
-          required: true
-          description: role id          
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          404:
-            $ref: "#/responses/NotFound"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests"
-          204:
-            description: No response        
-        """        
+        """
         role = controller.get_role(oid)
         resp = role.delete()
         return (resp, 204)
@@ -1646,496 +847,143 @@ class DeleteRole(ApiView):
 #
 # group
 #
-class GroupQuerySchema(PaginatedSchema):
-    user = fields.String()
-    role = fields.String()
-    active = fields.Boolean()
-    expiry_date = fields.String(load_from=u'expiry-date')
+## list
+class ListGroupsRequestSchema(PaginatedRequestQuerySchema):
+    user = fields.String(context=u'query')
+    role = fields.String(context=u'query')
+    active = fields.Boolean(context=u'query')
+    expiry_date = fields.String(load_from=u'expirydate', default=u'2099-12-31',
+                                context=u'query')
 
-class ListGroups(ApiView):
-    query_schema = GroupQuerySchema
+class ListGroupsResponseSchema(PaginatedResponseSchema):
+    groups = fields.Nested(ApiObjectResponseSchema, many=True)
+
+class ListGroups(SwaggerApiView):
+    tags = [u'authorization']
+    definitions = {
+        u'ListGroupsResponseSchema': ListGroupsResponseSchema,
+    }
+    parameters = SwaggerHelper().get_parameters(ListGroupsRequestSchema)
+    parameters_schema = ListGroupsRequestSchema
+    responses = SwaggerApiView.setResponses({
+        200: {
+            u'description': u'success',
+            u'schema': ListGroupsResponseSchema
+        }
+    })
     
     def get(self, controller, data, *args, **kwargs):
         """
         List groups
-        Call this api to list groups
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-          - name: user
-            in: query
-            required: false
-            description: Filter group by user
-            type: string
-          - name: role
-            in: query
-            required: false
-            description: Filter group by role
-            type: string
-          - name: active
-            in: query
-            required: false
-            description: Filter group by status
-            type: boolean
-          - name: expiry-date
-            in: query
-            required: false
-            description: Filter group with expiry-date >= 
-            type: string
-            format: date
-          - name: page
-            in: query
-            required: false
-            description: Set list page
-            type: integer
-            default: 0
-          - name: size
-            in: query
-            required: false
-            description: Set list page size
-            type: integer
-            minimum: 0
-            maximum: 100
-            default: 10
-          - name: order
-            in: query
-            required: false
-            description: Set list order
-            type: string
-            enum: 
-              - ASC
-              - DESC
-            default: DESC
-          - name: field
-            in: query
-            required: false
-            description: Set list order field
-            type: string
-            default: id              
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests" 
-          200:
-            description: success
-            schema:
-              type: object
-              required: [groups, count, page, total, sort]
-              properties:
-                count:
-                  type: integer
-                  example: 1
-                page:
-                  type: integer
-                  example: 0
-                total:
-                  type: integer
-                  example: 10
-                sort:
-                  type: object
-                  required: [field, order]
-                  properties:
-                    order:
-                      type: string
-                      enum: 
-                        - ASC
-                        - DESC
-                      example: DESC                      
-                    field:
-                      type: string
-                      example: id          
-                groups:
-                  type: array
-                  items:
-                    type: object
-                    required: [id, uuid, objid, type, definition, name, desc, uri, active, date]
-                    properties:
-                      id:
-                        type: integer
-                        example: 1
-                      uuid:
-                        type: string
-                        example: 4cdf0ea4-159a-45aa-96f2-708e461130e1                        
-                      objid:
-                        type: string
-                        example: 396587362//3328462822
-                      type:
-                        type: string
-                        example: auth
-                      definition:
-                        type: string
-                        example: group                        
-                      name:
-                        type: string
-                        example: beehive
-                      desc:
-                        type: string
-                        example: beehive
-                      uri:
-                        type: string
-                        example: /v1.0/auth/groups                        
-                      active:
-                        type: boolean
-                        example: true
-                      date:
-                        type: object
-                        required: [creation, modified, expiry]
-                        properties:
-                          creation:
-                            type: string
-                            format: date-time
-                            example: 1990-12-31T23:59:59Z
-                          modified:
-                            type: string
-                            format: date-time
-                            example: 1990-12-31T23:59:59Z                          
-                          expiry:              
-                            type: string
-                            format: date-time
-                            example: 1990-12-31T23:59:59Z                        
+        Call this api to list groups                      
         """
         objs, total = controller.get_groups(**data)
         
         res = [r.info() for r in objs]  
         return self.format_paginated_response(res, u'groups', total, **data)
 
-class GetGroup(ApiView):
+## get
+class GetGroupResponseSchema(Schema):
+    group = fields.Nested(ApiObjectResponseSchema)
+
+class GetGroup(SwaggerApiView):
+    tags = [u'authorization']
+    definitions = {
+        u'GetGroupResponseSchema': GetGroupResponseSchema,
+    }
+    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
+    responses = SwaggerApiView.setResponses({
+        200: {
+            u'description': u'success',
+            u'schema': GetGroupResponseSchema
+        }
+    })  
     def get(self, controller, data, oid, *args, **kwargs):
         """
         Get group
         Call this api to get a group
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-        - in: path
-          name: oid
-          type: string
-          required: true
-          description: Group id          
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          404:
-            $ref: "#/responses/NotFound"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests"
-          200:
-            description: success
-            schema:
-              type: object
-              required: [group]
-              properties:      
-                group:
-                    type: object
-                    required: [id, uuid, objid, type, definition, name, desc, uri, active, date]
-                    properties:
-                      id:
-                        type: integer
-                        example: 1
-                      uuid:
-                        type: string
-                        example: 4cdf0ea4-159a-45aa-96f2-708e461130e1                        
-                      objid:
-                        type: string
-                        example: 396587362//3328462822
-                      type:
-                        type: string
-                        example: auth
-                      definition:
-                        type: string
-                        example: group                        
-                      name:
-                        type: string
-                        example: beehive
-                      desc:
-                        type: string
-                        example: beehive
-                      uri:
-                        type: string
-                        example: /v1.0/auth/groups                        
-                      active:
-                        type: boolean
-                        example: true
-                      date:
-                        type: object
-                        required: [creation, modified, expiry]
-                        properties:
-                          creation:
-                            type: string
-                            format: date-time
-                            example: 1990-12-31T23:59:59Z
-                          modified:
-                            type: string
-                            format: date-time
-                            example: 1990-12-31T23:59:59Z                          
-                          expiry:              
-                            type: string
-                            format: date-time
-                            example: 1990-12-31T23:59:59Z   
         """                
         obj = controller.get_group(oid)
         res = obj.info()      
         resp = {u'group':res} 
         return resp
 
-class GroupSchemaCreateParam(BaseSchemaCreateParam, BaseSchemaExtendedParam):
+## create
+class CreateGroupParamRequestSchema(BaseCreateRequestSchema, 
+                                    BaseCreateExtendedParamRequestSchema):
     pass
 
-class GroupSchemaCreate(Schema):
-    group = fields.Nested(GroupSchemaCreateParam)
+class CreateGroupRequestSchema(Schema):
+    group = fields.Nested(CreateGroupParamRequestSchema, context=u'body')
+    
+class CreateGroupBodyRequestSchema(Schema):
+    body = fields.Nested(CreateGroupRequestSchema, context=u'body')
 
-class CreateGroup(ApiView):
-    input_schema = GroupSchemaCreate
+class CreateGroup(SwaggerApiView):
+    tags = [u'authorization']
+    definitions = {
+        u'CreateGroupRequestSchema': CreateGroupRequestSchema,
+        u'CreateApiObjectResponseSchema':CreateApiObjectResponseSchema
+    }
+    parameters = SwaggerHelper().get_parameters(CreateGroupBodyRequestSchema)
+    parameters_schema = CreateGroupRequestSchema
+    responses = SwaggerApiView.setResponses({
+        201: {
+            u'description': u'success',
+            u'schema': CreateApiObjectResponseSchema
+        }
+    })
     
     def post(self, controller, data, *args, **kwargs):
         """
         Create group
         Call this api to create a group
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-          - in : body
-            name: body
-            schema:
-              type: object
-              required: [group]
-              properties:
-                group:
-                  type: object
-                  required: [name, desc]
-                  properties:
-                    name:
-                      type: string
-                      example: test
-                    desc:
-                      type: string
-                      example: test
-                    active:
-                      type: boolean
-                      example: true
-                    expiry-date:
-                      type: string
-                      format: date
-                      example: 1990-12-31T
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests" 
-          201:
-            description: success
-            schema:
-              type: object
-              required: [uuid]
-              properties:
-                uuid:            
-                  type: string
-                  format: uuid
-                  example: 6d960236-d280-46d2-817d-f3ce8f0aeff7
         """
-        '''
-        data = get_value(data, u'group', None, exception=True)
-        groupname = get_value(data, u'name', None, exception=True)
-        description = get_value(data, u'desc', u'Group %s' % groupname)
-        active = get_value(data, u'active', True)
-        active = str2bool(active)
-        expiry_date = get_value(data, u'expiry-date', None)    '''    
-                       
         resp = controller.add_group(**data.get(u'group'))
         return ({u'uuid':resp}, 201)   
 
-class GroupSchemaUpdateParam(BaseSchemaUpdateParam, BaseSchemaExtendedParam):
-    roles = fields.Nested(BaseSchemaUpdateParamMulti)
-    users = fields.Nested(BaseSchemaUpdateParamMulti)
+## update
+class UpdateGroupParamRoleRequestSchema(Schema):
+    append = fields.List(fields.String())
+    remove = fields.List(fields.String())
+    
+class UpdateGroupParamRequestSchema(BaseUpdateRequestSchema, 
+                                   BaseCreateExtendedParamRequestSchema):
+    roles = fields.Nested(UpdateGroupParamRoleRequestSchema)
+    users = fields.Nested(UpdateGroupParamRoleRequestSchema) 
 
-class GroupSchemaUpdate(Schema):
-    group = fields.Nested(GroupSchemaUpdateParam)    
+class UpdateGroupRequestSchema(Schema):
+    group = fields.Nested(UpdateGroupParamRequestSchema)
 
-class UpdateGroup(ApiView):
-    input_schema = GroupSchemaUpdate
+class UpdateGroupBodyRequestSchema(GetApiObjectRequestSchema):
+    body = fields.Nested(UpdateGroupRequestSchema, context=u'body')
+    
+class UpdateGroupResponseSchema(Schema):
+    update = fields.Integer(default=67)
+    role_append = fields.List(fields.String, dump_to=u'role_append')
+    role_remove = fields.List(fields.String, dump_to=u'role_remove')
+    user_append = fields.List(fields.String, dump_to=u'user_append')
+    user_remove = fields.List(fields.String, dump_to=u'user_remove')    
+    
+class UpdateGroup(SwaggerApiView):
+    tags = [u'authorization']
+    definitions = {
+        u'UpdateGroupRequestSchema':UpdateGroupRequestSchema,
+        u'UpdateGroupResponseSchema':UpdateGroupResponseSchema
+    }
+    parameters = SwaggerHelper().get_parameters(UpdateGroupBodyRequestSchema)
+    parameters_schema = UpdateGroupRequestSchema
+    responses = SwaggerApiView.setResponses({
+        200: {
+            u'description': u'success',
+            u'schema': UpdateGroupResponseSchema
+        }
+    })
 
     def put(self, controller, data, oid, *args, **kwargs):
         """
         Update group
         Call this api to update a group
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-          - in: path
-            name: oid
-            type: string
-            required: true
-            description: Group id          
-          - in : body
-            name: body
-            schema:
-              type: object
-              required: [group]
-              properties:
-                group:
-                  type: object
-                  required: []
-                  properties:
-                    name:
-                      type: string
-                      example: test
-                    desc:
-                      type: string
-                      example: test
-                    active:
-                      type: boolean
-                      example: true
-                    expiry-date:
-                      type: string
-                      format: date
-                      example: 1990-12-31T
-                    roles:
-                      type: object
-                      required: []
-                      properties:
-                        append:
-                          type: array
-                          items:
-                            type: string
-                            example: Guest
-                        remove:  
-                          type: array
-                          items:
-                            type: string
-                            example: Guest
-                    users:
-                      type: object
-                      required: []
-                      properties:
-                        append:
-                          type: array
-                          items:
-                            type: string
-                            example: admin@local
-                        remove:  
-                          type: array
-                          items:
-                            type: string
-                            example: admin@local                 
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests" 
-          200:
-            description: success
-            schema:
-              type: object
-              required: [update, role-append, role-remove, user-append, user-remove]
-              properties:
-                update:            
-                  type: integer
-                  example: 67
-                role-append:
-                  type: array
-                  items:
-                    type: integer
-                    example: 18             
-                role-remove:
-                  type: array
-                  items:
-                    type: integer
-                    example: 18  
-                user-append:
-                  type: array
-                  items:
-                    type: integer
-                    example: 18
-                user-remove:
-                  type: array
-                  items:
-                    type: integer
-                    example: 18
         """        
         data = data.get(u'group')
         group_role = data.pop(u'roles', None)
@@ -2144,8 +992,8 @@ class UpdateGroup(ApiView):
         group = controller.get_group(oid)
         
         resp = {u'update':None,
-                u'role-append':[], u'role-remove':[], 
-                u'user-append':[], u'user-remove':[]}
+                u'role_append':[], u'role_remove':[], 
+                u'user_append':[], u'user_remove':[]}
         
         # append, remove role
         if group_role is not None:
@@ -2153,13 +1001,13 @@ class UpdateGroup(ApiView):
             if u'append' in group_role:
                 for role in group_role.get(u'append'):
                     res = group.append_role(role)
-                    resp[u'role-append'].append(res)
+                    resp[u'role_append'].append(res)
         
             # remove role
             if u'remove' in group_role:
                 for role in group_role.get(u'remove'):
                     res = group.remove_role(role)
-                    resp[u'role-remove'].append(res)
+                    resp[u'role_remove'].append(res)
                     
         # append, remove user
         if group_user is not None:
@@ -2167,62 +1015,34 @@ class UpdateGroup(ApiView):
             if u'append' in group_user:
                 for user in group_user.get(u'append'):
                     res = group.append_user(user)
-                    resp[u'user-append'].append(res)
+                    resp[u'user_append'].append(res)
         
             # remove user
             if u'remove' in group_user:
                 for user in group_user.get(u'remove'):
                     res = group.remove_user(user)
-                    resp[u'user-remove'].append(res)                    
+                    resp[u'user_remove'].append(res)                    
         
         # update group
         res = group.update(**data)        
         resp[u'update'] = res
         return resp
 
-class DeleteGroup(ApiView):
+## delete
+class DeleteGroup(SwaggerApiView):
+    tags = [u'authorization']
+    definitions = {}
+    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
+    responses = SwaggerApiView.setResponses({
+        204: {
+            u'description': u'no response'
+        }
+    })      
+    
     def delete(self, controller, data, oid, *args, **kwargs):
         """
         Delete group
-        Call this api to delete a group
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-        - in: path
-          name: oid
-          type: string
-          required: true
-          description: Group id          
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          404:
-            $ref: "#/responses/NotFound"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests"
-          204:
-            description: No response        
+        Call this api to delete a group   
         """                
         group = controller.get_group(oid)
         resp = group.delete()
@@ -2231,7 +1051,7 @@ class DeleteGroup(ApiView):
 #
 # object
 #
-class ObjectQuerySchema(PaginatedSchema):
+class ObjectQuerySchema(PaginatedRequestQuerySchema):
     field = fields.String(validate=OneOf([u'subsystem', u'type', u'id', 
                           u'objid', u'aid', u'action'],
                           error=u'Field can be subsystem, type, id, objid, aid, action'),
@@ -2241,7 +1061,7 @@ class ObjectQuerySchema(PaginatedSchema):
     objid = fields.String()
 
 class ListObjects(ApiView):
-    query_schema = ObjectQuerySchema
+    parameters_schema = ObjectQuerySchema
     
     def get(self, controller, data, *args, **kwargs):
         """
@@ -2511,7 +1331,7 @@ class ObjectSchemaCreate(Schema):
     objects = fields.Nested(ObjectSchemaCreateParam, many=True)
 
 class CreateObject(ApiView):
-    input_schema = ObjectSchemaCreate
+    parameters_schema = ObjectSchemaCreate
 
     def post(self, controller, data, *args, **kwargs):
         """
@@ -2634,7 +1454,7 @@ class DeleteObject(ApiView):
 #
 # object types
 #
-class TypeQuerySchema(PaginatedSchema):
+class TypeQuerySchema(PaginatedRequestQuerySchema):
     field = fields.String(validate=OneOf([u'subsystem', u'type', u'id'],
                           error=u'Field can be subsystem, type, id'),
                           missing=u'id')    
@@ -2643,7 +1463,7 @@ class TypeQuerySchema(PaginatedSchema):
     objid = fields.String()
 
 class ListObjectTypes(ApiView):
-    query_schema = TypeQuerySchema
+    parameters_schema = TypeQuerySchema
     
     def get(self, controller, data, *args, **kwargs):
         """
@@ -2781,7 +1601,7 @@ class ObjectTypeSchemaCreate(Schema):
                                  load_from=u'object-types')
 
 class CreateObjectType(ApiView):
-    input_schema = ObjectTypeSchemaCreate
+    parameters_schema = ObjectTypeSchemaCreate
 
     def post(self, controller, data, *args, **kwargs):
         """
@@ -2962,7 +1782,7 @@ class ListObjectActions(ApiView):
 #
 # object perms
 #
-class PermQuerySchema(PaginatedSchema):
+class PermQuerySchema(PaginatedRequestQuerySchema):
     field = fields.String(validate=OneOf([u'subsystem', u'type', u'id', 
                           u'objid', u'aid', u'action'],
                           error=u'Field can be subsystem, type, id, objid, aid, action'),
@@ -2975,7 +1795,7 @@ class PermQuerySchema(PaginatedSchema):
     group = fields.String()
 
 class ListObjectPerms(ApiView):
-    query_schema = PermQuerySchema    
+    parameters_schema = PermQuerySchema    
     
     def get(self, controller, data, *args, **kwargs):
         """

@@ -16,30 +16,30 @@ tests = [
 #     u'test_get_token',
 #     u'test_delete_token',
     
-#     u'test_add_role',
-#     u'test_add_role_twice',
-#     u'test_get_roles',
-#     u'test_get_roles_by_user',
-#     u'test_get_role',
-#     u'test_update_role',
-#     u'test_add_role_perm',
-#     u'test_get_perms_by_role',
-#     u'test_remove_role_perm',
-#     u'test_delete_role',    
+    u'test_add_role',
+    u'test_add_role_twice',
+    u'test_get_roles',
+    u'test_get_roles_by_user',
+    u'test_get_role',
+    u'test_update_role',
+    u'test_add_role_perm',
+    u'test_get_perms_by_role',
+    u'test_remove_role_perm',
+    u'test_delete_role',    
     
-    u'test_add_user',
-    u'test_add_user_twice',
-    u'test_get_users',
-    u'test_get_users_by_role',
-    u'test_get_user',
-    u'test_add_user_attributes',
-    u'test_get_user_attributes',    
-    u'test_delete_user_attributes',
-    u'test_update_user',
-    u'test_add_user_role',
-    u'test_get_perms_by_user',
-    u'test_remove_user_role',
-    u'test_delete_user',
+#     u'test_add_user',
+#     u'test_add_user_twice',
+#     u'test_get_users',
+#     u'test_get_users_by_role',
+#     u'test_get_user',
+#     u'test_add_user_attributes',
+#     u'test_get_user_attributes',    
+#     u'test_delete_user_attributes',
+#     u'test_update_user',
+#     u'test_add_user_role',
+#     u'test_get_perms_by_user',
+#     u'test_remove_user_role',
+#     u'test_delete_user',
     
 #     u'test_add_group',
 #     u'test_add_group_twice',
@@ -76,7 +76,7 @@ tests = [
 #     u'test_get_perm',
 ]
 
-class AuthObjectTestCase(BeehiveTestCase):
+class AuthTestCase(BeehiveTestCase):
     def setUp(self):
         BeehiveTestCase.setUp(self)
         
@@ -121,7 +121,7 @@ class AuthObjectTestCase(BeehiveTestCase):
                 u'name':u'role_prova',
                 u'desc':u'role_prova',
                 u'active':True,
-                #u'expiry-date':u'2099-12-31T'
+                #u'expirydate':u'2099-12-31T'
             }
         }        
         self.call(u'auth', u'/v1.0/auth/roles', u'post', data=data,
@@ -166,7 +166,7 @@ class AuthObjectTestCase(BeehiveTestCase):
     def test_add_role_perm(self):
         data = {
             u'role':{
-                u'perms':{u'append':[4]}
+                u'perms':{u'append':[u'4']}
             }
         }
         self.call(u'auth', u'/v1.0/auth/roles/{oid}', u'put',
@@ -182,7 +182,7 @@ class AuthObjectTestCase(BeehiveTestCase):
     def test_remove_role_perm(self):
         data = {
             u'role':{
-                u'perms':{u'remove':[4]}
+                u'perms':{u'remove':[u'4']}
             }
         }        
         self.call(u'auth', u'/v1.0/auth/roles/{oid}', u'put',
@@ -203,7 +203,7 @@ class AuthObjectTestCase(BeehiveTestCase):
                 u'name':u'user_prova@local',
                 u'desc':u'user_prova',
                 u'active':True,
-                u'expiry-date':u'2099-12-31',
+                u'expirydate':u'2099-12-31',
                 u'password':u'user_prova',
                 u'base':True
             }
@@ -218,7 +218,7 @@ class AuthObjectTestCase(BeehiveTestCase):
                 u'name':u'user_prova@local',
                 u'desc':u'user_prova',
                 u'active':True,
-                u'expiry-date':u'2099-12-31',
+                u'expirydate':u'2019-12-31',
                 u'password':u'user_prova',
                 u'base':True
             }
@@ -227,12 +227,13 @@ class AuthObjectTestCase(BeehiveTestCase):
                   **self.users[u'admin'])        
     
     def test_get_users(self):
-        self.call(u'auth', u'/v1.0/auth/users', u'get', 
+        self.call(u'auth', u'/v1.0/auth/users', u'get',
+                  query={u'page':0},
                   **self.users[u'admin'])
         
     def test_get_users_by_role(self):
         self.call(u'auth', u'/v1.0/auth/users', u'get',
-                  query={u'role':4},
+                  query={u'role':u'Guest'},
                   **self.users[u'admin'])        
         
     def test_get_user(self):
@@ -275,7 +276,7 @@ class AuthObjectTestCase(BeehiveTestCase):
     def test_add_user_role(self):
         data = {
             u'user':{
-                u'roles':{u'append':[(u'4', u'2099-12-31')]}
+                u'roles':{u'append':[(u'4', u'2019-12-31')]}
             }
         }
         self.call(u'auth', u'/v1.0/auth/users/{oid}', u'put',
@@ -312,7 +313,7 @@ class AuthObjectTestCase(BeehiveTestCase):
                 u'name':u'grp_prova',
                 u'desc':u'grp_prova',
                 u'active':True,
-                #u'expiry-date':u'2099-12-31'
+                #u'expirydate':u'2099-12-31'
             }
         }        
         self.call(u'auth', u'/v1.0/auth/groups', u'post', data=data,
@@ -345,7 +346,7 @@ class AuthObjectTestCase(BeehiveTestCase):
                 u'name':u'grp_prova',
                 u'desc':u'grp_prova',
                 u'active':True,
-                #u'expiry-date':u'2099-12-31T'
+                #u'expirydate':u'2099-12-31T'
             }
         }
         self.call(u'auth', u'/v1.0/auth/groups/{oid}', u'put', 
@@ -380,7 +381,7 @@ class AuthObjectTestCase(BeehiveTestCase):
     def test_add_group_role(self):
         data = {
             u'group':{
-                u'roles':{u'append':[u'Guest']}
+                u'roles':{u'append':[u'ApiSuperAdmin']}
             }
         }
         self.call(u'auth', u'/v1.0/auth/groups/{oid}', u'put',
@@ -389,7 +390,7 @@ class AuthObjectTestCase(BeehiveTestCase):
 
     def test_get_groups_by_role(self):
         self.call(u'auth', u'/v1.0/auth/groups', u'get',
-                  query={u'role':u'Guest'}, 
+                  query={u'role':u'ApiSuperAdmin'}, 
                   **self.users[u'admin'])
         
     def test_get_perms_by_group(self):
@@ -400,7 +401,7 @@ class AuthObjectTestCase(BeehiveTestCase):
     def test_remove_group_role(self):
         data = {
             u'group':{
-                u'roles':{u'remove':[u'Guest']}
+                u'roles':{u'remove':[u'ApiSuperAdmin']}
             }
         }        
         self.call(u'auth', u'/v1.0/auth/groups/{oid}', u'put',
@@ -530,4 +531,4 @@ class AuthObjectTestCase(BeehiveTestCase):
                   **self.users[u'admin'])    
 
 if __name__ == u'__main__':
-    runtest(AuthObjectTestCase, tests)      
+    runtest(AuthTestCase, tests)      

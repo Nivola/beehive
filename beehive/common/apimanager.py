@@ -38,15 +38,14 @@ from beehive.common.apiclient import BeehiveApiClient, BeehiveApiClientError
 from beehive.common.model.config import ConfigDbManager
 from beehive.common.model.authorization import AuthDbManager, Role
 from beehive.common.event import EventProducerRedis
-from flasgger import Swagger, utils
+from flasgger import Swagger, Schema, fields, SwaggerView
 try:
     from beecell.server.uwsgi_server.wrapper import uwsgi_util
 except:
     pass
 from re import escape
-from marshmallow import fields, Schema
 from marshmallow.validate import OneOf, Range
-from marshmallow.decorators import post_load
+from copy import deepcopy
 
 class ApiManagerError(Exception):
     """Main excpetion raised by api manager and childs
@@ -2094,18 +2093,6 @@ class ApiInternalObject(ApiObject):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
 
-class PaginatedSchema(Schema):
-    size = fields.Integer(missing=10, validate=Range(min=0, max=200,
-                                                     error=u'Size is out from range'))
-    page = fields.Integer(missing=0, validate=Range(min=0, max=1000,
-                                                     error=u'Page is out from range'))
-    order = fields.String(validate=OneOf([u'ASC', u'asc', u'DESC', u'desc'],
-                                         error=u'Order can be asc, ASC, desc, DESC'),
-                          missing=u'DESC')
-    field = fields.String(validate=OneOf([u'id', u'uuid', u'objid', u'name'],
-                                         error=u'Field can be id, uuid, objid, name'),
-                          missing=u'id')
-
 class ApiViewResponse(ApiObject):
     objtype = u'api'
     objdef = u'Response'
@@ -2196,72 +2183,12 @@ class ApiViewResponse(ApiObject):
         self.event_class(self.controller, objid=objid, data=data, action=action)\
             .publish(self.objtype, self.API_OPERATION)
 
-'''
-http_method_funcs = frozenset(['get', 'post', 'head', 'options',
-                               'delete', 'put', 'trace', 'patch'])
-
-import flask
-class MethodViewType2(type):
-
-    def __new__(cls, name, bases, d):
-        rv = type.__new__(cls, name, bases, d)
-        
-        if 'methods' not in d:
-            methods = set(rv.methods or [])
-            for key in d:
-                
-                if key in http_method_funcs:
-                    methods.add(key.upper())
-            # If we have no method at all in there we don't want to
-            # add a method list.  (This is for instance the case for
-            # the base class or another subclass of a base method view
-            # that does not introduce new methods).
-            if methods:
-                rv.methods = sorted(methods)
-        print "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ %s" % rv
-        return rv
-    
-flask.views.MethodViewType = MethodViewType2 
-'''
-
-'''
-from flask._compat import with_metaclass
-from flask.views import View
-class MethodView(with_metaclass(MethodViewType, View)):
-    """Like a regular class-based view but that dispatches requests to
-    particular methods.  For instance if you implement a method called
-    :meth:`get` it means you will response to ``'GET'`` requests and
-    the :meth:`dispatch_request` implementation will automatically
-    forward your request to that.  Also :attr:`options` is set for you
-    automatically::
-
-        class CounterAPI(MethodView):
-
-            def get(self):
-                return session.get('counter', 0)
-
-            def post(self):
-                session['counter'] = session.get('counter', 0) + 1
-                return 'OK'
-
-        app.add_url_rule('/counter', view_func=CounterAPI.as_view('counter'))
-    """
-    def dispatch_request(self, *args, **kwargs):
-        meth = getattr(self, request.method.lower(), None)
-        # If the request method is HEAD and we don't have a handler for it
-        # retry with GET.
-        if meth is None and request.method == 'HEAD':
-            meth = getattr(self, 'get', None)
-        assert meth is not None, 'Unimplemented method %r' % request.method
-        return meth(*args, **kwargs)
-'''
-
 class ApiView(FlaskView):
     """ """
     prefix = u'identity:'
     expire = 3600
-    input_schema = None
-    query_schema = None
+    parameters = []
+    parameters_schema = None
     
     RESPONSE_MIME_TYPE = [
         u'application/json', 
@@ -2271,7 +2198,7 @@ class ApiView(FlaskView):
     ]
     
     def __init__(self, *argc, **argv):
-        FlaskView.__init__(self, *argc, **argv)
+        #FlaskView.__init__(self, *argc, **argv)
         self.logger = logging.getLogger(self.__class__.__module__+ \
                                         u'.'+self.__class__.__name__)
         
@@ -2635,23 +2562,17 @@ class ApiView(FlaskView):
             except (AttributeError, ValueError): 
                 data = None
                 
-            # validate query data
-            if self.query_schema is not None:
-                parsed = self.query_schema().load(request.args.to_dict())
+            # validate query/input data
+            if self.parameters_schema is not None:
+                if request.method.lower() == u'get':
+                    parsed = self.parameters_schema().load(request.args.to_dict())
+                else:
+                    parsed = self.parameters_schema().load(data)
                 if len(parsed.errors.keys()) > 0:
                     self.logger.error(parsed.errors)
                     raise ApiManagerError(parsed.errors.values(), code=400)
                 data = parsed.data
-                self.logger.debug(u'Query after schema validation: %s' % data)      
-                
-            # validate data
-            if self.input_schema is not None:
-                parsed = self.input_schema().load(data)
-                if len(parsed.errors.keys()) > 0:
-                    self.logger.error(parsed.errors)
-                    raise ApiManagerError(parsed.errors.values(), code=400)
-                data = parsed.data
-                self.logger.debug(u'Data after schema validation: %s' % data)
+                self.logger.debug(u'Query/data after schema validation: %s' % data)
         
             # dispatch request
             meth = getattr(self, request.method.lower(), None)
@@ -2759,28 +2680,93 @@ class ApiView(FlaskView):
                              view_func=view_func, 
                              defaults=defaults)
             
-            #print view_func.__dict__
-            
-            '''
-            # add class method relative to http method
-            meth = getattr(rule[2], rule[1].lower(), None)
-            print "$$$$$$$$$$$$$$$$ %s" % view_func
-            #print "$$$$$$$$$$$$$$$$ %s %s %s" % (rule[2], rule[1].lower(), meth)
-            #view_func.__doc__ = rule[2].__doc__
-            klass = view_func.__dict__.get('view_class', None)
-            method = klass.__dict__.get(rule[1].lower())
-            print klass, method, id(meth)
-            
-            meth.__func__.__doc__ = rule[2].__doc__
-            #setattr(ApiView, the_name, classmethod(func))
-            import inspect
-            print inspect.getdoc(meth)'''
-            
             view_num += 1
             logger.debug('Add route: %s %s' % (uri, rule[1]))
             
             # append route to module
             module.api_routes.append({'uri':uri, 'method':rule[1]})
+
+class PaginatedRequestQuerySchema(Schema):
+    size = fields.Integer(default=10, missing=10, context=u'query',
+                          validate=Range(min=0, max=200,
+                                         error=u'Size is out from range'))
+    page = fields.Integer(default=0, missing=0, context=u'query',
+                          validate=Range(min=0, max=1000,
+                                         error=u'Page is out from range'))
+    order = fields.String(validate=OneOf([u'ASC', u'asc', u'DESC', u'desc'],
+                                         error=u'Order can be asc, ASC, desc, DESC'),
+                          default=u'DESC', missing=u'DESC', context=u'query')
+    field = fields.String(validate=OneOf([u'id', u'uuid', u'objid', u'name'],
+                                         error=u'Field can be id, uuid, objid, name'),
+                          default=u'id', missing=u'id', context=u'query')
+    
+class GetApiObjectRequestSchema(Schema):
+    oid = fields.String(required=True, description=u'id, uuid or name',
+                        context=u'path')    
+    
+class ApiObjectResponseDateSchema(Schema):
+    creation = fields.DateTime(required=True, default=u'1990-12-31T23:59:59Z')
+    modified = fields.DateTime(required=True, default=u'1990-12-31T23:59:59Z')
+    expiry = fields.String(default=u'')
+
+class ApiObjectResponseSchema(Schema):
+    id = fields.Integer(required=True, default=10)
+    uuid = fields.String(required=True, default=u'4cdf0ea4-159a-45aa-96f2-708e461130e1')
+    objid = fields.String(required=True, default=u'396587362//3328462822')
+    type = fields.String(required=True, default=u'auth')
+    definition = fields.String(required=True, default=u'Role')
+    name = fields.String(required=True, default=u'test')
+    desc = fields.String(required=True, default=u'test')
+    date = fields.Nested(ApiObjectResponseDateSchema)
+    uri = fields.String(required=True, default=u'/v1.0/auht/roles')
+    active = fields.Boolean(required=True, default=True)
+
+class PaginatedResponseSortSchema(Schema):
+    order = fields.String(required=True, 
+                          validate=OneOf([u'ASC', u'asc', u'DESC', u'desc']),
+                          default=u'DESC')
+    field = fields.String(required=True, default=u'id')
+
+class PaginatedResponseSchema(Schema):
+    count = fields.Integer(required=True, default=10)
+    page = fields.Integer(required=True, default=0)
+    total = fields.Integer(required=True, default=20)
+    sort = fields.Nested(PaginatedResponseSortSchema)
+    
+class CreateApiObjectResponseSchema(Schema):
+    uuid = fields.UUID(required=True, 
+                       default=u'6d960236-d280-46d2-817d-f3ce8f0aeff7')
+
+class SwaggerApiView(ApiView, SwaggerView):
+    consumes = ['application/json',
+                'application/xml']
+    produces = ['application/json',
+                'application/xml',
+                'text/plain']
+    security = [
+        {'ApiKeyAuth': []},
+        {'OAuth2': ['auth', 'beehive']},
+    ]
+    definitions = {}
+    parameters = []
+    responses = {
+        500: {'$ref': '#/responses/InternalServerError'},
+        400: {'$ref': '#/responses/BadRequest'},
+        401: {'$ref': '#/responses/Unauthorized'},
+        403: {'$ref': '#/responses/Forbidden'},
+        405: {'$ref': '#/responses/MethodAotAllowed'},
+        408: {'$ref': '#/responses/Timeout'},
+        410: {'$ref': '#/responses/Gone'},
+        415: {'$ref': '#/responses/UnsupportedMediaType'},
+        422: {'$ref': '#/responses/UnprocessableEntity'},
+        429: {'$ref': '#/responses/TooManyRequests'},
+    }
+    
+    @classmethod
+    def setResponses(cls, data):
+        new = deepcopy(cls.responses)
+        new.update(data)
+        return new    
 
 class ApiClient(BeehiveApiClient):
     """ """

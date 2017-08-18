@@ -1,96 +1,102 @@
 '''
-Created on Sep 2, 2013
+Created on Aug 18, 2017
 
-@author: darkbk
+@catalogor: darkbk
 '''
-from tests.test_util import run_test, CloudapiTestCase
-import json
 import unittest
-import tests.test_util
+from beehive.common.test import runtest, BeehiveTestCase, assert_exception
+from beecell.remote import BadRequestException,\
+    ConflictException
 
-uid = None
-seckey = None
+oid = None
 
-cat = 5
-sid = 16
+tests = [
+    u'test_add_catalog',
+    u'test_add_catalog_twice',
+    u'test_get_catalogs',
+    u'test_get_catalog',
+    u'test_get_catalog_by_name',
+    u'test_update_catalog',
+    
+    u'test_add_endpoint',
+    u'test_add_endpoint_twice',
+    u'test_get_endpoints',
+    u'test_filter_endpoints',
+    u'test_get_endpoint',
+    u'test_update_endpoint',
+    u'test_delete_endpoint',
+    
+    u'test_delete_catalog',
+]
 
-class CatalogAPITest(CloudapiTestCase):
-    """To execute this test you need a cloudstack instance.
-    """
+class CatalogTestCase(BeehiveTestCase):
     def setUp(self):
-        CloudapiTestCase.setUp(self)
-
-        self.api_id = u'api'
-        self.baseuri = u'/v1.0/catalog'
+        BeehiveTestCase.setUp(self)
         
     def tearDown(self):
-        CloudapiTestCase.tearDown(self)
-
+        BeehiveTestCase.tearDown(self)
+        
     #
-    # catalog
+    # catalogs
     #
     def test_add_catalog(self):
-        global uid, seckey
-                
         data = {
             u'catalog':{
                 u'name':u'beehive', 
-                u'desc':u'cloudapi catalog',
-                u'zone':u'internal'                        
+                u'desc':u'beehive catalog',
+                u'zone':u'internal'
             }
-        }
-        uri = u'/v1.0/catalog/'
-        res = self.invoke(u'auth',uri, u'POST', data=json.dumps(data))
-
+        }        
+        self.call(u'catalog', u'/v1.0/catalog/catalogs', u'post', data=data,
+                  **self.users[u'admin'])
+    
+    @assert_exception(BadRequestException)
+    def test_add_catalog_twice(self):
+        data = {
+            u'catalog':{
+                u'name':u'beehive', 
+                u'desc':u'beehive catalog',
+                u'zone':u'internal'  
+            }
+        }        
+        self.call(u'catalog', u'/v1.0/catalog/catalogs', u'post', data=data,
+                  **self.users[u'admin'])        
+    
     def test_get_catalogs(self):
-        global uid, seckey
-                
-        data = u''
-        uri = u'/v1.0/catalogs/'
-        res = self.invoke(u'auth',uri, 'GET', data=data)
-        self.logger.info(self.pp.pformat(res))   
-
-    def test_get_catalog(self):
-        global uid, seckey
-                
-        data = u''
-        uri = u'/v1.0/catalog/%s/' % cat
-        res = self.invoke(u'auth',uri, 'GET', data=data)
-        self.logger.info(self.pp.pformat(res)) 
-
-    def test_get_catalog_by_name(self):
-        global uid, seckey
-        cat = u'cloudapi'
-        data = u''
-        uri = u'/v1.0/catalogs/'
-        res = self.invoke(u'auth', uri, 'GET', data=data, headers={u'name':cat})
-        self.logger.info(self.pp.pformat(res)) 
-
-    def test_update_catalog(self):
-        global uid, seckey
+        self.call(u'catalog', u'/v1.0/catalog/catalogs', u'get', 
+                  **self.users[u'admin'])
         
+    def test_get_catalog_by_name(self):
+        self.call(u'catalog', u'/v1.0/catalog/catalogs/{oid}', u'get',
+                  params={u'oid':u'beehive'},
+                  **self.users[u'admin'])        
+        
+    def test_get_catalog(self):
+        self.call(u'catalog', u'/v1.0/catalog/catalogs/{oid}', u'get',
+                  params={u'oid':4}, 
+                  **self.users[u'admin'])
+        
+    def test_update_catalog(self):
         data = {
             u'catalog':{
                 u'name':u'beehive1', 
-                u'desc':u'cloudapi catalog1',
-                u'zone':u'internal1'                        
+                u'desc':u'beehive catalog1',
+                u'zone':u'internal1'  
             }
         }
-        uri = u'/v1.0/catalog/%s/' % cat
-        res = self.invoke(u'auth',uri, u'PUT', data=json.dumps(data))
-        
+        self.call(u'catalog', u'/v1.0/catalog/catalogs/{oid}', u'put', 
+                  params={u'oid':u'catalog_prova'}, data=data,
+                  **self.users[u'admin'])        
+
     def test_delete_catalog(self):
-        global uid, seckey
-                
-        data = u''
-        uri = u'/v1.0/catalog/%s/' % cat
-        res = self.invoke(u'auth',uri, 'DELETE', data=data)           
+        self.call(u'catalog', u'/v1.0/catalog/catalogs/{oid}', u'delete', 
+                  params={u'oid':u'catalog_prova'},
+                  **self.users[u'admin'])
 
-    # endpoint
-
+    #
+    # endpoints
+    #
     def test_add_endpoint(self):
-        global uid, seckey
-                
         data = {
             u'endpoint':{
                 u'catalog':5,
@@ -98,81 +104,55 @@ class CatalogAPITest(CloudapiTestCase):
                 u'desc':u'Authorization endpoint 01', 
                 u'service':u'auth', 
                 u'uri':u'http://localhost:6060/api/auth/', 
-                u'enabled':True                   
+                u'enabled':True
             }
-        }
-        uri = u'/v1.0/catalog/endpoint/'
-        res = self.invoke(u'auth',uri, u'POST', data=json.dumps(data))
+        }        
+        self.call(u'catalog', u'/v1.0/catalog/endpoints', u'post', data=data,
+                  **self.users[u'admin'])
 
-    def test_get_endpoints(self):
-        global uid, seckey
-
-        data = u''
-        uri = u'/v1.0/catalog/endpoints/'
-        res = self.invoke(u'auth',uri, u'GET', data=data)
-        self.logger.info(self.pp.pformat(res))
-        
-    def test_filter_endpoints(self):
-        global uid, seckey
-        filter = {u'name':u'catalog02'}
-        filter = {u'service':u'auth', u'catalog':2}
-        data = u''
-        uri = u'/v1.0/catalog/endpoints/'
-        res = self.invoke(u'auth',uri, u'GET', data=data, headers=filter)
-        self.logger.info(self.pp.pformat(res))           
-
-    def test_get_endpoint(self):
-        global uid, seckey
-                
-        data = u''
-        uri = u'/v1.0/catalog/endpoint/%s/' % sid
-        res = self.invoke(u'auth',uri, u'GET', data=data)
-        self.logger.info(self.pp.pformat(res))
-
-    def test_update_endpoint(self):
-        global uid, seckey
-        
+    @assert_exception(BadRequestException)
+    def test_add_endpoint_twice(self):
         data = {
             u'endpoint':{
-                #u'catalog':5,
+                u'name':u'endpoint_prova',
+                u'desc':u'endpoint_prova',
+            }
+        }        
+        self.call(u'catalog', u'/v1.0/catalog/endpoints', u'post', data=data,
+                  **self.users[u'admin'])        
+    
+    def test_get_endpoints(self):
+        self.call(u'catalog', u'/v1.0/catalog/endpoints', u'get', 
+                  **self.users[u'admin'])
+        
+    def test_filter_endpoints(self):
+        self.call(u'catalog', u'/v1.0/catalog/endpoints', u'get',
+                  query={u'service':u'auth', u'catalog':2},
+                  **self.users[u'admin'])        
+        
+    def test_get_endpoint(self):
+        self.call(u'catalog', u'/v1.0/catalog/endpoints/{oid}', u'get',
+                  params={u'oid':4}, 
+                  **self.users[u'admin'])
+        
+    def test_update_endpoint(self):
+        data = {
+            u'endpoint':{
                 u'name':u'auth-012', 
                 u'desc':u'Authorization endpoint 01', 
                 u'service':u'auth', 
                 u'uri':u'http://localhost:6060/api/auth/', 
-                u'enabled':False                             
+                u'enabled':False
             }
         }
-        uri = u'/v1.0/catalog/endpoint/%s/' % (sid)
-        res = self.invoke(u'auth',uri, u'PUT', data=json.dumps(data))
-        
-    def test_delete_endpoint(self):
-        global uid, seckey
-                
-        data = u''
-        uri = u'/v1.0/catalog/endpoint/%s/' % (sid)
-        res = self.invoke(u'auth',uri, u'DELETE', data=data)         
-
-def test_suite():
-    tests = ['test_login',
-             #'test_add_catalog',
-             #'test_get_catalogs',
-             #'test_get_catalog',
-             #'test_get_catalog_by_name',
-             #'test_update_catalog',
-             
-             #'test_add_endpoint',
-             #u'test_get_endpoints',
-             #u'test_filter_endpoints',
-             #'test_get_endpoint',
-             #'test_update_endpoint',
-             #'test_delete_endpoint',
-             
-             #'test_delete_catalog',
-             #'test_logout',
-            ]
-    #tests = ['test_remove_initial_value', 'test_set_initial_value']   
-    return unittest.TestSuite(map(CatalogAPITest, tests))
-
-if __name__ == '__main__':
-    run_test(test_suite())
+        self.call(u'catalog', u'/v1.0/catalog/endpoints/{oid}', u'put', 
+                  params={u'oid':u'endpoint_prova'}, data=data,
+                  **self.users[u'admin'])        
     
+    def test_delete_endpoint(self):
+        self.call(u'catalog', u'/v1.0/catalog/endpoints/{oid}', u'delete', 
+                  params={u'oid':u'endpoint_prova'},
+                  **self.users[u'admin'])
+        
+if __name__ == u'__main__':
+    runtest(CatalogTestCase, tests)  

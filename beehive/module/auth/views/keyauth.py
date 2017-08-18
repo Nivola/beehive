@@ -31,7 +31,7 @@ class UserSchema(Schema):
             raise ValidationError(u'User syntax must be <user>@<domain>')
 
 class CreateToken(ApiView):
-    input_schema = UserSchema
+    parameters_schema = UserSchema
     
     def post(self, controller, data, *args, **kwargs):
         """

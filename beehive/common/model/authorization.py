@@ -1269,11 +1269,14 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         if group is None:
             raise ModelError(u'Group is not correct or does not exist')
 
-        # get user permissions
+        # get group roles
         roles = []
-        for role in group.role:
-            roles.append(role.name)
-        
+        group_roles = session.query(Role)\
+                             .join(RoleGroup)\
+                             .filter(RoleGroup.group_id == group.id).all()      
+        for role in group_roles:
+            roles.append(role.name)   
+    
         if len(roles) == 0:
             self.logger.warn(u'Group %s has no roles associated' % group.id)
             total = 0

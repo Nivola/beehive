@@ -980,7 +980,7 @@ class Role(AuthObject):
             
             res = self.manager.append_role_permissions(self.model, roleperms)
             self.logger.debug(u'Append role %s permission : %s' % (self.name, perms))        
-            return res
+            return [str(p.id) for p in roleperms]
         except QueryError as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex)
@@ -1017,7 +1017,7 @@ class Role(AuthObject):
             
             res = self.manager.remove_role_permission(self.model, roleperms)
             self.logger.debug(u'Remove role %s permission : %s' % (self.name, perms))
-            return res
+            return [str(p.id) for p in roleperms]
         except QueryError as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex)
@@ -1186,8 +1186,8 @@ class User(BaseUser):
         try:
             expiry_date_obj = None
             if expiry_date is not None:
-                g, m, y = expiry_date.split(u'-')
-                expiry_date_obj = datetime(int(y), int(m), int(g))
+                y, m, d = expiry_date.split(u'-')
+                expiry_date_obj = datetime(int(y), int(m), int(d))
             res = self.manager.append_user_role(self.model, role.model, 
                                                 expiry_date=expiry_date_obj)
             if res is True: 
@@ -1196,7 +1196,7 @@ class User(BaseUser):
             else:
                 self.logger.debug(u'Role %s already linked with user %s' % (
                                             role, self.name))
-            return res
+            return role_id
         except (QueryError, TransactionError) as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
@@ -1219,7 +1219,7 @@ class User(BaseUser):
         try:
             res = self.manager.remove_user_role(self.model, role.model)
             self.logger.debug(u'Remove role %s from user %s' % (role, self.name))          
-            return res
+            return role_id
         except (QueryError, TransactionError) as ex:         
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
@@ -1435,8 +1435,8 @@ class Group(AuthObject):
         try:
             expiry_date_obj = None
             if expiry_date is not None:
-                g, m, y = expiry_date.split(u'-')
-                expiry_date_obj = datetime(int(y), int(m), int(g))            
+                y, m, d = expiry_date.split(u'-')
+                expiry_date_obj = datetime(int(y), int(m), int(d))          
             res = self.manager.append_group_role(self.model, role.model, 
                                                 expiry_date=expiry_date_obj)
             if res is True: 
@@ -1445,7 +1445,7 @@ class Group(AuthObject):
             else:
                 self.logger.debug(u'Role %s already linked with group %s' % (
                                             role, self.name))
-            return res
+            return role_id
         except (QueryError, TransactionError) as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
@@ -1468,7 +1468,7 @@ class Group(AuthObject):
         try:
             res = self.manager.remove_group_role(self.model, role.model)
             self.logger.debug(u'Remove role %s from group %s' % (role, self.name))   
-            return res
+            return role_id
         except (QueryError, TransactionError) as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
@@ -1501,7 +1501,7 @@ class Group(AuthObject):
                 self.logger.debug(u'User %s already linked with group %s' % (
                                             user, self.name))
             #self.send_event(u'user-set.update', params=opts)
-            return res
+            return user_id
         except (QueryError, TransactionError) as ex:
             #self.send_event(u'user-set.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
@@ -1526,7 +1526,7 @@ class Group(AuthObject):
             res = self.manager.remove_group_user(self.model, user.model)
             self.logger.debug(u'Remove user %s from group %s' % (user, self.name))
             #self.send_event(u'user-unset.update', params=opts)       
-            return res
+            return user_id
         except (QueryError, TransactionError) as ex:
             #self.send_event(u'user-unset.update', params=opts, exception=ex)    
             self.logger.error(ex, exc_info=1)
