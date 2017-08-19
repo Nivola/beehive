@@ -416,7 +416,7 @@ class AuthController(BaseAuthController):
 class Objects(AuthObject):
     objdef = u'Objects'
     objdesc = u'Authorization objects'
-    objuri = u'objects'    
+    objuri = u'auth/objects'    
     
     def __init__(self, controller):
         AuthObject.__init__(self, controller, oid=u'', name=u'', desc=u'', 
@@ -862,7 +862,7 @@ class Objects(AuthObject):
 class Role(AuthObject):
     objdef = u'Role'
     objdesc = u'System roles'
-    objuri = u'roles'
+    objuri = u'auth/roles'
     
     def __init__(self, controller, oid=None, objid=None, name=None, desc=None, 
                  model=None, active=True):
@@ -1025,7 +1025,7 @@ class Role(AuthObject):
 class User(BaseUser):
     objdef = u'User'
     objdesc = u'System users'
-    objuri = u'users'
+    objuri = u'auth/users'
     
     def __init__(self, controller, oid=None, objid=None, name=None, desc=None, 
                  model=None, active=True):
@@ -1336,7 +1336,7 @@ class User(BaseUser):
 class Group(AuthObject):
     objdef = u'Group'
     objdesc = u'System groups'
-    objuri = u'groups'
+    objuri = u'auth/groups'
     
     def __init__(self, controller, oid=None, objid=None, name=None, desc=None, 
                  model=None, active=True):

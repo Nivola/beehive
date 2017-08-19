@@ -22,17 +22,13 @@ from flasgger.marshmallow_apispec import SwaggerView
 #
 ## list
 class ListCatalogsRequestSchema(PaginatedRequestQuerySchema):
-    catalog = fields.String(context=u'query')
-    role = fields.String(context=u'query')
-    active = fields.Boolean(context=u'query')
-    expiry_date = fields.String(load_from=u'expirydate', default=u'2099-12-31',
-                                context=u'query')
+    zone = fields.String(context=u'query', default=u'internal')
 
 class ListCatalogsResponseSchema(PaginatedResponseSchema):
     catalogs = fields.Nested(ApiObjectResponseSchema, many=True)
 
 class ListCatalogs(SwaggerApiView):
-    tags = [u'authorization']
+    tags = [u'catalog']
     definitions = {
         u'ListCatalogsResponseSchema': ListCatalogsResponseSchema,
     }
@@ -49,68 +45,8 @@ class ListCatalogs(SwaggerApiView):
         """
         List catalogs
         Call this api to list all the existing catalogs
-        ---
-        deprecated: false
-        tags:
-          - Catalog api
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          408:
-            $ref: "#/responses/Timeout"
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          200:
-            description: Catalogs list
-            schema:
-              type: object
-              required: [catalogs, count]
-              properties:
-                count:
-                  type: integer
-                  example: 1
-                catalogs:
-                  type: array
-                  items:
-                    type: object
-                    required: [id, objid, name, desc, date, type, definition, active, uri, zone]
-                    properties:
-                      id:
-                        type: integer
-                        example: 1
-                      objid:
-                        type: string
-                        example: 396587362
-                      name:
-                        type: string
-                        example: beehive
-                      desc:
-                        type: string
-                        example: beehive
-                      active:
-                        type: boolean
-                        example: true
-                      type:
-                        type: string
-                        example: directory
-                      definition:
-                        type: string
-                        example: catalog
-                      uri:
-                        type: string
-                        example: /v1.0/catalog/1
-                      zone:
-                        type: string
-                        example: internal
         """            
-        catalogs, total = controller.get_catalogs(name=name)
+        catalogs, total = controller.get_catalogs(**data)
         res = [r.info() for r in catalogs]
         return self.format_paginated_response(res, u'catalogs', total, **data)
 
@@ -137,7 +73,7 @@ class GetCatalog(SwaggerApiView):
         resp = {u'catalog':res}        
         return resp
               
-## get
+## get perms
 class GetCatalogPermsResponseSchema(Schema):
     perms = fields.Nested(ApiObjectResponseSchema)
 
@@ -197,12 +133,7 @@ class CreateCatalog(SwaggerApiView):
     })
     
     def post(self, controller, data, *args, **kwargs):
-        data = get_value(data, u'catalog', None, exception=True)
-        name = get_value(data, u'name', None, exception=True)
-        desc = get_value(data, u'desc', None, exception=True)
-        zone = get_value(data, u'zone', None, exception=True)
-        
-        resp = controller.add_catalog(name, desc, zone)
+        resp = controller.add_catalog(**data.get(u'catalog'))
         return (resp, 201)
 
 ## update
@@ -484,22 +415,23 @@ class CatalogAPI(ApiView):
     """
     @staticmethod
     def register_api(module):
+        base = u'dir'
         rules = [
-            (u'catalogs', u'GET', ListCatalogs, {}),
-            (u'catalog/<oid>', u'GET', GetCatalog, {}),
-            #('catalog/<oid>/<zone>', 'GET', FilterCatalog, {}),
-            (u'catalog/<oid>/perms', u'GET', GetCatalogPerms, {}),
-            (u'catalog', u'POST', CreateCatalog, {}),
-            (u'catalog/<oid>', u'PUT', UpdateCatalog, {}),
-            (u'catalog/<oid>', u'DELETE', DeleteCatalog, {}),
-            #('catalog/<oid>/services', 'GET', GetCatalogServices, {}),
+            (u'%s/catalogs' % base, u'GET', ListCatalogs, {}),
+            (u'%s/catalogs/<oid>' % base, u'GET', GetCatalog, {}),
+            #('%s/catalog/<oid>/<zone>' % base, 'GET', FilterCatalog, {}),
+            (u'%s/catalogs/<oid>/perms' % base, u'GET', GetCatalogPerms, {}),
+            (u'%s/catalogs' % base, u'POST', CreateCatalog, {}),
+            (u'%s/catalogs/<oid>' % base, u'PUT', UpdateCatalog, {}),
+            (u'%s/catalogs/<oid>' % base, u'DELETE', DeleteCatalog, {}),
+            #('%s/catalogs/<oid>/services' % base, 'GET', GetCatalogServices, {}),
 
-            (u'catalog/endpoints', u'GET', ListEndpoints, {}),
-            (u'catalog/endpoint/<oid>', u'GET', GetEndpoint, {}),
-            (u'catalog/endpoint/<oid>/perms', u'GET', GetEndpointPerms, {}),
-            (u'catalog/endpoint', u'POST', CreateEndpoint, {}),
-            (u'catalog/endpoint/<oid>', u'PUT', UpdateEndpoint, {}),
-            (u'catalog/endpoint/<oid>', u'DELETE', DeleteEndpoint, {}),
+            (u'%s/endpoints' % base, u'GET', ListEndpoints, {}),
+            (u'%s/endpoint/<oid>' % base, u'GET', GetEndpoint, {}),
+            (u'%s/endpoint/<oid>/perms' % base, u'GET', GetEndpointPerms, {}),
+            (u'%s/endpoint' % base, u'POST', CreateEndpoint, {}),
+            (u'%s/endpoint/<oid>' % base, u'PUT', UpdateEndpoint, {}),
+            (u'%s/endpoint/<oid>' % base, u'DELETE', DeleteEndpoint, {}),
         ]
 
         ApiView.register_api(module, rules)
