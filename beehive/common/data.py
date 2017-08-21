@@ -98,8 +98,8 @@ def netsted_transaction(fn):
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
             if ex.code not in [409]:
-                #logger.error(ex.desc, exc_info=1)
-                logger.error(ex.desc)
+                logger.error(ex.desc, exc_info=1)
+                #logger.error(ex.desc)
             
             #session.rollback()
             rollback(session, commit)
@@ -109,8 +109,8 @@ def netsted_transaction(fn):
             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
-            #logger.error(ex.orig, exc_info=1)
-            logger.error(ex.message)
+            logger.error(ex.message, exc_info=1)
+            #logger.error(ex.message)
 
             #session.rollback()
             rollback(session, commit)
@@ -120,8 +120,8 @@ def netsted_transaction(fn):
             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
-            #logger.error(ex.orig, exc_info=1)
-            logger.error(ex.message)
+            logger.error(ex.message, exc_info=1)
+            #logger.error(ex.message)
                   
             #session.rollback()
             rollback(session, commit)
@@ -131,8 +131,8 @@ def netsted_transaction(fn):
             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
-            #logger.error(ex.desc, exc_info=1)
-            logger.error(ex.desc)
+            logger.error(ex.desc, exc_info=1)
+            #logger.error(ex.desc)
                   
             #session.rollback()
             rollback(session, commit)
@@ -142,8 +142,8 @@ def netsted_transaction(fn):
             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
-            #logger.error(ex, exc_info=1)
-            logger.error(ex)
+            logger.error(ex, exc_info=1)
+            #logger.error(ex)
         
             #session.rollback()
             rollback(session, commit)

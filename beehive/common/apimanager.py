@@ -1165,7 +1165,8 @@ class ApiController(object):
                                   code=404)       
     
     def get_paginated_entities(self, entity_class, get_entities, 
-            page=0, size=10, order=u'DESC', field=u'id', *args, **kvargs):
+            page=0, size=10, order=u'DESC', field=u'id', customize=None,
+            *args, **kvargs):
         """Get entities with pagination
 
         :param entity_class: ApiObject Extension class
@@ -1178,6 +1179,8 @@ class ApiController(object):
         :param size: number of objects to show in list per page [default=0]
         :param order: sort order [default=DESC]
         :param field: sort field [default=id]
+        :param customize: function used to customize entities. Signature
+                def customize(entities, *args, **kvargs)
         :param args: custom params
         :param kvargs: custom params
         :return: (list of entity_class instances, total)
@@ -1204,7 +1207,11 @@ class ApiController(object):
                 obj = entity_class(self, oid=entity.id, objid=entity.objid, 
                                name=entity.name, active=entity.active, 
                                desc=entity.desc, model=entity)
-                res.append(obj)             
+                res.append(obj)
+        
+            # customize enitities
+            if customize is not None:
+                customize(res, tags=tags, *args, **kvargs)
             
             self.logger.debug(u'Get %s (total:%s): %s' % 
                               (entity_class, total, truncate(res)))
@@ -1470,7 +1477,7 @@ class ApiInternalEvent(ApiEvent):
                 objtype=self.objtype, objdef=self.objdef)[0][0]
             objid = self._get_value(self.objdef, args)
             self.auth_db_manager.remove_object(objid=objid, objtype=obj_type)
-            self.logger.debug('Deregister api object: %s:%s %s' % 
+            self.logger.debug(u'Deregister api object: %s:%s %s' % 
                               (self.objtype, self.objdef, objid))
         except (QueryError, TransactionError) as ex:
             self.logger.error(ex, exc_info=True)
@@ -1641,7 +1648,7 @@ class ApiObject(object):
             
         # init child classes
         for child in self.child_classes:
-            child(self.controller, self).init_object()
+            child(self.controller, oid=None).init_object()
             
         # add full permissions to superadmin role
         self.set_superadmin_permissions()
@@ -1669,7 +1676,6 @@ class ApiObject(object):
         permission tags and object in perm_tag_entity.
         
         :param args: objid split by //
-        :param objtable: name of the table where object is stored
         """
         if self.oid is not None:
             ids = self.get_all_valid_objids(args)
@@ -1682,70 +1688,77 @@ class ApiObject(object):
     def deregister_object_permtags(self):
         """Deregister object permission tags.
         """
-        ids = self.get_all_valid_objids(self.objid.split(u'//'))
-        tags = []
-        for i in ids:
-            tags.append(self.manager.hash_from_permission(self.objdef, i))    
-        table = self.objdef
-        self.manager.delete_perm_tag(self.oid, table, tags)
+        if self.objid is not None:
+            ids = self.get_all_valid_objids(self.objid.split(u'//'))
+            tags = []
+            for i in ids:
+                tags.append(self.manager.hash_from_permission(self.objdef, i))    
+            table = self.objdef
+            self.manager.delete_perm_tag(self.oid, table, tags)
 
-    def register_object(self, args, desc=u'', objid=None):
+    def register_object(self, objids, desc=u'', objid=None):
         """Register object types, objects and permissions related to module.
         
-        :param args: objid split by //
+        :param objids: objid split by //
         :param desc: object description
         :param objid: parent objid
         """
-        self.logger.debug(u'Register api object - START')
+        self.logger.debug(u'Register api object: %s:%s %s - ATART' % 
+                          (self.objtype, self.objdef, objids))
         
         # add object and permissions
-        objs = self._get_value(self.objdef, args)
+        #objs = self._get_value(self.objdef, objids)
         #self.rpc_client.add_object(self.objtype, self.objdef, objs)
+        objs = u'//'.join(objids)
         self.api_client.add_object(self.objtype, self.objdef, objs, desc)
         
         # register event related to ApiObject
-        self.event_class(self.controller).register_object(args, desc=desc)
-        
-        self.logger.debug(u'Register api object: %s:%s %s - STOP' % 
-                          (self.objtype, self.objdef, objs))
+        #self.event_class(self.controller).register_object(args, desc=desc)
         
         # register permission tags
-        self.register_object_permtags(args)
+        self.register_object_permtags(objids)        
+        
+        self.logger.debug(u'Register api object: %s:%s %s - STOP' % 
+                          (self.objtype, self.objdef, objids))
         
         # register child classes
-        if objid == None:
-            objid = self.objid
-        objid = objid + u'//*'
+        #if objid == None:
+        #    objid = self.objid
+        #objid = objid + u'//*'
         
+        objids.append(u'*')
         for child in self.child_classes:
-            child(self.controller, self).register_object(
-                args, desc=child.objdesc, objid=objid)
+            child(self.controller, oid=None).register_object(
+                  objids, desc=child.objdesc, objid=objid)
             
-    def deregister_object(self, args, objid=None):
+    def deregister_object(self, objids, objid=None):
         """Deregister object types, objects and permissions related to module.
         
-        :param args: objid split by //
+        :param objids: objid split by //
         :param objid: parent objid
         """
-        self.logger.debug(u'Deregister api object - START')
+        self.logger.debug(u'Deregister api object %s:%s %s - START' %
+                          (self.objtype, self.objdef, objids))
         
         # deregister permission tags
         self.deregister_object_permtags()
         
         # define objid
-        if objid == None:
-            objid = self.objid
-        objid = objid + u'//*'
-        
-        for child in self.child_classes:
-            child(self.controller, self).deregister_object(args, objid=objid)
+        #if objid == None:
+        #    objid = self.objid
+        #objid = objid + u'//*'
         
         # remove object and permissions
-        objid = self._get_value(self.objdef, args)
-        self.api_client.remove_object(self.objtype, self.objdef, objid)
+        #objid = self._get_value(self.objdef, args)
+        objid = u'//'.join(objids)
+        self.api_client.remove_object(self.objtype, self.objdef, objid)        
+        
+        objids.append(u'*')
+        for child in self.child_classes:
+            child(self.controller, oid=None).deregister_object(objids, objid=objid)
         
         # deregister event related to ApiObject
-        self.event_class(self.controller).deregister_object(args)            
+        #self.event_class(self.controller).deregister_object(args)            
         
         self.logger.debug(u'Deregister api object %s:%s %s - STOP' % 
                           (self.objtype, self.objdef, objid))       
@@ -1786,6 +1799,42 @@ class ApiObject(object):
         self.controller.check_authorization(
             self.objtype, self.objdef, self.objid, action)    
     
+    @watch
+    def authorization(self, objid=None, *args, **kvargs):
+        """Get resource authorizations 
+        
+        :param objid: resource objid
+        :param page: users list page to show [default=0]
+        :param size: number of users to show in list per page [default=0]
+        :param order: sort order [default=DESC]
+        :param field: sort field [default=id]        
+        :return: [(perm, roles), ...]
+        :raises ApiManagerError: if query empty return error.  
+        """
+        try:
+            # resource permissions
+            if objid == None:
+                objid = self.objid
+            res = self.api_client.get_permissions(self.objtype, self.objdef, 
+                                                  objid)
+
+            # child permissions
+            objid = objid + u'//*'
+            for item in self.child_classes:
+                perms = item(self.controller, self.container).\
+                            authorization(objid=objid, *args, **kvargs)
+                res.extend(perms)
+
+            self.logger.debug(u'Get permissions %s: %s' % 
+                              (self.oid, truncate(res)))
+            return res
+        except (ApiManagerError), ex:
+            self.logger.error(ex, exc_info=True)
+            raise ApiManagerError(ex, code=ex.code)    
+    
+    #
+    # db session
+    #
     def get_session(self):
         """open db session"""
         return self.controller.get_session()
@@ -1794,6 +1843,9 @@ class ApiObject(object):
         """release db session"""
         return self.controller.release_session(dbsession)
     
+    #
+    # event
+    #
     def send_event(self, op, args=None, params={}, opid=None, response=True, 
                    exception=None, etype=None, elapsed=0):
         """Publish an event to event queue.
@@ -1910,8 +1962,7 @@ class ApiObject(object):
         
         :param args: [optional]
         :param kvargs: [optional]
-        :return: True if oauth2 client updated correctly
-        :rtype: bool
+        :return: entity uuid
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         if self.update_object is None:
@@ -1927,7 +1978,7 @@ class ApiObject(object):
             self.logger.debug(u'Update %s %s with data %s' % 
                               (self.objdef, self.oid, kvargs))
             #self.send_event(u'update', params=params)
-            return res
+            return self.uuid
         except TransactionError as ex:
             #self.send_event(u'update', params=params, exception=ex)        
             self.logger.error(ex, exc_info=1)
@@ -1995,7 +2046,7 @@ class ApiInternalObject(ApiObject):
             self.auth_db_manager.add_object(objs, actions)
             
             # register event related to ApiObject
-            self.event_class(self.controller).init_object()
+            #self.event_class(self.controller).init_object()
             
             self.logger.info(u'Init api object %s.%s - STOP' % 
                               (self.objtype, self.objdef))
@@ -2004,48 +2055,52 @@ class ApiInternalObject(ApiObject):
             
         # init child classes
         for child in self.child_classes:
-            child(self.controller, self).init_object()
+            child(self.controller, oid=None).init_object()
     
-    def register_object(self, args, desc=u'', objid=None):
+    def register_object(self, objids, desc=u'', objid=None):
         """Register object types, objects and permissions related to module.
         
-        :param args: objid split by //
+        :param objids: objid split by //
         :param desc: object description
         :param objid: parent objid
         """
-        self.logger.debug(u'Register api object - START')
+        self.logger.debug(u'Register api object %s:%s %s - START' % 
+                          (self.objtype, self.objdef, objids))
         
         try:
             # add object and permissions
             obj_type = self.auth_db_manager.get_object_type(objtype=self.objtype, 
                                                    objdef=self.objdef)[0][0]
-            objs = [(obj_type, self._get_value(self.objdef, args), desc)]
+            #objs = [(obj_type, self._get_value(self.objdef, args), desc)]
+            objs = [(obj_type, u'//'.join(objids), desc)]
             actions = self.auth_db_manager.get_object_action()
             self.auth_db_manager.add_object(objs, actions)
             
             # register event related to ApiObject
-            self.event_class(self.controller).register_object(args, desc)                
-            
-            self.logger.debug(u'Register api object %s:%s %s - STOP' % 
-                              (self.objtype, self.objdef, objs))
+            #self.event_class(self.controller).register_object(objids, desc)
         except (QueryError, TransactionError) as ex:
             self.logger.error(u'Register api object: %s - ERROR' % (ex.desc))
             raise ApiManagerError(ex.desc, code=400)       
         
         # register permission tags
-        self.register_object_permtags(args)
+        self.register_object_permtags(objids)
+        
+        self.logger.debug(u'Register api object %s:%s %s - STOP' % 
+                          (self.objtype, self.objdef, objs))
         
         # register child classes
+        objids.append(u'*')
         for child in self.child_classes:
-            child(self.controller, self).register_object(args, desc=child.objdesc)
+            child(self.controller, oid=None).register_object(objids, desc=child.objdesc)
     
-    def deregister_object(self, args, objid=None):
+    def deregister_object(self, objids, objid=None):
         """Deregister object types, objects and permissions related to module.
         
         :param args: objid split by //
         :param objid: parent objid
         """
-        self.logger.debug(u'Deregister api object - START')
+        self.logger.debug(u'Deregister api object %s:%s %s - START' % 
+                          (self.objtype, self.objdef, objids))
         
         # deregister permission tags
         self.deregister_object_permtags()
@@ -2054,28 +2109,30 @@ class ApiInternalObject(ApiObject):
             # remove object and permissions
             obj_type = self.auth_db_manager.get_object_type(
                 objtype=self.objtype, objdef=self.objdef)[0][0]
-            objid = self._get_value(self.objdef, args)
+            #objid = self._get_value(self.objdef, objids)
+            objid = u'//'.join(objids)
             self.auth_db_manager.remove_object(objid=objid, objtype=obj_type)
             
             # deregister event related to ApiObject
-            self.event_class(self.controller).deregister_object(args)
+            #self.event_class(self.controller).deregister_object(objids)
             
             self.logger.debug(u'Deregister api object %s:%s %s - STOP' % 
-                              (self.objtype, self.objdef, objid))                
+                              (self.objtype, self.objdef, objids))                
         except (QueryError, TransactionError) as ex:
             self.logger.error(u'Deregister api object: %s - ERROR' % (ex.desc))
             raise ApiManagerError(ex.desc, code=400)       
         
         # deregister child classes
+        objids.append(u'*')
         for child in self.child_classes:
-            child(self.controller, self).deregister_object(args)        
+            child(self.controller, oid=None).deregister_object(objids)        
     
     def set_admin_permissions(self, role_name, args):
         """Set admin permissions
         """
         try:
             role = self.auth_db_manager.get_entity(Role, role_name)
-            perms, total = self.auth_db_manager.get_permission_by_object(
+            perms, total = self.auth_db_manager.get_permissions(
                                     objid=self._get_value(self.objdef, args),
                                     objtype=None, 
                                     objdef=self.objdef,
@@ -2092,6 +2149,61 @@ class ApiInternalObject(ApiObject):
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
+        
+    def authorization(self, objid=None, *args, **kvargs):
+        """Get resource authorizations 
+        
+        :param objid: resource objid
+        :param page: perm list page to show [default=0]
+        :param size: number of perms to show in list per page [default=10]
+        :param order: sort order [default=DESC]
+        :param field: sort field [default=id]              
+        :return: [perms]
+        :rtype: list
+        :raises ApiManagerError: if query empty return error.  
+        """
+        try:
+            # resource permissions
+            if objid == None:
+                objid = self.objid
+            objids = [objid, 
+                      objid+u'//*',
+                      objid+u'//*//*',
+                      objid+u'//*//*//*',
+                      objid+u'//*//*//*//*',
+                      objid+u'//*//*//*//*//*',
+                      objid+u'//*//*//*//*//*//*']
+            perms, total = self.auth_db_manager.get_deep_permissions(
+                    objids=objids, objtype=self.objtype)
+
+            '''
+            # child permissions
+            objid = objid + u'//*'
+            for item in self.child_classes:
+                perms, total = item(self.controller).\
+                            authorization(objid=objid)
+                allperms.extend(perms)
+                alltotal += total'''
+            
+            res = []
+            for p in perms:
+                res.append({
+                    u'id':p.id, 
+                    u'oid':p.obj.id, 
+                    u'subsystem':p.obj.type.objtype, 
+                    u'type':p.obj.type.objdef,
+                    u'objid':p.obj.objid, 
+                    u'aid':p.action.id, 
+                    u'action':p.action.value, 
+                    u'desc':p.obj.desc
+                })
+
+            self.logger.debug(u'Get permissions %s: %s' % 
+                              (self.oid, truncate(res)))
+            return res, total
+        except (ApiManagerError), ex:
+            self.logger.error(ex, exc_info=True)
+            raise ApiManagerError(ex, code=ex.code)         
 
 class ApiViewResponse(ApiObject):
     objtype = u'api'
@@ -2137,7 +2249,7 @@ class ApiViewResponse(ApiObject):
         """
         try:
             role = self.auth_db_manager.get_entity(Role, role_name)
-            perms, total = self.auth_db_manager.get_permission_by_object(
+            perms, total = self.auth_db_manager.get_permissions(
                                     objid=self._get_value(self.objdef, args),
                                     objtype=None, 
                                     objdef=self.objdef,
@@ -2444,7 +2556,7 @@ class ApiView(FlaskView):
             
             if isinstance(response, dict):
                 self.response_mime = u'application/json'
-                res = response       
+                res = response
             
             self.logger.debug(u'Api response: %s' % truncate(response))
             
@@ -2702,7 +2814,11 @@ class PaginatedRequestQuerySchema(Schema):
     
 class GetApiObjectRequestSchema(Schema):
     oid = fields.String(required=True, description=u'id, uuid or name',
-                        context=u'path')    
+                        context=u'path')
+    
+class ApiObjectPermsRequestSchema(PaginatedRequestQuerySchema,
+                                  GetApiObjectRequestSchema):
+    pass   
     
 class ApiObjectResponseDateSchema(Schema):
     creation = fields.DateTime(required=True, default=u'1990-12-31T23:59:59Z')
@@ -2736,6 +2852,23 @@ class PaginatedResponseSchema(Schema):
 class CreateApiObjectResponseSchema(Schema):
     uuid = fields.UUID(required=True, 
                        default=u'6d960236-d280-46d2-817d-f3ce8f0aeff7')
+    
+class UpdateApiObjectResponseSchema(Schema):
+    uuid = fields.UUID(required=True, 
+                       default=u'6d960236-d280-46d2-817d-f3ce8f0aeff7')    
+
+class ApiObjectPermsParamsResponseSchema(Schema):
+    id = fields.Integer(required=True, default=1)
+    oid = fields.Integer(required=True, default=1)
+    objid = fields.String(required=True, default=u'396587362//3328462822')
+    type = fields.String(required=True, default=u'Objects')
+    subsystem = fields.String(required=True, default=u'auth')
+    desc = fields.String(required=True, default=u'beehive')
+    aid = fields.Integer(required=True, default=1)
+    action = fields.String(required=True, default=u'view')
+
+class ApiObjectPermsResponseSchema(PaginatedResponseSchema):
+    perms = fields.Nested(ApiObjectPermsParamsResponseSchema, many=True) 
 
 class SwaggerApiView(ApiView, SwaggerView):
     consumes = ['application/json',

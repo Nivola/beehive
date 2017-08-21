@@ -9,7 +9,9 @@ from beecell.simple import get_value
 from beecell.simple import get_attrib
 from beehive.common.apimanager import ApiView, ApiManagerError, PaginatedRequestQuerySchema,\
     PaginatedResponseSchema, ApiObjectResponseSchema, SwaggerApiView,\
-    CreateApiObjectResponseSchema, GetApiObjectRequestSchema
+    CreateApiObjectResponseSchema, GetApiObjectRequestSchema,\
+    UpdateApiObjectResponseSchema, ApiObjectPermsResponseSchema,\
+    ApiObjectPermsRequestSchema
 from flasgger import fields, Schema
 from marshmallow.validate import OneOf, Range, Length
 from marshmallow.decorators import post_load, validates
@@ -24,8 +26,11 @@ from flasgger.marshmallow_apispec import SwaggerView
 class ListCatalogsRequestSchema(PaginatedRequestQuerySchema):
     zone = fields.String(context=u'query', default=u'internal')
 
+class ListCatalogsParamsResponseSchema(ApiObjectResponseSchema):
+    zone = fields.String(required=True, default=u'internal')
+
 class ListCatalogsResponseSchema(PaginatedResponseSchema):
-    catalogs = fields.Nested(ApiObjectResponseSchema, many=True)
+    catalogs = fields.Nested(ListCatalogsParamsResponseSchema, many=True)
 
 class ListCatalogs(SwaggerApiView):
     tags = [u'catalog']
@@ -51,8 +56,16 @@ class ListCatalogs(SwaggerApiView):
         return self.format_paginated_response(res, u'catalogs', total, **data)
 
 ## get
+class GetCatalogParamsServicesResponseSchema(Schema):
+    service = fields.String(required=True, default=u'auth')
+    endpoints = fields.List(fields.String(default=u'http://localhost:6060'))
+
+class GetCatalogParamsResponseSchema(ApiObjectResponseSchema):
+    zone = fields.String(required=True, default=u'internal')
+    services = fields.Nested(GetCatalogParamsServicesResponseSchema, many=True)
+
 class GetCatalogResponseSchema(Schema):
-    catalog = fields.Nested(ApiObjectResponseSchema)
+    catalog = fields.Nested(GetCatalogParamsResponseSchema)
 
 class GetCatalog(SwaggerApiView):
     tags = [u'authorization']
@@ -68,48 +81,37 @@ class GetCatalog(SwaggerApiView):
     })
     
     def get(self, controller, data, oid, *args, **kwargs):
-        catalog = self.controller.get_catalog(oid)
+        catalog = controller.get_catalog(oid)
         res = catalog.detail()
         resp = {u'catalog':res}        
         return resp
-              
-## get perms
-class GetCatalogPermsResponseSchema(Schema):
-    perms = fields.Nested(ApiObjectResponseSchema)
 
+## get perms
 class GetCatalogPerms(SwaggerApiView):
     tags = [u'authorization']
     definitions = {
-        u'GetCatalogResponseSchema': GetCatalogPermsResponseSchema,
+        u'ApiObjectPermsRequestSchema': ApiObjectPermsRequestSchema,
+        u'ApiObjectPermsResponseSchema': ApiObjectPermsResponseSchema,
     }
-    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
+    parameters = SwaggerHelper().get_parameters(ApiObjectPermsRequestSchema)
+    parameters_schema = PaginatedRequestQuerySchema
     responses = SwaggerApiView.setResponses({
         200: {
             u'description': u'success',
-            u'schema': GetCatalogPermsResponseSchema
+            u'schema': ApiObjectPermsResponseSchema
         }
     })
     
     def get(self, controller, data, oid, *args, **kwargs):
-        catalog = self.get_catalog(controller, oid)
-        res, total = catalog.authorization()
+        catalog = controller.get_catalog(oid)
+        res, total = catalog.authorization(**data)
         return self.format_paginated_response(res, u'perms', total, **data)
 
 ## create
-class CreateCatalogParamRequestSchema(BaseCreateRequestSchema, 
-                                      BaseCreateExtendedParamRequestSchema):
-    password = fields.String(validate=Length(min=10, max=20),
-                             error=u'Password must be at least 8 characters')
-    storetype = fields.String(validate=OneOf([u'DBUSER', u'LDAPUSER', u'SPID'],
-                          error=u'Field can be DBUSER, LDAPUSER or SPIDUSER'),
-                          missing=u'DBUSER')
-    base = fields.Boolean(missing=True)
-    system = fields.Boolean()
-    
-    @validates(u'name')
-    def validate_catalog(self, value):
-        if not match(u'[a-zA-z0-9]+@[a-zA-z0-9]+', value):
-            raise ValidationError(u'Catalog name syntax must be <name>@<domain>') 
+class CreateCatalogParamRequestSchema(Schema):
+    name = fields.String(required=True)
+    desc = fields.String(required=True)
+    zone = fields.String(required=True)
 
 class CreateCatalogRequestSchema(Schema):
     catalog = fields.Nested(CreateCatalogParamRequestSchema, context=u'body')
@@ -134,24 +136,13 @@ class CreateCatalog(SwaggerApiView):
     
     def post(self, controller, data, *args, **kwargs):
         resp = controller.add_catalog(**data.get(u'catalog'))
-        return (resp, 201)
+        return ({u'uuid':resp}, 201)
 
 ## update
-class UpdateCatalogParamRoleRequestSchema(Schema):
-    append = fields.List(fields.List(fields.String()))
-    remove = fields.List(fields.String())
-    
-class UpdateCatalogParamRequestSchema(BaseUpdateRequestSchema, 
-                                   BaseCreateExtendedParamRequestSchema):
-    oid = fields.String()
-    roles = fields.Nested(UpdateCatalogParamRoleRequestSchema)
-    password = fields.String(validate=Length(min=10, max=20),
-                             error=u'Password must be at least 8 characters')
-    
-    @validates(u'name')
-    def validate_catalog(self, value):
-        if not match(u'[a-zA-z0-9]+@[a-zA-z0-9]+', value):
-            raise ValidationError(u'Catalog name syntax must be <name>@<domain>')     
+class UpdateCatalogParamRequestSchema(Schema):
+    name = fields.String()
+    desc = fields.String()
+    zone = fields.String()   
 
 class UpdateCatalogRequestSchema(Schema):
     catalog = fields.Nested(UpdateCatalogParamRequestSchema)
@@ -159,34 +150,25 @@ class UpdateCatalogRequestSchema(Schema):
 class UpdateCatalogBodyRequestSchema(GetApiObjectRequestSchema):
     body = fields.Nested(UpdateCatalogRequestSchema, context=u'body')
     
-class UpdateCatalogResponseSchema(Schema):
-    update = fields.Integer(default=67)
-    role_append = fields.List(fields.String, dump_to=u'role_append')
-    role_remove = fields.List(fields.String, dump_to=u'role_remove')
-    
 class UpdateCatalog(SwaggerApiView):
     tags = [u'authorization']
     definitions = {
         u'UpdateCatalogRequestSchema':UpdateCatalogRequestSchema,
-        u'UpdateCatalogResponseSchema':UpdateCatalogResponseSchema
+        u'UpdateApiObjectResponseSchema':UpdateApiObjectResponseSchema
     }
     parameters = SwaggerHelper().get_parameters(UpdateCatalogBodyRequestSchema)
     parameters_schema = UpdateCatalogRequestSchema
     responses = SwaggerApiView.setResponses({
         200: {
             u'description': u'success',
-            u'schema': UpdateCatalogResponseSchema
+            u'schema': UpdateApiObjectResponseSchema
         }
     })
     
     def put(self, controller, data, oid, *args, **kwargs):
-        catalog = self.get_catalog(controller, oid)
-        data = get_value(data, u'catalog', None, exception=True)
-        name = get_value(data, u'name', None)
-        desc = get_value(data, u'desc', None)
-        zone = get_value(data, u'zone', None)
-        resp = catalog.update(name=name, desc=desc, zone=zone)
-        return resp
+        catalog = controller.get_catalog(oid)
+        resp = catalog.update(**data.get(u'catalog'))
+        return {u'uuid':resp}
     
 ## delete
 class DeleteCatalog(SwaggerApiView):
@@ -200,7 +182,7 @@ class DeleteCatalog(SwaggerApiView):
     })
     
     def delete(self, controller, data, oid, *args, **kwargs):
-        catalog = self.get_catalog(controller, oid)
+        catalog = controller.get_catalog(oid)
         resp = catalog.delete()
         return (resp, 204)
 
@@ -208,14 +190,21 @@ class DeleteCatalog(SwaggerApiView):
 # endpoint
 #
 class ListEndpointsRequestSchema(PaginatedRequestQuerySchema):
-    endpoint = fields.String(context=u'query')
-    role = fields.String(context=u'query')
-    active = fields.Boolean(context=u'query')
-    expiry_date = fields.String(load_from=u'expirydate', default=u'2099-12-31',
-                                context=u'query')
+    service = fields.String(context=u'query')
+    catalog = fields.String(context=u'query')
+
+class ListEndpointsParamsCatalogResponseSchema(Schema):
+    name = fields.String(required=True, default=u'test')
+    uuid = fields.UUID(required=True, 
+                       default=u'6d960236-d280-46d2-817d-f3ce8f0aeff7') 
+
+class ListEndpointsParamsResponseSchema(ApiObjectResponseSchema):
+    catalog = fields.Nested(ListEndpointsParamsCatalogResponseSchema)
+    service = fields.String(required=True, default=u'auth')
+    endpoint = fields.String(required=True, default=u'http://localhost:6060')
 
 class ListEndpointsResponseSchema(PaginatedResponseSchema):
-    endpoints = fields.Nested(ApiObjectResponseSchema, many=True)
+    endpoints = fields.Nested(ListEndpointsParamsResponseSchema, many=True)
 
 class ListEndpoints(SwaggerApiView):
     tags = [u'authorization']
@@ -232,20 +221,13 @@ class ListEndpoints(SwaggerApiView):
     })
     
     def get(self, controller, data, *args, **kwargs):
-        headers = request.headers
-        name = get_attrib(headers, u'name', None)
-        service = get_attrib(headers, u'service', None)       
-        catalog = get_attrib(headers, u'catalog', None)          
-        endpoints = controller.get_endpoints(name=name, 
-                                             service=service, 
-                                             catalog_id=catalog)
-        endpoints, total = controller.get_endpoints(name=name)
+        endpoints, total = controller.get_endpoints(**data)
         res = [r.info() for r in endpoints]
         return self.format_paginated_response(res, u'endpoints', total, **data)
 
 ## get
 class GetEndpointResponseSchema(Schema):
-    endpoint = fields.Nested(ApiObjectResponseSchema)
+    endpoint = fields.Nested(ListEndpointsParamsResponseSchema)
 
 class GetEndpoint(SwaggerApiView):
     tags = [u'authorization']
@@ -261,49 +243,41 @@ class GetEndpoint(SwaggerApiView):
     })
     
     def get(self, controller, data, oid, *args, **kwargs):      
-        endpoint = self.controller.get_endpoint(oid)
+        endpoint = controller.get_endpoint(oid)
         res = endpoint.detail()
         resp = {u'endpoint':res}        
         return resp
-              
-## get
-class GetEndpointPermsResponseSchema(Schema):
-    perms = fields.Nested(ApiObjectResponseSchema)
-
+        
+## get perms
 class GetEndpointPerms(SwaggerApiView):
     tags = [u'authorization']
     definitions = {
-        u'GetEndpointResponseSchema': GetEndpointPermsResponseSchema,
+        u'ApiObjectPermsRequestSchema': ApiObjectPermsRequestSchema,
+        u'ApiObjectPermsResponseSchema': ApiObjectPermsResponseSchema,
     }
-    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
+    parameters = SwaggerHelper().get_parameters(ApiObjectPermsRequestSchema)
+    parameters_schema = PaginatedRequestQuerySchema
     responses = SwaggerApiView.setResponses({
         200: {
             u'description': u'success',
-            u'schema': GetEndpointPermsResponseSchema
+            u'schema': ApiObjectPermsResponseSchema
         }
     })
     
     def get(self, controller, data, oid, *args, **kwargs):
-        endpoint = self.get_endpoint(controller, oid)
-        res, total = endpoint.authorization()
-        return self.format_paginated_response(res, u'perms', total, **data)
+        catalog = controller.get_cget_endpointatalog(oid)
+        res, total = catalog.authorization(**data)
+        return self.format_paginated_response(res, u'perms', total, **data)    
 
 ## create
-class CreateEndpointParamRequestSchema(BaseCreateRequestSchema, 
-                                      BaseCreateExtendedParamRequestSchema):
-    password = fields.String(validate=Length(min=10, max=20),
-                             error=u'Password must be at least 8 characters')
-    storetype = fields.String(validate=OneOf([u'DBUSER', u'LDAPUSER', u'SPID'],
-                          error=u'Field can be DBUSER, LDAPUSER or SPIDUSER'),
-                          missing=u'DBUSER')
-    base = fields.Boolean(missing=True)
-    system = fields.Boolean()
+class CreateEndpointParamRequestSchema(Schema):
+    name = fields.String()
+    desc = fields.String()
+    catalog = fields.String()
+    service = fields.String()
+    uri = fields.String()
+    active = fields.Boolean()
     
-    @validates(u'name')
-    def validate_endpoint(self, value):
-        if not match(u'[a-zA-z0-9]+@[a-zA-z0-9]+', value):
-            raise ValidationError(u'Endpoint name syntax must be <name>@<domain>') 
-
 class CreateEndpointRequestSchema(Schema):
     endpoint = fields.Nested(CreateEndpointParamRequestSchema, context=u'body')
     
@@ -326,33 +300,19 @@ class CreateEndpoint(SwaggerApiView):
     })
     
     def post(self, controller, data, *args, **kwargs):
-        data = get_value(data, u'endpoint', None, exception=True)
-        catalog = get_value(data, u'catalog', None, exception=True)
-        name = get_value(data, u'name', None, exception=True)
-        desc = get_value(data, u'desc', None, exception=True)
-        service = get_value(data, u'service', None, exception=True)
-        uri = get_value(data, u'uri', None, exception=True)
-        active = get_value(data, u'active', True)
-        catalog_obj = self.get_catalog(controller, catalog)
-        resp = catalog_obj.add_endpoint(name, desc, service, uri, active)
-        return (resp, 201)
+        data = data.get(u'endpoint')
+        catalog = data.pop(u'catalog')
+        catalog_obj = controller.get_catalog(catalog)
+        resp = catalog_obj.add_endpoint(**data)
+        return ({u'uuid':resp}, 201)
 
 ## update
-class UpdateEndpointParamRoleRequestSchema(Schema):
-    append = fields.List(fields.List(fields.String()))
-    remove = fields.List(fields.String())
-    
-class UpdateEndpointParamRequestSchema(BaseUpdateRequestSchema, 
-                                   BaseCreateExtendedParamRequestSchema):
-    oid = fields.String()
-    roles = fields.Nested(UpdateEndpointParamRoleRequestSchema)
-    password = fields.String(validate=Length(min=10, max=20),
-                             error=u'Password must be at least 8 characters')
-    
-    @validates(u'name')
-    def validate_endpoint(self, value):
-        if not match(u'[a-zA-z0-9]+@[a-zA-z0-9]+', value):
-            raise ValidationError(u'Endpoint name syntax must be <name>@<domain>')     
+class UpdateEndpointParamRequestSchema(Schema):
+    name = fields.String()
+    desc = fields.String()
+    service = fields.String()
+    uri = fields.String()
+    active = fields.Boolean() 
 
 class UpdateEndpointRequestSchema(Schema):
     endpoint = fields.Nested(UpdateEndpointParamRequestSchema)
@@ -360,39 +320,25 @@ class UpdateEndpointRequestSchema(Schema):
 class UpdateEndpointBodyRequestSchema(GetApiObjectRequestSchema):
     body = fields.Nested(UpdateEndpointRequestSchema, context=u'body')
     
-class UpdateEndpointResponseSchema(Schema):
-    update = fields.Integer(default=67)
-    role_append = fields.List(fields.String, dump_to=u'role_append')
-    role_remove = fields.List(fields.String, dump_to=u'role_remove')
-    
 class UpdateEndpoint(SwaggerApiView):
     tags = [u'authorization']
     definitions = {
         u'UpdateEndpointRequestSchema':UpdateEndpointRequestSchema,
-        u'UpdateEndpointResponseSchema':UpdateEndpointResponseSchema
+        u'UpdateApiObjectResponseSchema':UpdateApiObjectResponseSchema
     }
     parameters = SwaggerHelper().get_parameters(UpdateEndpointBodyRequestSchema)
     parameters_schema = UpdateEndpointRequestSchema
     responses = SwaggerApiView.setResponses({
         200: {
             u'description': u'success',
-            u'schema': UpdateEndpointResponseSchema
+            u'schema': UpdateApiObjectResponseSchema
         }
     })
                
-    def update(self, controller, data, oid, *args, **kwargs):
-        data = get_value(data, u'endpoint', None, exception=True)
-        catalog = get_value(data, u'catalog', None)
-        name = get_value(data, u'name', None)
-        desc = get_value(data, u'desc', None)
-        service = get_value(data, u'service', None)
-        uri = get_value(data, u'uri', None)
-        active = get_value(data, u'active', None)
-        endpoint = self.get_endpoint(controller, oid)
-        resp = endpoint.update(name=name, desc=desc, 
-                               service=service, uri=uri,
-                               active=active, catalog=catalog)
-        return resp
+    def put(self, controller, data, oid, *args, **kwargs):
+        endpoint = controller.get_endpoint(oid)
+        resp = endpoint.update(**data.get(u'endpoint'))
+        return {u'uuid':resp}
     
 ## delete
 class DeleteEndpoint(SwaggerApiView):
@@ -406,7 +352,7 @@ class DeleteEndpoint(SwaggerApiView):
     })
     
     def delete(self, controller, data, oid, *args, **kwargs):
-        endpoint = self.get_endpoint(controller, oid)
+        endpoint = controller.get_endpoint(oid)
         resp = endpoint.delete()
         return (resp, 204)
 
@@ -415,7 +361,7 @@ class CatalogAPI(ApiView):
     """
     @staticmethod
     def register_api(module):
-        base = u'dir'
+        base = u'directory'
         rules = [
             (u'%s/catalogs' % base, u'GET', ListCatalogs, {}),
             (u'%s/catalogs/<oid>' % base, u'GET', GetCatalog, {}),
@@ -427,11 +373,11 @@ class CatalogAPI(ApiView):
             #('%s/catalogs/<oid>/services' % base, 'GET', GetCatalogServices, {}),
 
             (u'%s/endpoints' % base, u'GET', ListEndpoints, {}),
-            (u'%s/endpoint/<oid>' % base, u'GET', GetEndpoint, {}),
+            (u'%s/endpoints/<oid>' % base, u'GET', GetEndpoint, {}),
             (u'%s/endpoint/<oid>/perms' % base, u'GET', GetEndpointPerms, {}),
-            (u'%s/endpoint' % base, u'POST', CreateEndpoint, {}),
-            (u'%s/endpoint/<oid>' % base, u'PUT', UpdateEndpoint, {}),
-            (u'%s/endpoint/<oid>' % base, u'DELETE', DeleteEndpoint, {}),
+            (u'%s/endpoints' % base, u'POST', CreateEndpoint, {}),
+            (u'%s/endpoints/<oid>' % base, u'PUT', UpdateEndpoint, {}),
+            (u'%s/endpoints/<oid>' % base, u'DELETE', DeleteEndpoint, {}),
         ]
 
         ApiView.register_api(module, rules)

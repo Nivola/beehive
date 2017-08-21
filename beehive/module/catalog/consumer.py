@@ -14,9 +14,10 @@ from logging import getLogger, DEBUG
 from beehive.module.catalog.model import CatalogDbManager
 from beehive.common.data import operation
 from beehive.module.catalog.controller import CatalogController, Catalog, CatalogEndpoint
-from beecell.db import TransactionError
+from beecell.db import TransactionError, QueryError
 from beehive.common.apimanager import ApiManager
-from beehive.module.catalog.model import Catalog as ModelCatalog
+from beehive.module.catalog.model import Catalog as ModelCatalog, \
+    CatalogEndpoint as ModelEndpoint
 
 class CatalogConsumerError(Exception): pass
 
@@ -49,8 +50,31 @@ class CatalogConsumer(ConsumerMixin):
             catalog = endpoint[u'catalog']
             uri = endpoint[u'uri']
             
-            catalog_obj = self.manager.get_entity(ModelCatalog, catalog)        
+            catalog_obj = self.manager.get_entity(ModelCatalog, catalog)
             
+            try:
+                endpoint = self.manager.get_entity(ModelEndpoint, name)
+                self.manager.update_endpoint(oid=endpoint.id,
+                                             name=name, 
+                                             desc=desc, 
+                                             service=service, 
+                                             catalog_id=catalog_obj.id, 
+                                             uri=uri)
+                self.logger.debug(u'Update endpoint : %s' % endpoint)
+            except QueryError:
+                objid = u'%s//%s' % (catalog_obj.objid, id_gen())
+                res = self.manager.add_endpoint(objid, name, service, desc, 
+                                            catalog_obj.id, uri, active=True)
+                controller = CatalogController(None)
+                obj = CatalogEndpoint(controller, Catalog(controller), 
+                                      oid=res.id, objid=res.objid, 
+                                      name=res.name, desc=res.desc, 
+                                      active=res.active, model=res)
+                # create object and permission
+                obj.register_object(objid.split(u'//'), desc=endpoint[u'desc'])
+                self.logger.debug(u'Store endpoint : %s' % endpoint)                
+                
+            '''
             try:
                 objid = u'%s//%s' % (catalog_obj.objid, id_gen())
                 res = self.manager.add_endpoint(objid, name, service, desc, 
@@ -62,6 +86,7 @@ class CatalogConsumer(ConsumerMixin):
                                       active=res.active, model=res)
                 # create object and permission
                 obj.register_object(objid.split(u'//'), desc=endpoint[u'desc'])
+                self.logger.debug(u'Store endpoint : %s' % endpoint)
             except (TransactionError) as ex:
                 if ex.code == 409:
                     self.manager.update_endpoint(oid=catalog_obj.id, 
@@ -70,8 +95,8 @@ class CatalogConsumer(ConsumerMixin):
                                                  service=service, 
                                                  catalog=catalog_obj.id, 
                                                  uri=uri)
+                    self.logger.debug(u'Update endpoint : %s' % endpoint)'''
             
-            self.logger.debug(u'Store endpoint : %s' % endpoint)
         except (TransactionError, Exception) as ex:
             self.logger.error(u'Error storing node : %s' % ex, exc_info=1)
             #raise CatalogConsumerError(ex)

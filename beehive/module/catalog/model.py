@@ -164,7 +164,6 @@ class CatalogDbManager(AbstractDbManager):
         :param name: endpoint name [optional]
         :param desc: endpoint description [optional]
         :param service: service service [optional]
-        :param catalog: endpoint catalog id [optional]
         :param uri: endpoint uri [optional]
         :param active: endpoint active [optional]
         :return: :class:`Catalog`

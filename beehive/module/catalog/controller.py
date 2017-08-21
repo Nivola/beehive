@@ -35,31 +35,22 @@ class CatalogController(BaseAuthController):
     def add_catalog(self, name=None, desc=None, zone=None):
         """ """
         # check authorization
-        objs = self.can('insert', Catalog.objtype, definition=Catalog.objdef)
-        if len(objs) > 0 and objs[Catalog.objdef.lower()][0].split('//')[-1] != '*':
-            raise ApiManagerError('You need more privileges to add catalog', 
-                                  code=2000)
+        self.check_authorization(Catalog.objtype, Catalog.objdef, None, u'insert')
         
         try:
             # create catalog reference
             objid = id_gen()
-            catalog = Catalog(self, oid=None, objid=objid, name=name, desc=desc, 
-                              active=True, model=None)
+            #catalog = Catalog(self, oid=None, objid=objid, name=name, desc=desc, 
+            #                  active=True, model=None)
             
             res = self.manager.add(objid, name, desc, zone)
-            catalog.oid = res.id
+            #catalog.oid = res.id
             
             # create object and permission
-            catalog.register_object([objid], desc=desc)
-            
-            # create container admin role
-            #catalog.add_admin_role(objid, desc)
-            
-            #Catalog(self).send_event(u'insert', {u'objid':objid, u'name':name})
-            return catalog.oid
+            Catalog(self, oid=res.id).register_object([objid], desc=desc)
+
+            return res.uuid
         except (QueryError, TransactionError) as ex:
-            #Catalog(self).send_event(u'insert', {u'objid':objid, u'name':name},
-            #                         exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -111,7 +102,11 @@ class CatalogController(BaseAuthController):
         :return: Group
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        return self.get_entity(CatalogEndpoint, ModelEndpoint, oid)         
+        endpoint = self.get_entity(CatalogEndpoint, ModelEndpoint, oid)
+        catalog = self.manager.get_entity(ModelCatalog, endpoint.model.catalog_id)
+        endpoint.set_catalog(catalog.uuid, catalog.name)
+        
+        return endpoint
         
     @trace(entity=u'CatalogEndpoint', op=u'view')
     def get_endpoints(self, *args, **kvargs):
@@ -125,21 +120,43 @@ class CatalogController(BaseAuthController):
         :param field: sort field [default=id]        
         :return: List of CatalogEndpoint
         :raises ApiManagerError: raise :class:`ApiManagerError`
-        """   
+        """        
         def get_entities(*args, **kvargs):
-            catalogs, total = self.manager.get(*args, **kvargs)
+            # get filter catalog
+            catalog = kvargs.pop(u'catalog', None)
+            if catalog is not None:
+                kvargs[u'catalog'] = self.get_catalog(catalog).oid
+            
             entities, total = self.manager.get_endpoints(*args, **kvargs)
+            
+            return entities, total
+        
+        def customize(entities, *args, **kvargs):
+            # verify permissions for catalogs
+            objs = self.can(u'view', Catalog.objtype, definition=Catalog.objdef)
+            objs = objs.get(Catalog.objdef.lower())
+            
+            # create permission tags
+            tags = []
+            for p in objs:
+                tags.append(self.manager.hash_from_permission(Catalog.objdef, p))
+            
+            # make catalog index
+            catalogs, total = self.manager.get(tags=tags)
             catalogs_idx = {i.id:Catalog(self, oid=i.id, objid=i.objid, 
                                          name=i.name, desc=i.desc, active=True, 
                                          model=i) 
                             for i in catalogs}
-            for entity in entities:
-                entity.set_catalog(catalogs_idx[entity.model.catalog_id])
             
-            return entities, total                    
+            # set parent catalog
+            for entity in entities:
+                cat = catalogs_idx[entity.model.catalog_id]
+                entity.set_catalog(cat.uuid, cat.name)
         
         res, total = self.get_paginated_entities(CatalogEndpoint, get_entities, 
+                                                 customize=customize, 
                                                  *args, **kvargs)
+
         return res, total 
         
 class Catalog(AuthObject):
@@ -168,7 +185,7 @@ class Catalog(AuthObject):
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
-        info = self.info()
+        info = AuthObject.info(self)
         info.update({u'zone':self.zone})
         return info
 
@@ -180,16 +197,20 @@ class Catalog(AuthObject):
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
         info = self.info()
-        info[u'services'] = {}
-        for item in self.get_endpoints():
+        services = {}
+        endpoints, total = self.controller.get_endpoints(catalog=self.oid)
+        for item in endpoints:
             try:
-                info[u'services'][item.service].append(item.endpoint)
+                services[item.service].append(item.endpoint)
             except:
-                info[u'services'][item.service] = [item.endpoint]
+                services[item.service] = [item.endpoint]
+        info[u'services'] = [{u'service':k, u'endpoints':v} 
+                             for k,v in services.items()]
         return info
 
     @trace(op=u'endpoints.insert')
-    def add_endpoint(self, name, desc, service, uri, active=True):
+    def add_endpoint(self, name=None, desc=None, service=None, uri=None, 
+                     active=True):
         """Add endpoint.
         
         :param name: endpoint name
@@ -214,11 +235,11 @@ class Catalog(AuthObject):
                                             uri, active)
             
             # create object and permission
-            CatalogEndpoint(self.controller).register_object(
+            CatalogEndpoint(self.controller, oid=res.id).register_object(
                 objid.split(u'//'), desc=desc)
             
             self.logger.debug(u'Add catalog endpoint: %s' % truncate(res))
-            return res.id
+            return res.uuid
         except (QueryError, TransactionError, ModelError) as ex:      
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
@@ -242,8 +263,11 @@ class CatalogEndpoint(AuthObject):
         self.update_object = self.manager.update_endpoint
         self.delete_object = self.manager.delete_endpoint
 
-    def set_catalog(self, catalog):
-        self.catalog = catalog
+    def set_catalog(self, uuid, name):
+        self.catalog = {
+            u'name':name,
+            u'uuid':uuid,
+        }
 
     def info(self):
         """Get object info
@@ -252,12 +276,11 @@ class CatalogEndpoint(AuthObject):
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
-        info = self.info()
+        info = AuthObject.info(self)
         info.update({
-            u'catalog':self.catalog.name, 
-            u'catalog_id':self.catalog.oid,
+            u'catalog':self.catalog,
             u'service':self.model.service,
-            u'endpoint':self.model.uri            
+            u'endpoint':self.model.uri
         })
         return info
 

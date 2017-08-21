@@ -495,9 +495,6 @@ class AbstractDbManager(object):
 
         :param entityclass: entity model class
         :param int oid: entity id. [optional]
-        :param str objid: entity authorization id. [optional]
-        :param str uuid: entity uuid. [optional]
-        :param str name: entity name. [optional]
         :param kvargs str: date to update. [optional]
         :return: entity
         :raises TransactionError: raise :class:`TransactionError`        
@@ -505,11 +502,8 @@ class AbstractDbManager(object):
         session = self.get_session()
         
         # get entity
-        query = self.query_entities(entityclass, session, **kvargs)
-        kvargs.pop(u'oid', None)
-        kvargs.pop(u'uuid', None)
-        kvargs.pop(u'objid', None)
-        #kvargs.pop(u'name', None)
+        oid = kvargs.pop(u'oid', None)
+        query = self.query_entities(entityclass, session, oid=oid)
         
         for k,v in kvargs.items():
             if v is None:
@@ -521,8 +515,8 @@ class AbstractDbManager(object):
         res = entity.update(kvargs)
             
         self.logger.debug(u'Update %s %s with data: %s' % 
-                          (entityclass.__name__, entity.first().id, kvargs))
-        return entity.first().id
+                          (entityclass.__name__, oid, kvargs))
+        return oid
     
     @netsted_transaction
     def remove_entity(self, entityclass, *args, **kvargs):
@@ -530,9 +524,6 @@ class AbstractDbManager(object):
         
         :param entityclass: entity model class
         :param int oid: entity id. [optional]
-        :param str objid: entity authorization id. [optional]
-        :param str uuid: entity uuid. [optional]
-        :param str name: entity name. [optional]
         :return: entity
         :raises TransactionError: raise :class:`TransactionError`
         """

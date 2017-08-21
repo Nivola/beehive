@@ -851,6 +851,68 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
                      
         self.logger.debug(u'Get object permissions: %s' % truncate(res))
         return res, total
+    
+    @query
+    def get_deep_permissions(self, objids=[], objtype=None, objdef=None,
+                        page=0, size=10, order=u'DESC', field=u'id'):
+        """Get all the system object permisssions for an object with its childs .
+        
+        :param objids: list of objid [optional]
+        :param objtype str: Object type [optional]
+        :param objdef str: Object definition [optional]
+        :param page: perm list page to show [default=0]
+        :param size: number of perms to show in list per page [default=10]
+        :param order: sort order [default=DESC]
+        :param field: sort field [default=id]      
+        :return: list of SysObjectPermission.
+        :rtype: list of tuple
+        :raises QueryError: raise :class:`QueryError`
+        """
+        session = self.get_session()
+        sqlcount = [u'SELECT count(t4.id)',
+                    u'FROM sysobject t1, sysobject_type t2,',
+                    u'sysobject_action t3, sysobject_permission t4',
+                    u'WHERE t4.obj_id=t1.id AND t4.action_id=t3.id',
+                    u'AND t1.type_id=t2.id']        
+        sql = [u'SELECT t4.id as id, t1.id as oid, t1.objid as objid,',
+               u't2.objtype as objtype, t2.objdef as objdef,', 
+               u't3.id as aid, t3.value as action',
+               u'FROM sysobject t1, sysobject_type t2,',
+               u'sysobject_action t3, sysobject_permission t4',
+               u'WHERE t4.obj_id=t1.id AND t4.action_id=t3.id',
+               u'AND t1.type_id=t2.id']
+                
+        params = {}
+        if objids is not None:
+            sql.append(u'AND t1.objid in :objids')
+            sqlcount.append(u'AND t1.objid in :objids')
+            params[u'objids'] = objids
+        if objtype is not None:
+            sql.append(u'AND t2.objtype LIKE :objtype')
+            sqlcount.append(u'AND t2.objtype LIKE :objtype')
+            params[u'objtype'] = objtype
+        if objdef is not None:
+            sql.append(u'AND t2.objdef LIKE :objdef')
+            sqlcount.append(u'AND t2.objdef LIKE :objdef')
+            params[u'objdef'] = objdef
+        
+        # get total rows
+        total = session.execute(u' '.join(sqlcount), params).fetchone()[0]
+                
+        offset = size * page
+        sql.append(u'ORDER BY %s %s' % (field, order))
+        sql.append(u'LIMIT %s OFFSET %s' % (size, offset))        
+        
+        res = session.query(SysObjectPermission) \
+                     .from_statement(text(u' '.join(sql))) \
+                     .params(params).all()
+        
+        if len(res) <= 0:
+            self.logger.error(u'No permissions found')
+            raise ModelError(u'No permissions found')                           
+                     
+        self.logger.debug(u'Get object permissions: %s' % truncate(res))
+        return res, total    
 
     #
     # Role manipulation methods
