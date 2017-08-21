@@ -467,8 +467,8 @@ class CreateUserParamRequestSchema(BaseCreateRequestSchema,
     storetype = fields.String(validate=OneOf([u'DBUSER', u'LDAPUSER', u'SPID'],
                           error=u'Field can be DBUSER, LDAPUSER or SPIDUSER'),
                           missing=u'DBUSER')
-    base = fields.Boolean(missing=True)
-    system = fields.Boolean()
+    base = fields.Boolean(missing=False)
+    system = fields.Boolean(missing=False)
     
     @validates(u'name')
     def validate_user(self, value):
@@ -527,7 +527,7 @@ class UpdateUserBodyRequestSchema(GetApiObjectRequestSchema):
     body = fields.Nested(UpdateUserRequestSchema, context=u'body')
     
 class UpdateUserResponseSchema(Schema):
-    update = fields.Integer(default=67)
+    update = fields.String(default=u'6d960236-d280-46d2-817d-f3ce8f0aeff7')
     role_append = fields.List(fields.String, dump_to=u'role_append')
     role_remove = fields.List(fields.String, dump_to=u'role_remove')
     
@@ -756,9 +756,16 @@ class CreateRole(SwaggerApiView):
         return ({u'uuid':resp}, 201)
 
 ## update
+class UpdateRoleParamPermDescRequestSchema(Schema):
+    type = fields.String()
+    subsystem = fields.String()
+    objid = fields.String()
+    action = fields.String()
+    id = fields.Integer()
+
 class UpdateRoleParamPermRequestSchema(Schema):
-    append = fields.List(fields.String())
-    remove = fields.List(fields.String())
+    append = fields.Nested(UpdateRoleParamPermDescRequestSchema, many=True)
+    remove = fields.Nested(UpdateRoleParamPermDescRequestSchema, many=True)
     
 class UpdateRoleParamRequestSchema(BaseUpdateRequestSchema, 
                                    BaseCreateExtendedParamRequestSchema):
@@ -771,7 +778,7 @@ class UpdateRoleBodyRequestSchema(GetApiObjectRequestSchema):
     body = fields.Nested(UpdateRoleRequestSchema, context=u'body')
     
 class UpdateRoleResponseSchema(Schema):
-    update = fields.Integer(default=67)
+    update = fields.String(default=u'6d960236-d280-46d2-817d-f3ce8f0aeff7')
     perm_append = fields.List(fields.String, dump_to=u'perm_append')
     perm_remove = fields.List(fields.String, dump_to=u'perm_remove')
     
@@ -959,7 +966,7 @@ class UpdateGroupBodyRequestSchema(GetApiObjectRequestSchema):
     body = fields.Nested(UpdateGroupRequestSchema, context=u'body')
     
 class UpdateGroupResponseSchema(Schema):
-    update = fields.Integer(default=67)
+    update = fields.String(default=u'6d960236-d280-46d2-817d-f3ce8f0aeff7')
     role_append = fields.List(fields.String, dump_to=u'role_append')
     role_remove = fields.List(fields.String, dump_to=u'role_remove')
     user_append = fields.List(fields.String, dump_to=u'user_append')

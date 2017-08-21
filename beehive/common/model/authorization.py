@@ -18,13 +18,13 @@ from sqlalchemy import func
 from sqlalchemy.sql import text
 from beecell.perf import watch
 from beecell.simple import truncate, id_gen
-from beecell.db import ModelError
+from beecell.db import ModelError, QueryError
 from uuid import uuid4
 from beehive.common.data import operation, query, netsted_transaction
 
-#Base = declarative_base()
+Base = declarative_base()
 
-from beehive.common.model import Base, AbstractDbManager, ApiObject,\
+from beehive.common.model import AbstractDbManager, ApiObject,\
     PaginatedQueryGenerator
 
 logger = logging.getLogger(__name__)
@@ -322,6 +322,34 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
     def __init__(self, session=None):
         AbstractDbManager.__init__(self, session)
         AbstractAuthDbManager.__init__(self, session)
+    
+    @staticmethod
+    def create_table(db_uri):
+        """Create all tables in the engine. This is equivalent to "Create Table"
+        statements in raw SQL."""
+        AbstractDbManager.create_table(db_uri)
+        
+        try:
+            engine = create_engine(db_uri)
+            Base.metadata.create_all(engine)
+            logger.info(u'Create tables on : %s' % (db_uri))
+            del engine
+        except exc.DBAPIError, e:
+            raise Exception(e)
+    
+    @staticmethod
+    def remove_table(db_uri):
+        """ Remove all tables in the engine. This is equivalent to "Drop Table"
+        statements in raw SQL."""
+        AbstractDbManager.remove_table(db_uri)
+        
+        try:
+            engine = create_engine(db_uri)
+            Base.metadata.drop_all(engine)
+            logger.info(u'Remove tables from : %s' % (db_uri))
+            del engine
+        except exc.DBAPIError, e:
+            raise Exception(e)    
     
     def set_initial_data(self):
         """Set initial data.
@@ -1834,9 +1862,12 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             self.append_user_role(user, role)
             role = self.get_entity(Role, u'Guest')
             self.append_user_role(user, role, expiry_date=expiry_date)
+            self.logger.debug(u'Create base user')
         elif is_admin is True:
             role = self.get_entity(Role, u'ApiSuperadmin')
-            self.append_user_role(user, role)            
+            self.append_user_role(user, role)
+            self.logger.warn(role)
+            self.logger.debug(u'Create system user')
     
         return user
     
@@ -1871,7 +1902,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         # get user roles
         rus = session.query(RoleUser)\
                      .filter(RoleUser.user_id == kvargs[u'oid']).all() 
-        self.logger.warn(rus)
+                     
         # remove roles from user if it exists
         for ru in rus:
             session.delete(ru)
@@ -1879,10 +1910,11 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         
         # remove internal role
         name = u'User%sRole' % kvargs[u'oid']
-        role = self.get_entity(Role, name)
-        self.logger.warn(role)
-        if role is not None:
+        try:
+            role = self.get_entity(Role, name)
             self.remove_role(oid=role.id)
+        except QueryError:
+            pass
         
         # remove user
         res = self.remove_entity(User, oid=kvargs[u'oid'])            

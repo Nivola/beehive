@@ -167,7 +167,17 @@ class PaginatedQueryGenerator(object):
         
         :param str sqlfilter: sql filter like 'AND t3.id=101'
         """
-        self.other_filters.append(sqlfilter)          
+        self.other_filters.append(sqlfilter)
+        
+    def add_relative_filter(self, sqlfilter, field_name, kvargs):
+        """Append filter to query
+        
+        :param str sqlfilter: sql filter like 'AND t3.id=101'
+        :param field_name: name of the field used in filter
+        :param kvargs: args to parse that contains field
+        """
+        if field_name in kvargs and kvargs.get(field_name) is not None:
+            self.other_filters.append(sqlfilter)        
 
     def base_stmp(self, count=False):
         """
@@ -284,12 +294,6 @@ class AbstractDbManager(object):
             del engine
         except exc.DBAPIError, e:
             raise Exception(e)
-
-    @staticmethod
-    def set_initial_data(self):
-        """Set initial data.
-        """
-        pass
     
     def print_stmp(self, stmp):
         """
@@ -390,44 +394,7 @@ class AbstractDbManager(object):
         # make query
         res = query.all()
         self.logger.debug(u'Get %s: %s' % (entityclass.__name__, truncate(res)))
-        return res 
-    
-    '''
-    @query
-    def get_paginated_entities(self, entityclass, filters, page=0, size=10,
-                               order=u'DESC', field=u'id', *args, **kvargs):
-        """Get model entities using pagination
-        
-        :param entityclass: entity model class
-        :param filters: entity model filters function
-        :param int oid: entity id. [optional]
-        :param str objid: entity authorization id. [optional]
-        :param str uuid: entity uuid. [optional]
-        :param str name: entity name. [optional]
-        :param args: custom params
-        :param kvargs: custom params 
-        :param page: entities list page to show [default=0]
-        :param size: number of entities to show in list per page [default=0]
-        :param order: sort order [default=DESC]
-        :param field: sort field [default=id]
-        :return: list of entityclass
-        :raises QueryError: raise :class:`QueryError`           
-        """
-        session = self.get_session()
-        query = self.query_entities(entityclass, session, *args, **kvargs)
-        query = filters(query, *args, **kvargs)       
-        
-        # get total
-        total = query.count()
-        
-        # paginate query
-        start = size * page
-        end = size * (page + 1)
-        res = query.order_by(u'%s %s' % (field, order))[start:end]
-        self.logger.debug(u'Get %s (%s, %s): %s' % (entityclass.__name__, 
-                                                    args, kvargs, truncate(res)))
-        return res, total
-    '''
+        return res
     
     @query
     def get_paginated_entities(self, entity, tags=[], page=0, size=10, 
@@ -542,6 +509,23 @@ class AbstractDbManager(object):
     #
     # permission tag
     #
+    def get_all_valid_objids(self, args):
+        """Get a list of authorization ids that map object
+        
+        :param args: objid split by //
+        :return: list of valid objids
+        """
+        # first item *.*.*.....
+        act_obj = [u'*' for i in args]
+        objdis = [u'//'.join(act_obj)]
+        pos = 0
+        for arg in args:
+            act_obj[pos] = arg
+            objdis.append(u'//'.join(act_obj))
+            pos += 1
+    
+        return objdis    
+    
     def hash_from_permission(self, objdef, objid):
         """Get hash from entity permission (objdef, objid)
         
@@ -567,13 +551,13 @@ class AbstractDbManager(object):
         session = self.get_session()
         
         try:
-            # create tag
+            # create permtag
             tagrecord = PermTag(tag, explain=explain)
             session.add(tagrecord)
             session.flush()
             self.logger.debug(u'Add tag %s' % (tagrecord))
         except:
-            # get tag already created
+            # permtag already exists. Get reference
             self.logger.warn(u'Tag %s already exists' % (tagrecord))
             session.rollback()
             tagrecord = session.query(PermTag).filter_by(value=tag).first()
@@ -582,7 +566,6 @@ class AbstractDbManager(object):
         try:
             record = PermTagEntity(tagrecord.id, entity, type)
             session.add(record)
-            #session.flush()
             self.logger.debug(u'Add tag %s entity %s association' % (tag, entity))
         except:
             self.logger.debug(u'Tag %s entity %s association already exists' % (tag, entity))

@@ -71,22 +71,7 @@ class ConfigDbManager(AbstractDbManager):
             logger.info(u'Remove tables from : %s' % (db_uri))
             del engine
         except exc.DBAPIError, e:
-            raise Exception(e)        
-        
-    @transaction
-    def set_initial_data(self):
-        session = self.get_session()
-        # set host type
-        """
-        data = [HostType('vSphere-vCenter'),
-                HostType('vSphere-esxi'),
-                HostType('qemu-kvm'),
-                HostType('xen'),
-                HostType('hyperv'),
-                HostType('cloudstack-mgmt'),]
-        """
-        data = []
-        session.add_all(data)
+            raise Exception(e)
 
     @query    
     def get(self, app=None, group=None, oid=None, name=None):

@@ -1635,10 +1635,11 @@ class ApiObject(object):
             # add object and permissions
             objs = self._get_value(self.objdef, [])
             #self.rpc_client.add_object(self.objtype, self.objdef, objs)
-            self.api_client.add_object(self.objtype, self.objdef, objs, self.objdesc)
+            self.api_client.add_object(self.objtype, self.objdef, objs, 
+                                       self.objdesc)
             
             # register event related to ApiObject
-            self.event_class(self.controller).init_object()
+            #self.event_class(self.controller).init_object()
             
             self.logger.info(u'Init api object %s.%s - STOP' % 
                               (self.objtype, self.objdef))
@@ -1648,7 +1649,7 @@ class ApiObject(object):
             
         # init child classes
         for child in self.child_classes:
-            child(self.controller, oid=None).init_object()
+            child(self.controller).init_object()
             
         # add full permissions to superadmin role
         self.set_superadmin_permissions()
@@ -1773,9 +1774,9 @@ class ApiObject(object):
         self.api_client.append_role_permissions(
                 role, self.objtype, self.objdef,
                 self._get_value(self.objdef, args), u'*')
-        self.api_client.append_role_permissions(
-                role, u'event', self.objdef,
-                self._get_value(self.objdef, args), u'*')
+        #self.api_client.append_role_permissions(
+        #        role, u'event', self.objdef,
+        #        self._get_value(self.objdef, args), u'*')
         
     def set_viewer_permissions(self, role, args):
         """ """
@@ -1783,9 +1784,9 @@ class ApiObject(object):
         self.api_client.append_role_permissions(
                 role, self.objtype, self.objdef,
                 self._get_value(self.objdef, args), u'view')
-        self.api_client.append_role_permissions(
-                role, u'event', self.objdef,
-                self._get_value(self.objdef, args), u'view')
+        #self.api_client.append_role_permissions(
+        #        role, u'event', self.objdef,
+        #        self._get_value(self.objdef, args), u'view')
     
     def verify_permisssions(self, action):
         """Short method to verify permissions.
@@ -2055,7 +2056,7 @@ class ApiInternalObject(ApiObject):
             
         # init child classes
         for child in self.child_classes:
-            child(self.controller, oid=None).init_object()
+            child(self.controller).init_object()
     
     def register_object(self, objids, desc=u'', objid=None):
         """Register object types, objects and permissions related to module.
@@ -2238,7 +2239,7 @@ class ApiViewResponse(ApiObject):
             self.auth_db_manager.add_object(objs, actions)
             
             # register event related to ApiObject
-            self.event_class(self.controller).init_object()
+            #self.event_class(self.controller).init_object()
             
             self.logger.debug(u'Register api object: %s' % objs)
         except (QueryError, TransactionError) as ex:
@@ -2508,7 +2509,7 @@ class ApiView(FlaskView):
             u'message':str(msg),
             u'description':u'%s - %s' % (exception, msg)
         }
-        self.logger.error(u'Api response: %s' % truncate(error))
+        self.logger.error(u'Api response: %s' % error)
         
         if self.response_mime == u'*/*':
             self.response_mime = u'application/json'

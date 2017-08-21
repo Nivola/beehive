@@ -347,7 +347,7 @@ class BeehiveHelper(object):
             try:
                 client.add_system_user(user[u'name'], 
                                        password=user[u'pwd'], 
-                                       description=u'User %s' % user[u'name'])
+                                       desc=u'User %s' % user[u'name'])
             except BeehiveApiClientError as ex:
                 if ex.code == 409:
                     client.update_user(user[u'name'], user[u'name'], user[u'pwd'],

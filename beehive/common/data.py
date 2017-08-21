@@ -114,7 +114,7 @@ def netsted_transaction(fn):
 
             #session.rollback()
             rollback(session, commit)
-            raise TransactionError(ex.message)
+            raise TransactionError(ex.message, code=409)
         except DBAPIError as ex:
             elapsed = round(time() - start, 4)
             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
@@ -125,7 +125,7 @@ def netsted_transaction(fn):
                   
             #session.rollback()
             rollback(session, commit)
-            raise TransactionError(ex.message)
+            raise TransactionError(ex.message, code=400)
         except TransactionError as ex:
             elapsed = round(time() - start, 4)
             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
@@ -147,7 +147,7 @@ def netsted_transaction(fn):
         
             #session.rollback()
             rollback(session, commit)
-            raise TransactionError(ex)
+            raise TransactionError(ex, code=400)
 
     return netsted_transaction_inner
 

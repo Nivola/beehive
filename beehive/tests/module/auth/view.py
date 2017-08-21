@@ -19,19 +19,19 @@ tests = [
     u'test_add_role',
     u'test_add_role_twice',
     u'test_get_roles',
-    u'test_get_roles_by_user',
     u'test_get_role',
     u'test_update_role',
     u'test_add_role_perm',
     u'test_get_perms_by_role',
     u'test_remove_role_perm',
-    u'test_delete_role',    
+    u'test_delete_role',
     
 #     u'test_add_user',
 #     u'test_add_user_twice',
 #     u'test_get_users',
 #     u'test_get_users_by_role',
 #     u'test_get_user',
+#     u'test_get_user_roles',
 #     u'test_add_user_attributes',
 #     u'test_get_user_attributes',    
 #     u'test_delete_user_attributes',
@@ -127,7 +127,7 @@ class AuthTestCase(BeehiveTestCase):
         self.call(u'auth', u'/v1.0/auth/roles', u'post', data=data,
                   **self.users[u'admin'])
     
-    @assert_exception(BadRequestException)
+    @assert_exception(ConflictException)
     def test_add_role_twice(self):
         data = {
             u'role':{
@@ -140,12 +140,7 @@ class AuthTestCase(BeehiveTestCase):
     
     def test_get_roles(self):
         self.call(u'auth', u'/v1.0/auth/roles', u'get', 
-                  **self.users[u'admin'])
-        
-    def test_get_roles_by_user(self):
-        self.call(u'auth', u'/v1.0/auth/roles', u'get',
-                  query={u'user':4},
-                  **self.users[u'admin'])        
+                  **self.users[u'admin'])     
         
     def test_get_role(self):
         self.call(u'auth', u'/v1.0/auth/roles/{oid}', u'get',
@@ -166,7 +161,9 @@ class AuthTestCase(BeehiveTestCase):
     def test_add_role_perm(self):
         data = {
             u'role':{
-                u'perms':{u'append':[u'4']}
+                u'perms':{u'append':[{u'id':4}, 
+                                     {u'subsystem':u'auth', u'type':u'Role',
+                                      u'objid':u'*', u'action':u'view'}]}
             }
         }
         self.call(u'auth', u'/v1.0/auth/roles/{oid}', u'put',
@@ -182,7 +179,9 @@ class AuthTestCase(BeehiveTestCase):
     def test_remove_role_perm(self):
         data = {
             u'role':{
-                u'perms':{u'remove':[u'4']}
+                u'perms':{u'remove':[{u'id':4},
+                                     {u'subsystem':u'auth', u'type':u'Role',
+                                      u'objid':u'*', u'action':u'view'}]}
             }
         }        
         self.call(u'auth', u'/v1.0/auth/roles/{oid}', u'put',
@@ -205,13 +204,14 @@ class AuthTestCase(BeehiveTestCase):
                 u'active':True,
                 u'expirydate':u'2099-12-31',
                 u'password':u'user_prova',
-                u'base':True
+                u'base':True,
+                #u'system':True
             }
         }        
         self.call(u'auth', u'/v1.0/auth/users', u'post', data=data,
                   **self.users[u'admin'])
     
-    @assert_exception(BadRequestException)
+    @assert_exception(ConflictException)
     def test_add_user_twice(self):
         data = {
             u'user':{
@@ -240,6 +240,11 @@ class AuthTestCase(BeehiveTestCase):
         self.call(u'auth', u'/v1.0/auth/users/{oid}', u'get',
                   params={u'oid':u'user_prova@local'}, 
                   **self.users[u'admin'])
+        
+    def test_get_user_roles(self):
+        self.call(u'auth', u'/v1.0/auth/roles', u'get',
+                  query={u'user':u'user_prova@local'},
+                  **self.users[u'admin'])           
         
     def test_add_user_attributes(self):
         data = {
@@ -319,7 +324,7 @@ class AuthTestCase(BeehiveTestCase):
         self.call(u'auth', u'/v1.0/auth/groups', u'post', data=data,
                   **self.users[u'admin'])
     
-    @assert_exception(BadRequestException)
+    @assert_exception(ConflictException)
     def test_add_group_twice(self):
         data = {
             u'group':{
@@ -438,7 +443,7 @@ class AuthTestCase(BeehiveTestCase):
                   **self.users[u'admin'])
         oid = res[u'ids'][0]
     
-    @assert_exception(BadRequestException)
+    @assert_exception(ConflictException)
     def test_add_type_twice(self):
         data = {
             u'object-types':[

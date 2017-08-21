@@ -8,22 +8,24 @@ http://zeromq.github.io/pyzmq/
 '''
 import ujson as json
 import logging
+from re import match
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy import create_engine, exc
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import distinct, desc
 from beecell.simple import truncate
-from beehive.common.data import operation, query, transaction
+from beehive.common.data import query
+from beehive.common.model import AbstractDbManager, PaginatedQueryGenerator
+from beecell.db import ModelError
 
 Base = declarative_base()
 
 logger = logging.getLogger(__name__)
 
 class DbEvent(Base):
-    __tablename__ = 'event'
-    __table_args__ = {'mysql_engine':'InnoDB'}
-    
+    __tablename__ = u'event'
+
     id = Column(Integer, primary_key=True)
     event_id = Column(String(40))
     type = Column(String(150))
@@ -59,56 +61,40 @@ class DbEvent(Base):
         self.dest = dest
 
     def __repr__(self):
-        return "<DbEvent(%s, %s, %s, %s)>" % (self.event_id, self.type, 
-                                              self.objid, self.data)
+        return "<DbEvent event_id=%s, type=%s, objid=%s, data=%s)>" % (\
+                    self.event_id, self.type, self.objid, self.data)
 
-class EventDbManagerError(Exception): pass
-class EventDbManager(object):
+class EventDbManager(AbstractDbManager):
     """
     """
-    def __init__(self, session=None):
-        """ """
-        self.logger = logging.getLogger(self.__class__.__module__+ \
-                                        u'.'+self.__class__.__name__)          
-        
-        self._session = session
-    
-    def __repr__(self):
-        return "<EventDbManager id='%s'>" % id(self)
-    
-    def get_session(self):
-        if self._session is None:
-            return operation.session
-        else:
-            return self._session
-    
     @staticmethod
     def create_table(db_uri):
         """Create all tables in the engine. This is equivalent to "Create Table"
         statements in raw SQL."""
+        AbstractDbManager.create_table(db_uri)
+        
         try:
             engine = create_engine(db_uri)
             Base.metadata.create_all(engine)
-            logger.info('Create event tables on : %s' % db_uri)
+            logger.info(u'Create tables on : %s' % (db_uri))
             del engine
         except exc.DBAPIError, e:
-            raise EventDbManagerError(e)
+            raise Exception(e)
     
     @staticmethod
     def remove_table(db_uri):
         """ Remove all tables in the engine. This is equivalent to "Drop Table"
         statements in raw SQL."""
+        AbstractDbManager.remove_table(db_uri)
+        
         try:
             engine = create_engine(db_uri)
             Base.metadata.drop_all(engine)
-            logger.info('Remove event tables on : %s' % db_uri)
+            logger.info(u'Remove tables from : %s' % (db_uri))
             del engine
         except exc.DBAPIError, e:
-            raise EventDbManagerError(e)    
+            raise Exception(e)    
     
-    def set_initial_data(self):
-        pass
-
     @query
     def get_types(self):
         """Get event types. 
@@ -144,6 +130,67 @@ class EventDbManager(object):
         self.logger.debug(u'Get entity definitions: %s' % truncate(res))
         
         return res    
+
+    def get_event(self, oid):
+        """Method used by authentication manager
+        """
+        session = self.get_session()
+        
+        # get obj by uuid
+        if match(u'[0-9a-z]+', str(oid)):
+            query = session.query(DbEvent).filter_by(event_id=oid)
+        # get obj by id
+        elif match(u'[0-9]+', str(oid)):
+            query = session.query(DbEvent).filter_by(id=oid)
+
+        entity = query.first()
+        
+        if entity is None:
+            msg = u'No event found'
+            self.logger.error(msg)
+            raise ModelError(msg, code=404)
+                 
+        self.logger.debug(u'Get event: %s' % (truncate(entity)))
+        return entity
+
+    @query
+    def get_events(self, tags=[], page=0, size=10, order=u'DESC', field=u'id', 
+                   *args, **kvargs):
+        """Get events with some permission tags
+        
+        :param etype str: list of event type [optional]
+        :param data str: event data [optional]
+        :param source str: event source [optional]
+        :param dest str: event destinatiaion [optional]
+        :param datefrom: event data from. Ex. '2015-3-9-15-23-56' [optional]
+        :param dateto: event data to. Ex. '2015-3-9-15-23-56' [optional]       
+        :param entity: entity
+        :param tags: list of permission tags
+        :param page: users list page to show [default=0]
+        :param size: number of users to show in list per page [default=0]
+        :param order: sort order [default=DESC]
+        :param field: sort field [default=id]
+        :param args: custom params
+        :param kvargs: custom params         
+        :return: list of entityclass
+        :raises QueryError: raise :class:`QueryError`           
+        """
+        query = PaginatedQueryGenerator(u'event', self.get_session())
+
+        # set filters
+        query.add_relative_filter(u'AND t3.type in :etype', u'etype', kvargs)
+        query.add_relative_filter(u'AND t3.objid like :objid', u'objid', kvargs)
+        query.add_relative_filter(u'AND t3.objtype like :objtype', u'objtype', kvargs)
+        query.add_relative_filter(u'AND t3.objdef like :objdef', u'objdef', kvargs)
+        query.add_relative_filter(u'AND t3.data like :data', u'data', kvargs)
+        query.add_relative_filter(u'AND t3.source like :source', u'source', kvargs)
+        query.add_relative_filter(u'AND t3.dest like :dest', u'dest', kvargs)
+        query.add_relative_filter(u'AND t3.creation >= :datefrom', u'datefrom', kvargs)
+        query.add_relative_filter(u'AND t3.creation <= :dateto', u'dateto', kvargs)
+
+        query.set_pagination(page=page, size=size, order=order, field=field)
+        res = query.run(tags, *args, **kvargs)
+        return res
 
     @query
     def gets(self, oid=None, etype=None, data=None, 
@@ -207,7 +254,6 @@ class EventDbManager(object):
         
         return count, res
 
-    @transaction
     def add(self, eventid, etype, objid, objdef, objtype, creation, data, 
             source, dest):
         """Add new event.
@@ -222,11 +268,19 @@ class EventDbManager(object):
         :param source: event source
         :param dest: event destionation
         :raise TransactionError: if transaction return error
-        """        
-        session = self.get_session()
-        e = DbEvent(eventid, etype, objid, objdef, objtype, creation, 
-                    json.dumps(data), json.dumps(source), json.dumps(dest))
-        session.add(e)
-            
-        self.logger.debug(u'Add event: %s' % truncate(e))
-        return e
+        """
+        # add event
+        res = self.add_entity(DbEvent, eventid, etype, objid, objdef, objtype, 
+                              creation, json.dumps(data), json.dumps(source), 
+                              json.dumps(dest))
+        
+        # add permtag
+        ids = self.manager.get_all_valid_objids(objid.split(u'//'))
+        for i in ids:
+            perm = u'%s-%s' % (objdef, i)
+            tag = self.manager.hash_from_permission(objdef, i)
+            self.manager.add_perm_tag(tag, perm, res.id, u'event')
+        
+        return res
+        
+    

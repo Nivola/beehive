@@ -966,17 +966,17 @@ class Role(AuthObject):
             # get permissions
             roleperms = []
             for perm in perms:
-                # perm as (0, 0, "resource", "cloudstack.org.grp.vm", "", 0, "use")
-                if isinstance(perm, tuple):
-                    perms, total = self.manager.get_permissions(
-                            objid=perm[4], objtype=perm[2], objdef=perm[3],
-                            action=perm[6], size=10)
-                    roleperms.extend(perms)
-                    
                 # perm as permission_id
-                else:
-                    perm = self.manager.get_permission(perm)
+                if u'id' in perm:
+                    perm = self.manager.get_permission(perm[u'id'])
                     roleperms.append(perm)
+                                    
+                # perm as [subsystem, type, objid, action]
+                else:
+                    perms, total = self.manager.get_permissions(
+                            objid=perm[u'objid'], objtype=perm[u'subsystem'], 
+                            objdef=perm[u'type'], action=perm[u'action'], size=10)
+                    roleperms.extend(perms)
             
             res = self.manager.append_role_permissions(self.model, roleperms)
             self.logger.debug(u'Append role %s permission : %s' % (self.name, perms))        
@@ -1003,17 +1003,17 @@ class Role(AuthObject):
             # get permissions
             roleperms = []
             for perm in perms:
-                # perm as (0, 0, "resource", "cloudstack.org.grp.vm", "", 0, "use")
-                if isinstance(perm, tuple):
-                    perms, total = self.manager.get_permissions(
-                            objid=perm[4], objtype=perm[2], objdef=perm[3],
-                            action=perm[6], size=10)
-                    roleperms.extend(perms)
-                    
                 # perm as permission_id
+                if u'id' in perm:
+                    perm = self.manager.get_permission(perm[u'id'])
+                    roleperms.append(perm)
+                                    
+                # perm as [subsystem, type, objid, action]
                 else:
-                    perm = self.manager.get_permission(perm)
-                    roleperms.append(perm)     
+                    perms, total = self.manager.get_permissions(
+                            objid=perm[u'objid'], objtype=perm[u'subsystem'], 
+                            objdef=perm[u'type'], action=perm[u'action'], size=10)
+                    roleperms.extend(perms)  
             
             res = self.manager.remove_role_permission(self.model, roleperms)
             self.logger.debug(u'Remove role %s permission : %s' % (self.name, perms))

@@ -947,20 +947,17 @@ class BeehiveApiClient(object):
         self.logger.debug(u'Get permission : %s:%s %s' % (objtype, objdef, objid))
         return res.get(u'perms', [])
 
-    def append_role_permissions(self, role, objtype, objdef, objid, objaction,
-                                uid=None, seckey=None):
+    def append_role_permissions(self, role, objtype, objdef, objid, 
+                                objaction, uid=None, seckey=None):
         """Append permission to role
         
         :raise BeehiveApiClientError:
         """
-        # data = json.dumps({"perm":{"append":[(0, 0, objtype, objdef, "", 
-        #                                       objid, 0, objaction)], 
-        #                           "remove":[]}})
-        #uri = u'/api/auth/role/%s' % role
         data = {
             u'role':{
                 u'perms':{
-                    u'append':[(0, 0, objtype, objdef, objid, 0, objaction)],
+                    u'append':[{u'subsystem':objtype, u'type':objdef,
+                                u'objid':objid, u'action':objaction}],
                     u'remove':[]
                 }
             }
@@ -1034,29 +1031,28 @@ class BeehiveApiClient(object):
         self.logger.debug(u'Get user %s permission : %s' % (name, truncate(res)))
         return res.get(u'perms', [])
     
-    def add_user(self, name, password, description, storetype=u'DBUSER',
-                 uid=None, seckey=None):
+    def add_user(self, name, password, desc, uid=None, seckey=None):
         """Add user
         
         :raise BeehiveApiClientError:
         """
         data = {
             u'user':{
-                u'anme':name,
+                u'name':name,
+                u'desc':desc,
+                u'active':True,
+                u'expirydate':u'2099-12-31',
                 u'password':password,
-                u'desc':description, 
-                u'system':False,
-                u'storetype':storetype,
-                u'systype':u'USER',
-                u'active':True
+                u'base':True  
             }
         } 
+        
         uri = u'/v1.0/auth/users'
         res = self.invoke(u'auth', uri, u'POST', data, parse=True)
-        self.logger.debug(u'Add system user: %s' % str(name))
+        self.logger.debug(u'Add base user: %s' % str(name))
         return res    
     
-    def add_system_user(self, name, password, description, uid=None, seckey=None):
+    def add_system_user(self, name, password, desc, uid=None, seckey=None):
         """Add system user
         
         :raise BeehiveApiClientError:
@@ -1065,7 +1061,7 @@ class BeehiveApiClient(object):
             u'user':{
                 u'name':name,
                 u'password':password,
-                u'desc':description, 
+                u'desc':desc, 
                 u'system':True
             }
         } 
@@ -1110,7 +1106,7 @@ class BeehiveApiClient(object):
         data = {
             u'user':{
                 u'roles':{
-                    u'append':roles,
+                    u'append':str(roles),
                     u'remove':[]
                 },
             }
