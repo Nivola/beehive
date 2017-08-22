@@ -985,11 +985,11 @@ class ApiController(object):
         return self.module.api_manager.verify_simple_http_credentials(user, pwd, user_ip)
 
     @watch
-    def can(self, action, objtype, definition=None):
+    def can(self, action, objtype=None, definition=None):
         """Verify if  user can execute an action over a certain object type.
         Specify at least name or perms.
         
-        :param objtype: object type. Es. 'resource', 'service',
+        :param objtype: object type. Es. 'resource', 'service' [optional]
         :param definition: object definition. Es. 'container.org.group.vm' [optional]                                    
         :param action: object action. Es. \*, view, insert, update, delete, use
         :return: dict like 
@@ -1037,14 +1037,21 @@ class ApiController(object):
                     
                     # loop between object objids, compact objids and verify match
                     if len(objids) > 0:
-                        res[definition] = objids              
-                else:
+                        res[definition] = objids
+                elif objtype is not None:      
                     if (perm_objtype == objtype and
                         perm_action in [u'*', action]):
                         if perm_definition in res:
                             res[perm_definition].append(perm_objid)
                         else:
                             res[perm_definition] = [perm_objid]
+                else:
+                    if (perm_action in [u'*', action]):
+                        if perm_definition in res:
+                            res[perm_definition].append(perm_objid)
+                        else:
+                            res[perm_definition] = [perm_objid]                    
+                    
 
             for objdef, objids in res.iteritems():
                 # loop between object objids, compact objids and verify match
@@ -1218,7 +1225,7 @@ class ApiController(object):
             return res, total
         except QueryError as ex:         
             self.logger.warn(ex)
-            return [], 0    
+            return [], 0
     
     '''
     def get_paginated_entities2(self, object_class, get_entities, 
@@ -1681,8 +1688,8 @@ class ApiObject(object):
         if self.oid is not None:
             ids = self.get_all_valid_objids(args)
             for i in ids:
-                perm = u'%s-%s' % (self.objdef, i)
-                tag = self.manager.hash_from_permission(self.objdef, i)
+                perm = u'%s-%s' % (self.objdef.lower(), i)
+                tag = self.manager.hash_from_permission(self.objdef.lower(), i)
                 table = self.objdef
                 self.manager.add_perm_tag(tag, perm, self.oid, table)
             

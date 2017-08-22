@@ -518,11 +518,12 @@ class AbstractDbManager(object):
         # first item *.*.*.....
         act_obj = [u'*' for i in args]
         objdis = [u'//'.join(act_obj)]
-        pos = 0
-        for arg in args:
-            act_obj[pos] = arg
-            objdis.append(u'//'.join(act_obj))
-            pos += 1
+        if args[0] != u'*':
+            pos = 0
+            for arg in args:
+                act_obj[pos] = arg
+                objdis.append(u'//'.join(act_obj))
+                pos += 1
     
         return objdis    
     
@@ -532,7 +533,7 @@ class AbstractDbManager(object):
         :param objdef: enitity permission object type definition
         :param objid: enitity permission object id
         """
-        perm = u'%s-%s' % (objdef, objid)
+        perm = u'%s-%s' % (objdef.lower(), objid)
         tag = hashlib.md5(perm).hexdigest()
         return tag
     

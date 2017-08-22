@@ -177,7 +177,8 @@ def start_event_consumer(params, log_path=None):
     logname = u'%s/%s.event.consumer' % (log_path, params[u'api_id'])
     logger_file = u'%s.log' % logname
     #loggers = [logging.getLogger(), logger]
-    loggers = [logger]
+    loggers = [logger,
+               logging.getLogger(u'beehive.module.event.model')]
     LoggerHelper.rotatingfile_handler(loggers, logger_level, logger_file)
 
     # performance logging
@@ -201,6 +202,8 @@ def start_event_consumer(params, log_path=None):
         try:
             worker = EventConsumerRedis(conn, api_manager)
             logger.info(u'Start event consumer')
+            logger.debug(u'Active worker: %s' % worker)
+            logger.debug(u'Use redis connection: %s' % conn)
             worker.run()
         except KeyboardInterrupt:
             logger.info(u'Stop event consumer')

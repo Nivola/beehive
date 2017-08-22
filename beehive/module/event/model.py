@@ -133,6 +133,9 @@ class EventDbManager(AbstractDbManager):
 
     def get_event(self, oid):
         """Method used by authentication manager
+        
+        :param oid: can be db id or event_id
+        :return: DbEvent instance
         """
         session = self.get_session()
         
@@ -158,13 +161,15 @@ class EventDbManager(AbstractDbManager):
                    *args, **kvargs):
         """Get events with some permission tags
         
-        :param etype str: list of event type [optional]
-        :param data str: event data [optional]
-        :param source str: event source [optional]
-        :param dest str: event destinatiaion [optional]
+        :param type: list of event type [optional]
+        :param objid: objid [optional]
+        :param objtype: objtype [optional]
+        :param objdef: objdef [optional]
+        :param data: event data [optional]
+        :param source: event source [optional]
+        :param dest: event destinatiaion [optional]
         :param datefrom: event data from. Ex. '2015-3-9-15-23-56' [optional]
-        :param dateto: event data to. Ex. '2015-3-9-15-23-56' [optional]       
-        :param entity: entity
+        :param dateto: event data to. Ex. '2015-3-9-15-23-56' [optional]
         :param tags: list of permission tags
         :param page: users list page to show [default=0]
         :param size: number of users to show in list per page [default=0]
@@ -175,10 +180,10 @@ class EventDbManager(AbstractDbManager):
         :return: list of entityclass
         :raises QueryError: raise :class:`QueryError`           
         """
-        query = PaginatedQueryGenerator(u'event', self.get_session())
+        query = PaginatedQueryGenerator(DbEvent, self.get_session())
 
         # set filters
-        query.add_relative_filter(u'AND t3.type in :etype', u'etype', kvargs)
+        query.add_relative_filter(u'AND t3.type in :etype', u'type', kvargs)
         query.add_relative_filter(u'AND t3.objid like :objid', u'objid', kvargs)
         query.add_relative_filter(u'AND t3.objtype like :objtype', u'objtype', kvargs)
         query.add_relative_filter(u'AND t3.objdef like :objdef', u'objdef', kvargs)
@@ -192,6 +197,7 @@ class EventDbManager(AbstractDbManager):
         res = query.run(tags, *args, **kvargs)
         return res
 
+    '''
     @query
     def gets(self, oid=None, etype=None, data=None, 
                    source=None, dest=None, datefrom=None, dateto=None,
@@ -253,6 +259,7 @@ class EventDbManager(AbstractDbManager):
         self.logger.debug('Get events: %s' % truncate(res))
         
         return count, res
+        '''
 
     def add(self, eventid, etype, objid, objdef, objtype, creation, data, 
             source, dest):
@@ -275,11 +282,12 @@ class EventDbManager(AbstractDbManager):
                               json.dumps(dest))
         
         # add permtag
-        ids = self.manager.get_all_valid_objids(objid.split(u'//'))
+        ids = self.get_all_valid_objids(objid.split(u'//'))
+        self.logger.warn(ids)
         for i in ids:
-            perm = u'%s-%s' % (objdef, i)
-            tag = self.manager.hash_from_permission(objdef, i)
-            self.manager.add_perm_tag(tag, perm, res.id, u'event')
+            perm = u'%s-%s' % (objdef.lower(), i)
+            tag = self.hash_from_permission(objdef.lower(), i)
+            self.add_perm_tag(tag, perm, res.id, u'event')
         
         return res
         

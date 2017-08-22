@@ -70,7 +70,7 @@ class CatalogController(BaseAuthController):
         :return: Catalog
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        return self.get_entity(Catalog, ModelCatalog, oid) 
+        return self.get_entity(Catalog, ModelCatalog, oid)
 
     @trace(entity=u'Catalog', op=u'view')
     def get_catalogs(self, *args, **kvargs):

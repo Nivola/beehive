@@ -3,76 +3,154 @@ Created on Aug 13, 2014
 
 @author: darkbk
 '''
-import ujson as json
+from re import match
 from flask import request
-from datetime import datetime
-from beehive.common.apimanager import ApiView, ApiManagerError
+from beecell.simple import get_value
+from beecell.simple import get_attrib
+from beehive.common.apimanager import ApiView, ApiManagerError, PaginatedRequestQuerySchema,\
+    PaginatedResponseSchema, ApiObjectResponseSchema, SwaggerApiView,\
+    CreateApiObjectResponseSchema, GetApiObjectRequestSchema,\
+    UpdateApiObjectResponseSchema, ApiObjectPermsResponseSchema,\
+    ApiObjectPermsRequestSchema
+from flasgger import fields, Schema
+from marshmallow.validate import OneOf, Range, Length
+from marshmallow.decorators import post_load, validates
+from marshmallow.exceptions import ValidationError
+from beecell.swagger import SwaggerHelper
+from flasgger.marshmallow_apispec import SwaggerView
 
-class GetEvents(ApiView):
-    def dispatch(self, controller, data, *args, **kwargs):    
-        # filter string can be type+data+source+datefrom+dateto
-        # - type : '' or '<event type>'
-        # - data : '' or '<event data>'
-        # - source : '' or '<event source>'
-        # - datefrom : '' or '2015-3-9-15-23-56'
-        # - dateto : '' or '2015-3-9-15-23-56'
-        event_type = request.args.get(u'type', None)
-        event_data = request.args.get(u'data', None)
-        source = request.args.get(u'source', None)
-        datefrom = request.args.get(u'datefrom', None)
-        dateto = request.args.get(u'dateto', None)
-        page = request.args.get(u'page', 0)
-        size = request.args.get(u'size', 10)
-        objid = request.args.get(u'objid', None)
-        objdef = request.args.get(u'objdef', None)
-        objtype = request.args.get(u'objtype', None)
+#
+# event
+#
+## list
+class ListEventsRequestSchema(PaginatedRequestQuerySchema):   
+    type = fields.String(default=u'API', context=u'query')
+    objid = fields.String(default=u'3638282dh82//dhedhw7d8we', context=u'query')
+    objdef = fields.String(default=u'CatalogEndpoint', context=u'query')
+    objtype = fields.String(default=u'directory', context=u'query')
+    date = fields.DateTime(default=u'1985-04-12T23:20:50.52Z', context=u'query')
+    datefrom = fields.String(default=u'{}', context=u'query')
+    dateto = fields.String(default=u'{}', context=u'query')
+    source = fields.String(default=u'{}', context=u'query')
+    dest = fields.String(default=u'{}', context=u'query')
 
-        try: datefrom = datetime.strptime(datefrom, "%d-%m-%y-%H-%M-%S")
-        except: datefrom = None
-        
-        try: dateto = datetime.strptime(dateto, "%d-%m-%y-%H-%M-%S")
-        except: dateto = None
-        
-        #self.logger.debug("filter: type=%s, data=%s, source=%s, datefrom=%s, dateto=%s" % (
-        #                   get_field(0), get_field(1), get_field(2),
-        #                   datefrom, dateto))
-        
-        resp = controller.get_events(etype=event_type, data=event_data, 
-                                     source=source, datefrom=datefrom, 
-                                     dateto=dateto, page=int(page), 
-                                     size=int(size), objid=objid, 
-                                     objdef=objdef, objtype=objtype)
+class EventsParamsResponseSchema(Schema):
+    id = fields.Integer(required=True, default=1)
+    event_id = fields.String(required=True, default=u'384jnd7d4')
+    type = fields.String(required=True, default=u'API')
+    objid = fields.String(required=True, default=u'3638282dh82//dhedhw7d8we')
+    objdef = fields.String(required=True, default=u'CatalogEndpoint')
+    objtype = fields.String(required=True, default=u'directory')
+    date = fields.DateTime(required=True, default=u'1985-04-12T23:20:50.52Z')
+    data = fields.Dict(required=True)
+    source = fields.Dict(required=True)
+    dest = fields.Dict(required=True)
+
+class ListEventsResponseSchema(PaginatedResponseSchema):
+    events = fields.Nested(EventsParamsResponseSchema, many=True)
+
+class ListEvents(SwaggerApiView):
+    tags = [u'event']
+    definitions = {
+        u'ListEventsResponseSchema': ListEventsResponseSchema,
+    }
+    parameters = SwaggerHelper().get_parameters(ListEventsRequestSchema)
+    parameters_schema = ListEventsRequestSchema
+    responses = SwaggerApiView.setResponses({
+        200: {
+            u'description': u'success',
+            u'schema': ListEventsResponseSchema
+        }
+    })
+    
+    def get(self, controller, data, *args, **kwargs):
+        """
+        List events
+        Call this api to list all the existing events
+        """            
+        events, total = controller.get_events(**data)
+        res = [r.info() for r in events]
+        return self.format_paginated_response(res, u'events', total, **data)
+
+## get
+class GetEventResponseSchema(Schema):
+    event = fields.Nested(EventsParamsResponseSchema)
+
+class GetEvent(SwaggerApiView):
+    tags = [u'event']
+    definitions = {
+        u'GetEventResponseSchema': GetEventResponseSchema,
+    }
+    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
+    responses = SwaggerApiView.setResponses({
+        200: {
+            u'description': u'success',
+            u'schema': GetEventResponseSchema
+        }
+    })
+    
+    def get(self, controller, data, oid, *args, **kwargs):
+        event = controller.get_event(oid)
+        res = event.detail()
+        resp = {u'event':res}        
         return resp
 
-class GetEventTypes(ApiView):
-    def dispatch(self, controller, data, *args, **kwargs):    
+# types
+class GetEventTypesResponseSchema(Schema):
+    count = fields.Integer()
+    event_types = fields.List(fields.String)
+
+class GetEventTypes(SwaggerApiView):
+    tags = [u'event']
+    definitions = {
+        u'GetEventTypesResponseSchema': GetEventTypesResponseSchema,
+    }
+    #parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
+    responses = SwaggerApiView.setResponses({
+        200: {
+            u'description': u'success',
+            u'schema': GetEventTypesResponseSchema
+        }
+    })    
+    
+    def get(self, controller, data, *args, **kwargs):    
         resp = controller.get_event_types()
-        return {u'event-types':resp,
+        return {u'event_types':resp,
+                u'count':len(resp)}
+
+# definition
+class GetEventEntityDefinitionResponseSchema(Schema):
+    count = fields.Integer()
+    event_entities = fields.List(fields.String)
+
+class GetEventEntityDefinition(SwaggerApiView):
+    tags = [u'event']
+    definitions = {
+        u'GetEventEntityDefinitionResponseSchema': GetEventEntityDefinitionResponseSchema,
+    }
+    #parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
+    responses = SwaggerApiView.setResponses({
+        200: {
+            u'description': u'success',
+            u'schema': GetEventEntityDefinitionResponseSchema
+        }
+    })    
+    
+    def get(self, controller, data, *args, **kwargs):    
+        resp = controller.get_entity_definitions()
+        return {u'event_entities':resp,
                 u'count':len(resp)}
         
-class GetEventEntityDefinition(ApiView):
-    def dispatch(self, controller, data, *args, **kwargs):    
-        resp = controller.get_entity_definitions()
-        return {u'event-entities':resp,
-                u'count':len(resp)}        
-
-class GetEvent(ApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):    
-        events = controller.get_events(oid=oid)
-        if events[u'count'] == 0:
-            raise ApiManagerError(u'Event %s does not exists' % oid)
-        return {u'event':events[u'events'][0]}
-
 class EventAPI(ApiView):
     """
     """
     @staticmethod
     def register_api(module):
         rules = [
-            (u'events', u'GET', GetEvents, {}),
+            (u'events', u'GET', ListEvents, {}),
+            (u'events/<oid>', u'GET', GetEvent, {}),            
             (u'events/types', u'GET', GetEventTypes, {}),
             (u'events/entities', u'GET', GetEventEntityDefinition, {}),
-            (u'events/<oid>', u'GET', GetEvent, {}),
         ]
 
         ApiView.register_api(module, rules)
