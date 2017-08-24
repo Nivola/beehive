@@ -230,25 +230,22 @@ class BeehiveHelper(object):
                 # create superadmin
                 if user[u'type'] == u'admin':
                     expiry_date = u'31-12-2099'
-                    user_id = controller.add_user(user[u'name'], 
-                                               u'DBUSER', 
-                                               u'USER', 
-                                               active=True,
-                                               password=user[u'pwd'], 
-                                               description=user[u'desc'],
-                                               expiry_date=expiry_date)
-                    users, total = controller.get_users(name=user[u'name'])
-                    users[0].append_role(u'ApiSuperadmin', 
-                                         expiry_date=expiry_date)
+                    user_id = controller.add_user(
+                        name=user[u'name'], storetype=u'DBUSER', active=True, 
+                        password=user[u'pwd'], desc=user[u'desc'], 
+                        expiry_date=expiry_date, base=False, system=True)
+
+                    #users, total = controller.get_users(name=user[u'name'])
+                    #users[0].append_role(u'ApiSuperadmin', 
+                    #                     expiry_date=expiry_date)
                     
                 # create users
                 elif user[u'type'] == u'user':
                     expiry_date = u'31-12-2099'
-                    user_id = controller.add_generic_user(user[u'name'], 
-                                                   u'DBUSER', 
-                                                   user[u'pwd'], 
-                                                   description=user[u'desc'],
-                                                   expiry_date=expiry_date)
+                    user_id = controller.add_user(
+                        name=user[u'name'], storetype=u'DBUSER', active=True, 
+                        password=user[u'pwd'], desc=user[u'desc'], 
+                        expiry_date=expiry_date, base=True, system=False)
                 
                 self.logger.info(u'Add user %s' % (user[u'name']))
                 msgs.append(u'Add user %s' % (user[u'name']))          
@@ -264,8 +261,8 @@ class BeehiveHelper(object):
         
         #for catalog in catalogs:
         # check if catalog already exist
-        cats = controller.get_catalogs(name=catalog[u'name'], 
-                                       zone=catalog[u'zone'])
+        cats, total = controller.get_catalogs(name=catalog[u'name'], 
+                                              zone=catalog[u'zone'])
         if len(cats) > 0:
             self.logger.warn(u'Catalog name:%s zone:%s already exist' % 
                              (catalog[u'name'], catalog[u'zone']))

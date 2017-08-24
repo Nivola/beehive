@@ -18,7 +18,7 @@ tests = [
     
 #     u'test_add_role',
 #     u'test_add_role_twice',
-    u'test_get_roles',
+#     u'test_get_roles',
 #     u'test_get_role',
 #     u'test_update_role',
 #     u'test_add_role_perm',
@@ -28,7 +28,7 @@ tests = [
     
 #     u'test_add_user',
 #     u'test_add_user_twice',
-#     u'test_get_users',
+    u'test_get_users',
 #     u'test_get_users_by_role',
 #     u'test_get_user',
 #     u'test_get_user_roles',

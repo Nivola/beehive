@@ -349,7 +349,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             logger.info(u'Remove tables from : %s' % (db_uri))
             del engine
         except exc.DBAPIError, e:
-            raise Exception(e)    
+            raise Exception(e)
     
     def set_initial_data(self):
         """Set initial data.
@@ -1866,7 +1866,6 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         elif is_admin is True:
             role = self.get_entity(Role, u'ApiSuperadmin')
             self.append_user_role(user, role)
-            self.logger.warn(role)
             self.logger.debug(u'Create system user')
     
         return user
