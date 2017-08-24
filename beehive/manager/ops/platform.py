@@ -323,7 +323,8 @@ class PlatformManager(ComponentManager):
             port = instances.get(u'%s-%s' % tuple(vassal)).get(u'port')
     
             for host in hosts:
-                url = URL(u'http://%s:%s/v1.0/server/ping/' % (host, port))
+                url = URL(u'http://%s:%s/v1.0/server/ping' % (host, port))
+                self.logger.debug(url)
                 http = HTTPClient(url.host, port=url.port)
                 try:
                     # issue a get request
@@ -343,9 +344,15 @@ class PlatformManager(ComponentManager):
                                      u'host':host, u'port':port, u'ping':False,
                                      u'status':u'UP'})
                 except gevent.socket.error as ex:
+                    self.logger.error(ex)
                     resp.append({u'subsystem':vassal[0], u'instance':vassal[1], 
                                  u'host':host, u'port':port, u'ping':False,
                                  u'status':u'DOWN'})
+                except Exception as ex:
+                    self.logger.error(ex)
+                    resp.append({u'subsystem':vassal[0], u'instance':vassal[1], 
+                                 u'host':host, u'port':port, u'ping':False,
+                                 u'status':u'DOWN'})                    
                     
             
         self.result(resp, headers=[u'subsystem', u'instance', u'host', u'port', 
@@ -548,7 +555,7 @@ class PlatformManager(ComponentManager):
         :param server: host name
         :param port: server port [default=6379]
         """
-        url = URL(u'http://%s:%s/v1.0/server/ping/' % (server, port))
+        url = URL(u'http://%s:%s/v1.0/server/ping' % (server, port))
         http = HTTPClient(url.host, port=url.port)
         # issue a get request
         response = http.get(url.request_uri)
