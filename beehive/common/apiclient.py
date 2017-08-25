@@ -340,7 +340,7 @@ class BeehiveApiClient(object):
         
         return res
     
-    def send_request(self, subsystem, path, method, data='', 
+    def send_request(self, subsystem, path, method, data=u'', 
                      uid=None, seckey=None, other_headers=None):
         """
         
@@ -370,6 +370,8 @@ class BeehiveApiClient(object):
         port = endpoint[u'port']
         if method ==u'GET':
             path = u'%s?%s' % (path, data)
+        elif isinstance(data, dict):
+            data = json.dumps(data)
         res = self.http_client(proto, host, path, method,
                                port=port, data=data, headers=headers)
         return res

@@ -398,11 +398,13 @@ class AbstractDbManager(object):
     
     @query
     def get_paginated_entities(self, entity, tags=[], page=0, size=10, 
-            order=u'DESC', field=u'id', filters=[], tables=[], *args, **kvargs):
+            order=u'DESC', field=u'id', filters=[], tables=[], select_fields=[],
+            *args, **kvargs):
         """Get entities associated with some permission tags
         
         :param tables: sql tables to add (table_name, alias) [optional]
         :param filters: sql filters to apply [optional]
+        :param select_fields: list of fields to add to select [optional]
         :param args: custom params
         :param kvargs: custom params        
         :param entity: entity
@@ -423,7 +425,10 @@ class AbstractDbManager(object):
         query = PaginatedQueryGenerator(entity, session)
         # set tables
         for table, alias in tables:
-            query.add_table(table, alias)        
+            query.add_table(table, alias)
+        # add select fields
+        for item in select_fields:
+            query.add_select_field(item)
         # set filters
         query.add_filter_by_field(u'name', kvargs)
         query.add_filter_by_field(u'active', kvargs)

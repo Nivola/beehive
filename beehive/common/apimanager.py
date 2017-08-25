@@ -1143,12 +1143,13 @@ class ApiController(object):
     #
     # helper model get method
     #
-    def get_entity(self, entity_class, model_class, oid):
+    def get_entity(self, entity_class, model_class, oid, authorize=True):
         """Get single entity by oid (id, uuid, name) if exists
         
         :param entity_class: Controller ApiObject Extension class
         :param model_class: Model ApiObject Extension class
-        :param oid: entity model id or name or uuid  
+        :param oid: entity model id or name or uuid
+        :param authorize: if True check permissions for authorization
         :return: object
         :raises ApiManagerError: raise :class:`ApiManagerError`        
         """
@@ -1156,8 +1157,10 @@ class ApiController(object):
             entity = self.manager.get_entity(model_class, oid)
             
             # check authorization
-            self.check_authorization(entity_class.objtype, entity_class.objdef, 
-                                     entity.objid, u'view')
+            if authorize is True:
+                self.check_authorization(entity_class.objtype, 
+                                         entity_class.objdef, 
+                                         entity.objid, u'view')
             
             res = entity_class(self, oid=entity.id, objid=entity.objid, 
                            name=entity.name, active=entity.active, 
@@ -1169,7 +1172,7 @@ class ApiController(object):
             self.logger.error(ex, exc_info=1)
             entity_name =  entity_class.__name__
             raise ApiManagerError(u'%s %s not found' % (entity_name, oid), 
-                                  code=404)       
+                                  code=404)
     
     def get_paginated_entities(self, entity_class, get_entities, 
             page=0, size=10, order=u'DESC', field=u'id', customize=None,
@@ -1551,10 +1554,6 @@ class ApiObject(object):
     def manager(self):
         return self.controller.manager
     
-    #@property
-    #def job_manager(self):
-    #    return self.controller.module.job_manager    
-
     @property
     def api_client(self):
         return self.controller.module.api_manager.api_client
@@ -1586,6 +1585,21 @@ class ApiObject(object):
     #
     # info
     #
+    def small_info(self):
+        """Get object small infos.
+        
+        :return: Dictionary with object info.
+        :rtype: dict        
+        :raises ApiManagerError: raise :class:`.ApiManagerError`
+        """
+        res = {
+            u'id':self.oid,
+            u'uuid':self.uuid,
+            u'name':self.name,
+            u'uri':self.objuri
+        }
+        return res
+    
     def info(self):
         """Get object info
         
@@ -1886,6 +1900,7 @@ class ApiObject(object):
         self.event_class(self.controller, objid=objid, data=data, action=action)\
             .publish(self.objtype, etype)
     
+    '''
     def event(self, op, params, response):
         """[deprecated] Publish an event to event queue.
         
@@ -1914,7 +1929,7 @@ class ApiObject(object):
                          data={u'opid':opid, u'op':op, u'params':params,
                                u'response':response}).publish(self.objtype, 
                                                               self.ASYNC_OPERATION)
-
+    '''
     '''
     def event_process(self, op, process, task, params, response):
         """Publish a process event to event queue.
@@ -1934,6 +1949,7 @@ class ApiObject(object):
                                'params':params,
                                'response':response}).publish(self.objtype, 'process')'''
 
+    '''
     def event_monitor(self, op, platform, component, status, metrics=None):
         """Publish a monitor event to event queue.
         
@@ -1948,6 +1964,7 @@ class ApiObject(object):
                          data={'op':op, 'platform':platform, 'component':component, 
                                'status':status, 'metrics':metrics}).publish(
                                             self.objtype, 'monitor')
+    '''
 
     def get_field(self, obj, name):
         """Get object field if exist. Return None if it can be retrieved 
