@@ -1221,13 +1221,11 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
     #
     # Group manipulation methods
     #
-    @query
     def count_group(self):
         """Count group.
         """
-        return self.count_entites(User)      
-    
-    @watch
+        return self.count_entities(User)      
+
     def get_groups(self, *args, **kvargs):
         """Get groups
         
@@ -1598,7 +1596,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
     def count_user(self):
         """Count user.
         """
-        return self.count_entites(User)
+        return self.count_entities(User)
     
     def get_user(self, oid):
         """Method used by authentication manager
