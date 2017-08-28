@@ -9,11 +9,11 @@ from beecell.remote import BadRequestException, NotFoundException,\
 
 tests = [
     u'test_create_token',
-    u'test_create_token_wrong_user_syntax',
-    u'test_create_token_wrong_user',
-    u'test_create_token_wrong_pwd',
-    u'test_create_token_no_user',
-    u'test_create_token_no_pwd',
+#     u'test_create_token_wrong_user_syntax',
+#     u'test_create_token_wrong_user',
+#     u'test_create_token_wrong_pwd',
+#     u'test_create_token_no_user',
+#     u'test_create_token_no_pwd',
 ]
 
 class AuthObjectTestCase(BeehiveTestCase):

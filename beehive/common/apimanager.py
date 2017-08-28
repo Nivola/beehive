@@ -1155,25 +1155,25 @@ class ApiController(object):
         """
         try:
             entity = self.manager.get_entity(model_class, oid)
-            
-            # check authorization
-            if authorize is True:
-                self.check_authorization(entity_class.objtype, 
-                                         entity_class.objdef, 
-                                         entity.objid, u'view')
-            
-            res = entity_class(self, oid=entity.id, objid=entity.objid, 
-                           name=entity.name, active=entity.active, 
-                           desc=entity.desc, model=entity)
-            self.logger.debug(u'Get %s : %s' % 
-                              (entity_class, res))
-            return res
         except QueryError as ex:         
             self.logger.error(ex, exc_info=1)
             entity_name =  entity_class.__name__
             raise ApiManagerError(u'%s %s not found' % (entity_name, oid), 
-                                  code=404)
-    
+                                  code=404)            
+            
+        # check authorization
+        if authorize is True:
+            self.check_authorization(entity_class.objtype, 
+                                     entity_class.objdef, 
+                                     entity.objid, u'view')
+        
+        res = entity_class(self, oid=entity.id, objid=entity.objid, 
+                       name=entity.name, active=entity.active, 
+                       desc=entity.desc, model=entity)
+        self.logger.debug(u'Get %s : %s' % 
+                          (entity_class, res))
+        return res
+
     def get_paginated_entities(self, entity_class, get_entities, 
             page=0, size=10, order=u'DESC', field=u'id', customize=None,
             *args, **kvargs):
@@ -1596,6 +1596,8 @@ class ApiObject(object):
             u'id':self.oid,
             u'uuid':self.uuid,
             u'name':self.name,
+            u'definition':self.objdef,
+            u'active':self.active,
             u'uri':self.objuri
         }
         return res
@@ -2028,7 +2030,7 @@ class ApiObject(object):
             res = self.delete_object(oid=self.oid)
             if self.register is True:
                 # remove object and permissions
-                self.deregister_object([self.objid])
+                self.deregister_object(self.objid.split(u'//'))
             
             self.logger.debug(u'Delete %s: %s' % (self.objdef, self.oid))
             return None
@@ -2849,6 +2851,17 @@ class ApiObjectResponseDateSchema(Schema):
     creation = fields.DateTime(required=True, default=u'1990-12-31T23:59:59Z')
     modified = fields.DateTime(required=True, default=u'1990-12-31T23:59:59Z')
     expiry = fields.String(default=u'')
+
+class ApiObjecCounttResponseSchema(Schema):
+    count = fields.Integer(required=True, default=10)
+
+class ApiObjectSmallResponseSchema(Schema):
+    id = fields.Integer(required=True, default=10)
+    uuid = fields.String(required=True, default=u'4cdf0ea4-159a-45aa-96f2-708e461130e1')
+    definition = fields.String(required=True, default=u'Role')
+    name = fields.String(required=True, default=u'test')
+    uri = fields.String(required=True, default=u'/v1.0/auht/roles')
+    active = fields.Boolean(required=True, default=True)
 
 class ApiObjectResponseSchema(Schema):
     id = fields.Integer(required=True, default=10)
