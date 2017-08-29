@@ -1,7 +1,7 @@
 import logging
 from sqlalchemy import create_engine, exc
 from sqlalchemy.ext.declarative import declarative_base
-from beehive.common.data import operation, query, netsted_transaction
+from beehive.common.data import operation, query, transaction
 from beecell.simple import truncate
 from beecell.db import ModelError
 from beecell.perf import watch
@@ -362,13 +362,17 @@ class AbstractDbManager(object):
         # get obj by uuid
         if match(u'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-'\
                  u'[0-9a-f]{4}-[0-9a-f]{12}', str(oid)):
+            self.logger.debug(u'Query entity %s by uuid' % entityclass.__name__)
             entity = self.query_entities(entityclass, session, uuid=oid)
         # get obj by id
-        elif match(u'[0-9]+', str(oid)):
-            entity = self.query_entities(entityclass, session, oid=oid)
+        elif match(u'^\d+$', str(oid)):
+            self.logger.debug(u'Query entity %s by id' % entityclass.__name__)
+            entity = self.query_entities(entityclass, session, oid=oid)            
         # get obj by name
-        else:
+        elif match(u'[0-9a-zA-Z]+', oid):
+            self.logger.debug(u'Query entity %s by name' % entityclass.__name__)
             entity = self.query_entities(entityclass, session, name=oid)
+
         return entity.first()
     
     @query
@@ -440,7 +444,7 @@ class AbstractDbManager(object):
         res = query.run(tags, *args, **kvargs)
         return res
     
-    @netsted_transaction
+    @transaction
     def add_entity(self, entityclass, *args, **kvargs):
         """Add an entity.
         
@@ -461,7 +465,7 @@ class AbstractDbManager(object):
         self.logger.debug(u'Add %s: %s' % (entityclass.__name__, record))
         return record
     
-    @netsted_transaction
+    @transaction
     def update_entity(self, entityclass, *args, **kvargs):
         """Update entity.
 
@@ -490,7 +494,7 @@ class AbstractDbManager(object):
                           (entityclass.__name__, oid, kvargs))
         return oid
     
-    @netsted_transaction
+    @transaction
     def remove_entity(self, entityclass, *args, **kvargs):
         """Remove entity.
         
@@ -542,7 +546,7 @@ class AbstractDbManager(object):
         tag = hashlib.md5(perm).hexdigest()
         return tag
     
-    @netsted_transaction
+    @transaction
     def add_perm_tag(self, tag, explain, entity, type, *args, **kvargs):
         """Add permission tag and entity association.
         
@@ -578,7 +582,7 @@ class AbstractDbManager(object):
         
         return record
     
-    @netsted_transaction
+    @transaction
     def delete_perm_tag(self, entity, etype, tags):
         """Remove permission tag entity association.
         
@@ -598,7 +602,7 @@ class AbstractDbManager(object):
         for item in items:
             session.delete(item)
         session.flush()
-        self.logger.debug(u'Delete tag entity %s.%s association' % (entity, type))
+        self.logger.debug(u'Delete tag entity %s.%s association' % (entity, etype))
         
         # remove unused tag
         for tag in tags:           

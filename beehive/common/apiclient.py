@@ -633,7 +633,7 @@ class BeehiveApiClient(object):
     #
     # configuration
     #
-    def get_configuration(self, app_id, uid=None, seckey=None):
+    def get_configuration(self, app_id):
         """Get configuration
         
         :param app_id: id used to get configuration. Default is portal
@@ -646,7 +646,7 @@ class BeehiveApiClient(object):
     #
     # configuration
     #
-    def register_to_monitor(self, name, desc, conn, uid=None, seckey=None):
+    def register_to_monitor(self, name, desc, conn):
         """Register system in monitor"""
         data = {
             u'node':{
@@ -665,7 +665,7 @@ class BeehiveApiClient(object):
     #
     # catalog request
     #
-    def get_catalogs(self, uid=None, seckey=None):
+    def get_catalogs(self):
         """Get catalogs
         
         :param uid: identity id
@@ -678,7 +678,7 @@ class BeehiveApiClient(object):
         self.logger.debug(u'Get catalogs')
         return res
     
-    def get_catalog(self, catalog_id, uid=None, seckey=None):
+    def get_catalog(self, catalog_id):
         """Get catalogs
         
         :param catalog_id: id of the catalog
@@ -692,7 +692,7 @@ class BeehiveApiClient(object):
         self.logger.debug(u'Get catalog %s' % catalog_id)
         return res
     
-    def create_catalog(self, name, zone, uid=None, seckey=None):
+    def create_catalog(self, name, zone):
         """Create catalogs
         
         :param name: catalog name
@@ -714,7 +714,7 @@ class BeehiveApiClient(object):
         self.logger.debug(u'Create catalog %s' % name)
         return res
     
-    def delete_catalog(self, catalog_id, uid=None, seckey=None):
+    def delete_catalog(self, catalog_id):
         """Delete catalogs
         
         :param catalog_id: id of the catalog
@@ -730,7 +730,7 @@ class BeehiveApiClient(object):
     #
     # endpoint request
     #
-    def get_endpoints(self, uid=None, seckey=None):
+    def get_endpoints(self):
         """Get endpoints
         
         :param uid: identity id
@@ -742,7 +742,7 @@ class BeehiveApiClient(object):
         self.logger.debug(u'Get endpoints')
         return res
     
-    def get_endpoint(self, endpoint_id, uid=None, seckey=None):
+    def get_endpoint(self, endpoint_id):
         """Get endpoints
         
         :param endpoint_id: id of the endpoint
@@ -816,7 +816,7 @@ class BeehiveApiClient(object):
         self.logger.debug(u'Create endpoint %s' % name)
         return res    
     
-    def delete_endpoint(self, endpoint_id, uid=None, seckey=None):
+    def delete_endpoint(self, endpoint_id):
         """Delete endpoints
         
         :param endpoint_id: id of the endpoint
@@ -832,7 +832,7 @@ class BeehiveApiClient(object):
     #
     # authorization request
     #    
-    def add_object_types(self, objtype, objdef, uid=None, seckey=None):
+    def add_object_types(self, objtype, objdef):
         """Add authorization object type
         
         :param uid: identity id
@@ -923,7 +923,7 @@ class BeehiveApiClient(object):
         self.logger.debug(u'Remove object: %s:%s %s' % (objtype, objdef, objid))
         return res
 
-    def get_permissions2(self, objtype, objdef, objid, uid=None, seckey=None):
+    def get_permissions2(self, objtype, objdef, objid):
         """Get object permissions
         
         :raise BeehiveApiClientError:
@@ -935,22 +935,28 @@ class BeehiveApiClient(object):
         self.logger.debug(u'Get permission : %s:%s %s' % (objtype, objdef, objid))
         return res
     
-    def get_permissions(self, objtype, objdef, objid, uid=None, seckey=None):
+    def get_permissions(self, objtype, objdef, objid, **kvargs):
         """Get object permissions
         
+        :param objtype: objtype
+        :param objdef: objdef
+        :param objid: objid
+        :param kvargs: kvargs
         :raise BeehiveApiClientError:
         """
-        data = urlencode({u'subsystem':objtype,
-                          u'type':objdef,
-                          u'objid':objid, 
-                          u'size':1000})
+        data = {
+            u'subsystem':objtype,
+            u'type':objdef,
+            u'objid':objid
+        }
+        data.update(kvargs)
         uri = u'/v1.0/auth/objects/perms'
-        res = self.invoke(u'auth', uri, u'GET', data, parse=True)
+        res = self.invoke(u'auth', uri, u'GET', urlencode(data), parse=True)
         self.logger.debug(u'Get permission : %s:%s %s' % (objtype, objdef, objid))
         return res.get(u'perms', [])
 
     def append_role_permissions(self, role, objtype, objdef, objid, 
-                                objaction, uid=None, seckey=None):
+                                objaction):
         """Append permission to role
         
         :raise BeehiveApiClientError:
@@ -981,7 +987,7 @@ class BeehiveApiClient(object):
         self.logger.debug('Get role: %s' % name)
         return res    
     
-    def add_role(self, name, desc, uid=None, seckey=None):
+    def add_role(self, name, desc):
         """Add role
         
         :raise BeehiveApiClientError:
@@ -999,7 +1005,7 @@ class BeehiveApiClient(object):
         self.logger.debug('Add role: %s' % str(name))
         return res
 
-    def remove_role(self, oid, uid=None, seckey=None):
+    def remove_role(self, oid):
         """Remove role
         
         :raise BeehiveApiClientError:
@@ -1033,7 +1039,7 @@ class BeehiveApiClient(object):
         self.logger.debug(u'Get user %s permission : %s' % (name, truncate(res)))
         return res.get(u'perms', [])
     
-    def add_user(self, name, password, desc, uid=None, seckey=None):
+    def add_user(self, name, password, desc):
         """Add user
         
         :raise BeehiveApiClientError:
@@ -1054,7 +1060,7 @@ class BeehiveApiClient(object):
         self.logger.debug(u'Add base user: %s' % str(name))
         return res    
     
-    def add_system_user(self, name, password, desc, uid=None, seckey=None):
+    def add_system_user(self, name, password, desc):
         """Add system user
         
         :raise BeehiveApiClientError:
@@ -1090,7 +1096,7 @@ class BeehiveApiClient(object):
         self.logger.debug(u'Update user: %s' % str(name))
         return res
     
-    def remove_user(self, oid, uid=None, seckey=None):
+    def remove_user(self, oid):
         """Remove user
         
         :raise BeehiveApiClientError:
@@ -1100,7 +1106,7 @@ class BeehiveApiClient(object):
         self.logger.debug(u'Remove user: %s' % str(oid))
         return res
     
-    def append_user_roles(self, oid, roles, uid=None, seckey=None):
+    def append_user_roles(self, oid, roles):
         """Append roles to user
         
         :raise BeehiveApiClientError:

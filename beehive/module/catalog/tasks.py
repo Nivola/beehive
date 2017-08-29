@@ -94,7 +94,7 @@ class CatalogJobTask(JobTask):
 # catalog refresh tasks
 #
 @task_manager.task(bind=True, base=CatalogJob)
-@job(entity_class=Catalog, module=u'CatalogModule', delta=1)
+@job(entity_class=Catalog, name=u'refresh-catalog.update', delta=1)
 def refresh_catalog(self, objid, params):
     """Create availability zone.
     
@@ -137,7 +137,7 @@ def refresh_catalog(self, objid, params):
     return True    
 
 @task_manager.task(bind=True, base=CatalogJobTask)
-@job_task(module=u'CatalogModule')
+@job_task()
 def ping_endpoint(self, params, endpoint_id):
     """
     """

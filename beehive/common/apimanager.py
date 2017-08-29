@@ -1171,7 +1171,7 @@ class ApiController(object):
                        name=entity.name, active=entity.active, 
                        desc=entity.desc, model=entity)
         self.logger.debug(u'Get %s : %s' % 
-                          (entity_class, res))
+                          (entity_class.__name__, res))
         return res
 
     def get_paginated_entities(self, entity_class, get_entities, 
@@ -1224,7 +1224,7 @@ class ApiController(object):
                 customize(res, tags=tags, *args, **kvargs)
             
             self.logger.debug(u'Get %s (total:%s): %s' % 
-                              (entity_class, total, truncate(res)))
+                              (entity_class.__name__, total, truncate(res)))
             return res, total
         except QueryError as ex:         
             self.logger.warn(ex)
@@ -1498,10 +1498,12 @@ def make_event_class(name, event_class, **kwattrs):
 
 class ApiObject(object):
     """ """
+    module = None
     objtype = u''
     objdef = u''
+    objuri = u''    
+    objname = u'object'
     objdesc = u''
-    objuri = u''
     
     update_object = None
     delete_object = None
@@ -1511,7 +1513,7 @@ class ApiObject(object):
     SYNC_OPERATION = u'CMD'
     ASYNC_OPERATION = u'JOB'
     
-    event_ref_class = ApiEvent
+    #event_ref_class = ApiEvent
     
     def __init__(self, controller, oid=None, objid=None, name=None, 
                  desc=None, active=None, model=None):
@@ -1526,13 +1528,14 @@ class ApiObject(object):
         self.desc = str2uni(desc)
         self.active = active
         
-        # object uri
-        self.objuri = u'/%s/%s/%s' % (self.controller.version, self.objuri, self.oid)
-        
         # object uuid
         self.uuid = None
         if self.model is not None:
             self.uuid = self.model.uuid        
+        
+        # object uri
+        self.objuri = u'/%s/%s/%s' % (self.controller.version, self.objuri, 
+                                      self.uuid)
         
         # child classes
         self.child_classes = []
@@ -1541,12 +1544,12 @@ class ApiObject(object):
         
         self._admin_role_prefix = u'admin'
         
-        self.event_class = make_event_class(
-            self.__class__.__module__+u'.'+self.__class__.__name__+u'Event',
-            self.event_ref_class, objdef=self.objdef, objdesc=self.objdesc)
+        #self.event_class = make_event_class(
+        #    self.__class__.__module__+u'.'+self.__class__.__name__+u'Event',
+        #    self.event_ref_class, objdef=self.objdef, objdesc=self.objdesc)
     
     def __repr__(self):
-        return "<%s id=%s objid=%s name=%s>" % (
+        return u'<%s id=%s objid=%s name=%s>' % (
                         self.__class__.__module__+'.'+self.__class__.__name__, 
                         self.oid, self.objid, self.name)
  
@@ -1823,7 +1826,6 @@ class ApiObject(object):
         self.controller.check_authorization(
             self.objtype, self.objdef, self.objid, action)    
     
-    @watch
     def authorization(self, objid=None, *args, **kvargs):
         """Get resource authorizations 
         
@@ -1890,7 +1892,6 @@ class ApiObject(object):
         if exception is not None: response = (False, escape(str(exception)))
         action = op.split(u'.')[-1]
         
-        # send event
         data = {
             u'opid':opid,
             u'op':u'%s.%s' % (self.objdef, op),
@@ -1899,8 +1900,30 @@ class ApiObject(object):
             u'elapsed':elapsed,
             u'response':response
         }
-        self.event_class(self.controller, objid=objid, data=data, action=action)\
-            .publish(self.objtype, etype)
+
+        source = {
+            u'user':operation.user[0],
+            u'ip':operation.user[1],
+            u'identity':operation.user[2]
+        }
+        
+        dest = {
+            u'ip':self.controller.module.api_manager.server_name,
+            u'port':self.controller.module.api_manager.http_socket,
+            u'objid':objid, 
+            u'objtype':self.objtype,
+            u'objdef':self.objdef,
+            u'action':action
+        }      
+        
+        # send event
+        try:
+            client = self.controller.module.api_manager.event_producer
+            client.send(etype, data, source, dest)
+        except Exception as ex:
+            self.logger.warning(u'Event can not be published. Event producer '\
+                                u'is not configured - %s' % ex)
+            
     
     '''
     def event(self, op, params, response):
@@ -2319,8 +2342,29 @@ class ApiViewResponse(ApiObject):
             u'elapsed':elapsed,
             u'response':response
         }
-        self.event_class(self.controller, objid=objid, data=data, action=action)\
-            .publish(self.objtype, self.API_OPERATION)
+
+        source = {
+            u'user':operation.user[0],
+            u'ip':operation.user[1],
+            u'identity':operation.user[2]
+        }
+        
+        dest = {
+            u'ip':self.controller.module.api_manager.server_name,
+            u'port':self.controller.module.api_manager.http_socket,
+            u'objid':objid, 
+            u'objtype':self.objtype,
+            u'objdef':self.objdef,
+            u'action':action
+        }      
+        
+        # send event
+        try:
+            client = self.controller.module.api_manager.event_producer
+            client.send(self.SYNC_OPERATION, data, source, dest)
+        except Exception as ex:
+            self.logger.warning(u'Event can not be published. Event producer '\
+                                u'is not configured - %s' % ex)            
 
 class ApiView(FlaskView):
     """ """

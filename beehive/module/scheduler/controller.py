@@ -50,6 +50,7 @@ class SchedulerController(ApiController):
         return Scheduler(self)        
         
 class Scheduler(ApiObject):
+    module = u'SchedulerModule'
     objtype = u'task'
     objdef = u'Scheduler'
     objdesc = u'Scheduler'
@@ -215,6 +216,7 @@ class Scheduler(ApiObject):
         self.redis_entries.clear()
         
 class TaskManager(ApiObject):
+    module = u'SchedulerModule'
     objtype = u'task'
     objdef = u'Manager'
     objdesc = u'Task Manager'

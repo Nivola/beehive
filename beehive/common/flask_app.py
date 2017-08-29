@@ -18,6 +18,8 @@ from beehive.common.apimanager import ApiManager, ApiManagerError
 from beehive.common.data import operation
 from beehive.common.log import ColorFormatter
 
+logger = logging.getLogger(__name__)
+
 class BeehiveAppError(Exception): pass
 class BeehiveApp(Flask):
     """Custom Flask app used to read configuration and initialize security.
@@ -51,19 +53,29 @@ class BeehiveApp(Flask):
                                         self.params[u'api_env'])        
         self.log_path = self.params.get(u'api_log', log_path)
 
-        def error(e):
-            error = {u'status':u'error', 
-                     u'api':u'',
-                     u'operation':u'',
-                     u'data':u'',
-                     u'exception':u'',
-                     u'code':str(405), 
-                     u'msg':u'Method Not Allowed'}
+        def error405(e):
+            error = {
+                u'code':405, 
+                u'message':u'Method Not Allowed',
+                u'description':u'Method Not Allowed'
+            }
+            logger.error(u'Api response: %s' % error)
             return Response(response=json.dumps(error), 
                             mimetype=u'application/json', 
                             status=405)
-
-        self._register_error_handler(None, 405, error)
+        self._register_error_handler(None, 405, error405)
+        
+        def error404(e):
+            error = {
+                u'code':404, 
+                u'message':u'Uri not found',
+                u'description':u'Uri not found'
+            }
+            logger.error(u'Api response: %s' % error)
+            return Response(response=json.dumps(error), 
+                            mimetype=u'application/json', 
+                            status=404)
+        self._register_error_handler(None, 404, error404)        
         
         # setup loggers
         self.setup_loggers()
