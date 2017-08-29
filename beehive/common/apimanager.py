@@ -1498,10 +1498,12 @@ def make_event_class(name, event_class, **kwattrs):
 
 class ApiObject(object):
     """ """
+    module = None
     objtype = u''
     objdef = u''
+    objuri = u''    
+    objname = u'object'
     objdesc = u''
-    objuri = u''
     
     update_object = None
     delete_object = None
@@ -1511,7 +1513,7 @@ class ApiObject(object):
     SYNC_OPERATION = u'CMD'
     ASYNC_OPERATION = u'JOB'
     
-    event_ref_class = ApiEvent
+    #event_ref_class = ApiEvent
     
     def __init__(self, controller, oid=None, objid=None, name=None, 
                  desc=None, active=None, model=None):
@@ -1890,7 +1892,6 @@ class ApiObject(object):
         if exception is not None: response = (False, escape(str(exception)))
         action = op.split(u'.')[-1]
         
-        # send event
         data = {
             u'opid':opid,
             u'op':u'%s.%s' % (self.objdef, op),
@@ -1899,8 +1900,30 @@ class ApiObject(object):
             u'elapsed':elapsed,
             u'response':response
         }
-        self.event_class(self.controller, objid=objid, data=data, action=action)\
-            .publish(self.objtype, etype)
+
+        source = {
+            u'user':operation.user[0],
+            u'ip':operation.user[1],
+            u'identity':operation.user[2]
+        }
+        
+        dest = {
+            u'ip':self.controller.module.api_manager.server_name,
+            u'port':self.controller.module.api_manager.http_socket,
+            u'objid':objid, 
+            u'objtype':self.objtype,
+            u'objdef':self.objdef,
+            u'action':action
+        }      
+        
+        # send event
+        try:
+            client = self.controller.module.api_manager.event_producer
+            client.send(etype, data, source, dest)
+        except Exception as ex:
+            self.logger.warning(u'Event can not be published. Event producer '\
+                                u'is not configured - %s' % ex)            
+            
     
     '''
     def event(self, op, params, response):

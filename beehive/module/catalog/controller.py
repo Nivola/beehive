@@ -160,6 +160,7 @@ class CatalogController(BaseAuthController):
         return res, total 
         
 class Catalog(AuthObject):
+    module = u'CatalogModule'
     objtype = u'directory'
     objdef = u'Catalog'
     objuri = u'catalog'
@@ -245,6 +246,7 @@ class Catalog(AuthObject):
             raise ApiManagerError(ex, code=ex.code)
 
 class CatalogEndpoint(AuthObject):
+    module = u'CatalogModule'
     objtype = u'directory'
     objdef = u'Catalog.Endpoint'
     objuri = u'dir/endpoint'

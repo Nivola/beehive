@@ -78,7 +78,7 @@ class AuthJobTask(JobTask):
 # auth tasks
 #
 @task_manager.task(bind=True, base=AuthJob)
-@job(entity_class=Catalog, module=u'AuthModule', delta=1)
+@job(entity_class=User, name=u'disable-users.update', delta=1)
 def disable_expired_users(self, objid, params):
     """Disable expired users
     
@@ -112,7 +112,7 @@ def disable_expired_users(self, objid, params):
     return True    
 
 @task_manager.task(bind=True, base=AuthJobTask)
-@job_task(module=u'AuthModule')
+@job_task()
 def disable_expired_users_task(self, options):
     """Disable expired users - task
     """
@@ -124,7 +124,7 @@ def disable_expired_users_task(self, options):
     return res
 
 @task_manager.task(bind=True, base=AuthJob)
-@job(entity_class=Catalog, module=u'AuthModule', delta=1)
+@job(entity_class=User, name=u'remove-user-roles.update', delta=1)
 def remove_expired_roles_from_users(self, objid, params):
     """Remove expired roles from users
     
@@ -158,7 +158,7 @@ def remove_expired_roles_from_users(self, objid, params):
     return True
 
 @task_manager.task(bind=True, base=AuthJobTask)
-@job_task(module=u'AuthModule')
+@job_task()
 def remove_expired_roles_from_users_task(self, options):
     """Remove expired roles from users - task
     """

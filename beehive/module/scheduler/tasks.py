@@ -15,8 +15,7 @@ logger = get_task_logger(__name__)
 # test job
 #
 @task_manager.task(bind=True, base=Job)
-@job(entity_class=TaskManager, module=u'SchedulerModule', 
-     op=u'jobtest2', act=u'insert', delta=1)
+@job(entity_class=TaskManager, name=u'jobtest2.insert', delta=1)
 def jobtest2(self, objid, params):
     """Test job
     
@@ -33,8 +32,7 @@ def jobtest2(self, objid, params):
     return True
 
 @task_manager.task(bind=True, base=Job)
-@job(entity_class=TaskManager, module=u'SchedulerModule', 
-     op=u'jobtest', act=u'insert', delta=1)
+@job(entity_class=TaskManager, name=u'jobtest.insert', delta=1)
 def jobtest(self, objid, params):
     """Test job
     
@@ -71,7 +69,7 @@ def jobtest(self, objid, params):
     return True
 
 @task_manager.task(bind=True, base=JobTask)
-@job_task(module=u'SchedulerModule')
+@job_task()
 def jobtest_task0(self, options):
     """Test job add x and y.
     Read x and y from shared data. Write mul in shared data.
@@ -93,7 +91,7 @@ def jobtest_task0(self, options):
     return res
 
 @task_manager.task(bind=True, base=JobTask)
-@job_task(module=u'SchedulerModule')
+@job_task()
 def jobtest_task1(self, options):
     """Test job sum numbers.
     Read mul_numbers from shared data. Write res in shared data.
@@ -118,7 +116,7 @@ def jobtest_task1(self, options):
     return res
 
 @task_manager.task(bind=True, base=JobTask)
-@job_task(module=u'SchedulerModule')
+@job_task()
 def jobtest_task2(self, options):
     """Test job sum numbers.
     Read mul_numbers from shared data. Write res in shared data.
@@ -141,7 +139,7 @@ def jobtest_task2(self, options):
     return True
 
 @task_manager.task(bind=True, base=JobTask)
-@job_task(module=u'SchedulerModule')
+@job_task()
 def test_invoke_job(self, options):
     """Test job jovoke another job
     
@@ -164,7 +162,7 @@ def test_invoke_job(self, options):
     self.update(u'PROGRESS', msg=u'Job %s completed' % job_id)
 
 @task_manager.task(bind=True, base=JobTask)
-@job_task(module=u'SchedulerModule')
+@job_task()
 def jobtest_task3(self, options, index):
     """Test job mul x and y.
     Read numbers and mul from shared data. Write mul_numbers item in shared data.
@@ -184,7 +182,7 @@ def jobtest_task3(self, options, index):
     return res
 
 @task_manager.task(bind=True, base=JobTask)
-@job_task(module=u'SchedulerModule')
+@job_task()
 def test_raise(self, options, index):
     """Test job mul x and y.
     Read numbers and mul from shared data. Write mul_numbers item in shared data.
@@ -196,7 +194,7 @@ def test_raise(self, options, index):
     raise Exception('iiii')
 
 @task_manager.task(bind=True, base=JobTask)
-@job_task(module=u'SchedulerModule')
+@job_task()
 def jobtest_task4(self, options):
     """Test job mul x and y.
     Read numbers and mul from shared data. Write mul_numbers item in shared data.
@@ -213,7 +211,7 @@ def jobtest_task4(self, options):
     return True
 
 @task_manager.task(bind=True, base=JobTask)
-@job_task(module=u'SchedulerModule')
+@job_task()
 def test_end(self, options):
     """Test job mul x and y.
     Read numbers and mul from shared data. Write mul_numbers item in shared data.

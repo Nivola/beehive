@@ -369,29 +369,44 @@ class Job(BaseTask):
         response = [status]
         if ex is not None:
             response.append(ex)
-        #if task_local.op is None:
-        #    logger.error(u'Task operation is not defined')
-        #    raise JobError(u'Task operation is not defined')
-        
+
         action = task_local.op.split(u'.')[-1]
         op = task_local.op
         op = op.replace(u'.%s' % action, u'')
+        entity_class = task_local.entity_class
         data={
             u'opid':task_local.opid, 
-            u'op':op,
-            u'taskid':self.request.id, 
+            u'op':u'%s.%s' % (task_local.entity_class, op),
+            u'taskid':self.request.id,
             u'task':self.name,
             u'params':self.request.args,
             u'response':response,
             u'elapsed':elapsed,
             u'msg':msg
-        }        
-        evt = ApiEvent(task_local.controller, oid=None, objid=task_local.objid,
-                       action=action, data=data)
-        entity_class = task_local.entity_class
-        evt.objtype = entity_class.objtype
-        evt.objdef = entity_class.objdef
-        evt.publish(entity_class.objtype, ApiObject.ASYNC_OPERATION)        
+        }
+        
+        source = {
+            u'user':operation.user[0],
+            u'ip':operation.user[1],
+            u'identity':operation.user[2]
+        }
+        
+        dest = {
+            u'ip':task_local.controller.module.api_manager.server_name,
+            u'port':task_local.controller.module.api_manager.http_socket,
+            u'objid':task_local.objid, 
+            u'objtype':entity_class.objtype,
+            u'objdef':entity_class.objdef,
+            u'action':action
+        }      
+        
+        # send event
+        try:
+            client = self.controller.module.api_manager.event_producer
+            client.send(ApiObject.ASYNC_OPERATION, data, source, dest)
+        except Exception as ex:
+            self.logger.warning(u'Event can not be published. Event producer '\
+                                u'is not configured - %s' % ex)     
     
     def update(self, status, ex=None, traceback=None, result=None, msg=None,
                start_time=None):
@@ -504,23 +519,22 @@ class JobTask(Job):
     abstract = True
     inner_type = 'JOBTASK'
         
-def job(entity_class=None, job_name=None, module=None, delta=5, op=None, 
-        act=u'use'):
+def job(entity_class=None, name=None, module=None, delta=2):
+    #, op=None, act=u'use'):
     """Decorator used for workflow main task.
     
     Example::
     
-        @job(entity_class=OpenstackSecurityGroup, 
-             job_name='openstack.securitygroup.insert', 
+        @job(entity_class=OpenstackSecurityGroup, name='insert',
              module='ResourceModule', delta=5)
         def func(self, objid, *args, **kwargs):
             pass
 
     :param entity_class: resource class
-    :param job_name: job name [optional]
+    :param name: job name [optional]
     :param op: operation [default=None]
     :param act: action (insert, update, delete, view, use) [default=use]
-    :param module: beehive module 
+    :param module: beehive module [optional] 
     :param delta: delta time to use when pull remote resource status
     """
     def wrapper(fn):
@@ -544,23 +558,28 @@ def job(entity_class=None, job_name=None, module=None, delta=5, op=None,
             operation.session = None
             operation.transaction = None 
             
-            if module != None:
+            if entity_class.module is not None:
+                mod = task.app.api_manager.modules[entity_class.module]
+                task_local.controller = mod.get_controller()            
+            elif module is not None:
                 mod = task.app.api_manager.modules[module]
                 task_local.controller = mod.get_controller()
-            
+                
             task_local.entity_class = entity_class
             task_local.objid = args[1]
-            task_local.op = job_name
+            task_local.op = name
             task_local.opid = task.request.id
             #task_local.start = time()
             task_local.delta = delta
             task_local.user = operation.user
             
+            '''
             if task_local.op is None:
                 if op is None:
                     task_local.op = u'%s.%s' % (entity_class.objdef, act)
                 else:
-                    task_local.op = u'%s.%s.%s' % (entity_class.objdef, op, act)            
+                    task_local.op = u'%s.%s.%s' % (entity_class.objdef, op, act)
+            '''          
             
             # record PENDING task and set start-time
             start_time = time()
@@ -588,7 +607,7 @@ def job(entity_class=None, job_name=None, module=None, delta=5, op=None,
         return decorated_view
     return wrapper
 
-def job_task(module=''):
+def job_task(module=u''):
     """Decorator used for workflow child task.
     
     Example::
@@ -597,19 +616,23 @@ def job_task(module=''):
         def func(self, options, *args, **kwargs):
             pass
 
-    :param module: cloudapi module
+    :param module: beehive module [optional]
     """
     def wrapper(fn):
         @wraps(fn)
         def decorated_view(*args, **kwargs):
             task = args[0]
             params = args[1]
+            entity_class = import_class(params[0])
             
-            if module != None:
+            if entity_class.module is not None:
+                mod = task.app.api_manager.modules[entity_class.module]
+                task_local.controller = mod.get_controller()            
+            elif module is not None:
                 mod = task.app.api_manager.modules[module]
                 task_local.controller = mod.get_controller()
             
-            task_local.entity_class = import_class(params[0])
+            task_local.entity_class = entity_class
             task_local.objid = params[1]
             task_local.op = params[2]
             task_local.opid = params[3]
