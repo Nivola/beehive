@@ -41,12 +41,12 @@ operation.user = None # (username, userip, uid)
 operation.perms = None
 operation.transaction = None
 
-def netsted_transaction(fn):
+def transaction(fn):
     """Use this decorator to transform a function that contains delete, insert
     and update statement in a transaction.
     """
     @wraps(fn)
-    def netsted_transaction_inner(*args, **kwargs): #1
+    def nested_transaction_inner(*args, **kwargs): #1
         start = time()
         stmp_id = id_gen()
         session = operation.session
@@ -149,7 +149,7 @@ def netsted_transaction(fn):
             rollback(session, commit)
             raise TransactionError(ex, code=400)
 
-    return netsted_transaction_inner
+    return nested_transaction_inner
 
 def rollback(session, status):
     if status is True:
@@ -157,6 +157,7 @@ def rollback(session, status):
         logger.warn(u'Rollback transaction %s' % operation.transaction)
         operation.transaction = None        
 
+'''
 def transaction(fn):
     """Use this decorator to transform a function that contains delete, insert
     and update statement in a transaction.
@@ -238,7 +239,7 @@ def transaction(fn):
             session.rollback()
             raise TransactionError(ex)
 
-    return transaction_inner
+    return transaction_inner'''
 
 def query(fn):
     """Use this decorator to transform a function that contains delete, insert
