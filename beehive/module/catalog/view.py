@@ -265,7 +265,7 @@ class GetEndpointPerms(SwaggerApiView):
     })
     
     def get(self, controller, data, oid, *args, **kwargs):
-        endpoint = controller.get_cget_endpointatalog(oid)
+        endpoint = controller.get_endpoint(oid)
         res, total = endpoint.authorization(**data)
         return self.format_paginated_response(res, u'perms', total, **data)    
 
@@ -302,7 +302,7 @@ class CreateEndpoint(SwaggerApiView):
     def post(self, controller, data, *args, **kwargs):
         data = data.get(u'endpoint')
         endpoint = data.pop(u'catalog')
-        endpoint_obj = controller.get_catalog(catalog)
+        endpoint_obj = controller.get_catalog(endpoint)
         resp = endpoint_obj.add_endpoint(**data)
         return ({u'uuid':resp}, 201)
 

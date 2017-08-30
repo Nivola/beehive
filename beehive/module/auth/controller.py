@@ -807,13 +807,14 @@ class Objects(AuthObject):
             raise ApiManagerError(u'Permission %s not found' % (oid), code=404)
 
     @trace(op=u'perms.view')
-    def get_permissions(self, objid=None, subsystem=None, 
-            type=None, page=0, size=10, order=u'DESC', field=u'id',
-            **kvargs):
+    def get_permissions(self, objid=None, subsystem=None, type=None, 
+                        cascade=True, page=0, size=10, order=u'DESC', 
+                        field=u'id', **kvargs):
         """Get system object permisssions with roles.
-        TODO: manage permission and role query with a single model function
         
         :param objid: Total or partial objid [optional]
+        :param cascade: If true filter by objid and childs until 
+            objid+'//*//*//*//*//*//*'. Require objid and type [optional]
         :param subsystem str: Object type [optional]
         :param type str: Object definition [optional]
         :param page: perm list page to show [default=0]
@@ -828,19 +829,26 @@ class Objects(AuthObject):
         
         try:
             res = []
-            perms, total = self.manager.get_permissions(
-                            objid=objid, objid_filter=None, objtype=subsystem, 
-                            objdef=type, objdef_filter=None, action=None,
-                            page=page, size=size, order=order, field=field)
+            if cascade is True:
+                objids = [
+                    objid, 
+                    objid+u'//*',
+                    objid+u'//*//*',
+                    objid+u'//*//*//*',
+                    objid+u'//*//*//*//*',
+                    objid+u'//*//*//*//*//*',
+                    objid+u'//*//*//*//*//*//*'
+                ]
+                perms, total = self.auth_db_manager.get_deep_permissions(
+                        objids=objids, objtype=type)            
+            
+            else:
+                perms, total = self.manager.get_permissions(
+                    objid=objid, objid_filter=None, objtype=subsystem, 
+                    objdef=type, objdef_filter=None, action=None,
+                    page=page, size=size, order=order, field=field)
                 
             for p in perms:
-                '''try:
-                    roles = [{u'id':r.id, 
-                              u'name':r.name, 
-                              u'desc':r.desc} for r in 
-                             self.manager.get_permission_roles(p)]
-                except:
-                    roles = []'''
                 res.append({
                     u'id':p.id, 
                     u'oid':p.obj.id, 

@@ -935,25 +935,29 @@ class BeehiveApiClient(object):
         self.logger.debug(u'Get permission : %s:%s %s' % (objtype, objdef, objid))
         return res
     
-    def get_permissions(self, objtype, objdef, objid, **kvargs):
+    def get_permissions(self, objtype, objdef, objid, cascade=False, **kvargs):
         """Get object permissions
         
         :param objtype: objtype
         :param objdef: objdef
         :param objid: objid
+        :param cascade: If true filter by objid and childs until 
+            objid+'//*//*//*//*//*//*'
         :param kvargs: kvargs
         :raise BeehiveApiClientError:
         """
         data = {
             u'subsystem':objtype,
             u'type':objdef,
-            u'objid':objid
+            u'objid':objid,
+            u'cascade':cascade
         }
         data.update(kvargs)
         uri = u'/v1.0/auth/objects/perms'
         res = self.invoke(u'auth', uri, u'GET', urlencode(data), parse=True)
-        self.logger.debug(u'Get permission : %s:%s %s' % (objtype, objdef, objid))
-        return res.get(u'perms', [])
+        self.logger.debug(u'Get permission : %s:%s %s, cascade: %s' % 
+                          (objtype, objdef, objid, cascade))
+        return res.get(u'perms'), res.get(u'total')
 
     def append_role_permissions(self, role, objtype, objdef, objid, 
                                 objaction):

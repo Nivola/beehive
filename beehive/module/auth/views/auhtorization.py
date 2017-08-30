@@ -1831,6 +1831,11 @@ class ListObjectPerms(ApiView):
             required: false
             description: Filter object by objid
             type: string
+          - name: cascade
+            in: query
+            required: false
+            description: If true filter by objid and childs until objid+'//*//*//*//*//*//*'
+            type: string            
           - name: role
             in: query
             required: false
@@ -1955,25 +1960,6 @@ class ListObjectPerms(ApiView):
                         type: string
                         example: view                 
         """
-        '''  
-        objtype = request.args.get(u'subsystem', None)
-        objdef = request.args.get(u'type', None)
-        objid = request.args.get(u'objid', None)
-        user = request.args.get(u'user', None)
-        role = request.args.get(u'role', None)
-        group = request.args.get(u'group', None)
-        page = request.args.get(u'page', 0)
-        size = request.args.get(u'size', 10)
-        order = request.args.get(u'order', u'DESC')
-        field = request.args.get(u'field', u'id')
-        if field not in [u'subsystem', u'type', u'id', u'objid', u'aid', 
-                         u'action']:
-            field = u'id'
-        if field == u'subsystem':
-            field = u'objtype'
-        elif field == u'type':
-            field = u'objdef' 
-        '''
         user = data.get(u'user', None)
         role = data.get(u'role', None)
         group = data.get(u'group', None)

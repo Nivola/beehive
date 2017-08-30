@@ -70,7 +70,9 @@ class BeehiveTestCase(unittest.TestCase):
         certfile = None
 
         # load config
-        config = self.load_config(u'%s/params.json' % path)
+        #config = self.load_config(u'%s/params.json' % path)
+        home = os.path.expanduser(u'~')
+        config = self.load_config(u'%s/beehive.json' % home)
         
         env = config.get(u'env')
         current_schema = config.get(u'schema')
@@ -88,7 +90,7 @@ class BeehiveTestCase(unittest.TestCase):
         self.broker = cfg.get(u'broker')
         
         # mysql connection
-        self.db_uri = cfg.get(u'db-uris').get(current_schema)   
+        self.db_uris = cfg.get(u'db-uris')  
         
         # get users
         self.users = cfg.get(u'users')
