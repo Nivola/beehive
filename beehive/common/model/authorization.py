@@ -20,7 +20,7 @@ from beecell.perf import watch
 from beecell.simple import truncate, id_gen
 from beecell.db import ModelError, QueryError
 from uuid import uuid4
-from beehive.common.data import operation, query, netsted_transaction
+from beehive.common.data import operation, query, transaction
 
 Base = declarative_base()
 
@@ -354,7 +354,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
     def set_initial_data(self):
         """Set initial data.
         """
-        @netsted_transaction(self.get_session())
+        @transaction(self.get_session())
         def func(session):
             # object actions
             actions = [u'*', u'view', u'insert', u'update', u'delete', u'use']
@@ -410,7 +410,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug('Get object types: %s' % truncate(ot))
         return ot, total
 
-    @netsted_transaction
+    @transaction
     def add_object_types(self, items):
         """Add a list of system object types.
         
@@ -436,7 +436,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug(u'Add object types: %s' % data)
         return data
 
-    @netsted_transaction
+    @transaction
     def remove_object_type(self, oid=None, objtype=None, objdef=None):
         """Remove system object type.
         
@@ -491,7 +491,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug('Get object action: %s' % truncate(oa))
         return oa
 
-    @netsted_transaction
+    @transaction
     def add_object_actions(self, items):
         """Add a list of system object actions.
         
@@ -510,7 +510,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug('Add object action: %s' % data)
         return data
 
-    @netsted_transaction
+    @transaction
     def remove_object_action(self, oid=None, value=None):
         """Remove system object action.
         
@@ -610,7 +610,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug(u'Get objects: %s' % truncate(res))
         return res, total
 
-    @netsted_transaction
+    @transaction
     def add_object(self, objs, actions):
         """Add a system object.
         
@@ -645,7 +645,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         
         return sysobj
 
-    @netsted_transaction
+    @transaction
     def update_object(self, new_objid, oid=None, objid=None, objtype=None):
         """Delete system object filtering by id, by name or by type.
         
@@ -676,7 +676,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug('Update objects: %s' % data)
         return True
 
-    @netsted_transaction
+    @transaction
     def remove_object(self, oid=None, objid=None, objtype=None):
         """Delete system object filtering by id, by name or by type.
         
@@ -1107,7 +1107,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         return res
 
     '''
-    @netsted_transaction
+    @transaction
     def update_role(self, oid=None, objid=None, name=None, new_name=None, 
                     new_desc=None):
         """Update a role.
@@ -1148,7 +1148,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug('Update role %s with data %s' % (name, data))
         return True
     
-    @netsted_transaction
+    @transaction
     def remove_role(self, role_id=None, name=None):
         """Remove a role. Specify at least role id or role name.
         
@@ -1173,7 +1173,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             self.logger.error("No role found")
             raise ModelError('No role found')'''
 
-    @netsted_transaction
+    @transaction
     def append_role_permissions(self, role, perms):
         """Append permission to role
         
@@ -1197,7 +1197,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug(u'Append to role %s permissions: %s' % (role, perms))
         return append_perms
     
-    @netsted_transaction
+    @transaction
     def remove_role_permission(self, role, perms):
         """Remove permission from role
  
@@ -1403,7 +1403,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug(u'Get group %s perms : %s' % (group, truncate(perms)))
         return perms'''
     
-    @netsted_transaction
+    @transaction
     def add_group(self, objid, name, desc=u'', members=[], roles=[], 
                   active=True, expiry_date=None):
         """Add group.
@@ -1448,7 +1448,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         return res   
     
     '''
-    @netsted_transaction
+    @transaction
     def update_group(self, oid=None, new_name=None, new_desc=None):
         """Update a group.
         
@@ -1473,7 +1473,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug('Update group %s with data : %s' % (oid, data))
         return True
         
-    @netsted_transaction
+    @transaction
     def remove_group(self, group_id=None, name=None):
         """Remove a group. Specify at least group id or group name.
         
@@ -1499,7 +1499,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         
         return True'''
          
-    @netsted_transaction
+    @transaction
     def append_group_role(self, group, role, expiry_date=None):
         """Append a role to an group
         
@@ -1527,7 +1527,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             self.logger.debug(u'Append group %s role: %s' % (group, role))
             return role.id
 
-    @netsted_transaction
+    @transaction
     def remove_group_role(self, group, role):
         """Remove role from group
  
@@ -1550,7 +1550,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             self.logger.warn(u'Role %s doesn''t exists in group %s' % (role, group))
             return False
         
-    @netsted_transaction
+    @transaction
     def append_group_user(self, group, user):
         """Append a user to an group
         
@@ -1570,7 +1570,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             self.logger.debug(u'Append user %s role : %s' % (group, user))
             return user.id
 
-    @netsted_transaction
+    @transaction
     def remove_group_user(self, group, user):
         """Remove user from group
  
@@ -1827,7 +1827,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug(u'Verify user %s password: %s' % (user, res))
         return res
 
-    @netsted_transaction
+    @transaction
     def add_user(self, objid, name, active=True, password=None, 
                  desc=u'', expiry_date=None, is_generic=False, is_admin=False):
         """Add user.
@@ -1887,7 +1887,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         res = self.update_entity(User, *args, **kvargs)
         return res  
     
-    @netsted_transaction
+    @transaction
     def remove_user(self, *args, **kvargs):
         """Remove user.
         
@@ -1918,7 +1918,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         
         return res
     
-    @netsted_transaction
+    @transaction
     def expire_users(self, expiry_date):
         """Disable a user that is expired.
         
@@ -1934,7 +1934,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug(u'Disable exipred users: %s' % (res))
         return res    
         
-    @netsted_transaction
+    @transaction
     def append_user_role(self, user, role, expiry_date=None):
         """Append a role to an user
         
@@ -1962,7 +1962,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             self.logger.debug(u'Append user %s role: %s' % (user, role))
             return role.id
     
-    @netsted_transaction
+    @transaction
     def remove_user_role(self, user, role):
         """Remove role from user
  
@@ -1985,7 +1985,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             self.logger.warn(u'Role %s doesn''t exists in user %s' % (role, user))
             return False
         
-    @netsted_transaction
+    @transaction
     def remove_expired_user_role(self, expiry_date):
         """Remove roles from users where association is expired
  
@@ -2007,7 +2007,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug(u'Remove expired roles from users: %s' % (res))
         return res
         
-    @netsted_transaction
+    @transaction
     def set_user_attribute(self, user, name, value=None, desc=None, new_name=None):
         """Append an attribute to a user
         
@@ -2042,7 +2042,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             self.logger.debug('Append user %s attribute: %s' % (user.name, attrib))
         return attrib
     
-    @netsted_transaction
+    @transaction
     def remove_user_attribute(self, user, name):
         """Remove an attribute from a user
  

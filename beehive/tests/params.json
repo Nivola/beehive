@@ -14,7 +14,8 @@
         "broker":"redis://10.102.184.51:6379/1",
         "endpoints":{
             "auth":"http://10.102.184.52:6060",
-            "event":"http://10.102.184.52:6070"
+            "event":"http://10.102.184.52:6070",
+            "resource":"http://10.102.184.52:6090"        
         },
         "users":{
             "admin1":{
@@ -45,8 +46,6 @@
         "broker":"redis://10.102.160.240:6379/1",
         "redis-uri":"localhost;6379;0",
         "endpoints":{
-            "event":"http://10.102.184.52:6070",
-            "resource":"http://10.102.184.52:6090",
             "resource2":"http://10.102.184.52:6062",
             "service":"http://10.102.184.52:6110",
             "monitor":"http://10.102.184.52:6080",

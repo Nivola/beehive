@@ -41,7 +41,7 @@ operation.user = None # (username, userip, uid)
 operation.perms = None
 operation.transaction = None
 
-def netsted_transaction(fn):
+def transaction(fn):
     """Use this decorator to transform a function that contains delete, insert
     and update statement in a transaction.
     """
@@ -157,6 +157,7 @@ def rollback(session, status):
         logger.warn(u'Rollback transaction %s' % operation.transaction)
         operation.transaction = None        
 
+'''
 def transaction(fn):
     """Use this decorator to transform a function that contains delete, insert
     and update statement in a transaction.
@@ -238,7 +239,7 @@ def transaction(fn):
             session.rollback()
             raise TransactionError(ex)
 
-    return transaction_inner
+    return transaction_inner'''
 
 def query(fn):
     """Use this decorator to transform a function that contains delete, insert
