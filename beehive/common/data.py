@@ -45,8 +45,9 @@ def transaction(fn):
     """Use this decorator to transform a function that contains delete, insert
     and update statement in a transaction.
     """
+    
     @wraps(fn)
-    def netsted_transaction_inner(*args, **kwargs): #1
+    def nested_transaction_inner(*args, **kwargs): #1
         start = time()
         stmp_id = id_gen()
         session = operation.session
@@ -149,7 +150,7 @@ def transaction(fn):
             rollback(session, commit)
             raise TransactionError(ex, code=400)
 
-    return netsted_transaction_inner
+    return nested_transaction_inner
 
 def rollback(session, status):
     if status is True:
