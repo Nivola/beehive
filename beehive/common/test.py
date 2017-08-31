@@ -70,9 +70,12 @@ class BeehiveTestCase(unittest.TestCase):
         certfile = None
 
         # load config
-        #config = self.load_config(u'%s/params.json' % path)
-        home = os.path.expanduser(u'~')
-        config = self.load_config(u'%s/beehive.json' % home)
+        try:
+            #config = self.load_config(u'%s/params.json' % path)
+            home = os.path.expanduser(u'~')
+            config = self.load_config(u'%s/beehive.json' % home)
+        except:
+            raise Exception(u'Test config file beehive.json was not find in user home')
         
         env = config.get(u'env')
         current_schema = config.get(u'schema')

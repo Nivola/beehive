@@ -279,6 +279,11 @@ class Job(BaseTask):
                task_local.entity_class.__name__
     
     def get_options(self):
+        """Return tupla with some useful options.
+        
+        :return:  (class_name, objid, job, job id, start time, 
+                   time before new query, user) 
+        """
         options = (self.get_entity_class_name(), task_local.objid, 
                    task_local.op, task_local.opid, None, 
                    task_local.delta, task_local.user)
@@ -346,8 +351,8 @@ class Job(BaseTask):
 
         # store job data
         msg = None
-        TaskResult.store(task_local.opid, status=status, retval=retval, 
-                         inner_type=u'JOB', traceback=traceback, 
+        TaskResult.store(task_local.opid, status=status, 
+                         retval=retval, inner_type=u'JOB', traceback=traceback, 
                          stop_time=current_time, start_time=start_time, 
                          msg=msg)
         if status == u'FAILURE':
@@ -376,7 +381,7 @@ class Job(BaseTask):
         entity_class = task_local.entity_class
         data={
             u'opid':task_local.opid, 
-            u'op':u'%s.%s' % (task_local.entity_class, op),
+            u'op':u'%s.%s' % (task_local.entity_class.objdef, op),
             u'taskid':self.request.id,
             u'task':self.name,
             u'params':self.request.args,
@@ -432,7 +437,11 @@ class Job(BaseTask):
         elapsed = current_time - float(job_start_time)
         
         # update job
-        self.update_job(params, status, current_time, ex, traceback, result, msg)
+        jobstatus = status
+        if status == u'STARTED':
+            jobstatus = u'PROGRESS'
+        self.update_job(params, jobstatus, current_time, ex, traceback, 
+                        result, msg)
         
         # log message
         if msg is not None:
@@ -446,8 +455,8 @@ class Job(BaseTask):
         # update jobtask result
         task_id = self.request.id
         TaskResult.store(task_id, status=status, traceback=traceback,
-                         retval=result, msg=msg, stop_time=current_time,
-                         start_time=start_time)
+                         retval=result, msg=msg, stop_time=current_time, 
+                         start_time=start_time, inner_type=u'JOBTASK')
          
         #if status == u'PROGRESS' and not self.request.called_directly:
         #    self.update_state(state=u'PROGRESS', meta={u'elapsed': elapsed})
@@ -539,8 +548,8 @@ def job(entity_class=None, name=None, module=None, delta=2):
     """
     def wrapper(fn):
         @wraps(fn)
-        def decorated_view(*args, **kwargs):
-            task = args[0]
+        def decorated_view(task, objid, *args, **kwargs):
+            #task = args[0]
 
             # setup correct user
             try:
@@ -566,10 +575,9 @@ def job(entity_class=None, name=None, module=None, delta=2):
                 task_local.controller = mod.get_controller()
                 
             task_local.entity_class = entity_class
-            task_local.objid = args[1]
+            task_local.objid = objid
             task_local.op = name
             task_local.opid = task.request.id
-            #task_local.start = time()
             task_local.delta = delta
             task_local.user = operation.user
             
@@ -582,8 +590,8 @@ def job(entity_class=None, name=None, module=None, delta=2):
             '''          
             
             # record PENDING task and set start-time
-            start_time = time()
             status = u'STARTED'
+            start_time = time()
             params = {
                 u'start-time':start_time,
                 u'job-status':status
@@ -592,16 +600,12 @@ def job(entity_class=None, name=None, module=None, delta=2):
             task.update_job(params, status, start_time, start_time=start_time)
             
             # send event
-            task.send_job_event(status, 0, ex=None, msg=None)            
+            task.send_job_event(status, 0, ex=None, msg=None)
             
-            #TaskResult.store(task.request.id, status=status, retval=None,
-            #                 start_time=start_time, traceback=None, 
-            #                 inner_type=u'JOB')
-            
-            #logger.debug(u'Job %s - master task %s' % (task_local.op, 
-            #                                           task_local.opid))            
-            #res = fn(*args, **kwargs)
-            res = fn(*args)
+            #task.update_job(params, u'PROGRESS', time())
+                   
+            res = fn(task, objid, *args, **kwargs)
+            #res = fn(*args)
             #task.update(u'STARTED')
             return res
         return decorated_view
@@ -620,9 +624,9 @@ def job_task(module=u''):
     """
     def wrapper(fn):
         @wraps(fn)
-        def decorated_view(*args, **kwargs):
-            task = args[0]
-            params = args[1]
+        def decorated_view(task, params, *args, **kwargs):
+            #task = args[0]
+            #params = args[1]
             entity_class = import_class(params[0])
             
             if entity_class.module is not None:
@@ -645,36 +649,10 @@ def job_task(module=u''):
             operation.session = None
             operation.transaction = None       
 
+            task.update(u'STARTED', start_time=time(), 
+                        msg=u'Start jobtask %s.%s' % (task.name, task.request.id))
             #task.update(u'PROGRESS')
-            #logger.debug(u'Job %s - child task %s.%s' % (task_local.op, 
-            #                                             task_local.opid, 
-            #                                             task.request.id))
-            
-            # record PENDING task and set start-time
-            status = u'PROGRESS'
-            task.update(status, start_time=time(), msg=u'Start jobtask %s.%s' % (task.name, task.request.id))
-            '''start_time = time()            
-            TaskResult.store(task.request.id, status=u'STARTED', retval=None,
-                             start_time=start_time, traceback=None,
-                             inner_type=u'JOBTASK')'''
-            res = fn(*args, **kwargs)
+            res = fn(task, params, *args, **kwargs)
             return res
         return decorated_view
     return wrapper
-
-'''
-def create_job(tasks, *args):
-    """
-    """
-    process = tasks.pop().si(*args)
-    last_task = None
-    for task in tasks:
-        if isinstance(task, list):
-            item = chord(task, last_task)
-        else:
-            item = task.si(*args)
-            if last_task is not None:
-                item.link(last_task)
-        last_task = item
-    process.link(last_task)
-    return process'''

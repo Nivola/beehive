@@ -8,6 +8,7 @@ from beehive.common.data import operation
 from beehive.common.task.job import JobTask, job_task, job, Job
 from beehive.common.task.manager import task_manager
 from beehive.module.scheduler.controller import TaskManager
+from beehive.common.task.util import end_task
 
 logger = get_task_logger(__name__)
 
@@ -16,50 +17,52 @@ logger = get_task_logger(__name__)
 #
 @task_manager.task(bind=True, base=Job)
 @job(entity_class=TaskManager, name=u'jobtest2.insert', delta=1)
-def jobtest2(self, objid, params):
+def jobtest2(self, objid, suberror=False):
     """Test job
     
-    :param objid: objid of the task manager. Ex. 110//2222//334//*
-    :param params: task input params  
+    :param objid: objid. Ex. 110//2222//334//*
+    :param suberror: if True task rise error
     """
     ops = self.get_options()
-    self.set_shared_data(params)
+    self.set_shared_data({u'suberror':suberror})
     
     Job.create([
-        test_end,
+        end_task,
         jobtest_task4
     ], ops).delay()
     return True
 
 @task_manager.task(bind=True, base=Job)
 @job(entity_class=TaskManager, name=u'jobtest.insert', delta=1)
-def jobtest(self, objid, params):
+def jobtest(self, objid, x=0, y=0, numbers=[], error=False, suberror=False):
     """Test job
     
-    :param objid: objid of the cloud domain. Ex. 110//2222//334//*
-    :param params: task input params
-    
-                    {u'x':.., 
-                     u'y':..,
-                     u'numbers':[], 
-                     u'mul_numbers':[], 
-                     u'error':True,
-                     u'suberror':True}
+    :param objid: objid. Ex. 110//2222//334//*
+    :param x: x
+    :param y: y
+    :param numbers: numbers
+    :param error: error
+    :param suberror: suberror
     """
     ops = self.get_options()
-    params[u'suberror'] = params.get(u'suberror', False)
-    self.set_shared_data(params)
+    self.set_shared_data({
+        u'x':x,
+        u'y':y,
+        u'numbers':numbers,
+        u'error':error,
+        u'suberror':suberror
+    })
     
-    numbers = params[u'numbers']
     g1 = []
     for i in range(0,len(numbers)):
         g1.append(jobtest_task3.si(ops, i))
-    if params[u'error'] is True:
-        g1.append(test_raise.si(ops, i))
+    if error is True:
+        g1.append(test_raise.si(ops))
     
     g1.append(test_invoke_job.si(ops))
 
     j = Job.create([
+        end_task,
         jobtest_task2,
         jobtest_task1,
         g1,
@@ -71,11 +74,11 @@ def jobtest(self, objid, params):
 @task_manager.task(bind=True, base=JobTask)
 @job_task()
 def jobtest_task0(self, options):
-    """Test job add x and y.
-    Read x and y from shared data. Write mul in shared data.
+    """Test job add x and y. Read x and y from shared data. Write mul in 
+    shared data.
     
-    :param options: tupla that must contain (class_name, objid, job, job id, 
-                                             start time, time before new query)
+    :param options: :param tupla options: Tupla with some useful options.
+        (class_name, objid, job, job id, start time, time before new query, user)
     """
     data = self.get_shared_data()
     x = data[u'x']
@@ -94,10 +97,9 @@ def jobtest_task0(self, options):
 @job_task()
 def jobtest_task1(self, options):
     """Test job sum numbers.
-    Read mul_numbers from shared data. Write res in shared data.
     
-    :param options: tupla that must contain (class_name, objid, job, job id, 
-                                             start time, time before new query)
+    :param options: :param tupla options: Tupla with some useful options.
+        (class_name, objid, job, job id, start time, time before new query, user))
     """
     res = 0
     data = 0
@@ -121,21 +123,13 @@ def jobtest_task2(self, options):
     """Test job sum numbers.
     Read mul_numbers from shared data. Write res in shared data.
     
-    :param options: tupla that must contain (class_name, objid, job, job id, 
-                                             start time, time before new query)
+    :param options: :param tupla options: Tupla with some useful options.
+        (class_name, objid, job, job id, start time, time before new query, user)
     """
     data = self.get_shared_data()
-    numbers = data[u'mul_numbers']
-    res = sum(numbers)
-    
-    # save data. Shared data must be re-kept before save modification because 
-    # concurrent tasks can change its content during task elaboration 
-    data = self.get_shared_data()
-    data[u'res'] = res
+    data[u'res'] = data[u'res'] + 10
     self.set_shared_data(data)
-    self.update(u'PROGRESS', msg=u'sum2 %s' % data)
-    #raise Exception('prova')
-    self.update(u'SUCCESS')
+    self.update(u'PROGRESS', msg=u'%s' % data)
     return True
 
 @task_manager.task(bind=True, base=JobTask)
@@ -143,8 +137,8 @@ def jobtest_task2(self, options):
 def test_invoke_job(self, options):
     """Test job jovoke another job
     
-    :param options: tupla that must contain (class_name, objid, job, job id, 
-                                             start time, time before new query)
+    :param options: :param tupla options: Tupla with some useful options.
+        (class_name, objid, job, job id, start time, time before new query, user)
     """
     params = self.get_shared_data()
     data = (u'*', params)
@@ -153,7 +147,7 @@ def test_invoke_job(self, options):
         u'server':operation.user[1], 
         u'identity':operation.user[2]
     }
-    job = jobtest2.apply_async(data, user)
+    job = jobtest2.apply_async(data, **user)
     job_id = job.id
     self.update(u'PROGRESS')
     
@@ -167,9 +161,9 @@ def jobtest_task3(self, options, index):
     """Test job mul x and y.
     Read numbers and mul from shared data. Write mul_numbers item in shared data.
     
-    :param options: tupla that must contain (class_name, objid, job, job id, 
-                                             start time, time before new query)
-    :param index: index of item in numbers list
+    :param options: :param tupla options: Tupla with some useful options.
+        (class_name, objid, job, job id, start time, time before new query, user)
+    :param index: index of item in numbers list        
     """
     data = self.get_shared_data()
     numbers = data[u'numbers']
@@ -183,13 +177,12 @@ def jobtest_task3(self, options, index):
 
 @task_manager.task(bind=True, base=JobTask)
 @job_task()
-def test_raise(self, options, index):
+def test_raise(self, options):
     """Test job mul x and y.
     Read numbers and mul from shared data. Write mul_numbers item in shared data.
     
-    :param options: tupla that must contain (class_name, objid, job, job id, 
-                                             start time, time before new query)
-    :param index: index of item in numbers list
+    :param options: :param tupla options: Tupla with some useful options.
+        (class_name, objid, job, job id, start time, time before new query, user)
     """
     raise Exception('iiii')
 
@@ -199,26 +192,12 @@ def jobtest_task4(self, options):
     """Test job mul x and y.
     Read numbers and mul from shared data. Write mul_numbers item in shared data.
     
-    :param options: tupla that must contain (class_name, objid, job, job id, 
-                                             start time, time before new query)
-    :param index: index of item in numbers list
+    :param options: :param tupla options: Tupla with some useful options.
+        (class_name, objid, job, job id, start time, time before new query, user)
     """
     params = self.get_shared_data()
     if params[u'suberror'] is True:
         logger.error(u'Test error')
         raise Exception(u'Test error')
     logger.warn(u'hello')
-    return True
-
-@task_manager.task(bind=True, base=JobTask)
-@job_task()
-def test_end(self, options):
-    """Test job mul x and y.
-    Read numbers and mul from shared data. Write mul_numbers item in shared data.
-    
-    :param options: tupla that must contain (class_name, objid, job, job id, 
-                                             start time, time before new query)
-    :param index: index of item in numbers list
-    """
-    self.update(u'SUCCESS')
     return True

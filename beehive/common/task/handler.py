@@ -131,6 +131,16 @@ class TaskResult(object):
             
         logout(u'Save %s %s result: %s' % (inner_type, task_id, truncate(data)))
 
+        if status == u'STARTED':
+            logout(u'============= %s - %s - STARTED =============' % 
+                   (inner_type, task_id))
+        elif status == u'SUCCESS':
+            logout(u'============= %s - %s - SUCCESS =============' % 
+                   (inner_type, task_id))            
+        elif status == u'FAILURE':
+            logout(u'============= %s - %s - FAILURE =============' % 
+                   (inner_type, task_id)) 
+
         return None
     
     @staticmethod

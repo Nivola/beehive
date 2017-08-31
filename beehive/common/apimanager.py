@@ -1814,17 +1814,19 @@ class ApiObject(object):
         #        role, u'event', self.objdef,
         #        self._get_value(self.objdef, args), u'view')
     
-    def verify_permisssions(self, action):
+    def verify_permisssions(self, action, authorize=True):
         """Short method to verify permissions.
         
-        :parm action: action to verify. Can be *, view, insert, update, delete, 
+        :param authorize: if True check authorization
+        :param action: action to verify. Can be *, view, insert, update, delete, 
             use
         :return: True if permissions overlap
         :raise ApiManagerError:
         """        
         # check authorization
-        self.controller.check_authorization(
-            self.objtype, self.objdef, self.objid, action)    
+        if authorize is True:
+            self.controller.check_authorization(
+                self.objtype, self.objdef, self.objid, action)
     
     def authorization(self, objid=None, *args, **kvargs):
         """Get resource authorizations 
@@ -2007,9 +2009,10 @@ class ApiObject(object):
     # update, delete
     #
     @trace(op=u'update')
-    def update(self, *args, **kvargs):
+    def update(self, authorize=True, *args, **kvargs):
         """Update entity.
         
+        :param authorize: if True check authorization
         :param args: [optional]
         :param kvargs: [optional]
         :return: entity uuid
@@ -2020,7 +2023,7 @@ class ApiObject(object):
                                   (self.objtype, self.objdef))
         
         # verify permissions
-        self.verify_permisssions(u'update')
+        self.verify_permisssions(u'update', authorize=authorize)
                 
         try:  
             res = self.update_object(oid=self.oid, *args, **kvargs)
@@ -2035,9 +2038,10 @@ class ApiObject(object):
             raise ApiManagerError(ex, code=ex.code)
 
     @trace(op=u'delete')
-    def delete(self):
+    def delete(self, authorize=True):
         """Delete entity.
         
+        :param authorize: if True check authorization
         :return: True if role deleted correctly
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
@@ -2047,7 +2051,7 @@ class ApiObject(object):
                                   (self.objtype, self.objdef))        
         
         # verify permissions
-        self.verify_permisssions(u'delete')
+        self.verify_permisssions(u'delete', authorize=authorize)
                 
         try:  
             res = self.delete_object(oid=self.oid)

@@ -13,7 +13,7 @@ logger = get_task_logger(__name__)
 # multi purpose tasks
 #
 @task_manager.task(bind=True, base=JobTask)
-@job_task(module='SchedulerModule')
+@job_task()
 def join_task(self, options):
     """Use this task as join task befor/after a group in the process.
     
@@ -33,7 +33,7 @@ def join_task(self, options):
     return None
 
 @task_manager.task(bind=True, base=JobTask)
-@job_task(module=u'SchedulerModule')
+@job_task()
 def start_task(self, options):
     """Use this task to close the process.
     
@@ -53,7 +53,7 @@ def start_task(self, options):
     return None
 
 @task_manager.task(bind=True, base=JobTask)
-@job_task(module=u'SchedulerModule')
+@job_task()
 def end_task(self, options):
     """Use this task to close the process.
     
