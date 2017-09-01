@@ -938,7 +938,7 @@ class BeehiveApiClient(object):
     def get_permissions(self, objtype, objdef, objid, cascade=False, **kvargs):
         """Get object permissions
         
-        :param objtype: objtype
+        :param objtype: objtype list comma separated
         :param objdef: objdef
         :param objid: objid
         :param cascade: If true filter by objid and childs until 

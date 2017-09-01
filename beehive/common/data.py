@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # container connection
 try:
     import gevent
-    container = gevent.local.local()
+    container = gevent.local.local() #: thread/gevent local container
 except:
     import threading
     container = threading.local()
@@ -30,24 +30,29 @@ container.connection = None
 # beehive operation
 try:
     import gevent
-    operation = gevent.local.local()
+    operation = gevent.local.local() #: thread/gevent local operation
 except:
     import threading
     operation = threading.local()
 
-operation.id = None # uuid4
-operation.session = None
-operation.user = None # (username, userip, uid)
-operation.perms = None
-operation.transaction = None
+operation.id = None #: operation id in uuid4
+operation.session = None #: current database session
+operation.user = None #: logged user (username, userip, uid)
+operation.perms = None #: logged user permission
+operation.transaction = None #: transaction id
 
 def transaction(fn):
     """Use this decorator to transform a function that contains delete, insert
     and update statement in a transaction.
-    """
     
+    Example::
+    
+        @transaction
+        def fn(*args, **kwargs):
+            ....
+    """
     @wraps(fn)
-    def nested_transaction_inner(*args, **kwargs): #1
+    def transaction_inner(*args, **kwargs): #1
         start = time()
         stmp_id = id_gen()
         session = operation.session
@@ -99,10 +104,9 @@ def transaction(fn):
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
             if ex.code not in [409]:
-                logger.error(ex.desc, exc_info=1)
-                #logger.error(ex.desc)
+                #logger.error(ex.desc, exc_info=1)
+                logger.error(ex.desc)
             
-            #session.rollback()
             rollback(session, commit)
             raise TransactionError(ex.desc, code=ex.code)
         except IntegrityError as ex:
@@ -110,10 +114,8 @@ def transaction(fn):
             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
-            logger.error(ex.message, exc_info=1)
-            #logger.error(ex.message)
+            logger.error(ex.message)
 
-            #session.rollback()
             rollback(session, commit)
             raise TransactionError(ex.message, code=409)
         except DBAPIError as ex:
@@ -121,10 +123,9 @@ def transaction(fn):
             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
-            logger.error(ex.message, exc_info=1)
-            #logger.error(ex.message)
+            l#ogger.error(ex.message, exc_info=1)
+            #ogger.error(ex.message)
                   
-            #session.rollback()
             rollback(session, commit)
             raise TransactionError(ex.message, code=400)
         except TransactionError as ex:
@@ -150,7 +151,7 @@ def transaction(fn):
             rollback(session, commit)
             raise TransactionError(ex, code=400)
 
-    return nested_transaction_inner
+    return transaction_inner
 
 def rollback(session, status):
     if status is True:
@@ -245,6 +246,12 @@ def transaction(fn):
 def query(fn):
     """Use this decorator to transform a function that contains delete, insert
     and update statement in a transaction.
+    
+    Example::
+    
+        @query
+        def fn(*args, **kwargs):
+            ....    
     """
     @wraps(fn)
     def query_inner(*args, **kwargs): #1
@@ -306,7 +313,17 @@ def query(fn):
     return query_inner
 
 def trace(entity=None, op=u'view'):
-    """Decorator
+    """Use this decorator to send an event after function execution.
+    
+    :param entity: beehive authorized entity [optional]
+    :param op: operation. Can be <operation>.view|insert|update|delete|use|*
+        <operation>. is optional
+    
+    Example::
+    
+        @trace(entity=Role, op=u'view')
+        def fn(*args, **kwargs):
+            ....    
     """
     def wrapper(fn):
         @wraps(fn)

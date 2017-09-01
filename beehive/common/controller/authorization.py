@@ -10,7 +10,7 @@ from logging import getLogger
 from beecell.auth import AuthError
 #from beecell.perf import watch
 from beehive.common.apimanager import ApiController, ApiManagerError, ApiObject,\
-    ApiEvent, ApiInternalEvent, ApiInternalObject
+    ApiInternalObject
 from beehive.common.model.authorization import AuthDbManager
 from beecell.db import QueryError, TransactionError
 from ipaddress import IPv4Address, IPv4Network

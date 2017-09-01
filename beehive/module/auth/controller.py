@@ -603,7 +603,8 @@ class Objects(AuthObject):
                 u'active':str2bool(data.active),
                 u'date':{
                     u'creation':format_date(data.creation_date),
-                    u'modified':format_date(data.modification_date)
+                    u'modified':format_date(data.modification_date),
+                    u'expiry':u''
                 }                
             }
             self.logger.debug(u'Get object: %s' % res)
@@ -646,7 +647,8 @@ class Objects(AuthObject):
                 u'active':str2bool(i.active),
                 u'date':{
                     u'creation':format_date(i.creation_date),
-                    u'modified':format_date(i.modification_date)
+                    u'modified':format_date(i.modification_date),
+                    u'expiry':u''
                 }
             } for i in data]
             self.logger.debug(u'Get objects: %s' % len(res))
@@ -669,7 +671,7 @@ class Objects(AuthObject):
                 'objid':.., 
                 'desc':..        
             }
-        :return: True if operation is successful
+        :return: list of uuid
         :rtype: bool
         :raises ApiManagerError if query empty return error.
         """
@@ -689,7 +691,7 @@ class Objects(AuthObject):
 
             res = self.manager.add_object(data, actions)
             self.logger.debug(u'Add objects: %s' % res)
-            return res.id
+            return [i.id for i in res]
         except (QueryError, TransactionError) as ex:
             self.logger.error(ex.desc, exc_info=1)
             raise ApiManagerError(ex.desc, code=ex.code)  
@@ -808,14 +810,14 @@ class Objects(AuthObject):
 
     @trace(op=u'perms.view')
     def get_permissions(self, objid=None, subsystem=None, type=None, 
-                        cascade=True, page=0, size=10, order=u'DESC', 
+                        cascade=False, page=0, size=10, order=u'DESC', 
                         field=u'id', **kvargs):
         """Get system object permisssions with roles.
         
         :param objid: Total or partial objid [optional]
         :param cascade: If true filter by objid and childs until 
             objid+'//*//*//*//*//*//*'. Require objid and type [optional]
-        :param subsystem str: Object type [optional]
+        :param subsystem str: Object type list comma separated [optional]
         :param type str: Object definition [optional]
         :param page: perm list page to show [default=0]
         :param size: number of perms to show in list per page [default=10]
@@ -829,6 +831,11 @@ class Objects(AuthObject):
         
         try:
             res = []
+            
+            subsystems = None
+            if subsystem is not None:
+                subsystems = subsystem.split(u',')
+            
             if cascade is True:
                 objids = [
                     objid, 
@@ -840,11 +847,11 @@ class Objects(AuthObject):
                     objid+u'//*//*//*//*//*//*'
                 ]
                 perms, total = self.auth_db_manager.get_deep_permissions(
-                        objids=objids, objtype=type)            
+                        objids=objids, objtypes=subsystems)
             
             else:
                 perms, total = self.manager.get_permissions(
-                    objid=objid, objid_filter=None, objtype=subsystem, 
+                    objid=objid, objid_filter=None, objtypes=subsystems, 
                     objdef=type, objdef_filter=None, action=None,
                     page=page, size=size, order=order, field=field)
                 
@@ -857,8 +864,7 @@ class Objects(AuthObject):
                     u'objid':p.obj.objid, 
                     u'aid':p.action.id, 
                     u'action':p.action.value, 
-                    u'desc':p.obj.desc, 
-                    #u'roles':roles
+                    u'desc':p.obj.desc
                 })
                 
             self.logger.debug(u'Get permissions: %s' % len(res))      

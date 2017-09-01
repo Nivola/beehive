@@ -24,8 +24,6 @@ class BeehiveAppError(Exception): pass
 class BeehiveApp(Flask):
     """Custom Flask app used to read configuration and initialize security.
     
-    TODO: pooller that execcute some periodically task like verify orchestrators
-          are active
     """
     def __init__(self, *args, **kwargs):
         """ """

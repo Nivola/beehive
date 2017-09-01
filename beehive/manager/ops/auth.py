@@ -399,12 +399,12 @@ class AuthManager(ApiManager):
         uri = u'%s/users/%s/attributes' % (self.authuri, user_id)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get user attributes: %s' % res)
-        self.result(res, key=u'user-attributes', 
+        self.result(res, key=u'user_attributes', 
                     headers=[u'name', u'value', u'desc'])    
     
     def add_user_attrib(self, oid, name, value, desc, *args):
         data = {
-            u'user-attribute':{
+            u'user_attribute':{
                 u'name':name,
                 u'value':value,
                 u'desc':desc

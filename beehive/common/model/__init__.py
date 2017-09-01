@@ -244,6 +244,8 @@ class PaginatedQueryGenerator(object):
                 from_statement(stmp).\
                 params(tags=tags, **kvargs)
         self.logger.warn(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
+        self.logger.warn(u'kvargs: %s' % kvargs)
+        self.logger.warn(u'tags: %s' % tags)
         query = query.all()
         
         self.logger.debug(u'Get %ss (total:%s): %s' % 
@@ -544,6 +546,7 @@ class AbstractDbManager(object):
         """
         perm = u'%s-%s' % (objdef.lower(), objid)
         tag = hashlib.md5(perm).hexdigest()
+        self.logger.debug(u'tag: %s, per: %s' % (tag, perm))
         return tag
     
     @transaction

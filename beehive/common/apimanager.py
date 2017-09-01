@@ -50,9 +50,9 @@ from copy import deepcopy
 class ApiManagerError(Exception):
     """Main excpetion raised by api manager and childs
     
-    :param value: error description
-    :param code: error code [default=400]
-
+    **Parameters:**
+        * **value** (:py:class:`str`): error description
+        * **code** (:py:class:`int`): error code [default=400]
     """
     def __init__(self, value, code=400):
         self.code = code
@@ -66,7 +66,13 @@ class ApiManagerError(Exception):
         return u'%s' % self.value
 
 class ApiManager(object):
-    """ """
+    """Api Manager
+    
+    **Parameters:**
+    
+        * **params** (:py:class:`dict`): configuration params
+        * **app** (:py:class:`int`): error code [default=400]    
+    """
     #logger = logging.getLogger('gibbon.cloudapi')
     
     def __init__(self, params, app=None, hostname=None):
@@ -158,7 +164,10 @@ class ApiManager(object):
     def create_pool_engine(self, dbconf):
         """Create mysql pool engine.
         
-        :param dbconf list: (uri, timeout, pool_size, max_overflow, pool_recycle) 
+        **Parameters:**
+        
+            * **dbconf** (:py:class:`list`): 
+                (uri, timeout, pool_size, max_overflow, pool_recycle)
         """
         try:
             db_uri = dbconf[0]
@@ -178,7 +187,10 @@ class ApiManager(object):
     def create_simple_engine(self, dbconf):
         """Create mysql simple engine.
         
-        :param dbconf list: (uri, timeout) 
+        **Parameters:**
+        
+            * **dbconf** (:py:class:`list`): 
+                (uri, timeout)        
         """
         try:
             db_uri = dbconf[0]
@@ -222,20 +234,22 @@ class ApiManager(object):
         except SqlManagerError as e:
             raise ApiManagerError(e)            
 
-    @watch
     def get_identity(self, uid):
         """Get identity
         
-        :param uid: identity id
-        :return: dictionary like:
+        **Parameters:**
         
-                 .. code-block:: python
-                   
-                   {u'uid':..., 
-                    u'user':..., 
-                    u'timestamp':..., 
-                    u'pubkey':..., 
-                    u'seckey':...}
+            * **uid** (:py:class:`str`): identity id
+            
+        **Returns:**
+
+            .. code-block:: python
+               
+               {u'uid':..., 
+                u'user':..., 
+                u'timestamp':..., 
+                u'pubkey':..., 
+                u'seckey':...}
         """
         identity = self.redis_manager.get(self.prefix + uid)
         if identity is not None:
@@ -247,8 +261,22 @@ class ApiManager(object):
             self.logger.error("Identity %s doen't exist or is expired" % uid)
             raise ApiManagerError("Identity %s doen't exist or is expired" % uid, code=401)
 
-    @watch
     def get_identities(self):
+        """Get identities
+        
+        **Returns:**
+
+            .. code-block:: python
+               
+               [
+                   {u'uid':..., 
+                    u'user':..., 
+                    u'timestamp':..., 
+                    u'ttl':..., 
+                    u'ip':...},
+                ...
+                ]
+        """
         try:
             res =  []
             for key in self.redis_manager.keys(self.prefix+'*'):
@@ -270,11 +298,23 @@ class ApiManager(object):
     def verify_simple_http_credentials(self, user, pwd, user_ip):
         """Verify simple ahttp credentials.
         
-        :param user: user
-        :param pwd: password
-        :param user_ip: user ip address
-        :return: identity
-        :raise ApiManagerError:
+        **Parameters:**
+        
+            * **user** (:py:class:`str`): user
+            * **pwd** (:py:class:`str`): password
+            * **user_ip** (:py:class:`str`): user ip address
+            
+        **Returns:**
+
+            .. code-block:: python
+               
+               {u'uid':..., 
+                u'user':..., 
+                u'timestamp':..., 
+                u'pubkey':..., 
+                u'seckey':...}
+            
+        **Raise:** :class:`ApiManagerError`         
         """
         try:
             identity = self.api_client.simplehttp_login(user, pwd, user_ip)
@@ -288,23 +328,47 @@ class ApiManager(object):
     def get_oauth2_identity(self, token):
         """Get identity that correspond to oauth2 access token
 
-        :param token: identity id
-        :return: identity
-        :raise ApiManagerError:
+        **Parameters:**
+        
+            * **token** (:py:class:`str`): identity id
+            
+        **Returns:**
+
+            .. code-block:: python
+               
+               {u'uid':..., 
+                u'user':..., 
+                u'timestamp':..., 
+                u'pubkey':..., 
+                u'seckey':...}
+            
+        **Raise:** :class:`ApiManagerError`
         """
         identity = self.get_identity(token)
         self.redis_manager.expire(self.prefix + token, self.expire)
         self.logger.debug(u'Extend identity %s expire' % (token))
         return identity
 
-    @watch
     def verify_request_signature(self, uid, sign, data):
         """Verify Request signature.
         
-        :param uid: identity id
-        :param sign: request sign
-        :param data: request data
-        :raise ApiManagerError:
+        **Parameters:**
+        
+            * **uid** (:py:class:`str`): identity id
+            * **sign** (:py:class:`str`): request sign
+            * **data** (:py:class:`str`): request data
+            
+        **Returns:**
+
+            .. code-block:: python
+               
+               {u'uid':..., 
+                u'user':..., 
+                u'timestamp':..., 
+                u'pubkey':..., 
+                u'seckey':...}
+            
+        **Raise:** :class:`ApiManagerError`
         """
         # retrieve token and sign
         #uid, sign, data = self.__get_token()
@@ -861,7 +925,7 @@ class ApiController(object):
         self.module = module
 
         # base event_class. Change in every controller with ApiEvent subclass
-        self.event_class = ApiEvent
+        #self.event_class = ApiEvent
         
         # child classes
         self.child_classes = []
@@ -969,7 +1033,7 @@ class ApiController(object):
 
         :param token: identity id
         :return: identity
-        :raise ApiManagerError:
+        **Raise:** :class:`ApiManagerError`
         """
         return self.module.api_manager.get_oauth2_identity(token)
 
@@ -980,7 +1044,7 @@ class ApiController(object):
         :param pwd: password
         :param user_ip: user ip address
         :return: identity
-        :raise ApiManagerError:
+        **Raise:** :class:`ApiManagerError`
         """
         return self.module.api_manager.verify_simple_http_credentials(user, pwd, user_ip)
 
@@ -1288,6 +1352,7 @@ class ApiController(object):
             self.logger.warn(ex)
             return [], 0'''
 
+'''
 class ApiEvent(object):
     """Generic event.
     
@@ -1495,6 +1560,7 @@ class ApiInternalEvent(ApiEvent):
 
 def make_event_class(name, event_class, **kwattrs):
     return type(str(name), (event_class,), dict(**kwattrs))
+'''
 
 class ApiObject(object):
     """ """
@@ -1723,12 +1789,11 @@ class ApiObject(object):
             table = self.objdef
             self.manager.delete_perm_tag(self.oid, table, tags)
 
-    def register_object(self, objids, desc=u'', objid=None):
+    def register_object(self, objids, desc=u''):
         """Register object types, objects and permissions related to module.
         
         :param objids: objid split by //
         :param desc: object description
-        :param objid: parent objid
         """
         self.logger.debug(u'Register api object: %s:%s %s - ATART' % 
                           (self.objtype, self.objdef, objids))
@@ -1736,8 +1801,8 @@ class ApiObject(object):
         # add object and permissions
         #objs = self._get_value(self.objdef, objids)
         #self.rpc_client.add_object(self.objtype, self.objdef, objs)
-        objs = u'//'.join(objids)
-        self.api_client.add_object(self.objtype, self.objdef, objs, desc)
+        self.api_client.add_object(self.objtype, self.objdef, 
+                                   u'//'.join(objids), desc)
         
         # register event related to ApiObject
         #self.event_class(self.controller).register_object(args, desc=desc)
@@ -1746,7 +1811,7 @@ class ApiObject(object):
         self.register_object_permtags(objids)        
         
         self.logger.debug(u'Register api object: %s:%s %s - STOP' % 
-                          (self.objtype, self.objdef, objids))
+                          (self.objtype, self.objdef, u'//'.join(objids)))
         
         # register child classes
         #if objid == None:
@@ -1756,9 +1821,9 @@ class ApiObject(object):
         objids.append(u'*')
         for child in self.child_classes:
             child(self.controller, oid=None).register_object(
-                  objids, desc=child.objdesc, objid=objid)
+                  list(objids), desc=child.objdesc)
             
-    def deregister_object(self, objids, objid=None):
+    def deregister_object(self, objids):
         """Deregister object types, objects and permissions related to module.
         
         :param objids: objid split by //
@@ -1782,7 +1847,7 @@ class ApiObject(object):
         
         objids.append(u'*')
         for child in self.child_classes:
-            child(self.controller, oid=None).deregister_object(objids, objid=objid)
+            child(self.controller, oid=None).deregister_object(list(objids))
         
         # deregister event related to ApiObject
         #self.event_class(self.controller).deregister_object(args)            
@@ -1821,7 +1886,7 @@ class ApiObject(object):
         :param action: action to verify. Can be *, view, insert, update, delete, 
             use
         :return: True if permissions overlap
-        :raise ApiManagerError:
+        **Raise:** :class:`ApiManagerError`
         """        
         # check authorization
         if authorize is True:
@@ -1829,7 +1894,7 @@ class ApiObject(object):
                 self.objtype, self.objdef, self.objid, action)
     
     def authorization(self, objid=None, *args, **kvargs):
-        """Get resource authorizations 
+        """Get entity authorizations 
         
         :param objid: resource objid
         :param page: users list page to show [default=0]
@@ -1843,22 +1908,82 @@ class ApiObject(object):
             # resource permissions
             if objid == None:
                 objid = self.objid
-            perms, total = self.api_client.get_permissions(self.objtype, self.objdef, 
-                                                  objid, cascade=True, **kvargs)
+            perms, total = self.api_client.get_permissions(
+                self.objtype, self.objdef, objid, cascade=True, **kvargs)
 
-            '''# child permissions
-            objid = objid + u'//*'
-            for item in self.child_classes:
-                perms = item(self.controller, self.container).\
-                            authorization(objid=objid, *args, **kvargs)
-                res.extend(perms)
-
-            self.logger.debug(u'Get permissions %s: %s' % 
-                              (self.oid, truncate(res)))'''
             return perms, total
         except (ApiManagerError), ex:
             self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=ex.code)    
+    
+    #
+    # pre, post function
+    #
+    @staticmethod
+    def pre_create(controller, **kvargs):
+        """Pre create function. Extend this function to manipulate and validate
+        input params.
+        
+        **Parameters:**
+        
+            * **kvargs** (:py:class:`dict`): custom params
+            
+        **Returns:**
+        
+            kvargs
+            
+        **Raise:** :class:`ApiManagerError`
+        """
+        return kvargs
+    
+    @staticmethod
+    def post_create(controller, **kvargs):
+        """Post create function. Extend this function to execute some operation
+        after entity was created. Used only for synchronous creation.
+        
+        **Parameters:**
+        
+            * **kvargs** (:py:class:`dict`): custom params
+            
+        **Returns:**
+        
+            None
+            
+        **Raise:** :class:`ApiManagerError`
+        """
+        return None    
+    
+    def pre_change(self, **kvargs):
+        """Pre change function. Extend this function to manipulate and validate
+        input params.
+        
+        **Parameters:**
+        
+            * **kvargs** (:py:class:`dict`): custom params
+            
+        **Returns:**
+        
+            kvargs
+            
+        **Raise:** :class:`ApiManagerError`
+        """        
+        return kvargs
+    
+    def pre_clean(self, **kvargs):
+        """Pre clean function. Extend this function to manipulate and validate
+        input params.
+        
+        **Parameters:**
+        
+            * **kvargs** (:py:class:`dict`): custom params
+            
+        **Returns:**
+        
+            kvargs
+            
+        **Raise:** :class:`ApiManagerError`
+        """
+        return kvargs    
     
     #
     # db session
@@ -2012,11 +2137,17 @@ class ApiObject(object):
     def update(self, authorize=True, *args, **kvargs):
         """Update entity.
         
-        :param authorize: if True check authorization
-        :param args: [optional]
-        :param kvargs: [optional]
-        :return: entity uuid
-        :raises ApiManagerError: raise :class:`ApiManagerError`
+        **Parameters:**
+        
+            * **args** (:py:class:`list`): custom params
+            * **kvargs** (:py:class:`dict`): custom params
+            * **authorize** (:py:class:`bool`): if True check permissions for authorization
+            
+        **Returns:**
+        
+            entity uuid
+            
+        **Raise:** :class:`ApiManagerError`
         """
         if self.update_object is None:
             raise ApiManagerError(u'Update is not supported for %s:%s' % 
@@ -2024,7 +2155,11 @@ class ApiObject(object):
         
         # verify permissions
         self.verify_permisssions(u'update', authorize=authorize)
-                
+        
+        # custom action
+        if self.pre_change is not None:
+            kvargs = self.pre_change(**kvargs)
+        
         try:  
             res = self.update_object(oid=self.oid, *args, **kvargs)
             
@@ -2038,13 +2173,19 @@ class ApiObject(object):
             raise ApiManagerError(ex, code=ex.code)
 
     @trace(op=u'delete')
-    def delete(self, authorize=True):
+    def delete(self, authorize=True, **kvargs):
         """Delete entity.
         
-        :param authorize: if True check authorization
-        :return: True if role deleted correctly
-        :rtype: bool
-        :raises ApiManagerError: raise :class:`ApiManagerError`
+        **Parameters:**
+        
+            * **kvargs** (:py:class:`dict`): custom params
+            * **authorize** (:py:class:`bool`): if True check permissions for authorization
+            
+        **Returns:**
+        
+            None
+            
+        **Raise:** :class:`ApiManagerError`
         """
         if self.delete_object is None:
             raise ApiManagerError(u'Delete is not supported for %s:%s' % 
@@ -2052,9 +2193,13 @@ class ApiObject(object):
         
         # verify permissions
         self.verify_permisssions(u'delete', authorize=authorize)
-                
+            
+        # custom action
+        if self.pre_clean is not None:
+            kvargs = self.pre_clean(**kvargs)            
+            
         try:  
-            res = self.delete_object(oid=self.oid)
+            self.delete_object(oid=self.oid)
             if self.register is True:
                 # remove object and permissions
                 self.deregister_object(self.objid.split(u'//'))
@@ -2070,7 +2215,7 @@ class ApiInternalObject(ApiObject):
     objdef = u'abstract'
     objdesc = u'Authorization abstract object'
     
-    event_ref_class = ApiInternalEvent
+    #event_ref_class = ApiInternalEvent
     
     def __init__(self, *args, **kvargs):
         ApiObject.__init__(self, *args, **kvargs)
@@ -2111,7 +2256,7 @@ class ApiInternalObject(ApiObject):
         for child in self.child_classes:
             child(self.controller).init_object()
     
-    def register_object(self, objids, desc=u'', objid=None):
+    def register_object(self, objids, desc=u''):
         """Register object types, objects and permissions related to module.
         
         :param objids: objid split by //
@@ -2147,11 +2292,10 @@ class ApiInternalObject(ApiObject):
         for child in self.child_classes:
             child(self.controller, oid=None).register_object(objids, desc=child.objdesc)
     
-    def deregister_object(self, objids, objid=None):
+    def deregister_object(self, objids):
         """Deregister object types, objects and permissions related to module.
         
         :param args: objid split by //
-        :param objid: parent objid
         """
         self.logger.debug(u'Deregister api object %s:%s %s - START' % 
                           (self.objtype, self.objdef, objids))
@@ -2255,7 +2399,7 @@ class ApiViewResponse(ApiObject):
     objdef = u'Response'
     objdesc = u'Api Response'
     
-    event_ref_class = ApiInternalEvent
+    #event_ref_class = ApiInternalEvent
     
     def __init__(self, *args, **kvargs):
         ApiObject.__init__(self, *args, **kvargs)
@@ -2989,7 +3133,7 @@ class ApiClient(BeehiveApiClient):
                       other_headers=None):
         """Make api request using module internal admin user credentials.
         
-        :raise ApiManagerError:
+        **Raise:** :class:`ApiManagerError`
         """
         try:
             if self.exist(self.uid) is False:
@@ -3017,7 +3161,7 @@ class ApiClient(BeehiveApiClient):
     def user_request(self, module, path, method, data=u'', other_headers=None):
         """Make api request using module current user credentials.
         
-        :raise ApiManagerError:
+        **Raise:** :class:`ApiManagerError`
         """
         try:
             # get user logged uid and password

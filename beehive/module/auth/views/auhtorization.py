@@ -9,7 +9,8 @@ from datetime import datetime
 from beecell.simple import get_value, str2bool, AttribException
 from beehive.common.apimanager import ApiView, ApiManagerError, PaginatedRequestQuerySchema,\
     PaginatedResponseSchema, ApiObjectResponseSchema, SwaggerApiView,\
-    CreateApiObjectResponseSchema, GetApiObjectRequestSchema
+    CreateApiObjectResponseSchema, GetApiObjectRequestSchema,\
+    ApiObjectResponseDateSchema
 from flasgger import fields, Schema
 from marshmallow.validate import OneOf, Range, Length
 from marshmallow.decorators import post_load, validates
@@ -1058,179 +1059,46 @@ class DeleteGroup(SwaggerApiView):
 #
 # object
 #
-class ObjectQuerySchema(PaginatedRequestQuerySchema):
-    field = fields.String(validate=OneOf([u'subsystem', u'type', u'id', 
-                          u'objid', u'aid', u'action'],
-                          error=u'Field can be subsystem, type, id, objid, aid, action'),
+class ListObjectsRequestSchema(PaginatedRequestQuerySchema):
+    field = fields.String(validate=OneOf([u'subsystem', u'type', u'id', u'objid'],
+                          error=u'Field can be subsystem, type, id, objid'),
                           missing=u'id')    
-    subsystem = fields.String()
-    type = fields.String()
-    objid = fields.String()
+    subsystem = fields.String(context=u'query')
+    type = fields.String(context=u'query')
+    objid = fields.String(context=u'query')
 
-class ListObjects(ApiView):
-    parameters_schema = ObjectQuerySchema
+class ListObjectsParamsResponseSchema(Schema):
+    id = fields.Integer(required=True, default=10)
+    uuid = fields.String(required=True, default=u'4cdf0ea4-159a-45aa-96f2-708e461130e1')
+    objid = fields.String(required=True, default=u'396587362//3328462822')
+    subsystem = fields.String(required=True, default=u'auth')
+    type = fields.String(required=True, default=u'Role')
+    desc = fields.String(required=True, default=u'test')
+    date = fields.Nested(ApiObjectResponseDateSchema)
+    active = fields.Boolean(required=True, default=True)
+
+class ListObjectsResponseSchema(PaginatedResponseSchema):
+    objects = fields.Nested(ListObjectsParamsResponseSchema, many=True)
+
+class ListObjects(SwaggerApiView):
+    tags = [u'authorization']
+    definitions = {
+        u'ListObjectsResponseSchema': ListObjectsResponseSchema,
+    }
+    parameters = SwaggerHelper().get_parameters(ListObjectsRequestSchema)
+    parameters_schema = ListObjectsRequestSchema
+    responses = SwaggerApiView.setResponses({
+        200: {
+            u'description': u'success',
+            u'schema': ListObjectsResponseSchema
+        }
+    })
     
     def get(self, controller, data, *args, **kwargs):
         """
         List objects
         Call this api to list objects
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-          - name: subsystem
-            in: query
-            required: false
-            description: Filter object by subsystem
-            type: string
-          - name: type
-            in: query
-            required: false
-            description: Filter object by type
-            type: string
-          - name: objid
-            in: query
-            required: false
-            description: Filter object by objid
-            type: boolean
-          - name: page
-            in: query
-            required: false
-            description: Set list page
-            type: integer
-            default: 0
-          - name: size
-            in: query
-            required: false
-            description: Set list page size
-            type: integer
-            minimum: 0
-            maximum: 100
-            default: 10
-          - name: order
-            in: query
-            required: false
-            description: Set list order
-            type: string
-            enum: 
-              - ASC
-              - DESC
-            default: DESC
-          - name: field
-            in: query
-            required: false
-            description: Set list order field
-            type: string
-            default: id              
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests" 
-          200:
-            description: success
-            schema:
-              type: object
-              required: [objects, count, page, total, sort]
-              properties:
-                count:
-                  type: integer
-                  example: 1
-                page:
-                  type: integer
-                  example: 0
-                total:
-                  type: integer
-                  example: 10
-                sort:
-                  type: object
-                  required: [field, order]
-                  properties:
-                    order:
-                      type: string
-                      enum: 
-                        - ASC
-                        - DESC
-                      example: DESC                      
-                    field:
-                      type: string
-                      example: id          
-                objects:
-                  type: array
-                  items:
-                    type: object
-                    required: [id, uuid, objid, type, subsystem, desc, active, date]
-                    properties:
-                      id:
-                        type: integer
-                        example: 1
-                      uuid:
-                        type: string
-                        example: 4cdf0ea4-159a-45aa-96f2-708e461130e1                        
-                      objid:
-                        type: string
-                        example: 396587362//3328462822
-                      type:
-                        type: string
-                        example: Objects
-                      subsystem:
-                        type: string
-                        example: auth
-                      desc:
-                        type: string
-                        example: beehive                   
-                      active:
-                        type: boolean
-                        example: true
-                      date:
-                        type: object
-                        required: [creation, modified]
-                        properties:
-                          creation:
-                            type: string
-                            format: date-time
-                            example: 1990-12-31T23:59:59Z
-                          modified:
-                            type: string
-                            format: date-time
-                            example: 1990-12-31T23:59:59Z         
-        """        
-        
-        '''objtype = request.args.get(u'subsystem', None)
-        objdef = request.args.get(u'type', None)
-        objid = request.args.get(u'objid', None)
-        page = request.args.get(u'page', 0)
-        size = request.args.get(u'size', 10)
-        order = request.args.get(u'order', u'DESC')
-        field = request.args.get(u'field', u'id')
-        if field not in [u'subsystem', u'type', u'id', u'objid', u'aid', 
-                         u'action']:
-            field = u'id'
-        if field == u'subsystem':
-            field = u'objtype'
-        elif field == u'type':
-            field = u'objdef'
-        '''   
+        """
         objid = data.get(u'objid', None)
         if objid is not None:
             data[u'objid'] = objid.replace(u'_', u'//')
@@ -1238,222 +1106,89 @@ class ListObjects(ApiView):
         
         return self.format_paginated_response(res, u'objects', total, **data)
 
-class GetObject(ApiView):
+## get
+class GetObjectResponseSchema(Schema):
+    object = fields.Nested(ListObjectsParamsResponseSchema)
+
+class GetObject(SwaggerApiView):
+    tags = [u'authorization']
+    definitions = {
+        u'GetObjectResponseSchema': GetObjectResponseSchema,
+    }
+    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
+    responses = SwaggerApiView.setResponses({
+        200: {
+            u'description': u'success',
+            u'schema': GetObjectResponseSchema
+        }
+    })
+    
     def get(self, controller, data, oid, *args, **kwargs):
         """
         Get object
         Call this api to get a object
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-        - in: path
-          name: oid
-          type: string
-          required: true
-          description: object id          
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          404:
-            $ref: "#/responses/NotFound"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests"
-          200:
-            description: success
-            schema:
-              type: object
-              required: [object]
-              properties:      
-                object:
-                    type: object
-                    required: [id, uuid, objid, type, subsystem, desc, active, date]
-                    properties:
-                      id:
-                        type: integer
-                        example: 1
-                      uuid:
-                        type: string
-                        example: 4cdf0ea4-159a-45aa-96f2-708e461130e1                        
-                      objid:
-                        type: string
-                        example: 396587362//3328462822
-                      type:
-                        type: string
-                        example: Objects
-                      subsystem:
-                        type: string
-                        example: auth
-                      desc:
-                        type: string
-                        example: beehive                    
-                      active:
-                        type: boolean
-                        example: true
-                      date:
-                        type: object
-                        required: [creation, modified]
-                        properties:
-                          creation:
-                            type: string
-                            format: date-time
-                            example: 1990-12-31T23:59:59Z
-                          modified:
-                            type: string
-                            format: date-time
-                            example: 1990-12-31T23:59:59Z
         """                        
         obj = controller.objects.get_object(oid)
         res = obj
         resp = {u'object':res} 
         return resp
 
-class ObjectSchemaCreateParam(Schema):
-    subsystem = fields.String()
-    type = fields.String()
-    objid = fields.String()
-    desc = fields.String()
+## create
+class CreateObjectParamRequestSchema(Schema):
+    subsystem = fields.String(required=True)
+    type = fields.String(required=True)
+    objid = fields.String(required=True)
+    desc = fields.String(required=True)    
 
-class ObjectSchemaCreate(Schema):
-    objects = fields.Nested(ObjectSchemaCreateParam, many=True)
+class CreateObjectRequestSchema(Schema):
+    objects = fields.Nested(CreateObjectParamRequestSchema, many=True,
+                            context=u'body')
+    
+class CreateObjectBodyRequestSchema(Schema):
+    body = fields.Nested(CreateObjectRequestSchema, context=u'body')
 
-class CreateObject(ApiView):
-    parameters_schema = ObjectSchemaCreate
 
+
+class CreateObjectResponseSchema(Schema):
+    ids = fields.List(fields.Int(required=True, default=10))
+
+class CreateObject(SwaggerApiView):
+    tags = [u'authorization']
+    definitions = {
+        u'CreateObjectRequestSchema': CreateObjectRequestSchema,
+        u'CreateObjectResponseSchema':CreateObjectResponseSchema
+    }
+    parameters = SwaggerHelper().get_parameters(CreateObjectBodyRequestSchema)
+    parameters_schema = CreateObjectRequestSchema
+    responses = SwaggerApiView.setResponses({
+        201: {
+            u'description': u'success',
+            u'schema': CreateObjectResponseSchema
+        }
+    })
+    
     def post(self, controller, data, *args, **kwargs):
         """
         Create object
         Call this api to create a object
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-          - in : body
-            name: body
-            schema:
-              type: object
-              required: [objects]
-              properties:
-                objects:
-                  type: array
-                  items:
-                    type: object
-                    required: [subsystem, type, objid, desc]
-                    properties:
-                      subsystem:
-                        type: string
-                        example: auth
-                      type:
-                        type: string
-                        example: Objects
-                      objid:
-                        type: string
-                        example: 1273dud79w2
-                      desc:
-                        type: string
-                        example: test
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests" 
-          201:
-            description: success
-            schema:
-              type: object
-              required: [id]
-              properties:
-                id:            
-                  type: integer
-                  example: 45
         """        
-        #data = get_value(data, u'objects', None, exception=True)
         resp = controller.objects.add_objects(data.get(u'objects'))
-        return ({u'id':resp}, 201)
+        return ({u'ids':resp}, 201)
 
-class DeleteObject(ApiView):
+class DeleteObject(SwaggerApiView):
+    tags = [u'authorization']
+    definitions = {}
+    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
+    responses = SwaggerApiView.setResponses({
+        204: {
+            u'description': u'no response'
+        }
+    })    
+    
     def delete(self, controller, data, oid, *args, **kwargs):
         """
         Delete object
-        Call this api to delete a object
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-        - in: path
-          name: oid
-          type: string
-          required: true
-          description: object id          
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          404:
-            $ref: "#/responses/NotFound"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests"
-          204:
-            description: No response        
+        Call this api to delete a object      
         """                        
         resp = controller.objects.remove_object(oid=oid)
         return (resp, 204)   
@@ -1789,176 +1524,51 @@ class ListObjectActions(ApiView):
 #
 # object perms
 #
-class PermQuerySchema(PaginatedRequestQuerySchema):
+## list
+class ListObjectPermsRequestSchema(PaginatedRequestQuerySchema):
     field = fields.String(validate=OneOf([u'subsystem', u'type', u'id', 
                           u'objid', u'aid', u'action'],
                           error=u'Field can be subsystem, type, id, objid, aid, action'),
                           missing=u'id')      
-    subsystem = fields.String()
-    type = fields.String()
-    objid = fields.String()
-    user = fields.String()
-    role = fields.String()
-    group = fields.String()
+    subsystem = fields.String(context=u'query')
+    type = fields.String(context=u'query')
+    objid = fields.String(context=u'query')
+    user = fields.String(context=u'query')
+    role = fields.String(context=u'query')
+    group = fields.String(context=u'query')
+    cascade = fields.Boolean(context=u'query')
 
-class ListObjectPerms(ApiView):
-    parameters_schema = PermQuerySchema    
-    
+class ListObjectPermsParamsResponseSchema(Schema):
+    id = fields.Integer(required=True, default=10)
+    oid = fields.Integer(required=True, default=11)
+    objid = fields.String(required=True, default=u'396587362//3328462822')
+    type = fields.String(required=True, default=u'auth')
+    subsystem = fields.String(required=True, default=u'Role')
+    desc = fields.String(required=True, default=u'test')
+    aid = fields.Integer(required=True, default=12)
+    action = fields.String(required=True, default=u'view')
+
+class ListObjectPermsResponseSchema(PaginatedResponseSchema):
+    perms = fields.Nested(ListObjectPermsParamsResponseSchema, many=True)
+
+class ListObjectPerms(SwaggerApiView):
+    tags = [u'authorization']
+    definitions = {
+        u'ListObjectPermsResponseSchema': ListObjectPermsResponseSchema,
+    }
+    parameters = SwaggerHelper().get_parameters(ListObjectPermsRequestSchema)
+    parameters_schema = ListObjectPermsRequestSchema
+    responses = SwaggerApiView.setResponses({
+        200: {
+            u'description': u'success',
+            u'schema': ListObjectPermsResponseSchema
+        }
+    })
+
     def get(self, controller, data, *args, **kwargs):
         """
         List object permissions
-        Call this api to list object permissions
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-          - name: subsystem
-            in: query
-            required: false
-            description: Filter object by subsystem
-            type: string
-          - name: type
-            in: query
-            required: false
-            description: Filter object by type
-            type: string
-          - name: objid
-            in: query
-            required: false
-            description: Filter object by objid
-            type: string
-          - name: cascade
-            in: query
-            required: false
-            description: If true filter by objid and childs until objid+'//*//*//*//*//*//*'
-            type: string            
-          - name: role
-            in: query
-            required: false
-            description: Filter object by role
-            type: string
-          - name: user
-            in: query
-            required: false
-            description: Filter object by user
-            type: string
-          - name: group
-            in: query
-            required: false
-            description: Filter object by group
-            type: string            
-          - name: page
-            in: query
-            required: false
-            description: Set list page
-            type: integer
-            default: 0
-          - name: size
-            in: query
-            required: false
-            description: Set list page size
-            type: integer
-            minimum: 0
-            maximum: 100
-            default: 10
-          - name: order
-            in: query
-            required: false
-            description: Set list order
-            type: string
-            enum: 
-              - ASC
-              - DESC
-            default: DESC
-          - name: field
-            in: query
-            required: false
-            description: Set list order field
-            type: string
-            default: id              
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests" 
-          200:
-            description: success
-            schema:
-              type: object
-              required: [perms, count, page, total, sort]
-              properties:
-                count:
-                  type: integer
-                  example: 1
-                page:
-                  type: integer
-                  example: 0
-                total:
-                  type: integer
-                  example: 10
-                sort:
-                  type: object
-                  required: [field, order]
-                  properties:
-                    order:
-                      type: string
-                      enum: 
-                        - ASC
-                        - DESC
-                      example: DESC                      
-                    field:
-                      type: string
-                      example: id          
-                perms:
-                  type: array
-                  items:
-                    type: object
-                    required: [id, oid, objid, type, subsystem, desc, aid, action]
-                    properties:
-                      id:
-                        type: integer
-                        example: 1
-                      oid:
-                        type: integer
-                        example: 3                  
-                      objid:
-                        type: string
-                        example: 396587362//3328462822
-                      type:
-                        type: string
-                        example: Objects
-                      subsystem:
-                        type: string
-                        example: auth
-                      desc:
-                        type: string
-                        example: beehive
-                      aid:
-                        type: integer
-                        example: 1
-                      action:
-                        type: string
-                        example: view                 
+        Call this api to list object permissions              
         """
         user = data.get(u'user', None)
         role = data.get(u'role', None)
@@ -1980,79 +1590,27 @@ class ListObjectPerms(ApiView):
             objs, total = controller.objects.get_permissions(**data)
         return self.format_paginated_response(objs, u'perms', total, **data)
 
-class GetObjectPerms(ApiView):
+## get
+class GetObjectPermsResponseSchema(Schema):
+    perm = fields.Nested(ListObjectPermsParamsResponseSchema)
+
+class GetObjectPerms(SwaggerApiView):
+    tags = [u'authorization']
+    definitions = {
+        u'GetObjectPermsResponseSchema': GetObjectPermsResponseSchema,
+    }
+    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
+    responses = SwaggerApiView.setResponses({
+        200: {
+            u'description': u'success',
+            u'schema': GetObjectPermsResponseSchema
+        }
+    })  
+
     def get(self, controller, data, oid, *args, **kwargs):
         """
         List object permissions
-        Call this api to list object permissions
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-        - in: path
-          name: oid
-          type: string
-          required: true
-          description: object permission id           
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests" 
-          200:
-            description: success
-            schema:
-              type: object
-              required: [perm]
-              properties:   
-                perm:
-                    type: object
-                    required: [id, oid, objid, type, subsystem, desc, aid, action]
-                    properties:
-                      id:
-                        type: integer
-                        example: 1
-                      oid:
-                        type: integer
-                        example: 3                  
-                      objid:
-                        type: string
-                        example: 396587362//3328462822
-                      type:
-                        type: string
-                        example: Objects
-                      subsystem:
-                        type: string
-                        example: auth
-                      desc:
-                        type: string
-                        example: beehive
-                      aid:
-                        type: integer
-                        example: 1
-                      action:
-                        type: string
-                        example: view                 
+        Call this api to list object permissions               
         """        
         res = controller.objects.get_permission(oid)
         resp = {u'perm':res}

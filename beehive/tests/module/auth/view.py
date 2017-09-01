@@ -28,7 +28,7 @@ tests = [
     
 #     u'test_add_user',
 #     u'test_add_user_twice',
-    u'test_get_users',
+#     u'test_get_users',
 #     u'test_get_users_by_role',
 #     u'test_get_user',
 #     u'test_get_user_roles',
@@ -67,13 +67,10 @@ tests = [
 #     u'test_get_objects',
 #     u'test_get_object',
 #     u'test_delete_object',
-# 
-#     u'test_get_perms',
-#     u'test_get_perms_by_type',
-# 
-#     u'test_get_perms_by_user',
-#     
-#     u'test_get_perm',
+ 
+    u'test_get_perms',
+    u'test_get_perms_by_type',
+    u'test_get_perm',
 ]
 
 class AuthTestCase(BeehiveTestCase):
@@ -481,7 +478,7 @@ class AuthTestCase(BeehiveTestCase):
         }        
         res = self.call(u'auth', u'/v1.0/auth/objects', u'post', data=data,
                   **self.users[u'admin'])
-        oid = res[u'id']
+        oid = res[u'ids'][0]
     
     @assert_exception(ConflictException)
     def test_add_object_twice(self):

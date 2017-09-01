@@ -42,7 +42,6 @@ class ConfigProp(Base):
         return "ConfigProp(%s, %s, %s, %s, %s)" % (self.id, self.app, self.group, 
                                                  self.name, self.value)
 
-class ConfigDbManagerError(Exception): pass
 class ConfigDbManager(AbstractDbManager):
     """Db Manager used to manage configuration tables
     """

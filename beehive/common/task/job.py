@@ -7,7 +7,7 @@ import ujson as json
 from time import time
 from beehive.common.task import BaseTask
 from celery.utils.log import get_task_logger
-from beehive.common.apimanager import ApiManagerError, ApiEvent, ApiObject
+from beehive.common.apimanager import ApiManagerError, ApiObject
 from celery.result import AsyncResult, GroupResult
 from beehive.common.data import operation
 from beehive.common.task.manager import task_manager

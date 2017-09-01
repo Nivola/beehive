@@ -577,20 +577,20 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         params = {}
         if oid is not None:
             sql.append(u'AND t1.id LIKE :id')
-            sqlcount.append(u'AND t1.id LIKE :id')
+            sqlcount.append(u'AND t1.id = :id')
             params[u'id'] = oid
         if objid is not None:
             sql.append(u'AND t1.objid LIKE :objid')
             sqlcount.append(u'AND t1.objid LIKE :objid')
-            params[u'objid'] = "%"+objid+"%"
+            params[u'objid'] = objid
         if objtype is not None:
             sql.append(u'AND t2.objtype LIKE :objtype')
-            sqlcount.append(u'AND t2.objtype LIKE :objtype')
-            params[u'objtype'] = "%"+objtype+"%"
+            sqlcount.append(u'AND t2.objtype = :objtype')
+            params[u'objtype'] = objtype
         if objdef is not None:
             sql.append(u'AND t2.objdef LIKE :objdef')
             sqlcount.append(u'AND t2.objdef LIKE :objdef')
-            params[u'objdef'] = "%"+objdef+"%"            
+            params[u'objdef'] = objdef            
         
         # get total rows
         total = session.execute(u' '.join(sqlcount), params).fetchone()[0]
@@ -622,6 +622,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         :raises QueryError: raise :class:`QueryError`
         """
         session = self.get_session()
+        res = []
         for obj in objs:
             # verify if object already exists
             sysobj = session.query(SysObject).\
@@ -642,8 +643,10 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
                 perm = SysObjectPermission(sysobj, action)
                 session.add(perm)
             self.logger.debug(u'Add system object %s permissions' % sysobj.id)
+            
+            res.append(sysobj)
         
-        return sysobj
+        return res
 
     @transaction
     def update_object(self, new_objid, oid=None, objid=None, objtype=None):
@@ -804,13 +807,14 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
     
     @query
     def get_permissions(self, objid=None, objid_filter=None, 
-                        objtype=None, objdef=None,
+                        objtype=None, objtypes=None, objdef=None,
                         objdef_filter=None, action=None,
                         page=0, size=10, order=u'DESC', field=u'id'):
         """Get system object permisssion.
         
         :param objid: Total or partial objid [optional]
         :param objtype str: Object type [optional]
+        :param objtypes str: Object type list [optional]
         :param objdef str: Object definition [optional]
         :param objdef_filter str: Part of object definition [optional]
         :param action str: Object action [optional]
@@ -849,6 +853,10 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             sql.append(u'AND t2.objtype LIKE :objtype')
             sqlcount.append(u'AND t2.objtype LIKE :objtype')
             params[u'objtype'] = objtype
+        if objtypes is not None:
+            sql.append(u'AND t2.objtype IN :objtypes')
+            sqlcount.append(u'AND t2.objtype IN :objtypes')
+            params[u'objtypes'] = objtypes            
         if objdef is not None:
             sql.append(u'AND t2.objdef LIKE :objdef')
             sqlcount.append(u'AND t2.objdef LIKE :objdef')
@@ -881,12 +889,14 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         return res, total
     
     @query
-    def get_deep_permissions(self, objids=[], objtype=None, objdef=None,
-                        page=0, size=10, order=u'DESC', field=u'id'):
+    def get_deep_permissions(self, objids=[], objtype=None, objtypes=None, 
+                             objdef=None,page=0, size=10, order=u'DESC', 
+                             field=u'id'):
         """Get all the system object permisssions for an object with its childs .
         
         :param objids: list of objid [optional]
         :param objtype str: Object type [optional]
+        :param objtypes str: Object type list [optional]
         :param objdef str: Object definition [optional]
         :param page: perm list page to show [default=0]
         :param size: number of perms to show in list per page [default=10]
@@ -919,6 +929,10 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             sql.append(u'AND t2.objtype LIKE :objtype')
             sqlcount.append(u'AND t2.objtype LIKE :objtype')
             params[u'objtype'] = objtype
+        if objtypes is not None:
+            sql.append(u'AND t2.objtype IN :objtypes')
+            sqlcount.append(u'AND t2.objtype IN :objtypes')
+            params[u'objtypes'] = objtypes
         if objdef is not None:
             sql.append(u'AND t2.objdef LIKE :objdef')
             sqlcount.append(u'AND t2.objdef LIKE :objdef')
