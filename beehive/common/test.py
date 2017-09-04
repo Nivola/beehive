@@ -126,9 +126,11 @@ class BeehiveTestCase(unittest.TestCase):
 
     @classmethod
     def validate_swagger_schema(cls, endpoint):
+        start = time.time()
         schema_uri = u'%s/apispec_1.json' % endpoint
         schema = load(schema_uri)
-        logger.info(u'Load swagger schema from %s' % endpoint)
+        logger.info(u'Load swagger schema from %s: %ss' % (endpoint, 
+                                                           time.time()-start))
         return schema
         
     def setUp(self):
@@ -168,13 +170,14 @@ class BeehiveTestCase(unittest.TestCase):
                                     timeout=5, verify=False)
         res = response.json()
         token = res[u'access_token']
-        seckey = res[u'seckey']         
+        seckey = res[u'seckey']
     
     def call(self, subsystem, path, method, params=None, headers=None,
              user=None, pwd=None, auth=None, data=None, query=None,  
              *args, **kvargs):
         global token, seckey
         
+        start = time.time()
         validate = False
         res = None
 
@@ -196,9 +199,13 @@ class BeehiveTestCase(unittest.TestCase):
     
             if user is not None and auth == u'simplehttp':
                 cred = HTTPBasicAuth(user, pwd)
+                logger.debug(u'Make simple http authentication: %s' % 
+                             time.time()-start)
             elif user is not None and auth == u'keyauth':
                 if token is None:
                     self.create_keyauth_token(user, pwd)
+                    logger.debug(u'Create keyauth token: %s - %s' % 
+                                 (token, time.time()-start))
                 sign = self.auth_client.sign_request(seckey, uri)
                 headers.update({u'uid':token, u'sign':sign})
             
@@ -297,6 +304,7 @@ class BeehiveTestCase(unittest.TestCase):
             self.runlogger.error(u'', exc_info=1)
             raise
         
+        logger.debug(u'call elapsed: %s' % (time.time()-start))
         self.assertEqual(validate, True)
         return res
     

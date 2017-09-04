@@ -98,19 +98,21 @@ class PermTagEntity(Base):
                                                      self.entity, self.type)
 
 class PaginatedQueryGenerator(object):
-    def __init__(self, entity, session, other_entities=[]):
+    def __init__(self, entity, session, other_entities=[], custom_select=None):
         """Use this class to generate and configure query with pagination
         and filtering based on tagged entity.
         Base table : perm_tag t1, perm_tag_entity t2, {entitytable} t3
         
         :param entity: main mapper entity
         :param other_entities: other mapper entities [optional] [default=[]]
+        :param custom_select: custom select used instead of entity table
         """
         self.logger = logging.getLogger(self.__class__.__module__+ \
                                         u'.'+self.__class__.__name__)         
         
         self.session = session
         self.entity = entity
+        self.custom_select = custom_select
         self.other_entities = other_entities
         self.other_tables = []
         self.other_filters = []
@@ -145,7 +147,7 @@ class PaginatedQueryGenerator(object):
         
         :param str field: field with syntax <table_ alias>.<field>
         """
-        self.select_fields.append(field)
+        self.select_fields.append(field)             
     
     def add_filter_by_field(self, field, kvargs, custom_filter=None):
         """Add where condition like AND t3.<field>=:<field> if <field> in kvargs
@@ -188,7 +190,7 @@ class PaginatedQueryGenerator(object):
         
         sql = [
             u'SELECT {fields}',
-            u'FROM perm_tag t1, perm_tag_entity t2, `{table}` t3'
+            u'FROM perm_tag t1, perm_tag_entity t2, {table} t3'
         ]
         # append other tables
         for table in self.other_tables:
@@ -214,10 +216,17 @@ class PaginatedQueryGenerator(object):
 
         # format query
         stmp = u' '.join(sql)
-        stmp = stmp.format(table=self.entity.__tablename__, fields=fields,
+        # custom table like select
+        if self.custom_select is not None:
+            table = self.custom_select
+        # table is defined by entity
+        else:
+            table = u'`%s`' % self.entity.__tablename__
+        stmp = stmp.format(table=table, fields=fields,
             field=self.field, order=self.order, start=self.start, 
             end=self.end)
-        return text(stmp)
+        return stmp
+        #return text(stmp)
     
     def run(self, tags, *args, **kvargs):
         """Make query
@@ -240,6 +249,7 @@ class PaginatedQueryGenerator(object):
         entities = [self.entity]
         entities.extend(self.other_entities)
 
+        #query = self.session.query(*entities).\
         query = self.session.query(*entities).\
                 from_statement(stmp).\
                 params(tags=tags, **kvargs)
@@ -249,7 +259,7 @@ class PaginatedQueryGenerator(object):
         query = query.all()
         
         self.logger.debug(u'Get %ss (total:%s): %s' % 
-                          (self.entity.__name__, total, truncate(query)))
+                          (self.entity.__tablename__, total, truncate(query)))
         return query, total
 
 class AbstractDbManager(object):
@@ -405,7 +415,7 @@ class AbstractDbManager(object):
     @query
     def get_paginated_entities(self, entity, tags=[], page=0, size=10, 
             order=u'DESC', field=u'id', filters=[], tables=[], select_fields=[],
-            *args, **kvargs):
+            custom_select=None, *args, **kvargs):
         """Get entities associated with some permission tags
         
         :param tables: sql tables to add (table_name, alias) [optional]
@@ -428,7 +438,8 @@ class AbstractDbManager(object):
         """
         session = self.get_session()
         
-        query = PaginatedQueryGenerator(entity, session)
+        query = PaginatedQueryGenerator(entity, session, 
+                                        custom_select=custom_select)
         # set tables
         for table, alias in tables:
             query.add_table(table, alias)
@@ -546,7 +557,7 @@ class AbstractDbManager(object):
         """
         perm = u'%s-%s' % (objdef.lower(), objid)
         tag = hashlib.md5(perm).hexdigest()
-        self.logger.debug(u'tag: %s, per: %s' % (tag, perm))
+        #self.logger.debug(u'tag: %s, per: %s' % (tag, perm))
         return tag
     
     @transaction

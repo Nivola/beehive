@@ -1666,7 +1666,7 @@ class ApiObject(object):
             u'uuid':self.uuid,
             u'name':self.name,
             u'definition':self.objdef,
-            u'active':self.active,
+            u'active':str2bool(self.active),
             u'uri':self.objuri
         }
         return res
@@ -1808,7 +1808,7 @@ class ApiObject(object):
         #self.event_class(self.controller).register_object(args, desc=desc)
         
         # register permission tags
-        self.register_object_permtags(objids)        
+        self.register_object_permtags(objids)
         
         self.logger.debug(u'Register api object: %s:%s %s - STOP' % 
                           (self.objtype, self.objdef, u'//'.join(objids)))
