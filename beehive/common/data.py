@@ -123,8 +123,8 @@ def transaction(fn):
             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          params, elapsed))
-            l#ogger.error(ex.message, exc_info=1)
-            #ogger.error(ex.message)
+            #logger.error(ex.message, exc_info=1)
+            #logger.error(ex.message)
                   
             rollback(session, commit)
             raise TransactionError(ex.message, code=400)
