@@ -9,7 +9,7 @@ from datetime import datetime
 from beecell.simple import get_value, str2bool, AttribException
 from beehive.common.apimanager import ApiView, ApiManagerError, PaginatedRequestQuerySchema,\
     PaginatedResponseSchema, ApiObjectResponseSchema, SwaggerApiView,\
-    CreateApiObjectResponseSchema, GetApiObjectRequestSchema,\
+    CrudApiObjectResponseSchema, GetApiObjectRequestSchema,\
     ApiObjectResponseDateSchema
 from flasgger import fields, Schema
 from marshmallow.validate import OneOf, Range, Length
@@ -369,7 +369,7 @@ class ListUsersRequestSchema(PaginatedRequestQuerySchema):
                                 context=u'query')
 
 class ListUsersResponseSchema(PaginatedResponseSchema):
-    users = fields.Nested(ApiObjectResponseSchema, many=True)
+    users = fields.Nested(ApiObjectResponseSchema, many=True, required=True)
 
 class ListUsers(SwaggerApiView):
     tags = [u'authorization']
@@ -397,7 +397,7 @@ class ListUsers(SwaggerApiView):
 
 ## get
 class GetUserResponseSchema(Schema):
-    user = fields.Nested(ApiObjectResponseSchema)
+    user = fields.Nested(ApiObjectResponseSchema, required=True)
 
 class GetUser(SwaggerApiView):
     tags = [u'authorization']
@@ -434,7 +434,7 @@ class GetUserAtributesParamResponseSchema(Schema):
 class GetUserAtributesResponseSchema(Schema):
     count = fields.Integer(required=True, defaut=0)
     user_attributes = fields.Nested(GetUserAtributesParamResponseSchema,
-                                    many=True)
+                                    many=True, required=True)
 
 class GetUserAtributes(SwaggerApiView):
     tags = [u'authorization']
@@ -486,14 +486,14 @@ class CreateUser(SwaggerApiView):
     tags = [u'authorization']
     definitions = {
         u'CreateUserRequestSchema': CreateUserRequestSchema,
-        u'CreateApiObjectResponseSchema':CreateApiObjectResponseSchema
+        u'CrudApiObjectResponseSchema':CrudApiObjectResponseSchema
     }
     parameters = SwaggerHelper().get_parameters(CreateUserBodyRequestSchema)
     parameters_schema = CreateUserRequestSchema
     responses = SwaggerApiView.setResponses({
         201: {
             u'description': u'success',
-            u'schema': CreateApiObjectResponseSchema
+            u'schema': CrudApiObjectResponseSchema
         }
     })
     
@@ -674,7 +674,7 @@ class ListRolesRequestSchema(PaginatedRequestQuerySchema):
     group = fields.String(context=u'query')
 
 class ListRolesResponseSchema(PaginatedResponseSchema):
-    roles = fields.Nested(ApiObjectResponseSchema, many=True)
+    roles = fields.Nested(ApiObjectResponseSchema, many=True, required=True)
 
 class ListRoles(SwaggerApiView):
     tags = [u'authorization']
@@ -701,7 +701,7 @@ class ListRoles(SwaggerApiView):
         return self.format_paginated_response(res, u'roles', total, **data)
 
 class GetRoleResponseSchema(Schema):
-    role = fields.Nested(ApiObjectResponseSchema)
+    role = fields.Nested(ApiObjectResponseSchema, required=True)
 
 class GetRole(SwaggerApiView):
     tags = [u'authorization']
@@ -737,14 +737,14 @@ class CreateRole(SwaggerApiView):
     tags = [u'authorization']
     definitions = {
         u'CreateRoleRequestSchema': CreateRoleRequestSchema,
-        u'CreateApiObjectResponseSchema':CreateApiObjectResponseSchema
+        u'CrudApiObjectResponseSchema':CrudApiObjectResponseSchema
     }
     parameters = SwaggerHelper().get_parameters(CreateRoleBodyRequestSchema)
     parameters_schema = CreateRoleRequestSchema
     responses = SwaggerApiView.setResponses({
         201: {
             u'description': u'success',
-            u'schema': CreateApiObjectResponseSchema
+            u'schema': CrudApiObjectResponseSchema
         }
     })
 
@@ -864,7 +864,7 @@ class ListGroupsRequestSchema(PaginatedRequestQuerySchema):
                                 context=u'query')
 
 class ListGroupsResponseSchema(PaginatedResponseSchema):
-    groups = fields.Nested(ApiObjectResponseSchema, many=True)
+    groups = fields.Nested(ApiObjectResponseSchema, many=True, required=True)
 
 class ListGroups(SwaggerApiView):
     tags = [u'authorization']
@@ -892,7 +892,7 @@ class ListGroups(SwaggerApiView):
 
 ## get
 class GetGroupResponseSchema(Schema):
-    group = fields.Nested(ApiObjectResponseSchema)
+    group = fields.Nested(ApiObjectResponseSchema, required=True)
 
 class GetGroup(SwaggerApiView):
     tags = [u'authorization']
@@ -931,14 +931,14 @@ class CreateGroup(SwaggerApiView):
     tags = [u'authorization']
     definitions = {
         u'CreateGroupRequestSchema': CreateGroupRequestSchema,
-        u'CreateApiObjectResponseSchema':CreateApiObjectResponseSchema
+        u'CrudApiObjectResponseSchema':CrudApiObjectResponseSchema
     }
     parameters = SwaggerHelper().get_parameters(CreateGroupBodyRequestSchema)
     parameters_schema = CreateGroupRequestSchema
     responses = SwaggerApiView.setResponses({
         201: {
             u'description': u'success',
-            u'schema': CreateApiObjectResponseSchema
+            u'schema': CrudApiObjectResponseSchema
         }
     })
     
@@ -1074,11 +1074,12 @@ class ListObjectsParamsResponseSchema(Schema):
     subsystem = fields.String(required=True, default=u'auth')
     type = fields.String(required=True, default=u'Role')
     desc = fields.String(required=True, default=u'test')
-    date = fields.Nested(ApiObjectResponseDateSchema)
+    date = fields.Nested(ApiObjectResponseDateSchema, required=True)
     active = fields.Boolean(required=True, default=True)
 
 class ListObjectsResponseSchema(PaginatedResponseSchema):
-    objects = fields.Nested(ListObjectsParamsResponseSchema, many=True)
+    objects = fields.Nested(ListObjectsParamsResponseSchema, many=True, 
+                            required=True)
 
 class ListObjects(SwaggerApiView):
     tags = [u'authorization']
@@ -1108,7 +1109,7 @@ class ListObjects(SwaggerApiView):
 
 ## get
 class GetObjectResponseSchema(Schema):
-    object = fields.Nested(ListObjectsParamsResponseSchema)
+    object = fields.Nested(ListObjectsParamsResponseSchema, required=True)
 
 class GetObject(SwaggerApiView):
     tags = [u'authorization']
@@ -1332,7 +1333,7 @@ class ListObjectTypes(ApiView):
                             example: 1990-12-31T23:59:59Z        
         """
         res, total = controller.objects.get_type(**data)
-        return self.format_paginated_response(res, u'object-types', total, **data)
+        return self.format_paginated_response(res, u'object_types', total, **data)
 
 class ObjectTypeSchemaCreateParam(Schema):
     subsystem = fields.String()
@@ -1340,7 +1341,7 @@ class ObjectTypeSchemaCreateParam(Schema):
 
 class ObjectTypeSchemaCreate(Schema):
     object_types = fields.Nested(ObjectTypeSchemaCreateParam, many=True, 
-                                 load_from=u'object-types')
+                                 required=True)
 
 class CreateObjectType(ApiView):
     parameters_schema = ObjectTypeSchemaCreate
@@ -1363,7 +1364,7 @@ class CreateObjectType(ApiView):
               type: object
               required: [object-types]
               properties:
-                object-types:
+                object_types:
                   type: array
                   items:
                     type: object
@@ -1498,12 +1499,12 @@ class ListObjectActions(ApiView):
             description: success
             schema:
               type: object
-              required: [object-actions, count]
+              required: [object_actions, count]
               properties:
                 count:
                   type: integer
                   example: 1     
-                object-actions:
+                object_actions:
                   type: array
                   items:
                     type: object
@@ -1517,7 +1518,7 @@ class ListObjectActions(ApiView):
                         example: beehive
         """
         res = controller.objects.get_action()
-        resp = {u'object-actions':res,
+        resp = {u'object_actions':res,
                 u'count':len(res)} 
         return resp    
 
@@ -1549,7 +1550,8 @@ class ListObjectPermsParamsResponseSchema(Schema):
     action = fields.String(required=True, default=u'view')
 
 class ListObjectPermsResponseSchema(PaginatedResponseSchema):
-    perms = fields.Nested(ListObjectPermsParamsResponseSchema, many=True)
+    perms = fields.Nested(ListObjectPermsParamsResponseSchema, many=True, 
+                          required=True)
 
 class ListObjectPerms(SwaggerApiView):
     tags = [u'authorization']
@@ -1592,7 +1594,7 @@ class ListObjectPerms(SwaggerApiView):
 
 ## get
 class GetObjectPermsResponseSchema(Schema):
-    perm = fields.Nested(ListObjectPermsParamsResponseSchema)
+    perm = fields.Nested(ListObjectPermsParamsResponseSchema, required=True)
 
 class GetObjectPerms(SwaggerApiView):
     tags = [u'authorization']

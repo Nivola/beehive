@@ -1920,12 +1920,13 @@ class ApiObject(object):
     # pre, post function
     #
     @staticmethod
-    def pre_create(controller, **kvargs):
+    def pre_create(controller, *args, **kvargs):
         """Pre create function. Extend this function to manipulate and validate
         input params.
         
         **Parameters:**
         
+            * **args** (:py:class:`list`): custom params
             * **kvargs** (:py:class:`dict`): custom params
             
         **Returns:**
@@ -1937,12 +1938,13 @@ class ApiObject(object):
         return kvargs
     
     @staticmethod
-    def post_create(controller, **kvargs):
+    def post_create(controller, *args, **kvargs):
         """Post create function. Extend this function to execute some operation
         after entity was created. Used only for synchronous creation.
         
         **Parameters:**
         
+            * **args** (:py:class:`list`): custom params
             * **kvargs** (:py:class:`dict`): custom params
             
         **Returns:**
@@ -1953,12 +1955,13 @@ class ApiObject(object):
         """
         return None    
     
-    def pre_change(self, **kvargs):
+    def pre_change(self, *args, **kvargs):
         """Pre change function. Extend this function to manipulate and validate
         input params.
         
         **Parameters:**
         
+            * **args** (:py:class:`list`): custom params
             * **kvargs** (:py:class:`dict`): custom params
             
         **Returns:**
@@ -1969,12 +1972,13 @@ class ApiObject(object):
         """        
         return kvargs
     
-    def pre_clean(self, **kvargs):
+    def pre_clean(self, *args, **kvargs):
         """Pre clean function. Extend this function to manipulate and validate
         input params.
         
         **Parameters:**
         
+            * **args** (:py:class:`list`): custom params
             * **kvargs** (:py:class:`dict`): custom params
             
         **Returns:**
@@ -2769,6 +2773,7 @@ class ApiView(FlaskView):
                 res = response
             
             self.logger.debug(u'Api response: %s' % truncate(response))
+            self.logger.debug(u'Api response mime type: %s' % self.response_mime)
             
             # redirect to new uri
             if code in [301, 302, 303, 305, 307]:
@@ -3035,7 +3040,7 @@ class ApiObjectResponseDateSchema(Schema):
     modified = fields.DateTime(required=True, default=u'1990-12-31T23:59:59Z')
     expiry = fields.String(default=u'')
 
-class ApiObjecCounttResponseSchema(Schema):
+class ApiObjecCountResponseSchema(Schema):
     count = fields.Integer(required=True, default=10)
 
 class ApiObjectSmallResponseSchema(Schema):
@@ -3054,7 +3059,7 @@ class ApiObjectResponseSchema(Schema):
     definition = fields.String(required=True, default=u'Role')
     name = fields.String(required=True, default=u'test')
     desc = fields.String(required=True, default=u'test')
-    date = fields.Nested(ApiObjectResponseDateSchema)
+    date = fields.Nested(ApiObjectResponseDateSchema, required=True)
     uri = fields.String(required=True, default=u'/v1.0/auht/roles')
     active = fields.Boolean(required=True, default=True)
 
@@ -3068,15 +3073,14 @@ class PaginatedResponseSchema(Schema):
     count = fields.Integer(required=True, default=10)
     page = fields.Integer(required=True, default=0)
     total = fields.Integer(required=True, default=20)
-    sort = fields.Nested(PaginatedResponseSortSchema)
+    sort = fields.Nested(PaginatedResponseSortSchema, required=True)
     
-class CreateApiObjectResponseSchema(Schema):
+class CrudApiObjectResponseSchema(Schema):
     uuid = fields.UUID(required=True, 
                        default=u'6d960236-d280-46d2-817d-f3ce8f0aeff7')
     
-class UpdateApiObjectResponseSchema(Schema):
-    uuid = fields.UUID(required=True, 
-                       default=u'6d960236-d280-46d2-817d-f3ce8f0aeff7')    
+class CrudApiObjectJobResponseSchema(CrudApiObjectResponseSchema):
+    jobid = fields.UUID(default=u'db078b20-19c6-4f0e-909c-94745de667d4')   
 
 class ApiObjectPermsParamsResponseSchema(Schema):
     id = fields.Integer(required=True, default=1)
@@ -3089,7 +3093,8 @@ class ApiObjectPermsParamsResponseSchema(Schema):
     action = fields.String(required=True, default=u'view')
 
 class ApiObjectPermsResponseSchema(PaginatedResponseSchema):
-    perms = fields.Nested(ApiObjectPermsParamsResponseSchema, many=True) 
+    perms = fields.Nested(ApiObjectPermsParamsResponseSchema, many=True, 
+                          required=True) 
 
 class SwaggerApiView(ApiView, SwaggerView):
     consumes = ['application/json',

@@ -37,7 +37,7 @@ class ResourceManager(ApiManager):
         resource
         
     PARAMS:
-        resources list <field>=<value>    field: name, active, type, container, 
+        resources list <field>=<value>    field: name, active, type, resourcecontainer, 
                                                  creation-date, modification-date, 
                                                  attribute, parent-id, type-filter, tags
                                           Ex. type-filter=%folder.server% name=tst-b%
@@ -53,21 +53,21 @@ class ResourceManager(ApiManager):
         resources tag-delete <id|uuid> <tag>
         resources tags <id|uuid>    
     
-        containers list
-        containers types
-        containers get <id>
-        containers ping <id>
-        containers perms <id>
-        containers roles <id>
-        containers add <type> <name> <conn.json>    create a new resource container
+        resourcecontainers list
+        resourcecontainers types
+        resourcecontainers get <id>
+        resourcecontainers ping <id>
+        resourcecontainers perms <id>
+        resourcecontainers roles <id>
+        resourcecontainers add <type> <name> <conn.json>    create a new resource resourcecontainer
                                                     type: vsphere, openstack, provider
-        containers delete <id>                      delete a resource container
-        containers tag-add <id> <tag>               add tag to a resource container
-        containers tag-delete <id> <tag>            remove tag from a resource container
-        containers tags <id>                        get tags of a resource container
-        containers discover-classes <cid>           get container resource classes
-        containers discover <cid> <class>           discover container <class> resources
-        containers synchronize <cid> <class>        synchronize container <class> resources
+        resourcecontainers delete <id>                      delete a resource resourcecontainer
+        resourcecontainers tag-add <id> <tag>               add tag to a resource resourcecontainer
+        resourcecontainers tag-delete <id> <tag>            remove tag from a resource resourcecontainer
+        resourcecontainers tags <id>                        get tags of a resource resourcecontainer
+        resourcecontainers discover-classes <cid>           get resourcecontainer resource classes
+        resourcecontainers discover <cid> <class>           discover resourcecontainer <class> resources
+        resourcecontainers synchronize <cid> <class>        synchronize resourcecontainer <class> resources
         
         tags list
         tags get <tag>
@@ -94,33 +94,38 @@ class ResourceManager(ApiManager):
         self.subsystem = u'resource'
         self.logger = logger
         self.msg = None
-        self.res_headers = [u'id', u'uuid', u'definition', u'name', u'parent_id',
-                            u'parent_name', u'active', u'date.creation']
+        self.res_headers = [u'id', u'uuid', u'definition', u'name', u'container.name',
+                            u'parent.name', u'active', u'state', u'date.creation',
+                            u'date.modified']
         self.cont_headers = [u'id', u'uuid', u'category', u'definition', 
-                             u'name', u'active', u'date.creation']
-        self.tag_headers = [u'id', u'uuid', u'value']
+                             u'name', u'active', u'state', u'date.creation',
+                             u'date.modified']
+        self.tag_headers = [u'id', u'uuid', u'name', u'date.creation',
+                             u'date.modified', u'resources', u'containers',
+                             u'links']
         self.link_headers = [u'id', u'uuid', u'name', u'active', 
                              u'details.start_resource.id', 
                              u'details.end_resource.id',
-                             u'details.attributes']
+                             u'details.attributes', u'date.creation',
+                             u'date.modified']
     
     def actions(self):
         actions = {
-            u'containers.list': self.get_resource_containers,
-            u'containers.types': self.get_resource_container_types,
-            u'containers.get': self.get_resource_container,
-            u'containers.count': self.get_resource_container_rescount,
-            u'containers.perms': self.get_resource_container_perms,
-            u'containers.roles': self.get_resource_container_roles,
-            u'containers.ping': self.ping_container,
-            u'containers.add': self.add_resource_container,
-            u'containers.delete': self.delete_resource_container,
-            u'containers.tag-add': self.add_container_tag,
-            u'containers.tag-delete': self.delete_container_tag,
-            u'containers.tags': self.get_container_tag,
-            u'containers.discover-classes':self.discover_container_resource_classess,
-            u'containers.discover':self.discover_container_resources,
-            u'containers.synchronize':self.synchronize_container_resources,
+            u'containers.list': self.get_resource_resourcecontainers,
+            u'containers.types': self.get_resource_resourcecontainer_types,
+            u'containers.get': self.get_resource_resourcecontainer,
+            u'containers.count': self.get_resource_resourcecontainer_rescount,
+            u'containers.perms': self.get_resource_resourcecontainer_perms,
+            u'containers.roles': self.get_resource_resourcecontainer_roles,
+            u'containers.ping': self.ping_resourcecontainer,
+            u'containers.add': self.add_resource_resourcecontainer,
+            u'containers.delete': self.delete_resource_resourcecontainer,
+            u'containers.tag-add': self.add_resourcecontainer_tag,
+            u'containers.tag-delete': self.delete_resourcecontainer_tag,
+            u'containers.tags': self.get_resourcecontainer_tag,
+            u'containers.discover-classes':self.discover_resourcecontainer_resource_classess,
+            u'containers.discover':self.discover_resourcecontainer_resources,
+            u'containers.synchronize':self.synchronize_resourcecontainer_resources,
             
             u'resources.list': self.get_resources,
             u'resources.types': self.get_resource_types,
@@ -162,20 +167,20 @@ class ResourceManager(ApiManager):
     #
     def get_resources(self, *args):
         data = self.format_http_get_query_params(*args)
-        uri = u'%s/resources/' % (self.baseuri)
+        uri = u'%s/resources' % (self.baseuri)
         res = self._call(uri, u'GET', data=data)
         self.logger.info(u'Get resources: %s' % truncate(res))
         self.result(res, key=u'resources', headers=self.res_headers)
     
     def get_resource_types(self, *args):
         data = self.format_http_get_query_params(*args)
-        uri = u'%s/resources/types/' % self.baseuri
+        uri = u'%s/resources/types' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         self.logger.info(u'Get resource types: %s' % truncate(res))
         self.result(res, key=u'resource-types', headers=[u'id', u'type'])
 
     def get_resource(self, value):
-        uri = u'%s/resources/%s/' % (self.baseuri, value)
+        uri = u'%s/resources/%s' % (self.baseuri, value)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get resource: %s' % truncate(res))
         self.result(res, key=u'resource', details=True)
@@ -206,7 +211,7 @@ class ResourceManager(ApiManager):
             self.__print_tree(child, space=space+u'   ')
     
     def get_resource_tree(self, value):
-        uri = u'%s/resources/%s/tree/' % (self.baseuri, value)
+        uri = u'%s/resources/%s/tree' % (self.baseuri, value)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get resource tree: %s' % res)
         if self.format == u'text':
@@ -223,19 +228,19 @@ class ResourceManager(ApiManager):
             self.result(res)        
     
     def get_resource_rescount(self, value):
-        uri = u'%s/resources/%s/count/' % (self.baseuri, value)
+        uri = u'%s/resources/%s/count' % (self.baseuri, value)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get resource count: %s' % truncate(res))
         self.result(res)
     
     def get_resource_perms(self, value):
-        uri = u'%s/resources/%s/perms/' % (self.baseuri, value)
+        uri = u'%s/resources/%s/perms' % (self.baseuri, value)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get resource perms: %s' % truncate(res))
         self.result(res, key=u'perms', headers=self.perm_headers)
         
     def get_resource_roles(self, value):
-        uri = u'%s/resources/%s/roles/' % (self.baseuri, value)
+        uri = u'%s/resources/%s/roles' % (self.baseuri, value)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get resource roles: %s' % truncate(res))
         self.result(res)  
@@ -249,162 +254,162 @@ class ResourceManager(ApiManager):
                 u'conn':conn
             }
         }
-        uri = u'%s/resources/' % (self.baseuri)
+        uri = u'%s/resources' % (self.baseuri)
         res = self._call(uri, u'POST', data=data)
         self.logger.info(u'Add resource: %s' % truncate(res))
         res = {u'msg':u'Add resource %s' % res}
         self.result(res, headers=[u'msg'])
         
     def delete_resource(self, oid):
-        uri = u'%s/resources/%s/' % (self.baseuri, oid)
+        uri = u'%s/resources/%s' % (self.baseuri, oid)
         self._call(uri, u'DELETE')
         self.logger.info(u'Delete resource: %s' % oid)
         res = {u'msg':u'Delete resource %s' % oid}
         self.result(res, headers=[u'msg'])
 
     def get_resource_tag(self, oid):
-        uri = u'%s/resources/%s/tags/' % (self.baseuri, oid)        
+        uri = u'%s/resources/%s/tags' % (self.baseuri, oid)        
         res = self._call(uri, u'GET')
-        self.result(res, key=u'resource-tags')
+        self.result(res, key=u'resourcetags')
         
     def add_resource_tag(self, oid, tag):
         data = {
-            u'resource-tags':{
+            u'resourcetags':{
                 u'cmd':u'add',
                 u'value':tag
             }
         }
-        uri = u'%s/resources/%s/tags/' % (self.baseuri, oid)        
+        uri = u'%s/resources/%s/tags' % (self.baseuri, oid)        
         res = self._call(uri, u'PUT', data=data)
         self.result(res)
         
     def delete_resource_tag(self, oid, tag):
         data = {
-            u'resource-tags':{
+            u'resourcetags':{
                 u'cmd':u'remove',
                 u'value':tag
             }
         }
-        uri = u'%s/resources/%s/tags/' % (self.baseuri, oid)        
+        uri = u'%s/resources/%s/tags' % (self.baseuri, oid)        
         res = self._call(uri, u'PUT', data=data)
         self.result(res)    
     
     def get_resource_links(self, oid):
-        uri = u'%s/resources/%s/links/' % (self.baseuri, oid)        
+        uri = u'%s/resources/%s/links' % (self.baseuri, oid)        
         res = self._call(uri, u'GET')
         self.result(res)
         
     def get_resource_linked(self, oid):
-        uri = u'%s/resources/%s/linked/' % (self.baseuri, oid)        
+        uri = u'%s/resources/%s/linked' % (self.baseuri, oid)        
         res = self._call(uri, u'GET')
         self.result(res)
     
     #
-    # resource containers
+    # resource resourcecontainers
     #
-    def get_resource_containers(self, tags=None):
-        uri = u'%s/containers/' % self.baseuri
+    def get_resource_resourcecontainers(self, tags=None):
+        uri = u'%s/resourcecontainers' % self.baseuri
         if tags is not None:
             headers = {u'tags':tags}
         else:
             headers = None
         res = self._call(uri, u'GET', headers=headers)
-        self.logger.info(u'Get resource containers: %s' % truncate(res))
-        self.result(res, key=u'containers', headers=self.cont_headers)
+        self.logger.info(u'Get resource resourcecontainers: %s' % truncate(res))
+        self.result(res, key=u'resourcecontainers', headers=self.cont_headers)
     
-    def get_resource_container_types(self, tags=None):
-        uri = u'%s/containers/types/' % self.baseuri
+    def get_resource_resourcecontainer_types(self, tags=None):
+        uri = u'%s/resourcecontainers/types' % self.baseuri
         res = self._call(uri, u'GET')
-        self.logger.info(u'Get resource container types: %s' % truncate(res))
-        self.result(res, key=u'container-types', headers=[u'category', u'type'])
+        self.logger.info(u'Get resource resourcecontainer types: %s' % truncate(res))
+        self.result(res, key=u'resourcecontainer-types', headers=[u'category', u'type'])
 
-    def get_resource_container(self, value):
-        uri = u'%s/containers/%s/' % (self.baseuri, value)
+    def get_resource_resourcecontainer(self, value):
+        uri = u'%s/resourcecontainers/%s' % (self.baseuri, value)
         res = self._call(uri, u'GET')
-        self.logger.info(u'Get resource container: %s' % truncate(res))
-        self.result(res, key=u'container', headers=self.cont_headers, details=True)
+        self.logger.info(u'Get resource resourcecontainer: %s' % truncate(res))
+        self.result(res, key=u'resourcecontainer', headers=self.cont_headers, details=True)
     
-    def get_resource_container_rescount(self, value):
-        uri = u'%s/containers/%s/count/' % (self.baseuri, value)
+    def get_resource_resourcecontainer_rescount(self, value):
+        uri = u'%s/resourcecontainers/%s/count' % (self.baseuri, value)
         res = self._call(uri, u'GET')
-        self.logger.info(u'Get resource container resource count: %s' % truncate(res))
+        self.logger.info(u'Get resource resourcecontainer resource count: %s' % truncate(res))
         self.result(res)
     
-    def get_resource_container_perms(self, value):
-        uri = u'%s/containers/%s/perms/' % (self.baseuri, value)
+    def get_resource_resourcecontainer_perms(self, value):
+        uri = u'%s/resourcecontainers/%s/perms' % (self.baseuri, value)
         res = self._call(uri, u'GET')
-        self.logger.info(u'Get resource container perms: %s' % truncate(res))
+        self.logger.info(u'Get resource resourcecontainer perms: %s' % truncate(res))
         self.result(res, key=u'perms', headers=self.perm_headers)
         
-    def get_resource_container_roles(self, value):
-        uri = u'%s/containers/%s/roles/' % (self.baseuri, value)
+    def get_resource_resourcecontainer_roles(self, value):
+        uri = u'%s/resourcecontainers/%s/roles' % (self.baseuri, value)
         res = self._call(uri, u'GET')
-        self.logger.info(u'Get resource container roles: %s' % truncate(res))
+        self.logger.info(u'Get resource resourcecontainer roles: %s' % truncate(res))
         self.result(res)            
     
-    def ping_container(self, contid):
-        uri = u'%s/containers/%s/ping/' % (self.baseuri, contid)  
+    def ping_resourcecontainer(self, contid):
+        uri = u'%s/resourcecontainers/%s/ping' % (self.baseuri, contid)  
         res = self._call(uri, u'GET')      
-        self.logger.info(u'Ping container %s: %s' % (contid, res))
-        self.result({u'container':contid, u'ping':res}, 
-                    headers=[u'container', u'ping'])      
+        self.logger.info(u'Ping resourcecontainer %s: %s' % (contid, res))
+        self.result({u'resourcecontainer':contid, u'ping':res}, 
+                    headers=[u'resourcecontainer', u'ping'])      
     
-    def add_resource_container(self, ctype, name, conn):
+    def add_resource_resourcecontainer(self, ctype, name, conn):
         conn = self.load_config(conn)
         data = {
-            u'container':{
+            u'resourcecontainer':{
                 u'type':ctype, 
                 u'name':name, 
                 u'conn':conn
             }
         }
-        uri = u'%s/containers/' % (self.baseuri)
+        uri = u'%s/resourcecontainers' % (self.baseuri)
         res = self._call(uri, u'POST', data=data)
-        self.logger.info(u'Add resource container: %s' % res)
-        res = {u'msg':u'Add container %s' % res}
+        self.logger.info(u'Add resource resourcecontainer: %s' % res)
+        res = {u'msg':u'Add resourcecontainer %s' % res}
         self.result(res, headers=[u'msg'])
         
-    def delete_resource_container(self, oid):
-        uri = u'%s/containers/%s/' % (self.baseuri, oid)
+    def delete_resource_resourcecontainer(self, oid):
+        uri = u'%s/resourcecontainers/%s' % (self.baseuri, oid)
         self._call(uri, u'DELETE')
-        self.logger.info(u'Delete resource container: %s' % oid)
-        res = {u'msg':u'Delete container %s' % oid}
+        self.logger.info(u'Delete resource resourcecontainer: %s' % oid)
+        res = {u'msg':u'Delete resourcecontainer %s' % oid}
         self.result(res, headers=[u'msg'])
 
-    def get_container_tag(self, contid):
-        uri = u'%s/containers/%s/tags/' % (self.baseuri, contid)        
+    def get_resourcecontainer_tag(self, contid):
+        uri = u'%s/resourcecontainers/%s/tags' % (self.baseuri, contid)        
         res = self._call(uri, u'GET')
-        self.result(res, key=u'resource-tags', headers=[u'id', u'uuid', u'value'])
+        self.result(res, key=u'resourcetags', headers=[u'id', u'uuid', u'value'])
         
-    def add_container_tag(self, contid, tag):
+    def add_resourcecontainer_tag(self, contid, tag):
         data = {
-            u'resource-tags':{
+            u'resourcetags':{
                 u'cmd':u'add',
                 u'value':tag
             }
         }
-        uri = u'%s/containers/%s/tags/' % (self.baseuri, contid)        
+        uri = u'%s/resourcecontainers/%s/tags' % (self.baseuri, contid)        
         res = self._call(uri, u'PUT', data=data)
         self.result(res)
         
-    def delete_container_tag(self, contid, tag):
+    def delete_resourcecontainer_tag(self, contid, tag):
         data = {
-            u'resource-tags':{
+            u'resourcetags':{
                 u'cmd':u'remove',
                 u'value':tag
             }
         }
-        uri = u'%s/containers/%s/tags/' % (self.baseuri, contid)        
+        uri = u'%s/resourcecontainers/%s/tags/' % (self.baseuri, contid)        
         res = self._call(uri, u'PUT', data=data)
         self.result(res)
         
-    def discover_container_resource_classess(self, contid):
-        uri = u'%s/containers/%s/discover/classes/' % (self.baseuri, contid)        
+    def discover_resourcecontainer_resource_classess(self, contid):
+        uri = u'%s/resourcecontainers/%s/discover/classes' % (self.baseuri, contid)        
         res = self._call(uri, u'GET', data=u'').get(u'discover').get(u'classes')
         self.result(res, headers=[u'resource class'], fields=[0], maxsize=200)
         
-    def discover_container_resources(self, contid, resclass):
-        uri = u'%s/containers/%s/discover/' % (self.baseuri, contid)        
+    def discover_resourcecontainer_resources(self, contid, resclass):
+        uri = u'%s/resourcecontainers/%s/discover' % (self.baseuri, contid)        
         res = self._call(uri, u'GET', data=u'class=%s' % resclass)\
                   .get(u'discover').get(u'resources')
         headers = [u'id', u'name', u'parent', u'class']
@@ -415,7 +420,7 @@ class ResourceManager(ApiManager):
         print(u'Changed resources')
         self.result(res, key=u'changed', headers=headers)
 
-    def synchronize_container_resources(self, contid, resclass):     
+    def synchronize_resourcecontainer_resources(self, contid, resclass):     
         data = {
             u'discover':{
                 u'resource_classes':resclass,
@@ -424,25 +429,25 @@ class ResourceManager(ApiManager):
                 u'changed':True
             }
         }
-        uri = u'%s/containers/%s/discover/' % (self.baseuri, contid)        
+        uri = u'%s/resourcecontainers/%s/discover' % (self.baseuri, contid)        
         res = self._call(uri, u'PUT', data=data)
         self.result(res)
 
-    def get_container_resources_scheduler(self):
+    def get_resourcecontainer_resources_scheduler(self):
         global contid
         data = ''
-        uri = u'%s/container/%s/discover/scheduler/' % (self.baseuri, contid)        
+        uri = u'%s/resourcecontainer/%s/discover/scheduler' % (self.baseuri, contid)        
         self.invoke(u'resource', uri, u'GET', data=data)    
     
-    def create_container_resources_scheduler(self):
+    def create_resourcecontainer_resources_scheduler(self):
         global contid
         data = json.dumps({'minutes':5})
-        uri = u'%s/container/%s/discover/scheduler/' % (self.baseuri, contid)        
+        uri = u'%s/resourcecontainer/%s/discover/scheduler' % (self.baseuri, contid)        
         self.invoke(u'resource', uri, u'POST', data=data)
         
-    def remove_container_resources_scheduler(self):
+    def remove_resourcecontainer_resources_scheduler(self):
         global contid
-        uri = u'%s/container/%s/discover/scheduler/' % (self.baseuri, contid)        
+        uri = u'%s/resourcecontainer/%s/discover/scheduler' % (self.baseuri, contid)        
         self.invoke(u'resource', uri, u'DELETE', data='')
 
     #
@@ -450,63 +455,63 @@ class ResourceManager(ApiManager):
     #
     def test_add_tags(self, value):
         data = {
-            u'resource-tags':{
+            u'resourcetags':{
                 u'value':value
             }
         }
-        uri = u'%s/resource-tags/' % self.baseuri        
+        uri = u'%s/resourcetags' % self.baseuri        
         res = self._call(uri, u'POST', data=data)
         self.logger.info(res)
         res = {u'msg':u'Add tag %s' % res}
         self.result(res, headers=[u'msg'])
 
     def test_count_tags(self):
-        uri = u'%s/resource-tags/count/' % self.baseuri        
+        uri = u'%s/resourcetags/count' % self.baseuri        
         res = self._call(uri, u'GET')
         self.logger.info(res)
         self.result(res)
         
     def test_get_tags_occurrences(self):
-        uri = u'%s/resource-tags/occurrences/' % self.baseuri        
+        uri = u'%s/resourcetags/occurrences' % self.baseuri        
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.result(res, key=u'resource-tags', headers=[u'id', u'uuid', u'value', 
+        self.result(res, key=u'resourcetags', headers=[u'id', u'uuid', u'value', 
                                                         u'resources'])
 
     def test_get_tags(self):
-        uri = u'%s/resource-tags/' % self.baseuri        
+        uri = u'%s/resourcetags' % self.baseuri        
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.result(res, key=u'resource-tags', headers=self.tag_headers)
+        self.result(res, key=u'resourcetags', headers=self.tag_headers)
         
     def test_get_tag(self, value):
-        uri = u'%s/resource-tags/%s/' % (self.baseuri, value)        
+        uri = u'%s/resourcetags/%s' % (self.baseuri, value)        
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.result(res, key=u'resource-tag', headers=self.tag_headers)
+        self.result(res, key=u'resourcetag', headers=self.tag_headers)
         if self.format == u'table':
-            self.result(res[u'resource-tag'], key=u'resources', headers=
+            self.result(res[u'resourcetag'], key=u'resources', headers=
                         [u'id', u'uuid', u'definition', u'name'])
 
     def test_get_tag_perms(self, value):
-        uri = u'%s/resource-tags/%s/perms/' % (self.baseuri, value)        
+        uri = u'%s/resourcetags/%s/perms' % (self.baseuri, value)        
         res = self._call(uri, u'GET')
         self.logger.info(res)
         self.result(res, key=u'perms', headers=self.perm_headers)
         
     def test_update_tag(self, value, new_value):
         data = {
-            u'resource-tags':{
+            u'resourcetags':{
                 u'value':new_value
             }
         }
-        uri = u'%s/resource-tags/%s/' % (self.baseuri, value)        
+        uri = u'%s/resourcetags/%s' % (self.baseuri, value)        
         res = self._call(uri, u'PUT', data=data)
         self.logger.info(res)
         self.result(res)
         
     def test_delete_tag(self, value):
-        uri = u'%s/resource-tags/%s/' % (self.baseuri, value)        
+        uri = u'%s/resourcetags/%s' % (self.baseuri, value)        
         res = self._call(uri, u'DELETE')
         self.logger.info(res)
         res = {u'msg':u'Delete tag %s' % value}
@@ -517,59 +522,59 @@ class ResourceManager(ApiManager):
     #
     def test_add_links(self, value):
         data = {
-            u'resource-links':{
+            u'resourcelinks':{
                 u'value':value
             }
         }
-        uri = u'%s/resource-links/' % self.baseuri        
+        uri = u'%s/resourcelinks' % self.baseuri        
         res = self._call(uri, u'POST', data=data)
         self.logger.info(res)
         res = {u'msg':u'Add link %s' % res}
         self.result(res, headers=[u'msg'])
 
     def test_count_links(self):
-        uri = u'%s/resource-links/count/' % self.baseuri        
+        uri = u'%s/resourcelinks/count' % self.baseuri        
         res = self._call(uri, u'GET')
         self.logger.info(res)
         self.result(res)
         
     def test_get_link_tags(self, oid):
-        uri = u'%s/resource-links/%s/tags/' % (self.baseuri, oid)        
+        uri = u'%s/resourcelinks/%s/tags' % (self.baseuri, oid)        
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.result(res, key=u'resource-tags', headers=self.tag_headers)
+        self.result(res, key=u'resourcetags', headers=self.tag_headers)
 
     def test_get_links(self):
-        uri = u'%s/resource-links/' % self.baseuri        
+        uri = u'%s/resourcelinks' % self.baseuri        
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.result(res, key=u'resource-links', headers=self.link_headers)
+        self.result(res, key=u'resourcelinks', headers=self.link_headers)
         
     def test_get_link(self, oid):
-        uri = u'%s/resource-links/%s/' % (self.baseuri, oid)        
+        uri = u'%s/resourcelinks/%s' % (self.baseuri, oid)        
         res = self._call(uri, u'GET')
         self.logger.info(res)
-        self.result(res, key=u'resource-link', headers=self.link_headers)
+        self.result(res, key=u'resourcelink', headers=self.link_headers)
 
     def test_get_link_perms(self, oid):
-        uri = u'%s/resource-links/%s/perms/' % (self.baseuri, oid)        
+        uri = u'%s/resourcelinks/%s/perms' % (self.baseuri, oid)        
         res = self._call(uri, u'GET')
         self.logger.info(res)
         self.result(res, key=u'perms', headers=self.perm_headers)
         
     def test_update_link(self, value, new_value):
         data = {
-            u'resource-links':{
+            u'resourcelinks':{
                 u'value':new_value
             }
         }
-        uri = u'%s/resource-links/%s/' % (self.baseuri, value)        
+        uri = u'%s/resourcelinks/%s' % (self.baseuri, value)        
         res = self._call(uri, u'PUT', data=data)
         self.logger.info(res)
         self.result(res)
         
     def test_delete_link(self, value):
-        uri = u'%s/resource-links/%s/' % (self.baseuri, value)        
+        uri = u'%s/resourcelinks/%s' % (self.baseuri, value)        
         res = self._call(uri, u'DELETE')
         self.logger.info(res)
         res = {u'msg':u'Delete link %s' % value}

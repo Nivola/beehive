@@ -66,12 +66,9 @@ class CatalogConsumer(ConsumerMixin):
                 res = self.manager.add_endpoint(objid, name, service, desc, 
                                             catalog_obj.id, uri, active=True)
                 controller = CatalogController(None)
-                obj = CatalogEndpoint(controller, Catalog(controller), 
-                                      oid=res.id, objid=res.objid, 
-                                      name=res.name, desc=res.desc, 
-                                      active=res.active, model=res)
                 # create object and permission
-                obj.register_object(objid.split(u'//'), desc=endpoint[u'desc'])
+                CatalogEndpoint(controller, oid=res.id).\
+                    register_object(objid.split(u'//'), desc=endpoint[u'desc'])
                 self.logger.debug(u'Store endpoint : %s' % endpoint)                
                 
             '''

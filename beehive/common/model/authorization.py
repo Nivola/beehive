@@ -24,7 +24,7 @@ from beehive.common.data import operation, query, transaction
 
 Base = declarative_base()
 
-from beehive.common.model import AbstractDbManager, ApiObject,\
+from beehive.common.model import AbstractDbManager, BaseEntity,\
     PaginatedQueryGenerator
 
 logger = logging.getLogger(__name__)
@@ -99,19 +99,19 @@ class RoleGroup(Base):
                 self.role_id, self.expiry_date) 
 
 # Systems role templates
-class RoleTemplate(Base, ApiObject):
+class RoleTemplate(Base, BaseEntity):
     __tablename__ = u'role_template'
 
     policy = relationship(u'SysPolicy', secondary=role_template_policy,
                           backref=backref(u'role_template', lazy=u'dynamic'))
 
     def __init__(self, objid, name, policy, desc=u'', active=True):
-        ApiObject.__init__(self, objid, name, desc, active)
+        BaseEntity.__init__(self, objid, name, desc, active)
         
         self.policy = policy 
 
 # Systems roles
-class Role(Base, ApiObject):
+class Role(Base, BaseEntity):
     __tablename__ = u'role'
 
     permission = relationship(u'SysObjectPermission', secondary=role_permission,
@@ -121,7 +121,7 @@ class Role(Base, ApiObject):
     template = Column(Integer())
 
     def __init__(self, objid, name, permission, desc=u'', active=True):
-        ApiObject.__init__(self, objid, name, desc, active)
+        BaseEntity.__init__(self, objid, name, desc, active)
         
         self.permission = permission
     
@@ -156,7 +156,7 @@ class UserAttribute(Base):
         return "<UserAttribute id=%s user=%s name=%s value=%s>" % (
                     self.id, self.user_id, self.name, self.value)
 
-class User(Base, ApiObject):
+class User(Base, BaseEntity):
     """User
     """
     __tablename__ = u'user'
@@ -177,7 +177,7 @@ class User(Base, ApiObject):
         :param expiry_date: user expiry date [default=365 days]. Set using a 
                 datetime object
         """
-        ApiObject.__init__(self, objid, name, desc, active)
+        BaseEntity.__init__(self, objid, name, desc, active)
         
         self.role = []
         
@@ -196,7 +196,7 @@ class User(Base, ApiObject):
         #res = sha256_crypt.verify(password, self.password)
         return res
 
-class Group(Base, ApiObject):
+class Group(Base, BaseEntity):
     __tablename__ = u'group'
 
     member = relationship(u'User', secondary=group_user,
@@ -206,7 +206,7 @@ class Group(Base, ApiObject):
     #init member value to an empty list when creating a group
     def __init__(self, objid, name, member=[], role=[], desc=None, active=True, 
                  expiry_date=None):
-        ApiObject.__init__(self, objid, name, desc, active)
+        BaseEntity.__init__(self, objid, name, desc, active)
         
         self.member = member
         self.role = role
@@ -246,7 +246,7 @@ class SysObjectType(Base):
                     self.id, self.objtype, self.objdef)
 
 # System objects
-class SysObject(Base, ApiObject):
+class SysObject(Base, BaseEntity):
     __tablename__ = u'sysobject'
 
     name = Column(String(100))
@@ -254,7 +254,7 @@ class SysObject(Base, ApiObject):
     type = relationship(u"SysObjectType", backref=u"sysobject") 
 
     def __init__(self, otype, objid, desc=u''):
-        ApiObject.__init__(self, objid, u'', desc, True)
+        BaseEntity.__init__(self, objid, u'', desc, True)
         
         self.type = otype     
     

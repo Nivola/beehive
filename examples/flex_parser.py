@@ -19,9 +19,9 @@ schema_uri = u'http://10.102.184.52:6090/apispec_1.json'
 
 schema = load(schema_uri)
 
-uri_template = u'/v1.0/resourcecontainers/{oid}'
+uri_template = u'/v1.0/resourcetags'
 method = u'get'
-response = requests.get(u'http://10.102.184.52:6090/v1.0/resourcecontainers/test-container', 
+response = requests.get(u'http://10.102.184.52:6090/v1.0/resourcetags', 
                         auth=HTTPBasicAuth(u'admin@local', u'testlab'))
 #response = requests.get(u'http://10.102.184.52:6060/v1.0/auth/users/10', 
 #                       auth=HTTPBasicAuth(u'admin1@local', u'testlab'))

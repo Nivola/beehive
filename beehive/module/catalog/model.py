@@ -7,7 +7,7 @@ import logging
 from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship
-from beehive.common.model import AbstractDbManager, ApiObject
+from beehive.common.model import AbstractDbManager, BaseEntity
 from sqlalchemy import create_engine, exc
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -15,17 +15,17 @@ Base = declarative_base()
 
 logger = logging.getLogger(__name__)
 
-class Catalog(Base, ApiObject):
+class Catalog(Base, BaseEntity):
     __tablename__ = 'catalog'
     
     zone = Column(String(50), nullable=False)
     
     def __init__(self, objid, name, desc, zone, active=True):
-        ApiObject.__init__(self, objid, name, desc, active)
+        BaseEntity.__init__(self, objid, name, desc, active)
 
         self.zone = zone
 
-class CatalogEndpoint(Base, ApiObject):
+class CatalogEndpoint(Base, BaseEntity):
     __tablename__ = 'catalog_endpoint'
 
     catalog_id = Column(Integer(), ForeignKey('catalog.id'))
@@ -36,7 +36,7 @@ class CatalogEndpoint(Base, ApiObject):
     modification_date = Column(DateTime())
     
     def __init__(self, objid, name, service, desc, catalog, uri, active=True):
-        ApiObject.__init__(self, objid, name, desc, active)
+        BaseEntity.__init__(self, objid, name, desc, active)
         
         self.service = service
         self.desc = desc

@@ -24,12 +24,6 @@ class CatalogController(BaseAuthController):
         
         self.manager = CatalogDbManager()
         self.child_classes = [Catalog]
-        
-    def add_container_class(self, name, container_class):
-        self.container_classes[name] = container_class
-
-    def get_container_class(self, name):
-        return self.container_classes[name]
 
     @trace(entity=u'Catalog', op=u'insert')
     def add_catalog(self, name=None, desc=None, zone=None):

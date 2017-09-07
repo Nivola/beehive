@@ -17,14 +17,14 @@ logger = get_task_logger(__name__)
 #
 @task_manager.task(bind=True, base=Job)
 @job(entity_class=TaskManager, name=u'jobtest2.insert', delta=1)
-def jobtest2(self, objid, suberror=False):
+def jobtest2(self, objid, params):
     """Test job
     
     :param objid: objid. Ex. 110//2222//334//*
     :param suberror: if True task rise error
     """
     ops = self.get_options()
-    self.set_shared_data({u'suberror':suberror})
+    self.set_shared_data(params)
     
     Job.create([
         end_task,
@@ -34,7 +34,7 @@ def jobtest2(self, objid, suberror=False):
 
 @task_manager.task(bind=True, base=Job)
 @job(entity_class=TaskManager, name=u'jobtest.insert', delta=1)
-def jobtest(self, objid, x=0, y=0, numbers=[], error=False, suberror=False):
+def jobtest(self, objid, params):
     """Test job
     
     :param objid: objid. Ex. 110//2222//334//*
@@ -45,18 +45,12 @@ def jobtest(self, objid, x=0, y=0, numbers=[], error=False, suberror=False):
     :param suberror: suberror
     """
     ops = self.get_options()
-    self.set_shared_data({
-        u'x':x,
-        u'y':y,
-        u'numbers':numbers,
-        u'error':error,
-        u'suberror':suberror
-    })
+    self.set_shared_data(params)
     
     g1 = []
-    for i in range(0,len(numbers)):
+    for i in range(0,len(params[u'numbers'])):
         g1.append(jobtest_task3.si(ops, i))
-    if error is True:
+    if params[u'error'] is True:
         g1.append(test_raise.si(ops))
     
     g1.append(test_invoke_job.si(ops))

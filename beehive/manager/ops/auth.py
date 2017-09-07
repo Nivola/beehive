@@ -203,7 +203,7 @@ class AuthManager(ApiManager):
         uri = u'%s/objects/actions' % (self.authuri)
         res = self._call(uri, u'GET', data=u'')
         self.logger.info(u'Get object: %s' % res)
-        self.result(res, key=u'object-actions', headers=self.act_headers)     
+        self.result(res, key=u'object_actions', headers=self.act_headers)     
     
     #
     # perms
@@ -231,11 +231,11 @@ class AuthManager(ApiManager):
         uri = u'%s/objects/types' % (self.authuri)
         res = self._call(uri, u'GET', data=data)
         self.logger.info(u'Get objects: %s' % res)
-        self.result(res, key=u'object-types', headers=self.type_headers)
+        self.result(res, key=u'object_types', headers=self.type_headers)
 
     def add_object_type(self, subsystem, otype, *args):
         data = {
-            u'object-types':[
+            u'object_types':[
                 {
                     u'subsystem':subsystem,
                     u'type':otype,

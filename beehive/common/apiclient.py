@@ -513,14 +513,15 @@ class BeehiveApiClient(object):
         if self.catalog_id is not None:
             # load catalog endpoints
             catalog = self.get_catalog(self.catalog_id)
-            endpoints = catalog[u'services']
+
+            services = catalog[u'services']
             #endpoints.pop(u'auth')
-            for service, uris in endpoints.items():
-                for uri in uris:
+            for service in services:
+                for endpoint in service[u'endpoints']:
                     try:
-                        self.endpoints[service].append([self.__parse_endpoint(uri), 0])
+                        self.endpoints[service[u'service']].append([self.__parse_endpoint(endpoint), 0])
                     except:
-                        self.endpoints[service] = [[self.__parse_endpoint(uri), 0]]
+                        self.endpoints[service[u'service']] = [[self.__parse_endpoint(endpoint), 0]]
         else:
             raise BeehiveApiClientError(u'Catalog id is undefined')
         
@@ -673,7 +674,7 @@ class BeehiveApiClient(object):
         :return: 
         :raise BeehiveApiClientError:
         """
-        res = self.invoke(u'auth', u'/v1.0/catalogs', 
+        res = self.invoke(u'auth', u'/v1.0/directory/catalogs', 
                           u'GET', u'')[u'catalogs']
         self.logger.debug(u'Get catalogs')
         return res
@@ -687,7 +688,7 @@ class BeehiveApiClient(object):
         :return: 
         :raise BeehiveApiClientError:
         """
-        res = self.invoke(u'auth', u'/v1.0/catalog/%s' % catalog_id, 
+        res = self.invoke(u'auth', u'/v1.0/directory/catalogs/%s' % catalog_id, 
                           u'GET', u'')[u'catalog']
         self.logger.debug(u'Get catalog %s' % catalog_id)
         return res
@@ -709,7 +710,7 @@ class BeehiveApiClient(object):
                 u'zone':zone                        
             }
         }
-        uri = u'/v1.0/catalog'        
+        uri = u'/v1.0/directory/catalogs'        
         res = self.invoke(u'auth', uri, u'POST', json.dumps(data))
         self.logger.debug(u'Create catalog %s' % name)
         return res
@@ -723,7 +724,7 @@ class BeehiveApiClient(object):
         :return: 
         :raise BeehiveApiClientError:
         """
-        uri = u'/v1.0/catalog/%s' % catalog_id        
+        uri = u'/v1.0/directory/catalogs/%s' % catalog_id        
         self.invoke(u'auth', uri, u'DELETE', u'')
         self.logger.debug(u'Delete catalog %s' % catalog_id)   
 
@@ -738,7 +739,7 @@ class BeehiveApiClient(object):
         :return: 
         :raise BeehiveApiClientError:
         """
-        res = self.invoke(u'auth', u'/v1.0/catalog/endpoints', u'GET', u'')
+        res = self.invoke(u'auth', u'/v1.0/directory/endpoints', u'GET', u'')
         self.logger.debug(u'Get endpoints')
         return res
     
@@ -751,7 +752,7 @@ class BeehiveApiClient(object):
         :return: 
         :raise BeehiveApiClientError:
         """
-        res = self.invoke(u'auth', u'/v1.0/catalog/endpoint/%s' % endpoint_id, u'GET', u'')
+        res = self.invoke(u'auth', u'/v1.0/directory/endpoints/%s' % endpoint_id, u'GET', u'')
         self.logger.debug(u'Get endpoint %s' % endpoint_id)
         return res
     
@@ -778,7 +779,7 @@ class BeehiveApiClient(object):
                 u'enabled':True                   
             }
         }
-        uri = u'/v1.0/catalog/endpoint'        
+        uri = u'/v1.0/directory/endpoints'        
         res = self.invoke(u'auth', uri, u'POST', json.dumps(data))
         self.logger.debug(u'Create endpoint %s' % name)
         return res
@@ -811,7 +812,7 @@ class BeehiveApiClient(object):
         data = {
             u'endpoint':data
         }
-        uri = u'/v1.0/catalog/endpoint/%s' % oid        
+        uri = u'/v1.0/directory/endpoints/%s' % oid        
         res = self.invoke(u'auth', uri, u'PUT', json.dumps(data))
         self.logger.debug(u'Create endpoint %s' % name)
         return res    
@@ -825,7 +826,7 @@ class BeehiveApiClient(object):
         :return: 
         :raise BeehiveApiClientError:
         """
-        uri = u'/v1.0/catalog/endpoint/%s' % endpoint_id        
+        uri = u'/v1.0/directory/endpoints/%s' % endpoint_id        
         self.invoke(u'auth', uri, u'DELETE', u'')
         self.logger.debug(u'Delete endpoint %s' % endpoint_id) 
 
@@ -844,7 +845,7 @@ class BeehiveApiClient(object):
         #data = json.dumps([(objtype, objdef, class_name)])
         #res = self.invoke(u'auth', '/api/auth/object/type', 'POST', data)
         data = {
-            u'object-types':[
+            u'object_types':[
                 {
                     u'subsystem':objtype,
                     u'type':objdef

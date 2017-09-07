@@ -47,7 +47,7 @@ class EventsParamsResponseSchema(Schema):
     dest = fields.Dict(required=True)
 
 class ListEventsResponseSchema(PaginatedResponseSchema):
-    events = fields.Nested(EventsParamsResponseSchema, many=True)
+    events = fields.Nested(EventsParamsResponseSchema, many=True, required=True)
 
 class ListEvents(SwaggerApiView):
     tags = [u'event']
@@ -74,7 +74,7 @@ class ListEvents(SwaggerApiView):
 
 ## get
 class GetEventResponseSchema(Schema):
-    event = fields.Nested(EventsParamsResponseSchema)
+    event = fields.Nested(EventsParamsResponseSchema, required=True)
 
 class GetEvent(SwaggerApiView):
     tags = [u'event']

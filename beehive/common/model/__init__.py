@@ -17,7 +17,7 @@ Base = declarative_base()
 
 logger = logging.getLogger(__name__)
 
-class ApiObject(object):
+class BaseEntity(object):
     """User
     
     :param type: can be DBUSER, LDAPUSER 
@@ -392,7 +392,7 @@ class AbstractDbManager(object):
         """Get model entities
         
         :param entityclass: entity model class
-        :param filters: entity model filters function. Return qury with 
+        :param filters: entity model filters function. Return query with 
             additional filter
         :param int oid: entity id. [optional]
         :param str objid: entity authorization id. [optional]

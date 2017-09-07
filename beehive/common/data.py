@@ -283,7 +283,7 @@ def query(fn):
             elapsed = round(time() - start, 4)
             logger.debug(u'%s.%s - %s - query - %s - %s - OK - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
-                         params,  elapsed))          
+                         params,  elapsed))
             return res
         except ModelError as ex:
             elapsed = round(time() - start, 4)
