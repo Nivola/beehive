@@ -17,22 +17,31 @@ Base = declarative_base()
 
 logger = logging.getLogger(__name__)
 
-class BaseEntity(object):
-    """User
-    
-    :param type: can be DBUSER, LDAPUSER 
+class AuditData(object):
+    """
+        Column of common audit
+    """
+
+    def __init__(self):
+        self.creation_date = datetime.today()
+        self.modification_date = self.creation_date
+        self.expiry_date =  None
+
+    creation_date = Column(DateTime())
+    modification_date = Column(DateTime())
+    expiry_date = Column(DateTime())
+
+class BaseEntity(AuditData):
+    """
     """
     __table_args__ = {u'mysql_engine':u'InnoDB'}    
-    
+
     id = Column(Integer, primary_key=True)
     uuid = Column(String(50), unique=True)
     objid = Column(String(400))
     name = Column(String(100), unique=True)
     desc = Column(String(255))
     active = Column(Boolean())
-    creation_date = Column(DateTime())
-    modification_date = Column(DateTime())
-    expiry_date = Column(DateTime())
     
     def __init__(self, objid, name, desc=u'', active=True):
         self.uuid = str(uuid4())
@@ -40,8 +49,8 @@ class BaseEntity(object):
         self.name = name
         self.desc = desc
         self.active = active
-        self.creation_date = datetime.today()
-        self.modification_date = self.creation_date
+        
+        AuditData.__init__(self)
         
     def __repr__(self):
         return u'<%s id=%s, uuid=%s, obid=%s, name=%s, active=%s>' % (
