@@ -211,7 +211,7 @@ class PaginatedQueryGenerator(object):
             sql.extend([
                 u'GROUP BY {field}',
                 u'ORDER BY {field} {order}',
-                u'LIMIT {start},{end}'
+                u'LIMIT {start},{size}'
             ])
 
         # format query
@@ -224,7 +224,7 @@ class PaginatedQueryGenerator(object):
             table = u'`%s`' % self.entity.__tablename__
         stmp = stmp.format(table=table, fields=fields,
             field=self.field, order=self.order, start=self.start, 
-            end=self.end)
+            size=self.size)
         return stmp
         #return text(stmp)
     

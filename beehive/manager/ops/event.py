@@ -74,32 +74,27 @@ class EventManager(ApiManager):
     # node types
     #
     def get_types(self):
-        uri = u'%s/types/' % self.baseuri
+        uri = u'%s/types' % self.baseuri
         res = self._call(uri, u'GET')
         self.logger.info(u'Get event types: %s' % truncate(res))
-        self.result(res, key=u'event-types', headers=[u'event type'])
+        self.result(res, key=u'event_types', headers=[u'event type'])
         
     def get_entities(self):
-        uri = u'%s/entities/' % self.baseuri
+        uri = u'%s/entities' % self.baseuri
         res = self._call(uri, u'GET')
         self.logger.info(u'Get event entities: %s' % truncate(res))
-        self.result(res, key=u'event-entities', headers=[u'event entity'])        
+        self.result(res, key=u'event_entities', headers=[u'event entity'])        
 
     def get_events(self, *args):
         data = self.format_http_get_query_params(*args)
         params = self.get_query_params(*args)
-        uri = u'%s/' % (self.baseuri)
+        uri = u'%s' % (self.baseuri)
         res = self._call(uri, u'GET', data=data)
-        self.logger.info(u'Get events: %s' % truncate(res))
-        print(u'Page: %s' % res[u'page'])
-        print(u'Count: %s' % res[u'count'])
-        print(u'Total: %s' % res[u'total'])
-        print(u'Order: %s %s' % (params.get(u'field', u'id'), 
-                                 params.get(u'order', u'DESC')))        
+        self.logger.info(u'Get events: %s' % truncate(res))  
         self.result(res, key=u'events', headers=self.headers)
     
     def get_event(self, oid):
-        uri = u'%s/%s/' % (self.baseuri, oid)
+        uri = u'%s/%s' % (self.baseuri, oid)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get event: %s' % truncate(res))
         self.result(res, key=u'event', headers=self.headers, details=True)
