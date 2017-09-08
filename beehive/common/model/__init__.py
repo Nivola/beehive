@@ -21,7 +21,6 @@ class AuditData(object):
     """
         Column of common audit
     """
-
     def __init__(self):
         self.creation_date = datetime.today()
         self.modification_date = self.creation_date
