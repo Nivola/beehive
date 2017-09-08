@@ -776,7 +776,7 @@ class BeehiveApiClient(object):
                 u'desc':u'Endpoint %s' % name, 
                 u'service':service, 
                 u'uri':uri, 
-                u'enabled':True                   
+                u'active':True                   
             }
         }
         uri = u'/v1.0/directory/endpoints'        

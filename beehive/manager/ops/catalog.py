@@ -38,16 +38,16 @@ class CatalogManager(ApiManager):
     def __init__(self, auth_config, env, frmt):
         ApiManager.__init__(self, auth_config, env, frmt)
         
-        self.authuri = u'/v1.0/auth'
+        self.cataloguri = u'/v1.0/directory'
         self.subsystem = u'auth'
         self.logger = logger
         self.msg = None
         
-        self.cat_headers = [u'id', u'objid', u'name', u'zone', u'active', 
-                            u'date.creation', u'date.modification']
-        self.end_headers = [u'id', u'objid', u'name', u'catalog', 
-                            u'catalog_id', u'service_type', u'active', 
-                            u'date.creation', u'date.modification']
+        self.cat_headers = [u'id', u'uuid', u'name', u'zone', u'active', 
+                            u'date.creation', u'date.modified']
+        self.end_headers = [u'id', u'uuid', u'name', u'catalog.name', 
+                            u'service', u'active', 
+                            u'date.creation', u'date.modified']
                             
     def actions(self):
         actions = {
@@ -68,22 +68,19 @@ class CatalogManager(ApiManager):
     #
     # catalogs
     #
-    def get_catalogs(self):
-        res = self.client.get_catalogs()
-        self.logger.info(u'Get catalogs: %s' % truncate(res))
-        self.result(res, headers=self.cat_headers)
+    def get_catalogs(self, *args):
+        data = self.format_http_get_query_params(*args)
+        params = self.get_query_params(*args)
+        uri = u'%s/catalogs' % (self.cataloguri)
+        res = self._call(uri, u'GET', data=data)
+        self.logger.info(u'Get catalogs: %s' % res)  
+        self.result(res, key=u'catalogs', headers=self.cat_headers)
     
     def get_catalog(self, catalog_id):
-        res = self.client.get_catalog(catalog_id)
-        self.logger.info(u'Get catalog: %s' % truncate(res))
-        services = []
-        for k,v in res.get(u'services', {}).items():
-            for v1 in v:
-                services.append({u'service':k, u'endpoint':v1})
-        self.result(res, headers=self.cat_headers)
-        if self.format == u'table':
-            print(u'Services: ')
-            self.result(services, headers=[u'service', u'endpoint'])
+        uri = u'%s/catalogs/%s' % (self.cataloguri, catalog_id)
+        res = self._call(uri, u'GET')
+        self.logger.info(u'Get catalog: %s' % res)
+        self.result(res, key=u'catalog', headers=self.cat_headers, details=True)
         
     def add_catalog(self, name, zone):
         res = self.client.create_catalog(name, zone)
@@ -100,15 +97,19 @@ class CatalogManager(ApiManager):
     #
     # endpoints
     #    
-    def get_endpoints(self):
-        res = self.client.get_endpoints()
-        self.logger.info(u'Get endpoints: %s' % truncate(res))
+    def get_endpoints(self, *args):
+        data = self.format_http_get_query_params(*args)
+        params = self.get_query_params(*args)
+        uri = u'%s/endpoints' % (self.cataloguri)
+        res = self._call(uri, u'GET', data=data)
+        self.logger.info(u'Get endpoints: %s' % res)  
         self.result(res, key=u'endpoints', headers=self.end_headers)
     
     def get_endpoint(self, endpoint_id):
-        res = self.client.get_endpoint(endpoint_id)
-        self.logger.info(u'Get endpoint: %s' % truncate(res))
-        self.result(res, key=u'endpoint', headers=self.end_headers)
+        uri = u'%s/endpoints/%s' % (self.cataloguri, endpoint_id)
+        res = self._call(uri, u'GET')
+        self.logger.info(u'Get endpoint: %s' % res)
+        self.result(res, key=u'endpoint', headers=self.end_headers, details=True)
         
     def add_endpoint(self, name, catalog, service, uri):
         # if endpoint exist update it else create new one
@@ -142,10 +143,12 @@ class CatalogManager(ApiManager):
     def ping_endpoints(self, catalog_id):
         services = []
         catalog = self.client.get_catalog(catalog_id)
-        for k,v in catalog.get(u'services', {}).items():
-            for v1 in v:
+        for v in catalog.get(u'services', {}):
+            for v1 in v.get(u'endpoints', []):
                 res = self.client.ping(endpoint=v1)
-                services.append({u'service':k, u'endpoint':v1, u'ping':res})
+                services.append({u'service':v[u'service'], 
+                                 u'endpoint':v1, 
+                                 u'ping':res})
                 self.logger.info(u'Ping endpoint %s: %s' % (v1, truncate(res)))
         self.result(services, headers=[u'service', u'endpoint', u'ping'])        
          

@@ -105,7 +105,7 @@ class GetCatalogPerms(SwaggerApiView):
     
     def get(self, controller, data, oid, *args, **kwargs):
         catalog = controller.get_catalog(oid)
-        res, total = catalog.catalog(**data)
+        res, total = catalog.authorization(**data)
         return self.format_paginated_response(res, u'perms', total, **data)
 
 ## create
@@ -269,7 +269,7 @@ class GetEndpointPerms(SwaggerApiView):
     
     def get(self, controller, data, oid, *args, **kwargs):
         endpoint = controller.get_endpoint(oid)
-        res, total = endpoint.catalog(**data)
+        res, total = endpoint.authorization(**data)
         return self.format_paginated_response(res, u'perms', total, **data)    
 
 ## create
