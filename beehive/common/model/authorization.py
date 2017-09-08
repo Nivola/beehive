@@ -1870,7 +1870,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             role = self.add_role(objid, name, desc)   
 
             # append role to user
-            expiry_date = u'31-12-2099'
+            expiry_date = datetime.datetime(2099, 12, 31)
             self.append_user_role(user, role)
             role = self.get_entity(Role, u'Guest')
             self.append_user_role(user, role, expiry_date=expiry_date)

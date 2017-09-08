@@ -5,6 +5,7 @@ Created on May 11, 2017
 '''
 import logging
 import ujson as json
+import datetime
 from beehive.common.apimanager import ApiManager
 from beehive.common.data import operation
 from beecell.simple import import_class, id_gen, random_password, get_value
@@ -229,7 +230,7 @@ class BeehiveHelper(object):
             else:
                 # create superadmin
                 if user[u'type'] == u'admin':
-                    expiry_date = u'31-12-2099'
+                    expiry_date = datetime.datetime(2099, 12, 31)                    
                     user_id = controller.add_user(
                         name=user[u'name'], storetype=u'DBUSER', active=True, 
                         password=user[u'pwd'], desc=user[u'desc'], 
@@ -241,7 +242,7 @@ class BeehiveHelper(object):
                     
                 # create users
                 elif user[u'type'] == u'user':
-                    expiry_date = u'31-12-2099'
+                    expiry_date = datetime.datetime(2099, 12, 31) 
                     user_id = controller.add_user(
                         name=user[u'name'], storetype=u'DBUSER', active=True, 
                         password=user[u'pwd'], desc=user[u'desc'], 
