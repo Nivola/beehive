@@ -268,6 +268,8 @@ class BaseAuthController(ApiController):
     def validate_login_params(self, name, domain, password, login_ip):
         """Validate main login params.
         
+        TODO : riattivare il controllo dell'ip
+        
         :param name: user name
         :param domain: user authentication domain
         :param password: user password
@@ -296,13 +298,14 @@ class BaseAuthController(ApiController):
                 self.logger.error(msg)
                 raise ApiManagerError(msg, code=400)
             
+            '''
             try:
                 login_ip = gethostbyname(login_ip)
                 IPv4Address(str2uni(login_ip))
             except Exception as ex:
                 msg = u'Ip address is not provided or syntax is wrong'
                 self.logger.error(msg, exc_info=1)
-                raise ApiManagerError(msg, code=400)
+                raise ApiManagerError(msg, code=400)'''
             
             self.logger.debug(u'User %s@%s:%s validated' % 
                               (name, domain, login_ip))        
