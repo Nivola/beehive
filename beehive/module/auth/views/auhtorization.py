@@ -586,7 +586,7 @@ class UserAttribSchemaCreateParam(Schema):
 
 class CreateUserAttributeRequestSchema(Schema):
     user_attribute = fields.Nested(UserAttribSchemaCreateParam,
-                                   load_from=u'user-attribute')
+                                   load_from=u'user_attribute')
 
 class CreateUserAttributeBodyRequestSchema(GetApiObjectRequestSchema):
     body = fields.Nested(CreateUserAttributeRequestSchema, context=u'body')

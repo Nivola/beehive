@@ -9,8 +9,7 @@ from beecell.simple import get_value
 from beecell.simple import get_attrib
 from beehive.common.apimanager import ApiView, ApiManagerError, PaginatedRequestQuerySchema,\
     PaginatedResponseSchema, ApiObjectResponseSchema, SwaggerApiView,\
-    CreateApiObjectResponseSchema, GetApiObjectRequestSchema,\
-    UpdateApiObjectResponseSchema, ApiObjectPermsResponseSchema,\
+    GetApiObjectRequestSchema, ApiObjectPermsResponseSchema,\
     ApiObjectPermsRequestSchema
 from flasgger import fields, Schema
 from marshmallow.validate import OneOf, Range, Length

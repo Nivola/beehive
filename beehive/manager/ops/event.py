@@ -63,8 +63,8 @@ class EventManager(ApiManager):
     
     def actions(self):
         actions = {
-            u'types.list': self.get_types,
-            u'entities.list': self.get_entities,
+            u'events.types': self.get_types,
+            u'events.entities': self.get_entities,
             u'events.list': self.get_events,
             u'events.get': self.get_event
         }

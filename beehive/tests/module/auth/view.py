@@ -245,7 +245,7 @@ class AuthTestCase(BeehiveTestCase):
         
     def test_add_user_attributes(self):
         data = {
-            u'user-attribute':{
+            u'user_attribute':{
                 u'name':u'attr_prova',
                 u'value':u'attr_prova_value',
                 u'desc':u'attr_prova_desc'

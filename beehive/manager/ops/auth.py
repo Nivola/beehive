@@ -34,17 +34,17 @@ class AuthManager(ApiManager):
         tokens get <token>
         tokens delete <token>
         
-        users list <field>=<value>    field: page, size, order, field, role, group, expiry-date
+        users list <field>=<value>    field: page, size, order, field, role, group, expirydate
             field can be: id, objid, uuid, name, description, creation_date, modification_date, expiry_date, active
-            expiry-date syntax: dd-mm-yyyy
+            expirydate syntax: dd-mm-yyyy
             
             Ex. page=2 order=ASC field=name
         users get <id>
-        users add <name> <password> [<expiry-date>=dd-mm-yyyy] [<storetype> default=u'DBUSER']
+        users add <name> <password> [<expirydate>=dd-mm-yyyy] [<storetype> default=u'DBUSER']
         users add-admin <name> <password>
         users update <id> [name=<name>] [desc=<desc>] [password=<password>] [active=<active>]
         users delete <id>
-        users add-role <id> <role> <expiry-date>    expiry-date syntax: dd-mm-yyyy
+        users add-role <id> <role> <expirydate>    expirydate syntax: dd-mm-yyyy
         users delete-role <id> <role>
         users attribs <id>
         users attrib-add <id> <name> <value> <desc>
@@ -66,10 +66,10 @@ class AuthManager(ApiManager):
             
             Ex. page=2 order=ASC field=name
         groups get <id>
-        groups add <name> <desc> [<expiry-date>=dd-mm-yyyy]
+        groups add <name> <desc> [<expirydate>=dd-mm-yyyy]
         groups update <id> [name=<name>] [desc=<desc>] [active=<active>]
         groups delete <id>
-        groups add-role <id> <role> <expiry-date>    expiry-date syntax: dd-mm-yyyy
+        groups add-role <id> <role> <expirydate>    expirydate syntax: dd-mm-yyyy
         groups delete-role <id> <role> 
         groups add-user <id> <user>
         groups delete-user <id> <user>
@@ -107,20 +107,17 @@ class AuthManager(ApiManager):
         self.logger = logger
         self.msg = None
         
-        self.obj_headers = [u'id', u'uuid', u'objid', u'subsystem', u'type', u'desc']
+        self.obj_headers = [u'id', u'objid', u'subsystem', u'type', u'desc']
         self.type_headers = [u'id', u'subsystem', u'type']
         self.act_headers = [u'id', u'value']
         self.perm_headers = [u'id', u'oid', u'objid', u'subsystem', u'type', 
-                             u'aid', u'action', u'desc']
-        self.user_headers = [u'id', u'uuid', u'objid', u'name', u'active', 
-                             u'date.creation', u'date.modified', u'date.expiry', 
-                             u'desc']
-        self.role_headers = [u'id', u'uuid', u'objid', u'name', u'active', 
-                             u'date.creation', u'date.modified', u'date.expiry',
-                             u'desc']
-        self.group_headers = [u'id', u'uuid', u'objid', u'name', u'active', 
-                              u'date.creation', u'date.modified', u'date.expiry',
-                              u'desc']
+                             u'aid', u'action']
+        self.user_headers = [u'id', u'uuid', u'name', u'active', 
+                             u'date.creation', u'date.modified', u'date.expiry']
+        self.role_headers = [u'id', u'uuid', u'name', u'active', 
+                             u'date.creation', u'date.modified', u'date.expiry']
+        self.group_headers = [u'id', u'uuid', u'name', u'active', 
+                              u'date.creation', u'date.modified', u'date.expiry']
     
     def actions(self):
         actions = {
@@ -190,11 +187,7 @@ class AuthManager(ApiManager):
         uri = u'%s/domains' % (self.authuri)
         res = self._call(uri, u'GET')
         self.logger.info(u'Get domains: %s' % res)
-        domains = []
-        for item in res[u'domains']:
-            domains.append({u'domain':item[0],
-                            u'type':item[1]})
-        self.result(domains, headers=[u'domain', u'type'])    
+        self.result(res, key=u'domains', headers=[u'type', u'name'])    
     
     #
     # actions
@@ -313,15 +306,16 @@ class AuthManager(ApiManager):
         self.logger.info(u'Get user: %s' % res)
         self.result(res, key=u'user', headers=self.user_headers, details=True)
         
-    def add_user(self, name, pwd, expiry_date=None, storetype=u'DBUSER', *args):
+    def add_user(self, name, pwd, expiry_date=None, *args):
         data = {
-            u'user':{
+            u'user':{ 
                 u'name':name,
-                u'storetype':storetype,
+                u'active':True,
                 u'password':pwd, 
-                u'description':u'User %s' % name, 
-                u'generic':True,
-                u'expiry-date':expiry_date}
+                u'desc':u'User %s' % name, 
+                u'base':True,
+                u'expirydate':expiry_date
+            }
         }
         uri = u'%s/users' % (self.authuri)
         res = self._call(uri, u'POST', data=data)
@@ -332,6 +326,7 @@ class AuthManager(ApiManager):
         data = {
             u'user':{
                 u'name':name,
+                u'active':True,
                 u'password':pwd, 
                 u'desc':u'User %s' % name, 
                 u'system':True
@@ -353,7 +348,7 @@ class AuthManager(ApiManager):
                 u'desc':params.get(u'desc', None),
                 u'active':params.get(u'active', None),
                 u'password':params.get(u'password', None),
-                u'expiry-date':params.get(u'expiry_date', None)
+                u'expirydate':params.get(u'expiry_date', None)
             }
         }
         uri = u'%s/users/%s' % (self.authuri, user_id)
@@ -467,7 +462,7 @@ class AuthManager(ApiManager):
         data = {
             u'role':{
                 u'perms':{
-                    u'append':[permid],
+                    u'append':[{u'id':permid}],
                     u'remove':[]
                 }
             }
@@ -482,7 +477,7 @@ class AuthManager(ApiManager):
             u'role':{
                 u'perms':{
                     u'append':[],
-                    u'remove':[permid]
+                    u'remove':[{u'id':permid}]
                 }
             }
         }
@@ -520,7 +515,7 @@ class AuthManager(ApiManager):
                 u'name':name,
                 u'desc':desc,
                 u'active':True,
-                u'expiry-date':expiry_date
+                u'expirydate':expiry_date
             }
         }
         uri = u'%s/groups' % (self.authuri)
@@ -544,7 +539,7 @@ class AuthManager(ApiManager):
         
     def add_group_role(self, oid, role):
         data = {
-            "group":{
+            u'group':{
                 "roles":{
                     "append":[
                         role
@@ -560,7 +555,7 @@ class AuthManager(ApiManager):
 
     def delete_group_role(self, oid, role):
         data = {
-            "group":{
+            u'group':{
                 "roles":{
                     "append":[],
                     "remove":[
@@ -576,7 +571,7 @@ class AuthManager(ApiManager):
 
     def add_group_user(self, oid, user):
         data = {
-            "group":{
+            u'group':{
                 "users":{
                     "append":[
                         user
@@ -592,7 +587,7 @@ class AuthManager(ApiManager):
 
     def delete_group_user(self, oid, user):
         data = {
-            "group":{
+            u'group':{
                 "users":{
                     "append":[],
                     "remove":[
