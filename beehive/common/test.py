@@ -195,7 +195,8 @@ class BeehiveTestCase(unittest.TestCase):
     
             endpoint = self.endpoints[subsystem]
             schema = self.schema[subsystem]
-            headers[u'Content-Type'] = u'application/json'            
+            if u'Content-Type' not in headers:
+                headers[u'Content-Type'] = u'application/json'            
     
             if user is not None and auth == u'simplehttp':
                 cred = HTTPBasicAuth(user, pwd)

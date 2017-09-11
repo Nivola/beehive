@@ -5,7 +5,6 @@ Created on Oct 31, 2014
 '''
 import logging
 import time
-import dicttoxml
 import binascii
 import pickle
 import redis
@@ -39,6 +38,7 @@ from beehive.common.model.config import ConfigDbManager
 from beehive.common.model.authorization import AuthDbManager, Role
 from beehive.common.event import EventProducerRedis
 from flasgger import Swagger, Schema, fields, SwaggerView
+from beecell.dicttoxml import dicttoxml
 try:
     from beecell.server.uwsgi_server.wrapper import uwsgi_util
 except:
@@ -2744,10 +2744,10 @@ class ApiView(FlaskView):
                             mimetype=u'application/bson', 
                             status=status,
                             headers=headers)
-        elif self.response_mime == u'text/xml':
-            xml = dicttoxml.dicttoxml(error)
+        elif self.response_mime in [u'text/xml', u'application/xml']:
+            xml = dicttoxml(error, root=False, attr_type=False)
             return Response(response=xml, 
-                            mimetype=u'text/xml', 
+                            mimetype=u'application/xml', 
                             status=status,
                             headers=headers)
         else:  
@@ -2801,10 +2801,11 @@ class ApiView(FlaskView):
                                 status=code)
                 
             # render xml
-            elif self.response_mime == u'text/xml':
-                xml = dicttoxml.dicttoxml(res)
+            elif self.response_mime in [u'text/xml', u'application/xml']:
+                xml = dicttoxml(res, root=False, attr_type=False)
+                #xml = dicttoxml.dicttoxml(res)
                 return Response(xml, 
-                                mimetype=u'text/xml',
+                                mimetype=u'application/xml',
                                 status=code)
                 
             # 415 Unsupported Media Type
