@@ -2710,13 +2710,6 @@ class ApiView(FlaskView):
         headers = {u'Cache-Control':u'no-store',
                    u'Pragma':u'no-cache'}        
         
-        '''error = {u'status':u'error', 
-                 u'api':request.path,
-                 u'operation':request.method,
-                 #u'data':request.data,
-                 u'exception':exception,
-                 u'code':code, 
-                 u'msg':str(msg)}'''
         error = {
             u'code':code, 
             u'message':str(msg),
@@ -2768,48 +2761,54 @@ class ApiView(FlaskView):
                                 mimetype=u'text/plain', 
                                 status=code)
             
-            if isinstance(response, dict):
+            if self.response_mime == u'*/*':
                 self.response_mime = u'application/json'
-                res = response
             
-            self.logger.debug(u'Api response: %s' % truncate(response))
             self.logger.debug(u'Api response mime type: %s' % self.response_mime)
             
             # redirect to new uri
             if code in [301, 302, 303, 305, 307]:
+                self.logger.debug(u'Api response: %s' % truncate(response))                
                 return response
             
             # render template
             elif self.response_mime.find(u'text/html') >= 0:
+                self.logger.debug(u'Api response: %s' % truncate(response))                
                 return response
             
             # return original response
             elif isinstance(response, Response):
+                self.logger.debug(u'Api response: %s' % truncate(response))
                 return response
             
             # render json
             elif self.response_mime == u'application/json':
-                resp = json.dumps(res)
+                resp = json.dumps(response)
+                self.logger.debug(u'Api response: %s' % truncate(resp))
                 return Response(resp, 
                                 mimetype=u'application/json',
                                 status=code)
             
             # render Bson
             elif self.response_mime == u'application/bson':
-                return Response(json.dumps(res), 
+                resp = json.dumps(response)
+                self.logger.debug(u'Api response: %s' % truncate(resp))
+                return Response(resp, 
                                 mimetype=u'application/bson',
                                 status=code)
                 
             # render xml
             elif self.response_mime in [u'text/xml', u'application/xml']:
-                xml = dicttoxml(res, root=False, attr_type=False)
+                resp = dicttoxml(response, root=False, attr_type=False)
                 #xml = dicttoxml.dicttoxml(res)
-                return Response(xml, 
+                self.logger.debug(u'Api response: %s' % truncate(resp))
+                return Response(resp, 
                                 mimetype=u'application/xml',
                                 status=code)
                 
             # 415 Unsupported Media Type
             else:
+                self.logger.debug(u'Api response: ')
                 return Response(response=u'', 
                                 mimetype=u'text/plain', 
                                 status=code)

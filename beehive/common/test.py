@@ -13,6 +13,7 @@ import beecell.server.gevent_ssl
 import gevent.monkey
 from beehive.common.log import ColorFormatter
 from beehive.common.apiclient import BeehiveApiClient
+import xmltodict
 gevent.monkey.patch_all()
 
 import logging
@@ -210,22 +211,24 @@ class BeehiveTestCase(unittest.TestCase):
                 sign = self.auth_client.sign_request(seckey, uri)
                 headers.update({u'uid':token, u'sign':sign})
             
-            self.runlogger.info(u'endpoint:      %s' % endpoint)
-            self.runlogger.info(u'path:          %s' % uri)
-            self.runlogger.info(u'method:        %s' % method)
-            self.runlogger.info(u'user:          %s' % user)
-            self.runlogger.info(u'auth:          %s' % auth)
-            self.runlogger.info(u'params:        %s' % params)
-            self.runlogger.info(u'query:         %s' % query)
-            self.runlogger.info(u'data:          %s' % data)            
-            self.runlogger.info(u'headers:       %s' % headers)            
+            self.runlogger.info(u'reqeust endpoint: %s' % endpoint)
+            self.runlogger.info(u'reqeust path:     %s' % uri)
+            self.runlogger.info(u'reqeust method:   %s' % method)
+            self.runlogger.info(u'reqeust user:     %s' % user)
+            self.runlogger.info(u'reqeust auth:     %s' % auth)
+            self.runlogger.info(u'reqeust params:   %s' % params)
+            self.runlogger.info(u'reqeust query:    %s' % query)
+            self.runlogger.info(u'reqeust data:     %s' % data)            
+            self.runlogger.info(u'reqeust headers:  %s' % headers)            
             
             # execute request
             response = requests.request(method, endpoint + uri, auth=cred, 
                                    params=query, data=data, headers=headers,
-                                   timeout=5, verify=False) 
+                                   timeout=5, verify=False)
             
-            self.runlogger.info(u'response code: %s' % response.status_code)            
+            self.runlogger.info(u'response headers: %s' % response.headers)
+            self.runlogger.info(u'response code:    %s' % response.status_code)
+            resp_content_type = response.headers[u'content-type']
             
             # evaluate response status
             # BAD_REQUEST     400     HTTP/1.1, RFC 2616, Section 10.4.1
@@ -292,14 +295,27 @@ class BeehiveTestCase(unittest.TestCase):
             # PARTIAL_CONTENT        206    HTTP/1.1, RFC 2616, Section 10.2.7
             # MULTI_STATUS           207    WEBDAV RFC 2518, Section 10.2
             elif re.match(u'20[0-9]+', str(response.status_code)):
-                res = response.json()
+                if resp_content_type.find(u'application/json') > 0:
+                    res = response.json()
+                elif resp_content_type.find(u'application/xml') > 0:
+                    #res = xmltodict.parse(response.text, dict_constructor=dict)
+                    res = response.text
+                elif resp_content_type.find(u'text/xml') > 0:
+                    #res = xmltodict.parse(response.text, dict_constructor=dict)
+                    res = response.text
+                else:
+                    res = response.text
             
-            self.runlogger.info(u'response:      %s' % response.text)            
+            self.runlogger.info(u'response data:    %s' % response.text)            
             
             # validate with swagger schema
-            validator = ApiValidator(schema, path, method)
-            validate = validator.validate(response)
-            self.runlogger.info(u'validate:      %s' % validate) 
+            if resp_content_type.find(u'application/json') > 0:
+                validator = ApiValidator(schema, path, method)
+                validate = validator.validate(response)
+                self.runlogger.info(u'validate:      %s' % validate)
+            else:
+                self.runlogger.warn(u'validation supported only for application/json')
+                validate = True
         except:
             logger.error(u'', exc_info=1)
             self.runlogger.error(u'', exc_info=1)
