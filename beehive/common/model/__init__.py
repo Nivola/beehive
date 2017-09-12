@@ -3,7 +3,7 @@ from sqlalchemy import create_engine, exc
 from sqlalchemy.ext.declarative import declarative_base
 from beehive.common.data import operation, query, transaction
 from beecell.simple import truncate
-from beecell.db import ModelError
+from beecell.db import ModelError, QueryError
 from beecell.perf import watch
 from datetime import datetime
 from sqlalchemy import Column, Integer, Float, String, Boolean, Index, DateTime
@@ -51,10 +51,20 @@ class BaseEntity(AuditData):
         
         AuditData.__init__(self)
         
+    def is_active(self):
+        return (self.active and 
+                (self.expiry_date is None 
+                  or self.expiry_date < datetime.today()))
+    
+    def disable(self):
+        self.expiry_date = datetime.today()
+        self.active = False
+        
     def __repr__(self):
         return u'<%s id=%s, uuid=%s, obid=%s, name=%s, active=%s>' % (
                     self.__class__.__name__, self.id, self.uuid, self.objid, 
-                    self.name, self.active)      
+                    self.name, self.active)  
+     
 
 class PermTag(Base):
     __tablename__ = u'perm_tag'
@@ -638,3 +648,90 @@ class AbstractDbManager(object):
 
         return True
     
+    
+    
+    @transaction
+    def add(self, entity):
+        
+        if entity is None:
+            raise QueryError("Error: can't not add None entity")
+        
+        session = self.get_session()
+        session.add(entity)
+        session.flush()
+        self.logger.debug(u'Add %s entity %s' % (entity.__class__.__name__, entity))
+        return entity
+    
+    @transaction
+    def update(self, entity):
+        if entity is None:
+            raise QueryError("Error: can't not add None entity")
+    
+        if isinstance(entity, BaseEntity):
+            entity.modication_date = datetime.today()
+        
+        session = self.get_session()
+        query = session.query(entity.__class__.__name__)
+        query.update(entity)
+        session.flush()
+        self.logger.debug(u'Update %s entity %s' % (entity.__class__.__name__, entity))
+        return entity   
+    
+    @transaction
+    def delete(self, entity):
+        """
+            Software delete
+        """
+        if entity is None:
+            raise QueryError("Error: can't not add None entity")
+        
+        
+        if isinstance(entity, BaseEntity):
+            if entity.is_active():
+                entity.disable()
+                res = self.update(entity)
+            else:
+                self.logger.info("Nothing to do on %s !" %entity)
+        else:
+            self.purge(entity)
+        self.logger.debug(u'Delete %s entity %s' % (entity.__class__.__name__, entity))
+        return res
+        
+    @transaction
+    def purge(self, entity):
+        """
+            Hard Delete entity
+            :param entity
+            :return Boolean: 
+        """
+        
+        if entity is None:
+            raise QueryError("Error: can't not purge None entity")
+        
+        session = self.get_session()
+        session.delete(entity)
+        session.flush()
+        self.logger.debug(u'Delete %s entity %s' % (entity.__class__.__name__, entity))
+        
+       
+        
+    @staticmethod   
+    def add_base_entity_filters(query, *args, **kvargs):
+        
+        # id is unique
+        if u'id' in kvargs and kvargs.get(u'id') is not None:
+            query = query.filter_by(id=kvargs.get(u'id'))
+        # uuid is unique
+        elif u'uuid' in kvargs and kvargs.get(u'uuid') is not None:
+            query = query.filter_by(uuid=kvargs.get(u'uuid'))
+        else:
+            # Non unique filters
+            if u'objid' in kvargs and kvargs.get(u'objid') is not None:
+                query = query.filter_by(objid=kvargs.get(u'objid'))
+            if u'name' in kvargs and kvargs.get(u'name') is not None:
+                query = query.filter_by(name=kvargs.get(u'name'))
+            if u'desc' in kvargs and kvargs.get(u'desc') is not None:
+                query = query.filter_by(desc=kvargs.get(u'desc'))
+            if u'active' in kvargs and kvargs.get(u'active') is not None:
+                query = query.filter_by(active=kvargs.get(u'active')) 
+        return query  
