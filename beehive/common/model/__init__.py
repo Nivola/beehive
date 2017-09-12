@@ -671,8 +671,7 @@ class AbstractDbManager(object):
             entity.modication_date = datetime.today()
         
         session = self.get_session()
-        query = session.query(entity.__class__.__name__)
-        query.update(entity)
+        session.merge(entity)
         session.flush()
         self.logger.debug(u'Update %s entity %s' % (entity.__class__.__name__, entity))
         return entity   
@@ -722,16 +721,17 @@ class AbstractDbManager(object):
         if u'id' in kvargs and kvargs.get(u'id') is not None:
             query = query.filter_by(id=kvargs.get(u'id'))
         # uuid is unique
-        elif u'uuid' in kvargs and kvargs.get(u'uuid') is not None:
-            query = query.filter_by(uuid=kvargs.get(u'uuid'))
-        else:
-            # Non unique filters
-            if u'objid' in kvargs and kvargs.get(u'objid') is not None:
-                query = query.filter_by(objid=kvargs.get(u'objid'))
-            if u'name' in kvargs and kvargs.get(u'name') is not None:
-                query = query.filter_by(name=kvargs.get(u'name'))
-            if u'desc' in kvargs and kvargs.get(u'desc') is not None:
-                query = query.filter_by(desc=kvargs.get(u'desc'))
-            if u'active' in kvargs and kvargs.get(u'active') is not None:
-                query = query.filter_by(active=kvargs.get(u'active')) 
+        if u'uuid' in kvargs and kvargs.get(u'uuid') is not None:
+            query = query.filter_by(uuid=kvargs.get(u'uuid')) 
+        
+        # Non unique filters
+        if u'objid' in kvargs and kvargs.get(u'objid') is not None:
+            query = query.filter_by(objid=kvargs.get(u'objid'))
+        if u'name' in kvargs and kvargs.get(u'name') is not None:
+            query = query.filter_by(name=kvargs.get(u'name'))
+        if u'desc' in kvargs and kvargs.get(u'desc') is not None:
+            query = query.filter_by(desc=kvargs.get(u'desc'))
+        if u'active' in kvargs and kvargs.get(u'active') is not None:
+            query = query.filter_by(active=kvargs.get(u'active')) 
+            
         return query  
