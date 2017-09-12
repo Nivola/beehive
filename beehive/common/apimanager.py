@@ -5,7 +5,6 @@ Created on Oct 31, 2014
 '''
 import logging
 import time
-import dicttoxml
 import binascii
 import pickle
 import redis
@@ -39,6 +38,7 @@ from beehive.common.model.config import ConfigDbManager
 from beehive.common.model.authorization import AuthDbManager, Role
 from beehive.common.event import EventProducerRedis
 from flasgger import Swagger, Schema, fields, SwaggerView
+from beecell.dicttoxml import dicttoxml
 try:
     from beecell.server.uwsgi_server.wrapper import uwsgi_util
 except:
@@ -2710,13 +2710,6 @@ class ApiView(FlaskView):
         headers = {u'Cache-Control':u'no-store',
                    u'Pragma':u'no-cache'}        
         
-        '''error = {u'status':u'error', 
-                 u'api':request.path,
-                 u'operation':request.method,
-                 #u'data':request.data,
-                 u'exception':exception,
-                 u'code':code, 
-                 u'msg':str(msg)}'''
         error = {
             u'code':code, 
             u'message':str(msg),
@@ -2744,10 +2737,10 @@ class ApiView(FlaskView):
                             mimetype=u'application/bson', 
                             status=status,
                             headers=headers)
-        elif self.response_mime == u'text/xml':
-            xml = dicttoxml.dicttoxml(error)
+        elif self.response_mime in [u'text/xml', u'application/xml']:
+            xml = dicttoxml(error, root=False, attr_type=False)
             return Response(response=xml, 
-                            mimetype=u'text/xml', 
+                            mimetype=u'application/xml', 
                             status=status,
                             headers=headers)
         else:  
@@ -2768,47 +2761,54 @@ class ApiView(FlaskView):
                                 mimetype=u'text/plain', 
                                 status=code)
             
-            if isinstance(response, dict):
+            if self.response_mime == u'*/*':
                 self.response_mime = u'application/json'
-                res = response
             
-            self.logger.debug(u'Api response: %s' % truncate(response))
             self.logger.debug(u'Api response mime type: %s' % self.response_mime)
             
             # redirect to new uri
             if code in [301, 302, 303, 305, 307]:
+                self.logger.debug(u'Api response: %s' % truncate(response))                
                 return response
             
             # render template
             elif self.response_mime.find(u'text/html') >= 0:
+                self.logger.debug(u'Api response: %s' % truncate(response))                
                 return response
             
             # return original response
             elif isinstance(response, Response):
+                self.logger.debug(u'Api response: %s' % truncate(response))
                 return response
             
             # render json
             elif self.response_mime == u'application/json':
-                resp = json.dumps(res)
+                resp = json.dumps(response)
+                self.logger.debug(u'Api response: %s' % truncate(resp))
                 return Response(resp, 
                                 mimetype=u'application/json',
                                 status=code)
             
             # render Bson
             elif self.response_mime == u'application/bson':
-                return Response(json.dumps(res), 
+                resp = json.dumps(response)
+                self.logger.debug(u'Api response: %s' % truncate(resp))
+                return Response(resp, 
                                 mimetype=u'application/bson',
                                 status=code)
                 
             # render xml
-            elif self.response_mime == u'text/xml':
-                xml = dicttoxml.dicttoxml(res)
-                return Response(xml, 
-                                mimetype=u'text/xml',
+            elif self.response_mime in [u'text/xml', u'application/xml']:
+                resp = dicttoxml(response, root=False, attr_type=False)
+                #xml = dicttoxml.dicttoxml(res)
+                self.logger.debug(u'Api response: %s' % truncate(resp))
+                return Response(resp, 
+                                mimetype=u'application/xml',
                                 status=code)
                 
             # 415 Unsupported Media Type
             else:
+                self.logger.debug(u'Api response: ')
                 return Response(response=u'', 
                                 mimetype=u'text/plain', 
                                 status=code)

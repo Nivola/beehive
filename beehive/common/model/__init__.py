@@ -29,7 +29,7 @@ class AuditData(object):
     creation_date = Column(DateTime())
     modification_date = Column(DateTime())
     expiry_date = Column(DateTime())
-
+             
 class BaseEntity(AuditData):
     """
     """
