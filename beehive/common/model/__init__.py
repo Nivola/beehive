@@ -51,6 +51,24 @@ class BaseEntity(AuditData):
         
         AuditData.__init__(self)
         
+    @staticmethod   
+    def get_base_entity_sqlfilters( *args, **kvargs):
+         
+        filters=[]
+        # id is unique
+        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field(u'id', kvargs))
+        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field( u'uuid', kvargs))
+        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field( u'objid', kvargs))
+        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field( u'name', kvargs))
+        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field( u'desc', kvargs))
+        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field( u'active', kvargs))
+    
+        return filters  
+    
+    
+    
+
+        
     def is_active(self):
         return (self.active and 
                 (self.expiry_date is None 
@@ -116,7 +134,7 @@ class PermTagEntity(Base):
                                                      self.entity, self.type)
 
 class PaginatedQueryGenerator(object):
-    def __init__(self, entity, session, other_entities=[], custom_select=None):
+    def __init__(self, entity, session, other_entities=[], custom_select=None, with_perm_tag=True):
         """Use this class to generate and configure query with pagination
         and filtering based on tagged entity.
         Base table : perm_tag t1, perm_tag_entity t2, {entitytable} t3
@@ -124,6 +142,7 @@ class PaginatedQueryGenerator(object):
         :param entity: main mapper entity
         :param other_entities: other mapper entities [optional] [default=[]]
         :param custom_select: custom select used instead of entity table
+        :param with_perm_tag: check permission tags.
         """
         self.logger = logging.getLogger(self.__class__.__module__+ \
                                         u'.'+self.__class__.__name__)         
@@ -136,6 +155,7 @@ class PaginatedQueryGenerator(object):
         self.other_filters = []
         self.filter_fields = []
         self.select_fields = [u't3.*']
+        self.with_perm_tag = with_perm_tag
     
     def set_pagination(self, page=0, size=10, order=u'DESC', field=u'id'):
         """Set pagiantion params
@@ -182,6 +202,37 @@ class PaginatedQueryGenerator(object):
             else:
                 self.other_filters.append(custom_filter)
     
+    @staticmethod
+    def get_sqlfilter_by_field(field, kvargs, op=u' AND'):
+        """Add where condition like 
+            AND t3.<field>=:<field> 
+        if <field> in kvargs and not None..
+        
+        :param field: field to search in kvargs
+        :param kvargs: query custom params
+        :param filter: sql filters 
+        """
+        
+        if field in kvargs and kvargs.get(field) is not None: 
+            return PaginatedQueryGenerator.create_sqlfilter(field, op)
+        else: return u''
+    
+    @staticmethod
+    def create_sqlfilter(field, op=u' AND'):
+        """create sql where condition filter like 
+            AND t3.<field>=:<field> 
+        if <field> in kvargs and not None..
+        
+        :param field: field to search in kvargs
+        :param value: query custom params
+        :param str filter: sql filters 
+        """
+        
+        if field is not None: 
+            return u' {op} t3.{field}=:{field}'.format(field=field, op=op)
+        else: return u''
+  
+    
     def add_filter(self, sqlfilter):
         """Append filter to query
         
@@ -206,19 +257,25 @@ class PaginatedQueryGenerator(object):
         if count is True:
             fields = u'count(t3.id) as count'
         
-        sql = [
-            u'SELECT {fields}',
-            u'FROM perm_tag t1, perm_tag_entity t2, {table} t3'
-        ]
+        sql = [u'SELECT {fields}', u'FROM {table} t3']
+        if self.with_perm_tag:
+            sql.extend([
+                u', perm_tag t1, perm_tag_entity t2 '
+            ])
+        
         # append other tables
         for table in self.other_tables:
             sql.append(u', %s %s' % (table[0], table[1]))
         
-        # set base where
         sql.extend([
-            u'WHERE t3.id=t2.entity AND t2.tag=t1.id',
-            u'AND t1.value IN :tags'
-        ])
+                u'WHERE 1=1 '
+            ])
+        # set base where
+        if self.with_perm_tag:
+            sql.extend([
+                u'AND t3.id=t2.entity AND t2.tag=t1.id',
+                u'AND t1.value IN :tags '
+            ])
         
         # add filters
         for sqlfilter in self.other_filters:
@@ -433,7 +490,7 @@ class AbstractDbManager(object):
     @query
     def get_paginated_entities(self, entity, tags=[], page=0, size=10, 
             order=u'DESC', field=u'id', filters=[], tables=[], select_fields=[],
-            custom_select=None, *args, **kvargs):
+            custom_select=None, with_perm_tag=True, *args, **kvargs):
         """Get entities associated with some permission tags
         
         :param tables: sql tables to add (table_name, alias) [optional]
@@ -456,7 +513,7 @@ class AbstractDbManager(object):
         """
         session = self.get_session()
         
-        query = PaginatedQueryGenerator(entity, session, 
+        query = PaginatedQueryGenerator(entity, session, with_perm_tag=with_perm_tag,
                                         custom_select=custom_select)
         # set tables
         for table, alias in tables:
@@ -735,3 +792,5 @@ class AbstractDbManager(object):
             query = query.filter_by(active=kvargs.get(u'active')) 
             
         return query  
+    
+    
