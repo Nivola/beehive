@@ -741,17 +741,17 @@ class AbstractDbManager(object):
         if entity is None:
             raise QueryError("Error: can't not add None entity")
         
-        
+        self.logger.debug(u'Delete %s entity ...' % (entity.__class__.__name__))
         if isinstance(entity, BaseEntity):
             if entity.is_active():
                 entity.disable()
                 res = self.update(entity)
             else:
-                self.logger.info("Nothing to do on %s !" %entity)
+                logger.info("Nothing to do on %s !" %entity)
         else:
-            self.purge(entity)
-        self.logger.debug(u'Delete %s entity %s' % (entity.__class__.__name__, entity))
-        return res
+            res = self.purge(entity)
+        logger.debug(u'Deleteted')
+        return entity
         
     @transaction
     def purge(self, entity):
@@ -762,12 +762,13 @@ class AbstractDbManager(object):
         """
         
         if entity is None:
-            raise QueryError("Error: can't not purge None entity")
+            logger.warn("Warning: can't not purge None entity")
+            return entity
         
         session = self.get_session()
         session.delete(entity)
         session.flush()
-        self.logger.debug(u'Delete %s entity %s' % (entity.__class__.__name__, entity))
+        logger.debug(u'Delete %s entity %s' % (entity.__class__.__name__, entity))
         
        
         
