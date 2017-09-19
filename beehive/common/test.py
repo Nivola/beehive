@@ -295,12 +295,12 @@ class BeehiveTestCase(unittest.TestCase):
             # PARTIAL_CONTENT        206    HTTP/1.1, RFC 2616, Section 10.2.7
             # MULTI_STATUS           207    WEBDAV RFC 2518, Section 10.2
             elif re.match(u'20[0-9]+', str(response.status_code)):
-                if resp_content_type.find(u'application/json') > 0:
+                if resp_content_type.find(u'application/json') >= 0:
                     res = response.json()
-                elif resp_content_type.find(u'application/xml') > 0:
+                elif resp_content_type.find(u'application/xml') >= 0:
                     #res = xmltodict.parse(response.text, dict_constructor=dict)
                     res = response.text
-                elif resp_content_type.find(u'text/xml') > 0:
+                elif resp_content_type.find(u'text/xml') >= 0:
                     #res = xmltodict.parse(response.text, dict_constructor=dict)
                     res = response.text
                 else:
@@ -309,7 +309,7 @@ class BeehiveTestCase(unittest.TestCase):
             self.runlogger.info(u'response data:    %s' % response.text)            
             
             # validate with swagger schema
-            if resp_content_type.find(u'application/json') > 0:
+            if resp_content_type.find(u'application/json') >= 0:
                 validator = ApiValidator(schema, path, method)
                 validate = validator.validate(response)
                 self.runlogger.info(u'validate:      %s' % validate)
@@ -323,6 +323,7 @@ class BeehiveTestCase(unittest.TestCase):
         
         logger.debug(u'call elapsed: %s' % (time.time()-start))
         self.assertEqual(validate, True)
+        print res
         return res
     
     '''
