@@ -2885,7 +2885,7 @@ class ApiView(FlaskView):
             # get request data
             try:
                 data = request.data 
-                data = json.loads(data)
+                data = json.loads(data)        
             except (AttributeError, ValueError): 
                 data = None
                 
@@ -2912,7 +2912,7 @@ class ApiView(FlaskView):
                     res = self.get_response(resp[0], code=resp[1], 
                                             headers=resp[2])
                 else:
-                    res = self.get_response(resp[0], code=resp[1])
+                     res = self.get_response(resp[0], code=resp[1])
             else:
                 res = self.get_response(resp)
             
