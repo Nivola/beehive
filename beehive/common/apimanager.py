@@ -398,16 +398,16 @@ class ApiManager(object):
             # extend expire time of the redis key
             if res is True:
                 self.redis_manager.expire(self.prefix + uid, self.expire)
-                self.logger.debug('Data signature %s for identity %s is valid.'\
-                                  'Extend expire.' % (sign, uid))
+                self.logger.debug(u'Data signature %s for identity %s is valid. '\
+                                  u'Extend expire.' % (sign, uid))
         except:
-            self.logger.error("Data signature for identity %s is not valid" % uid)
-            raise ApiManagerError("Data signature for identity %s is not valid" % uid, code=401)
+            self.logger.error(u'Data signature for identity %s is not valid' % uid)
+            raise ApiManagerError(u'Data signature for identity %s is not valid' % uid, code=401)
 
         if not res:
-            raise ApiManagerError("Data signature for identity %s is not valid" % uid, code=401)
+            raise ApiManagerError(u'Data signature for identity %s is not valid' % uid, code=401)
         else:    
-            self.logger.debug('Data signature is valid')
+            self.logger.debug(u'Data signature is valid')
 
         return identity
 
