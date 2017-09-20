@@ -2885,7 +2885,7 @@ class ApiView(FlaskView):
             # get request data
             try:
                 data = request.data 
-                data = json.loads(data)        
+                data = json.loads(data)
             except (AttributeError, ValueError): 
                 data = None
                 
@@ -2912,7 +2912,7 @@ class ApiView(FlaskView):
                     res = self.get_response(resp[0], code=resp[1], 
                                             headers=resp[2])
                 else:
-                     res = self.get_response(resp[0], code=resp[1])
+                    res = self.get_response(resp[0], code=resp[1])
             else:
                 res = self.get_response(resp)
             
@@ -3080,7 +3080,8 @@ class CrudApiObjectResponseSchema(Schema):
                        default=u'6d960236-d280-46d2-817d-f3ce8f0aeff7')
     
 class CrudApiObjectJobResponseSchema(CrudApiObjectResponseSchema):
-    jobid = fields.UUID(default=u'db078b20-19c6-4f0e-909c-94745de667d4')   
+    jobid = fields.UUID(default=u'db078b20-19c6-4f0e-909c-94745de667d4',
+                        required=True)   
 
 class ApiObjectPermsParamsResponseSchema(Schema):
     id = fields.Integer(required=True, default=1)
