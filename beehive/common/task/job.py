@@ -522,7 +522,7 @@ class Job(BaseTask):
     
         The return value of this handler is ignored.
         """
-        pass
+        self.update(u'SUCCESS', msg=u'Stop %s.%s' % (self.name, task_id))    
 
 class JobTask(Job):
     abstract = True
@@ -650,7 +650,7 @@ def job_task(module=u''):
             operation.transaction = None       
 
             task.update(u'STARTED', start_time=time(), 
-                        msg=u'Start jobtask %s.%s' % (task.name, task.request.id))
+                        msg=u'Start %s.%s' % (task.name, task.request.id))
             #task.update(u'PROGRESS')
             res = fn(task, params, *args, **kwargs)
             return res

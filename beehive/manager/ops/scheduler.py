@@ -83,7 +83,7 @@ class SchedulerManager(ApiManager):
     # task worker
     #
     def ping_task_worker(self):
-        uri = u'/v1.0/worker/ping/'
+        uri = u'/v1.0/worker/ping'
         res = self._call(uri, u'GET')
         self.logger.info(res)
         resp = []
@@ -92,7 +92,7 @@ class SchedulerManager(ApiManager):
         self.result(resp, headers=[u'worker', u'res'])
 
     def stat_task_worker(self):
-        uri = u'/v1.0/worker/stats/'
+        uri = u'/v1.0/worker/stats'
         res = self._call(uri, u'GET')
         self.logger.info(res)
         resp = []
@@ -102,7 +102,7 @@ class SchedulerManager(ApiManager):
         self.result(res, details=True)
 
     def report_task_worker(self):
-        uri = u'/v1.0/worker/report/'
+        uri = u'/v1.0/worker/report'
         res = self._call(uri, u'GET')
         self.logger.info(res)
         resp = []
@@ -115,7 +115,7 @@ class SchedulerManager(ApiManager):
         self.result(resp, headers=[u'worker', u'report'])
     
     def get_task_definitions(self):
-        uri = u'/v1.0/worker/tasks/definitions/'
+        uri = u'/v1.0/worker/tasks/definitions'
         res = self._call(uri, u'GET')
         self.logger.info(res)
         resp = []
@@ -125,7 +125,7 @@ class SchedulerManager(ApiManager):
         self.result(resp, headers=[u'worker', u'task'])    
     
     def get_all_tasks(self):
-        uri = u'/v1.0/worker/tasks/'
+        uri = u'/v1.0/worker/tasks'
         res = self._call(uri, u'GET')
         self.logger.info(res)
         self.result(res, key=u'task-instances', 
@@ -133,7 +133,7 @@ class SchedulerManager(ApiManager):
                              u'start_time', u'stop_time', u'elapsed'])
         
     def get_task(self, task_id):
-        uri = u'/v1.0/worker/tasks/%s/' % task_id
+        uri = u'/v1.0/worker/tasks/%s' % task_id
         res = self._call(uri, u'GET').get(u'task-instance')
         self.logger.info(res)
         resp = []
@@ -143,7 +143,7 @@ class SchedulerManager(ApiManager):
                                   u'start_time', u'stop_time', u'elapsed'])
         
     def get_task_trace(self, task_id):
-        uri = u'/v1.0/worker/tasks/%s/' % task_id
+        uri = u'/v1.0/worker/tasks/%s' % task_id
         res = self._call(uri, u'GET').get(u'task-instance').get(u'trace')
         self.logger.info(res)
         resp = []
@@ -160,7 +160,7 @@ class SchedulerManager(ApiManager):
         self.result(res)      '''  
         
     def get_task_graph(self, task_id):
-        uri = u'/v1.0/worker/tasks/%s/graph/' % task_id
+        uri = u'/v1.0/worker/tasks/%s/graph' % task_id
         res = self._call(uri, u'GET').get(u'task-instance-graph')
         self.logger.info(res)
         print(u'Nodes:')
@@ -181,13 +181,13 @@ class SchedulerManager(ApiManager):
         self.result(res)'''
 
     def delete_all_tasks(self):
-        uri = u'/v1.0/worker/tasks/'
+        uri = u'/v1.0/worker/tasks'
         res = self._call(uri, u'DELETE')
         self.logger.info(u'Delete all task')
         self.result(res)        
         
     def delete_task(self, task_id):
-        uri = u'/v1.0/worker/task/%s/' % task_id
+        uri = u'/v1.0/worker/task/%s' % task_id
         res = self._call(uri, u'DELETE')
         self.logger.info(u'Delete task %s' % task_id)
         self.result(res)
@@ -201,7 +201,7 @@ class SchedulerManager(ApiManager):
             u'error':str2bool(error),
             u'suberror':str2bool(suberror)
         }
-        uri = u'/v1.0/worker/tasks/test/'
+        uri = u'/v1.0/worker/tasks/test'
         res = self._call(uri, u'POST', data=data)
         self.logger.info(u'Run job test: %s' % res)
         self.result(res)
@@ -211,26 +211,26 @@ class SchedulerManager(ApiManager):
     # scheduler
     #
     def get_scheduler_entries(self):
-        uri = u'/v1.0/scheduler/entries/'
+        uri = u'/v1.0/scheduler/entries'
         res = self._call(uri, u'GET')
         self.logger.debug(res)
         self.result(res, key=u'schedules', headers=self.sched_headers)
         
     def get_scheduler_entry(self, name):
-        uri = u'/v1.0/scheduler/entry/%s/' % name
+        uri = u'/v1.0/scheduler/entry/%s' % name
         res = self._call(uri, u'GET')
         self.logger.debug(res)
         self.result(res, key=u'schedule', headers=self.sched_headers)        
 
     def create_scheduler_entries(self, data):
         data = self.load_config(data)
-        uri = u'/v1.0/scheduler/entry/'
+        uri = u'/v1.0/scheduler/entry'
         res = self._call(uri, u'POST', data=data)
         self.result({u'msg':u'Create schedule %s' % data}, headers=[u'msg'])
 
     def delete_scheduler_entry(self, name):
         data = {u'name':name}
-        uri = u'/v1.0/scheduler/entry/'
+        uri = u'/v1.0/scheduler/entry'
         res = self._call(uri, u'DELETE', data=data)
         self.result({u'msg':u'Delete schedule %s' % name}, headers=[u'msg'])
 

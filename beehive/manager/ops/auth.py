@@ -238,15 +238,13 @@ class AuthManager(ApiManager):
         uri = u'%s/objects/types' % (self.authuri)
         res = self._call(uri, u'POST', data=data)
         self.logger.info(u'Add object: %s' % res)
-        #self.result(res)
-        print(u'Add object type: %s' % res)
+        self.result({u'msg':u'Add object type: %s' % (res)})
         
     def delete_object_type(self, object_id, *args):
         uri = u'%s/objects/types/%s' % (self.authuri, object_id)
         res = self._call(uri, u'DELETE', data=u'')
         self.logger.info(u'Delete object: %s' % res)
-        #self.result(res)
-        print(u'Delete object type: %s' % object_id)    
+        self.result({u'msg':u'Delete object type %s' % (object_id)})   
     
     #
     # objects
@@ -279,15 +277,13 @@ class AuthManager(ApiManager):
         uri = u'%s/objects' % (self.authuri)
         res = self._call(uri, u'POST', data=data)
         self.logger.info(u'Add object: %s' % res)
-        #self.result(res)
-        print(u'Add object: %s' % res)
+        self.result({u'msg':u'Add object: %s' % (res)})
         
     def delete_object(self, object_id):
         uri = u'%s/objects/%s' % (self.authuri, object_id)
         res = self._call(uri, u'DELETE', data=u'')
         self.logger.info(u'Delete object: %s' % res)
-        #self.result(res)
-        print(u'Delete object: %s' % object_id)
+        self.result({u'msg':u'Delete object %s' % (object_id)})
     
     #
     # users
