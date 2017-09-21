@@ -2897,7 +2897,7 @@ class ApiView(FlaskView):
                     parsed = self.parameters_schema().load(data)
                 if len(parsed.errors.keys()) > 0:
                     self.logger.error(parsed.errors)
-                    raise ApiManagerError(parsed.errors.values(), code=400)
+                    raise ApiManagerError(parsed.errors, code=400)
                 data = parsed.data
                 self.logger.debug(u'Query/data after schema validation: %s' % data)
         
