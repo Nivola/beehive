@@ -847,7 +847,8 @@ class Objects(AuthObject):
                     objid+u'//*//*//*//*//*//*'
                 ]
                 perms, total = self.auth_db_manager.get_deep_permissions(
-                        objids=objids, objtypes=subsystems)
+                        objids=objids, objtypes=subsystems,
+                        page=page, size=size, order=order, field=field)
             
             else:
                 perms, total = self.manager.get_permissions(
