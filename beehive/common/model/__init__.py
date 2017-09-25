@@ -268,7 +268,7 @@ class PaginatedQueryGenerator(object):
             sql.append(u', %s %s' % (table[0], table[1]))
         
         sql.extend([
-                u'WHERE 1=1 '
+                u'WHERE 1=1'
             ])
         # set base where
         if self.with_perm_tag:
