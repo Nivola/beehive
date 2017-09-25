@@ -1,7 +1,19 @@
+'''
+Created on Sep 22, 2017
+
+@author: darkbk
+'''
 import json
 import yaml
 import os
-from beecell.simple import truncate
+import textwrap
+import sys
+from beecell.simple import truncate, str2bool
+from cement.core.controller import CementBaseController
+from functools import wraps
+import logging
+from beecell.logger.helper import LoggerHelper
+from beehive.common.log import ColorFormatter
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
@@ -19,11 +31,48 @@ from pygments.token import Keyword, Name, Comment, String, Error, \
      Number, Operator, Generic, Token
 from pygments.filter import Filter
 from pprint import pformat
-from re import match
+from re import match, sub
 from tabulate import tabulate
 from time import sleep
 
 logger = getLogger(__name__)
+
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+def print_error(error):
+    """Print error
+    """
+    print(bcolors.FAIL + u'   ERROR : ' + bcolors.ENDC +
+      bcolors.FAIL + bcolors.BOLD + str(error) + bcolors.ENDC)
+
+def check_error(fn):
+    """Use this decorator to return error message if an exception was raised
+    
+    Example::
+    
+        @check_error
+        def fn(*args, **kwargs):
+            ....    
+    """
+    @wraps(fn)
+    def check_error_inner(*args, **kwargs):
+        try:
+            # call internal function
+            res = fn(*args, **kwargs)
+            return res      
+        except Exception as ex:
+            logger.error(ex, exc_info=1)
+            print_error(ex)
+            exit(1)
+    return check_error_inner
 
 class JsonStyle(Style):
     default_style = ''
@@ -85,42 +134,125 @@ class YamlFilter(Filter):
             self.prev_tag2 = value
             yield rtype, value
 
-class ComponentManager(object):
+class BaseController(CementBaseController):
     """
-    use: beehive [OPTION]... <SECTION> [PARAMs]...
-    
-    Beehive manager.
-    
-    OPTIONs:
-        -c, --config        json auth config file [default=/etc/beehive/manage.conf]
-        -f, --format        output format: native, json, yaml, custom, table [default]
-        -h, --help          get beehive <SECTION> help
-        -e, --env           set environment to use. Ex. test, lab, prod
-    
-    PARAMs:
-        <custom param>, ..  <SECTION> params 
-        HELP                get beehive <SECTION> help
-    
-    Exit status:
-        0  if OK,
-        1  if problems occurred  
     """
-    formats = [u'json', u'yaml', u'table', u'custom', u'native']
+    perm_headers = [u'id', u'oid', u'objid', u'subsystem', u'type', u'aid', 
+                    u'action', u'desc']    
     
-    def __init__(self, auth_config, env, frmt):
-        self.logger = getLogger(self.__class__.__module__+ \
-                                u'.'+self.__class__.__name__)
-        self.env = env
-        self.json = None
-        self.text = []
-        self.pp = PrettyPrinter(width=200)        
-        self.format = frmt      
-        self.color = auth_config[u'color']
-        self.token_file = auth_config[u'token_file']
-        self.seckey_file = auth_config[u'seckey_file']
+    class Meta:
+        label = u'abstract'
+        description = "abstract"
+        arguments = [
+            (['extra_arguments'], dict(action='store', nargs='*')),
+        ]
+    
+        formats = [u'json', u'yaml', u'table', u'custom', u'native']
+    
+    def _setup(self, base_app):
+        CementBaseController._setup(self, base_app)
         
-        self.perm_headers = [u'id', u'oid', u'objid', u'subsystem', u'type', 
-                             u'aid', u'action', u'desc']
+        self.text = []
+        self.pp = PrettyPrinter(width=200)
+        self.app._meta.token_file = self.app._meta.token_file
+        self.app._meta.seckey_file = self.app._meta.seckey_file
+        
+        # get configs
+        self.configs = self.app.config.get_section_dict(u'configs')
+        
+    @property
+    def _help_text(self):
+        """Returns the help text displayed when '--help' is passed."""
+
+        cmd_txt = ''
+        for label in self._visible_commands:
+            cmd = self._dispatch_map[label]
+            if len(cmd['aliases']) > 0 and cmd['aliases_only']:
+                if len(cmd['aliases']) > 1:
+                    first = cmd['aliases'].pop(0)
+                    cmd_txt = cmd_txt + "  %s (aliases: %s)\n" % \
+                        (first, ', '.join(cmd['aliases']))
+                else:
+                    cmd_txt = cmd_txt + "  %s\n" % cmd['aliases'][0]
+            elif len(cmd['aliases']) > 0:
+                cmd_txt = cmd_txt + "  %s (aliases: %s)\n" % \
+                    (label, ', '.join(cmd['aliases']))
+            else:
+                cmd_txt = cmd_txt + "  %s\n" % label
+
+            if cmd['help']:
+                cmd_txt = cmd_txt + "    %s\n\n" % cmd['help']
+            else:
+                cmd_txt = cmd_txt + "\n"
+
+        if len(cmd_txt) > 0:
+            txt = '''%s
+
+commands:
+%s
+
+
+        ''' % (self._meta.description, cmd_txt)
+        else:
+            txt = self._meta.description
+
+        return textwrap.dedent(txt)        
+    
+    @check_error
+    def _parse_args(self):
+        CementBaseController._parse_args(self)
+        
+        configs = self.app.config.get_section_dict(u'configs')
+        envs = u', '.join(configs[u'environments'].keys())
+        default_env = configs[u'environments'].get(u'default', None)
+        
+        self.format = self.app.pargs.format
+        if self.format is None:
+            self.format = u'table'
+        if self.app.pargs.format is None:
+            self.color = True
+        else:
+            self.color = str2bool(self.app.pargs.format)
+        self.env = self.app.pargs.env
+        if self.env is None:
+            if default_env is not None:
+                self.env = default_env
+            else:
+                raise Exception(u'Platform environment must be defined. '\
+                                u'Select from: %s' % envs)
+        if self.env not in envs:
+            raise Exception(u'Platform environment %s does not exist. Select '\
+                            u'from: %s' % (self.env, envs))            
+        
+    @check_error  
+    def run(self):
+        """
+        This function wraps everything together (after self._setup() is
+        called) to run the application.
+
+        :returns: Returns the result of the executed controller function if
+          a base controller is set and a controller function is called,
+          otherwise ``None`` if no controller dispatched or no controller
+          function was called.
+
+        """
+        return_val = None
+
+        logger.debug('running pre_run hook')
+        for res in self.hook.run('pre_run', self):
+            pass
+
+        # If controller exists, then dispatch it
+        if self.controller:
+            return_val = self.controller._dispatch()
+        else:
+            self._parse_args()
+
+        logger.debug('running post_run hook')
+        for res in self.hook.run('post_run', self):
+            pass
+
+        return return_val
         
     def __jsonprint(self, data):
         data = json.dumps(data, indent=2)
@@ -228,9 +360,6 @@ class ComponentManager(object):
                     self.format_text(v, space+u'  ')
                 else:
                     self.__format(v, space, u'', u'')
-                #if space == u'  ':                
-                #    self.text.append(u'===================================')
-                #self.__format(u'===================================', space, u'', None)
         else:
             self.__format(data, space)
     
@@ -238,6 +367,7 @@ class ComponentManager(object):
                fields=None, details=False, maxsize=50):
         """
         """
+        logger.debug(u'result format: %s' % self.format)
         orig_data = data
         
         if self.format == u'native':
@@ -312,16 +442,16 @@ class ComponentManager(object):
                     
         elif self.format == u'doc':
             print(data)
-        
-        #if delta is not None:
-        #    sleep(delta)
-            
+    
+    def error(self, error):
+        print_error(error)
+    
     def load_config(self, file_config):
         f = open(file_config, 'r')
-        auth_config = f.read()
-        auth_config = json.loads(auth_config)
+        data = f.read()
+        data = json.loads(data)
         f.close()
-        return auth_config
+        return data
     
     def format_http_get_query_params(self, *args):
         """
@@ -336,6 +466,7 @@ class ComponentManager(object):
         """
         """
         val = {}
+        print args
         for arg in args:
             t = arg.split(u'=')
             val[t[0]] = t[1]
@@ -347,16 +478,16 @@ class ComponentManager(object):
         :return: token
         """
         token = None
-        if os.path.isfile(self.token_file) is True:
+        if os.path.isfile(self.app._meta.token_file) is True:
             # get token
-            f = open(self.token_file, u'r')
+            f = open(self.app._meta.token_file, u'r')
             token = f.read()
             f.close()
         
         seckey = None
-        if os.path.isfile(self.seckey_file) is True:
+        if os.path.isfile(self.app._meta.seckey_file) is True:
             # get secret key
-            f = open(self.seckey_file, u'r')
+            f = open(self.app._meta.seckey_file, u'r')
             seckey = f.read()
             f.close()
         return token, seckey
@@ -367,81 +498,40 @@ class ComponentManager(object):
         :param token: token to save
         """
         # save token
-        f = open(self.token_file, u'w')
+        f = open(self.app._meta.token_file, u'w')
         f.write(token)
         f.close()
         # save secret key
         if seckey is not None:
-            f = open(self.seckey_file, u'w')
+            f = open(self.app._meta.seckey_file, u'w')
             f.write(seckey)
             f.close()
-    
-    @staticmethod
-    def get_params(args):
-        return {}
-    
-    @classmethod
-    def main(cls, auth_config, frmt, opts, args, env, *vargs, **kvargs):
-        """Component main
         
-        :param auth_config: {u'pwd': u'..', 
-                             u'endpoint': u'http://10.102.160.240:6060/api/', 
-                             u'user': u'admin@local'}
-        :param frt:
-        :param opts:
-        :param args:
-        :param env:
-        :param vargs: custom params
-        :param kvargs: custom dict params
-        """
-        #try:
-        #    args[1]
-        #except:
-        #    print(ComponentManager.__doc__)
-        #    print(component_class.__doc__)
-        #    return 0
-
-        logger.debug(u'Format %s' % frmt)
-        logger.debug(u'Get component class %s' % cls.__name__)
-
-        kvargs = cls.get_params(args)
-        client = cls(auth_config, env, frmt=frmt, *vargs, **kvargs)
-        actions = client.actions()
-        logger.debug(u'Available actions %s' % actions.keys())
-        #PrettyPrinter(width=200).pformat(actions.keys()))
-        
-        if len(args) > 0:
-            entity = args.pop(0)
-            logger.debug(u'Get entity %s' % entity)
-        else: 
-            raise Exception(u'Entity must be specified')
-            return 1
-
-        if len(args) > 0:
-            operation = args.pop(0)
-            logger.debug(u'Get operation %s' % operation)
-            action = u'%s.%s' % (entity, operation)
-        else: 
-            raise Exception(u'Command must be specified')
-            return 1
-        
-        #print(u'platform %s %s response:' % (entity, operation))
-        #print(u'---------------------------------------------------------------')
-        print(u'')
-        
-        if action is not None and action in actions.keys():
-            func = actions[action]
-            func(*args)
-        else:
-            raise Exception(u'Entity and/or command are not correct')      
-            return 1
+    @check_error
+    def get_arg(self, default=None, name=None):
+        arg = None
+        try:
+            arg = self.app.pargs.extra_arguments.pop(0)
+        except:
+            if default is not None:
+                arg = default
+            elif name is not None:
+                raise Exception(u'Param %s is not defined' % name)
+        return arg            
             
-        return 0
+class ApiController(BaseController):
+    subsytem = None
+    baseuri = None    
+    
+    def _setup(self, base_app):
+        super(BaseController, self)._setup(base_app)     
+        
+    @check_error
+    def _parse_args(self):
+        BaseController._parse_args(self)
 
-class ApiManager(ComponentManager):
-    def __init__(self, auth_config, env, frmt=u'json'):
-        ComponentManager.__init__(self, auth_config, env, frmt)
-        config = auth_config[u'environments'][env]
+        config = self.app.config.get_section_dict(u'configs')\
+                    [u'environments'][self.env]
     
         if config[u'endpoint'] is None:
             raise Exception(u'Auth endpoint is not configured')
@@ -453,8 +543,6 @@ class ApiManager(ComponentManager):
                                        config[u'pwd'],
                                        config[u'catalog'],
                                        client_config=client_config)
-        self.subsytem = None
-        self.baseuri = None
         
         # get token
         self.client.uid, self.client.seckey  = self.get_token()        
@@ -464,16 +552,13 @@ class ApiManager(ComponentManager):
             self.client.create_token()
         
             # set token
-            self.save_token(self.client.uid, self.client.seckey)        
-        
+            self.save_token(self.client.uid, self.client.seckey)
+    
+    @check_error 
     def _call(self, uri, method, data=u'', headers=None):        
         # make request
         res = self.client.invoke(self.subsystem, uri, method, data=data, 
                                  other_headers=headers, parse=True)
-        if self.format == u'doc':
-            res = self.client.get_api_doc(self.subsystem, uri, method, data=data, 
-                                          sync=True, title=u'', desc= u'', output=res)
-        #self.client.logout()
         
         # set token
         self.save_token(self.client.uid, self.client.seckey)
@@ -483,15 +568,9 @@ class ApiManager(ComponentManager):
     def __query_task_status(self, task_id):
         uri = u'/v1.0/worker/tasks/%s/' % task_id
         res = self._call(uri, u'GET').get(u'task-instance')
-        #print res
-        #self.logger.info(res)
-        #resp = []
-        #resp.append(res)
-        #resp.extend(res.get(u'children'))
-        #self.result(resp, headers=[u'task_id', u'type', u'status', u'name', 
-        #                          u'start_time', u'stop_time', u'elapsed'])
         return res
-        
+    
+    @check_error 
     def query_task_status(self, task_id):
         while(True):
             res = self.__query_task_status(task_id)
@@ -500,12 +579,4 @@ class ApiManager(ComponentManager):
             if status in [u'SUCCESS', u'FAILURE']:
                 break
             sleep(1)
-    
-    def load_config_file(self, filename):
-        """
-        """
-        f = open(filename, 'r')
-        config = f.read()
-        config = json.loads(config)
-        f.close()
-        return config        
+                      

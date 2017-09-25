@@ -890,7 +890,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
     
     @query
     def get_deep_permissions(self, objids=[], objtype=None, objtypes=None, 
-                             objdef=None,page=0, size=10, order=u'DESC', 
+                             objdef=None, page=0, size=10, order=u'DESC', 
                              field=u'id'):
         """Get all the system object permisssions for an object with its childs .
         
@@ -941,17 +941,19 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         # get total rows
         total = session.execute(u' '.join(sqlcount), params).fetchone()[0]
                 
-        offset = size * page
+        start = int(size) * int(page)
         sql.append(u'ORDER BY %s %s' % (field, order))
-        sql.append(u'LIMIT %s OFFSET %s' % (size, offset))        
+        sql.append(u'LIMIT %s,%s' % (start, size))
         
         res = session.query(SysObjectPermission) \
                      .from_statement(text(u' '.join(sql))) \
                      .params(params).all()
         
         if len(res) <= 0:
-            self.logger.error(u'No permissions found')
-            raise ModelError(u'No permissions found')                           
+            res = []
+            total = 0
+            #self.logger.error(u'No permissions found')
+            #raise ModelError(u'No permissions found')                           
                      
         self.logger.debug(u'Get object permissions: %s' % truncate(res))
         return res, total    

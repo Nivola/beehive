@@ -109,6 +109,7 @@ class BeehiveTestCase(unittest.TestCase):
             self.api[subsystem] = RemoteClient(endpoint, 
                                                keyfile=keyfile, 
                                                certfile=certfile)
+            self.logger.info(u'Load swagger schema from %s' % endpoint)
             self.schema[subsystem] = self.validate_swagger_schema(endpoint)
 
     @classmethod
