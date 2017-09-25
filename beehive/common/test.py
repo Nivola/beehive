@@ -174,7 +174,7 @@ class BeehiveTestCase(unittest.TestCase):
         seckey = res[u'seckey']
     
     def call(self, subsystem, path, method, params=None, headers=None,
-             user=None, pwd=None, auth=None, data=None, query=None,  
+             user=None, pwd=None, auth=None, data=None, query=None, runlog=True,
              *args, **kvargs):
         global token, seckey
         
@@ -211,23 +211,25 @@ class BeehiveTestCase(unittest.TestCase):
                 sign = self.auth_client.sign_request(seckey, uri)
                 headers.update({u'uid':token, u'sign':sign})
             
-            self.runlogger.info(u'reqeust endpoint: %s' % endpoint)
-            self.runlogger.info(u'reqeust path:     %s' % uri)
-            self.runlogger.info(u'reqeust method:   %s' % method)
-            self.runlogger.info(u'reqeust user:     %s' % user)
-            self.runlogger.info(u'reqeust auth:     %s' % auth)
-            self.runlogger.info(u'reqeust params:   %s' % params)
-            self.runlogger.info(u'reqeust query:    %s' % query)
-            self.runlogger.info(u'reqeust data:     %s' % data)            
-            self.runlogger.info(u'reqeust headers:  %s' % headers)            
+            if runlog is True:
+                self.runlogger.info(u'request endpoint: %s' % endpoint)
+                self.runlogger.info(u'request path:     %s' % uri)
+                self.runlogger.info(u'request method:   %s' % method)
+                self.runlogger.info(u'request user:     %s' % user)
+                self.runlogger.info(u'request auth:     %s' % auth)
+                self.runlogger.info(u'request params:   %s' % params)
+                self.runlogger.info(u'request query:    %s' % query)
+                self.runlogger.info(u'request data:     %s' % data)            
+                self.runlogger.info(u'request headers:  %s' % headers)            
             
             # execute request
             response = requests.request(method, endpoint + uri, auth=cred, 
                                    params=query, data=data, headers=headers,
                                    timeout=5, verify=False)
             
-            self.runlogger.info(u'response headers: %s' % response.headers)
-            self.runlogger.info(u'response code:    %s' % response.status_code)
+            if runlog is True:
+                self.runlogger.info(u'response headers: %s' % response.headers)
+                self.runlogger.info(u'response code:    %s' % response.status_code)
             resp_content_type = response.headers[u'content-type']
             
             # evaluate response status
@@ -285,7 +287,7 @@ class BeehiveTestCase(unittest.TestCase):
             
             # NO_CONTENT             204    HTTP/1.1, RFC 2616, Section 10.2.5            
             elif response.status_code == 204:
-                res = None          
+                res = None
                 
             # OK                     200    HTTP/1.1, RFC 2616, Section 10.2.1
             # CREATED                201    HTTP/1.1, RFC 2616, Section 10.2.2
@@ -306,24 +308,27 @@ class BeehiveTestCase(unittest.TestCase):
                 else:
                     res = response.text
             
-            self.runlogger.info(u'response data:    %s' % response.text)            
+            if runlog is True:
+                self.runlogger.info(u'response data:    %s' % response.text)            
             
             # validate with swagger schema
             if resp_content_type.find(u'application/json') >= 0:
                 validator = ApiValidator(schema, path, method)
                 validate = validator.validate(response)
-                self.runlogger.info(u'validate:      %s' % validate)
+                if runlog is True:
+                    self.runlogger.info(u'validate:         %s' % validate)
             else:
-                self.runlogger.warn(u'validation supported only for application/json')
+                if runlog is True:
+                    self.runlogger.warn(u'validation supported only for application/json')
                 validate = True
         except:
             logger.error(u'', exc_info=1)
-            self.runlogger.error(u'', exc_info=1)
+            if runlog is True:
+                self.runlogger.error(u'', exc_info=1)
             raise
         
         logger.debug(u'call elapsed: %s' % (time.time()-start))
         self.assertEqual(validate, True)
-        print res
         return res
     
     '''

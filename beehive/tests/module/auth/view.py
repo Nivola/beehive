@@ -26,7 +26,7 @@ tests = [
 #     u'test_remove_role_perm',
 #     u'test_delete_role',
     
-#     u'test_add_user',
+    u'test_add_user',
 #     u'test_add_user_twice',
 #     u'test_get_users',
 #     u'test_get_users_by_role',
@@ -35,11 +35,11 @@ tests = [
 #     u'test_add_user_attributes',
 #     u'test_get_user_attributes',    
 #     u'test_delete_user_attributes',
-#     u'test_update_user',
+    u'test_update_user',
 #     u'test_add_user_role',
 #     u'test_get_perms_by_user',
 #     u'test_remove_user_role',
-#     u'test_delete_user',
+    u'test_delete_user',
     
 #     u'test_add_group',
 #     u'test_add_group_twice',
@@ -68,9 +68,9 @@ tests = [
 #     u'test_get_object',
 #     u'test_delete_object',
  
-    u'test_get_perms',
-    u'test_get_perms_by_type',
-    u'test_get_perm',
+#     u'test_get_perms',
+#     u'test_get_perms_by_type',
+#     u'test_get_perm',
 ]
 
 class AuthTestCase(BeehiveTestCase):
