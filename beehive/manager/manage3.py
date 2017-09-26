@@ -10,7 +10,7 @@ import ujson as json
 from beecell.logger.helper import LoggerHelper
 from beehive.common.log import ColorFormatter
 from beehive.manager.util.logger import LoggingLogHandler
-from beehive.manager.sections.auth import AuthController
+#from beehive.manager.sections.auth import AuthController
 from beehive.manager.util.controller import BaseController
 from beehive.manager.sections.platform import platform_controller_handlers
 from beehive.manager.sections.resource import resource_controller_handlers
@@ -119,7 +119,7 @@ class CliManager(CementApp):
         handlers = [
             #LoggingLogHandler,
             CliController, 
-            AuthController,
+            #AuthController,
         ]
         
         handlers.extend(platform_controller_handlers)

@@ -3,6 +3,7 @@ Created on Sep 22, 2017
 
 @author: darkbk
 '''
+import logging
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController
 

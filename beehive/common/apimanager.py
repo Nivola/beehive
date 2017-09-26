@@ -2177,13 +2177,14 @@ class ApiObject(object):
             raise ApiManagerError(ex, code=ex.code)
 
     @trace(op=u'delete')
-    def delete(self, authorize=True, **kvargs):
+    def delete(self, authorize=True, soft=False, **kvargs):
         """Delete entity.
         
         **Parameters:**
         
             * **kvargs** (:py:class:`dict`): custom params
             * **authorize** (:py:class:`bool`): if True check permissions for authorization
+            * **soft** (:py:class:`bool`): if True make a soft delete
             
         **Returns:**
         
@@ -2203,12 +2204,16 @@ class ApiObject(object):
             kvargs = self.pre_clean(**kvargs)            
             
         try:  
-            self.delete_object(oid=self.oid)
-            if self.register is True:
-                # remove object and permissions
-                self.deregister_object(self.objid.split(u'//'))
-            
-            self.logger.debug(u'Delete %s: %s' % (self.objdef, self.oid))
+            if soft is False:
+                self.delete_object(oid=self.oid)
+                if self.register is True:
+                    # remove object and permissions
+                    self.deregister_object(self.objid.split(u'//'))
+                
+                self.logger.debug(u'Delete %s: %s' % (self.objdef, self.oid))
+            else:
+                self.delete_object(self.model)
+                self.logger.debug(u'Soft delete %s: %s' % (self.objdef, self.oid))
             return None
         except TransactionError as ex:
             self.logger.error(ex.desc, exc_info=1)
