@@ -26,9 +26,12 @@ class Display(OrigDisplay):
     def __init__(self, verbosity=0):
         OrigDisplay.__init__(self, verbosity)
         
-    def display(self, msg, color=None, stderr=False, screen_only=False, log_only=False):
+    def display(self, msg, color=None, stderr=False, screen_only=False, log_only=True):
         OrigDisplay.display(self, msg, color=color, stderr=stderr, screen_only=screen_only, log_only=log_only)
         logger.debug(msg)
+
+    #def warning(self, msg, formatted=False):
+    #    print u'ciao'
 
 class Options(object):
     """Options class to replace Ansible OptParser
@@ -93,8 +96,8 @@ class ResultCallback(CallbackBase):
     the end of the execution, look into utilizing the ``json`` callback plugin
     or writing your own custom callback plugin
     """
-    def __init__(self, frmt=u'json'):
-        CallbackBase.__init__(self, None)
+    def __init__(self, display=None, frmt=None):
+        CallbackBase.__init__(self, display=display)
         self.frmt = frmt
     
     def v2_runner_on_ok(self, result, **kwargs):
@@ -103,6 +106,8 @@ class ResultCallback(CallbackBase):
         This method could store the result in an instance attribute for retrieval later
         """
         host = result._host
+        logger.debug(u'Get host: %s' % host)
+        logger.debug(u'Get format: %s' % self.frmt)
         if self.frmt == u'json':
             print json.dumps({host.name: result._result[u'stdout_lines']}, 
                              indent=4)
@@ -112,10 +117,12 @@ class ResultCallback(CallbackBase):
             for item in result._result[u'stdout_lines']:
                 print(u'  %s' % item)
             print(u'')
-        
+    
 class Runner(object):
     """Ansible api v2 playbook runner
     """
+    display = Display()
+    
     def __init__(self, inventory=None, verbosity=2, module=u''):
         self.options = Options()
         self.options.private_key_file = None
@@ -129,7 +136,6 @@ class Runner(object):
         self.options.module_path = module
         
         # Set global verbosity
-        self.display = Display()
         self.display.verbosity = verbosity
         # Executor appears to have it's own 
         # verbosity object/setting as well
@@ -151,14 +157,18 @@ class Runner(object):
     def get_inventory(self, group=None):
         """Get inventory, using most of above objects
         """
-        #inventory = InventoryManager(self.loader, sources=self.inventory)
-        inventory = Inventory(loader=self.loader, 
-                              variable_manager=self.variable_manager, 
-                              host_list=self.inventory)
-        hosts = inventory.get_group_dict()
-        if group is not None:
-            hosts = hosts[group]
-        return hosts
+        try:
+            #inventory = InventoryManager(self.loader, sources=self.inventory)
+            inventory = Inventory(loader=self.loader, 
+                                  variable_manager=self.variable_manager, 
+                                  host_list=self.inventory)
+            hosts = inventory.get_group_dict()
+            if group is not None:
+                hosts = hosts[group]
+            return hosts
+        except:
+            logger.error(u'', exc_info=1)
+            raise Exception(u'Ansible inventory was not found')
     
     def get_inventory_with_vars(self, group):
         """Get inventory, using most of above objects
@@ -271,7 +281,7 @@ class Runner(object):
                            loader=self.loader)
 
         # Instantiate our ResultCallback for handling results as they come in
-        results_callback = ResultCallback(frmt=frmt)
+        results_callback = ResultCallback(display=self.display, frmt=frmt)
 
         # run it
         tqm = None
@@ -293,4 +303,8 @@ class Runner(object):
 
         return result
 
+# set global display
+import ansible.inventory
+ansible.inventory.display = Runner.display
+ansible.inventory.logger = getLogger(u'ansible')
         
