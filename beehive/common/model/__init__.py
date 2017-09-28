@@ -70,7 +70,7 @@ class BaseEntity(AuditData):
 
         
     def is_active(self):
-        return (self.active and 
+        return (self.active or 
                 (self.expiry_date is None 
                   or self.expiry_date < datetime.today()))
     
@@ -723,14 +723,15 @@ class AbstractDbManager(object):
     def update(self, entity):
         if entity is None:
             raise QueryError("Error: can't not add None entity")
-    
+        
+        self.logger.info(u'Update %s entity %s' % (entity.__class__.__name__, entity))
         if isinstance(entity, BaseEntity):
             entity.modication_date = datetime.today()
         
         session = self.get_session()
         session.merge(entity)
         session.flush()
-        self.logger.debug(u'Update %s entity %s' % (entity.__class__.__name__, entity))
+        self.logger.info(u'Updated')
         return entity   
     
     @transaction
@@ -750,7 +751,7 @@ class AbstractDbManager(object):
                 logger.info("Nothing to do on %s !" %entity)
         else:
             res = self.purge(entity)
-        logger.debug(u'Deleteted')
+        logger.debug(u'Deleted')
         return entity
         
     @transaction
