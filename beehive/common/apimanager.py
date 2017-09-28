@@ -1598,7 +1598,7 @@ class ApiObject(object):
         self.uuid = None
         if self.model is not None:
             self.uuid = self.model.uuid        
-        
+
         # object uri
         self.objuri = u'/%s/%s/%s' % (self.controller.version, self.objuri, 
                                       self.uuid)
@@ -1795,7 +1795,7 @@ class ApiObject(object):
         :param objids: objid split by //
         :param desc: object description
         """
-        self.logger.debug(u'Register api object: %s:%s %s - ATART' % 
+        self.logger.debug(u'Register api object: %s:%s %s - START' % 
                           (self.objtype, self.objdef, objids))
         
         # add object and permissions
@@ -3039,7 +3039,7 @@ class GetApiObjectRequestSchema(Schema):
 class ApiObjectPermsRequestSchema(PaginatedRequestQuerySchema,
                                   GetApiObjectRequestSchema):
     pass   
-    
+
 class ApiObjectResponseDateSchema(Schema):
     creation = fields.DateTime(required=True, default=u'1990-12-31T23:59:59Z')
     modified = fields.DateTime(required=True, default=u'1990-12-31T23:59:59Z')
