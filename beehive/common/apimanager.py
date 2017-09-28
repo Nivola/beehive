@@ -3084,9 +3084,13 @@ class CrudApiObjectResponseSchema(Schema):
     uuid = fields.UUID(required=True, 
                        default=u'6d960236-d280-46d2-817d-f3ce8f0aeff7')
     
-class CrudApiObjectJobResponseSchema(CrudApiObjectResponseSchema):
+class CrudApiJobResponseSchema(Schema):
     jobid = fields.UUID(default=u'db078b20-19c6-4f0e-909c-94745de667d4',
-                        required=True)   
+                        required=True)
+    
+class CrudApiObjectJobResponseSchema(CrudApiObjectResponseSchema,
+                                     CrudApiJobResponseSchema):
+    pass    
 
 class ApiObjectPermsParamsResponseSchema(Schema):
     id = fields.Integer(required=True, default=1)

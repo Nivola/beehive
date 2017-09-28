@@ -148,7 +148,7 @@ class Scheduler(ApiObject):
                                                                  app=task_scheduler))
             
             self.logger.info("Create scheduler entry: %s" % entry)
-            return True
+            return {u'schedule':name}
         except Exception as ex:
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
@@ -246,7 +246,10 @@ class TaskManager(ApiObject):
         try:
             res = task_manager.control.ping(timeout=0.5)
             self.logger.debug('Ping task manager workers: %s' % res)
-            return res
+            resp = {}
+            for item in res:
+                resp.update(item)
+            return resp
         except Exception as ex:
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)        
@@ -822,7 +825,7 @@ class TaskManager(ApiObject):
             
             # delete task instance
             manager = self.controller.redis_taskmanager
-            task_name = u'celery-task-meta-%s' % task_id
+            task_name = u'celery-task-meta2-%s' % task_id
             res = manager.delete(pattern=task_name)
             self.logger.debug('Delete task instance %s: %s' % (task_id, res))
             return res
@@ -910,6 +913,7 @@ class TaskManager(ApiObject):
         
         from beehive.module.scheduler.tasks import jobtest
 
+        params.update(self.get_user())
         data = (self.objid, params)
-        job = jobtest.apply_async(data, self.get_user())
+        job = jobtest.apply_async(data)
         return job    
