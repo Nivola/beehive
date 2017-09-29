@@ -2,6 +2,7 @@ from celery import Task
 from celery.utils.log import get_task_logger
 import ujson as json
 from beecell.simple import truncate
+from beehive.common.data import operation
 
 logger = get_task_logger(__name__)
 
@@ -14,8 +15,7 @@ class BaseTask(Task):
     
     def __init__(self, *args, **kwargs):
         Task.__init__(self, *args, **kwargs)
-        #task_short_name = {u'task_name':self.name.split(u'.')[-1]}
-        #logger = logging.LoggerAdapter(get_task_logger(__name__), task_short_name)
+
         self.logger = logger
         
         try:
@@ -48,8 +48,13 @@ class BaseTask(Task):
     def set_shared_data(self, task_id, data):
         """Set data to shared memory area. Use this to pass data from different
         tasks. Shared area could not ensure synchronization
-        """
-        val = json.dumps(data)
+        """        
+        # get actual data
+        current_data = self.get_shared_data()
+        current_data.update(data)        
+        
+        val = json.dumps(current_data)
+        
         self._redis.setex(self.prefix + task_id, self.expire, val)
         #logger.debug(u'Set shared data for job %s: %s' % 
         #             (task_id, truncate(data)))
@@ -95,33 +100,23 @@ class BaseTask(Task):
         except:
             pass
 
+    #
+    # db session
+    #
+    def get_session(self):
+        self.app.api_manager.get_session()
+        
+    def flush_session(self):
+        self.app.api_manager.flush_session()         
+        
+    def release_session(self):
+        self.app.api_manager.release_session()
+        
     def after_return(self, *args, **kwargs):
         """Handler called after the task returns.
-        
-        Parameters:    
-    
-            status - Current task state.
-            retval - Task return value/exception.
-            task_id - Unique id of the task.
-            args - Original arguments for the task that returned.
-            kwargs - Original keyword arguments for the task that returned.
-            einfo - ExceptionInfo instance, containing the traceback (if any).
-    
-        The return value of this handler is ignored.
         """
-        super(BaseTask, self).after_return(*args, **kwargs) 
-
-    def on_failure(self, exc, task_id, args, kwargs, einfo):
-        """This is run by the worker when the task fails.
+        super(BaseTask, self).after_return(*args, **kwargs)
         
-        Parameters:    
-    
-            exc - The exception raised by the task.
-            task_id - Unique id of the failed task.
-            args - Original arguments for the task that failed.
-            kwargs - Original keyword arguments for the task that failed.
-            einfo - ExceptionInfo instance, containing the traceback.
-    
-        The return value of this handler is ignored.
-        """
-        pass
+        if operation.session is not None:
+            self.release_session()
+        

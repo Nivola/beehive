@@ -1,242 +1,219 @@
 #!/usr/bin/env python
 '''
-Created on Jan 9, 2017
+Created on Sep 22, 2017
 
 @author: darkbk
 '''
-import os, sys
+import os
 import logging
-import getopt
+import sys
 import ujson as json
-
-from beehive.manager import ComponentManager
-from beehive.common.log import ColorFormatter
-from beehive.manager.ops.platform import PlatformManager
-from beehive.manager.ops.provider import ProviderManager
-from beehive.manager.ops.resource import ResourceManager
-from beehive.manager.ops.scheduler import SchedulerManager
-from beehive.manager.ops.vsphere import VsphereManager, NsxManager
-from beehive.manager.ops.openstack import OpenstackManager
-from beehive.manager.ops.native_vsphere import NativeVsphereManager
-from beehive.manager.ops.native_openstack import NativeOpenstackManager
-from beehive.manager.ops.monitor import MonitorManager
-from beehive.manager.ops.auth import AuthManager
-from beehive.manager.ops.catalog import CatalogManager
-from beehive.manager.ops.event import EventManager
 from beecell.logger.helper import LoggerHelper
-from beehive.manager.ops.config import ConfigManager
-from beehive.manager.ops.oauth2 import Oaut2hManager
-from beehive.manager.ops.keyauth import KeyauthManager
-from beehive.manager.ops.native_graphite import NativeGraphiteManager
+from beehive.common.log import ColorFormatter
+from beehive.manager.util.logger import LoggingLogHandler
+#from beehive.manager.sections.auth import AuthController
+from beehive.manager.util.controller import BaseController
+from beehive.manager.sections.platform import platform_controller_handlers
+from beehive.manager.sections.resource import resource_controller_handlers
+from beehive.manager.sections.auth import auth_controller_handlers
+from beehive.manager.sections.catalog import catalog_controller_handlers
+from beehive.manager.sections.event import event_controller_handlers
+from beehive.manager.sections.scheduler import scheduler_controller_handlers
+logging.captureWarnings(True)
+logger = logging.getLogger(__name__)
 
-VERSION = u'1.0.0'
 
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
+'''import cement.utils.misc
+def minimal_logger(namespace, debug=False):
+    return logging.getLogger(namespace)
+cement.utils.misc.minimal_logger = minimal_logger'''
 
-def load_config(file_config):
-    f = open(file_config, 'r')
-    auth_config = f.read()
-    auth_config = json.loads(auth_config)
-    f.close()
-    return auth_config
+#import cement.core.controller
+#cement.core.controller.LOG = logging.getLogger(u'cement.core.controller')
 
-def get_params(args):
-    return {}
+from cement.core.controller import CementBaseController, expose
+from cement.core.foundation import CementApp
 
-def main(run_path, argv):
+VERSION = '0.1.0'
+
+BANNER = """
+Beehive Cli v%s
+Copyright (c) 2017 Sergio Tonani
+""" % VERSION
+
+'''
+import cement.utils.misc
+class CliMinimalLogger(cement.utils.misc.MinimalLogger):
+    """MinimalLogger extension. Remove console logger and introduce file stream 
+    logger.
     """
-    SECTIONs:
-        platform
-        auth
-        oauth2
-        keyauth
-        catalog
-        event
-        monitor
-        resource
-        scheduler
-        provider
-        config
-        vsphere
-        nsx
-        openstack
-        native.vsphere
-        native.openstack
-        native.graphite
-        
-    PARAMs:
-        <custom section param>, ..
-        
-    Examples:
-    
-    Generic help:
-    $ manage.py -h                                     
-    
-    <SECTION> help:
-    $ manage.py -h <SECTION>
-    
-    Use <SECTION> commands in environment test:
-    $ manage.py -e test <SECTION> [PARAMs]...
-    
-    Use <SECTION> commands in environment test. Format results in json:
-    $ manage.py -e test -f json <SECTION> [PARAMs]...         
-    """
-    logger = logging.getLogger(__name__)
-    file_config = u'/etc/beehive/manage.conf'
-    retcode = 0
-    frmt = u'table'
-    env = u'test'
-    color = 1
-    
-    sections = {
-        u'platform':PlatformManager,
-        u'subsystem':None,
-        u'client':None,
-        u'auth':AuthManager,
-        u'oauth2':Oaut2hManager,
-        u'keyauth':KeyauthManager,
-        u'catalog':CatalogManager,
-        u'event':EventManager,
-        u'monitor':MonitorManager,
-        u'resource':ResourceManager,
-        u'scheduler':SchedulerManager,
-        u'provider':ProviderManager,
-        u'config':ConfigManager,
-        u'vsphere':VsphereManager,
-        u'nsx':NsxManager,
-        u'openstack':OpenstackManager,
-        u'native.vsphere':NativeVsphereManager,
-        u'native.openstack':NativeOpenstackManager,
-        u'native.graphite':NativeGraphiteManager,
-    }
-    
-    try:
-        opts, args = getopt.getopt(argv, u'c:f:e:o:hv',
-                                   [u'help', u'conf=', u'format=', u'env=', 
-                                    u'color', u'version'])
-    except getopt.GetoptError:
-        print(ComponentManager.__doc__)
-        print(main.__doc__)
-        return 2
-    
-    # check section
-    try:
-        section = args.pop(0)
-    except:
-        print(ComponentManager.__doc__)
-        print(main.__doc__)
-        return 0    
-    
-    if u'help' in args:
-        print(ComponentManager.__doc__)
-        if sections.get(section, None) is not None:
-            print(bcolors.OKBLUE + sections[section].__doc__ + bcolors.ENDC)
-        else:
-            print(bcolors.OKBLUE + main.__doc__ + bcolors.ENDC)
-        return 0
-    
-    for opt, arg in opts:
-        if opt in (u'-h', u'--help'):
-            print(ComponentManager.__doc__)
-            if sections.get(section, None) is not None:
-                print(bcolors.OKBLUE + sections[section].__doc__ + bcolors.ENDC)
-            else:
-                print(bcolors.OKBLUE + main.__doc__ + bcolors.ENDC)
-            return 0
-        elif opt in (u'-v', u'--version'):
-            print u'auth %s' % VERSION
-            return 0
-        elif opt in (u'-e', u'--env'):
-            env = arg
-        elif opt in (u'-c', u'--conf'):
-            # read manage alternative config
-            file_config = arg
-        elif opt in (u'-f', u'--format'):
-            frmt = arg
-        elif opt in (u'-o', u'--color'):
-            color = arg
-            
-    # set format with param
-    if (args[-1] in ComponentManager.formats) is True:
-        frmt = args.pop(-1)   
 
-    # load configuration
-    if os.path.exists(file_config):
-        auth_config = load_config(file_config)
-    else:
-        auth_config = {
-            u'log':u'./',
-            u'endpoint':None
+    def __init__(self, namespace, debug, *args, **kw):
+        level = logging.INFO
+        if '--debug' in sys.argv or debug:
+            level = logging.DEBUG 
+        
+        self.namespace = namespace
+        self.backend = logging.getLogger(namespace)
+        self.backend.setLevel(level)      
+        
+        loggers = [self.backend]
+        LoggerHelper.rotatingfile_handler(loggers, level,
+                                          CliManager.Meta.logging_file, 
+                                          CliManager.Meta.logging_max_size, 
+                                          CliManager.Meta.logging_max_files, 
+                                          CliManager.Meta.logging_format,
+                                          formatter=ColorFormatter)
+
+cement.utils.misc.MinimalLogger = CliMinimalLogger'''
+
+class CliController(CementBaseController):
+    class Meta:
+        label = u'base'
+        description = "Beehive manager."
+        arguments = [
+        ]
+
+    def _setup(self, base_app):
+        CementBaseController._setup(self, base_app)
+
+    @expose(hide=True)
+    def default(self):
+        self.app.args.print_help()
+
+class CliManager(CementApp):
+    """Cli manager
+    """
+    class Meta:
+        label = "beehive"
+        debug = False
+        #log_handler = 'clilogging'
+        
+        logging_level = logging.DEBUG
+        logging_format = u'%(asctime)s - %(levelname)s - ' \
+                         u'%(name)s.%(funcName)s:%(lineno)d - %(message)s'
+        logging_file = u'/var/log/beehive/manage.log'
+        logging_max_files = 4
+        logging_max_size = 512000
+        logging_loggers = [
+            u'beecell',
+            u'py.warnings',
+            u'beehive',
+            u'beehive_oauth2',
+            u'beehive_resource',
+            u'beehive_monitor',
+            u'beehive_service',
+            u'beedrones',
+            u'requests',
+            u'urllib3',
+            u'ansible',
+        ]
+
+        config_defaults = {
+            u'log.logging': {
+            }
         }
-    auth_config[u'color'] = color
-
-    # set token if exist
-    auth_config[u'token_file'] = u'.manage.token'
-    auth_config[u'seckey_file'] = u'.manage.seckey'
-    auth_config[u'token'] = None
-    
-    # setup loggers
-    loggers = [
-        logger,
-        logging.getLogger(u'beecell'),
-        logging.getLogger(u'py.warnings'),
-        logging.getLogger(u'beehive'),
-        logging.getLogger(u'beehive_oauth2'),
-        logging.getLogger(u'beehive_resource'),
-        logging.getLogger(u'beehive_monitor'),
-        logging.getLogger(u'beehive_service'),
-        logging.getLogger(u'beedrones'),
-        logging.getLogger(u'requests'),
-        logging.getLogger(u'urllib3'),
-    ]
-    lfrmt = u'%(asctime)s - %(levelname)s - ' \
-            u'%(name)s.%(funcName)s:%(lineno)d - %(message)s'
-    LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, 
-                                      u'%s/manage.log' % auth_config[u'log'], 
-                                      1024*1024, 5, lfrmt,
-                                      formatter=ColorFormatter)
-    
-    loggers = [
-        logging.getLogger(u'beecell.perf')
-    ]
-    LoggerHelper.rotatingfile_handler(loggers, logging.ERROR, 
-                                      u'%s/manage.watch.log' % auth_config[u'log'], 
-                                      1024*1024, 5, lfrmt)
-    logging.captureWarnings(True)
-
-    try:
-        manager = main
         
-        if section not in sections:
-            raise Exception(u'ERROR : section %s does not exist' % section)
-        manager = sections[section]
-        retcode = manager.main(auth_config, frmt, opts, args, env)
-    except Exception as ex:
-        line = [u'='] * 50
-        #print(bcolors.FAIL + bcolors.BOLD + u'    ' + u''.join(line))
-        #print(u'     %s' % (ex))
-        #print(u'    ' + u''.join(line) + bcolors.ENDC)
-        #print(u'')
-        print(bcolors.FAIL + u'   ERROR : ' + bcolors.ENDC +
-              bcolors.FAIL + bcolors.BOLD + str(ex) + bcolors.ENDC)
-        #print(ComponentManager.__doc__)
-        print(u'')
-        #print(bcolors.OKBLUE + manager.__doc__ + bcolors.ENDC)
-        logger.error(ex, exc_info=1)
-        retcode = 1
-    
-    return retcode
+        extensions = ['json']
+        
+        framework_logging = False
+        config_handler = 'json'
+        base_controller = "base"
+        handlers = [
+            #LoggingLogHandler,
+            CliController,
+        ]
+        
+        handlers.extend(platform_controller_handlers)
+        handlers.extend(resource_controller_handlers)
+        handlers.extend(auth_controller_handlers)
+        handlers.extend(catalog_controller_handlers)
+        handlers.extend(event_controller_handlers)
+        handlers.extend(scheduler_controller_handlers)
+        
+        configs_file = u'/etc/beehive/manage.conf'
+        history_file = u'~/.beehive.manage'
+        
+        # authorization
+        token_file = u'.manage.token'
+        seckey_file = u'.manage.seckey'
+        
+        #config_files = [u'/etc/beehive/manage.conf']
+        
 
-if __name__ == u'__main__':    
-    run_path = os.path.dirname(os.path.realpath(__file__))
-    retcode = main(run_path, sys.argv[1:])
-    sys.exit(retcode)
+    def __init__(self, *args, **kvargs):
+        """Init cli manager
+        """
+        CementApp.__init__(self, *args, **kvargs)
+        
+        
+    def setup(self):
+        CementApp.setup(self)
+        
+        self.setup_logging()
+        self.load_configs()
+
+    def load_configs(self):
+        """Load configurations
+        """
+        if os.path.exists(self._meta.configs_file):
+            f = open(self._meta.configs_file, 'r')
+            configs = f.read()
+            configs = json.loads(configs)
+            f.close()
+            
+        else:
+            configs = {
+                u'log':u'./',
+                u'endpoint':None
+            }
+        self.config.merge({u'configs':configs})
+
+    def setup_logging(self):
+        """Setup loggers
+        """
+        loggers = [logging.getLogger(item) for item in self._meta.logging_loggers]
+        loggers.append(logger)
+        #loggers.append(self.log)
+        LoggerHelper.rotatingfile_handler(loggers, self._meta.logging_level, 
+                                          self._meta.logging_file, 
+                                          self._meta.logging_max_size, 
+                                          self._meta.logging_max_files, 
+                                          self._meta.logging_format,
+                                          formatter=ColorFormatter)
+
+
+with CliManager() as app:
+    # get configs
+    configs = app.config.get_section_dict(u'configs')
+    envs = u', '.join(configs[u'environments'].keys())
+    formats = u', '.join(BaseController.Meta.formats)
+    
+    # add any arguments after setup(), and before run()
+    app.args.add_argument('-v', '--version', action='version', version=BANNER)
+    app.args.add_argument('-e', '--env', action='store', dest='env',
+                      help='execution environment. Select from: %s' % envs)
+    app.args.add_argument('-f', '--format', action='store', dest='format',
+                      help='response format. Select from: %s' % formats)
+    app.args.add_argument('--color', action='store', dest='color',
+                      help='response colered. Can be true or false. [default=true]')
+    
+    logger.info(u'configure app')
+
+    #app.config.parse_file(app.configs_file)
+    #print app.config.get_sections()
+    #print app.config.get_section_dict(u'beehive')
+    #print app.config.get_section_dict(u'log.logging')
+    
+    # Check if an interface called 'output' is defined
+    app.handler.defined('output')
+
+    # Check if the handler 'argparse' is registered to the 'argument'
+    # interface
+    app.handler.registered('argument', 'argparse')
+    app.run()
+    
+    # close the application
+    app.close()
+    
     

@@ -25,12 +25,13 @@ class BaseCreateRequestSchema(Schema):
                 error_messages={u'required': u'desc is required.'})
     
 class BaseUpdateRequestSchema(Schema):
-    name = fields.String(context=u'body')
-    desc = fields.String(context=u'body')    
+    name = fields.String(context=u'body', allow_none=True)
+    desc = fields.String(context=u'body', allow_none=True)    
     
 class BaseCreateExtendedParamRequestSchema(Schema):
-    active = fields.Boolean(missing=True)
-    expiry_date = fields.String(load_from=u'expirydate', missing=None)
+    active = fields.Boolean(missing=True, allow_none=True)
+    expiry_date = fields.String(load_from=u'expirydate', missing=None, 
+                                allow_none=True)
     
     @post_load
     def make_expiry_date(self, data):

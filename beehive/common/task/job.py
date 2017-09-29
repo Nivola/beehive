@@ -43,36 +43,15 @@ class JobInvokeApiError(Exception):
 
     def __str__(self):
         return "JobInvokeApiError: %s" % self.value    
-        
-class Job(BaseTask):
-    abstract = True
-    inner_type = u'JOB'
-    ops = []
 
-    def __init__(self, *args, **kwargs):
-        BaseTask.__init__(self, *args, **kwargs)
+class AbstractJob(BaseTask):
+    abstract = True
+    ops = []
 
     @property
     def controller(self):
-        return task_local.controller
-
-    @staticmethod
-    def create(tasks, *args):
-        """Create celery signature with chord, group and chain
-        """
-        process = tasks.pop().si(*args)
-        last_task = None
-        for task in tasks:
-            if isinstance(task, list):
-                item = chord(task, last_task)
-            else:
-                item = task.si(*args)
-                if last_task is not None:
-                    item.link(last_task)
-            last_task = item
-        process.link(last_task)
-        return process
-        
+        return task_local.controller    
+    
     #
     # permissions assignment
     #
@@ -91,7 +70,222 @@ class Job(BaseTask):
             perm = (1, 1, op.objtype, op.objdef,
                     self.get_operation_id(op.objdef), 1, u'*')
             operation.perms.append(perm)
-        logger.debug(u'Set permissions: %s' % operation.perms)        
+        logger.debug(u'Set permissions: %s' % operation.perms)     
+
+    #
+    # shared area
+    #
+    def get_shared_data(self):
+        """ """
+        data = BaseTask.get_shared_data(self, task_local.opid)
+        return data
+    
+    def set_shared_data(self, data):
+        """ """
+        return BaseTask.set_shared_data(self, task_local.opid, data)   
+    
+    def remove_shared_area(self):
+        """ """
+        return BaseTask.remove_shared_area(self, task_local.opid)
+
+    #
+    # shared stack area
+    #
+    def pop_stack_data(self):
+        """Pop item from shared memory stack. Use this to pass data from different
+        tasks that must ensure synchronization.
+        """
+        return BaseTask.pop_stack_data(self, task_local.opid)
+    
+    def push_stack_data(self, data):
+        """Set data to shared memory stack. Use this to pass data from different
+        tasks that must ensure synchronization.
+        """
+        return BaseTask.push_stack_data(self, task_local.opid, data)
+    
+    def remove_stack(self):
+        """Remove shared memory stack reference from redis"""
+        return BaseTask.remove_stack(self, task_local.opid)
+
+    #
+    # varius
+    #
+    def elapsed(self):
+        elapsed = round(time() - task_local.start, 4)
+        return elapsed  
+    
+    def get_entity_class_name(self):
+        return task_local.entity_class.__module__ + u'.' + \
+               task_local.entity_class.__name__    
+    
+    def get_options(self):
+        """Return tupla with some useful options.
+        
+        :return:  (class_name, objid, job, job id, start time, 
+                   time before new query, user) 
+        """
+        options = (self.get_entity_class_name(), task_local.objid, 
+                   task_local.op, task_local.opid, None, 
+                   task_local.delta, task_local.user)
+        return options
+    
+    #
+    # task status management
+    #
+    def send_job_event(self, status, elapsed, ex=None, msg=None):
+        """Send job update event
+        
+        :param status: jobtask status
+        :param ex: exception raised [optional]
+        :param elapsed: elapsed time
+        :param result: task result. None otherwise task status is SUCCESS [optional]
+        :param msg: update message [optional]        
+        """
+        response = [status]
+        if ex is not None:
+            response.append(ex)
+
+        action = task_local.op.split(u'.')[-1]
+        op = task_local.op
+        op = op.replace(u'.%s' % action, u'')
+        entity_class = task_local.entity_class
+        data={
+            u'opid':task_local.opid, 
+            u'op':u'%s.%s' % (task_local.entity_class.objdef, op),
+            u'taskid':self.request.id,
+            u'task':self.name,
+            u'params':self.request.args,
+            u'response':response,
+            u'elapsed':elapsed,
+            u'msg':msg
+        }
+        
+        source = {
+            u'user':operation.user[0],
+            u'ip':operation.user[1],
+            u'identity':operation.user[2]
+        }
+        
+        dest = {
+            u'ip':task_local.controller.module.api_manager.server_name,
+            u'port':task_local.controller.module.api_manager.http_socket,
+            u'objid':task_local.objid, 
+            u'objtype':entity_class.objtype,
+            u'objdef':entity_class.objdef,
+            u'action':action
+        }      
+        
+        # send event
+        try:
+            client = self.controller.module.api_manager.event_producer
+            client.send(ApiObject.ASYNC_OPERATION, data, source, dest)
+        except Exception as ex:
+            self.logger.warning(u'Event can not be published. Event producer '\
+                                u'is not configured - %s' % ex)    
+    
+    def update_job(self, params, status, current_time, ex=None, traceback=None, 
+                   result=None, msg=None, start_time=None):
+        """Update job status
+        
+        :param params: variables in shared area
+        :param status: job current status
+        :param start_time: job start time [optional]
+        :param current_time: current time
+        :param ex: exception raised [optional]
+        :param traceback: exception trace [optional]
+        :param result: task result. None otherwise task status is SUCCESS [optional]
+        :param msg: update message [optional]
+        """
+        # set result if status is SUCCESS
+        retval = None
+        if status == u'SUCCESS':
+            if u'result' in params:
+                retval = params[u'result']
+            # remove shared area
+            self.remove_shared_area()
+            
+            # remove stack
+            self.remove_stack()
+
+        # store job data
+        msg = None
+        TaskResult.store(task_local.opid, status=status, 
+                         retval=retval, inner_type=u'JOB', traceback=traceback, 
+                         stop_time=current_time, start_time=start_time, 
+                         msg=msg)
+        if status == u'FAILURE':
+            logger.error(u'JOB %s status change to %s' % 
+                        (task_local.opid, status))
+        else:         
+            logger.info(u'JOB %s status change to %s' % 
+                        (task_local.opid, status))    
+
+class Job(AbstractJob):
+    abstract = True
+    inner_type = u'JOB'
+
+    def __init__(self, *args, **kwargs):
+        BaseTask.__init__(self, *args, **kwargs)
+
+    @staticmethod
+    def create(tasks, *args):
+        """Create celery signature with chord, group and chain
+        """
+        process = tasks.pop().si(*args)
+        last_task = None
+        for task in tasks:
+            if isinstance(task, list):
+                item = chord(task, last_task)
+            else:
+                item = task.si(*args)
+                if last_task is not None:
+                    item.link(last_task)
+            last_task = item
+        process.link(last_task)
+        return process
+    
+    #
+    # handler
+    #
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        """This is run by the worker when the task fails.
+        
+        Parameters:
+    
+            exc - The exception raised by the task.
+            task_id - Unique id of the failed task.
+            args - Original arguments for the task that failed.
+            kwargs - Original keyword arguments for the task that failed.
+            einfo - ExceptionInfo instance, containing the traceback.
+    
+        The return value of this handler is ignored.
+        """
+        BaseTask.on_failure(self, exc, task_id, args, kwargs, einfo)
+              
+        err = str(exc)
+        trace = format_tb(einfo.tb)
+        trace.append(err)
+        self.update_job({}, u'FAILURE', time(), ex=err, traceback=trace, 
+                        result=None, msg=err)
+
+    def on_retry(self, exc, task_id, args, kwargs, einfo):
+        """This is run by the worker when the task is to be retried.
+        
+        Parameters:    
+    
+            exc - The exception sent to retry().
+            task_id - Unique id of the retried task.
+            args - Original arguments for the retried task.
+            kwargs - Original keyword arguments for the retried task.
+            einfo - ExceptionInfo instance, containing the traceback.
+    
+        The return value of this handler is ignored.
+        """
+        self.update_job(u'RETRY')    
+        
+class JobTask(AbstractJob):
+    abstract = True
+    inner_type = u'JOBTASK'       
 
     #
     # api
@@ -220,199 +414,10 @@ class Job(BaseTask):
             #logger.error(ex, exc_info=1)
             logger.error(ex)
             raise
-
-    #
-    # shared area
-    #
-    def get_shared_data(self):
-        """ """
-        data = BaseTask.get_shared_data(self, task_local.opid)
-        return data
-    
-    def set_shared_data(self, data):
-        """ """
-        current_data = self.get_shared_data()
-        current_data.update(data)
-        return BaseTask.set_shared_data(self, task_local.opid, current_data)   
-    
-    def remove_shared_area(self):
-        """ """
-        return BaseTask.get_shared_data(self, task_local.opid)
-
-    #
-    # shared stack area
-    #
-    def pop_stack_data(self):
-        """Pop item from shared memory stack. Use this to pass data from different
-        tasks that must ensure synchronization.
-        """
-        return BaseTask.pop_stack_data(self, task_local.opid)
-    
-    def push_stack_data(self, data):
-        """Set data to shared memory stack. Use this to pass data from different
-        tasks that must ensure synchronization.
-        """
-        return BaseTask.push_stack_data(self, task_local.opid, data)
-    
-    def remove_stack(self):
-        """Remove shared memory stack reference from redis"""
-        return BaseTask.remove_stack(self, task_local.opid)
-
-    #
-    # db session
-    #
-    def get_session(self):
-        self.app.api_manager.get_session()
-        
-    def flush_session(self):
-        self.app.api_manager.flush_session()         
-        
-    def release_session(self):
-        self.app.api_manager.release_session()
-
-    def elapsed(self):
-        elapsed = round(time() - task_local.start, 4)
-        return elapsed  
-    
-    def get_entity_class_name(self):
-        return task_local.entity_class.__module__ + u'.' + \
-               task_local.entity_class.__name__
-    
-    def get_options(self):
-        """Return tupla with some useful options.
-        
-        :return:  (class_name, objid, job, job id, start time, 
-                   time before new query, user) 
-        """
-        options = (self.get_entity_class_name(), task_local.objid, 
-                   task_local.op, task_local.opid, None, 
-                   task_local.delta, task_local.user)
-        return options     
     
     #
     # task status management
-    #
-    def update_job(self, params, status, current_time, ex=None, traceback=None, 
-                   result=None, msg=None, start_time=None):
-        """Update job status
-        
-        :param params: variables in shared area
-        :param status: job current status
-        :param start_time: job start time [optional]
-        :param current_time: current time
-        :param ex: exception raised [optional]
-        :param traceback: exception trace [optional]
-        :param result: task result. None otherwise task status is SUCCESS [optional]
-        :param msg: update message [optional]
-        """
-        '''
-        # update job status only if it is not already in FAILURE status
-        job_status = get_value(params, u'job-status', u'PROGRESS')
-        if job_status != u'FAILURE':            
-            # set result if status is SUCCESS
-            retval = None
-            if status == u'SUCCESS':
-                if u'result' in params:
-                    retval = params[u'result']
-                # remove shared area
-                self.remove_shared_area()
-                
-                # remove stack
-                self.remove_stack()
-            else:
-                # set job status
-                params[u'job-status'] = status
-                
-                # save data in shared area
-                self.set_shared_data(params)
-
-            # store job data
-            msg = None
-            TaskResult.store(task_local.opid, status=status, retval=retval, 
-                             inner_type=u'JOB', traceback=traceback, 
-                             stop_time=current_time, start_time=start_time, 
-                             msg=msg)
-            if status == u'FAILURE':
-                logger.error(u'JOB %s status change to %s' % 
-                            (task_local.opid, status))
-            else:         
-                logger.info(u'JOB %s status change to %s' % 
-                            (task_local.opid, status))'''
-        # set result if status is SUCCESS
-        retval = None
-        if status == u'SUCCESS':
-            if u'result' in params:
-                retval = params[u'result']
-            # remove shared area
-            self.remove_shared_area()
-            
-            # remove stack
-            self.remove_stack()
-
-        # store job data
-        msg = None
-        TaskResult.store(task_local.opid, status=status, 
-                         retval=retval, inner_type=u'JOB', traceback=traceback, 
-                         stop_time=current_time, start_time=start_time, 
-                         msg=msg)
-        if status == u'FAILURE':
-            logger.error(u'JOB %s status change to %s' % 
-                        (task_local.opid, status))
-        else:         
-            logger.info(u'JOB %s status change to %s' % 
-                        (task_local.opid, status))        
-    
-    def send_job_event(self, status, elapsed, ex=None, msg=None):
-        """Send job update event
-        
-        :param status: jobtask status
-        :param ex: exception raised [optional]
-        :param elapsed: elapsed time
-        :param result: task result. None otherwise task status is SUCCESS [optional]
-        :param msg: update message [optional]        
-        """
-        response = [status]
-        if ex is not None:
-            response.append(ex)
-
-        action = task_local.op.split(u'.')[-1]
-        op = task_local.op
-        op = op.replace(u'.%s' % action, u'')
-        entity_class = task_local.entity_class
-        data={
-            u'opid':task_local.opid, 
-            u'op':u'%s.%s' % (task_local.entity_class.objdef, op),
-            u'taskid':self.request.id,
-            u'task':self.name,
-            u'params':self.request.args,
-            u'response':response,
-            u'elapsed':elapsed,
-            u'msg':msg
-        }
-        
-        source = {
-            u'user':operation.user[0],
-            u'ip':operation.user[1],
-            u'identity':operation.user[2]
-        }
-        
-        dest = {
-            u'ip':task_local.controller.module.api_manager.server_name,
-            u'port':task_local.controller.module.api_manager.http_socket,
-            u'objid':task_local.objid, 
-            u'objtype':entity_class.objtype,
-            u'objdef':entity_class.objdef,
-            u'action':action
-        }      
-        
-        # send event
-        try:
-            client = self.controller.module.api_manager.event_producer
-            client.send(ApiObject.ASYNC_OPERATION, data, source, dest)
-        except Exception as ex:
-            self.logger.warning(u'Event can not be published. Event producer '\
-                                u'is not configured - %s' % ex)     
-    
+    #    
     def update(self, status, ex=None, traceback=None, result=None, msg=None,
                start_time=None):
         """Update job and jobtask status
@@ -467,14 +472,6 @@ class Job(BaseTask):
     #
     # handler
     #
-    def after_return(self, *args, **kwargs):
-        """Handler called after the task returns.
-        """
-        super(Job, self).after_return(*args, **kwargs)
-        
-        if operation.session is not None:
-            self.release_session()
-        
     def on_failure(self, exc, task_id, args, kwargs, einfo):
         """This is run by the worker when the task fails.
         
@@ -522,11 +519,7 @@ class Job(BaseTask):
     
         The return value of this handler is ignored.
         """
-        self.update(u'SUCCESS', msg=u'Stop %s.%s' % (self.name, task_id))    
-
-class JobTask(Job):
-    abstract = True
-    inner_type = 'JOBTASK'
+        self.update(u'SUCCESS', msg=u'Stop %s.%s' % (self.name, task_id))
         
 def job(entity_class=None, name=None, module=None, delta=2):
     #, op=None, act=u'use'):

@@ -324,7 +324,7 @@ class BeehiveApiClient(object):
             
         #if res.get(u'status', u'') == u'ok':
         if response.status in [200, 201, 202]:
-            res[u'status'] = u'ok'
+            #res[u'status'] = u'ok'
             elapsed = time() - start
             self.logger.info(u'Response: STATUS=%s, CONTENT-TYPE=%s, RES=%s, '\
                              u'ELAPSED=%s' % (response.status, content_type, 

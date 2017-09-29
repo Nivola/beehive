@@ -466,7 +466,6 @@ commands:
         """
         """
         val = {}
-        print args
         for arg in args:
             t = arg.split(u'=')
             val[t[0]] = t[1]
@@ -566,8 +565,8 @@ class ApiController(BaseController):
         return res
     
     def __query_task_status(self, task_id):
-        uri = u'/v1.0/worker/tasks/%s/' % task_id
-        res = self._call(uri, u'GET').get(u'task-instance')
+        uri = u'/v1.0/worker/tasks/%s' % task_id
+        res = self._call(uri, u'GET').get(u'task_instance')
         return res
     
     @check_error 
@@ -579,4 +578,3 @@ class ApiController(BaseController):
             if status in [u'SUCCESS', u'FAILURE']:
                 break
             sleep(1)
-                      

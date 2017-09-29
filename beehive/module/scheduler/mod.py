@@ -16,7 +16,10 @@ class SchedulerModule(ApiModule):
         
         ApiModule.__init__(self, api_manger, self.name)
         
-        self.apis = [SchedulerAPI, TaskAPI]
+        self.apis = [
+            SchedulerAPI, 
+            TaskAPI
+        ]
         self.api_plugins = {}
         self.controller = SchedulerController(self)
 

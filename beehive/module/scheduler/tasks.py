@@ -16,7 +16,7 @@ logger = get_task_logger(__name__)
 # test job
 #
 @task_manager.task(bind=True, base=Job)
-@job(entity_class=TaskManager, name=u'jobtest2.insert', delta=1)
+@job(entity_class=TaskManager, name=u'test2.insert', delta=1)
 def jobtest2(self, objid, params):
     """Test job
     
@@ -33,7 +33,7 @@ def jobtest2(self, objid, params):
     return True
 
 @task_manager.task(bind=True, base=Job)
-@job(entity_class=TaskManager, name=u'jobtest.insert', delta=1)
+@job(entity_class=TaskManager, name=u'insert', delta=1)
 def jobtest(self, objid, params):
     """Test job
     
