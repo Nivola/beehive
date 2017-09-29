@@ -252,8 +252,6 @@ def trace(entity=None, op=u'view'):
             
 #             if inst is not None and not isinstance(inst, ServiceController):
 #                 inst = kwargs.get(u'controller')
-                   
-            logger.info(u'Controller %s' %inst)
 
             def get_entity(entity):
                 if entity is None:
