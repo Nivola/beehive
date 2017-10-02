@@ -78,11 +78,14 @@ class AbstractJob(BaseTask):
     def get_shared_data(self):
         """ """
         data = BaseTask.get_shared_data(self, task_local.opid)
+        logger.warn(u'Get shared data for job %s: %s' % (task_local.opid, data))
         return data
     
     def set_shared_data(self, data):
         """ """
-        return BaseTask.set_shared_data(self, task_local.opid, data)   
+        data = BaseTask.set_shared_data(self, task_local.opid, data)
+        logger.warn(u'Set shared data for job %s: %s' % (task_local.opid, data))
+        return data
     
     def remove_shared_area(self):
         """ """
@@ -180,17 +183,17 @@ class AbstractJob(BaseTask):
             client = self.controller.module.api_manager.event_producer
             client.send(ApiObject.ASYNC_OPERATION, data, source, dest)
         except Exception as ex:
-            self.logger.warning(u'Event can not be published. Event producer '\
-                                u'is not configured - %s' % ex)    
+            logger.warning(u'Event can not be published. Event producer '\
+                           u'is not configured - %s' % ex)    
     
-    def update_job(self, params, status, current_time, ex=None, traceback=None, 
-                   result=None, msg=None, start_time=None):
+    def update_job(self, params=None, status=None, current_time=None, ex=None, 
+                   traceback=None, result=None, msg=None, start_time=None):
         """Update job status
         
-        :param params: variables in shared area
-        :param status: job current status
+        :param params: variables in shared area [optional]
+        :param status: job current status [optional]
         :param start_time: job start time [optional]
-        :param current_time: current time
+        :param current_time: current time [optional]
         :param ex: exception raised [optional]
         :param traceback: exception trace [optional]
         :param result: task result. None otherwise task status is SUCCESS [optional]
@@ -265,8 +268,9 @@ class Job(AbstractJob):
         err = str(exc)
         trace = format_tb(einfo.tb)
         trace.append(err)
-        self.update_job({}, u'FAILURE', time(), ex=err, traceback=trace, 
-                        result=None, msg=err)
+        logger.error(err, exc_info=1)
+        self.update_job(params={}, status=u'FAILURE', current_time=time(), 
+                        ex=err, traceback=trace, result=None, msg=err)
 
     def on_retry(self, exc, task_id, args, kwargs, einfo):
         """This is run by the worker when the task is to be retried.
@@ -281,7 +285,7 @@ class Job(AbstractJob):
     
         The return value of this handler is ignored.
         """
-        self.update_job(u'RETRY')    
+        self.update_job(status=u'FAILURE', current_time=time())    
         
 class JobTask(AbstractJob):
     abstract = True
@@ -432,21 +436,15 @@ class JobTask(AbstractJob):
         # get variables from shared area
         params = self.get_shared_data()
         
-        # get job start time
-        job_start_time = params[u'start-time']
-        
         # get current time
         current_time = time()
         
-        # get elapsed
-        elapsed = current_time - float(job_start_time)
-        
         # update job
-        jobstatus = status
-        if status == u'STARTED':
-            jobstatus = u'PROGRESS'
-        self.update_job(params, jobstatus, current_time, ex, traceback, 
-                        result, msg)
+        #jobstatus = params[u'job-status']
+        #if status == u'STARTED':
+        #    jobstatus = u'PROGRESS'
+        #self.update_job(params, jobstatus, current_time, ex, traceback, 
+        #                result, msg)
         
         # log message
         if msg is not None:
@@ -465,9 +463,21 @@ class JobTask(AbstractJob):
          
         #if status == u'PROGRESS' and not self.request.called_directly:
         #    self.update_state(state=u'PROGRESS', meta={u'elapsed': elapsed})
-
-        # send event
-        self.send_job_event(status, elapsed, ex, msg)
+        
+        # get job start time
+        job_start_time = params.get(u'start-time', 0)        
+        
+        # update job only if job_start_time is not 0. job_start_time=0 if
+        # job already finished and shared area is emty
+        if job_start_time != 0:
+            # get elapsed
+            elapsed = current_time - float(job_start_time)        
+            
+            # update job
+            self.update_job(current_time=time())        
+    
+            # send event
+            self.send_job_event(status, elapsed, ex, msg)
     
     #
     # handler
@@ -486,11 +496,12 @@ class JobTask(AbstractJob):
         The return value of this handler is ignored.
         """
         BaseTask.on_failure(self, exc, task_id, args, kwargs, einfo)
-              
         err = str(exc)
         trace = format_tb(einfo.tb)
         trace.append(err)
-        self.update(u'FAILURE', ex=err, traceback=trace, result=None, msg=err)
+        logger.error(err, exc_info=1)
+        msg=u'Error %s:%s %s' % (self.name, task_id, err)
+        self.update(u'FAILURE', ex=err, traceback=trace, result=None, msg=msg)
         
     def on_retry(self, exc, task_id, args, kwargs, einfo):
         """This is run by the worker when the task is to be retried.
@@ -519,7 +530,7 @@ class JobTask(AbstractJob):
     
         The return value of this handler is ignored.
         """
-        self.update(u'SUCCESS', msg=u'Stop %s.%s' % (self.name, task_id))
+        self.update(u'SUCCESS', msg=u'Stop %s:%s' % (self.name, task_id))
         
 def job(entity_class=None, name=None, module=None, delta=2):
     #, op=None, act=u'use'):
@@ -587,10 +598,10 @@ def job(entity_class=None, name=None, module=None, delta=2):
             start_time = time()
             params = {
                 u'start-time':start_time,
-                u'job-status':status
             }
             task.set_shared_data(params)
-            task.update_job(params, status, start_time, start_time=start_time)
+            task.update_job(params=params, status=status, 
+                            current_time=start_time, start_time=start_time)
             
             # send event
             task.send_job_event(status, 0, ex=None, msg=None)
@@ -643,7 +654,7 @@ def job_task(module=u''):
             operation.transaction = None       
 
             task.update(u'STARTED', start_time=time(), 
-                        msg=u'Start %s.%s' % (task.name, task.request.id))
+                        msg=u'Start %s:%s' % (task.name, task.request.id))
             #task.update(u'PROGRESS')
             res = fn(task, params, *args, **kwargs)
             return res

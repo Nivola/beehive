@@ -405,9 +405,16 @@ class TaskManager(ApiObject):
                     val[u'ttl'] = ttl
                     
                     # add elapsed
-                    val[u'elapsed'] = val[u'stop_time'] - val[u'start_time']
-                    val[u'stop_time'] = self.__convert_timestamp(val[u'stop_time'])
-                    val[u'start_time'] = self.__convert_timestamp(val[u'start_time'])                    
+                    stop_time = val.get(u'stop_time', 0)
+                    start_time = val.get(u'start_time', 0)
+                    if stop_time is None or start_time is None:
+                        val[u'elapsed'] = None
+                        val[u'stop_time'] = None
+                        val[u'start_time'] = None
+                    else:
+                        val[u'elapsed'] = stop_time - start_time
+                        val[u'stop_time'] = self.__convert_timestamp(stop_time)
+                        val[u'start_time'] = self.__convert_timestamp(start_time)                    
                     
                     # task status
                     #if tasktype == 'JOB':

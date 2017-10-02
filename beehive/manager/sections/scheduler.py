@@ -42,15 +42,15 @@ class SchedulerControllerChild(ApiController):
             ( ['extra_arguments'], dict(action='store', nargs='*')),            
             ( ['-s', '--subsystem'],
               dict(action='store', help='beehive subsystem like auth, resource, ..') ),
-        ]        
+        ]
     
     @check_error
-    def _parse_args(self):
-        ApiController._parse_args(self)
+    def _ext_parse_args(self):
+        ApiController._ext_parse_args(self)
         
         self.subsystem = self.app.pargs.subsystem
         if self.subsystem is None:
-            raise Exception(u'Subsystem is not specified')     
+            raise Exception(u'Subsystem is not specified')
         
 class WorkerController(SchedulerControllerChild):    
     class Meta:

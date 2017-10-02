@@ -145,13 +145,13 @@ class ContainerController(ResourceControllerChild):
         self.result({u'resourcecontainer':contid, u'ping':res[u'ping']}, 
                     headers=[u'resourcecontainer', u'ping'])      
     
-    @expose(aliases=[u'add <type> <name> <conn>'], aliases_only=True)
+    @expose(aliases=[u'add <type> <name> <json conn file>'], aliases_only=True)
     def add(self):
         """Add container
         """          
         ctype = self.get_arg(name=u'type')
         name = self.get_arg(name=u'name')
-        conn = self.get_arg(name=u'conn')
+        conn = self.get_arg(name=u'connection file')
         conn = self.load_config(conn)
         data = {
             u'resourcecontainer':{
@@ -216,8 +216,8 @@ class ContainerController(ResourceControllerChild):
         res = {u'msg':u'Remove tag from resource container %s' % contid}
         self.result(res, headers=[u'msg'])
         
-    @expose(aliases=[u'discover <id>'], aliases_only=True)
-    def discover(self):
+    @expose(aliases=[u'discover-classes <id>'], aliases_only=True)
+    def discover_classes(self):
         """discover container <class> resources
         """
         contid = self.get_arg(name=u'id')
@@ -225,16 +225,17 @@ class ContainerController(ResourceControllerChild):
         res = self._call(uri, u'GET', data=u'').get(u'discoverclasses')
         self.result(res, headers=[u'resource class'], fields=[0], maxsize=200)
     
-    @expose(aliases=[u'discover-classes <id> [resclass]'], aliases_only=True)
-    def discover_classes(self):
+    @expose(aliases=[u'discover <id> [resclass]'], aliases_only=True)
+    def discover(self):
         """Get container resource classes
         """
         contid = self.get_arg(name=u'id')
         resclass = self.get_arg(default=None)
         uri = u'%s/resourcecontainers/%s/discover' % (self.baseuri, contid)        
         res = self._call(uri, u'GET', data=u'resclass=%s' % resclass)\
-                  .get(u'discover').get(u'resources')
-        headers = [u'id', u'name', u'parent', u'class']
+                  .get(u'discoverresources')
+        headers = [u'id', u'name', u'parent', u'type', u'resclass']
+        
         print(u'New resources')
         self.result(res, key=u'new', headers=headers)
         print(u'Died resources')
@@ -247,7 +248,7 @@ class ContainerController(ResourceControllerChild):
         """Synchronize container <class> resources
         """
         contid = self.get_arg(name=u'id')
-        resclass = self.get_arg(anme=u'resclass')
+        resclass = self.get_arg(name=u'resclass')
         data = {
             u'discover':{
                 u'resource_classes':resclass,
@@ -452,7 +453,21 @@ class ResourceEntityController(ResourceControllerChild):
         res = self._call(uri, u'DELETE')
         logger.info(res)
         res = {u'msg':u'Delete resource %s' % value}
-        self.result(res, headers=[u'msg'])             
+        self.result(res, headers=[u'msg'])
+        
+    @expose(aliases=[u'delete <id1,id2>'], aliases_only=True)
+    def deletes(self):
+        """Delete resources id1, id2, ..
+        """
+        resp = []
+        values = self.get_arg(name=u'id list')
+        for value in values.split(u','):
+            uri = u'%s/resources/%s' % (self.baseuri, value)        
+            res = self._call(uri, u'DELETE')
+            logger.info(res)
+            resp.append(value)
+        res = {u'msg':u'Delete resources %s' % u','.join(resp)}
+        self.result(res, headers=[u'msg'])  
     
     @expose(aliases=[u'add-tag <id> <tag>'], aliases_only=True)
     def add_tag(self):

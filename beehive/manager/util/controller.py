@@ -151,7 +151,7 @@ class BaseController(CementBaseController):
     
     def _setup(self, base_app):
         CementBaseController._setup(self, base_app)
-        
+
         self.text = []
         self.pp = PrettyPrinter(width=200)
         self.app._meta.token_file = self.app._meta.token_file
@@ -198,18 +198,17 @@ commands:
 
         return textwrap.dedent(txt)        
     
-    @check_error
     def _parse_args(self):
         CementBaseController._parse_args(self)
         
-        configs = self.app.config.get_section_dict(u'configs')
-        envs = u', '.join(configs[u'environments'].keys())
-        default_env = configs[u'environments'].get(u'default', None)
+        #self.configs = self.app.config.get_section_dict(u'configs')
+        envs = u', '.join(self.configs[u'environments'].keys())
+        default_env = self.configs[u'environments'].get(u'default', None)
         
         self.format = self.app.pargs.format
         if self.format is None:
             self.format = u'table'
-        if self.app.pargs.format is None:
+        if self.app.pargs.color is None:
             self.color = True
         else:
             self.color = str2bool(self.app.pargs.format)
@@ -223,36 +222,43 @@ commands:
         if self.env not in envs:
             raise Exception(u'Platform environment %s does not exist. Select '\
                             u'from: %s' % (self.env, envs))            
-        
-    @check_error  
-    def run(self):
+    
+    def _ext_parse_args(self):
         """
-        This function wraps everything together (after self._setup() is
-        called) to run the application.
-
-        :returns: Returns the result of the executed controller function if
-          a base controller is set and a controller function is called,
-          otherwise ``None`` if no controller dispatched or no controller
-          function was called.
+        """
+        pass
+    
+    @check_error
+    def _dispatch(self):
+        """
+        Takes the remaining arguments from self.app.argv and parses for a
+        command to dispatch, and if so... dispatches it.
 
         """
-        return_val = None
+        if hasattr(self._meta, 'epilog'):
+            if self._meta.epilog is not None:
+                self.app.args.epilog = self._meta.epilog
 
-        logger.debug('running pre_run hook')
-        for res in self.hook.run('pre_run', self):
-            pass
+        self._arguments, self._commands = self._collect()
+        self._process_commands()
+        self._get_dispatch_command()
 
-        # If controller exists, then dispatch it
-        if self.controller:
-            return_val = self.controller._dispatch()
+        if self._dispatch_command:
+            if self._dispatch_command['func_name'] == '_dispatch':
+                func = getattr(self._dispatch_command['controller'],
+                               '_dispatch')
+                return func()
+            else:
+                self._process_arguments()
+                self._parse_args()
+                if not self._dispatch_command['func_name'] == 'default':
+                    self._ext_parse_args()
+                func = getattr(self._dispatch_command['controller'],
+                               self._dispatch_command['func_name'])
+                return func()
         else:
+            self._process_arguments()
             self._parse_args()
-
-        logger.debug('running post_run hook')
-        for res in self.hook.run('post_run', self):
-            pass
-
-        return return_val
         
     def __jsonprint(self, data):
         data = json.dumps(data, indent=2)
@@ -523,14 +529,13 @@ class ApiController(BaseController):
     baseuri = None    
     
     def _setup(self, base_app):
-        super(BaseController, self)._setup(base_app)     
+        BaseController._setup(self, base_app)
         
     @check_error
     def _parse_args(self):
         BaseController._parse_args(self)
 
-        config = self.app.config.get_section_dict(u'configs')\
-                    [u'environments'][self.env]
+        config = self.configs[u'environments'][self.env]
     
         if config[u'endpoint'] is None:
             raise Exception(u'Auth endpoint is not configured')

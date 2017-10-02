@@ -42,7 +42,7 @@ class BaseTask(Task):
         if val is not None:
             data = json.loads(val)
         else:
-            data = {} 
+            data = {}
         return data
     
     def set_shared_data(self, task_id, data):
@@ -51,13 +51,9 @@ class BaseTask(Task):
         """        
         # get actual data
         current_data = self.get_shared_data()
-        current_data.update(data)        
-        
+        current_data.update(data)
         val = json.dumps(current_data)
-        
         self._redis.setex(self.prefix + task_id, self.expire, val)
-        #logger.debug(u'Set shared data for job %s: %s' % 
-        #             (task_id, truncate(data)))
         return True
     
     def remove_shared_area(self, task_id):

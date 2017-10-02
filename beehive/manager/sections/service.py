@@ -11,24 +11,24 @@ from beecell.simple import truncate
 
 logger = logging.getLogger(__name__)
 
-class EventController(BaseController):
+class ServiceController(BaseController):
     class Meta:
-        label = 'event'
+        label = 'service'
         stacked_on = 'base'
         stacked_type = 'nested'
-        description = "Event Service management"
+        description = "Service management"
         arguments = []
 
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
 
-    @expose(help="Event Service management", hide=True)
+    @expose(help="Service management", hide=True)
     def default(self):
         self.app.args.print_help()
         
-class EventControllerChild(ApiController):
-    cataloguri = u'/v1.0/events'
-    subsystem = u'event'
+class ServiceControllerChild(ApiController):
+    cataloguri = u'/v1.0/services'
+    subsystem = u'service'
     
     cat_headers = [u'id', u'uuid', u'name', u'zone', u'active', 
                    u'date.creation', u'date.modified']
@@ -37,19 +37,19 @@ class EventControllerChild(ApiController):
                    u'date.creation', u'date.modified']
     
     class Meta:
-        stacked_on = 'event'
+        stacked_on = 'service'
         stacked_type = 'nested'
         
-class EventInternalController(EventControllerChild):    
+class ServiceInternalController(ServiceControllerChild):    
     class Meta:
-        label = 'events'
-        description = "Catalog management"
+        label = 'services'
+        description = "Service management"
         
-    @expose(help="Catalog management", hide=True)
+    @expose(help="Service management", hide=True)
     def default(self):
         self.app.args.print_help()        
         
-event_controller_handlers = [
-    EventController,
-    EventInternalController
+service_controller_handlers = [
+    ServiceController,
+    ServiceInternalController
 ]        

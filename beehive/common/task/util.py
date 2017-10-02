@@ -29,7 +29,7 @@ def join_task(self, options):
             (class_name, objid, job, job id, start time, time before new query)
     """    
     # update job status
-    self.update(u'PROGRESS')
+    self.update_job(status=u'PROGRESS')
     return None
 
 @task_manager.task(bind=True, base=JobTask)
@@ -49,7 +49,7 @@ def start_task(self, options):
             (class_name, objid, job, job id, start time, time before new query)
     """    
     # update job status
-    self.update(u'PROGRESS')
+    self.update_job(status=u'PROGRESS')
     return None
 
 @task_manager.task(bind=True, base=JobTask)
@@ -69,5 +69,6 @@ def end_task(self, options):
             (class_name, objid, job, job id, start time, time before new query)
     """    
     # update job status
-    self.update(u'SUCCESS')
+    params = self.get_shared_data()
+    self.update_job(params=params, status=u'SUCCESS')
     return None

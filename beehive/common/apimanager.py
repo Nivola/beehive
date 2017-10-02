@@ -1196,7 +1196,7 @@ class ApiController(object):
             msg = "Identity %s can not '%s' objects '%s:%s' '%s'" % (
                     operation.user[2], action, objtype, objdef, objid)
             self.logger.error(msg)
-            raise ApiManagerError(msg, code=401)
+            raise ApiManagerError(msg, code=403)
         return res
 
     '''
@@ -1210,12 +1210,22 @@ class ApiController(object):
     def get_entity(self, entity_class, model_class, oid, authorize=True):
         """Get single entity by oid (id, uuid, name) if exists
         
-        :param entity_class: Controller ApiObject Extension class
-        :param model_class: Model ApiObject Extension class
-        :param oid: entity model id or name or uuid
-        :param authorize: if True check permissions for authorization
-        :return: object
-        :raises ApiManagerError: raise :class:`ApiManagerError`        
+        **Parameters:**
+        
+            * **entity_class** (): Controller ApiObject Extension class
+            * **model_class** (:py:class:`ApiObject`): Model ApiObject 
+                Extension class
+            * **oid** (:py:class:`str`): entity model id or name or uuid
+            * **authorize** (:py:class:`str`): if True check permissions for 
+                authorization
+            * **customize** (function): function used to customize entities. 
+                Signature def customize(entity, resource)            
+            
+        **Returns:**
+        
+            entity instance
+            
+        **Raise:** :class:`ApiManagerError`     
         """
         try:
             entity = self.manager.get_entity(model_class, oid)
@@ -1234,6 +1244,10 @@ class ApiController(object):
         res = entity_class(self, oid=entity.id, objid=entity.objid, 
                        name=entity.name, active=entity.active, 
                        desc=entity.desc, model=entity)
+        
+        # execute custom post_get
+        res.post_get()        
+        
         self.logger.debug(u'Get %s : %s' % 
                           (entity_class.__name__, res))
         return res
@@ -1571,8 +1585,13 @@ class ApiObject(object):
     objname = u'object'
     objdesc = u''
     
+    # set this to define db manger methdod used for update. If not set update 
+    # is not supported
     update_object = None
+    # set this to define db manger methdod used for delete. If not set delete 
+    # is not supported
     delete_object = None
+    
     register = True
     
     API_OPERATION = u'API'
@@ -1919,10 +1938,23 @@ class ApiObject(object):
     #
     # pre, post function
     #
+    def post_get(self):
+        """Post get function. This function is used in get_entity method.
+        Extend this function to extend description info returned after query.
+        
+        **Parameters:**
+
+        **Returns:**
+            
+        **Raise:** :class:`ApiManagerError`
+        """
+        pass
+    
     @staticmethod
     def pre_create(controller, *args, **kvargs):
-        """Pre create function. Extend this function to manipulate and validate
-        input params.
+        """Check input params before resource creation. This function is used 
+        in container resource_factory method. Extend this function to manipulate 
+        and validate create input params.
         
         **Parameters:**
         
@@ -1939,8 +1971,9 @@ class ApiObject(object):
     
     @staticmethod
     def post_create(controller, *args, **kvargs):
-        """Post create function. Extend this function to execute some operation
-        after entity was created. Used only for synchronous creation.
+        """Post create function. This function is used in object_factory method. 
+        Used only for synchronous creation. Extend this function to execute 
+        some operation after entity was created.
         
         **Parameters:**
         
@@ -1955,9 +1988,9 @@ class ApiObject(object):
         """
         return None    
     
-    def pre_change(self, *args, **kvargs):
-        """Pre change function. Extend this function to manipulate and validate
-        input params.
+    def pre_update(self, *args, **kvargs):
+        """Pre update function. This function is used in update method. Extend 
+        this function to manipulate and validate update input params. 
         
         **Parameters:**
         
@@ -1972,9 +2005,9 @@ class ApiObject(object):
         """        
         return kvargs
     
-    def pre_clean(self, *args, **kvargs):
-        """Pre clean function. Extend this function to manipulate and validate
-        input params.
+    def pre_delete(self, *args, **kvargs):
+        """Pre delete function. This function is used in delete method. Extend 
+        this function to manipulate and validate delete input params. 
         
         **Parameters:**
         
@@ -2161,8 +2194,8 @@ class ApiObject(object):
         self.verify_permisssions(u'update', authorize=authorize)
         
         # custom action
-        if self.pre_change is not None:
-            kvargs = self.pre_change(**kvargs)
+        if self.pre_update is not None:
+            kvargs = self.pre_update(**kvargs)
         
         try:  
             res = self.update_object(oid=self.oid, *args, **kvargs)
@@ -2200,8 +2233,8 @@ class ApiObject(object):
         self.verify_permisssions(u'delete', authorize=authorize)
             
         # custom action
-        if self.pre_clean is not None:
-            kvargs = self.pre_clean(**kvargs)            
+        if self.pre_delete is not None:
+            kvargs = self.pre_delete(**kvargs)            
             
         try:  
             if soft is False:
