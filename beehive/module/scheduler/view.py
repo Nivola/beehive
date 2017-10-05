@@ -93,7 +93,7 @@ class CreateSchedulerEntryParamRequestSchema(Schema):
     args = fields.Raw(required=True, allow_none=True)
     kwargs = fields.Dict(default={}, allow_none=True)    
     options = fields.Dict(default={}, allow_none=True)
-    schedule = fields.Dict(required=True, default=u'', allow_none=True)
+    schedule = fields.Dict(required=True, default={}, allow_none=True)
     relative = fields.Boolean(allow_none=True)
 
 class CreateSchedulerEntryRequestSchema(Schema):
