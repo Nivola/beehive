@@ -519,6 +519,21 @@ class BeehiveController(AnsibleController):
         self.ansible_playbook(u'beehive-init', run_data, 
                               playbook=self.beehive_playbook)      
     
+    @expose(aliases=[u'subsystem-update <subsystem>'], aliases_only=True)
+    def subsystem_update(self):
+        """Create beehive subsystem
+    - subsystem: subsystem
+        """
+        subsystem = self.get_arg(name=u'subsystem')
+        run_data = {
+            u'subsystem':subsystem,
+            u'tags':[u'subsystem'],
+            u'create':False,
+            u'update':True
+        }
+        self.ansible_playbook(u'beehive-init', run_data, 
+                              playbook=self.beehive_playbook)        
+    
     @expose(aliases=[u'instances [details=""]'], aliases_only=True)
     def instances(self):
         """List beehive subsystem instances

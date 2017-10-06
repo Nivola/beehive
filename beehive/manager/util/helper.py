@@ -299,7 +299,7 @@ class BeehiveHelper(object):
                 manager = RedisManager(uri)
                 manager.server.set(u'_kombu.binding.%s' % queue, value)
     
-    def create_subsystem(self, subsystem_config):
+    def create_subsystem(self, subsystem_config, update=False):
         """Create subsystem.
         
         :param subsystem_config: subsystem configuration file
@@ -309,11 +309,14 @@ class BeehiveHelper(object):
         # read subsystem config
         config = self.read_config(subsystem_config)
         subsystem = get_value(config, u'api_subsystem', None, exception=True)
-        update = get_value(config, u'update', False)
+        #update = get_value(config, u'update', False)
         api_config = get_value(config, u'api', {})
 
-        self.logger.debug(api_config)
-
+        if update is True:
+            self.logger.info(u'Update %s subsystem' % subsystem)
+        else:
+            self.logger.info(u'Create new %s subsystem' % subsystem)
+        
         # set operation user
         operation.user = (api_config.get(u'user', None), u'localhost', None)
         self.set_permissions(classes=self.classes)        
