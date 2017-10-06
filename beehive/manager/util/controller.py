@@ -46,12 +46,24 @@ class bcolors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
+    
+    WHITEonBLACK = '\033[1;37;40m'
+    GREENonBLACK = '\033[1;32;40m'
+    BLUEonBLACK = '\033[1;34;40m'
+    REDonBLACK = '\033[1;31;40m'
+    YELLOWonBLACK = '\033[1;33;40m'
+    PURPLEonBLACK = '\033[1;35;40m'
+    CYANonBLACK = '\033[1;36;40m'
+    
+    def output(self, data, color):
+        return getattr(self, color) + data + self.ENDC
 
 def print_error(error):
     """Print error
     """
     print(bcolors.FAIL + u'   ERROR : ' + bcolors.ENDC +
       bcolors.FAIL + bcolors.BOLD + str(error) + bcolors.ENDC)
+    
 
 def check_error(fn):
     """Use this decorator to return error message if an exception was raised
@@ -448,6 +460,9 @@ commands:
                     
         elif self.format == u'doc':
             print(data)
+    
+    def output(self, data, color=u'WHITEonBLACK'):
+        print(bcolors().output(data, color))          
     
     def error(self, error):
         print_error(error)
