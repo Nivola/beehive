@@ -78,13 +78,13 @@ class AbstractJob(BaseTask):
     def get_shared_data(self):
         """ """
         data = BaseTask.get_shared_data(self, task_local.opid)
-        logger.warn(u'Get shared data for job %s: %s' % (task_local.opid, data))
+        #logger.warn(u'Get shared data for job %s: %s' % (task_local.opid, data))
         return data
     
     def set_shared_data(self, data):
         """ """
         data = BaseTask.set_shared_data(self, task_local.opid, data)
-        logger.warn(u'Set shared data for job %s: %s' % (task_local.opid, data))
+        #logger.warn(u'Set shared data for job %s: %s' % (task_local.opid, data))
         return data
     
     def remove_shared_area(self):
@@ -199,6 +199,11 @@ class AbstractJob(BaseTask):
         :param result: task result. None otherwise task status is SUCCESS [optional]
         :param msg: update message [optional]
         """
+        # get actual job
+        job = TaskResult.get(task_local.opid)
+        if job[u'status'] is not None and job[u'status'] == u'FAILURE':
+            return None
+        
         # set result if status is SUCCESS
         retval = None
         if status == u'SUCCESS':
@@ -237,12 +242,12 @@ class Job(AbstractJob):
         process = tasks.pop().si(*args)
         last_task = None
         for task in tasks:
-            if isinstance(task, list):
-                item = chord(task, last_task)
-            else:
+            if not isinstance(task, list):
                 item = task.si(*args)
                 if last_task is not None:
-                    item.link(last_task)
+                    item.link(last_task)                
+            elif isinstance(task, list) and len(task) > 0:
+                item = chord(task, last_task)
             last_task = item
         process.link(last_task)
         return process
@@ -502,6 +507,10 @@ class JobTask(AbstractJob):
         logger.error(err, exc_info=1)
         msg=u'Error %s:%s %s' % (self.name, task_id, err)
         self.update(u'FAILURE', ex=err, traceback=trace, result=None, msg=msg)
+        
+        # update job
+        self.update_job(params={}, status=u'FAILURE', current_time=time(), 
+                        ex=err, traceback=trace, result=None, msg=err)        
         
     def on_retry(self, exc, task_id, args, kwargs, einfo):
         """This is run by the worker when the task is to be retried.

@@ -35,7 +35,7 @@ class TaskResult(object):
         
         # get data from redis
         val = _redis.get(_prefix + task_id)
-        result = {u'type':None}
+        result = {u'type':None, u'status':None}
         if val is not None:
             result = json.loads(val)
         return result

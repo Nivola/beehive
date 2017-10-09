@@ -770,6 +770,18 @@ class ObjectController(AuthControllerChild):
         logger.info(u'Delete object: %s' % res)
         self.result({u'msg':u'Delete object %s' % (object_id)})
         
+    @expose(aliases=[u'deletes <id1,id2,..>'], aliases_only=True) 
+    def deletes(self):
+        """Delete objects
+        """
+        object_ids = self.get_arg(name=u'ids').split(u',')
+        
+        for object_id in object_ids:
+            uri = u'%s/objects/%s' % (self.authuri, object_id)
+            res = self._call(uri, u'DELETE', data=u'')
+            logger.info(u'Delete object: %s' % res)
+        self.result({u'msg':u'Delete objects %s' % (object_ids)}) 
+        
 auth_controller_handlers = [
     AuthController,
     DomainController,

@@ -21,6 +21,7 @@ from beecell.simple import truncate, id_gen
 from beecell.db import ModelError, QueryError
 from uuid import uuid4
 from beehive.common.data import operation, query, transaction
+from sqlalchemy.dialects import mysql
 
 Base = declarative_base()
 
@@ -945,15 +946,19 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         sql.append(u'ORDER BY %s %s' % (field, order))
         sql.append(u'LIMIT %s,%s' % (start, size))
         
-        res = session.query(SysObjectPermission) \
+        query = session.query(SysObjectPermission) \
                      .from_statement(text(u' '.join(sql))) \
-                     .params(params).all()
+                     .params(params)
+        res = query.all()
+        self.logger.warn(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect())) 
+        self.logger.warn(u'objids: %s' % objids)
+        self.logger.warn(u'objtype: %s' % objtype)
+        self.logger.warn(u'objtypes: %s' % objtypes)
+        self.logger.warn(u'objdef: %s' % objdef)                 
         
         if len(res) <= 0:
             res = []
-            total = 0
-            #self.logger.error(u'No permissions found')
-            #raise ModelError(u'No permissions found')                           
+            total = 0                 
                      
         self.logger.debug(u'Get object permissions: %s' % truncate(res))
         return res, total    

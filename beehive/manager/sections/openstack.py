@@ -253,7 +253,8 @@ class OpenstackPlatformVolumeController(OpenstackPlatformControllerChild):
         self.entity_class = self.client.volume
 
 class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
-    headers = [u'id', u'parent_id', u'name']
+    headers = [u'id', u'project', u'stack_name', u'stack_owner', 
+               u'stack_status', u'stack_name', u'creation_time']
     
     class Meta:
         label = 'openstack.platform.heat'
