@@ -32,6 +32,7 @@ class AuditData(object):
              
 class BaseEntity(AuditData):
     """
+        
     """
     __table_args__ = {u'mysql_engine':u'InnoDB'}    
 
@@ -56,17 +57,49 @@ class BaseEntity(AuditData):
          
         filters=[]
         # id is unique
-        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field(u'id', kvargs))
+        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field( u'id', kvargs))
         filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field( u'uuid', kvargs))
         filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field( u'objid', kvargs))
         filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field( u'name', kvargs))
         filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field( u'desc', kvargs))
         filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field( u'active', kvargs))
-    
+        
+        
+        #expired
+        if u'expired' in kvargs and kvargs.get(u'expired') is not None: 
+            if kvargs.get(u'expired') is True:
+                filters.append(u' AND t3.expiry_date<=:expiry_date')
+            else:
+                filters.append(u' AND (t3.expiry_date>:filter_expiry_date OR t3.expiry_date is null)')
+        
+        #creation_date
+        currField = u'filter_creation_date_start'
+        if currField in kvargs and kvargs.get(currField) is not None: 
+            filters.append(u' AND t3.creation_date>=:{field}'.format(field=currField))
+        
+        currField = u'filter_creation_date_stop'
+        if currField in kvargs and kvargs.get(currField) is not None: 
+            filters.append(u' AND t3.creation_date<=:{field}'.format(field=currField))
+            
+        # modification_date
+        currField = u'filter_modification_date_start'
+        if currField in kvargs and kvargs.get(currField) is not None: 
+            filters.append(u' AND t3.modification_date>=:{field}'.format(field=currField))
+        
+        currField = u'filter_modification_date_stop'
+        if currField in kvargs and kvargs.get(currField) is not None: 
+            filters.append(u' AND t3.modification_date<=:{field}'.format(field=currField))
+        
+        # expiry_date
+        currField = u'filter_expiry_date_start'
+        if currField in kvargs and kvargs.get(currField) is not None: 
+            filters.append(u' AND t3.expiry_date>=:{field}'.format(field=currField))
+        
+        currField = u'filter_expiry_date_stop'
+        if currField in kvargs and kvargs.get(currField) is not None: 
+            filters.append(u' AND t3.expiry_date<=:{field}'.format(field=currField))
+        
         return filters  
-    
-    
-    
 
         
     def is_active(self):
@@ -526,6 +559,7 @@ class AbstractDbManager(object):
         query.add_filter_by_field(u'active', kvargs)
         query.add_filter_by_field(u'creation_date', kvargs)
         query.add_filter_by_field(u'modification_date', kvargs)
+        
         for item in filters:
             query.add_filter(item)
         query.set_pagination(page=page, size=size, order=order, field=field)
