@@ -90,7 +90,7 @@ class OpenstackPlatformControllerChild(BaseController):
     def delete(self):
         oid = self.get_arg(name=u'id')
         res = self.entity_class.delete(oid)
-        res = {u'msg':u'Delete %s %s' % (oid, self.name)}
+        res = {u'msg':u'Delete %s %s' % (self.entity_class, oid)}
         logger.info(res)
         self.result(res, headers=[u'msg'])
 
