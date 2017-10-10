@@ -216,24 +216,24 @@ class ContainerController(ResourceControllerChild):
         res = {u'msg':u'Remove tag from resource container %s' % contid}
         self.result(res, headers=[u'msg'])
         
-    @expose(aliases=[u'discover-classes <id>'], aliases_only=True)
-    def discover_classes(self):
+    @expose(aliases=[u'discover-types <id>'], aliases_only=True)
+    def discover_types(self):
         """discover container <class> resources
         """
         contid = self.get_arg(name=u'id')
-        uri = u'%s/resourcecontainers/%s/discover/classes' % (self.baseuri, contid)        
-        res = self._call(uri, u'GET', data=u'').get(u'discoverclasses')
+        uri = u'%s/resourcecontainers/%s/discover/types' % (self.baseuri, contid)        
+        res = self._call(uri, u'GET', data=u'').get(u'discover_types')
         self.result(res, headers=[u'resource class'], fields=[0], maxsize=200)
     
-    @expose(aliases=[u'discover <id> [resclass]'], aliases_only=True)
+    @expose(aliases=[u'discover <id> [type]'], aliases_only=True)
     def discover(self):
         """Get container resource classes
         """
         contid = self.get_arg(name=u'id')
         resclass = self.get_arg(default=None)
         uri = u'%s/resourcecontainers/%s/discover' % (self.baseuri, contid)        
-        res = self._call(uri, u'GET', data=u'resclass=%s' % resclass)\
-                  .get(u'discoverresources')
+        res = self._call(uri, u'GET', data=u'type=%s' % resclass)\
+                  .get(u'discover_resources')
         headers = [u'id', u'name', u'parent', u'type', u'resclass']
         
         print(u'New resources')
