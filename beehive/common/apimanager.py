@@ -1681,12 +1681,16 @@ class ApiObject(object):
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
         res = {
+            u'__meta__':{
+                u'objid':self.objid,             
+                u'type':self.objtype,
+                u'definition':self.objdef,
+                u'uri':self.objuri,
+            },            
             u'id':self.oid,
             u'uuid':self.uuid,
             u'name':self.name,
-            u'definition':self.objdef,
             u'active':str2bool(self.active),
-            u'uri':self.objuri
         }
         return res
     
@@ -1698,14 +1702,16 @@ class ApiObject(object):
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
         res = {
+            u'__meta__':{
+                u'objid':self.objid,             
+                u'type':self.objtype,
+                u'definition':self.objdef,
+                u'uri':self.objuri,
+            },
             u'id':self.oid, 
             u'uuid':self.uuid,
-            u'objid':self.objid,             
-            u'type':self.objtype,
-            u'definition':self.objdef, 
             u'name':self.name, 
-            u'desc':self.desc,
-            u'uri':self.objuri, 
+            u'desc':self.desc, 
             u'active':str2bool(self.active),
             u'date':{
                 u'creation':format_date(self.model.creation_date),
@@ -3081,25 +3087,27 @@ class ApiObjectResponseDateSchema(Schema):
 class ApiObjecCountResponseSchema(Schema):
     count = fields.Integer(required=True, default=10)
 
+class ApiObjectMetadataResponseSchema(Schema):
+    objid = fields.String(required=True, default=u'396587362//3328462822')
+    type = fields.String(required=True, default=u'auth')
+    definition = fields.String(required=True, default=u'Role')
+    uri = fields.String(required=True, default=u'/v1.0/auht/roles')
+
 class ApiObjectSmallResponseSchema(Schema):
     id = fields.Integer(required=True, default=10)
     uuid = fields.String(required=True, default=u'4cdf0ea4-159a-45aa-96f2-708e461130e1')
-    definition = fields.String(required=True, default=u'Role')
     name = fields.String(required=True, default=u'test')
-    uri = fields.String(required=True, default=u'/v1.0/auht/roles')
     active = fields.Boolean(required=True, default=True)
+    __meta__ = fields.Nested(ApiObjectMetadataResponseSchema, required=True)
 
 class ApiObjectResponseSchema(Schema):
     id = fields.Integer(required=True, default=10)
     uuid = fields.String(required=True, default=u'4cdf0ea4-159a-45aa-96f2-708e461130e1')
-    objid = fields.String(required=True, default=u'396587362//3328462822')
-    type = fields.String(required=True, default=u'auth')
-    definition = fields.String(required=True, default=u'Role')
     name = fields.String(required=True, default=u'test')
     desc = fields.String(required=True, default=u'test')
     date = fields.Nested(ApiObjectResponseDateSchema, required=True)
-    uri = fields.String(required=True, default=u'/v1.0/auht/roles')
     active = fields.Boolean(required=True, default=True)
+    __meta__ = fields.Nested(ApiObjectMetadataResponseSchema, required=True)
 
 class PaginatedResponseSortSchema(Schema):
     order = fields.String(required=True, 
