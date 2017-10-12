@@ -612,7 +612,7 @@ class VspherePlatformServerController(VspherePlatformControllerChild):
         VspherePlatformControllerChild._ext_parse_args(self)
         
         self.entity_class = self.client.server
-        
+    
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     def list(self):
         params = self.get_query_params(*self.app.pargs.extra_arguments)
