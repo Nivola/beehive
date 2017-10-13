@@ -39,6 +39,7 @@ from beehive.common.model.authorization import AuthDbManager, Role
 from beehive.common.event import EventProducerRedis
 from flasgger import Swagger, Schema, fields, SwaggerView
 from beecell.dicttoxml import dicttoxml
+from beecell.flask.api_util import get_error
 try:
     from beecell.server.uwsgi_server.wrapper import uwsgi_util
 except:
@@ -46,6 +47,24 @@ except:
 from re import escape
 from marshmallow.validate import OneOf, Range
 from copy import deepcopy
+
+class ApiManagerWarning(Exception):
+    """Main excpetion raised by api manager and childs
+    
+    **Parameters:**
+        * **value** (:py:class:`str`): error description
+        * **code** (:py:class:`int`): error code [default=400]
+    """
+    def __init__(self, value, code=208):
+        self.code = code
+        self.value = value
+        Exception.__init__(self, value, code)
+
+    def __repr__(self):
+        return u'ApiManagerWarning: %s' % self.value 
+
+    def __str__(self):
+        return u'%s' % self.value
 
 class ApiManagerError(Exception):
     """Main excpetion raised by api manager and childs
@@ -1647,6 +1666,13 @@ class ApiObject(object):
         return self.controller.module.api_manager.api_client
     
     @staticmethod
+    def join_typedef(parent, child):
+        """ 
+        Join typedef parent with typedef child
+        """        
+        return u'.'.join ([parent, child])
+    
+    @staticmethod
     def get_type(self):
         """ """        
         return (self.type, self.definition, self.__class__)
@@ -2744,6 +2770,12 @@ class ApiView(FlaskView):
             raise ApiManagerError(msg, code=401)
         
         #return user
+        
+    # response methods
+    @watch    
+    def get_warning(self, exception, code, msg):
+        self.get_error(exception, code, msg)
+    
 
     # response methods
     @watch    
@@ -2996,6 +3028,18 @@ class ApiView(FlaskView):
                                                    request.data,
                                                    exception=ex.value)            
             return self.get_error(u'ApiManagerError', ex.code, ex.value)
+        except ApiManagerWarning as ex:
+            # get request elapsed time
+            elapsed = round(time.time() - start, 4)
+            self.logger.warning(u'Invoke api: %s [%s] - Warning - %s' % 
+                              (request.path, request.method, elapsed))
+            ApiViewResponse(controller).send_event({u'path':request.path,
+                                                    u'method':request.method,
+                                                    u'elapsed':elapsed,
+                                                    u'code':ex.code}, 
+                                                   request.data,
+                                                   exception=ex.value)            
+            return self.get_warning(u'ApiManagerWarning', ex.code, ex.value)
         except Exception as ex:
             # get request elapsed time
             elapsed = round(time.time() - start, 4)
