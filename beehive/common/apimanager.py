@@ -1175,7 +1175,7 @@ class ApiController(object):
         :return: True if permissions overlap
         """
         try:
-            
+      
             objs = self.can(action, objtype, definition=objdef)
             
             # check authorization
