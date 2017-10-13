@@ -66,9 +66,9 @@ class BaseEntity(AuditData):
         
         
         #expired
-        if u'expired' in kvargs and kvargs.get(u'expired') is not None: 
-            if kvargs.get(u'expired') is True:
-                filters.append(u' AND t3.expiry_date<=:expiry_date')
+        if u'filter_expired' in kvargs and kvargs.get(u'filter_expired') is not None: 
+            if kvargs.get(u'filter_expired') is True:
+                filters.append(u' AND t3.expiry_date<=:filter_expiry_date')
             else:
                 filters.append(u' AND (t3.expiry_date>:filter_expiry_date OR t3.expiry_date is null)')
         
@@ -247,22 +247,28 @@ class PaginatedQueryGenerator(object):
         """
         
         if field in kvargs and kvargs.get(field) is not None: 
-            return PaginatedQueryGenerator.create_sqlfilter(field, op)
+            return PaginatedQueryGenerator.create_sqlfilter(field, opLogical=op)
         else: return u''
     
     @staticmethod
-    def create_sqlfilter(field, op=u' AND'):
+    def create_sqlfilter(param, column=None, opLogical=u' AND', opComparison=u'='):
         """create sql where condition filter like 
             AND t3.<field>=:<field> 
         if <field> in kvargs and not None..
         
-        :param field: field to search in kvargs
-        :param value: query custom params
+        :param column: column to search in kvargs
+        :param param: query custom params
         :param str filter: sql filters 
         """
-        
-        if field is not None: 
-            return u' {op} t3.{field}=:{field}'.format(field=field, op=op)
+                 
+        if column is None:
+            column = param
+ 
+        if column is not None: 
+            return u' {opLogical} t3.{column}{opComparison}:{param}'.format(column=column,
+                                                        param=param,
+                                                        opLogical=opLogical,
+                                                        opComparison=opComparison)
         else: return u''
   
     

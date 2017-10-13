@@ -1175,6 +1175,7 @@ class ApiController(object):
         :return: True if permissions overlap
         """
         try:
+            
             objs = self.can(action, objtype, definition=objdef)
             
             # check authorization
@@ -1234,7 +1235,7 @@ class ApiController(object):
             entity_name =  entity_class.__name__
             raise ApiManagerError(u'%s %s not found' % (entity_name, oid), 
                                   code=404)            
-            
+         
         # check authorization
         if authorize is True:
             self.check_authorization(entity_class.objtype, 
