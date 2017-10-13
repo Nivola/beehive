@@ -100,15 +100,18 @@ class BeehiveHelper(object):
             # populate configs
             #
             for item in config[u'config']:
-                value = item[u'value']
-                if isinstance(value, dict):
-                    value = json.dumps(value)
-                res = db_manager.add(config[u'api_system'], 
-                                     item[u'group'], 
-                                     item[u'name'], 
-                                     value)
-                self.logger.info(u'Add configuration %s' % (res))
-                msgs.append(u'Add configuration %s' % (res))
+                try:
+                    value = item[u'value']
+                    if isinstance(value, dict):
+                        value = json.dumps(value)
+                    res = db_manager.add(config[u'api_system'], 
+                                         item[u'group'], 
+                                         item[u'name'], 
+                                         value)
+                    self.logger.info(u'Add configuration %s' % (res))
+                    msgs.append(u'Add configuration %s' % (res))
+                except Exception as ex:
+                    self.logger.warn(ex)
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
             raise

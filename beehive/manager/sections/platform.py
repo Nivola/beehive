@@ -17,7 +17,7 @@ from logging import getLogger
 try:
     from beehive.manager.util.ansible2 import Options, Runner
 except Exception as ex:
-    print(u'ansible package not installed')  
+    print(u'ansible package not installed. %s' % ex)  
 
 logger = getLogger(__name__)
 

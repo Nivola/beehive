@@ -8,7 +8,7 @@ from functools import wraps
 import logging
 from uuid import uuid4
 from sqlalchemy.exc import IntegrityError, DBAPIError
-from beecell.simple import id_gen
+from beecell.simple import id_gen, truncate
 from beecell.simple import import_class
 from beecell.db import TransactionError, QueryError, ModelError
 from multiprocessing import current_process
@@ -199,13 +199,13 @@ def query(fn):
             elapsed = round(time() - start, 4)
             logger.debug(u'%s.%s - %s - query - %s - %s - OK - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
-                         params,  elapsed))
+                         truncate(params),  elapsed))
             return res
         except ModelError as ex:
             elapsed = round(time() - start, 4)
             logger.error(u'%s.%s - %s - query - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
-                         params, elapsed))
+                         truncate(params), elapsed))
             #logger.error(ex.desc, exc_info=1)
             logger.error(ex.desc)
             raise QueryError(ex.desc, code=ex.code)    
@@ -213,7 +213,7 @@ def query(fn):
             elapsed = round(time() - start, 4)
             logger.error(u'%s.%s - %s - query - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
-                         params, elapsed))
+                         truncate(params), elapsed))
             #logger.error(ex.message, exc_info=1)
             logger.error(ex.message)
             raise QueryError(ex.message, code=400)
@@ -221,7 +221,7 @@ def query(fn):
             elapsed = round(time() - start, 4)
             logger.error(u'%s.%s - %s - query - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
-                         params, elapsed))
+                         truncate(params), elapsed))
             #logger.error(ex, exc_info=1)
             logger.error(ex)
 

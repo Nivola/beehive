@@ -51,9 +51,9 @@ class ResourceController(BaseController):
 class ResourceControllerChild(ApiController):
     baseuri = u'/v1.0'
     subsystem = u'resource'
-    res_headers = [u'id', u'uuid', u'definition', u'name', u'container.name',
-                   u'parent.name', u'active', u'state', u'ext_id', 
-                   u'date.creation']
+    res_headers = [u'id', u'uuid', u'__meta__.definition', u'name', 
+                   u'container.name', u'parent.name', u'active', u'state', 
+                   u'ext_id', u'date.creation']
     cont_headers = [u'id', u'uuid', u'category', u'definition', 
                     u'name', u'active', u'state', u'date.creation',
                     u'date.modified']
