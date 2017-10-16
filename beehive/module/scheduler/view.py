@@ -11,7 +11,7 @@ from flasgger import fields, Schema
 from beecell.swagger import SwaggerHelper
 
 class TaskApiView(SwaggerApiView):
-    tags = [u'directory']
+    tags = [u'scheduler']
 
 #
 # Scheduler

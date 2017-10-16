@@ -344,22 +344,22 @@ class BeehiveHelper(object):
                                       api_config[u'pwd'],
                                       api_config[u'catalog'])
             
-            # create super user
-            user = {u'name':u'%s_admin@local' % config[u'api_subsystem'],
-                    u'pwd':random_password(20),
-                    u'desc':u'%s internal user' % subsystem}
-            try:
-                client.add_system_user(user[u'name'], 
-                                       password=user[u'pwd'], 
-                                       desc=u'User %s' % user[u'name'])
-            except BeehiveApiClientError as ex:
-                if ex.code == 409:
-                    client.update_user(user[u'name'], user[u'name'], user[u'pwd'],
-                                       u'User %s' % user[u'name'])
-                else:
-                    raise
-            
             if update is False:
+                # create super user
+                user = {u'name':u'%s_admin@local' % config[u'api_subsystem'],
+                        u'pwd':random_password(20),
+                        u'desc':u'%s internal user' % subsystem}
+                try:
+                    client.add_system_user(user[u'name'], 
+                                           password=user[u'pwd'], 
+                                           desc=u'User %s' % user[u'name'])
+                except BeehiveApiClientError as ex:
+                    if ex.code == 409:
+                        client.update_user(user[u'name'], user[u'name'], user[u'pwd'],
+                                           u'User %s' % user[u'name'])
+                    else:
+                        raise
+            
                 # append system user config
                 config[u'config'].append({u'group':u'api',
                                           u'name':u'user', 

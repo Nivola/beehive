@@ -17,14 +17,32 @@ schemes:
 tags:
   - name: base
     description: base api
-  - name: scheduler
-    description: scheduler and task manager api
   - name: authorization
     description: authorization api
-  - name: catalog
-    description: catalog api
+  - name: directory
+    description: directory api
   - name: event
     description: event api
+  - name: scheduler
+    description: scheduler and task manager api
+  - name: resource
+    description: resource base api
+  - name: openstack
+    description: resource plugin opensatck api
+  - name: vsphere
+    description: resource plugin vsphere api
+  - name: provider
+    description: resource plugin provider api
+  - name: organization
+    description: service api - organization
+  - name: division
+    description: service api - division
+  - name: account
+    description: service api - account
+  - name: servicetype
+    description: service api - servicetype
+  - name: serviceinstance
+    description: service api - serviceinstance 
 consumes:
   - application/json
   - application/xml

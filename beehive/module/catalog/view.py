@@ -33,7 +33,7 @@ class ListCatalogsResponseSchema(PaginatedResponseSchema):
                              required=True)
 
 class ListCatalogs(SwaggerApiView):
-    tags = [u'catalog']
+    tags = [u'directory']
     definitions = {
         u'ListCatalogsResponseSchema': ListCatalogsResponseSchema,
     }
@@ -69,7 +69,7 @@ class GetCatalogResponseSchema(Schema):
     catalog = fields.Nested(GetCatalogParamsResponseSchema, required=True)
 
 class GetCatalog(SwaggerApiView):
-    tags = [u'catalog']
+    tags = [u'directory']
     definitions = {
         u'GetCatalogResponseSchema': GetCatalogResponseSchema,
     }
@@ -84,12 +84,12 @@ class GetCatalog(SwaggerApiView):
     def get(self, controller, data, oid, *args, **kwargs):
         catalog = controller.get_catalog(oid)
         res = catalog.detail()
-        resp = {u'catalog':res}        
+        resp = {u'directory':res}        
         return resp
 
 ## get perms
 class GetCatalogPerms(SwaggerApiView):
-    tags = [u'catalog']
+    tags = [u'directory']
     definitions = {
         u'ApiObjectPermsRequestSchema': ApiObjectPermsRequestSchema,
         u'ApiObjectPermsResponseSchema': ApiObjectPermsResponseSchema,
@@ -121,7 +121,7 @@ class CreateCatalogBodyRequestSchema(Schema):
     body = fields.Nested(CreateCatalogRequestSchema, context=u'body')
 
 class CreateCatalog(SwaggerApiView):
-    tags = [u'catalog']
+    tags = [u'directory']
     definitions = {
         u'CreateCatalogRequestSchema': CreateCatalogRequestSchema,
         u'CrudApiObjectResponseSchema':CrudApiObjectResponseSchema
@@ -136,7 +136,7 @@ class CreateCatalog(SwaggerApiView):
     })
     
     def post(self, controller, data, *args, **kwargs):
-        resp = controller.add_catalog(**data.get(u'catalog'))
+        resp = controller.add_catalog(**data.get(u'directory'))
         return ({u'uuid':resp}, 201)
 
 ## update
@@ -152,7 +152,7 @@ class UpdateCatalogBodyRequestSchema(GetApiObjectRequestSchema):
     body = fields.Nested(UpdateCatalogRequestSchema, context=u'body')
     
 class UpdateCatalog(SwaggerApiView):
-    tags = [u'catalog']
+    tags = [u'directory']
     definitions = {
         u'UpdateCatalogRequestSchema':UpdateCatalogRequestSchema,
         u'CrudApiObjectResponseSchema':CrudApiObjectResponseSchema
@@ -168,12 +168,12 @@ class UpdateCatalog(SwaggerApiView):
     
     def put(self, controller, data, oid, *args, **kwargs):
         catalog = controller.get_catalog(oid)
-        resp = catalog.update(**data.get(u'catalog'))
+        resp = catalog.update(**data.get(u'directory'))
         return {u'uuid':resp}
     
 ## delete
 class DeleteCatalog(SwaggerApiView):
-    tags = [u'catalog']
+    tags = [u'directory']
     definitions = {}
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
     responses = SwaggerApiView.setResponses({
@@ -210,7 +210,7 @@ class ListEndpointsResponseSchema(PaginatedResponseSchema):
                               required=True)
 
 class ListEndpoints(SwaggerApiView):
-    tags = [u'catalog']
+    tags = [u'directory']
     definitions = {
         u'ListEndpointsResponseSchema': ListEndpointsResponseSchema,
     }
@@ -233,7 +233,7 @@ class GetEndpointResponseSchema(Schema):
     endpoint = fields.Nested(ListEndpointsParamsResponseSchema, required=True)
 
 class GetEndpoint(SwaggerApiView):
-    tags = [u'catalog']
+    tags = [u'directory']
     definitions = {
         u'GetEndpointResponseSchema': GetEndpointResponseSchema,
     }
@@ -253,7 +253,7 @@ class GetEndpoint(SwaggerApiView):
         
 ## get perms
 class GetEndpointPerms(SwaggerApiView):
-    tags = [u'catalog']
+    tags = [u'directory']
     definitions = {
         u'ApiObjectPermsRequestSchema': ApiObjectPermsRequestSchema,
         u'ApiObjectPermsResponseSchema': ApiObjectPermsResponseSchema,
@@ -288,7 +288,7 @@ class CreateEndpointBodyRequestSchema(Schema):
     body = fields.Nested(CreateEndpointRequestSchema, context=u'body')
 
 class CreateEndpoint(SwaggerApiView):
-    tags = [u'catalog']
+    tags = [u'directory']
     definitions = {
         u'CreateEndpointRequestSchema': CreateEndpointRequestSchema,
         u'CrudApiObjectResponseSchema':CrudApiObjectResponseSchema
@@ -304,7 +304,7 @@ class CreateEndpoint(SwaggerApiView):
     
     def post(self, controller, data, *args, **kwargs):
         data = data.get(u'endpoint')
-        endpoint = data.pop(u'catalog')
+        endpoint = data.pop(u'directory')
         endpoint_obj = controller.get_catalog(endpoint)
         resp = endpoint_obj.add_endpoint(**data)
         return ({u'uuid':resp}, 201)
@@ -324,7 +324,7 @@ class UpdateEndpointBodyRequestSchema(GetApiObjectRequestSchema):
     body = fields.Nested(UpdateEndpointRequestSchema, context=u'body')
     
 class UpdateEndpoint(SwaggerApiView):
-    tags = [u'catalog']
+    tags = [u'directory']
     definitions = {
         u'UpdateEndpointRequestSchema':UpdateEndpointRequestSchema,
         u'CrudApiObjectResponseSchema':CrudApiObjectResponseSchema
@@ -345,7 +345,7 @@ class UpdateEndpoint(SwaggerApiView):
     
 ## delete
 class DeleteEndpoint(SwaggerApiView):
-    tags = [u'catalog']
+    tags = [u'directory']
     definitions = {}
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
     responses = SwaggerApiView.setResponses({

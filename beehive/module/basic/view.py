@@ -12,7 +12,7 @@ class ServerPing(ApiView):
         Call this api to ping server
         ---
         tags:
-          - Basic server api      
+          - base      
         produces:
           - application/json
           - application/xml
