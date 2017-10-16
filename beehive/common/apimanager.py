@@ -1272,7 +1272,7 @@ class ApiController(object):
         return res
 
     def get_paginated_entities(self, entity_class, get_entities, 
-            page=0, size=10, order=u'DESC', field=u'id', customize=None,
+            page=0, size=10, order=u'DESC', field=u'id', customize=None, authorize=True,
             *args, **kvargs):
         """Get entities with pagination
 
@@ -1294,11 +1294,13 @@ class ApiController(object):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         res = []
+        objs =  []
         
-        # verify permissions
-        objs = self.can(u'view', entity_class.objtype, 
-                        definition=entity_class.objdef)
-        objs = objs.get(entity_class.objdef.lower())
+        if authorize is True:
+            # verify permissions
+            objs = self.can(u'view', entity_class.objtype, 
+                            definition=entity_class.objdef)
+            objs = objs.get(entity_class.objdef.lower())
         
         # create permission tags
         tags = []
