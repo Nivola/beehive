@@ -159,7 +159,10 @@ class VspherePlatformClusterController(VspherePlatformControllerChild):
         self.result(res, headers=self.headers) 
 
 class VspherePlatformDatastoreController(VspherePlatformControllerChild):
-    headers = [u'id', u'name', u'overallStatus']
+    headers = [u'id', u'name', u'overallStatus', u'accessible',
+                 u'capacity', u'url', 
+                 u'freeSpace', u'maxFileSize',
+                 u'maintenanceMode', u'type']
     
     class Meta:
         label = 'vsphere.platform.datastores'
@@ -182,6 +185,13 @@ class VspherePlatformDatastoreController(VspherePlatformControllerChild):
                 u'id':o[u'obj']._moId,
                 u'name':o[u'name'],
                 u'overallStatus':o[u'overallStatus'],
+                u'accessible':o[u'summary.accessible'],
+                u'capacity':o[u'summary.capacity'],
+                u'url':o[u'summary.url'], 
+                u'freeSpace':o[u'summary.freeSpace'],
+                u'maxFileSize':o[u'info.maxFileSize'],
+                u'maintenanceMode':o[u'summary.maintenanceMode'],
+                u'type':o[u'summary.type']    
             })
         logger.info(res)
         self.result(res, headers=self.headers)
@@ -376,8 +386,8 @@ class VspherePlatformNetworkDfwController(VspherePlatformNetworkChildController)
             rules = s.get(u'rule', [])
             if type(rules) is not list: rules = [rules]
             s[u'rules'] = len(rules)
-        self.result(sections, headers=[u'@id', u'@type', u'@timestamp', 
-                                              u'@generationNumber', u'@name',
+        self.result(sections, headers=[u'id', u'type', u'timestamp', 
+                                              u'generationNumber', u'name',
                                               u'rules'])
 
     def __set_rule_value(self, key, subkey, res):
@@ -398,7 +408,7 @@ class VspherePlatformNetworkDfwController(VspherePlatformNetworkChildController)
         res = self.entity_class.get_config()
         
         data = [{u'key':u'contextId', u'value':res[u'contextId']},
-                {u'key':u'@timestamp', u'value':res[u'@timestamp']},
+                {u'key':u'timestamp', u'value':res[u'timestamp']},
                 {u'key':u'generationNumber', u'value':res[u'generationNumber']}]
         self.result(data, headers=[u'key', u'value'])
         
@@ -417,8 +427,8 @@ class VspherePlatformNetworkDfwController(VspherePlatformNetworkChildController)
             res = self.entity_class.get_layer3_section(sectionid=section)
             
             rules = res.pop(u'rule', [])
-            self.result([res], headers=[u'@id', u'@type', u'@timestamp', 
-                                               u'@generationNumber', u'@name'])
+            self.result([res], headers=[u'id', u'type', u'timestamp', 
+                                               u'generationNumber', u'name'])
             
             print(u'Rules:')
             for r in rules:
@@ -426,7 +436,7 @@ class VspherePlatformNetworkDfwController(VspherePlatformNetworkChildController)
                 r = self.__set_rule_value(u'sources', u'source', r)
                 r = self.__set_rule_value(u'destinations', u'destination', r)
                 r = self.__set_rule_value(u'appliedToList', u'appliedTo', r)
-            self.result(rules, headers=[u'@id', u'@disabled', u'@logged', 
+            self.result(rules, headers=[u'id', u'disabled', u'logged', 
                                                u'name', u'direction', u'action', 
                                                u'packetType', u'sources', 
                                                u'destinations', u'services',
@@ -439,7 +449,7 @@ class VspherePlatformNetworkDfwController(VspherePlatformNetworkChildController)
             destinations = res.pop(u'destinations', {}).pop(u'destination', [])
             appliedToList = res.pop(u'appliedToList', {}).pop(u'appliedTo', [])
             
-            self.result(res, headers=[u'@id', u'@disabled', u'@logged', 
+            self.result(res, headers=[u'id', u'disabled', u'logged', 
                                                u'name', u'direction', u'action', 
                                                u'packetType'])
             
