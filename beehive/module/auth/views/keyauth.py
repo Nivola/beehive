@@ -40,7 +40,7 @@ class CreateToken(ApiView):
         ---
         deprecated: false
         tags:
-          - authorization
+          - keyauth
         security:
           - ApiKeyAuth: []
           - OAuth2: [auth, beehive]

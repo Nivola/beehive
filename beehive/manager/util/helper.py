@@ -14,6 +14,7 @@ from beehive.common.apiclient import BeehiveApiClient, BeehiveApiClientError
 from beehive.module.catalog.controller import Catalog
 from beehive.common.model.config import ConfigDbManager
 from beecell.db.manager import RedisManager
+from beecell.db import QueryError
 
 try:
     import json
@@ -100,18 +101,27 @@ class BeehiveHelper(object):
             # populate configs
             #
             for item in config[u'config']:
+                # check if config already exists
+                value = item[u'value']
+                if isinstance(value, dict):
+                    value = json.dumps(value)
                 try:
-                    value = item[u'value']
-                    if isinstance(value, dict):
-                        value = json.dumps(value)
+                    res = db_manager.get(app=config[u'api_system'], 
+                                         group=item[u'group'], 
+                                         name=item[u'name'])
+                    self.logger.warn(u'Configuration %s %s %s already exist'%
+                                     (config[u'api_system'], item[u'group'], 
+                                      item[u'name']))
+                    msgs.append(u'Configuration %s %s %s already exist'%
+                               (config[u'api_system'], item[u'group'], 
+                                item[u'name']))
+                except QueryError as ex:
                     res = db_manager.add(config[u'api_system'], 
                                          item[u'group'], 
                                          item[u'name'], 
                                          value)
                     self.logger.info(u'Add configuration %s' % (res))
                     msgs.append(u'Add configuration %s' % (res))
-                except Exception as ex:
-                    self.logger.warn(ex)
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
             raise
@@ -178,8 +188,8 @@ class BeehiveHelper(object):
                 
                 # create system users and roles
                 if module.name == u'AuthModule':
-                    res = self.__create_main_users(controller, config, 
-                                              config_db_manager)
+                    res = self.__create_main_users(
+                        controller, config, config_db_manager, update)
                     controller.set_superadmin_permissions()
                     msgs.extend(res)
                     
@@ -190,8 +200,8 @@ class BeehiveHelper(object):
                     controller.set_superadmin_permissions()  
                     
                 elif module.name == u'CatalogModule':
-                    res = self.__create_main_catalogs(controller, config, 
-                                                 config_db_manager)
+                    res = self.__create_main_catalogs(
+                        controller, config, config_db_manager)
                     controller.set_superadmin_permissions()
                     msgs.extend(res)
               
@@ -208,29 +218,29 @@ class BeehiveHelper(object):
         
         return msgs
     
-    def __create_main_users(self, controller, config, config_db_manager):
+    def __create_main_users(self, controller, config, config_db_manager, update):
         """Create auth subsystem main users
         """
         msgs = []
     
         users = config[u'users']
     
-        # add superadmin role
-        #perms_to_assign = controller.get_superadmin_permissions()
-        perms_to_assign = []
-        controller.add_superadmin_role(perms_to_assign)
-        
-        # add guest role
-        controller.add_guest_role()
+        if update is False:
+            # add superadmin role
+            #perms_to_assign = controller.get_superadmin_permissions()
+            perms_to_assign = []
+            controller.add_superadmin_role(perms_to_assign)
+            
+            # add guest role
+            controller.add_guest_role()
         
         for user in users:
             # check if user already exist
-            users, total = controller.get_users(name=user[u'name'])
-            if len(users) > 0:
-                self.logger.warn(u'User %s already exist' % (user[u'name']))
-                msgs.append(u'User %s already exist' % (user[u'name']))        
-            
-            else:
+            try:
+                user = controller.get_user(user[u'name'])
+                self.logger.warn(u'User %s already exist' % (user))
+                msgs.append(u'User %s already exist' % (user))                  
+            except:
                 # create superadmin
                 if user[u'type'] == u'admin':
                     expiry_date = datetime.datetime(2099, 12, 31)                    
@@ -265,17 +275,15 @@ class BeehiveHelper(object):
         
         #for catalog in catalogs:
         # check if catalog already exist
-        cats, total = controller.get_catalogs(name=catalog[u'name'], 
-                                              zone=catalog[u'zone'])
-        if len(cats) > 0:
-            self.logger.warn(u'Catalog name:%s zone:%s already exist' % 
-                             (catalog[u'name'], catalog[u'zone']))
-            msgs.append(u'Catalog name:%s zone:%s already exist' % 
-                        (catalog[u'name'], catalog[u'zone']))
-            res = cats[0][u'oid']
-        
-        # create new catalog
-        else:
+        try:
+            controller.get_catalog(catalog[u'name'])
+            self.logger.warn(u'Catalog %s already exist' % 
+                             (catalog[u'name']))
+            msgs.append(u'Catalog %s already exist' % 
+                             (catalog[u'name']))
+            #res = cats[0][u'oid']
+        except:
+            # create new catalog
             res = controller.add_catalog(catalog[u'name'], 
                                          catalog[u'desc'], 
                                          catalog[u'zone'])
@@ -284,9 +292,9 @@ class BeehiveHelper(object):
             msgs.append(u'Add catalog name:%s zone:%s : %s' % 
                         (catalog[u'name'], catalog[u'zone'], res))
         
-        # set catalog in config
-        config_db_manager.add(config[u'api_system'], u'api', 
-                              u'catalog', catalog[u'name'])     
+            # set catalog in config
+            config_db_manager.add(config[u'api_system'], u'api', 
+                                  u'catalog', catalog[u'name'])
         
         return msgs
     

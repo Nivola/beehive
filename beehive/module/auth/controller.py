@@ -35,12 +35,14 @@ class AuthController(BaseAuthController):
         :param args: 
         """
         # add actions
-        try:
-            actions = [u'*', u'view', u'insert', u'update', u'delete', u'use']
-            self.manager.add_object_actions(actions)
-        except TransactionError as ex:
-            self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=ex.code)
+        actions = [u'*', u'view', u'insert', u'update', u'delete', u'use',
+                   u'disable', u'recover']
+        for action in actions:        
+            try:
+                self.manager.add_object_action(action)
+            except TransactionError as ex:
+                self.logger.warn(ex)
+                #raise ApiManagerError(ex, code=ex.code)
         
         BaseAuthController.init_object(self)
     

@@ -125,10 +125,6 @@ class Role(Base, BaseEntity):
         BaseEntity.__init__(self, objid, name, desc, active)
         
         self.permission = permission
-    
-    #def __repr__(self):
-    #    return u"<Role id='%s' name='%s' desc='%s')>" % (
-    #                self.id, self.name, self.desc)
 
 # Systems roles
 class UserAttribute(Base):
@@ -358,7 +354,8 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         @transaction(self.get_session())
         def func(session):
             # object actions
-            actions = [u'*', u'view', u'insert', u'update', u'delete', u'use']
+            actions = [u'*', u'view', u'insert', u'update', u'delete', u'use', 
+                       u'disable', u'recover']
             data = []
             for item in actions:
                 data.append(SysObjectAction(item))
@@ -506,10 +503,26 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         data = []
         for item in items:
             data.append(SysObjectAction(item))
+
         session.add_all(data)
+        self.logger.debug(u'Add object action: %s' % data)
         session.flush()
-        self.logger.debug('Add object action: %s' % data)
-        return data
+        return items
+    
+    @transaction
+    def add_object_action(self, item):
+        """Add a system object actions.
+        
+        :param item: action. Es. 'view', 'use', 'insert'
+        :return: True if operation is successful, False otherwise
+        :rtype: bool
+        :raises TransactionError: raise :class:`TransactionError`
+        """
+        session = self.get_session()
+        session.add(SysObjectAction(item))
+        self.logger.debug(u'Add object action: %s' % item)
+        session.flush()
+        return item   
 
     @transaction
     def remove_object_action(self, oid=None, value=None):

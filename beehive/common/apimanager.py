@@ -502,6 +502,16 @@ class ApiManager(object):
                 # get configurator instance
                 configurator = ConfigDbManager()     
                 
+                ##### oauth2 configuration #####
+                self.logger.info(u'Configure oauth2 - CONFIGURE')
+                # connect to redis
+                self.oauth2_endpoint = configurator.get(
+                    app=self.app_name, group=u'oauth2', name=u'endpoint')[0].value
+                self.logger.info(u'Setup oauth2 endpoint: %s' % self.oauth2_endpoint)
+    
+                self.logger.info(u'Configure oauth2 - CONFIGURED')  
+                ##### oauth2 configuration #####                
+                
                 ##### redis configuration #####
                 self.logger.info(u'Configure redis - CONFIGURE')
                 # connect to redis
@@ -680,13 +690,13 @@ class ApiManager(object):
                 try:
                     self.logger.info(u'Configure catalog queue - CONFIGURE')
                     conf = configurator.get(app=self.app_name, 
-                                            group='queue', 
-                                            name='queue.catalog')
+                                            group=u'queue', 
+                                            name=u'queue.catalog')
     
                     # setup catalog producer
                     conf = json.loads(conf[0].value)
-                    self.redis_catalog_uri = conf['uri']
-                    self.redis_catalog_channel = conf['queue']                    
+                    self.redis_catalog_uri = conf[u'uri']
+                    self.redis_catalog_channel = conf[u'queue']                    
                         
                     # create instance of catalog producer
                     from beehive.module.catalog.producer import CatalogProducerRedis
@@ -2090,10 +2100,20 @@ class ApiObject(object):
         if exception is not None: response = (False, escape(str(exception)))
         action = op.split(u'.')[-1]
         
+        # remove object from args - it does not serialize in event
+        nargs = []
+        for a in args:
+            if str(type(a)).find(u'class') < 0:
+                nargs.append(a)
+                
+        for k,v in params.items():
+            if str(type(v)).find(u'class') > -1:
+                args.pop(k)                
+        
         data = {
             u'opid':opid,
             u'op':u'%s.%s' % (self.objdef, op),
-            u'args':args,
+            u'args':nargs,
             u'params':params,
             u'elapsed':elapsed,
             u'response':response
@@ -2535,7 +2555,7 @@ class ApiViewResponse(ApiObject):
         :param exception: exceptione raised [optinal]
         """
         objid = u'*'
-        if exception is not None: response = (False, escape(str(exception)))
+        if exception is not None: response = (False, escape(exception))
         method = api[u'method']
         if method in [u'GET']:
             action = u'view'
@@ -2795,7 +2815,9 @@ class ApiView(FlaskView):
         }
         self.logger.error(u'Api response: %s' % error)
         
-        if self.response_mime == u'*/*':
+        if self.response_mime is None or \
+           self.response_mime == u'*/*' or \
+           self.response_mime == u'':
             self.response_mime = u'application/json'
             
         if code in [400, 401, 403, 404, 405, 406, 408, 409, 415, 500]:
@@ -2948,8 +2970,13 @@ class ApiView(FlaskView):
             
             self.logger.info(u'Invoke api: %s [%s] - START' % 
                              (request.path, request.method))
+            query_string = u''
+            if request.method.lower() == u'get':
+                query_string = request.args.to_dict()
+            elif request.method.lower() in [u'post', u'put']:
+                query_string = request.form.to_dict()                
             self.logger.debug(u'Api request headers:%s, data:%s, query:%s' % 
-                              (headers, request.data, request.query_string))
+                              (headers, request.data, query_string))
             self._get_response_mime_type()     
             
             # open database session.
@@ -3104,18 +3131,22 @@ class ApiView(FlaskView):
             module.api_routes.append({'uri':uri, 'method':rule[1]})
 
 class PaginatedRequestQuerySchema(Schema):
-    size = fields.Integer(default=10, missing=10, context=u'query',
+    size = fields.Integer(default=10, example=10, missing=10, context=u'query',
+                          description=u'enitities list page size',
                           validate=Range(min=0, max=200,
                                          error=u'Size is out from range'))
-    page = fields.Integer(default=0, missing=0, context=u'query',
+    page = fields.Integer(default=0, example=0, missing=0, context=u'query',
+                          description=u'enitities list page selected',
                           validate=Range(min=0, max=1000,
                                          error=u'Page is out from range'))
     order = fields.String(validate=OneOf([u'ASC', u'asc', u'DESC', u'desc'],
                                          error=u'Order can be asc, ASC, desc, DESC'),
-                          default=u'DESC', missing=u'DESC', context=u'query')
+                          description=u'enitities list order: ASC or DESC',
+                          default=u'DESC', example=u'DESC', missing=u'DESC', context=u'query')
     field = fields.String(validate=OneOf([u'id', u'uuid', u'objid', u'name'],
                                          error=u'Field can be id, uuid, objid, name'),
-                          default=u'id', missing=u'id', context=u'query')
+                          description=u'enitities list order field. Ex. id, uuid, name',
+                          default=u'id', example=u'id', missing=u'id', context=u'query')
     
 class GetApiObjectRequestSchema(Schema):
     oid = fields.String(required=True, description=u'id, uuid or name',
@@ -3126,53 +3157,63 @@ class ApiObjectPermsRequestSchema(PaginatedRequestQuerySchema,
     pass   
 
 class ApiObjectResponseDateSchema(Schema):
-    creation = fields.DateTime(required=True, default=u'1990-12-31T23:59:59Z')
-    modified = fields.DateTime(required=True, default=u'1990-12-31T23:59:59Z')
+    creation = fields.DateTime(required=True, default=u'1990-12-31T23:59:59Z', 
+                               example=u'1990-12-31T23:59:59Z')
+    modified = fields.DateTime(required=True, default=u'1990-12-31T23:59:59Z', 
+                               example=u'1990-12-31T23:59:59Z')
     expiry = fields.String(default=u'')
 
 class ApiObjecCountResponseSchema(Schema):
     count = fields.Integer(required=True, default=10)
 
 class ApiObjectMetadataResponseSchema(Schema):
-    objid = fields.String(required=True, default=u'396587362//3328462822')
-    type = fields.String(required=True, default=u'auth')
-    definition = fields.String(required=True, default=u'Role')
-    uri = fields.String(required=True, default=u'/v1.0/auht/roles')
+    objid = fields.String(required=True, default=u'396587362//3328462822',
+                          example=u'396587362//3328462822')
+    type = fields.String(required=True, default=u'auth', example=u'auth')
+    definition = fields.String(required=True, default=u'Role', example=u'Role')
+    uri = fields.String(required=True, default=u'/v1.0/auht/roles', 
+                        example=u'/v1.0/auht/roles')
 
 class ApiObjectSmallResponseSchema(Schema):
-    id = fields.Integer(required=True, default=10)
-    uuid = fields.String(required=True, default=u'4cdf0ea4-159a-45aa-96f2-708e461130e1')
-    name = fields.String(required=True, default=u'test')
-    active = fields.Boolean(required=True, default=True)
+    id = fields.Integer(required=True, default=10, example=10)
+    uuid = fields.String(required=True, 
+                         default=u'4cdf0ea4-159a-45aa-96f2-708e461130e1',
+                         example=u'4cdf0ea4-159a-45aa-96f2-708e461130e1')
+    name = fields.String(required=True, default=u'test', example=u'test')
+    active = fields.Boolean(required=True, default=True, example=True)
     __meta__ = fields.Nested(ApiObjectMetadataResponseSchema, required=True)
 
 class ApiObjectResponseSchema(Schema):
-    id = fields.Integer(required=True, default=10)
-    uuid = fields.String(required=True, default=u'4cdf0ea4-159a-45aa-96f2-708e461130e1')
-    name = fields.String(required=True, default=u'test')
-    desc = fields.String(required=True, default=u'test')
+    id = fields.Integer(required=True, default=10, example=10)
+    uuid = fields.String(required=True, 
+                         default=u'4cdf0ea4-159a-45aa-96f2-708e461130e1',
+                         example=u'4cdf0ea4-159a-45aa-96f2-708e461130e1')
+    name = fields.String(required=True, default=u'test', example=u'test')
+    desc = fields.String(required=True, default=u'test', example=u'test')
     date = fields.Nested(ApiObjectResponseDateSchema, required=True)
-    active = fields.Boolean(required=True, default=True)
+    active = fields.Boolean(required=True, default=True, example=True)
     __meta__ = fields.Nested(ApiObjectMetadataResponseSchema, required=True)
 
 class PaginatedResponseSortSchema(Schema):
     order = fields.String(required=True, 
                           validate=OneOf([u'ASC', u'asc', u'DESC', u'desc']),
-                          default=u'DESC')
-    field = fields.String(required=True, default=u'id')
+                          default=u'DESC', example=u'DESC')
+    field = fields.String(required=True, default=u'id', example=u'id')
 
 class PaginatedResponseSchema(Schema):
-    count = fields.Integer(required=True, default=10)
-    page = fields.Integer(required=True, default=0)
-    total = fields.Integer(required=True, default=20)
+    count = fields.Integer(required=True, default=10, example=10)
+    page = fields.Integer(required=True, default=0, example=0)
+    total = fields.Integer(required=True, default=20, example=20)
     sort = fields.Nested(PaginatedResponseSortSchema, required=True)
     
 class CrudApiObjectResponseSchema(Schema):
     uuid = fields.UUID(required=True, 
-                       default=u'6d960236-d280-46d2-817d-f3ce8f0aeff7')
+                       default=u'6d960236-d280-46d2-817d-f3ce8f0aeff7',
+                       example=u'6d960236-d280-46d2-817d-f3ce8f0aeff7')
     
 class CrudApiJobResponseSchema(Schema):
     jobid = fields.UUID(default=u'db078b20-19c6-4f0e-909c-94745de667d4',
+                        example=u'6d960236-d280-46d2-817d-f3ce8f0aeff7',
                         required=True)
     
 class CrudApiObjectJobResponseSchema(CrudApiObjectResponseSchema,
@@ -3180,14 +3221,15 @@ class CrudApiObjectJobResponseSchema(CrudApiObjectResponseSchema,
     pass    
 
 class ApiObjectPermsParamsResponseSchema(Schema):
-    id = fields.Integer(required=True, default=1)
-    oid = fields.Integer(required=True, default=1)
-    objid = fields.String(required=True, default=u'396587362//3328462822')
-    type = fields.String(required=True, default=u'Objects')
-    subsystem = fields.String(required=True, default=u'auth')
-    desc = fields.String(required=True, default=u'beehive')
-    aid = fields.Integer(required=True, default=1)
-    action = fields.String(required=True, default=u'view')
+    id = fields.Integer(required=True, default=1, example=1)
+    oid = fields.Integer(required=True, default=1, example=1)
+    objid = fields.String(required=True, default=u'396587362//3328462822', 
+                          example=u'396587362//3328462822')
+    type = fields.String(required=True, default=u'Objects', example=u'Objects')
+    subsystem = fields.String(required=True, default=u'auth', example=u'auth')
+    desc = fields.String(required=True, default=u'beehive', example=u'beehive')
+    aid = fields.Integer(required=True, default=1, example=1)
+    action = fields.String(required=True, default=u'view', example=u'view')
 
 class ApiObjectPermsResponseSchema(PaginatedResponseSchema):
     perms = fields.Nested(ApiObjectPermsParamsResponseSchema, many=True, 
@@ -3206,6 +3248,7 @@ class SwaggerApiView(ApiView, SwaggerView):
     definitions = {}
     parameters = []
     responses = {
+        u'default': {'$ref': '#/responses/DefaultError'},
         500: {'$ref': '#/responses/InternalServerError'},
         400: {'$ref': '#/responses/BadRequest'},
         401: {'$ref': '#/responses/Unauthorized'},

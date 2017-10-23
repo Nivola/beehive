@@ -6,7 +6,7 @@ Created on Jan 12, 2017
 from re import match
 from flask import request
 from datetime import datetime
-from beecell.simple import get_value, str2bool, AttribException
+from beecell.simple import get_value, str2bool, AttribException, format_date
 from beehive.common.apimanager import ApiView, ApiManagerError, PaginatedRequestQuerySchema,\
     PaginatedResponseSchema, ApiObjectResponseSchema, SwaggerApiView,\
     CrudApiObjectResponseSchema, GetApiObjectRequestSchema,\
@@ -31,7 +31,8 @@ class BaseUpdateRequestSchema(Schema):
 class BaseCreateExtendedParamRequestSchema(Schema):
     active = fields.Boolean(missing=True, allow_none=True)
     expiry_date = fields.String(load_from=u'expirydate', missing=None, 
-                                allow_none=True)
+                                allow_none=True, example=u'',
+                                description=u'expiration date. [default=365days]')
     
     @post_load
     def make_expiry_date(self, data):
@@ -50,59 +51,39 @@ class BaseUpdateMultiRequestSchema(Schema):
 #
 # authentication domains
 #
-class ListDomains(ApiView):
+class ListDomainsRequestSchema(Schema):
+    pass
+
+class ListDomainsParamsResponseSchema(Schema):
+    name = fields.String(required=True, example=u'local', 
+                       description=u'login domain name')
+    type = fields.String(required=True, example=u'DatabaseAuth', 
+                       description=u'login domain description')
+
+class ListDomainsResponseSchema(Schema):
+    domains = fields.Nested(ListDomainsParamsResponseSchema, many=True, 
+                           required=True)
+    count = fields.Integer(required=True, example=1, 
+                           description=u'Domains count')
+
+class ListDomains(SwaggerApiView):
+    tags = [u'auth']
+    definitions = {
+        u'ListDomainsResponseSchema': ListDomainsResponseSchema,
+    }
+    parameters = SwaggerHelper().get_parameters(ListDomainsRequestSchema)
+    parameters_schema = ListDomainsRequestSchema
+    responses = SwaggerApiView.setResponses({
+        200: {
+            u'description': u'success',
+            u'schema': ListDomainsResponseSchema
+        }
+    })
+
     def get(self, controller, data, *args, **kwargs):
         """
         List authentication domains
         Call this api to list authentication domains
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          404:
-            $ref: "#/responses/NotFound"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests"       
-          200:
-            description: Domains list
-            schema:
-              type: object
-              required: [domains, count]
-              properties:
-                count:
-                  type: integer
-                  example: 2
-                domains:
-                  type: array
-                  items:
-                    type: object
-                    required: [name, type]
-                    properties:
-                      name:
-                        type: string
-                        example: local
-                      type:
-                        type: string
-                        example: DatabaseAuth 
         """
         auth_providers = controller.module.authentication_manager.auth_providers
         res = []
@@ -116,181 +97,123 @@ class ListDomains(ApiView):
 #
 # identity
 #
-class ListTokens(ApiView):
+## list
+class ListTokensRequestSchema(Schema):
+    pass
+
+class ListTokensParamsResponseSchema(Schema):
+    ip = fields.String(required=True, example=u'pc160234.csi.it', 
+                       description=u'client login ip address')
+    ttl = fields.Integer(required=True, example=3600, 
+                         description=u'token ttl')
+    token = fields.String(required=True, 
+                          example=u'28ff1dd5-5520-42f3-a361-c58f19d20b7c', 
+                          description=u'token')
+    user = fields.String(required=True, example=u'admin@local', 
+                         description=u'client login user')
+    timestamp = fields.String(required=True, example=u'internal', 
+                              description=u'token timestamp')
+    type = fields.String(required=True, example=u'internal', 
+                         description=u'token type') 
+
+class ListTokensResponseSchema(Schema):
+    tokens = fields.Nested(ListTokensParamsResponseSchema, many=True, 
+                           required=True)
+    count = fields.Integer(required=True, example=1, description=u'Token count')
+
+class ListTokens(SwaggerApiView):
+    tags = [u'auth']
+    definitions = {
+        u'ListTokensResponseSchema': ListTokensResponseSchema,
+    }
+    parameters = SwaggerHelper().get_parameters(ListTokensRequestSchema)
+    parameters_schema = ListTokensRequestSchema
+    responses = SwaggerApiView.setResponses({
+        200: {
+            u'description': u'success',
+            u'schema': ListTokensResponseSchema
+        }
+    })
+
     def get(self, controller, data, *args, **kwargs):
         """
         List authentication tokens
         Call this api to list authentication tokens
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          404:
-            $ref: "#/responses/NotFound"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests"
-          200:
-            description: Tokens list
-            schema:
-              type: object
-              required: [tokens, count]
-              properties:
-                count:
-                  type: integer
-                  example: 1
-                tokens:
-                  type: array
-                  items:
-                    type: object
-                    required: [ip, ttl, token, user, timestamp, type]
-                    properties:
-                      ip:
-                        type: string
-                        example: pc160234.csi.it
-                      ttl:
-                        type: integer
-                        example: 3600
-                      token:
-                        type: string
-                        example: 28ff1dd5-5520-42f3-a361-c58f19d20b7c
-                      user:
-                        type: string
-                        example: admin@local
-                      timestamp:
-                        type: string
-                        example: 19-23_14-07-2017
-                      type:
-                        type: string
-                        example: keyauth
         """        
-        identities = controller.get_identities()
-        res = [{
-            u'token':i[u'uid'],
-            u'type':i[u'type'],
-            u'user':i[u'user'][u'name'],
-            u'timestamp':i[u'timestamp'].strftime(u'%H-%M_%d-%m-%Y'), 
-            u'ttl':i[u'ttl'], 
-            u'ip':i[u'ip']
-        } for i in identities]
+        identities = controller.get_identities()        
+        res = []
+        for i in identities:            
+            user = i.get(u'user')
+            user_name = None
+            if user is not None:
+                user_name = user[u'name']
+            res.append({
+                u'token':i[u'uid'],
+                u'type':i[u'type'],
+                u'user':user_name,
+                u'timestamp':format_date(i[u'timestamp']), 
+                u'ttl':i[u'ttl'], 
+                u'ip':i[u'ip']
+            })
         resp = {u'tokens':res,
                 u'count':len(res)}
         return resp
 
-class GetToken(ApiView):
+## get
+class GetTokenUserResponseSchema(Schema):
+    name = fields.String(required=True, example=u'admin@local', 
+                         description=u'client login user')
+    roles = fields.List(fields.String(example=u'admin@local'), required=True,
+                        description=u'client login user')
+    perms = fields.String(required=True, example=u'admin@local', 
+                          description=u'client login perms')
+    active = fields.Boolean(required=True, example=True, 
+                            description=u'client login active')
+    id = fields.UUID(required=True, description=u'client login uuid',
+                     example=u'6d960236-d280-46d2-817d-f3ce8f0aeff7')
+
+class GetTokenParamsResponseSchema(Schema):
+    ip = fields.String(required=True, example=u'pc160234.csi.it', 
+                       description=u'client login ip address')
+    ttl = fields.Integer(required=True, example=3600, 
+                         description=u'token ttl')
+    token = fields.String(required=True, 
+                          example=u'28ff1dd5-5520-42f3-a361-c58f19d20b7c', 
+                          description=u'token')
+    user = fields.Nested(GetTokenUserResponseSchema, required=True, 
+                         description=u'client login user')
+    timestamp = fields.String(required=True, example=u'internal', 
+                              description=u'token timestamp')
+    type = fields.String(required=True, example=u'internal', 
+                         description=u'token type') 
+
+class GetTokenResponseSchema(Schema):
+    token = fields.Nested(ListTokensParamsResponseSchema, required=True)
+
+class GetToken(SwaggerApiView):
+    tags = [u'auth']
+    definitions = {
+        u'ListTokensResponseSchema': ListTokensResponseSchema,
+    }
+    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
+    responses = SwaggerApiView.setResponses({
+        200: {
+            u'description': u'success',
+            u'schema': GetTokenResponseSchema
+        }
+    })
+
     def get(self, controller, data, oid, *args, **kwargs):
         """
         Get authentication token
-        Call this api to get authentication token
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-        - in: path
-          name: oid
-          type: string
-          format: uuid
-          required: true
-          description: Token id          
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          404:
-            $ref: "#/responses/NotFound"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests"
-          200:
-            description: Tokens list
-            schema:
-              type: object
-              required: [token]
-              properties:
-                token:
-                  type: object
-                  required: [ip, ttl, token, user, timestamp, type]
-                  properties:
-                    ip:
-                      type: string
-                      example: pc160234.csi.it
-                    ttl:
-                      type: integer
-                      example: 3600
-                    token:
-                      type: string
-                      example: 28ff1dd5-5520-42f3-a361-c58f19d20b7c
-                    user:
-                      type: object
-                      required: [name, roles, perms, active, id]
-                      properties:
-                        name:
-                          type: string
-                          example: admin@local
-                        roles:
-                          type: array
-                          items:
-                            type: string
-                        perms:
-                          type: string
-                        active:
-                          type: boolean
-                          example: true
-                        id:
-                          type: string
-                          example: 6d960236-d280-46d2-817d-f3ce8f0aeff7
-                    timestamp:
-                      type: string
-                      example: 19-23_14-07-2017
-                    type:
-                      type: string
-                      example: keyauth                         
+        Call this api to get authentication token                      
         """                
         data = controller.get_identity(oid)
         res = {
             u'token':data[u'uid'],
             u'type':data[u'type'],
             u'user':data[u'user'],
-            u'timestamp':data[u'timestamp'].strftime(u'%H-%M_%d-%m-%Y'), 
+            u'timestamp':format_date(data[u'timestamp']), 
             u'ttl':data[u'ttl'], 
             u'ip':data[u'ip']}
         resp = {u'token':res}
@@ -310,50 +233,21 @@ class LoginExists(ApiView):
         resp = controller.exist_identity(oid)
         return {u'token':oid, u'exist':resp} '''
 
-class DeleteToken(ApiView):
+## delete
+class DeleteToken(SwaggerApiView):
+    tags = [u'auth']
+    definitions = {}
+    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
+    responses = SwaggerApiView.setResponses({
+        204: {
+            u'description': u'no response'
+        }
+    })
+
     def delete(self, controller, data, oid, *args, **kwargs):
         """
         Delete authentication token
-        Call this api to delete an authentication token
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-        - in: path
-          name: oid
-          type: string
-          format: uuid
-          required: true
-          description: Token id          
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          404:
-            $ref: "#/responses/NotFound"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests"
-          204:
-            description: No response        
+        Call this api to delete an authentication token     
         """        
         resp = controller.remove_identity(oid)
         return (resp, 204)

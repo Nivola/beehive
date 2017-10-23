@@ -109,8 +109,8 @@ class BeehiveTestCase(unittest.TestCase):
             self.api[subsystem] = RemoteClient(endpoint, 
                                                keyfile=keyfile, 
                                                certfile=certfile)
-            self.logger.info(u'Load swagger schema from %s' % endpoint)
-            self.schema[subsystem] = self.validate_swagger_schema(endpoint)
+            #self.logger.info(u'Load swagger schema from %s' % endpoint)
+            #self.schema[subsystem] = self.validate_swagger_schema(endpoint)
 
     @classmethod
     def tearDownClass(cls):
@@ -174,6 +174,14 @@ class BeehiveTestCase(unittest.TestCase):
         token = res[u'access_token']
         seckey = res[u'seckey']
     
+    def get_schema(self, subsystem, endpoint):
+        schema = self.schema.get(subsystem, None)
+        if schema is None:
+            self.logger.info(u'Load swagger schema from %s' % endpoint)
+            schema = self.validate_swagger_schema(endpoint)
+            self.schema[subsystem] = schema
+        return schema
+    
     def call(self, subsystem, path, method, params=None, headers=None,
              user=None, pwd=None, auth=None, data=None, query=None, runlog=True,
              *args, **kvargs):
@@ -196,7 +204,8 @@ class BeehiveTestCase(unittest.TestCase):
                 headers = {}
     
             endpoint = self.endpoints[subsystem]
-            schema = self.schema[subsystem]
+            #schema = self.schema[subsystem]
+            schema = self.get_schema(subsystem, endpoint)
             if u'Content-Type' not in headers:
                 headers[u'Content-Type'] = u'application/json'            
     

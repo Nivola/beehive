@@ -248,11 +248,8 @@ def trace(entity=None, op=u'view'):
             start = time()
             
             args = list(args)            
-            inst = args.pop(0)
+            inst = args.pop(0)  
             
-#             if inst is not None and not isinstance(inst, ServiceController):
-#                 inst = kwargs.get(u'controller')
-
             def get_entity(entity):
                 if entity is None:
                     return inst
@@ -267,7 +264,7 @@ def trace(entity=None, op=u'view'):
                 # calculate elasped time
                 elapsed = round(time() - start, 4)
                 get_entity(entity).send_event(op, args=args, params=kwargs, 
-                                      elapsed=elapsed)
+                                              elapsed=elapsed)
             except Exception as ex:
                 # calculate elasped time
                 elapsed = round(time() - start, 4)

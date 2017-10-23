@@ -194,10 +194,9 @@ class EventProducerRedis(EventProducer):
     def _send_kombu(self, event_type, data, source, dest):
         try:
             event = Event(event_type, data, source, dest)
-            val = event.dict()
             with producers[self.conn].acquire() as producer:
                 msg = event.dict()
-                producer.publish(val,
+                producer.publish(msg,
                                  serializer=u'json',
                                  compression=u'bzip2',
                                  exchange=self.exchange,
