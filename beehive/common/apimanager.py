@@ -2853,7 +2853,7 @@ class ApiView(FlaskView):
     @watch
     def get_response(self, response, code=200, headers=None):
         """
-        :raises ApiManagerError: raise :class:`ApiManagerError`
+        **raise** :class:`ApiManagerError`
         """
         try:
             if response is None:
@@ -2970,14 +2970,10 @@ class ApiView(FlaskView):
             
             self.logger.info(u'Invoke api: %s [%s] - START' % 
                              (request.path, request.method))
-            query_string = u''
-            if request.method.lower() == u'get':
-                query_string = request.args.to_dict()
-            elif request.method.lower() in [u'post', u'put']:
-                query_string = request.form.to_dict()                
+            query_string = request.values.to_dict()    
             self.logger.debug(u'Api request headers:%s, data:%s, query:%s' % 
                               (headers, request.data, query_string))
-            self._get_response_mime_type()     
+            self._get_response_mime_type()
             
             # open database session.
             dbsession = module.get_session()
@@ -2992,7 +2988,7 @@ class ApiView(FlaskView):
                 data = request.data 
                 data = json.loads(data)
             except (AttributeError, ValueError): 
-                data = None
+                data = request.values.to_dict()
                 
             # validate query/input data
             if self.parameters_schema is not None:

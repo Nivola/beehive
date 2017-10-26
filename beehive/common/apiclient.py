@@ -351,14 +351,17 @@ class BeehiveApiClient(object):
         #seckey = identity['seckey']
         # create sign
         headers = {u'Accept':u'application/json'}
-        if self.api_authtype == u'keyauth' and self.uid is not None:
+        if self.api_authtype == u'keyauth' and uid is not None:
             sign = self.sign_request(seckey, path)
             headers.update({u'uid':uid, u'sign':sign})
-        elif self.api_authtype == u'oauth2' and self.uid is not None:
+        elif self.api_authtype == u'oauth2' and uid is not None:
             headers.update({u'Authorization':u'Bearer %s' % uid})
         elif self.api_authtype == u'simplehttp':
             auth = b64encode(u'%s:%s' % (self.api_user, self.api_user_pwd))
-            headers.update({u'Authorization':u'Basic %s' % auth})            
+            headers.update({u'Authorization':u'Basic %s' % auth})
+        else:
+            raise BeehiveApiClientError(u'Authorization method not supported '\
+                                        u'or token is not valid')
             
         if other_headers is not None:
             headers.update(other_headers)            
@@ -370,50 +373,11 @@ class BeehiveApiClient(object):
         port = endpoint[u'port']
         if method ==u'GET':
             path = u'%s?%s' % (path, data)
-        elif isinstance(data, dict):
+        elif isinstance(data, dict) or isinstance(data, list):
             data = json.dumps(data)
         res = self.http_client(proto, host, path, method,
                                port=port, data=data, headers=headers)
         return res
-    
-    '''
-    @watch
-    def get_api_doc(self, subsystem, path, method, data=u'', sync=True, 
-                    title=u'', desc= u'', output={}):
-        """Generate api documentation
-        """
-        doc = [
-            '.. expand::',
-            '   :method: %s' % method,
-            '   :auth: true',
-            '   :sync: %s' % sync,
-            '   :uri: %s' % path,
-            '   :title: %s' % title,
-            '   :desc: %s' % desc,
-            ''
-        ]
-        
-        if data != u'':
-            doc.extend([
-                '   **Inputs**',
-                '',
-                '   .. code-block:: python',
-                '',
-            ])
-            input = sjson.dumps(data, indent=2).split(u'\n')
-            input = map(lambda x: u'      %s' % x, input)
-            doc.extend(input)
-        doc.extend([
-            '   **Outputs**',
-            '',
-            '   .. code-block:: python',
-            '',
-            
-        ])
-        output = sjson.dumps(output, indent=2).split(u'\n')
-        output = map(lambda x: u'      %s' % x, output)
-        doc.extend(output)
-        return u'\n'.join(doc)'''
 
     @watch    
     def invoke(self, subsystem, path, method, data=u'', other_headers=None,
@@ -429,7 +393,7 @@ class BeehiveApiClient(object):
         #    self.create_token()
         
         try:
-            if parse is True and isinstance(data, dict):
+            if parse is True and isinstance(data, dict) or isinstance(data, list):
                 data = json.dumps(data)
             res = self.send_request(subsystem, path, method, data, 
                                     self.uid, self.seckey, other_headers)
