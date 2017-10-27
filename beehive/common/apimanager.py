@@ -504,12 +504,13 @@ class ApiManager(object):
                 
                 ##### oauth2 configuration #####
                 self.logger.info(u'Configure oauth2 - CONFIGURE')
-                # connect to redis
-                self.oauth2_endpoint = configurator.get(
-                    app=self.app_name, group=u'oauth2', name=u'endpoint')[0].value
-                self.logger.info(u'Setup oauth2 endpoint: %s' % self.oauth2_endpoint)
-    
-                self.logger.info(u'Configure oauth2 - CONFIGURED')  
+                try:
+                    self.oauth2_endpoint = configurator.get(
+                        app=self.app_name, group=u'oauth2', name=u'endpoint')[0].value
+                    self.logger.info(u'Setup oauth2 endpoint: %s' % self.oauth2_endpoint)
+                    self.logger.info(u'Configure oauth2 - CONFIGURED')
+                except:
+                    self.logger.warning(u'Configure oauth2 - NOT CONFIGURED')
                 ##### oauth2 configuration #####                
                 
                 ##### redis configuration #####
