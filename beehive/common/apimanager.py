@@ -16,10 +16,12 @@ from re import match
 from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA256
 from Crypto.Signature import PKCS1_v1_5
-from flask import request, Response
+from flask import request, Response, session
 #from flask.views import MethodView as FlaskMethodView
 #from flask.views import View as FlaskView
 from flask.views import MethodView as FlaskView
+from flask_session import Session
+from flask import current_app
 from random import randint
 from beecell.perf import watch
 from beecell.db import TransactionError, QueryError
@@ -31,7 +33,7 @@ from beecell.sendmail import Mailer
 from beehive.common.data import operation, trace
 from beecell.auth import AuthError, DatabaseAuth, LdapAuth, SystemUser
 from beecell.logger.helper import LoggerHelper
-from beecell.flask.redis_session import RedisSessionInterface
+#from beecell.flask.redis_session import RedisSessionInterface
 import gevent
 from beehive.common.apiclient import BeehiveApiClient, BeehiveApiClientError
 from beehive.common.model.config import ConfigDbManager
@@ -47,6 +49,25 @@ except:
 from re import escape
 from marshmallow.validate import OneOf, Range
 from copy import deepcopy
+
+logger = logging.getLogger(__name__)
+
+from flask_session.sessions import RedisSessionInterface
+class RedisSessionInterface2(RedisSessionInterface):
+    def __init__(self, redis, key_prefix, use_signer=False, permanent=True):
+        RedisSessionInterface.__init__(self, redis, key_prefix, use_signer, permanent)
+
+    def save_session(self, app, session, response):
+        RedisSessionInterface.save_session(self, app, session, response)
+        #oauth2_user = session.get(u'oauth2_user', None)
+        logger.warn(session)
+        if response.mimetype not in [u'text/html']:
+            self.redis.delete(self.key_prefix + session.sid)
+            logger.debug(u'Delete user session. This is an Api request')
+        if session.get(u'_invalidate', False) is not False:
+            self.redis.delete(self.key_prefix + session.sid)
+            logger.debug(u'Delete user session. This is an Api request')            
+
 
 class ApiManagerWarning(Exception):
     """Main excpetion raised by api manager and childs
@@ -481,7 +502,7 @@ class ApiManager(object):
         :param name: module name
         :return: ApiModule instance
         """
-        return self.modules[name]
+        return self.modules[name]     
 
     def configure(self):
         """ """
@@ -528,8 +549,20 @@ class ApiManager(object):
                 
                 # app session
                 if self.app is not None:
-                    self.app.session_interface = RedisSessionInterface(
-                        redis=self.redis_manager)
+                    self.app.config.update(
+                        SESSION_COOKIE_NAME=u'auth-session',
+                        #SESSION_COOKIE_DOMAIN=u'beehive',
+                        SESSION_COOKIE_SECURE=True,
+                        PERMANENT_SESSION_LIFETIME=3600,
+                        SESSION_TYPE=u'redis',
+                        SESSION_USE_SIGNER=True,
+                        SESSION_KEY_PREFIX=u'session:',
+                        SESSION_REDIS=self.redis_manager
+                    )                    
+                    Session(self.app)
+                    i = self.app.session_interface
+                    self.app.session_interface = RedisSessionInterface2(
+                        i.redis, i.key_prefix, i.use_signer, i.permanent)
                     self.logger.info(u'Setup redis session manager: %s' % 
                                      self.app.session_interface)
     
@@ -2316,7 +2349,7 @@ class ApiInternalObject(ApiObject):
     
     def __init__(self, *args, **kvargs):
         ApiObject.__init__(self, *args, **kvargs)
-        self.auth_db_manager = AuthDbManager()    
+        self.auth_db_manager = AuthDbManager()
     
     #
     # authorization
@@ -2556,7 +2589,7 @@ class ApiViewResponse(ApiObject):
         :param exception: exceptione raised [optinal]
         """
         objid = u'*'
-        if exception is not None: response = (False, escape(exception))
+        if exception is not None: response = (False, escape(str(exception)))
         method = api[u'method']
         if method in [u'GET']:
             action = u'view'
@@ -2718,7 +2751,44 @@ class ApiView(FlaskView):
         """
         return self.__get_token()
     
-    @watch
+    def invalidate_user_session(self):
+        """Remove user session from redis for api request
+        """
+        serializer = current_app.session_interface.serializer
+        redis = current_app.session_interface.redis
+        key_prefix = current_app.session_interface.key_prefix
+        
+        #self.logger.warn(session)
+        self.logger.warn(redis.keys(u'%s*' % key_prefix))
+        '''
+        if session is not None:
+            sid = session.sid
+        if sid is not None:
+
+            
+            # save session not already in redis
+            val = serializer.dumps(dict(session))
+            redis.setex(name=key_prefix + sid, value=val, time=5)            
+            
+            #current_app.session_interface.save_session(current_app, request)
+            
+            
+
+            #self.logger.warn(key_prefix + sid)
+            #self.logger.warn(redis.get(key_prefix + sid))            
+            #redis.expire(key_prefix + sid, 5)
+            #redis.delete(key_prefix + sid)
+            #self.logger.warn(redis.keys(u'%s*' % key_prefix))
+            #session = None
+
+            #redis.delete(key_prefix + sid)'''
+            
+        #session = None
+        self.logger.warn(session)
+        session[u'_permanent'] = False
+        self.logger.warn(session)
+        self.logger.debug(u'Invalidate user session')
+
     def authorize_request(self, module):
         """Authorize http request
         
@@ -2795,13 +2865,10 @@ class ApiView(FlaskView):
         #return user
         
     # response methods
-    @watch    
     def get_warning(self, exception, code, msg):
         self.get_error(exception, code, msg)
-    
 
     # response methods
-    @watch    
     def get_error(self, exception, code, msg):
         """
         :raises ApiManagerError: raise :class:`ApiManagerError`
@@ -3082,6 +3149,7 @@ class ApiView(FlaskView):
             if dbsession is not None:
                 module.release_session(dbsession)
             timeout.cancel()
+            #self.invalidate_user_session()
             self.logger.debug(u'Timeout released')
 
         return res

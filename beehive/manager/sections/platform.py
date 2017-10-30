@@ -226,8 +226,8 @@ class RedisController(AnsibleController):
             return res
         self.__run_cmd(func, dbs=range(0,8))
     
-    @expose(aliases=[u'delete_key [pattern]'], aliases_only=True)
-    def delete_key(self):
+    @expose(aliases=[u'delete [pattern]'], aliases_only=True)
+    def delete(self):
         """Delete redis instances keys.
     - pattern: keys search pattern [default=*]
         """        

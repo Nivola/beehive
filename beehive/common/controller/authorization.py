@@ -352,14 +352,7 @@ class BaseAuthController(ApiController):
         :param dbuser_attribs: user attributes as dict
         :return: SystemUser instance, user attributes as dict
         :raise ApiManagerError:
-        """
-        opts = {
-            u'name':name, 
-            u'domain':domain, 
-            u'password':u'xxxxxxx', 
-            u'login_ip':login_ip
-        }        
-        
+        """        
         # login user
         try:
             user = self.module.authentication_manager.login(name, password, 

@@ -149,7 +149,7 @@ class TokenController(AuthControllerChild):
         res = self._call(uri, u'DELETE')
         logger.info(res)
         res = {u'msg':u'Delete token %s' % value}
-        self.result(res, headers=[u'msg'])        
+        self.result(res, headers=[u'msg'])
         
 class UserController(AuthControllerChild):    
     class Meta:

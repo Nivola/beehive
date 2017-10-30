@@ -359,9 +359,6 @@ class BeehiveApiClient(object):
         elif self.api_authtype == u'simplehttp':
             auth = b64encode(u'%s:%s' % (self.api_user, self.api_user_pwd))
             headers.update({u'Authorization':u'Basic %s' % auth})
-        else:
-            raise BeehiveApiClientError(u'Authorization method not supported '\
-                                        u'or token is not valid')
             
         if other_headers is not None:
             headers.update(other_headers)            
@@ -524,7 +521,6 @@ class BeehiveApiClient(object):
         
         return res
     
-    @watch
     def create_token(self, api_user=None, api_user_pwd=None, login_ip=None):
         """Login module internal user
         
@@ -541,7 +537,7 @@ class BeehiveApiClient(object):
             else:
                 data[u'login-ip'] = login_ip
             res = self.send_request(u'auth', u'/v1.0/keyauth/token', 
-                                    u'POST', data=json.dumps(data))
+                                    u'POST', data=data)
             #res = res[u'response']
             self.logger.info(u'Login user %s with token: %s' % 
                              (self.api_user, res[u'access_token']))

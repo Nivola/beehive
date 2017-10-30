@@ -24,6 +24,7 @@ from beehive.manager.sections.vsphere import vsphere_controller_handlers,\
     vsphere_platform_controller_handlers
 from beehive.manager.sections.openstack import openstack_controller_handlers,\
     openstack_platform_controller_handlers
+from beehive.manager.sections.oauth2 import oauth2_controller_handlers
 logging.captureWarnings(True)
 logger = logging.getLogger(__name__)
 
@@ -132,6 +133,7 @@ class CliManager(CementApp):
         handlers.extend(platform_controller_handlers)
         handlers.extend(resource_controller_handlers)
         handlers.extend(auth_controller_handlers)
+        handlers.extend(oauth2_controller_handlers)
         handlers.extend(catalog_controller_handlers)
         handlers.extend(event_controller_handlers)
         handlers.extend(scheduler_controller_handlers)
@@ -140,6 +142,7 @@ class CliManager(CementApp):
         handlers.extend(vsphere_platform_controller_handlers)
         handlers.extend(openstack_controller_handlers)
         handlers.extend(openstack_platform_controller_handlers)
+        
         
         configs_file = u'/etc/beehive/manage.conf'
         history_file = u'~/.beehive.manage'
