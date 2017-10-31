@@ -1,0 +1,18 @@
+{
+    "vcenter":{
+        "host":"tst-vcenter.tstsddc.csi.it",
+        "user":"administrator@tstsddc.csi.it",
+        "pwd":"cs1$topix",
+        "port":443,
+        "timeout":5,
+        "verified":false
+    },
+    "nsx":{
+        "host":"tst-nsxmanager.tstsddc.csi.it",
+        "port":443,
+        "user":"admin",
+        "pwd":"Cs1$topix",
+        "verified":false,
+        "timeout":5
+    }
+}

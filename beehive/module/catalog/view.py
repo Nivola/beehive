@@ -84,7 +84,7 @@ class GetCatalog(SwaggerApiView):
     def get(self, controller, data, oid, *args, **kwargs):
         catalog = controller.get_catalog(oid)
         res = catalog.detail()
-        resp = {u'directory':res}        
+        resp = {u'catalog':res}        
         return resp
 
 ## get perms
@@ -136,7 +136,7 @@ class CreateCatalog(SwaggerApiView):
     })
     
     def post(self, controller, data, *args, **kwargs):
-        resp = controller.add_catalog(**data.get(u'directory'))
+        resp = controller.add_catalog(**data.get(u'catalog'))
         return ({u'uuid':resp}, 201)
 
 ## update
@@ -168,7 +168,7 @@ class UpdateCatalog(SwaggerApiView):
     
     def put(self, controller, data, oid, *args, **kwargs):
         catalog = controller.get_catalog(oid)
-        resp = catalog.update(**data.get(u'directory'))
+        resp = catalog.update(**data.get(u'catalog'))
         return {u'uuid':resp}
     
 ## delete
@@ -304,7 +304,7 @@ class CreateEndpoint(SwaggerApiView):
     
     def post(self, controller, data, *args, **kwargs):
         data = data.get(u'endpoint')
-        endpoint = data.pop(u'directory')
+        endpoint = data.pop(u'catalog')
         endpoint_obj = controller.get_catalog(endpoint)
         resp = endpoint_obj.add_endpoint(**data)
         return ({u'uuid':resp}, 201)
