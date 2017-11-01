@@ -3285,6 +3285,20 @@ class CrudApiObjectJobResponseSchema(CrudApiObjectResponseSchema,
                                      CrudApiJobResponseSchema):
     pass    
 
+class ApiGraphResponseSchema(Schema):
+    directed = fields.Boolean(required=True, example=True, 
+                              description=u'if True graph is directed')
+    graph = fields.Dict(required=True, example={u'name': u'vShield V...'}, 
+                              description=u'if TRue graph is directed')
+    links = fields.List(list.Dict(example={u'source': 2, u'target': 7}), 
+                        required=True, example=True, 
+                        description=u'links list')
+    multigraph = fields.Boolean(required=True, example=False, 
+                                description=u'if True graph is multigraph')
+    nodes = fields.List(list.Dict(example={}), 
+                        required=True, example=True, 
+                        description=u'nodes list')
+
 class ApiObjectPermsParamsResponseSchema(Schema):
     id = fields.Integer(required=True, default=1, example=1)
     oid = fields.Integer(required=True, default=1, example=1)
