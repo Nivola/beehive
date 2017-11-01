@@ -3295,7 +3295,7 @@ class ApiGraphResponseSchema(Schema):
                         description=u'links list')
     multigraph = fields.Boolean(required=True, example=False, 
                                 description=u'if True graph is multigraph')
-    nodes = fields.List(list.Dict(example={}), 
+    nodes = fields.List(fields.Dict(example={}), 
                         required=True, example=True, 
                         description=u'nodes list')
 
