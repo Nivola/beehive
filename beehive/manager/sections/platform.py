@@ -305,7 +305,7 @@ class NodeController(AnsibleController):
         tasks = [
             dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
         ]
-        runner.run_task(group, tasks=tasks, frmt=u'text')         
+        runner.run_task(group, tasks=tasks, frmt=u'text')
         
 class BeehiveController(AnsibleController):
     class Meta:
@@ -630,13 +630,16 @@ class BeehiveController(AnsibleController):
             for host in hosts:
                 url = URL(u'http://%s:%s/v1.0/server/ping' % (host, port))
                 logger.debug(url)
-                http = HTTPClient(url.host, port=url.port)
+                http = HTTPClient(url.host, port=url.port, 
+                                  headers={u'Content-Type':u'application/json'})
                 try:
                     # issue a get request
                     response = http.get(url.request_uri)
                     # read status_code
                     response.status_code
                     # read response body
+                    logger.debug(url.request_uri)
+                    logger.debug(response.read())
                     res = json.loads(response.read())
                     # close connections
                     http.close()
@@ -663,6 +666,25 @@ class BeehiveController(AnsibleController):
         self.result(resp, headers=[u'subsystem', u'instance', u'host', u'port', 
                                    u'ping', u'status'])
         
+    @expose(aliases=[u'instance-log <subsystem> <vassal> [rows=100]'], aliases_only=True)
+    def instance_log(self):
+        """Execute command on managed platform nodes
+    - group: ansible group
+    - cmd: shell command   
+        """
+        group = self.get_arg(name=u'subsystem')
+        vassal = self.get_arg(name=u'vassal')
+        rows = self.get_arg(default=100)
+        cmd  = u'tail -%s /var/log/beehive/beehive100/%s.log' % (rows, vassal)
+        path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+        path_lib = u'%s/library/beehive/' % (self.ansible_path)
+        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
+                        module=path_lib)
+        tasks = [
+            dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
+        ]
+        runner.run_task(group, tasks=tasks, frmt=u'text')        
+                
     '''def beehive_get_uwsgi_tree(self):
         """
         """

@@ -3290,7 +3290,7 @@ class ApiGraphResponseSchema(Schema):
                               description=u'if True graph is directed')
     graph = fields.Dict(required=True, example={u'name': u'vShield V...'}, 
                               description=u'if TRue graph is directed')
-    links = fields.List(list.Dict(example={u'source': 2, u'target': 7}), 
+    links = fields.List(fields.Dict(example={u'source': 2, u'target': 7}), 
                         required=True, example=True, 
                         description=u'links list')
     multigraph = fields.Boolean(required=True, example=False, 
