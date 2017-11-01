@@ -638,8 +638,6 @@ class BeehiveController(AnsibleController):
                     # read status_code
                     response.status_code
                     # read response body
-                    logger.debug(url.request_uri)
-                    logger.debug(response.read())
                     res = json.loads(response.read())
                     # close connections
                     http.close()
@@ -664,18 +662,21 @@ class BeehiveController(AnsibleController):
                     
             
         self.result(resp, headers=[u'subsystem', u'instance', u'host', u'port', 
-                                   u'ping', u'status'])
+                                   u'status'])
         
     @expose(aliases=[u'instance-log <subsystem> <vassal> [rows=100]'], aliases_only=True)
     def instance_log(self):
-        """Execute command on managed platform nodes
-    - group: ansible group
-    - cmd: shell command   
+        """Get instance log
+    - subsystem: beehive subsystem. Ex. auth, event
+    - vassal: instance number. Ex. 01
+    - rows: number of row to tail [default=100]
         """
-        group = self.get_arg(name=u'subsystem')
+        group = u'beehive'
+        subsystem = self.get_arg(name=u'subsystem')
         vassal = self.get_arg(name=u'vassal')
         rows = self.get_arg(default=100)
-        cmd  = u'tail -%s /var/log/beehive/beehive100/%s.log' % (rows, vassal)
+        cmd  = u'tail -%s /var/log/beehive/beehive100/%s-%s.log' % \
+            (rows, subsystem, vassal)
         path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
         path_lib = u'%s/library/beehive/' % (self.ansible_path)
         runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
@@ -683,7 +684,29 @@ class BeehiveController(AnsibleController):
         tasks = [
             dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
         ]
-        runner.run_task(group, tasks=tasks, frmt=u'text')        
+        runner.run_task(group, tasks=tasks, frmt=u'text')
+                
+    @expose(aliases=[u'uwsgi-log <subsystem> <vassal> [rows=100]'], aliases_only=True)
+    def uwsgi_log(self):
+        """Get uwsgi instance log
+    - subsystem: beehive subsystem. Ex. auth, event
+    - vassal: instance number. Ex. 01
+    - rows: number of row to tail [default=100] 
+        """
+        group = u'beehive'
+        subsystem = self.get_arg(name=u'subsystem')
+        vassal = self.get_arg(name=u'vassal')
+        rows = self.get_arg(default=100)
+        cmd  = u'tail -%s /var/log/beehive/beehive100/%s-%s.uwsgi.log' % \
+            (rows, subsystem, vassal)
+        path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+        path_lib = u'%s/library/beehive/' % (self.ansible_path)
+        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
+                        module=path_lib)
+        tasks = [
+            dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
+        ]
+        runner.run_task(group, tasks=tasks, frmt=u'text')                
                 
     '''def beehive_get_uwsgi_tree(self):
         """
