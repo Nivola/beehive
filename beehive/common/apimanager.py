@@ -874,9 +874,9 @@ class ApiManager(object):
             return
         
         # register monitor        
-        self.monitor_producer.send(self.app_endpoint_id, self.app_desc, 
-                                   self.app_name, {u'uri':self.app_uri})
-        self.logger.info(u'Register %s instance in monitor' % self.app_endpoint_id)
+        #self.monitor_producer.send(self.app_endpoint_id, self.app_desc, 
+        #                           self.app_name, {u'uri':self.app_uri})
+        #self.logger.info(u'Register %s instance in monitor' % self.app_endpoint_id)
                         
         
 class ApiModule(object):
@@ -1889,8 +1889,14 @@ class ApiObject(object):
     def register_object(self, objids, desc=u''):
         """Register object types, objects and permissions related to module.
         
-        :param objids: objid split by //
-        :param desc: object description
+        **Parameters:**
+        
+            * **objids**: objid split by //
+            * **desc**: object description        
+        
+        **Returns:**
+        
+        **Raise:** :class:`ApiManagerError` 
         """
         self.logger.debug(u'Register api object: %s:%s %s - START' % 
                           (self.objtype, self.objdef, objids))
