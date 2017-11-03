@@ -25,6 +25,7 @@ from beehive.manager.sections.vsphere import vsphere_controller_handlers,\
 from beehive.manager.sections.openstack import openstack_controller_handlers,\
     openstack_platform_controller_handlers
 from beehive.manager.sections.oauth2 import oauth2_controller_handlers
+from beecell.cement_cmd.foundation import CementCmd, CementCmdBaseController
 logging.captureWarnings(True)
 logger = logging.getLogger(__name__)
 
@@ -73,7 +74,25 @@ class CliMinimalLogger(cement.utils.misc.MinimalLogger):
 
 cement.utils.misc.MinimalLogger = CliMinimalLogger'''
 
-class CliController(CementBaseController):
+def config_cli(app):
+    # get configs
+    configs = app.config.get_section_dict(u'configs')
+    envs = u', '.join(configs[u'environments'].keys())
+    formats = u', '.join(BaseController.Meta.formats)
+    
+    if app.loop is False:
+        # add any arguments after setup(), and before run()
+        app.args.add_argument('-v', '--version', action='version', version=BANNER)
+        app.args.add_argument('-e', '--env', action='store', dest='env',
+                          help='execution environment. Select from: %s' % envs)
+        app.args.add_argument('-f', '--format', action='store', dest='format',
+                          help='response format. Select from: %s' % formats)
+        app.args.add_argument('--color', action='store', dest='color',
+                          help='response colered. Can be true or false. [default=true]')
+        
+    logger.info(u'configure app')  
+
+class CliController(CementCmdBaseController):
     class Meta:
         label = u'base'
         description = "Beehive manager."
@@ -81,19 +100,19 @@ class CliController(CementBaseController):
         ]
 
     def _setup(self, base_app):
-        CementBaseController._setup(self, base_app)
+        CementCmdBaseController._setup(self, base_app)
 
     @expose(hide=True)
     def default(self):
-        self.app.args.print_help()
+        self.app.print_help()
 
-class CliManager(CementApp):
+class CliManager(CementCmd):
     """Cli manager
     """
     class Meta:
         label = "beehive"
         debug = False
-        #log_handler = 'clilogging'
+        prompt = u'beehive> '
         
         logging_level = logging.DEBUG
         logging_format = u'%(asctime)s - %(levelname)s - ' \
@@ -153,12 +172,9 @@ class CliManager(CementApp):
         
         #config_files = [u'/etc/beehive/manage.conf']
         
-
-    def __init__(self, *args, **kvargs):
-        """Init cli manager
-        """
-        CementApp.__init__(self, *args, **kvargs)
-        
+        hooks = [
+            ('pre_run', config_cli)
+        ]        
         
     def setup(self):
         CementApp.setup(self)
@@ -195,8 +211,20 @@ class CliManager(CementApp):
                                           self._meta.logging_format,
                                           formatter=ColorFormatter)
 
+'''
+if __name__ == '__main__':
+    app = MyApp('beehive')
+    #app.setup()
+    app.run()
+'''
 
-with CliManager() as app:
+  
+
+if __name__ == '__main__':
+    app = CliManager('beehive')
+
+#with CliManager('beehive') as app:
+    '''
     # get configs
     configs = app.config.get_section_dict(u'configs')
     envs = u', '.join(configs[u'environments'].keys())
@@ -212,6 +240,7 @@ with CliManager() as app:
                       help='response colered. Can be true or false. [default=true]')
     
     logger.info(u'configure app')
+    '''
 
     #app.config.parse_file(app.configs_file)
     #print app.config.get_sections()
@@ -219,11 +248,11 @@ with CliManager() as app:
     #print app.config.get_section_dict(u'log.logging')
     
     # Check if an interface called 'output' is defined
-    app.handler.defined('output')
+    #app.handler.defined('output')
 
     # Check if the handler 'argparse' is registered to the 'argument'
     # interface
-    app.handler.registered('argument', 'argparse')
+    #app.handler.registered('argument', 'argparse')
     app.run()
     
     # close the application

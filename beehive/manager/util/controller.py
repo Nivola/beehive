@@ -14,6 +14,7 @@ from functools import wraps
 import logging
 from beecell.logger.helper import LoggerHelper
 from beehive.common.log import ColorFormatter
+from beecell.cement_cmd.foundation import CementCmdBaseController
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
@@ -146,7 +147,7 @@ class YamlFilter(Filter):
             self.prev_tag2 = value
             yield rtype, value
 
-class BaseController(CementBaseController):
+class BaseController(CementCmdBaseController):
     """
     """
     perm_headers = [u'id', u'oid', u'objid', u'subsystem', u'type', u'aid', 
@@ -210,6 +211,12 @@ commands:
 
         return textwrap.dedent(txt)        
     
+    def _get_config(self, config):
+        if config in self.app.pargs.__dict__:
+            return self.app.pargs.__dict__[config]
+        else:
+            return None
+    
     def _parse_args(self):
         CementBaseController._parse_args(self)
         
@@ -217,14 +224,16 @@ commands:
         envs = u', '.join(self.configs[u'environments'].keys())
         default_env = self.configs[u'environments'].get(u'default', None)
         
-        self.format = self.app.pargs.format
+        #self.format = self.app.pargs.format
+        self.format = self._get_config(u'format')
+        self.color = self._get_config(u'color')
+        self.env = self._get_config(u'env')
         if self.format is None:
             self.format = u'table'
-        if self.app.pargs.color is None:
+        if self.color is None:
             self.color = True
         else:
             self.color = str2bool(self.app.pargs.format)
-        self.env = self.app.pargs.env
         if self.env is None:
             if default_env is not None:
                 self.env = default_env
