@@ -21,54 +21,6 @@ class AuthController(BaseController):
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
 
-    @expose(help="Authorization management", hide=True)
-    def default(self):
-        self.app.args.print_help()
-        
-    #
-    # sessions
-    #
-    '''
-    def get_sessions(self):
-        uri = u'/v1.0/server/sessions'
-        res = self._call(uri, u'GET', data=u'')
-        logger.info(u'Get sessions: %s' % res)
-        res = [{u'id':truncate(i[u'sid']),
-                u'ttl':i[u'ttl'],
-                u'oauth2_credentials':i[u'oauth2_credentials'],
-                u'oauth2_user':i[u'oauth2_user']}
-               for i in res[u'sessions']]
-        self.result(res, headers=
-                    [u'id', u'ttl', u'oauth2_credentials.scope', 
-                     u'oauth2_credentials.state', 
-                     u'oauth2_credentials.redirect_uri',
-                     u'oauth2_credentials.client_id',
-                     u'oauth2_user.name',])
-                     
-    #
-    # simplehttp login
-    #
-    def simplehttp_login_domains(self):
-        uri = u'%s/login/domains' % (self.simplehttp_uri)
-        res = self._call(uri, u'GET')
-        logger.info(u'Get domains: %s' % res)
-        domains = []
-        for item in res[u'domains']:
-            domains.append({u'domain':item[0],
-                            u'type':item[1]})
-        self.result(domains, headers=[u'domain', u'type'])
-        
-    def simplehttp_login_user(self, user, pwd, ip):
-        data = {u'user':user, u'password':pwd, u'login-ip':ip}
-        uri = u'%s/login' % (self.simplehttp_uri)
-        res = self.client.send_signed_request(
-                u'auth', uri, u'POST', data=json.dumps(data))
-        res = res[u'response']
-        logger.info(u'Login user %s: %s' % (user, res))
-        self.result(res, headers=[u'user.id', u'uid', u'user.name', u'timestamp',
-                                  u'user.active'])
-    '''
-        
 class AuthControllerChild(ApiController):
     baseuri = u'/v1.0/keyauth'
     simplehttp_uri = u'/v1.0/simplehttp'
@@ -97,10 +49,6 @@ class DomainController(AuthControllerChild):
         label = 'domains'
         description = "Domain management"
         
-    @expose(help="Domain management", hide=True)
-    def default(self):
-        self.app.args.print_help()
-        
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     def list(self):
         """List all domains       
@@ -114,10 +62,6 @@ class TokenController(AuthControllerChild):
     class Meta:
         label = 'tokens'
         description = "Token management"
-        
-    @expose(help="Token management", hide=True)
-    def default(self):
-        self.app.args.print_help()
         
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     def list(self):
@@ -156,10 +100,6 @@ class UserController(AuthControllerChild):
         label = 'users'
         description = "User management"
         
-    @expose(help="User management", hide=True)
-    def default(self):
-        self.app.args.print_help()
-    
     @expose(aliases=[u'add <name> <password> [<expirydate>=yyyy-mm-dd]'], 
             aliases_only=True)
     def add(self):
@@ -348,10 +288,6 @@ class RoleController(AuthControllerChild):
         label = 'roles'
         description = "Role management"
         
-    @expose(help="Role management", hide=True)
-    def default(self):
-        self.app.args.print_help()
-    
     @expose(aliases=[u'add <name> <desc>'], 
             aliases_only=True)
     def add(self):
@@ -463,10 +399,6 @@ class GroupController(AuthControllerChild):
         label = 'groups'
         description = "Group management"
         
-    @expose(help="Group management", hide=True)
-    def default(self):
-        self.app.args.print_help()
-    
     @expose(aliases=[u'add <name> <desc> [<expirydate>=yyyy-mm-dd]'], 
             aliases_only=True)
     def add(self):
@@ -631,11 +563,7 @@ class ObjectController(AuthControllerChild):
     class Meta:
         label = 'objects'
         description = "Object management"
-        
-    @expose(help="Object management", hide=True)
-    def default(self):
-        self.app.args.print_help()
-    
+
     #
     # actions
     #
@@ -791,5 +719,5 @@ auth_controller_handlers = [
     GroupController,
     ObjectController
 ]                
-        
+
         

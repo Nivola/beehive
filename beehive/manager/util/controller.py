@@ -84,7 +84,8 @@ def check_error(fn):
         except Exception as ex:
             logger.error(ex, exc_info=1)
             print_error(ex)
-            exit(1)
+            args[0].app.error = True
+            #exit(1)
     return check_error_inner
 
 class JsonStyle(Style):
@@ -163,7 +164,7 @@ class BaseController(CementCmdBaseController):
         formats = [u'json', u'yaml', u'table', u'custom', u'native']
     
     def _setup(self, base_app):
-        CementBaseController._setup(self, base_app)
+        CementCmdBaseController._setup(self, base_app)
 
         self.text = []
         self.pp = PrettyPrinter(width=200)
@@ -212,31 +213,36 @@ commands:
         return textwrap.dedent(txt)        
     
     def _get_config(self, config):
-        if config in self.app.pargs.__dict__:
-            return self.app.pargs.__dict__[config]
-        else:
-            return None
+        val = getattr(self.app.pargs, config, None)
+        return val
+        #if config in self.app.pargs.__dict__:
+        #    return self.app.pargs.__dict__[config]
+        #else:
+        #    return None
     
     def _parse_args(self):
-        CementBaseController._parse_args(self)
+        CementCmdBaseController._parse_args(self)
         
         #self.configs = self.app.config.get_section_dict(u'configs')
         envs = u', '.join(self.configs[u'environments'].keys())
         default_env = self.configs[u'environments'].get(u'default', None)
-        
-        #self.format = self.app.pargs.format
-        self.format = self._get_config(u'format')
-        self.color = self._get_config(u'color')
-        self.env = self._get_config(u'env')
+        if getattr(self.app._meta, u'env', None) is None:
+            self.app._meta.env = default_env
+
+        # get environment config from app custom args
+        self.format = getattr(self.app.pargs, u'format', None)
+        self.color = getattr(self.app.pargs, u'color', None)
+        self.env = getattr(self.app.pargs, u'env', None)
         if self.format is None:
-            self.format = u'table'
+            self.format = self.app._meta.format
+            setattr(self.app._parsed_args, u'format', self.format)
         if self.color is None:
-            self.color = True
-        else:
-            self.color = str2bool(self.app.pargs.format)
+            self.color = self.app._meta.color
+            setattr(self.app._parsed_args, u'color', self.color)
         if self.env is None:
-            if default_env is not None:
-                self.env = default_env
+            if self.app._meta.env is not None:
+                self.env = self.app._meta.env
+                setattr(self.app._parsed_args, u'env', self.env)
             else:
                 raise Exception(u'Platform environment must be defined. '\
                                 u'Select from: %s' % envs)

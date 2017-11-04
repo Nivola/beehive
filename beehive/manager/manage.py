@@ -26,6 +26,7 @@ from beehive.manager.sections.openstack import openstack_controller_handlers,\
     openstack_platform_controller_handlers
 from beehive.manager.sections.oauth2 import oauth2_controller_handlers
 from beecell.cement_cmd.foundation import CementCmd, CementCmdBaseController
+from beehive.manager.sections.environment import env_controller_handlers
 logging.captureWarnings(True)
 logger = logging.getLogger(__name__)
 
@@ -89,7 +90,9 @@ def config_cli(app):
                           help='response format. Select from: %s' % formats)
         app.args.add_argument('--color', action='store', dest='color',
                           help='response colered. Can be true or false. [default=true]')
-        
+    #else:
+    #    app.args.add_argument('version', action='version', version=BANNER)
+    
     logger.info(u'configure app')  
 
 class CliController(CementCmdBaseController):
@@ -149,6 +152,7 @@ class CliManager(CementCmd):
             CliController,
         ]
         
+        handlers.extend(env_controller_handlers)
         handlers.extend(platform_controller_handlers)
         handlers.extend(resource_controller_handlers)
         handlers.extend(auth_controller_handlers)
@@ -174,7 +178,10 @@ class CliManager(CementCmd):
         
         hooks = [
             ('pre_run', config_cli)
-        ]        
+        ]
+        
+        color = True
+        format = u'table'
         
     def setup(self):
         CementApp.setup(self)
