@@ -327,6 +327,15 @@ class VspherePlatformNetworkDvpController(VspherePlatformNetworkChildController)
         logger.info(res)
         self.result(res, details=True)
 
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    def delete(self):
+        oid = self.get_arg(name=u'id')
+        obj = self.entity_class.get(oid)
+        task = self.entity_class.remove(obj)
+        self.wait_task(task)
+        res = {u'msg':u'Delete dvpg %s' % (oid)}
+        self.result(res, headers=[u'msg'])
+
 class VspherePlatformNetworkSecurityGroupController(VspherePlatformNetworkChildController):
     class Meta:
         label = 'vsphere.platform.networks.sg'
@@ -352,11 +361,18 @@ class VspherePlatformNetworkSecurityGroupController(VspherePlatformNetworkChildC
     def get(self):
         oid = self.get_arg(name=u'id')
         res = self.entity_class.get(oid)
-        rules = res.pop(u'member')
+        rules = res.pop(u'member', [])
         self.result(res, details=True)
         print(u'Members:')
         self.result(rules, headers=[u'objectId', u'name', 
                                            u'objectTypeName'])
+    
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    def delete(self):
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.delete(oid)
+        res = {u'msg':u'Delete security-group %s' % (oid)}
+        self.result(res, headers=[u'msg'])    
     
     @expose(aliases=[u'delete-member <id>'], aliases_only=True)
     def delete_member(self):
@@ -548,7 +564,14 @@ class VspherePlatformNetworkIpsetController(VspherePlatformNetworkChildControlle
         network = self.entity_class.get(oid)
         res = self.entity_class.detail(network)
         logger.info(res)
-        self.result(res, details=True)           
+        self.result(res, details=True)
+        
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    def delete(self):
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.delete(oid)
+        res = {u'msg':u'Delete ipset %s' % (oid)}
+        self.result(res, headers=[u'msg'])                
         
 class VspherePlatformNetworkEdgeController(VspherePlatformNetworkChildController):
     class Meta:

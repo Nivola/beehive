@@ -455,7 +455,7 @@ class ResourceEntityController(ResourceControllerChild):
         res = {u'msg':u'Delete resource %s' % value}
         self.result(res, headers=[u'msg'])
         
-    @expose(aliases=[u'delete <id1,id2>'], aliases_only=True)
+    @expose(aliases=[u'deletes <id1,id2>'], aliases_only=True)
     def deletes(self):
         """Delete resources id1, id2, ..
         """

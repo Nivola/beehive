@@ -55,6 +55,7 @@ class BeehiveTestCase(unittest.TestCase):
     logger = logging.getLogger(u'beehive.test.log')
     runlogger = logging.getLogger(u'beehive.test.run')
     pp = pprint.PrettyPrinter(width=200)
+    validatation_active = True
     
     @classmethod
     def setUpClass(cls):
@@ -75,12 +76,14 @@ class BeehiveTestCase(unittest.TestCase):
             #config = self.load_config(u'%s/params.json' % path)
             home = os.path.expanduser(u'~')
             config = self.load_config(u'%s/beehive.json' % home)
+            logger.info(u'get beehive test configuraztion')
         except:
             raise Exception(u'Test config file beehive.json was not find in user home')
         
         env = config.get(u'env')
         current_schema = config.get(u'schema')
         cfg = config.get(env)
+        self.test_config = cfg
         
         # endpoints
         self.endpoints = cfg.get(u'endpoints')
@@ -125,15 +128,6 @@ class BeehiveTestCase(unittest.TestCase):
         config = json.loads(config)
         f.close()
         return config
-
-    @classmethod
-    def validate_swagger_schema(cls, endpoint):
-        start = time.time()
-        schema_uri = u'%s/apispec_1.json' % endpoint
-        schema = load(schema_uri)
-        logger.info(u'Load swagger schema from %s: %ss' % (endpoint, 
-                                                           time.time()-start))
-        return schema
         
     def setUp(self):
         logger.info(u'========== %s ==========' % self.id()[9:])
@@ -174,13 +168,40 @@ class BeehiveTestCase(unittest.TestCase):
         token = res[u'access_token']
         seckey = res[u'seckey']
     
+    #@classmethod
+    def validate_swagger_schema(self, endpoint):
+        start = time.time()
+        schema_uri = u'%s/apispec_1.json' % endpoint
+        schema = load(schema_uri)
+        logger.info(u'Load swagger schema from %s: %ss' % (endpoint, 
+                                                           time.time()-start))
+        return schema    
+    
     def get_schema(self, subsystem, endpoint):
-        schema = self.schema.get(subsystem, None)
-        if schema is None:
-            self.logger.info(u'Load swagger schema from %s' % endpoint)
-            schema = self.validate_swagger_schema(endpoint)
-            self.schema[subsystem] = schema
-        return schema
+        if self.validatation_active is True:
+            schema = self.schema.get(subsystem, None)
+            if schema is None:
+                self.logger.info(u'Load swagger schema from %s' % endpoint)
+                schema = self.validate_swagger_schema(endpoint)
+                self.schema[subsystem] = schema
+            return schema
+        return None
+    
+    def validate_response(self, resp_content_type, schema, path, method, 
+                          response, runlog):
+        validate = True
+        if self.validatation_active is True:
+            # validate with swagger schema
+            if resp_content_type.find(u'application/json') >= 0:
+                validator = ApiValidator(schema, path, method)
+                validate = validator.validate(response)
+                if runlog is True:
+                    self.runlogger.info(u'validate:         %s' % validate)
+            else:
+                if runlog is True:
+                    self.runlogger.warn(u'validation supported only for application/json')
+                validate = True
+        return validate
     
     def call(self, subsystem, path, method, params=None, headers=None,
              user=None, pwd=None, auth=None, data=None, query=None, runlog=True,
@@ -322,15 +343,8 @@ class BeehiveTestCase(unittest.TestCase):
                 self.runlogger.info(u'response data:    %s' % response.text)            
             
             # validate with swagger schema
-            if resp_content_type.find(u'application/json') >= 0:
-                validator = ApiValidator(schema, path, method)
-                validate = validator.validate(response)
-                if runlog is True:
-                    self.runlogger.info(u'validate:         %s' % validate)
-            else:
-                if runlog is True:
-                    self.runlogger.warn(u'validation supported only for application/json')
-                validate = True
+            validate = self.validate_response(resp_content_type, schema, 
+                path, method, response, runlog)
         except:
             logger.error(u'', exc_info=1)
             if runlog is True:
@@ -443,8 +457,10 @@ def runtest(testcase_class, tests):
     frmt = u'%(asctime)s - %(levelname)s - %(message)s'
     loggers = [
         logging.getLogger(u'beehive'),
-        logging.getLogger(u'beehive_resource'),
+        logging.getLogger(u'beedrones'),
         logging.getLogger(u'beecell'),
+        logging.getLogger(u'beehive_resource'),
+        logging.getLogger(u'beehive_service'),
     ]
     LoggerHelper.file_handler(loggers, logging.DEBUG, log_file, frmt=frmt, 
                               formatter=ColorFormatter)

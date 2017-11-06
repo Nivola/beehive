@@ -184,10 +184,13 @@ class CliManager(CementCmd):
         format = u'table'
         
     def setup(self):
-        CementApp.setup(self)
-        
-        self.setup_logging()
+        CementCmd.setup(self)
         self.load_configs()
+
+    def setup_once(self):
+        if self.has_setup is False:
+            self.setup_logging()
+        CementCmd.setup_once(self)            
 
     def load_configs(self):
         """Load configurations
