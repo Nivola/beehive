@@ -27,6 +27,7 @@ from beehive.manager.sections.openstack import openstack_controller_handlers,\
 from beehive.manager.sections.oauth2 import oauth2_controller_handlers
 from beecell.cement_cmd.foundation import CementCmd, CementCmdBaseController
 from beehive.manager.sections.environment import env_controller_handlers
+
 logging.captureWarnings(True)
 logger = logging.getLogger(__name__)
 
@@ -92,8 +93,6 @@ def config_cli(app):
                           help='response colered. Can be true or false. [default=true]')
     #else:
     #    app.args.add_argument('version', action='version', version=BANNER)
-    
-    logger.info(u'configure app')  
 
 class CliController(CementCmdBaseController):
     class Meta:
@@ -152,6 +151,7 @@ class CliManager(CementCmd):
             CliController,
         ]
         
+        logger.info(u'Setup handler')
         handlers.extend(env_controller_handlers)
         handlers.extend(platform_controller_handlers)
         handlers.extend(resource_controller_handlers)
@@ -186,10 +186,11 @@ class CliManager(CementCmd):
     def setup(self):
         CementCmd.setup(self)
         self.load_configs()
+        logger.info(u'App %s configured' % self._meta.label)
 
     def setup_once(self):
-        if self.has_setup is False:
-            self.setup_logging()
+        #if self.has_setup is False:
+        #    self.setup_logging()
         CementCmd.setup_once(self)            
 
     def load_configs(self):
@@ -207,62 +208,28 @@ class CliManager(CementCmd):
                 u'endpoint':None
             }
         self.config.merge({u'configs':configs})
+        logger.info(u'Load configuration from %s' % self._meta.configs_file)
 
-    def setup_logging(self):
+    @staticmethod
+    def setup_logging():
         """Setup loggers
         """
-        loggers = [logging.getLogger(item) for item in self._meta.logging_loggers]
+        loggers = [logging.getLogger(item) for item in CliManager.Meta.logging_loggers]
         loggers.append(logger)
         #loggers.append(self.log)
-        LoggerHelper.rotatingfile_handler(loggers, self._meta.logging_level, 
-                                          self._meta.logging_file, 
-                                          self._meta.logging_max_size, 
-                                          self._meta.logging_max_files, 
-                                          self._meta.logging_format,
+        LoggerHelper.rotatingfile_handler(loggers, CliManager.Meta.logging_level, 
+                                          CliManager.Meta.logging_file, 
+                                          CliManager.Meta.logging_max_size, 
+                                          CliManager.Meta.logging_max_files, 
+                                          CliManager.Meta.logging_format,
                                           formatter=ColorFormatter)
+        logger.info(u'========================================================')
+        logger.info(u'Setup loggers')
 
-'''
-if __name__ == '__main__':
-    app = MyApp('beehive')
-    #app.setup()
-    app.run()
-'''
-
-  
 
 if __name__ == '__main__':
+    CliManager.setup_logging()
     app = CliManager('beehive')
-
-#with CliManager('beehive') as app:
-    '''
-    # get configs
-    configs = app.config.get_section_dict(u'configs')
-    envs = u', '.join(configs[u'environments'].keys())
-    formats = u', '.join(BaseController.Meta.formats)
-    
-    # add any arguments after setup(), and before run()
-    app.args.add_argument('-v', '--version', action='version', version=BANNER)
-    app.args.add_argument('-e', '--env', action='store', dest='env',
-                      help='execution environment. Select from: %s' % envs)
-    app.args.add_argument('-f', '--format', action='store', dest='format',
-                      help='response format. Select from: %s' % formats)
-    app.args.add_argument('--color', action='store', dest='color',
-                      help='response colered. Can be true or false. [default=true]')
-    
-    logger.info(u'configure app')
-    '''
-
-    #app.config.parse_file(app.configs_file)
-    #print app.config.get_sections()
-    #print app.config.get_section_dict(u'beehive')
-    #print app.config.get_section_dict(u'log.logging')
-    
-    # Check if an interface called 'output' is defined
-    #app.handler.defined('output')
-
-    # Check if the handler 'argparse' is registered to the 'argument'
-    # interface
-    #app.handler.registered('argument', 'argparse')
     app.run()
     
     # close the application
