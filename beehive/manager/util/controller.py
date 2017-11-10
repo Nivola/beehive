@@ -82,9 +82,9 @@ def check_error(fn):
             res = fn(*args, **kwargs)
             return res      
         except Exception as ex:
-            logger.error(ex, exc_info=1)
-            print_error(ex)
-            args[0].app.error = True
+            #logger.error(ex, exc_info=1)
+            args[0].app.print_error(ex)
+            #args[0].app.error = True
             #exit(1)
     return check_error_inner
 
@@ -233,12 +233,16 @@ commands:
         self.format = getattr(self.app.pargs, u'format', None)
         self.color = getattr(self.app.pargs, u'color', None)
         self.env = getattr(self.app.pargs, u'env', None)
+        self.verbosity = getattr(self.app.pargs, u'verbosity', None)
         if self.format is None:
             self.format = self.app._meta.format
             setattr(self.app._parsed_args, u'format', self.format)
         if self.color is None:
             self.color = self.app._meta.color
             setattr(self.app._parsed_args, u'color', self.color)
+        if self.verbosity is None:
+            self.verbosity = self.app._meta.verbosity
+            setattr(self.app._parsed_args, u'verbosity', self.verbosity)            
         if self.env is None:
             if self.app._meta.env is not None:
                 self.env = self.app._meta.env
@@ -480,7 +484,7 @@ commands:
         print(bcolors().output(data, color))          
     
     def error(self, error):
-        print_error(error)
+        self.app.print_error(error)
     
     def load_config(self, file_config):
         f = open(file_config, 'r')

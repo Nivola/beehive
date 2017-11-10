@@ -11,6 +11,21 @@ import ujson as json
 from beecell.logger.helper import LoggerHelper
 from beehive.common.log import ColorFormatter
 from beehive.manager.util.logger import LoggingLogHandler
+
+from ansible.utils.display import Display as OrigDisplay
+
+class Display(OrigDisplay):
+    def __init__(self, verbosity=0):
+        super(Display, self).__init__(verbosity)
+        
+    def display(self, msg, color=None, stderr=False, screen_only=False, 
+                log_only=False):
+        OrigDisplay.display(self, msg, color=color, stderr=stderr, 
+                            screen_only=screen_only, log_only=log_only)
+        logger.debug(msg)
+        
+display = Display()
+
 #from beehive.manager.sections.auth import AuthController
 from beehive.manager.util.controller import BaseController
 from beehive.manager.sections.platform import platform_controller_handlers
@@ -24,9 +39,10 @@ from beehive.manager.sections.vsphere import vsphere_controller_handlers,\
     vsphere_platform_controller_handlers
 from beehive.manager.sections.openstack import openstack_controller_handlers,\
     openstack_platform_controller_handlers
+from beehive.manager.sections.environment import env_controller_handlers
 from beehive.manager.sections.oauth2 import oauth2_controller_handlers
 from beecell.cement_cmd.foundation import CementCmd, CementCmdBaseController
-from beehive.manager.sections.environment import env_controller_handlers
+from cement.core.controller import expose
 
 logging.captureWarnings(True)
 logger = logging.getLogger(__name__)
@@ -40,8 +56,7 @@ cement.utils.misc.minimal_logger = minimal_logger'''
 #import cement.core.controller
 #cement.core.controller.LOG = logging.getLogger(u'cement.core.controller')
 
-from cement.core.controller import CementBaseController, expose
-from cement.core.foundation import CementApp
+
 
 VERSION = '0.1.0'
 
@@ -76,6 +91,8 @@ class CliMinimalLogger(cement.utils.misc.MinimalLogger):
 
 cement.utils.misc.MinimalLogger = CliMinimalLogger'''
 
+
+
 def config_cli(app):
     # get configs
     configs = app.config.get_section_dict(u'configs')
@@ -91,6 +108,8 @@ def config_cli(app):
                           help='response format. Select from: %s' % formats)
         app.args.add_argument('--color', action='store', dest='color',
                           help='response colered. Can be true or false. [default=true]')
+        app.args.add_argument('--verbosity', action='store', dest='verbosity', 
+                              help='ansible verbosity')  
     #else:
     #    app.args.add_argument('version', action='version', version=BANNER)
 
@@ -182,6 +201,7 @@ class CliManager(CementCmd):
         
         color = True
         format = u'table'
+        verbosity = 0
         
     def setup(self):
         CementCmd.setup(self)
@@ -226,8 +246,7 @@ class CliManager(CementCmd):
         logger.info(u'========================================================')
         logger.info(u'Setup loggers')
 
-
-if __name__ == '__main__':
+if __name__ == u'__main__':    
     CliManager.setup_logging()
     app = CliManager('beehive')
     app.run()

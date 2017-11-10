@@ -10,7 +10,6 @@ from geventhttpclient import HTTPClient
 from geventhttpclient.url import URL
 from pprint import PrettyPrinter
 from pandas import DataFrame, set_option
-from beehive.manager import ApiManager, ComponentManager
 import sys
 from beecell.simple import truncate
 from pygments.formatters import Terminal256Formatter

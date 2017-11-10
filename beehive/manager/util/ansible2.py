@@ -7,31 +7,40 @@ from : https://serversforhackers.com/running-ansible-2-programmatically
 '''
 import os
 import json
-from tempfile import NamedTemporaryFile
 from ansible.inventory import Inventory
 #from ansible.inventory.manager import InventoryManager
 #from ansible.vars.manager import VariableManager
 from ansible.vars import VariableManager
 from ansible.parsing.dataloader import DataLoader
-from ansible.executor import playbook_executor
+from ansible.executor.playbook_executor import PlaybookExecutor
 from ansible.utils.display import Display as OrigDisplay
 from ansible.playbook.play import Play
 from ansible.executor.task_queue_manager import TaskQueueManager
 from ansible.plugins.callback import CallbackBase
 from logging import getLogger
+from datetime import datetime
+
+try:
+    from __main__ import display
+except ImportError:
+    from ansible.utils.display import Display
+    display = Display()
 
 logger = getLogger(__name__)
 
+'''
 class Display(OrigDisplay):
     def __init__(self, verbosity=0):
         OrigDisplay.__init__(self, verbosity)
         
-    def display(self, msg, color=None, stderr=False, screen_only=False, log_only=True):
-        OrigDisplay.display(self, msg, color=color, stderr=stderr, screen_only=screen_only, log_only=log_only)
+    def display(self, msg, color=None, stderr=False, screen_only=True, 
+                log_only=False):
+        OrigDisplay.display(self, msg, color=color, stderr=stderr, 
+                            screen_only=screen_only, log_only=log_only)
         logger.debug(msg)
+'''
 
-    #def warning(self, msg, formatted=False):
-    #    print u'ciao'
+#display = Display()
 
 class Options(object):
     """Options class to replace Ansible OptParser
@@ -118,29 +127,53 @@ class ResultCallback(CallbackBase):
                 print(u'  %s' % item)
             print(u'')
     
+class CallbackModule(CallbackBase):
+    """
+    This callback module tells you how long your plays ran for.
+    """
+    CALLBACK_VERSION = 2.0
+    CALLBACK_TYPE = 'aggregate'
+    CALLBACK_NAME = 'timer'
+    CALLBACK_NEEDS_WHITELIST = True
+
+    def __init__(self):
+
+        super(CallbackModule, self).__init__()
+
+        self.start_time = datetime.now()
+
+    def days_hours_minutes_seconds(self, runtime):
+        minutes = (runtime.seconds // 60) % 60
+        r_seconds = runtime.seconds - (minutes * 60)
+        return runtime.days, runtime.seconds // 3600, minutes, r_seconds
+
+    def playbook_on_stats(self, stats):
+        self.v2_playbook_on_stats(stats)
+
+    def v2_playbook_on_stats(self, stats):
+        end_time = datetime.now()
+        runtime = end_time - self.start_time
+        self._display.display("Playbook run took %s days, %s hours, %s minutes, %s seconds" % (self.days_hours_minutes_seconds(runtime)))    
+
+#from ansible import constants as C
+#print(C.__dict__)
+#C.DEFAULT_STDOUT_CALLBACK    
+    
 class Runner(object):
     """Ansible api v2 playbook runner
     """
-    display = Display()
-    
     def __init__(self, inventory=None, verbosity=2, module=u''):
         self.options = Options()
         self.options.private_key_file = None
         self.options.verbosity = verbosity
         self.options.connection = u'ssh'  # Need a connection type "smart" or "ssh"
-        #self.options.become = True
-        #self.options.become_method = u'sudo'
-        #self.options.become_user = u'root'
         
         # set module
         self.options.module_path = module
         
         # Set global verbosity
+        self.display = display
         self.display.verbosity = verbosity
-        # Executor appears to have it's own 
-        # verbosity object/setting as well
-        #playbook_executor.verbosity = verbosity
-        playbook_executor.display = self.display
         
         # Gets data from YAML/JSON files
         self.loader = DataLoader()
@@ -158,7 +191,6 @@ class Runner(object):
         """Get inventory, using most of above objects
         """
         try:
-            #inventory = InventoryManager(self.loader, sources=self.inventory)
             inventory = Inventory(loader=self.loader, 
                                   variable_manager=self.variable_manager, 
                                   host_list=self.inventory)
@@ -173,7 +205,6 @@ class Runner(object):
     def get_inventory_with_vars(self, group):
         """Get inventory, using most of above objects
         """
-        #inventory = InventoryManager(self.loader, sources=self.inventory)
         inventory = Inventory(loader=self.loader, 
                               variable_manager=self.variable_manager, 
                               host_list=self.inventory)
@@ -194,6 +225,13 @@ class Runner(object):
                      become_pas, tags=[]):
         """
         """
+        
+        # Gets data from YAML/JSON files
+        self.loader = DataLoader()        
+        
+        # All the variables from all the various places
+        self.variable_manager = VariableManager()
+        
         # All the variables from all the various places
         self.variable_manager.extra_vars = run_data
         self.variable_manager.group_vars_files = u'%s/group_vars' % self.inventory
@@ -202,34 +240,22 @@ class Runner(object):
         # set options
         self.options.tags = tags
         self.options.limit = group
-        #self.options.become = True
-        #self.options.become_user = u'root'
-        #self.options.private_key_file = u'%s/.ssh/id_rsa' % self.inventory
-        
-        # Parse hosts
-        '''hosts = NamedTemporaryFile(delete=False)
-        hosts.write(u'[%s]\n' % group)
-        for host in self.get_inventory(group):
-            hosts.write(u'%s ansible_ssh_private_key_file=%s ansible_user=root\n' % 
-                        (host, self.options.private_key_file))
-        hosts.close()
-        
-        # copy .ssh key in tmp
-        os.symlink(u'%s/.ssh' % self.inventory, u'/tmp/.ssh')'''
         
         # Set inventory, using most of above objects
-        #inventory = InventoryManager(self.loader, sources=self.inventory)
         inventory = Inventory(loader=self.loader, 
                               variable_manager=self.variable_manager, 
                               host_list=self.inventory)
-        #logger.warn(inventory.list_groups())
         inventory.subset(group)
-        logger.warn(inventory.list_groups())
-        logger.warn(inventory.list_hosts(group))
+        logger.debug(u'Run playbook: %s' % playbook)
+        logger.debug(u'Run playbook with vars: %s' % run_data)
+        logger.debug(u'Run playbook with tags: %s' % tags)
+        logger.debug(u'Run playbook over group: %s' % group)
+        logger.debug(u'Run playbook over hosts: %s' % inventory.list_hosts(group))
+        #logger.debug(u'Run playbook tasks: %s' % self.options.listtasks)
         self.variable_manager.set_inventory(inventory)
 
         # Setup playbook executor, but don't run until run() called
-        self.pbex = playbook_executor.PlaybookExecutor(
+        self.pbex = PlaybookExecutor(
             playbooks=[playbook], 
             inventory=inventory, 
             variable_manager=self.variable_manager,
@@ -238,8 +264,9 @@ class Runner(object):
             passwords=None)
         
         # Results of PlaybookExecutor
-        self.pbex.run()
-        stats = self.pbex._tqm._stats    
+        res = self.pbex.run()
+        '''
+        stats = self.pbex._tqm._stats
 
         # Test if success for record_logs
         run_success = True
@@ -247,13 +274,13 @@ class Runner(object):
         for h in ihosts:
             t = stats.summarize(h)
             if t[u'unreachable'] > 0 or t[u'failures'] > 0:
-                run_success = False
+                run_success = False'''
     
         # Remove created temporary files
         #os.remove(hosts.name)
         #os.remove(u'/tmp/.ssh')
 
-        return stats
+        return res
     
     def run_task(self, group, gather_facts=u'no', tasks=[], frmt=u'json'):
         """
@@ -304,7 +331,7 @@ class Runner(object):
         return result
 
 # set global display
-import ansible.inventory
-ansible.inventory.display = Runner.display
-ansible.inventory.logger = getLogger(u'ansible')
+#import ansible.inventory
+#ansible.inventory.display = Runner.display
+#ansible.inventory.logger = getLogger(u'ansible')
         

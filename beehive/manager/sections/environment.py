@@ -17,7 +17,7 @@ class EnvController(BaseController):
         stacked_on = 'base'
         stacked_type = 'nested'
         description = "cli environemnt management"
-        env_keys = [u'env', u'format', u'color']
+        env_keys = [u'env', u'format', u'color', u'verbosity']
 
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
@@ -48,7 +48,12 @@ class EnvController(BaseController):
             envs = u', '.join(self.configs[u'environments'].keys())
             if value not in envs:
                 raise Exception(u'Platform environment %s does not exist. Select '\
-                                u'from: %s' % (self.env, envs))              
+                                u'from: %s' % (self.env, envs))
+        if key == u'verbosity':
+            try:
+                value = int(value)
+            except:
+                raise Exception(u'verbosity must be an integer. Ex. 0, 1, 2, 3') 
         setattr(self.app._meta, key, value)
         
 env_controller_handlers = [

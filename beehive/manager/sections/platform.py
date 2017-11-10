@@ -3,6 +3,7 @@ Created on Sep 22, 2017
 
 @author: darkbk
 '''
+import os
 import ujson as json
 import gevent
 from datetime import datetime
@@ -14,17 +15,20 @@ from cement.core.controller import expose
 from geventhttpclient import HTTPClient
 from geventhttpclient.url import URL
 from logging import getLogger
-try:
-    from beehive.manager.util.ansible2 import Options, Runner
-except Exception as ex:
-    print(u'ansible package not installed. %s' % ex)  
+import traceback
 
 logger = getLogger(__name__)
+
+try:
+    from beehive.manager.util.ansible2 import Runner
+except Exception as ex:
+    print(traceback.format_exc())
+    print(u'ansible package not installed. %s' % ex)  
 
 class AnsibleController(BaseController):
     class Meta:
         stacked_on = 'platform'
-        stacked_type = 'nested'
+        stacked_type = 'nested'  
 
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
@@ -32,11 +36,15 @@ class AnsibleController(BaseController):
         self.baseuri = u'/v1.0/resource'
         self.subsystem = u'resource'
         self.ansible_path = self.configs[u'ansible_path']
-        self.verbosity = 2
+        #self.verbosity = self.app.pargs.verbosity
         self.main_playbook= u'%s/site.yml' % (self.ansible_path)
         self.beehive_playbook= u'%s/beehive.yml' % (self.ansible_path)
         self.beehive_doc_playbook= u'%s/beehive-doc.yml' % (self.ansible_path)
         self.local_package_path = self.configs[u'local_package_path']
+    
+    def _ext_parse_args(self):
+        BaseController._ext_parse_args(self)
+        self.verbosity = self.app.pargs.verbosity 
     
     #
     # ansible
@@ -58,7 +66,7 @@ class AnsibleController(BaseController):
         except Exception as ex:
             self.error(ex)
     
-    def ansible_playbook(self, group, run_data, playbook=None):
+    def ansible_playbook_run(self, group, run_data, playbook=None):
         """run playbook on group and host
         """
         try:
@@ -66,13 +74,25 @@ class AnsibleController(BaseController):
             path_lib = u'%s/library/beehive/' % (self.ansible_path)
             runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
                             module=path_lib)
+            logger.debug(u'Create new ansible runner: %s' % runner)
             tags = run_data.pop(u'tags')
             if playbook is None:
                 playbook = self.playbook
             runner.run_playbook(group, playbook, None, run_data, None, 
                                 tags=tags)
+            logger.debug(u'Run ansible playbook: %s' % playbook)
+            runner = None
         except Exception as ex:
             self.error(ex)
+    
+    def ansible_playbook(self, group, run_data, playbook=None):
+        from multiprocessing import Process
+        p = Process(target=self.ansible_playbook_run, args=(group, run_data, playbook))
+        p.start()
+        logger.debug(u'Current process: %s' % os.getpid())
+        logger.debug(u'Run ansible playbook as process: %s' % p.pid)
+        p.join()
+        logger.debug(u'Complete ansible playbook as process: %s' % p.pid)
     
     def ansible_task(self, group):
         """Run ansible tasks over a group of hosts
