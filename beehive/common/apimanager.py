@@ -334,7 +334,7 @@ class ApiManager(object):
         self.logger.debug('Get identities from redis: %s' % (res))
         return res
 
-    @watch
+
     def verify_simple_http_credentials(self, user, pwd, user_ip):
         """Verify simple ahttp credentials.
         
@@ -364,7 +364,7 @@ class ApiManager(object):
         
         return identity
 
-    @watch
+
     def get_oauth2_identity(self, token):
         """Get identity that correspond to oauth2 access token
 
@@ -898,7 +898,7 @@ class ApiModule(object):
     def __repr__(self):
         return "<%s id='%s'>" % (self.__class__.__module__+'.'+self.__class__.__name__, id(self))    
     
-    @watch
+
     def info(self):
         """Get module infos.
         
@@ -1111,7 +1111,7 @@ class ApiController(object):
         """
         return self.module.api_manager.verify_simple_http_credentials(user, pwd, user_ip)
 
-    @watch
+
     def can(self, action, objtype=None, definition=None):
         """Verify if  user can execute an action over a certain object type.
         Specify at least name or perms.
@@ -2924,7 +2924,7 @@ class ApiView(FlaskView):
                             status=415,
                             headers=headers)           
 
-    @watch
+
     def get_response(self, response, code=200, headers=None):
         """
         **raise** :class:`ApiManagerError`

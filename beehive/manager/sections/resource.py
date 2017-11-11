@@ -19,6 +19,8 @@ from pygments.style import Style
 from pygments import format
 from beehive.manager.util.controller import BaseController, ApiController
 from cement.core.controller import expose
+from time import sleep
+from beecell.remote import NotFoundException
 
 logger = logging.getLogger(__name__)
 
@@ -42,10 +44,6 @@ class ResourceController(BaseController):
 
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
-
-    @expose(help="Resource management", hide=True)
-    def default(self):
-        self.app.args.print_help()
         
 class ResourceControllerChild(ApiController):
     baseuri = u'/v1.0'
@@ -311,9 +309,45 @@ class ResourceEntityController(ResourceControllerChild):
                 print data
             self.__print_tree(child, space=space+u'   ')
         
-    @expose(help="Entity management", hide=True)
-    def default(self):
-        self.app.args.print_help()
+    def __get_resource_state(self, uuid):
+        try:
+            res = self._call(u'/v1.0/resources/%s' % uuid, u'GET')
+            state = res.get(u'resource').get(u'state')
+            logger.debug(u'Get resource %s state: %s' % (uuid, state))
+            return state
+        except (NotFoundException, Exception):
+            return u'EXPUNGED'
+        
+    def __get_job_state(self, jobid):
+        try:
+            res = self._call(u'/v1.0/worker/tasks/%s' % jobid, u'GET')
+            state = res.get(u'task_instance').get(u'status')
+            logger.debug(u'Get job %s state: %s' % (jobid, state))
+            return state
+        except (NotFoundException, Exception):
+            return u'EXPUNGED'        
+    
+    def __wait_resource(self, uuid, delta=1):
+        """Wait resource
+        """
+        logger.debug(u'wait for resource: %s' % uuid)
+        state = self.__get_resource_state(uuid)
+        while state not in [u'ACTIVE', u'ERROR', u'EXPUNGED']:
+            logger.info(u'.')
+            print((u'.'))
+            sleep(delta)
+            state = self.__get_resource_state(uuid)
+    
+    def __wait_job(self, jobid, delta=1):
+        """Wait resource
+        """
+        logger.debug(u'wait for job: %s' % jobid)
+        state = self.__get_job_state(jobid)
+        while state not in [u'SUCCESS', u'FAILURE']:
+            logger.info(u'.')
+            print((u'.'))
+            sleep(delta)
+            state = self.__get_job_state(jobid)
         
     @expose(aliases=[u'add <container> <resclass> <name> [ext_id=..] '\
                      u'[parent=..] [attribute=..] [tags=..]'], 
@@ -339,6 +373,9 @@ class ResourceEntityController(ResourceControllerChild):
         }
         uri = u'%s/resources' % (self.baseuri)
         res = self._call(uri, u'POST', data=data)
+        jobid = res.get(u'jobid', None)
+        if jobid is not None:
+            self.__wait_job(jobid)        
         logger.info(u'Add resource: %s' % truncate(res))
         res = {u'msg':u'Add resource %s' % res}
         self.result(res, headers=[u'msg'])
@@ -451,6 +488,10 @@ class ResourceEntityController(ResourceControllerChild):
         uri = u'%s/resources/%s' % (self.baseuri, value)        
         res = self._call(uri, u'DELETE')
         logger.info(res)
+        jobid = res.get(u'jobid', None)
+        if jobid is not None:
+            self.__wait_job(jobid)
+            
         res = {u'msg':u'Delete resource %s' % value}
         self.result(res, headers=[u'msg'])
         
@@ -464,6 +505,9 @@ class ResourceEntityController(ResourceControllerChild):
             uri = u'%s/resources/%s' % (self.baseuri, value)        
             res = self._call(uri, u'DELETE')
             logger.info(res)
+            jobid = res.get(u'jobid', None)
+            if jobid is not None:
+                self.__wait_job(jobid)
             resp.append(value)
         res = {u'msg':u'Delete resources %s' % u','.join(resp)}
         self.result(res, headers=[u'msg'])  
