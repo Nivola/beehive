@@ -358,7 +358,7 @@ class ResourceEntityController(ResourceControllerChild):
         container = self.get_arg(name=u'container')
         resclass = self.get_arg(name=u'resclass')
         name = self.get_arg(name=u'name')
-        params = self.get_query_params(*self.app.pargs.extra_arguments)        
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
         data = {
             u'resource':{
                 u'container':container,
@@ -379,6 +379,23 @@ class ResourceEntityController(ResourceControllerChild):
         logger.info(u'Add resource: %s' % truncate(res))
         res = {u'msg':u'Add resource %s' % res}
         self.result(res, headers=[u'msg'])
+    
+    @expose(aliases=[u'update <oid> [field=value]'], aliases_only=True)    
+    def update(self):
+        """Add resource
+    - oid: id or uuid of the resource
+    - field: can be name, desc, ext_id, active, attribute, state
+        """
+        oid = self.get_arg(name=u'oid')
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        data = {
+            u'resource':params
+        }
+        uri = u'%s/resources/%s' % (self.baseuri, oid)
+        self._call(uri, u'PUT', data=data)
+        logger.info(u'Update resource %s with data %s' % (oid, params))
+        res = {u'msg':u'Update resource %s with data %s' % (oid, params)}
+        self.result(res, headers=[u'msg'])        
     
     @expose
     def count(self):

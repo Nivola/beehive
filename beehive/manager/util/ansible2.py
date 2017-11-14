@@ -109,23 +109,39 @@ class ResultCallback(CallbackBase):
         CallbackBase.__init__(self, display=display)
         self.frmt = frmt
     
-    def v2_runner_on_ok(self, result, **kwargs):
+    def v2_runner_on_ok(self, result):
         """Print a json representation of the result
 
         This method could store the result in an instance attribute for retrieval later
         """
-        host = result._host
+        host = result._host.get_name()
         logger.debug(u'Get host: %s' % host)
         logger.debug(u'Get format: %s' % self.frmt)
+        logger.debug(u'Get result: %s' % result._result[u'stdout_lines'])
         if self.frmt == u'json':
             print json.dumps({host.name: result._result[u'stdout_lines']}, 
                              indent=4)
         elif self.frmt == u'text':
-            print(host.name)
+            print(host)
             print(u'-----------------------------')
             for item in result._result[u'stdout_lines']:
                 print(u'  %s' % item)
             print(u'')
+                        
+    def v2_runner_on_failed(self, result, ignore_errors=False):
+        host = result._host.get_name()
+        logger.debug(u'Get host: %s' % host)
+        logger.debug(u'Get format: %s' % self.frmt)
+        logger.error(u'Get result: %s' % result._result[u'stderr_lines'])
+        if self.frmt == u'json':
+            print json.dumps({host.name: result._result[u'stderr_lines']}, 
+                             indent=4)
+        elif self.frmt == u'text':
+            print(host)
+            print(u'-----------------------------')
+            for item in result._result[u'stderr_lines']:
+                print(u'  %s' % item)
+            print(u'')            
     
 class CallbackModule(CallbackBase):
     """
@@ -186,6 +202,7 @@ class Runner(object):
         self.inventory = inventory
         
         self.passwords = None
+        logger.debug(u'Create new runner: %s' % self)
         
     def get_inventory(self, group=None):
         """Get inventory, using most of above objects
@@ -308,7 +325,7 @@ class Runner(object):
                            loader=self.loader)
 
         # Instantiate our ResultCallback for handling results as they come in
-        results_callback = ResultCallback(display=self.display, frmt=frmt)
+        results_callback = ResultCallback(display=display, frmt=frmt)
 
         # run it
         tqm = None
