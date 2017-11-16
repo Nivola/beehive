@@ -239,7 +239,8 @@ class OpenstackPlatformServerController(OpenstackPlatformControllerChild):
         self.entity_class = self.client.server
         
 class OpenstackPlatformVolumeController(OpenstackPlatformControllerChild):
-    headers = [u'id', u'parent_id', u'name']
+    headers = [u'id', u'name', u'os-vol-tenant-attr:tenant_id', u'size', 
+               u'status', u'bootable']
     
     class Meta:
         label = 'openstack.platform.volumes'
@@ -251,6 +252,16 @@ class OpenstackPlatformVolumeController(OpenstackPlatformControllerChild):
         OpenstackPlatformControllerChild._ext_parse_args(self)
         
         self.entity_class = self.client.volume
+        
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    def list(self):
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        objs = self.entity_class.list(detail=True, **params)
+        res = []
+        for obj in objs:
+            res.append(obj)
+        logger.info(res)
+        self.result(res, headers=self.headers)        
 
 class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
     headers = [u'id', u'project', u'stack_name', u'stack_owner', 
@@ -411,6 +422,7 @@ class OpenstackController(BaseController):
 class OpenstackControllerChild(ApiController):
     uri = u'/v1.0/openstacks'
     subsystem = u'resource'
+    headers = [u'id', u'uuid', u'name']
     
     class Meta:
         stacked_on = 'openstack'
@@ -434,27 +446,31 @@ class OpenstackControllerChild(ApiController):
     
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     def list(self):
+        """List openstack items
+        """        
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        uri = self.uri % self.cid
+        uri = self.uri
         res = self._call(uri, u'GET', data=data)
-        self.logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
-        self.result(res, other_headers=self.headers, key=self._meta.aliases[0])
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
+        self.result(res, headers=self.headers, key=self._meta.aliases[0])
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
-    def get(self, oid):
+    def get(self):
+        """Get openstack item
+        """
         oid = self.get_arg(name=u'id')
-        uri = self.uri % self.cid + u'/' + oid
+        uri = self.uri + u'/' + oid
         res = self._call(uri, u'GET')
-        self.logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
-        self.result(res, other_headers=self.headers, key=self._meta.aliases[0])
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
+        self.result(res, details=True)
     
     @expose(aliases=[u'add <file data>'], aliases_only=True)
     def add(self, data):
         file_data = self.get_arg(name=u'data file')
         data = self.load_config(file_data)
-        uri = self.uri % self.cid
+        uri = self.uri
         res = self._call(uri, u'POST', data=data)
-        self.logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))     
+        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))     
         self.result(res)
 
     @expose(aliases=[u'update <id> <file data>'], aliases_only=True)
@@ -462,22 +478,33 @@ class OpenstackControllerChild(ApiController):
         oid = self.get_arg(name=u'id')
         file_data = self.get_arg(name=u'data file')
         data = self.load_config(file_data)
-        uri = self.uri % self.cid + u'/' + oid
+        uri = self.uri + u'/' + oid
         res = self._call(uri, u'UPDATE', data=data)
-        self.logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))     
+        logger.info(u'Update %s: %s' % (self._meta.aliases[0], truncate(res)))
         self.result(res)
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
     def delete(self, oid):
         oid = self.get_arg(name=u'id')
-        uri = self.uri % self.cid + u'/' + oid
+        uri = self.uri + u'/' + oid
         res = self._call(uri, u'DELETE')
-        self.logger.info(u'Delete %s: %s' % (self._meta.aliases[0], oid))     
+        logger.info(u'Delete %s: %s' % (self._meta.aliases[0], oid))     
         self.result(res)
+
+class OpenstackDomainController(OpenstackControllerChild):
+    uri = u'/v1.0/openstack/domains'
+    #headers = [u'id', u'parent_id', u'domain_id', u'name', u'enabled']
+    
+    class Meta:
+        label = 'openstack.beehive.domains'
+        aliases = ['domains']
+        aliases_only = True        
+        description = "Openstack Domain management"
         
 class OpenstackProjectController(OpenstackControllerChild):
-    uri = u'/v1.0/openstacks/%s/projects'
-    headers = [u'id', u'parent_id', u'domain_id', u'name', u'enabled']
+    uri = u'/v1.0/openstack/projects'
+    headers = [u'id', u'uuid', u'name', u'parent.name', u'container.name',
+               u'ext_id', u'details.level']
     
     class Meta:
         label = 'openstack.beehive.projects'
@@ -502,7 +529,7 @@ class OpenstackSubnetController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.subnets'
         aliases = ['subnets']
-        aliases_only = True         
+        aliases_only = True
         description = "Openstack Subnet management"
         
 class OpenstackPortController(OpenstackControllerChild):
@@ -703,6 +730,7 @@ class OpenstackHeatStackController(OpenstackControllerChild):
         
 openstack_controller_handlers = [
     OpenstackController,
+    OpenstackDomainController,
     OpenstackProjectController,
     OpenstackNetworkController,
     OpenstackSubnetController,

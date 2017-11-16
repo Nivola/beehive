@@ -59,7 +59,7 @@ class VspherePlatformControllerChild(BaseController):
         if label not in orchestrators:
             raise Exception(u'Valid label are: %s' % u', '.join(orchestrators.keys()))
         conf = orchestrators.get(label)
-            
+        
         self.client = VsphereManager(conf.get(u'vcenter'), conf.get(u'nsx'))
 
     def wait_task(self, task):
@@ -71,8 +71,10 @@ class VspherePlatformControllerChild(BaseController):
             
         if task.info.state in [vim.TaskInfo.State.error]:
             logger.error(task.info.error.msg)
+            self.app.print_error(task.info.error.msg)
         if task.info.state in [vim.TaskInfo.State.success]:
             logger.info(u'Completed')
+            self.app.print_output(u'Completed')
 
     @expose(hide=True)
     def default(self):
@@ -634,7 +636,7 @@ class VspherePlatformNetworkDlrController(VspherePlatformNetworkChildController)
         self.result(res, details=True)
 
 class VspherePlatformServerController(VspherePlatformControllerChild):
-    headers = [u'id', u'parent', u'name', u'os', u'state', u'ip', u'hostname',
+    headers = [u'id', u'parent', u'name', u'os', u'state', u'ip_address', u'hostname',
                u'cpu', u'ram', u'template']
     
     class Meta:
@@ -650,11 +652,16 @@ class VspherePlatformServerController(VspherePlatformControllerChild):
     
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     def list(self):
+        """List servers
+    - field can be: name, uuid, ipaddress, dnsname, morid, template
+    - template=true list only template
+        """
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         objs = self.entity_class.list(**params)
         res = []
         for o in objs:
-            res.append({
+            res.append(self.entity_class.info(o))
+            '''{
                 u'id':o[u'obj']._moId, 
                 u'parent':o[u'parent']._moId, 
                 u'name':truncate(o[u'name'], 30),
@@ -665,7 +672,7 @@ class VspherePlatformServerController(VspherePlatformControllerChild):
                 u'cpu':o.get(u'config.hardware.numCPU', None),
                 u'ram':o.get(u'config.hardware.memoryMB', None),
                 u'template':o.get(u'config.template', None)
-            })
+            })'''
         logger.info(res)
         self.result(res, headers=self.headers)
         
@@ -684,6 +691,13 @@ class VspherePlatformServerController(VspherePlatformControllerChild):
         print(u'Volumes')
         self.result(volumes, headers=[u'id', u'name', u'storage', u'size', 
                                        u'type', u'bootable', u'format', u'mode'])
+
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    def delete(self):
+        oid = self.get_arg(name=u'id')
+        server = self.entity_class.get_by_morid(oid)
+        task = self.entity_class.remove(server)        
+        self.wait_task(task)
 
     @expose(aliases=[u'console <id>'], aliases_only=True)
     def console(self):

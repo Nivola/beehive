@@ -57,10 +57,6 @@ class WorkerController(SchedulerControllerChild):
         label = 'workers'
         description = "Worker management"
         
-    @expose(help="Worker management", hide=True)
-    def default(self):
-        self.app.args.print_help()
-        
     #
     # task worker
     #
@@ -229,10 +225,6 @@ class ScheduleController(SchedulerControllerChild):
     class Meta:
         label = 'schedules'
         description = "Schedule management"
-        
-    @expose(help="Schedule management", hide=True)
-    def default(self):
-        self.app.args.print_help()
         
     @expose()
     def list(self):

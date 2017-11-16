@@ -1,5 +1,5 @@
 {
-    "env":"test",
+    "env":"lab5",
     "schema":"resource",
     "test":{
         "cmdb":{
@@ -11,12 +11,12 @@
             "resource":"mysql+pymysql://resource:resource@10.102.184.57:3306/resource"
         },
         "redis-uri":"10.102.184.51;6379;0",
-        "broker":"redis://10.102.184.51:6379/1",
+        "broker":"redis://10.102.184.51:6379/6",
         "endpoints":{
             "auth":"http://10.102.184.52:6060",
             "event":"http://10.102.184.52:6070",
-            "resource":"http://10.102.184.52:6090",     
-            "service":"http://10.102.184.52:6110"        
+            "resource":"http://10.102.184.52:6090",        
+            "service":"http://10.102.184.52:6110"
         },
         "users":{
             "admin1":{
@@ -25,6 +25,228 @@
                 "ip":"158.102.160.234",
                 "auth":"simplehttp"
             },        
+            "admin":{
+                "user":"admin@local",
+                "pwd":"testlab",
+                "ip":"158.102.160.234",
+                "auth":"keyauth"
+            },
+            "test":{
+                "user":"test1@local",
+                "pwd":"testlab",
+                "ip":"158.102.160.234",
+                "auth":"keyauth"
+            }
+        },
+        "resource":{
+            "config":{
+            }
+        },
+        "container":{
+            "config":{
+            }
+        }
+    },
+    "lab5":{
+        "cmdb":{
+            "uri":null,
+            "db_uri":"postgresql+psycopg2://pastext:pent4ho@vm-cmdbuild.csi.it:5432/cmdbprod"
+        },
+        "db-uris":{
+            "auth":"mysql+pymysql://auth:auth@10.102.184.69:3306/auth",
+            "resource":"mysql+pymysql://resource:resource@10.102.184.69:3306/resource"
+        },
+        "redis-uri":"10.102.184.69;6379;0",
+        "broker":"redis://10.102.184.69:6379/6",
+        "endpoints":{
+            "auth":"http://10.102.184.69:6060",
+            "event":"http://10.102.184.69:6070",
+            "resource":"http://10.102.184.69:6090",        
+            "service":"http://10.102.184.69:6110"
+        },
+        "users":{
+            "admin1":{
+                "user":"admin@local",
+                "pwd":"testlab",
+                "ip":"158.102.160.234",
+                "auth":"simplehttp"
+            },
+            "admin":{
+                "user":"admin@local",
+                "pwd":"testlab",
+                "ip":"158.102.160.234",
+                "auth":"keyauth"
+            },
+            "test":{
+                "user":"test1@local",
+                "pwd":"testlab",
+                "ip":"158.102.160.234",
+                "auth":"keyauth"
+            }
+        },
+        "resource":{
+            "config":{
+                "datacenter1":{
+                    "uuid":"db43d07d-506e-48dd-9390-1c8a668003e1"
+                },
+                "folder1":{
+                    "name":"test-folder-01",
+                    "parent":null
+                },
+                "folder2":{
+                    "name":"test-folder-02",
+                    "parent":"test-folder-01"
+                },
+                "dvs1":{
+                    "uuid":"d9fd2f3e-cfbd-4dd0-8198-1d762003d4a8"
+                },
+                "dvpg1":{
+                    "name":"test-dvpg-01",
+                    "vlan":565
+                },
+                "cluster1":{
+                    "uuid":"c71f1fcf-b3f1-4a5d-a632-df25f35355f2"
+                },
+                "rpool1":{
+                    "name":"test-rpool-01"
+                },
+                "ipset1":{
+                    "name":"test-ipset-01"
+                },
+                "lg1":{
+                    "name":"test-lg-01",
+                    "transport_zone":"vdnscope-1"
+                },
+                "nsx-sg1":{
+                    "name":"test-sg-01",
+                    "member":"9a0e9eb6-6381-4a5e-8cbb-bbe6d576b988"
+                },
+                "nsx-section01":{
+                    "name":"test-section-01"
+                },
+                "nsx-section-default":{
+                     "id":1003
+                },
+                "nsx-rule01":{
+                    "name":"test-rule-01",
+                    "direction":"out",
+                    "appliedto":[{"name":"DISTRIBUTED_FIREWALL", "value":"DISTRIBUTED_FIREWALL", "type":"DISTRIBUTED_FIREWALL"}],
+                    "sources":[{"name":null, "value":"158.102.160.0/24", "type":"Ipv4Address"}],
+                    "destinations":[{"name":null, "value":"158.102.160.0/24", "type":"Ipv4Address"}],
+                    "services":null,
+                    "action":"allow"
+                },
+                "nsx-service01":{
+                    "name":"test-service-01",
+                    "proto":"TCP",
+                    "ports":"4000-4001"
+                },
+                "domain1":{
+                    "uuid":"53240cca-f646-4bce-a4af-2c003072fb21"
+                },
+                "project1":{
+                    "name":"test-project-01",
+                    "parent":null
+                },
+                "project2":{
+                    "name":"test-project-02",
+                    "parent":"test-project-01"
+                }
+            }
+        },
+        "container":{
+            "config":{
+                "vsphere1":{
+                    "name":"test-container-vsphere",                
+                    "vcenter":{
+                    "host":"tst-vcenter.tstsddc.csi.it",
+                    "port":443,
+                    "user":"administrator@tstsddc.csi.it",
+                    "pwd":"cs1$topix",
+                    "verified":false,
+                    "timeout":5
+                    },
+                    "nsx":{
+                    "host":"tst-nsxmanager.tstsddc.csi.it",
+                    "port":443,
+                    "user":"admin",
+                    "pwd":"Cs1$topix",
+                    "verified":false,
+                    "timeout":600
+                    }
+                },
+                "openstack1":{
+                    "name":"test-container-ops",                
+                    "api":{                
+                        "uri":"http://10.102.184.83:5000/v3",
+                        "domain":"default",
+                        "user":"admin",
+                        "project":"admin",
+                        "pwd":"cs1topix",
+                        "region":"RegionOne"
+                    }
+                }
+            }
+        }
+    },
+    "lab2":{
+        "cmdb":{
+            "uri":null,
+            "db_uri":"postgresql+psycopg2://pastext:pent4ho@vm-cmdbuild.csi.it:5432/cmdbprod"
+        },
+        "db-uris":{
+            "auth":"mysql+pymysql://auth:auth@10.102.184.66:3306/auth",
+            "resource":"mysql+pymysql://resource:resource@10.102.184.66:3306/resource"
+        },
+        "redis-uri":"10.102.184.66;6379;0",
+        "broker":"redis://10.102.184.66:6379/6",
+        "endpoints":{
+            "auth":"http://10.102.184.66:6060",
+            "service":"http://10.102.184.66:6110"
+        },
+        "users":{
+            "admin1":{
+                "user":"admin@local",
+                "pwd":"testlab",
+                "ip":"158.102.160.234",
+                "auth":"simplehttp"
+            },
+            "admin":{
+                "user":"admin@local",
+                "pwd":"testlab",
+                "ip":"158.102.160.234",
+                "auth":"keyauth"
+            },
+            "test":{
+                "user":"test1@local",
+                "pwd":"testlab",
+                "ip":"158.102.160.234",
+                "auth":"keyauth"
+            }
+        }
+    },
+    "lab1":{
+        "cmdb":{
+            "uri":null,
+            "db_uri":"postgresql+psycopg2://pastext:pent4ho@vm-cmdbuild.csi.it:5432/cmdbprod"
+        },
+        "db-uris":{
+            "auth":"mysql+pymysql://auth:auth@10.102.184.65:3306/auth",
+            "resource":"mysql+pymysql://resource:resource@10.102.184.65:3306/resource"
+        },
+        "redis-uri":"10.102.184.65;6379;0",
+        "broker":"redis://10.102.184.65:6379/6",
+        "endpoints":{
+            "auth":"http://10.102.184.65:6060",
+            "service":"http://10.102.184.65:6110"
+        },
+        "users":{
+            "admin1":{
+                "user":"admin@local",
+                "pwd":"testlab",
+                "ip":"158.102.160.234",
+                "auth":"simplehttp"
+            },
             "admin":{
                 "user":"admin@local",
                 "pwd":"testlab",

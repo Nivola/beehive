@@ -323,6 +323,9 @@ class ResourceEntityController(ResourceControllerChild):
             res = self._call(u'/v1.0/worker/tasks/%s' % jobid, u'GET')
             state = res.get(u'task_instance').get(u'status')
             logger.debug(u'Get job %s state: %s' % (jobid, state))
+            if state == u'FAILURE':
+                #print(res)
+                self.app.print_error(res[u'task_instance'][u'traceback'][-1])
             return state
         except (NotFoundException, Exception):
             return u'EXPUNGED'        

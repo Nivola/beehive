@@ -38,6 +38,8 @@ class AnsibleController(BaseController):
         self.ansible_path = self.configs[u'ansible_path']
         #self.verbosity = self.app.pargs.verbosity
         self.main_playbook= u'%s/site.yml' % (self.ansible_path)
+        self.create_playbook= u'%s/server.yml' % (self.ansible_path)
+        self.site_playbook= u'%s/site.yml' % (self.ansible_path)
         self.beehive_playbook= u'%s/beehive.yml' % (self.ansible_path)
         self.beehive_doc_playbook= u'%s/beehive-doc.yml' % (self.ansible_path)
         self.local_package_path = self.configs[u'local_package_path']
@@ -49,20 +51,32 @@ class AnsibleController(BaseController):
     #
     # ansible
     #
-    def ansible_inventory(self):
+    def ansible_inventory(self, group=None):
         """list host by group
+        
+        **Parameters**:
+        
+            * **group**: ansible group
         """
         try:
             path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
             path_lib = u'%s/library/beehive/' % (self.ansible_path)
             runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
                             module=path_lib)
-            res = runner.get_inventory()
+            res = runner.get_inventory(group)
+            if isinstance(res, list):
+                res = {group:res}
+            logger.debug(u'Ansible inventory nodes: %s' % res)
             resp = []
             for k,v in res.items():
-                resp.append({u'group':k, u'hosts':u', '.join(v)})
-            logger.debug(u'Ansible inventory nodes: %s' % res)
-            self.result(resp, headers=[u'group', u'hosts'], maxsize=400)
+                resp.append({u'group':k, u'hosts':v})
+            resp = sorted(resp, key=lambda x: x.get(u'group'))
+
+            #self.result(resp, headers=[u'group', u'hosts'], maxsize=400)
+            for i in resp:
+                print(u'%30s : %s' % (i[u'group'], u', '.join(i[u'hosts'][:6])))
+                for n in range(1, len(i[u'hosts'])/6):
+                    print(u'%30s : %s' % (u'', u', '.join(i[u'hosts'][n*6:(n+1)*6])))
         except Exception as ex:
             self.error(ex)
     
@@ -304,11 +318,78 @@ class NodeController(AnsibleController):
     def default(self):
         self.app.args.print_help()
         
-    @expose()
+    @expose(aliases=[u'list <group>'], aliases_only=True)
     def list(self):
         """List managed platform nodes
         """
-        self.ansible_inventory()        
+        group = self.get_arg(default=None)
+        self.ansible_inventory(group)
+        
+    @expose(aliases=[u'create <group>'], aliases_only=True)
+    def create(self):
+        """Create group nodes
+        """
+        group = self.get_arg(default=u'all')
+        run_data = {
+            u'tags':[u'create']
+        }        
+        self.ansible_playbook(group, run_data, 
+                              playbook=self.create_playbook)        
+
+    @expose(aliases=[u'configure <group>'], aliases_only=True)
+    def configure(self):
+        """Make main configuration on group nodes
+        """
+        group = self.get_arg(default=u'all')
+        run_data = {
+            u'tags':[u'configure']
+        }        
+        self.ansible_playbook(group, run_data, 
+                              playbook=self.site_playbook)
+        
+    @expose(aliases=[u'ssh-copy-id <group>'], aliases_only=True)
+    def ssh_copy_id(self):
+        """Copy ssh id on group nodes
+        """
+        group = self.get_arg(default=u'all')
+        run_data = {
+            u'tags':[u'ssh']
+        }        
+        self.ansible_playbook(group, run_data, 
+                              playbook=self.site_playbook)        
+        
+    @expose(aliases=[u'install <group>'], aliases_only=True)
+    def install(self):
+        """Install software on group nodes
+        """
+        group = self.get_arg(default=u'all')
+        run_data = {
+            u'tags':[u'install']
+        }        
+        self.ansible_playbook(group, run_data, 
+                              playbook=self.site_playbook)
+        
+    @expose(aliases=[u'update <group>'], aliases_only=True)
+    def update(self):
+        """Install software on group nodes
+        """
+        group = self.get_arg(default=u'all')
+        run_data = {
+            u'tags':[u'update']
+        }        
+        self.ansible_playbook(group, run_data, 
+                              playbook=self.site_playbook)        
+
+    @expose(aliases=[u'hosts <group>'], aliases_only=True)
+    def hosts(self):
+        """Configure nodes hosts local resolution
+        """
+        group = self.get_arg(default=u'all')
+        run_data = {
+            u'tags':[u'hosts']
+        }        
+        self.ansible_playbook(group, run_data, 
+                              playbook=self.site_playbook)
         
     @expose(aliases=[u'cmd <group> <cmd>'], aliases_only=True)
     def cmd(self):
@@ -468,37 +549,7 @@ class BeehiveController(AnsibleController):
     #
     @expose(help="Beehive management", hide=True)
     def default(self):
-        self.app.args.print_help()
-
-    @expose()
-    def install(self):
-        """Configure beehive nodes
-        """
-        run_data = {
-            u'tags':[u'install']
-        }        
-        self.ansible_playbook(u'beehive', run_data, 
-                              playbook=self.beehive_playbook)
-
-    @expose()
-    def hosts(self):
-        """Configure beehive nodes hosts local resolution
-        """
-        run_data = {
-            u'tags':[u'hosts']
-        }        
-        self.ansible_playbook(u'beehive', run_data, 
-                              playbook=self.beehive_playbook)
-    
-    @expose()
-    def configure(self):
-        """Install beehive platform on beehive nodes
-        """
-        run_data = {
-            u'tags':[u'configure']
-        }        
-        self.ansible_playbook(u'beehive', run_data, 
-                              playbook=self.beehive_playbook)  
+        self.app.args.print_help() 
     
     @expose()
     def sync(self):

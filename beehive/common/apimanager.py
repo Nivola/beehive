@@ -2672,6 +2672,15 @@ class ApiView(FlaskView):
         except:
             self.response_mime = u'application/json'
         
+        if self.response_mime == u'*/*':
+            self.response_mime = u'application/json'
+            
+        if self.response_mime == u'':
+            self.response_mime = u'application/json'
+
+        if self.response_mime is None:
+            self.response_mime = u'application/json'
+        
         '''if self.response_mime not in self.RESPONSE_MIME_TYPE:
             self.logger.warn(u'Response mime type %s is not supported' % 
                              self.response_mime)
@@ -2935,8 +2944,8 @@ class ApiView(FlaskView):
                                 mimetype=u'text/plain', 
                                 status=code)
             
-            if self.response_mime == u'*/*':
-                self.response_mime = u'application/json'
+            #if self.response_mime == u'*/*':
+            #    self.response_mime = u'application/json'
             
             self.logger.debug(u'Api response mime type: %s' % self.response_mime)
             
