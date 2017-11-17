@@ -277,39 +277,149 @@ class MysqlController(AnsibleController):
         label = 'mysql'
         description = "Mysql management"
         
-    @expose(help="Mysql management", hide=True)
-    def default(self):
-        self.app.args.print_help()
     
-    @expose(aliases=[u'ping user pwd db [port]'], aliases_only=True)
-    def ping(self):
-        """Test mysql instance
-    - user: user
-    - pwd: user password
-    - db: db schema
-    - port: instance port [default=3306]
-        """
-        user = self.get_arg(name=u'user')
-        pwd  = self.get_arg(name=u'pwd')
-        db  = self.get_arg(name=u'db')
-        port = self.get_arg(default=3306)
-        
+    def __get_engine(self, host, port, user, db):
+        db_uri = u'mysql+pymysql://%s:%s@%s:%s/%s' % (
+            user[u'name'], user[u'password'], host, port, db)
+        server = MysqlManager(1, db_uri)
+        server.create_simple_engine()
+        logger.info(u'Get mysql engine for %s' % (db_uri))
+        return server
+    
+    def __get_hosts(self):
         path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
         path_lib = u'%s/library/beehive/' % (self.ansible_path)
         runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
                         module=path_lib)
-        hosts, vars = runner.get_inventory_with_vars(u'mysql')        
+        hosts, vars = runner.get_inventory_with_vars(u'mysql')
+        # get root user
+        vars = runner.variable_manager.get_vars(runner.loader, host=hosts[0])
+        users = vars[u'mysql_users']
+        root = {}
+        for user in users:
+            if user[u'name'] == u'root':
+                root = user
+        return hosts, root        
+    
+    @expose(aliases=[u'ping [port]'], aliases_only=True)
+    def ping(self):
+        """Test mysql instance
+    - port: instance port [default=3306]
+        """
+        port = self.get_arg(default=3306)
+        hosts, root = self.__get_hosts()
+
         resp = []
+        db = u'sys'
         for host in hosts:
-            db_uri = u'mysql+pymysql://%s:%s@%s:%s/%s' % (user, pwd, host, port, db)
-            server = MysqlManager(1, db_uri)
-            server.create_simple_engine()
+            server = self.__get_engine(host, port, root, db)
             res = server.ping()
             resp.append({u'host':host, u'response':res})
-            logger.info(u'Ping mysql %s : %s' % (db_uri, res))
+            logger.info(u'Ping mysql : %s' % (res))
         
         self.result(resp, headers=[u'host', u'response'])
         
+    @expose(aliases=[u'schemas [port]'], aliases_only=True)
+    def schemas(self):
+        """Get mysql schemas list
+    - port: instance port [default=3306]
+        """
+        port = self.get_arg(default=3306)
+        hosts, root = self.__get_hosts()
+
+        resp = []
+        db = u'sys'
+        for host in hosts:
+            self.app.print_output(u'Host: %s' % host)
+            server = self.__get_engine(host, port, root, db)
+            resp = server.get_schemas()
+            logger.info(u'Get mysql schemas : %s' % (resp))
+        
+        self.result(resp, headers=[u'schema', u'tables'])
+        
+    @expose(aliases=[u'users [port]'], aliases_only=True)
+    def users(self):
+        """Get mysql users list
+    - port: instance port [default=3306]
+        """
+        port = self.get_arg(default=3306)
+        hosts, root = self.__get_hosts()
+
+        resp = []
+        db = u'sys'
+        for host in hosts:
+            self.app.print_output(u'Host: %s' % host)
+            server = self.__get_engine(host, port, root, db)
+            resp = server.get_users()
+            logger.info(u'Get mysql users : %s' % (resp))
+        
+        self.result(resp, headers=[u'host', u'user'])
+        
+    @expose(aliases=[u'tables <schema> [port]'], aliases_only=True)
+    def tables(self):
+        """Get mysql schema table list
+    - port: instance port [default=3306]
+        """
+        schema = self.get_arg(name=u'schema')
+        port = self.get_arg(default=3306)
+        hosts, root = self.__get_hosts()
+
+        resp = []
+        db = u'sys'
+        for host in hosts:
+            self.app.print_output(u'Host: %s' % host)
+            server = self.__get_engine(host, port, root, db)
+            resp = server.get_schema_tables(schema)
+            logger.info(u'Get mysql schema %s tables : %s' % (schema, resp))
+        
+        self.result(resp, headers=[u'table_name', u'table_rows', 
+                    u'auto_increment', u'data_length', u'index_length'])
+        
+    @expose(aliases=[u'table-description <schema> <table> [port]'], aliases_only=True)
+    def table_description(self):
+        """Get mysql schema table description
+    - port: instance port [default=3306]
+        """
+        schema = self.get_arg(name=u'schema')
+        table = self.get_arg(name=u'table')
+        port = self.get_arg(default=3306)
+        hosts, root = self.__get_hosts()
+
+        resp = []
+        for host in hosts:
+            self.app.print_output(u'Host: %s' % host)
+            server = self.__get_engine(host, port, root, schema)
+            resp = server.get_table_description(table)
+            logger.info(u'Get mysql schema %s table %s descs : %s' % 
+                        (schema, table, resp))
+        
+        self.result(resp, headers=[u'name', u'type', u'default', u'index', 
+                        u'is_primary_key', u'is_nullable', u'is_unique'])        
+
+    @expose(aliases=[u'table-query <schema> <table> [rows] [offset] [port]'], 
+            aliases_only=True)
+    def table_query(self):
+        """Get mysql schema table query
+    - port: instance port [default=3306]
+        """
+        schema = self.get_arg(name=u'schema')
+        table = self.get_arg(name=u'table')
+        rows = self.get_arg(default=20)
+        offset = self.get_arg(default=0)
+        port = self.get_arg(default=3306)
+        hosts, root = self.__get_hosts()
+
+        resp = []
+        for host in hosts:
+            self.app.print_output(u'Host: %s' % host)
+            server = self.__get_engine(host, port, root, schema)
+            resp = server.query_table(table, where=None, fields="*", 
+                                       rows=rows, offset=offset)
+            logger.info(u'Get mysql schema %s table %s query : %s' % 
+                        (schema, table, resp))
+        
+        self.result(resp, headers=resp[0].keys(), maxsize=20) 
+
 class CamundaController(AnsibleController):
     class Meta:
         label = 'camunda'
@@ -603,10 +713,6 @@ class BeehiveController(AnsibleController):
     #
     # commands
     #
-    @expose(help="Beehive management", hide=True)
-    def default(self):
-        self.app.args.print_help() 
-    
     @expose()
     def sync(self):
         """Sync beehive package an all nodes with remove git repository
