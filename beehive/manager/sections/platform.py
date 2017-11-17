@@ -16,6 +16,7 @@ from geventhttpclient import HTTPClient
 from geventhttpclient.url import URL
 from logging import getLogger
 import traceback
+from beedrones.camunda.engine import WorkFlowEngine
 
 logger = getLogger(__name__)
 
@@ -307,7 +308,58 @@ class MysqlController(AnsibleController):
             resp.append({u'host':host, u'response':res})
             logger.info(u'Ping mysql %s : %s' % (db_uri, res))
         
-        self.result(resp, headers=[u'host', u'response'])        
+        self.result(resp, headers=[u'host', u'response'])
+        
+class CamundaController(AnsibleController):
+    class Meta:
+        label = 'camunda'
+        description = "Camunda management"
+    
+    def __get_engine(self, port=8080):
+        path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+        path_lib = u'%s/library/beehive/' % (self.ansible_path)
+        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
+                        module=path_lib)
+        hosts, vars = runner.get_inventory_with_vars(u'camunda')
+        
+        clients = []
+        for host in hosts:
+            conn = {
+                u'host':str(host),
+                u'port':port,
+                u'path':u'/engine-rest',
+                u'proto':u'http'
+            }
+            user = u'admin'
+            passwd = u'camunda'
+            proxy = None
+            keyfile=None
+            certfile=None
+            client = WorkFlowEngine(conn, user=user, passwd=passwd,
+                proxy=proxy, keyfile=keyfile, certfile=certfile)
+            clients.append(client)
+        return clients
+    
+    @expose(help="Camunda management", hide=True)
+    def default(self):
+        self.app.args.print_help()
+    
+    @expose(aliases=[u'ping [port]'], aliases_only=True)
+    def ping(self):
+        """Test camunda instance
+    - user: user
+    - pwd: user password
+    - db: db schema
+    - port: instance port [default=3306]
+        """
+        port = self.get_arg(default=8080)
+        clients = self.__get_engine(port=port)
+        resp = []
+        for client in clients:
+            res = client.ping()
+            resp.append({u'host':client.connection.get(u'host'), u'response':res})
+        logger.debug(u'Ping camunda: %s' % resp)
+        self.result(resp, headers=[u'host', u'response'])           
 
 class NodeController(AnsibleController):
     class Meta:
@@ -336,6 +388,17 @@ class NodeController(AnsibleController):
         self.ansible_playbook(group, run_data, 
                               playbook=self.create_playbook)        
 
+    @expose(aliases=[u'update <group>'], aliases_only=True)
+    def update(self):
+        """Update group nodes - change hardware configuration
+        """
+        group = self.get_arg(default=u'all')
+        run_data = {
+            u'tags':[u'update']
+        }        
+        self.ansible_playbook(group, run_data, 
+                              playbook=self.site_playbook)
+
     @expose(aliases=[u'configure <group>'], aliases_only=True)
     def configure(self):
         """Make main configuration on group nodes
@@ -363,22 +426,15 @@ class NodeController(AnsibleController):
         """Install software on group nodes
         """
         group = self.get_arg(default=u'all')
+        if group == u'all':
+            playbook = self.site_playbook
+        else:
+            playbook = u'%s/%s.yml' % (self.ansible_path, group)
         run_data = {
             u'tags':[u'install']
         }        
         self.ansible_playbook(group, run_data, 
-                              playbook=self.site_playbook)
-        
-    @expose(aliases=[u'update <group>'], aliases_only=True)
-    def update(self):
-        """Install software on group nodes
-        """
-        group = self.get_arg(default=u'all')
-        run_data = {
-            u'tags':[u'update']
-        }        
-        self.ansible_playbook(group, run_data, 
-                              playbook=self.site_playbook)        
+                              playbook=playbook)
 
     @expose(aliases=[u'hosts <group>'], aliases_only=True)
     def hosts(self):
@@ -799,6 +855,7 @@ platform_controller_handlers = [
     PlatformController,
     RedisController,
     MysqlController,
+    CamundaController,
     NodeController,
     BeehiveController,
 ]
