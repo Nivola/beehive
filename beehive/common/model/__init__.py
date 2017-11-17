@@ -371,8 +371,8 @@ class PaginatedQueryGenerator(object):
                 from_statement(stmp).\
                 params(tags=tags, **kvargs)
         self.logger.warn(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
-        self.logger.warn(u'kvargs: %s' % kvargs)
-        self.logger.warn(u'tags: %s' % tags)
+        #self.logger.warn(u'kvargs: %s' % kvargs)
+        #self.logger.warn(u'tags: %s' % tags)
         query = query.all()
         
         self.logger.debug(u'Get %ss (total:%s): %s' % 
