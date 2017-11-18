@@ -6,6 +6,7 @@ Created on Sep 22, 2017
 import os
 import ujson as json
 import gevent
+from time import time
 from datetime import datetime
 from httplib import HTTPConnection
 from beecell.simple import str2uni
@@ -17,6 +18,7 @@ from geventhttpclient.url import URL
 from logging import getLogger
 import traceback
 from beedrones.camunda.engine import WorkFlowEngine
+from beedrones.openstack.client import OpenstackManager
 
 logger = getLogger(__name__)
 
@@ -145,10 +147,6 @@ class RedisController(AnsibleController):
     class Meta:
         label = 'redis'
         description = "Redis management"
-        
-    @expose(help="Redis management", hide=True)
-    def default(self):
-        self.app.args.print_help()
         
     def __run_cmd(self, func, dbs=[0]):
         """Run command on redis instances
@@ -471,14 +469,105 @@ class CamundaController(AnsibleController):
         logger.debug(u'Ping camunda: %s' % resp)
         self.result(resp, headers=[u'host', u'response'])           
 
+class OpenstackController(AnsibleController):
+    class Meta:
+        label = 'platform.openstack'
+        aliases = ['openstack']
+        aliases_only = True
+        description = "Openstack management"
+    
+    def __get_client(self, instance, host):
+        """
+        """
+        orchestrators = self.configs.get(u'orchestrators').get(u'openstack')
+        conf = orchestrators.get(instance)
+                
+        uri = u'http://%s:5000/v3' % host
+        client = OpenstackManager(uri, default_region=conf.get(u'region'))
+        client.authorize(conf.get(u'user'), conf.get(u'pwd'), 
+                              project=conf.get(u'project'), 
+                              domain=conf.get(u'domain'))
+        return client 
+    
+    def __run_cmd(self, func, instance, subset=u''):
+        """Run command on openstack instances
+        
+        **Parameters:**
+        
+            * **instance** (:py:class:`str`): openstack label reference used in 
+                ansible to list the nodes
+            * **subset** (:py:class:`str`): node subset. Use "controller", 
+                "compute" or "" for all nodes
+            * **authorize** (:py:class:`str`): if True check permissions for authorization
+        """
+        try:
+            inventory = u'openstack-%s' % instance
+            if subset != u'':
+                inventory = u'%s-%s' % (inventory, subset)
+            path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+            path_lib = u'%s/library/beehive/' % (self.ansible_path)
+            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
+                            module=path_lib)
+            hosts, vars = runner.get_inventory_with_vars(inventory)
+            
+            resp = []
+            for host in hosts:
+                start = time()
+                res = func(host)
+                elapsed = time() - start
+                resp.append({u'host':str(host), u'elapsed':elapsed, u'res':res})
+                logger.info(u'Query openstack %s : %s' % (host, elapsed))
+            self.result(resp, headers=[u'host', u'elapsed', u'res'])
+        except Exception as ex:
+            self.error(ex)            
+
+    @expose(aliases=[u'ping <instance>'], aliases_only=True)
+    def ping(self):
+        """Ping openstack instance nodes
+    - instance: openstack label reference used in ansible to list the controller
+        and set in cli orchestrator configuration
+        """
+        try:
+            import sh
+        except:
+            raise Exception(u'sh package is not installed')
+        instance = self.get_arg(name=u'instance')
+        def func(host):
+            print(u'.')
+            output = sh.ping(u'-c', 3, host)
+            logger.debug(output)
+            if output.exit_code == 0:
+                return True
+            return False
+        self.__run_cmd(func, instance, subset=u'')
+        
+    @expose(aliases=[u'query <instance> [vip]'], aliases_only=True)
+    def query(self):
+        """Ping openstack instances using an heavy query
+    - instance: openstack label reference used in ansible to list the controller
+        and set in cli orchestrator configuration
+    - vip: if true query only the vip
+        """
+        instance = self.get_arg(name=u'instance')
+        vip = self.get_arg(default=True)
+        def func(host):
+            try:
+                client = self.__get_client(instance, host)
+                client.server.list()
+            except Exception as ex:
+                logger.error(ex)
+                return False
+            return True
+            #return client.network.router.list()
+        subset = u'controller'
+        if vip is True:
+            subset = u'vip'
+        self.__run_cmd(func, instance, subset=subset)
+
 class NodeController(AnsibleController):
     class Meta:
         label = 'node'
         description = "Nodes management"
-        
-    @expose(help="Nodes management", hide=True)
-    def default(self):
-        self.app.args.print_help()
         
     @expose(aliases=[u'list <group>'], aliases_only=True)
     def list(self):
@@ -962,6 +1051,7 @@ platform_controller_handlers = [
     RedisController,
     MysqlController,
     CamundaController,
+    OpenstackController,
     NodeController,
     BeehiveController,
 ]

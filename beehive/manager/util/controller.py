@@ -546,7 +546,7 @@ commands:
             f.write(seckey)
             f.close()
         
-    @check_error
+    #@check_error
     def get_arg(self, default=None, name=None):
         arg = None
         try:

@@ -256,7 +256,7 @@ class BeehiveTestCase(unittest.TestCase):
             # execute request
             response = requests.request(method, endpoint + uri, auth=cred, 
                                    params=query, data=data, headers=headers,
-                                   timeout=5, verify=False)
+                                   timeout=10, verify=False)
             
             if runlog is True:
                 self.runlogger.info(u'response headers: %s' % response.headers)
