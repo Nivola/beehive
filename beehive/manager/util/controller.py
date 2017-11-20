@@ -508,6 +508,8 @@ commands:
         val = {}
         for arg in args:
             t = arg.split(u'=')
+            if t[1] == 'null':
+                t[1] = None
             val[t[0]] = t[1]
         return val   
     
