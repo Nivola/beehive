@@ -326,10 +326,10 @@ class PaginatedQueryGenerator(object):
                 u'GROUP BY {field}',
                 u'ORDER BY {field} {order}'
             ])
-        if (self.size > 0):
-            sql.append(u'LIMIT {start},{size}')
-        else:
-            sql.append(u'LIMIT 1000')  # num rows - test
+            if (self.size > 0):
+                sql.append(u'LIMIT {start},{size}')
+            else:
+                sql.append(u'LIMIT 1000')  # num rows - test
 
         # format query
         stmp = u' '.join(sql)

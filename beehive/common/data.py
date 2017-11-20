@@ -222,7 +222,7 @@ def query(fn):
             logger.error(u'%s.%s - %s - query - %s - %s - KO - %s' % (
                          operation.id, stmp_id, sessionid, fn.__name__, 
                          truncate(params), elapsed))
-            #logger.error(ex, exc_info=1)
+            logger.error(ex, exc_info=1)
             logger.error(ex)
 
             raise QueryError(ex, code=400)

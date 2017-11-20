@@ -94,6 +94,39 @@ class OpenstackPlatformControllerChild(BaseController):
         logger.info(res)
         self.result(res, headers=[u'msg'])
 
+class OpenstackPlatformKeystoneController(OpenstackPlatformControllerChild):
+    headers = [u'id', u'name', u'domain_id']
+    
+    class Meta:
+        label = 'openstack.platform.keystone'
+        aliases = ['keystone']
+        aliases_only = True        
+        description = "Openstack Keystone management"
+        
+    def _ext_parse_args(self):
+        OpenstackPlatformControllerChild._ext_parse_args(self)
+        
+    @expose()
+    def users(self):
+        #params = self.get_query_params(*self.app.pargs.extra_arguments)
+        res = self.client.identity.user.list(detail=True)
+        logger.info(res)
+        self.result(res, headers=self.headers)
+        
+    @expose()
+    def roles(self):
+        #params = self.get_query_params(*self.app.pargs.extra_arguments)
+        res = self.client.identity.role.list(detail=False)
+        logger.info(res)
+        self.result(res, headers=[u'id', u'name'])
+        
+    @expose()
+    def regions(self):
+        #params = self.get_query_params(*self.app.pargs.extra_arguments)
+        res = self.client.identity.get_regions()
+        logger.info(res)
+        self.result(res, headers=[u'id', u'parent_region_id', u'description'])         
+
 class OpenstackPlatformProjectController(OpenstackPlatformControllerChild):
     headers = [u'id', u'parent_id', u'domain_id', u'name', u'enabled']
     
@@ -387,6 +420,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
 
 openstack_platform_controller_handlers = [
     OpenstackPlatformController,
+    OpenstackPlatformKeystoneController,
     OpenstackPlatformProjectController,
     OpenstackPlatformNetworkController,
     OpenstackPlatformSubnetController,
@@ -428,17 +462,11 @@ class OpenstackControllerChild(ApiController):
         stacked_on = 'openstack'
         stacked_type = 'nested'
         arguments = [
-            ( ['extra_arguments'], dict(action='store', nargs='*')),            
-            ( ['-O', '--orchestrator'],
-              dict(action='store', help='Openstack orchestrator id') ),
+            ( ['extra_arguments'], dict(action='store', nargs='*'))
         ]
 
     def _ext_parse_args(self):
         ApiController._ext_parse_args(self)
-        
-        self.cid = self.app.pargs.orchestrator
-        if self.cid is None:
-            raise Exception(u'Orchestrator id must be specified')  
 
     @expose(hide=True)
     def default(self):
@@ -451,7 +479,7 @@ class OpenstackControllerChild(ApiController):
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
         uri = self.uri
         res = self._call(uri, u'GET', data=data)
-        logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], res))
         self.result(res, headers=self.headers, key=self._meta.aliases[0])
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
@@ -461,8 +489,9 @@ class OpenstackControllerChild(ApiController):
         oid = self.get_arg(name=u'id')
         uri = self.uri + u'/' + oid
         res = self._call(uri, u'GET')
-        logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
-        self.result(res, details=True)
+        key = key=self._meta.aliases[0].rstrip(u's')
+        logger.info(u'Get %s: %s' % (key, truncate(res)))
+        self.result(res, details=True, key=key)
     
     @expose(aliases=[u'add <file data>'], aliases_only=True)
     def add(self, data):
@@ -513,8 +542,10 @@ class OpenstackProjectController(OpenstackControllerChild):
         description = "Openstack Project management"
 
 class OpenstackNetworkController(OpenstackControllerChild):
-    headers = [u'id', u'tenant_id', u'name', u'provider:segmentation_id', 
-               u'router:external', u'shared', u'provider:network_type']
+    uri = u'/v1.0/openstack/networks'
+    headers = [u'id', u'parent.name', u'container.name', u'name', 
+               u'details.segmentation_id', u'details.external', u'details.shared', 
+               u'details.provider_network_type']
     
     class Meta:
         label = 'openstack.beehive.networks'
@@ -523,8 +554,9 @@ class OpenstackNetworkController(OpenstackControllerChild):
         description = "Openstack Network management"
 
 class OpenstackSubnetController(OpenstackControllerChild):
-    headers = [u'id', u'tenant_id', u'name', u'subnet_id', u'cidr', 
-               u'enable_dhcp']
+    uri = u'/v1.0/openstack/subnets'
+    headers = [u'id', u'parent.name', u'container.name',u'name', 
+               u'details.allocation_pools', u'details.cidr', u'details.gateway_ip']
     
     class Meta:
         label = 'openstack.beehive.subnets'
@@ -533,8 +565,10 @@ class OpenstackSubnetController(OpenstackControllerChild):
         description = "Openstack Subnet management"
         
 class OpenstackPortController(OpenstackControllerChild):
-    headers = [u'id', u'tenant_id', u'port_id', u'security_groups', 
-               u'mac_address', u'status', u'device_owner']
+    uri = u'/v1.0/openstack/ports'
+    headers = [u'id',  u'container.name', u'parent.name', u'name',
+               u'details.device_owner', 
+               u'details.mac_address', u'details.fixed_ips.0.ip_address']
     
     class Meta:
         label = 'openstack.beehive.ports'
@@ -543,8 +577,7 @@ class OpenstackPortController(OpenstackControllerChild):
         description = "Openstack Port management"     
         
 class OpenstackFloatingIpController(OpenstackControllerChild):
-    headers = [u'id', u'tenant_id', u'status', u'floating_ip_address',
-               u'fixed_ip_address']
+    headers = [u'id',  u'container.name', u'parent.name', u'name']
     
     class Meta:
         label = 'openstack.beehive.floatingips'
@@ -559,7 +592,8 @@ class OpenstackFloatingIpController(OpenstackControllerChild):
         self.entity_class = self.client.network.ip
        
 class OpenstackRouterController(OpenstackControllerChild):
-    headers = [u'id', u'tenant_id', u'name', u'ha', u'status']
+    uri = u'/v1.0/openstack/routers'
+    headers = [u'id',  u'container.name', u'parent.name', u'name',]
     
     class Meta:
         label = 'openstack.beehive.routers'
@@ -568,7 +602,8 @@ class OpenstackRouterController(OpenstackControllerChild):
         description = "Openstack Router management"
         
 class OpenstackSecurityGroupController(OpenstackControllerChild):
-    headers = [u'id', u'tenant_id', u'name']
+    uri = u'/v1.0/openstack/security_groups'
+    headers = [u'id', u'parent.name', u'name']
     
     class Meta:
         label = 'openstack.beehive.security_groups'
@@ -576,7 +611,23 @@ class OpenstackSecurityGroupController(OpenstackControllerChild):
         aliases_only = True         
         description = "Openstack SecurityGroup management"           
         
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        """Get openstack item
+        """
+        oid = self.get_arg(name=u'id')
+        uri = self.uri + u'/' + oid
+        res = self._call(uri, u'GET').get(u'security_group', {})
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
+        rules = res.get(u'details').pop(u'rules')
+        self.result(res, details=True)
+        print(u'rules:')
+        self.result(rules, headers=[u'id', u'direction', u'protocol', 
+            u'ethertype', u'remote_ip_prefix', u'remote_group.name', 
+            u'remote_group.id', u'port_range_min', u'port_range_max'])     
+        
 class OpenstackImageController(OpenstackControllerChild):
+    uri = u'/v1.0/openstack/images'
     headers = [u'id', u'name']
     
     class Meta:
@@ -586,6 +637,7 @@ class OpenstackImageController(OpenstackControllerChild):
         description = "Openstack Image management"
         
 class OpenstackFlavorController(OpenstackControllerChild):
+    uri = u'/v1.0/openstack/flavors'
     headers = [u'id', u'name']
     
     class Meta:
@@ -595,6 +647,7 @@ class OpenstackFlavorController(OpenstackControllerChild):
         description = "Openstack Flavor management"
         
 class OpenstackServerController(OpenstackControllerChild):
+    uri = u'/v1.0/openstack/servers'
     headers = [u'id', u'parent_id', u'name']
     
     class Meta:
@@ -604,6 +657,7 @@ class OpenstackServerController(OpenstackControllerChild):
         description = "Openstack Server management"
         
 class OpenstackVolumeController(OpenstackControllerChild):
+    uri = u'/v1.0/openstack/volumes'
     headers = [u'id', u'parent_id', u'name']
     
     class Meta:
@@ -613,6 +667,7 @@ class OpenstackVolumeController(OpenstackControllerChild):
         description = "Openstack Volume management"
 
 class OpenstackHeatStackController(OpenstackControllerChild):
+    uri = u'/v1.0/openstack/stacks'
     headers = [u'id', u'parent_id', u'name']
     
     class Meta:
