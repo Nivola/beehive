@@ -94,6 +94,254 @@ class OpenstackPlatformControllerChild(BaseController):
         logger.info(res)
         self.result(res, headers=[u'msg'])
 
+class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
+    headers = [u'id', u'name', u'domain_id']
+    
+    class Meta:
+        label = 'openstack.platform.system'
+        aliases = ['system']
+        aliases_only = True        
+        description = "Openstack System management"
+        
+    def _ext_parse_args(self):
+        OpenstackPlatformControllerChild._ext_parse_args(self)
+        
+    @expose()
+    def users(self):
+        #params = self.get_query_params(*self.app.pargs.extra_arguments)
+        res = self.client.identity.user.list(detail=True)
+        logger.info(res)
+        self.result(res, headers=self.headers)
+
+    @expose()
+    def compute_api(self):
+        """Get compute api versions.
+        """
+        res = self.client.system.compute_api().get(u'versions', [])
+        logger.debug('Get openstack compute services: %s' % (res))
+        self.result(res, headers=[u'id', u'version', u'min_version',
+                                  u'status', u'updated'])
+    
+    @expose()
+    def compute_services(self):
+        """Get compute service.
+        
+        :raises OpenstackError: raise :class:`.OpenstackError`
+        """
+        path = '/os-services'
+        res = self.compute.call(path, 'GET', data='', 
+                                token=self.manager.identity.token)
+        self.logger.debug('Get openstack compute services: %s' % truncate(res))
+        return res[0]['services']
+    
+    @expose()
+    def compute_zones(self):
+        """Get compute availability zones.
+        """
+        res = self.client.system.compute_zones()
+        resp = []
+        for item in res:
+            resp.append({u'state':item[u'zoneState'][u'available'],
+                         u'hosts':u','.join(item[u'hosts'].keys()),
+                         u'name':item[u'zoneName']})
+        logger.debug('Get openstack availability zone: %s' % (res))
+        self.result(resp, headers=[u'name', u'hosts', u'state'], maxsize=200)    
+    
+    @expose()
+    def compute_hosts(self):
+        """Get physical hosts.
+        
+        :raises OpenstackError: raise :class:`.OpenstackError`
+        """
+        path = '/os-hosts'
+        res = self.compute.call(path, 'GET', data='', 
+                                token=self.manager.identity.token)
+        self.logger.debug('Get openstack hosts: %s' % truncate(res))
+        return res[0]['hosts']
+    
+    @expose()
+    def compute_host_aggregates(self):
+        """Get compute host aggregates.
+        An aggregate assigns metadata to groups of compute nodes. Aggregates 
+        are only visible to the cloud provider.
+        
+        :raises OpenstackError: raise :class:`.OpenstackError`
+        """
+        path = '/os-aggregates'
+        res = self.compute.call(path, 'GET', data='', 
+                                token=self.manager.identity.token)
+        self.logger.debug('Get openstack host aggregates: %s' % truncate(res))
+        return res[0]['aggregates']
+    
+    @expose()
+    def compute_server_groups(self):
+        """Get compute server groups.
+        
+        :raises OpenstackError: raise :class:`.OpenstackError`
+        """
+        path = '/os-server-groups'
+        res = self.compute.call(path, 'GET', data='', 
+                                token=self.manager.identity.token)
+        self.logger.debug('Get openstack server groups: %s' % truncate(res))
+        return res[0]['server_groups']
+
+    @expose()
+    def compute_hypervisors(self):
+        """Displays extra statistical information from the machine that hosts 
+        the hypervisor through the API for the hypervisor (XenAPI or KVM/libvirt).
+        
+        :raises OpenstackError: raise :class:`.OpenstackError`
+        """
+        path = '/os-hypervisors/detail'
+        res = self.compute.call(path, 'GET', data='', 
+                                token=self.manager.identity.token)
+        self.logger.debug('Get openstack hypervisors: %s' % truncate(res))
+        return res[0]['hypervisors']
+    
+    @expose()
+    def compute_hypervisors_statistics(self):
+        """Get compute hypervisors statistics.
+        
+        :raises OpenstackError: raise :class:`.OpenstackError`
+        """
+        path = '/os-hypervisors/statistics'
+        res = self.compute.call(path, 'GET', data='', 
+                                token=self.manager.identity.token)
+        self.logger.debug('Get openstack hypervisors statistics: %s' % truncate(res))
+        return res[0]['hypervisor_statistics']
+    
+    @expose()
+    def compute_agents(self):
+        """Get compute agents.
+        Use guest agents to access files on the disk, configure networking, and 
+        run other applications and scripts in the guest while it runs. This 
+        hypervisor-specific extension is not currently enabled for KVM. Use of 
+        guest agents is possible only if the underlying service provider uses 
+        the Xen driver.  
+        
+        :raises OpenstackError: raise :class:`.OpenstackError`
+        """
+        path = '/os-agents'
+        res = self.compute.call(path, 'GET', data='', 
+                                token=self.manager.identity.token)
+        self.logger.debug('Get openstack compute agents: %s' % truncate(res))
+        return res[0]['agents']    
+    
+    @expose()
+    def storage_services(self):
+        """Get storage service.  
+        
+        :raises OpenstackError: raise :class:`.OpenstackError`
+        """
+        path = '/os-services'
+        res = self.blockstore.call(path, 'GET', data='', 
+                                   token=self.manager.identity.token)
+        self.logger.debug('Get openstack storage services: %s' % truncate(res))
+        return res[0]['services']
+    
+    @expose()
+    def network_agents(self):
+        """Get network agents.
+        
+        :return:
+           [...,
+            {u'admin_state_up': True,
+              u'agent_type': u'Metadata agent',
+              u'alive': True,
+              u'binary': u'neutron-metadata-agent',
+              u'configurations': {u'log_agent_heartbeats': False, u'metadata_proxy_socket': u'/var/lib/neutron/metadata_proxy', u'nova_metadata_ip': u'ctrl-liberty.nuvolacsi.it', u'nova_metadata_port': 8775},
+              u'created_at': u'2015-12-22 14:33:59',
+              u'description': None,
+              u'heartbeat_timestamp': u'2016-05-08 16:21:55',
+              u'host': u'ctrl-liberty2.nuvolacsi.it',
+              u'id': u'e6c1e736-d25c-45e8-a475-126a13a07332',
+              u'started_at': u'2016-04-29 21:31:22',
+              u'topic': u'N/A'},
+             {u'admin_state_up': True,
+              u'agent_type': u'Linux bridge agent',
+              u'alive': True,
+              u'binary': u'neutron-linuxbridge-agent',
+              u'configurations': {u'bridge_mappings': {},
+                                  u'devices': 21,
+                                  u'interface_mappings': {u'netall': u'enp10s0f1', u'public': u'enp10s0f1.62'},
+                                  u'l2_population': True,
+                                  u'tunnel_types': [u'vxlan'],
+                                  u'tunneling_ip': u'192.168.205.69'},
+              u'created_at': u'2015-12-22 14:33:59',
+              u'description': None,
+              u'heartbeat_timestamp': u'2016-05-08 16:21:55',
+              u'host': u'ctrl-liberty2.nuvolacsi.it',
+              u'id': u'eb1010c4-ad95-4d8c-b377-6fce6a78141e',
+              u'started_at': u'2016-04-29 21:31:22',
+              u'topic': u'N/A'}]
+        :raises OpenstackError: raise :class:`.OpenstackError`
+        """
+        path = '/v2.0/agents'
+        res = self.network.call(path, 'GET', data='', 
+                                token=self.manager.identity.token)
+        self.logger.debug('Get openstack network agents: %s' % truncate(res))
+        return res[0]['agents']
+    
+    @expose()
+    def network_service_providers(self):
+        """Get network service providers.
+        
+        :return: [{u'default': True, 
+                   u'name': u'haproxy', 
+                   u'service_type': u'LOADBALANCER'}]
+        :raises OpenstackError: raise :class:`.OpenstackError`
+        """
+        path = '/v2.0/service-providers'
+        res = self.network.call(path, 'GET', data='', 
+                                token=self.manager.identity.token)
+        self.logger.debug('Get openstack network service providers: %s' % 
+                          truncate(res))
+        return res[0]['service_providers']
+    
+    @expose()
+    def orchestrator_services(self):
+        """Get heat services.
+        
+        :return: Ex.
+              [{u'binary': u'heat-engine',
+                u'created_at': u'2016-04-29T20:52:52.000000',
+                u'deleted_at': None,
+                u'engine_id': u'c1942356-3cf2-4e45-af5e-75334d7e6263',
+                u'host': u'ctrl-liberty2.nuvolacsi.it',
+                u'hostname': u'ctrl-liberty2.nuvolacsi.it',
+                u'id': u'07cf7fbc-22c3-4091-823c-12e297a0cc51',
+                u'report_interval': 60,
+                u'status': u'up',
+                u'topic': u'engine',
+                u'updated_at': u'2016-05-09T12:19:55.000000'},
+               {u'binary': u'heat-engine',
+                u'created_at': u'2016-04-29T20:52:52.000000',
+                u'deleted_at': None,
+                u'engine_id': u'd7316fa6-2e82-4fe0-94d2-09cbb5ad1bc6',
+                u'host': u'ctrl-liberty2.nuvolacsi.it',
+                u'hostname': u'ctrl-liberty2.nuvolacsi.it',
+                u'id': u'0a40b1ef-91e8-4f63-8c0b-861dbbfdcf31',
+                u'report_interval': 60,
+                u'status': u'up',
+                u'topic': u'engine',
+                u'updated_at': u'2016-05-09T12:19:58.000000'},..,]        
+        :raises OpenstackError: raise :class:`.OpenstackError`
+        """
+        path="/services"
+        res = self.heat.call(path, 'GET', data='', 
+                             token=self.manager.identity.token)
+        self.logger.debug('Get openstack orchestrator services: %s' % \
+                          truncate(res))
+        return res[0]['services']
+
+
+
+
+
+
+
+
+
 class OpenstackPlatformKeystoneController(OpenstackPlatformControllerChild):
     headers = [u'id', u'name', u'domain_id']
     
@@ -230,8 +478,6 @@ class OpenstackPlatformSecurityGroupController(OpenstackPlatformControllerChild)
         self.entity_class = self.client.network.security_group             
         
 class OpenstackPlatformImageController(OpenstackPlatformControllerChild):
-    headers = [u'id', u'name']
-    
     class Meta:
         label = 'openstack.platform.images'
         aliases = ['images']
@@ -243,9 +489,19 @@ class OpenstackPlatformImageController(OpenstackPlatformControllerChild):
         
         self.entity_class = self.client.image
         
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    def list(self):
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        objs = self.entity_class.list(detail=True, **params)
+        res = []
+        for obj in objs:
+            res.append(obj)
+        logger.info(res)
+        self.result(res, headers=[u'id', u'name', u'status', u'progress',
+                                  u'created', u'minDisk', u'minRam',
+                                  u'OS-EXT-IMG-SIZE:size'])        
+        
 class OpenstackPlatformFlavorController(OpenstackPlatformControllerChild):
-    headers = [u'id', u'name']
-    
     class Meta:
         label = 'openstack.platform.flavors'
         aliases = ['flavors']
@@ -256,6 +512,18 @@ class OpenstackPlatformFlavorController(OpenstackPlatformControllerChild):
         OpenstackPlatformControllerChild._ext_parse_args(self)
         
         self.entity_class = self.client.flavor
+        
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    def list(self):
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        objs = self.entity_class.list(detail=True, **params)
+        res = []
+        for obj in objs:
+            res.append(obj)
+        logger.info(res)
+        self.result(res, headers=[u'id', u'name', u'ram', u'vcpus', u'swap',
+            u'os-flavor-access:is_public', u'rxtx_factor', u'disk', 
+            u'OS-FLV-EXT-DATA:ephemeral', u'OS-FLV-DISABLED:disabled'])
         
 class OpenstackPlatformServerController(OpenstackPlatformControllerChild):
     headers = [u'id', u'parent_id', u'name']
@@ -420,6 +688,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
 
 openstack_platform_controller_handlers = [
     OpenstackPlatformController,
+    OpenstackPlatformSystemController,
     OpenstackPlatformKeystoneController,
     OpenstackPlatformProjectController,
     OpenstackPlatformNetworkController,
@@ -593,7 +862,7 @@ class OpenstackFloatingIpController(OpenstackControllerChild):
        
 class OpenstackRouterController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/routers'
-    headers = [u'id',  u'container.name', u'parent.name', u'name',]
+    headers = [u'id', u'container.name', u'parent.name', u'name',]
     
     class Meta:
         label = 'openstack.beehive.routers'
@@ -603,7 +872,7 @@ class OpenstackRouterController(OpenstackControllerChild):
         
 class OpenstackSecurityGroupController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/security_groups'
-    headers = [u'id', u'parent.name', u'name']
+    headers = [u'id', u'container.name', u'parent.name', u'name']
     
     class Meta:
         label = 'openstack.beehive.security_groups'
@@ -628,7 +897,9 @@ class OpenstackSecurityGroupController(OpenstackControllerChild):
         
 class OpenstackImageController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/images'
-    headers = [u'id', u'name']
+    headers = [u'id', u'container.name', u'name',
+               u'details.size', u'details.minDisk', u'details.minRam', 
+               u'details.progress', u'details.status', u'details.metadata'] 
     
     class Meta:
         label = 'openstack.beehive.images'
@@ -638,7 +909,7 @@ class OpenstackImageController(OpenstackControllerChild):
         
 class OpenstackFlavorController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/flavors'
-    headers = [u'id', u'name']
+    headers = [u'id', u'container.name', u'parent.name', u'name']
     
     class Meta:
         label = 'openstack.beehive.flavors'
@@ -648,7 +919,7 @@ class OpenstackFlavorController(OpenstackControllerChild):
         
 class OpenstackServerController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/servers'
-    headers = [u'id', u'parent_id', u'name']
+    headers = [u'id', u'container.name', u'parent.name', u'name']
     
     class Meta:
         label = 'openstack.beehive.servers'
@@ -658,7 +929,7 @@ class OpenstackServerController(OpenstackControllerChild):
         
 class OpenstackVolumeController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/volumes'
-    headers = [u'id', u'parent_id', u'name']
+    headers = [u'id', u'container.name', u'parent.name', u'name']
     
     class Meta:
         label = 'openstack.beehive.volumes'

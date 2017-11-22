@@ -55,7 +55,8 @@ class BeehiveTestCase(unittest.TestCase):
     logger = logging.getLogger(u'beehive.test.log')
     runlogger = logging.getLogger(u'beehive.test.run')
     pp = pprint.PrettyPrinter(width=200)
-    validatation_active = True
+    validatation_active = False
+    validation_active = False
     
     @classmethod
     def setUpClass(cls):
@@ -178,7 +179,7 @@ class BeehiveTestCase(unittest.TestCase):
         return schema    
     
     def get_schema(self, subsystem, endpoint):
-        if self.validatation_active is True:
+        if self.validatation_active is True or self.validation_active is True:
             schema = self.schema.get(subsystem, None)
             if schema is None:
                 self.logger.info(u'Load swagger schema from %s' % endpoint)
@@ -190,7 +191,7 @@ class BeehiveTestCase(unittest.TestCase):
     def validate_response(self, resp_content_type, schema, path, method, 
                           response, runlog):
         validate = True
-        if self.validatation_active is True:
+        if self.validatation_active is True or self.validation_active is True:
             # validate with swagger schema
             if resp_content_type.find(u'application/json') >= 0:
                 validator = ApiValidator(schema, path, method)

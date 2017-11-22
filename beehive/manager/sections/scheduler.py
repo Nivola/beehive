@@ -21,10 +21,6 @@ class SchedulerController(BaseController):
 
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
-
-    @expose(help="Scheduler management", hide=True)
-    def default(self):
-        self.app.args.print_help()
         
 class SchedulerControllerChild(ApiController):
     cataloguri = u'/v1.0/schedulers'
@@ -74,7 +70,7 @@ class WorkerController(SchedulerControllerChild):
 
     @expose()
     def stat(self):
-        """Stat
+        """Statistics
         """
         uri = u'/v1.0/worker/stats'
         res = self._call(uri, u'GET').get(u'workers_stats', {})
