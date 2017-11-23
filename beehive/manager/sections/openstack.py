@@ -3,6 +3,7 @@ Created on Sep 27, 2017
 
 @author: darkbk
 '''
+import sh
 import logging
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController,\
@@ -926,6 +927,18 @@ class OpenstackServerController(OpenstackControllerChild):
         aliases = ['servers']
         aliases_only = True         
         description = "Openstack Server management"
+        
+    @expose(aliases=[u'console <id>'], aliases_only=True)
+    def console(self):
+        """Get openstack item
+        """
+        oid = self.get_arg(name=u'id')
+        uri = self.uri + u'/' + oid + u'/console'
+        res = self._call(uri, u'GET').get(u'server_console', {})
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
+        self.result([res], headers=[u'type', u'url'], 
+                    maxsize=400)
+        sh.firefox(res.get(u'url'))
         
 class OpenstackVolumeController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/volumes'
