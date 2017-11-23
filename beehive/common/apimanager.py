@@ -3041,6 +3041,7 @@ class ApiView(FlaskView):
 
         start = time.time()
         dbsession = None
+        data = None
         try:
             headers = [u'%s: %s' % (k,v) for k,v in request.headers.iteritems()]
             
@@ -3053,9 +3054,15 @@ class ApiView(FlaskView):
             
             self.logger.info(u'Invoke api: %s [%s] - START' % 
                              (request.path, request.method))
-            query_string = request.values.to_dict()    
+            query_string = request.values.to_dict()
+            # get chunked input data
+            if request.headers.get(u'Transfer-Encoding', u'') == u'chunked':
+                request_data = uwsgi_util.chunked_read(5)
+            else:
+                request_data = request.data
+            
             self.logger.debug(u'Api request headers:%s, data:%s, query:%s' % 
-                              (headers, request.data, query_string))
+                              (headers, request_data, query_string))
             self._get_response_mime_type()
             
             # open database session.
@@ -3068,7 +3075,7 @@ class ApiView(FlaskView):
             
             # get request data
             try:
-                data = request.data 
+                data = request_data 
                 data = json.loads(data)
             except (AttributeError, ValueError): 
                 data = request.values.to_dict()
@@ -3110,7 +3117,7 @@ class ApiView(FlaskView):
             ApiViewResponse(controller).send_event({u'path':request.path,
                                                     u'method':request.method,
                                                     u'elapsed':elapsed}, 
-                                                   request.data)
+                                                   data)
         except gevent.Timeout:
             # get request elapsed time
             elapsed = round(time.time() - start, 4)
@@ -3121,7 +3128,7 @@ class ApiView(FlaskView):
                                                     u'method':request.method,
                                                     u'elapsed':elapsed,
                                                     u'code':408}, 
-                                                   request.data,
+                                                   data,
                                                    exception=msg)            
             return self.get_error(u'Timeout', 408, msg)
         except ApiManagerError as ex:
@@ -3133,7 +3140,7 @@ class ApiView(FlaskView):
                                                     u'method':request.method,
                                                     u'elapsed':elapsed,
                                                     u'code':ex.code}, 
-                                                   request.data,
+                                                   data,
                                                    exception=ex.value)            
             return self.get_error(u'ApiManagerError', ex.code, ex.value)
         except ApiManagerWarning as ex:
@@ -3145,7 +3152,7 @@ class ApiView(FlaskView):
                                                     u'method':request.method,
                                                     u'elapsed':elapsed,
                                                     u'code':ex.code}, 
-                                                   request.data,
+                                                   data,
                                                    exception=ex.value)            
             return self.get_warning(u'ApiManagerWarning', ex.code, ex.value)
         except Exception as ex:
@@ -3157,7 +3164,7 @@ class ApiView(FlaskView):
                                                     u'method':request.method,
                                                     u'elapsed':elapsed,
                                                     u'code':400}, 
-                                                   request.data,
+                                                   data,
                                                    exception=str(ex))            
             return self.get_error(u'Exception', 400, str(ex))
         finally:

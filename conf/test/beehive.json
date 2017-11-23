@@ -151,6 +151,59 @@
                 "project2":{
                     "name":"test-project-02",
                     "parent":"test-project-01"
+                },
+                "network1":{
+                    "name":"test-network-01",
+                    "physical_network":"datacentre",
+                    "vlan":565
+                },
+                "subnet1":{
+                    "name":"test-subnet-01",
+                    "cidr":"10.102.185.0/24",
+                    "start_pool":"10.102.185.50",
+                    "end_pool":"10.102.185.60"
+                },
+                "port1":{
+                    "name":"test-port-01",
+                    "ip":"10.102.185.60"
+                },
+                "sg1":{
+                    "name":"test-sg-01",
+                    "rule1":{
+                        "direction":"ingress",
+                        "remote_ip_prefix":"10.100.2.0/24",
+                        "protocol":"tcp",
+                        "port_range_min":"1000",
+                        "port_range_max":"1010"
+                    },
+                    "rule2":{
+                        "direction":"ingress",
+                        "protocol":"tcp"
+                    }
+                },
+                "router1":{
+                    "name":"test-router-01",
+                    "routes": [
+                        {"destination": "102.109.178.23/24", "nexthop": "10.109.78.2"}
+                    ],
+                    "external_network":{
+                        "vlan":567
+                    },
+                    "internal_network":["test-subnet-01"]
+                },
+                "ops-server1":{
+                    "name":"test-server-01",
+                    "project":"test-project-01",
+                    "network":{
+                        "uuid":"test-network-01",
+                        "gw":"10.102.184.1"
+                    },
+                    "availability_zone":"nova",
+                    "flavorRef":"m1.medium",
+                    "imageRef":"centos7-heat",
+                    "admin_pwd":"mypass",
+                    "volume":{"size":20},
+                    "security_groups": ["test-sg-01"]
                 }
             }
         },
@@ -184,6 +237,17 @@
                         "project":"admin",
                         "pwd":"cs1topix",
                         "region":"RegionOne"
+                    }
+                },
+                "openstack2":{
+                    "name":"test-container-ops2",                
+                    "api":{                
+		                "uri":"http://10.102.184.200:5000/v3",
+		                "domain":"default",  
+		                "user":"admin",
+		                "project":"admin",
+		                "pwd":"8fAwzAJAHQFMcJfrntpapzDpC",      
+		                "region":"regionOne"
                     }
                 }
             }
