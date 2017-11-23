@@ -3395,14 +3395,15 @@ class ApiClient(BeehiveApiClient):
                               (path, self.uid, ex.value))
             raise ApiManagerError(ex.value, code=ex.code)
         
-        if res['status'] == 'error':
-            self.logger.error('Send admin request to %s using uid %s: %s' % 
-                              (path, self.uid, res['msg']))
-            raise ApiManagerError(res['msg'], code=res['code'])
-        else:
-            self.logger.info('Send admin request to %s using uid %s: %s' % 
-                             (path, self.uid, truncate(res)))
-            return res['response']
+#         if res['status'] == 'error':
+#             self.logger.error('Send admin request to %s using uid %s: %s' % 
+#                               (path, self.uid, res['msg']))
+#             raise ApiManagerError(res['msg'], code=res['code'])
+#         else:
+#             self.logger.info('Send admin request to %s using uid %s: %s' % 
+#                              (path, self.uid, truncate(res)))
+#             return res['response']
+        return res
 
     def user_request(self, module, path, method, data=u'', other_headers=None):
         """Make api request using module current user credentials.
