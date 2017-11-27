@@ -12,6 +12,7 @@ from re import match
 from beecell.simple import truncate
 from beedrones.openstack.client import OpenstackManager
 from beehive.manager.sections.resource import ResourceEntityController
+from paramiko.client import SSHClient, MissingHostKeyPolicy
 
 logger = logging.getLogger(__name__)
 
@@ -1017,6 +1018,35 @@ class OpenstackServerController(OpenstackControllerChild):
         self.result([res], headers=[u'type', u'url'], 
                     maxsize=400)
         sh.firefox(res.get(u'url'))
+
+    @expose(aliases=[u'ssh <id> <user>'], aliases_only=True)
+    def ssh(self):
+        """Get openstack server console
+        """
+        oid = self.get_arg(name=u'id')
+        pkey = self.get_arg(name=u'pkey')
+        port = 22
+        user = u'root'
+        pwd = u'cs1$topix'
+        
+        # get server
+        uri = self.uri + u'/' + oid
+        res = self._call(uri, u'GET').get(u'server', {})
+        logger.info(u'Get server: %s' % (truncate(res)))
+        ipaddress = res[u'details'][u'networks'][0][u'fixed_ips'][0][u'ip_address']    
+        ipaddress = u'10.102.184.69'
+        # open ssh client
+        client = SSHClient()
+        client.set_missing_host_key_policy(MissingHostKeyPolicy())
+        client.connect(ipaddress, port, username=user, password=pwd,
+            look_for_keys=False, compress=True)
+        #timeout=None, #allow_agent=True,
+        
+        channel = client.invoke_shell(term=u'vt100', width=80, height=24, 
+            width_pixels=500, height_pixels=400)
+        channel.send('ls\n')
+        output=channel.recv(2024)
+        print(output)
         
     @expose(aliases=[u'stop <id>'], aliases_only=True)
     def stop(self):
