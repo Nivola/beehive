@@ -148,7 +148,7 @@ class RedisController(AnsibleController):
         label = 'redis'
         description = "Redis management"
         
-    def __run_cmd(self, func, dbs=[0]):
+    def run_cmd(self, func, dbs=[0]):
         """Run command on redis instances
         """
         try:
@@ -157,7 +157,14 @@ class RedisController(AnsibleController):
             runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
                             module=path_lib)
             hosts, vars = runner.get_inventory_with_vars(u'redis')        
+            cluster_hosts, vars = runner.get_inventory_with_vars(u'redis-master')
+        except Exception as ex:
+            self.error(ex)
+            return            
             
+        try:
+            self.app.print_output(u'Redis server:')
+            # sigle redis server
             resp = []
             for host in hosts:
                 for db in dbs:
@@ -176,10 +183,10 @@ class RedisController(AnsibleController):
                                          u'response':v})                        
                     else:
                         resp.append({u'host':str(host), u'db':db, u'response':res})
-                logger.info(u'Ping redis %s : %s' % (uri, resp))
+                #logger.info(u'Ping redis %s : %s' % (uri, resp))
             self.result(resp, headers=[u'host', u'db', u'response'])
         except Exception as ex:
-            self.error(ex)            
+            self.error(ex)         
         
     @expose()
     def ping(self):
@@ -187,7 +194,7 @@ class RedisController(AnsibleController):
         """        
         def func(server):
             return server.ping()
-        self.__run_cmd(func)
+        self.run_cmd(func)
     
     @expose()
     def info(self):
@@ -195,7 +202,7 @@ class RedisController(AnsibleController):
         """        
         def func(server):
             return server.info()
-        self.__run_cmd(func)
+        self.run_cmd(func)
     
     @expose()
     def config(self):
@@ -203,7 +210,27 @@ class RedisController(AnsibleController):
         """        
         def func(server):
             return server.config()
-        self.__run_cmd(func) 
+        self.run_cmd(func) 
+    
+    @expose()
+    def summary(self):
+        """Info from redis instances
+        """        
+        def func(server):
+            res = server.info()
+            resp = {}
+            for k,v in res.items():
+                raw = {}
+                for k1 in [u'role', u'redis_version', 
+                          u'process_id', u'uptime_in_seconds', u'os',
+                          u'connected_clients', u'total_commands_processed', u'pubsub_channels',
+                          u'total_system_memory_human', u'used_memory_rss_human', u'used_memory_human', 
+                          u'used_cpu_sys', u'used_cpu_user',
+                          u'instantaneous_output_kbps']:
+                    raw[k1] = v[k1]
+                resp[k] = raw
+            return resp
+        self.run_cmd(func)    
     
     @expose()
     def size(self):
@@ -211,7 +238,7 @@ class RedisController(AnsibleController):
         """
         def func(server):
             return server.size()
-        self.__run_cmd(func, dbs=range(0,8))
+        self.run_cmd(func, dbs=range(0,8))
     
     @expose()
     def client_list(self):
@@ -219,7 +246,7 @@ class RedisController(AnsibleController):
         """        
         def func(server):
             return server.server.client_list()
-        self.__run_cmd(func)         
+        self.run_cmd(func)         
     
     @expose()
     def flush(self):
@@ -227,7 +254,7 @@ class RedisController(AnsibleController):
         """        
         def func(server):
             return server.server.flushall()
-        self.__run_cmd(func)  
+        self.run_cmd(func)  
     
     @expose(aliases=[u'inspect [pattern]'], aliases_only=True)
     def inspect(self):
@@ -238,7 +265,7 @@ class RedisController(AnsibleController):
         
         def func(server): 
             return server.inspect(pattern=pattern, debug=False)
-        self.__run_cmd(func, dbs=range(0,8))
+        self.run_cmd(func, dbs=range(0,8))
     
     @expose(aliases=[u'query [pattern]'], aliases_only=True)
     def query(self):
@@ -257,7 +284,7 @@ class RedisController(AnsibleController):
                     resp.append({k:len(v)})
                 return resp
             return res
-        self.__run_cmd(func, dbs=range(0,8))
+        self.run_cmd(func, dbs=range(0,8))
     
     @expose(aliases=[u'delete [pattern]'], aliases_only=True)
     def delete(self):
@@ -268,7 +295,68 @@ class RedisController(AnsibleController):
         
         def func(server):
             return server.delete(pattern=pattern)
-        self.__run_cmd(func, dbs=range(0,8))
+        self.run_cmd(func, dbs=range(0,8))
+        
+class RedisClutserController(RedisController):
+    class Meta:
+        label = 'redis-cluster'
+        description = "Redis Cluster management"
+        
+    def run_cmd(self, func, dbs=[0]):
+        """Run command on redis instances
+        """
+        try:
+            path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+            path_lib = u'%s/library/beehive/' % (self.ansible_path)
+            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
+                            module=path_lib)      
+            cluster_hosts, vars = runner.get_inventory_with_vars(u'redis-master')
+        except Exception as ex:
+            self.error(ex)
+            return            
+
+        try:
+            # redis cluster
+            resp = []
+            headers = []
+            cluster_nodes = []
+            redis_uri = u'redis-cluster://'
+            for host in cluster_hosts:
+                cluster_nodes.append(u'%s:%s' % (str(host), u'6379'))
+            redis_uri += u','.join(cluster_nodes)
+            server = RedisManager(redis_uri)
+            res = func(server)
+            try:
+                values = res.values()
+            except:
+                values = [None]
+
+            if isinstance(values[0], dict):
+                headers = res.keys()
+                raws = {}
+                # loop over hosts
+                for key, values in res.items():
+                    # loop over hosts fields
+                    for k1,v1 in values.items():
+                        try:
+                            # assign new host
+                            raws[k1][key] = v1
+                        except:
+                            # create new raw
+                            raws[k1] = {u'fields':k1, key:v1}
+                headers.insert(0, u'fields')
+                resp = raws.values()
+            elif isinstance(res, dict):
+                resp = res
+                headers = resp.keys()                
+            elif isinstance(res, list):
+                resp = res
+                headers = [u'keys']                
+
+            logger.info(u'Cmd redis : %s' % (resp))
+            self.result(resp, headers=headers, key_separator=u',', maxsize=25)            
+        except Exception as ex:
+            self.error(ex)            
         
 class MysqlController(AnsibleController):
     class Meta:
@@ -290,13 +378,15 @@ class MysqlController(AnsibleController):
         runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
                         module=path_lib)
         hosts, vars = runner.get_inventory_with_vars(u'mysql')
+        hosts2, vars = runner.get_inventory_with_vars(u'mysql-cluster')
+        hosts.extend(hosts2)
         # get root user
         vars = runner.variable_manager.get_vars(runner.loader, host=hosts[0])
-        users = vars[u'mysql_users']
-        root = {}
-        for user in users:
-            if user[u'name'] == u'root':
-                root = user
+        root = {u'name':u'root', u'password':vars[u'mysql_remote_root_password']}
+        #root = {}
+        #for user in users:
+        #    if user[u'name'] == u'root':
+        #        root = user
         return hosts, root        
     
     @expose(aliases=[u'ping [port]'], aliases_only=True)
@@ -315,7 +405,7 @@ class MysqlController(AnsibleController):
             resp.append({u'host':host, u'response':res})
             logger.info(u'Ping mysql : %s' % (res))
         
-        self.result(resp, headers=[u'host', u'response'])
+            self.result(resp, headers=[u'host', u'response'])
         
     @expose(aliases=[u'schemas [port]'], aliases_only=True)
     def schemas(self):
@@ -333,7 +423,19 @@ class MysqlController(AnsibleController):
             resp = server.get_schemas()
             logger.info(u'Get mysql schemas : %s' % (resp))
         
-        self.result(resp, headers=[u'schema', u'tables'])
+            self.result(resp, headers=[u'schema', u'tables'])
+        
+    @expose()
+    def schemas_update(self):
+        """Update mysql users and schemas
+        """
+        run_data = {
+            u'tags':[u'schema']
+        }        
+        self.ansible_playbook(u'mysql', run_data, 
+            playbook=u'%s/mysql.yml' % (self.ansible_path))
+        self.ansible_playbook(u'mysql-cluster-master', run_data, 
+            playbook=u'%s/mysql-cluster.yml' % (self.ansible_path))         
         
     @expose(aliases=[u'users [port]'], aliases_only=True)
     def users(self):
@@ -351,7 +453,7 @@ class MysqlController(AnsibleController):
             resp = server.get_users()
             logger.info(u'Get mysql users : %s' % (resp))
         
-        self.result(resp, headers=[u'host', u'user'])
+            self.result(resp, headers=[u'host', u'user'])
         
     @expose(aliases=[u'tables <schema> [port]'], aliases_only=True)
     def tables(self):
@@ -370,7 +472,7 @@ class MysqlController(AnsibleController):
             resp = server.get_schema_tables(schema)
             logger.info(u'Get mysql schema %s tables : %s' % (schema, resp))
         
-        self.result(resp, headers=[u'table_name', u'table_rows', 
+            self.result(resp, headers=[u'table_name', u'table_rows', 
                     u'auto_increment', u'data_length', u'index_length'])
         
     @expose(aliases=[u'table-description <schema> <table> [port]'], aliases_only=True)
@@ -391,7 +493,7 @@ class MysqlController(AnsibleController):
             logger.info(u'Get mysql schema %s table %s descs : %s' % 
                         (schema, table, resp))
         
-        self.result(resp, headers=[u'name', u'type', u'default', u'index', 
+            self.result(resp, headers=[u'name', u'type', u'default', u'index', 
                         u'is_primary_key', u'is_nullable', u'is_unique'])        
 
     @expose(aliases=[u'table-query <schema> <table> [rows] [offset] [port]'], 
@@ -416,7 +518,7 @@ class MysqlController(AnsibleController):
             logger.info(u'Get mysql schema %s table %s query : %s' % 
                         (schema, table, resp))
         
-        self.result(resp, headers=resp[0].keys(), maxsize=20) 
+            self.result(resp, headers=resp[0].keys(), maxsize=20) 
 
 class CamundaController(AnsibleController):
     class Meta:
@@ -489,7 +591,7 @@ class OpenstackController(AnsibleController):
                               domain=conf.get(u'domain'))
         return client 
     
-    def __run_cmd(self, func, instance, subset=u''):
+    def run_cmd(self, func, instance, subset=u''):
         """Run command on openstack instances
         
         **Parameters:**
@@ -539,7 +641,7 @@ class OpenstackController(AnsibleController):
             if output.exit_code == 0:
                 return True
             return False
-        self.__run_cmd(func, instance, subset=u'')
+        self.run_cmd(func, instance, subset=u'')
         
     @expose(aliases=[u'query <instance> [vip]'], aliases_only=True)
     def query(self):
@@ -562,7 +664,7 @@ class OpenstackController(AnsibleController):
         subset = u'controller'
         if vip is True:
             subset = u'vip'
-        self.__run_cmd(func, instance, subset=subset)
+        self.run_cmd(func, instance, subset=subset)
 
 class NodeController(AnsibleController):
     class Meta:
@@ -632,6 +734,37 @@ class NodeController(AnsibleController):
         #    time.sleep(1)
         print "Numero errori rilevati: %s " % conta_errori 
         self.result(servers, headers=[u'host', u'alimentazione'])
+
+    def __get_hosts_and_vars(self, env):
+        # get environemtn nodes
+        try:
+            path_inventory = u'%s/inventories/%s' % (self.ansible_path, env)
+            path_lib = u'%s/library/beehive/' % (self.ansible_path)
+            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
+                            module=path_lib)
+            hosts, hvars = runner.get_inventory_with_vars(u'all')
+            hvars = runner.variable_manager.get_vars(runner.loader)
+            return hosts, hvars
+        except Exception as ex:
+            self.error(ex)
+            return [], []        
+
+        # get root user
+        #vars = runner.variable_manager.get_vars(runner.loader, host=hosts[0])
+
+    @expose()
+    def environments(self):
+        """List configured environments
+        """
+        envs = self.configs[u'environments']
+        default = envs.pop(u'default')
+        resp = []
+        for e in envs.keys():
+            hosts, hvars = self.__get_hosts_and_vars(e)
+            resp.append({u'environment':e, u'hosts':hosts})
+        logger.debug(resp)
+        self.app.print_output(u'Default environment: %s' % default)
+        self.result(resp, headers=[u'environment', u'hosts'], maxsize=400)
     
     @expose(aliases=[u'list <group>'], aliases_only=True)
     def list(self):
@@ -1113,6 +1246,7 @@ class BeehiveController(AnsibleController):
 platform_controller_handlers = [
     PlatformController,
     RedisController,
+    RedisClutserController,
     MysqlController,
     CamundaController,
     OpenstackController,

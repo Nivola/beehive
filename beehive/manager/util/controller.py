@@ -325,18 +325,21 @@ commands:
         else:
             print data
     
-    def __multi_get(self, data, key):
-        keys = key.split(u'.')
+    def __multi_get(self, data, key, separator=u'.'):
+        keys = key.split(separator)
         res = data
         for k in keys:
             if isinstance(res, list):
                 res = res[int(k)]
             else:
                 res = res.get(k, {})
+        if isinstance(res, list):
+            res = u','.join(res)
+        
         return res
     
     def __tabularprint(self, data, headers=None, other_headers=[], fields=None,
-                       maxsize=20):
+                       maxsize=20, separator=u'.'):
         if not isinstance(data, list):
             values = [data]
         else:
@@ -351,10 +354,11 @@ commands:
             raw = []
             if isinstance(item, dict):
                 for key in fields:
-                    val = self.__multi_get(item, key)
+                    val = self.__multi_get(item, key, separator=separator)
                     raw.append(truncate(val, maxsize))
             else:
                 raw.append(truncate(item, maxsize))
+            
             table.append(raw)
         print(tabulate(table, headers=headers, tablefmt=u'fancy_grid'))
         print(u'')
@@ -401,7 +405,7 @@ commands:
             self.__format(data, space)
     
     def result(self, data, delta=None, other_headers=[], headers=None, key=None, 
-               fields=None, details=False, maxsize=50):
+               fields=None, details=False, maxsize=50, key_separator=u'.'):
         """
         """
         logger.debug(u'result format: %s' % self.format)
@@ -467,11 +471,12 @@ commands:
                         print(u'Total: %s' % orig_data[u'total'])
                         print(u'Order: %s %s' % (orig_data.get(u'sort').get(u'field'), 
                                                  orig_data.get(u'sort').get(u'order')))
-                        print(u'')                    
+                        print(u'')               
                     self.__tabularprint(data, other_headers=other_headers,
                                         headers=headers, fields=fields,
-                                        maxsize=maxsize)
-            
+                                        maxsize=maxsize, 
+                                        separator=key_separator)
+                    
         elif self.format == u'custom':       
             self.format_text(data)
             if len(self.text) > 0:

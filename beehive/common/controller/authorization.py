@@ -99,6 +99,7 @@ class BaseAuthController(ApiController):
         ApiController.__init__(self, module)
         
         self.manager = AuthDbManager()
+        self.auth_manager = AuthDbManager()
     
     '''
     def init_object(self):
@@ -327,7 +328,7 @@ class BaseAuthController(ApiController):
         # verify user exists in beehive database
         try:
             user_name = u'%s@%s' % (name, domain)
-            dbuser = self.manager.get_entity(ModelUser, user_name)
+            dbuser = self.auth_manager.get_entity(ModelUser, user_name)
             # get user attributes
             dbuser_attribs = {a.name:(a.value, a.desc) for a in dbuser.attrib}
         except (QueryError, Exception) as ex:
@@ -383,15 +384,15 @@ class BaseAuthController(ApiController):
     
     def __set_user_perms(self, dbuser, user):
         """Set user permissions """
-        #perms = self.manager.get_user_permissions2(dbuser)
-        perms = self.manager.get_login_permissions(dbuser)
+        #perms = self.auth_manager.get_user_permissions2(dbuser)
+        perms = self.auth_manager.get_login_permissions(dbuser)
         compress_perms = binascii.b2a_base64(compress(json.dumps(perms)))
         user.set_perms(compress_perms)
         #user.set_perms(perms)
     
     def __set_user_roles(self, dbuser, user):
         """Set user roles """    
-        roles = self.manager.get_login_roles(dbuser)
+        roles = self.auth_manager.get_login_roles(dbuser)
         user.set_roles([r.name for r in roles])      
     
     #
@@ -684,7 +685,7 @@ class BaseAuthController(ApiController):
             # reresh user in authentication manager
             user = self.module.authentication_manager.refresh(uid, name, domain)            
             # get user reference in db
-            dbuser = self.manager.get_entity(ModelUser, user_name)
+            dbuser = self.auth_manager.get_entity(ModelUser, user_name)
             # set user attributes
             #self.__set_user_attribs(dbuser, user)
             # set user permission

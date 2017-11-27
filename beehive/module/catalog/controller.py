@@ -11,7 +11,7 @@ from beehive.common.apimanager import ApiController, ApiManagerError, ApiObject
 from beehive.module.catalog.model import CatalogDbManager, \
     Catalog as ModelCatalog, CatalogEndpoint as ModelEndpoint
 from beehive.common.controller.authorization import BaseAuthController,\
-    AuthObject
+    AuthObject, Token
 from beehive.common.data import trace
 
 class CatalogController(BaseAuthController):

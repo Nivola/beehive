@@ -3,13 +3,38 @@ Created on Jan 12, 2017
 
 @author: darkbk
 '''
-import unittest
-from beehive.common.test import runtest, BeehiveTestCase
 import time
+import unittest
+from beehive.common.test import runtest, BeehiveTestCase, assert_exception
+from beecell.remote import BadRequestException, UnauthorizedException,\
+    ConflictException
 from beehive.common.apiclient import BeehiveApiClient
 
 uid = None
 seckey = None
+
+tests = [
+#u'test_create_keyauth_token',
+#u'test_ping_subsystem',
+#u'test_ping_endpoint',
+
+#u'test_exist',
+#u'test_load_catalog',
+
+#u'test_get_catalogs',
+u'test_get_catalog',
+#u'test_create_catalog',
+#u'test_delete_catalog',
+
+#u'test_get_endpoints',
+#u'test_get_endpoint',
+#u'test_create_endpoint',
+#u'test_delete_endpoint',
+
+#u'test_list_resources',    
+
+#u'test_logout',
+]
 
 class BeehiveApiClientTestCase(BeehiveTestCase):
     """
@@ -17,16 +42,15 @@ class BeehiveApiClientTestCase(BeehiveTestCase):
     def setUp(self):
         BeehiveTestCase.setUp(self)
         global uid, seckey
-        endpoints = [u'http://10.102.160.240:6060', 
-                     u'http://10.102.160.240:60601',
-                     u'http://10.102.160.240:60602']
-        endpoints = [u'http://10.102.184.52:6060',
-                     u'http://10.102.184.53:6060']
-        user = u'admin@local'
-        pwd = u'testlab'
-        ip = u'127.0.0.1'
-        catalog_id = 1
-        self.client = BeehiveApiClient(endpoints, user, pwd, catalog_id)
+        endpoints = [self.endpoints.get(self.test_config[u'default-endpoint'])]
+        user = self.users.get(u'test3')
+        self.user_name = user.get(u'user')
+        self.pwd = user.get(u'pwd')
+        self.ip = user.get(u'ip')
+        self.catalog_id = u'beehive-internal'
+        authtype = user.get(u'auth')
+        self.client = BeehiveApiClient(endpoints, authtype, self.user_name, 
+                                       self.pwd, self.catalog_id)
         if uid is not None:
             self.client.uid = uid
             self.client.seckey = seckey
@@ -41,25 +65,21 @@ class BeehiveApiClientTestCase(BeehiveTestCase):
         
     def test_ping_endpoint(self):
         res = self.client.ping(endpoint={u'proto':u'http',
-                                         u'host':u'10.102.160.240',
+                                         u'host':u'10.102.184.69',
                                          u'port':6060})
-        self.logger.info(self.pp.pformat(res))         
+        self.logger.info(self.pp.pformat(res))
 
-    def test_login(self):
+    def test_create_keyauth_token(self):
         global uid, seckey      
-        res = self.client.login()
-        uid = res[u'uid']
+        res = self.client.create_token(api_user=self.user_name, 
+                                       api_user_pwd=self.pwd, login_ip=self.ip)
+        uid = res[u'access_token']
         seckey = res[u'seckey']
         self.logger.info(self.client.endpoints)
 
     def test_exist(self):
         global uid, seckey
         res = self.client.exist(uid)
-        self.logger.info(res)
-
-    def test_logout(self):
-        global uid, seckey
-        res = self.client.logout()
         self.logger.info(res)
         
     def test_load_catalog(self):
@@ -81,7 +101,7 @@ class BeehiveApiClientTestCase(BeehiveTestCase):
         
     def test_get_catalog(self):
         global uid, seckey
-        res = self.client.get_catalog(1)
+        res = self.client.get_catalog(self.catalog_id)
         self.logger.info(self.pp.pformat(res))        
 
     def test_create_catalog(self):
@@ -124,31 +144,6 @@ class BeehiveApiClientTestCase(BeehiveTestCase):
         res = self.client.invoke(u'resource1', u'/v1.0/resources/', u'get', u'')
         #self.logger.info(self.pp.pformat(res))
         
-
-def test_suite():
-    tests = [
-        #u'test_login',
-        #u'test_ping_subsystem',
-        #u'test_ping_endpoint',
-        #u'test_exist',
-        #u'test_load_catalog',
-        
-        #u'test_get_catalogs',
-        #u'test_get_catalog',
-        #u'test_create_catalog',
-        #u'test_delete_catalog',
-        
-        u'test_get_endpoints',
-        #u'test_get_endpoint',
-        #u'test_create_endpoint',
-        #u'test_delete_endpoint',
-        
-        #u'test_list_resources',    
-        
-        #u'test_logout',
-    ]
-    return unittest.TestSuite(map(BeehiveApiClientTestCase, tests))
-
 if __name__ == u'__main__':
-    runtest(test_suite())
+    runtest(BeehiveApiClientTestCase, tests)    
     

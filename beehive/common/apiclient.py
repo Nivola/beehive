@@ -38,7 +38,7 @@ class BeehiveApiClient(object):
     """Beehive api client.
     
     :param auth_endpoints: api main endpoints
-    :param authtype: api authentication filter
+    :param authtype: api authentication filter: keyauth, aouth2, simplehttp
     :param user: api user
     :param pwd: api user password
     :param catalog_id: api catalog id
@@ -440,10 +440,9 @@ class BeehiveApiClient(object):
             try:
                 resp = self.http_client(proto, host, u'/v1.0/server/ping', u'GET',
                                         port=port, data=u'', timeout=0.5)
-                if resp[u'status'] == u'ok':
-                    res = True
-                else:
-                    res = False
+                if u'code' in resp:
+                    return False
+                return True
             except BeehiveApiClientError as ex:
                 if ex.code in [500, 501, 503]:
                     res = False
@@ -456,10 +455,9 @@ class BeehiveApiClient(object):
                     port = endpoint[u'port']
                     resp = self.http_client(proto, host, u'/v1.0/server/ping', u'GET',
                                             port=port, data=u'', timeout=0.5)
-                    if resp[u'status'] == u'ok':
-                        res.append([endpoint, True])
-                    else:
-                        res.append([endpoint, False])
+                    if u'code' in resp:
+                        return False
+                    return True
                 except BeehiveApiClientError as ex:
                     if ex.code in [500, 501, 503]:
                         res.append([endpoint, False])                 

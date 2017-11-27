@@ -261,6 +261,13 @@ class BeehiveHelper(object):
                         password=user[u'pwd'], desc=user[u'desc'], 
                         expiry_date=expiry_date, base=True, system=False)
                 
+                # add attribs to user
+                attribs = user.get(u'attribs', [])
+                user_obj = controller.get_user(user[u'name'])
+                for a in attribs:
+                    user_obj.set_attribute(name=a[u'name'], 
+                        value=a[u'value'], desc=a[u'desc'])
+                
                 self.logger.info(u'Add user %s' % (user[u'name']))
                 msgs.append(u'Add user %s' % (user[u'name']))          
                 

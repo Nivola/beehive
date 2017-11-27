@@ -90,9 +90,11 @@ class BeehiveTestCase(unittest.TestCase):
         self.endpoints = cfg.get(u'endpoints')
             
         # redis connection
-        self.redis_uri = cfg.get(u'redis-uri')
-        rhost, rport, db = self.redis_uri.split(u';')
-        self.redis = redis.StrictRedis(host=rhost, port=int(rport), db=int(db))
+        self.redis_uri = cfg.get(u'redis').get(u'uri')
+        if self.redis_uri is not None and self.redis_uri != u'':
+            rhost, rport, db = self.redis_uri.split(u';')
+            self.redis = redis.StrictRedis(host=rhost, port=int(rport), 
+                                           db=int(db))
         
         # celery broker
         self.broker = cfg.get(u'broker')

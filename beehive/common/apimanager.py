@@ -42,6 +42,7 @@ from beehive.common.event import EventProducerRedis
 from flasgger import Swagger, Schema, fields, SwaggerView
 from beecell.dicttoxml import dicttoxml
 from beecell.flask.api_util import get_error
+from rediscluster.client import StrictRedisCluster
 try:
     from beecell.server.uwsgi_server.wrapper import uwsgi_util
 except:
@@ -541,11 +542,19 @@ class ApiManager(object):
                                              group='redis', 
                                              name='redis_01')[0].value
                 # parse redis uri
-                host, port, db = parse_redis_uri(redis_uri)
+                parsed_uri = parse_redis_uri(redis_uri)
                     
                 # set redis manager
-                self.redis_manager = redis.StrictRedis(
-                    host=host, port=int(port), db=int(db))
+                self.redis_manager = None
+                if parsed_uri[u'type'] == u'single':
+                    self.redis_manager = redis.StrictRedis(
+                        host=parsed_uri[u'host'], 
+                        port=parsed_uri[u'port'], 
+                        db=parsed_uri[u'db'])
+                elif parsed_uri[u'type'] == u'cluster':
+                    self.redis_manager = StrictRedisCluster(
+                        startup_nodes=parsed_uri[u'nodes'], 
+                        decode_responses=True)
                 
                 # app session
                 if self.app is not None:

@@ -67,10 +67,13 @@ class CatalogController(DirectoryControllerChild):
         uri = u'%s/catalogs/%s' % (self.cataloguri, catalog_id)
         res = self._call(uri, u'GET')
         logger.info(u'Get catalog: %s' % res)
+        services = res.get(u'catalog').pop(u'services')
         self.result(res, key=u'catalog', headers=self.cat_headers, details=True)
+        self.app.print_output(u'services:')        
+        self.result(services, headers=[u'service', u'endpoints'])
     
     @expose(aliases=[u'add <name> <zone>'], aliases_only=True)
-    def add(self, name, zone):
+    def add(self):
         """Add catalog <name>
         """
         name = self.get_arg(name=u'name')
