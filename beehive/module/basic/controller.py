@@ -36,9 +36,11 @@ class BasicController(BaseAuthController):
         :raise ApiManagerError:
         """
         try:
-            res = {'name':self.module.api_manager.app_name,
-                   'id':self.module.api_manager.app_id}
-            self.logger.debug('Ping server: %s' % truncate(res))
+            res = {u'name':self.module.api_manager.app_name,
+                   u'id':self.module.api_manager.app_id,
+                   u'hostname':self.module.api_manager.server_name,
+                   u'uri':self.module.api_manager.app_uri}
+            self.logger.debug(u'Ping server: %s' % truncate(res))
             return res
         except Exception as ex:
             self.logger.error(ex)

@@ -48,3 +48,4 @@ if __name__ == u'__main__':
     from beehive.common.task.manager import start_task_manager
 
     start_task_manager(params)
+    

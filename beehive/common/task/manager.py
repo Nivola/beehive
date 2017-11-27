@@ -52,7 +52,8 @@ def on_celery_setup_logging(**args):
 #    print args
 
 def configure_task_manager(broker_url, result_backend, tasks=[], 
-                           expire=60*60*24, logger_file=None):
+                           expire=60*60*24, task_queue=u'celery', 
+                           logger_file=None):
     """
     :param broker_url: url of the broker
     :param result_backend: url of the result backend
@@ -62,14 +63,17 @@ def configure_task_manager(broker_url, result_backend, tasks=[],
     """
     task_manager.conf.update(
         BROKER_URL=broker_url,
+        TASK_DEFAULT_QUEUE=task_queue,
+        TASK_DEFAULT_EXCHANGE=task_queue,
+        TASK_DEAFAULT_ROUTING_KEY=task_queue,
         CELERY_RESULT_BACKEND=result_backend,
-        CELERY_REDIS_RESULT_KEY_PREFIX='celery-task-meta2-',
+        CELERY_REDIS_RESULT_KEY_PREFIX=u'celery-task-meta2-',
         CELERY_REDIS_RESULT_EXPIRES=expire,
         CELERY_TASK_RESULT_EXPIRES=600,
-        CELERY_TASK_SERIALIZER='json',
-        CELERY_ACCEPT_CONTENT=['json'],  # Ignore other content
-        CELERY_RESULT_SERIALIZER='json',
-        CELERY_TIMEZONE='Europe/Rome',
+        CELERY_TASK_SERIALIZER=u'json',
+        CELERY_ACCEPT_CONTENT=[u'json'],  # Ignore other content
+        CELERY_RESULT_SERIALIZER=u'json',
+        CELERY_TIMEZONE=u'Europe/Rome',
         CELERY_ENABLE_UTC=True,
         CELERY_IMPORTS=tasks,
         CELERY_DISABLE_RATE_LIMITS = True,
@@ -98,18 +102,18 @@ def configure_task_scheduler(broker_url, schedule_backend, tasks=[]):
     task_scheduler.conf.update(
         BROKER_URL=broker_url,
         CELERY_SCHEDULE_BACKEND=schedule_backend,
-        CELERY_REDIS_SCHEDULER_KEY_PREFIX='celery-schedule',        
-        CELERY_TASK_SERIALIZER='json',
-        CELERY_ACCEPT_CONTENT=['json'],  # Ignore other content
-        CELERY_RESULT_SERIALIZER='json',
-        CELERY_TIMEZONE='Europe/Rome',
+        CELERY_REDIS_SCHEDULER_KEY_PREFIX=u'celery-schedule',        
+        CELERY_TASK_SERIALIZER=u'json',
+        CELERY_ACCEPT_CONTENT=[u'json'],  # Ignore other content
+        CELERY_RESULT_SERIALIZER=u'json',
+        CELERY_TIMEZONE=u'Europe/Rome',
         CELERY_ENABLE_UTC=True,
         #CELERY_IMPORTS=tasks,
         CELERYBEAT_SCHEDULE = {
-            'test-every-600-seconds': {
-                'task': 'tasks.test',
-                'schedule': timedelta(seconds=600),
-                'args': ()
+            u'test-every-600-seconds': {
+                u'task':u'tasks.test',
+                u'schedule': timedelta(seconds=600),
+                u'args': ()
             },
         }
     )
@@ -173,8 +177,10 @@ def start_task_manager(params):
 
     logger_file = '%s/%s.log' % (log_path, logname)
 
-    configure_task_manager(params['broker_url'], params['result_backend'],
-                           tasks=params['task_module'], expire=params['expire'],
+    configure_task_manager(params[u'broker_url'], params[u'result_backend'],
+                           tasks=params[u'task_module'], 
+                           expire=params[u'expire'], 
+                           task_queue=params[u'broker_queue'],
                            logger_file=logger_file)
     
     argv = [u'',
@@ -225,7 +231,7 @@ def start_scheduler(params):
     #from beehive.module.tasks import task_manager
     task_scheduler.api_manager = api_manager
     
-    configure_task_scheduler(params['broker_url'], params['result_backend'])
+    configure_task_scheduler(params[u'broker_url'], params[u'result_backend'])
 
     #from beehive.module.scheduler.scheduler import RedisScheduler
     from beehive.module.scheduler.redis_scheduler import RedisScheduler

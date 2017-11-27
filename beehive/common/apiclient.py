@@ -335,8 +335,14 @@ class BeehiveApiClient(object):
                              u'ELAPSED=%s' % (response.status, content_type, 
                              None, elapsed))
         else:
-            self.logger.error(res[u'message'])
-            raise BeehiveApiClientError(res[u'message'], code=int(res[u'code']))
+            err = res
+            code = 400
+            if u'message' in res:
+                err = res[u'message']
+            if u'code' in res:
+                code = res[u'code']
+            self.logger.error(err)
+            raise BeehiveApiClientError(err, code=int(code))
         
         return res
     
@@ -430,7 +436,7 @@ class BeehiveApiClient(object):
                  list of all the endpoint with ping status
         """
         # make request
-        res = []
+        res = False
         if endpoint is not None:
             if not isinstance(endpoint, dict):
                 endpoint = self.__parse_endpoint(endpoint)
@@ -447,7 +453,8 @@ class BeehiveApiClient(object):
                 if ex.code in [500, 501, 503]:
                     res = False
         elif subsystem is not None:
-            for endpoint in self.endpoints[subsystem]:
+            res = []
+            for endpoint in self.endpoints.get(subsystem, []):
                 try:
                     endpoint = endpoint[0]
                     proto = endpoint[u'proto']
@@ -456,8 +463,8 @@ class BeehiveApiClient(object):
                     resp = self.http_client(proto, host, u'/v1.0/server/ping', u'GET',
                                             port=port, data=u'', timeout=0.5)
                     if u'code' in resp:
-                        return False
-                    return True
+                        res.append([endpoint, False])
+                    res.append([endpoint, True])
                 except BeehiveApiClientError as ex:
                     if ex.code in [500, 501, 503]:
                         res.append([endpoint, False])                 
@@ -582,7 +589,7 @@ class BeehiveApiClient(object):
         """
         try:
             res = self.send_request(
-                u'auth', u'/v1.0/auth/tokens/%s/exist' % uid, 
+                u'auth', u'/v1.0/auth/tokens/%s' % uid, 
                 u'GET', data=u'', uid=self.uid, seckey=self.seckey)
             return True
         except BeehiveApiClientError as ex:

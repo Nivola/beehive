@@ -99,8 +99,8 @@ class BeehiveApp(Flask):
         # register in moitor
         self.api_manager.register_monitor()
         
-        self.logger.info(u'Setup uwsgi over %s:%s' % (self.server_name, 
-                                                      self.http_socket))
+        self.logger.info(u'Setup server over: %s' % (self.api_manager.app_uri))
+        self.logger.info(u'Setup server over: %s' % (self.api_manager.uwsgi_uri))      
         
         self.logger.info("##### SERVER STARTED ##### - %s" % round(time() - start, 2))
     

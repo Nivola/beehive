@@ -147,6 +147,7 @@ class BeehiveHelper(object):
                       u'api_name':config[u'api_system'],
                       u'api_subsystem':config[u'api_subsystem'],
                       u'database_uri':config[u'db_uri'],
+                      u'redis_identity_uri':config[u'redis_identity_uri'],
                       u'api_module':config[u'api_modules'],
                       u'api_plugin':config[u'api_plugins']}
             manager = ApiManager(params)

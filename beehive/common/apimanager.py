@@ -134,8 +134,10 @@ class ApiManager(object):
             #self.app_uri = {u'uwsgi':u'%s:%s' % (host, self.params['socket']),
             #                u'http':u'http://%s%s' % (host, self.params['http-socket'])}
             self.app_uri = u'http://%s%s' % (hostname, self.params[u'http-socket'])
+            self.uwsgi_uri = u'uwsgi://%s%s' % (hostname, self.params[u'socket'])
         except:
             self.app_uri = None
+            self.uwsgi_uri
         
         # swagger reference
         self.swagger = Swagger(self.app, template_file=u'swagger.yml')
@@ -538,9 +540,11 @@ class ApiManager(object):
                 ##### redis configuration #####
                 self.logger.info(u'Configure redis - CONFIGURE')
                 # connect to redis
-                redis_uri = configurator.get(app=self.app_name, 
-                                             group='redis', 
-                                             name='redis_01')[0].value
+                '''redis_uri = configurator.get(app=self.app_name, 
+                                             group=u'redis', 
+                                             name=u'redis_01')[0].value'''
+                redis_uri = self.params[u'redis_identity_uri']
+                                             
                 # parse redis uri
                 parsed_uri = parse_redis_uri(redis_uri)
                     
@@ -550,11 +554,17 @@ class ApiManager(object):
                     self.redis_manager = redis.StrictRedis(
                         host=parsed_uri[u'host'], 
                         port=parsed_uri[u'port'], 
-                        db=parsed_uri[u'db'])
+                        db=parsed_uri[u'db'],
+                        socket_timeout=5,
+                        socket_connect_timeout=5)
                 elif parsed_uri[u'type'] == u'cluster':
                     self.redis_manager = StrictRedisCluster(
                         startup_nodes=parsed_uri[u'nodes'], 
-                        decode_responses=True)
+                        decode_responses=True,
+                        socket_timeout=5,
+                        socket_connect_timeout=5)
+                
+                self.logger.debug(self.redis_manager)
                 
                 # app session
                 if self.app is not None:
@@ -684,8 +694,9 @@ class ApiManager(object):
     
                     # setup event producer
                     conf = json.loads(conf[0].value)
-                    # set redis manager   
-                    self.redis_event_uri = conf[u'uri']
+                    # set redis manager
+                    #self.redis_event_uri = conf[u'uri']
+                    self.redis_event_uri = self.params[u'redis_queue_uri']
                     self.redis_event_exchange = conf[u'queue']
                     # create instance of event producer
                     self.event_producer = EventProducerRedis(
@@ -714,7 +725,8 @@ class ApiManager(object):
     
                     # setup monitor producer
                     conf = json.loads(conf[0].value)
-                    self.redis_monitor_uri = conf['uri']
+                    self.redis_monitor_uri = self.params[u'redis_queue_uri']
+                    #self.redis_monitor_uri = conf['uri']
                     self.redis_monitor_channel = conf['queue']                    
                         
                     # create instance of monitor producer
@@ -738,7 +750,8 @@ class ApiManager(object):
     
                     # setup catalog producer
                     conf = json.loads(conf[0].value)
-                    self.redis_catalog_uri = conf[u'uri']
+                    self.redis_catalog_uri = self.params[u'redis_queue_uri']
+                    #self.redis_catalog_uri = conf[u'uri']
                     self.redis_catalog_channel = conf[u'queue']                    
                         
                     # create instance of catalog producer
@@ -751,6 +764,7 @@ class ApiManager(object):
                                       self.redis_catalog_uri))                    
                     self.logger.info(u'Configure catalog queue - CONFIGURED')
                 except Exception as ex:
+                    self.logger.warn(u'', exc_info=1)
                     self.logger.warning(u'Configure catalog queue - NOT CONFIGURED')
                 ##### catalog queue configuration #####          
         

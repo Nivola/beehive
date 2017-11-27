@@ -47,7 +47,7 @@ class BeehiveApiClientTestCase(BeehiveTestCase):
         self.user_name = user.get(u'user')
         self.pwd = user.get(u'pwd')
         self.ip = user.get(u'ip')
-        self.catalog_id = u'beehive-internal'
+        self.catalog_id = user.get(u'catalog')
         authtype = user.get(u'auth')
         self.client = BeehiveApiClient(endpoints, authtype, self.user_name, 
                                        self.pwd, self.catalog_id)

@@ -11,6 +11,7 @@ from beehive.manager.util.controller import BaseController, ApiController,\
 from re import match
 from beecell.simple import truncate
 from beedrones.openstack.client import OpenstackManager
+from beehive.manager.sections.resource import ResourceEntityController
 
 logger = logging.getLogger(__name__)
 
@@ -723,10 +724,10 @@ class OpenstackController(BaseController):
     def default(self):
         self.app.args.print_help()
 
-class OpenstackControllerChild(ApiController):
+class OpenstackControllerChild(ResourceEntityController):
     uri = u'/v1.0/openstacks'
     subsystem = u'resource'
-    headers = [u'id', u'uuid', u'name']
+    headers = [u'id', u'uuid', u'name', u'state', u'etx_id']
     
     class Meta:
         stacked_on = 'openstack'
@@ -764,7 +765,7 @@ class OpenstackControllerChild(ApiController):
         self.result(res, details=True, key=key)
     
     @expose(aliases=[u'add <file data>'], aliases_only=True)
-    def add(self, data):
+    def add(self):
         file_data = self.get_arg(name=u'data file')
         data = self.load_config(file_data)
         uri = self.uri
@@ -773,7 +774,7 @@ class OpenstackControllerChild(ApiController):
         self.result(res)
 
     @expose(aliases=[u'update <id> <file data>'], aliases_only=True)
-    def update(self, oid, *args):
+    def update(self):
         oid = self.get_arg(name=u'id')
         file_data = self.get_arg(name=u'data file')
         data = self.load_config(file_data)
@@ -783,7 +784,7 @@ class OpenstackControllerChild(ApiController):
         self.result(res)
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
-    def delete(self, oid):
+    def delete(self):
         oid = self.get_arg(name=u'id')
         uri = self.uri + u'/' + oid
         res = self._call(uri, u'DELETE')
@@ -873,7 +874,8 @@ class OpenstackRouterController(OpenstackControllerChild):
         
 class OpenstackSecurityGroupController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/security_groups'
-    headers = [u'id', u'container.name', u'parent.name', u'name']
+    headers = [u'id', u'container.name', u'parent.name', u'name', u'state', 
+               u'ext_id']
     
     class Meta:
         label = 'openstack.beehive.security_groups'
@@ -910,7 +912,8 @@ class OpenstackImageController(OpenstackControllerChild):
         
 class OpenstackFlavorController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/flavors'
-    headers = [u'id', u'container.name', u'parent.name', u'name']
+    headers = [u'id', u'container.name', u'parent.name', u'name', u'state', 
+               u'ext_id']
     
     class Meta:
         label = 'openstack.beehive.flavors'
@@ -920,7 +923,8 @@ class OpenstackFlavorController(OpenstackControllerChild):
         
 class OpenstackServerController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/servers'
-    headers = [u'id', u'container.name', u'parent.name', u'name']
+    headers = [u'id', u'container.name', u'parent.name', u'name', u'state', 
+               u'ext_id', u'details.state']
     
     class Meta:
         label = 'openstack.beehive.servers'
@@ -928,9 +932,83 @@ class OpenstackServerController(OpenstackControllerChild):
         aliases_only = True         
         description = "Openstack Server management"
         
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        """Get openstack item
+        """
+        oid = self.get_arg(name=u'id')
+        uri = self.uri + u'/' + oid
+        res = self._call(uri, u'GET').get(u'server', {})
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
+        detail = res.get(u'details')
+        volumes = detail.pop(u'volumes')
+        networks = detail.pop(u'networks')
+        flavor = detail.pop(u'flavor')
+        self.result(res, details=True)
+        self.app.print_output(u'flavor:')
+        self.result(flavor, headers=[u'id', u'memory', u'cpu'])
+        self.app.print_output(u'volumes:')
+        self.result(volumes, headers=[u'id', u'name', u'format', u'bootable', 
+                                  u'storage', u'mode', u'type', u'size']) 
+        self.app.print_output(u'networks:')
+        self.result(networks, headers=[u'net_id', u'name', u'port_id', u'mac_addr',
+                                  u'port_state', u'fixed_ips.0.ip_address']) 
+        
+    @expose(aliases=[u'actions <id>'], aliases_only=True)
+    def actions(self):
+        """Get openstack server actions
+        """
+        oid = self.get_arg(name=u'id')
+        uri = self.uri + u'/' + oid +u'/actions'
+        res = self._call(uri, u'GET').get(u'server_actions', {})
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
+        self.result(res, headers=[u'action', u'request_id', u'message'])    
+
+    @expose(aliases=[u'runtime <id>'], aliases_only=True)
+    def runtime(self):
+        """Get openstack server actions
+        """
+        oid = self.get_arg(name=u'id')
+        uri = self.uri + u'/' + oid +u'/runtime'
+        res = self._call(uri, u'GET').get(u'server_runtime', {})
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
+        self.result(res, headers=[u'action', u'request_id', u'message'], 
+                    details=True) 
+        
+    @expose(aliases=[u'stats <id>'], aliases_only=True)
+    def stats(self):
+        """Get openstack server stats
+        """
+        oid = self.get_arg(name=u'id')
+        uri = self.uri + u'/' + oid +u'/stats'
+        res = self._call(uri, u'GET').get(u'server_stats', {})
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
+        self.result(res, headers=[u'action', u'request_id', u'message'], 
+                    details=True)         
+        
+    @expose(aliases=[u'metadata <id>'], aliases_only=True)
+    def metadata(self):
+        """Get openstack server metadata
+        """
+        oid = self.get_arg(name=u'id')
+        uri = self.uri + u'/' + oid +u'/metadata'
+        res = self._call(uri, u'GET').get(u'server_metadata', {})
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
+        self.result(res, headers=[u'action', u'request_id', u'message'])         
+        
+    @expose(aliases=[u'security-groups <id>'], aliases_only=True)
+    def security_groups(self):
+        """Get openstack server sgs
+        """
+        oid = self.get_arg(name=u'id')
+        uri = self.uri + u'/' + oid +u'/security_groups'
+        res = self._call(uri, u'GET').get(u'server_security_groups', {})
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
+        self.result(res, headers=[u'id', u'uuid', u'name', u'ext_id', u'state'])         
+        
     @expose(aliases=[u'console <id>'], aliases_only=True)
     def console(self):
-        """Get openstack item
+        """Get openstack server console
         """
         oid = self.get_arg(name=u'id')
         uri = self.uri + u'/' + oid + u'/console'
@@ -939,6 +1017,32 @@ class OpenstackServerController(OpenstackControllerChild):
         self.result([res], headers=[u'type', u'url'], 
                     maxsize=400)
         sh.firefox(res.get(u'url'))
+        
+    @expose(aliases=[u'stop <id>'], aliases_only=True)
+    def stop(self):
+        """Stop openstack server
+        """
+        oid = self.get_arg(name=u'id')
+        uri = self.uri + u'/' + oid + u'/action'
+        data = {u'server_action':{u'stop':True}}
+        res = self._call(uri, u'PUT', data=data)
+        logger.info(u'Stop server %s' % (oid))
+        self.result({u'msg':u'Stop server %s' % (oid)}, headers=[u'msg'], 
+                    maxsize=400)
+        self.wait_job(res[u'jobid'])
+        
+    @expose(aliases=[u'start <id>'], aliases_only=True)
+    def start(self):
+        """start openstack server
+        """
+        oid = self.get_arg(name=u'id')
+        uri = self.uri + u'/' + oid + u'/action'
+        data = {u'server_action':{u'start':True}}
+        res = self._call(uri, u'PUT', data=data)
+        logger.info(u'Start server %s' % (oid))
+        self.result({u'msg':u'Start server %s' % (oid)}, headers=[u'msg'], 
+                    maxsize=400)
+        self.wait_job(res[u'jobid'])         
         
 class OpenstackVolumeController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/volumes'

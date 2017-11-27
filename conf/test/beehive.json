@@ -1,6 +1,46 @@
 {
     "env":"lab5",
     "schema":"resource",
+    "test-internet":{
+        "cmdb":{},
+        "db-uris":{},
+        "redis":{
+        "uri":"",
+            "cluster":[]
+        }, 
+        "broker":"",
+        "default-endpoint":"auth-aa",
+        "endpoints":{
+            "auth-aa":"http://aa.glb.csi.it:80",
+            "auth-ap":"http://ap.glb.csi.it:80",
+            "auth-vc":"http://10.102.91.135:80",
+            "auth-to":"http://10.102.186.8:80"
+        },
+        "users":{      
+            "admin":{
+                "user":"admin@local",
+                "pwd":"testlab",
+                "ip":"158.102.160.234",
+                "auth":"keyauth",
+                "catalog":"beehive-external"
+            },
+            "test3":{
+                "user":"test3@local",
+                "pwd":"testlab",
+                "ip":"158.102.160.234",
+                "auth":"simplehttp",
+                "catalog":"beehive-external"
+            }
+        },
+        "resource":{
+            "config":{
+            }
+        },
+        "container":{
+            "config":{
+            }
+        }
+    },
     "test":{
         "cmdb":{
             "uri":null,
@@ -10,7 +50,14 @@
             "auth":"mysql+pymysql://auth:auth@10.102.184.57:3306/auth",
             "resource":"mysql+pymysql://resource:resource@10.102.184.57:3306/resource"
         },
-        "redis-uri":"10.102.184.51;6379;0",
+        "redis":{
+        "uri":"10.102.184.51;6379;0",
+            "cluster":[
+                {"host": "10.102.184.121", "port": "6379"},
+                {"host": "10.102.91.23", "port": "6379"},
+                {"host": "10.102.91.24", "port": "6379"}
+            ]
+        }, 
         "broker":"redis://10.102.184.51:6379/6",
         "endpoints":{
             "auth":"http://10.102.184.52:6060",
@@ -18,24 +65,20 @@
             "resource":"http://10.102.184.52:6090",        
             "service":"http://10.102.184.52:6110"
         },
-        "users":{
-            "admin1":{
-                "user":"admin@local",
-                "pwd":"testlab",
-                "ip":"158.102.160.234",
-                "auth":"simplehttp"
-            },        
+        "users":{      
             "admin":{
                 "user":"admin@local",
                 "pwd":"testlab",
                 "ip":"158.102.160.234",
-                "auth":"keyauth"
+                "auth":"keyauth",
+                "catalog":"beehive-internal"
             },
             "test":{
                 "user":"test1@local",
                 "pwd":"testlab",
                 "ip":"158.102.160.234",
-                "auth":"keyauth"
+                "auth":"keyauth",
+                "catalog":"beehive-internal"
             }
         },
         "resource":{
@@ -56,7 +99,7 @@
             "auth":"mysql+pymysql://auth:auth@10.102.184.69:3306/auth",
             "resource":"mysql+pymysql://resource:resource@10.102.184.69:3306/resource"
         },
-        "redis-uri":"10.102.184.69;6379;0",
+        "redis":{"uri":"10.102.184.69;6379;0"},
         "broker":"redis://10.102.184.69:6379/6",
         "endpoints":{
             "auth":"http://10.102.184.69:6060",
@@ -69,19 +112,22 @@
                 "user":"admin@local",
                 "pwd":"testlab",
                 "ip":"158.102.160.234",
-                "auth":"simplehttp"
+                "auth":"simplehttp",
+                "catalog":"beehive-internal"
             },
             "admin":{
                 "user":"admin@local",
                 "pwd":"testlab",
                 "ip":"158.102.160.234",
-                "auth":"keyauth"
+                "auth":"keyauth",
+                "catalog":"beehive-internal"
             },
             "test":{
                 "user":"test1@local",
                 "pwd":"testlab",
                 "ip":"158.102.160.234",
-                "auth":"keyauth"
+                "auth":"keyauth",
+                "catalog":"beehive-internal"
             }
         },
         "resource":{
@@ -142,11 +188,13 @@
                     "ports":"4000-4001"
                 },
                 "domain1":{
-                    "uuid":"53240cca-f646-4bce-a4af-2c003072fb21"
+                    "uuid":"13ca6d9c-2561-48a0-9343-24b647b4a0d2"
                 },
                 "project1":{
                     "name":"test-project-01",
-                    "parent":null
+                    "parent":null,
+                    "user":"4b4bfb6d5ff0440d93ffb0c313d52ce0",
+                    "role":"688ecda68b63421d901e6714f07edd24"
                 },
                 "project2":{
                     "name":"test-project-02",
@@ -203,7 +251,8 @@
                     "imageRef":"centos7-heat",
                     "admin_pwd":"mypass",
                     "volume":{"size":20},
-                    "security_groups": ["test-sg-01"]
+                    "security_groups": ["test-sg-01"],
+                    "pubkey":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it"
                 }
             }
         },
@@ -242,12 +291,12 @@
                 "openstack2":{
                     "name":"test-container-ops2",                
                     "api":{                
-		                "uri":"http://10.102.184.200:5000/v3",
-		                "domain":"default",  
-		                "user":"admin",
-		                "project":"admin",
-		                "pwd":"8fAwzAJAHQFMcJfrntpapzDpC",      
-		                "region":"regionOne"
+                "uri":"http://10.102.184.200:5000/v3",
+                "domain":"default",  
+                "user":"admin",
+                "project":"admin",
+                "pwd":"8fAwzAJAHQFMcJfrntpapzDpC",      
+                "region":"regionOne"
                     }
                 }
             }
@@ -273,19 +322,22 @@
                 "user":"admin@local",
                 "pwd":"testlab",
                 "ip":"158.102.160.234",
-                "auth":"simplehttp"
+                "auth":"simplehttp",
+                "catalog":"beehive-internal"
             },
             "admin":{
                 "user":"admin@local",
                 "pwd":"testlab",
                 "ip":"158.102.160.234",
-                "auth":"keyauth"
+                "auth":"keyauth",
+                "catalog":"beehive-internal"
             },
             "test":{
                 "user":"test1@local",
                 "pwd":"testlab",
                 "ip":"158.102.160.234",
-                "auth":"keyauth"
+                "auth":"keyauth",
+                "catalog":"beehive-internal"
             }
         }
     },
@@ -309,19 +361,22 @@
                 "user":"admin@local",
                 "pwd":"testlab",
                 "ip":"158.102.160.234",
-                "auth":"simplehttp"
+                "auth":"simplehttp",
+                "catalog":"beehive-internal"
             },
             "admin":{
                 "user":"admin@local",
                 "pwd":"testlab",
                 "ip":"158.102.160.234",
-                "auth":"keyauth"
+                "auth":"keyauth",
+                "catalog":"beehive-internal"
             },
             "test":{
                 "user":"test1@local",
                 "pwd":"testlab",
                 "ip":"158.102.160.234",
-                "auth":"keyauth"
+                "auth":"keyauth",
+                "catalog":"beehive-internal"
             }
         }
     },
@@ -348,12 +403,14 @@
             "admin":{
                 "user":"admin@local",
                 "pwd":"testlab",
-                "ip":"158.102.160.234"
+                "ip":"158.102.160.234",
+                "catalog":"beehive-internal"
             },
             "camunda":{
                 "user":"camunda@local",
                 "pwd":"camunda1",
-                "ip":"158.102.160.234"  
+                "ip":"158.102.160.234",
+                "catalog":"beehive-internal"
             }
         }
     }

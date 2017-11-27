@@ -3,53 +3,37 @@ Created on Apr 01, 2016
 
 @author: darkbk
 '''
-from beehive.common.apimanager import ApiView
+from beehive.common.apimanager import ApiView, SwaggerApiView
+from ansible.modules.system import hostname
+from marshmallow import fields
+from marshmallow.schema import Schema
 
-class ServerPing(ApiView):
+class ServerPingResponseSchema(Schema):
+    name = fields.String(required=True, example=u'beehive',
+        description=u'server instance name')
+    id = fields.String(required=True, example=u'auth',
+        description=u'server instance id')
+    hostname = fields.String(required=True, example=u'tst-beehive',
+        description=u'server instance host name')
+    uri = fields.String(required=True, example=u'http://localhost:6060',
+        description=u'server instance uri')
+
+class ServerPing(SwaggerApiView):
+    tags = [u'base']
+    definitions = {
+        u'ServerPingResponseSchema': ServerPingResponseSchema,
+    }
+    responses = SwaggerApiView.setResponses({
+        200: {
+            u'description': u'success',
+            u'schema': ServerPingResponseSchema
+        }
+    })    
+    
     def get(self, controller, data, *args, **kwargs):
         """
         Server ping api
         Call this api to ping server
-        ---
-        tags:
-          - base      
-        produces:
-          - application/json
-          - application/xml
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          404:
-            $ref: "#/responses/NotFound"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests"   
-          200:
-            description: Ping response
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                  example: beehive
-                id:
-                  type: string
-                  example: auth-01
         """
         resp = controller.ping()
         return resp
@@ -106,6 +90,7 @@ class ServerReload(ApiView):
         resp = controller.reload()
         return resp
 
+'''
 #
 # flask inspection
 #
@@ -210,7 +195,7 @@ class GetDatabaseTableRecordDesc(ApiView):
               users: [{'name': 'Russel Allen', 'team': 66}]        
         """
         res = controller.database_table_desc(table)
-        return res
+        return res'''
 
 class BaseAPI(ApiView):
     """
@@ -226,7 +211,7 @@ class BaseAPI(ApiView):
             (u'server/uwsgi/configs', u'GET', ServerUwsgiConfigs, {}),          
             (u'server/reload', u'PUT', ServerReload, {}),
             
-            (u'server/sessions', u'GET', ServerFlaskSessions, {}),
+            #(u'server/sessions', u'GET', ServerFlaskSessions, {}),
             
             
             #(u'server/db/ping', u'GET', PingDatabase, {}),
