@@ -219,14 +219,23 @@
                     "name":"test-sg-01",
                     "rule1":{
                         "direction":"ingress",
-                        "remote_ip_prefix":"10.100.2.0/24",
+                        "remote_ip_prefix":"158.102.160.0/24",
                         "protocol":"tcp",
-                        "port_range_min":"1000",
-                        "port_range_max":"1010"
+                        "port_range_min":"1",
+                        "port_range_max":"65000"
                     },
                     "rule2":{
                         "direction":"ingress",
-                        "protocol":"tcp"
+                        "protocol":null
+                    },
+                    "rule3":{
+                        "direction":"egress",
+                        "protocol":null
+                    },
+                    "rule4":{
+                        "direction":"egress",
+                        "remote_ip_prefix":"0.0.0.0/0",
+                        "protocol":null
                     }
                 },
                 "router1":{
@@ -244,7 +253,9 @@
                     "project":"test-project-01",
                     "network":{
                         "uuid":"test-network-01",
-                        "gw":"10.102.184.1"
+                        "gw":"10.102.184.1",
+                        "hostname":"test-server-01",
+                        "dns":["10.102.184.2","10.102.184.3"]
                     },
                     "availability_zone":"nova",
                     "flavorRef":"m1.medium",

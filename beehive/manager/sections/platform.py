@@ -309,7 +309,7 @@ class RedisClutserController(RedisController):
             path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
             path_lib = u'%s/library/beehive/' % (self.ansible_path)
             runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
-                            module=path_lib)      
+                            module=path_lib)
             cluster_hosts, vars = runner.get_inventory_with_vars(u'redis-master')
         except Exception as ex:
             self.error(ex)
@@ -357,6 +357,61 @@ class RedisClutserController(RedisController):
             self.result(resp, headers=headers, key_separator=u',', maxsize=25)            
         except Exception as ex:
             self.error(ex)            
+        
+    @expose()
+    def super_ping(self):
+        """Ping single redis instances in a cluster
+        """
+        try:
+            path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+            path_lib = u'%s/library/beehive/' % (self.ansible_path)
+            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
+                            module=path_lib)
+            cluster_hosts, vars = runner.get_inventory_with_vars(u'redis-cluster')
+        except Exception as ex:
+            self.error(ex)
+            return
+        
+        # redis cluster
+        resp = []
+        headers = []
+        cluster_nodes = []
+        db = 0
+        for host in cluster_hosts:
+            redis_uri = u'redis://%s:%s/%s' % (str(host), u'6379', db)
+            server = RedisManager(redis_uri, timeout=2)
+            res = server.ping()
+            resp.append({u'host':str(host), u'db':db, u'response':res})
+        
+        logger.info(u'Ping redis : %s' % (resp))
+        self.result(resp, headers=[u'host', u'db', u'response'])
+        
+    @expose()
+    def cluster_nodes(self):
+        """
+        """
+        try:
+            path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+            path_lib = u'%s/library/beehive/' % (self.ansible_path)
+            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
+                            module=path_lib)
+            cluster_hosts, vars = runner.get_inventory_with_vars(u'redis-master')
+        except Exception as ex:
+            self.error(ex)
+            return  
+
+        # redis cluster
+        cluster_nodes = []
+        redis_uri = u'redis-cluster://'
+        for host in cluster_hosts:
+            cluster_nodes.append(u'%s:%s' % (str(host), u'6379'))
+        redis_uri += u','.join(cluster_nodes)
+        server = RedisManager(redis_uri)
+        resp = server.server.cluster_nodes()
+        logger.info(u'Cmd redis : %s' % (resp))
+        self.result(resp, headers=[u'host', u'id', u'port', u'link-state', 
+            u'flags', u'master', u'ping-sent', u'pong-recv'], 
+            key_separator=u',', maxsize=25)        
         
 class MysqlController(AnsibleController):
     class Meta:

@@ -77,7 +77,7 @@ class BeehiveTestCase(unittest.TestCase):
             #config = self.load_config(u'%s/params.json' % path)
             home = os.path.expanduser(u'~')
             config = self.load_config(u'%s/beehive.json' % home)
-            logger.info(u'get beehive test configuraztion')
+            logger.info(u'get beehive test configuration')
         except:
             raise Exception(u'Test config file beehive.json was not find in user home')
         
