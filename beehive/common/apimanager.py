@@ -137,7 +137,7 @@ class ApiManager(object):
             self.uwsgi_uri = u'uwsgi://%s%s' % (hostname, self.params[u'socket'])
         except:
             self.app_uri = None
-            self.uwsgi_uri
+            self.uwsgi_uri = None
         
         # swagger reference
         self.swagger = Swagger(self.app, template_file=u'swagger.yml')
