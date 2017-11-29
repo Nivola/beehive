@@ -70,7 +70,7 @@ class BeehiveHelper(object):
         """
         """
         msgs = []
-    
+        manager = None
         try:
             # create api manager
             params = {u'api_id':u'server-01',
@@ -127,7 +127,8 @@ class BeehiveHelper(object):
             raise
         finally:
             # release session
-            manager.release_session(operation.session)
+            if manager is not None:
+                manager.release_session(operation.session)
             operation.session = None
             
         return msgs
