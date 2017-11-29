@@ -21,6 +21,7 @@ from beehive.manager.util.controller import BaseController, ApiController
 from cement.core.controller import expose
 from time import sleep
 from beecell.remote import NotFoundException
+from time import time
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,7 @@ class ResourceControllerChild(ApiController):
     res_headers = [u'id', u'__meta__.definition', u'name', 
                    u'container.name', u'parent.name', u'state', 
                    u'ext_id']
-    cont_headers = [u'id', u'uuid', u'category', u'definition', 
+    cont_headers = [u'id', u'uuid', u'category', u'__meta__.definition', 
                     u'name', u'active', u'state', u'date.creation',
                     u'date.modified']
     tag_headers = [u'id', u'uuid', u'name', u'date.creation',
@@ -140,7 +141,30 @@ class ContainerController(ResourceControllerChild):
         res = self._call(uri, u'GET')      
         logger.info(u'Ping resourcecontainer %s: %s' % (contid, res))
         self.result({u'resourcecontainer':contid, u'ping':res[u'ping']}, 
-                    headers=[u'resourcecontainer', u'ping'])      
+                    headers=[u'resourcecontainer', u'ping'])
+        
+    @expose()
+    def pings(self):
+        """Ping all containers
+        """
+        resp = []
+        uri = u'%s/resourcecontainers' % self.baseuri
+        res = self._call(uri, u'GET')        
+        for rc in res[u'resourcecontainers']:
+            start = time()
+            uri = u'%s/resourcecontainers/%s/ping' % (self.baseuri, rc[u'id'])  
+            res = self._call(uri, u'GET')      
+            logger.info(u'Ping resourcecontainer %s: %s' % (rc[u'id'], res))
+            elapsed = time()-start
+            resp.append({u'uuid':rc[u'uuid'],
+                         u'name':rc[u'name'], 
+                         u'ping':res[u'ping'],
+                         u'category':rc[u'category'], 
+                         u'type':rc[u'__meta__'][u'definition'],
+                         u'elapsed':elapsed})
+            
+        self.result(resp, headers=[u'uuid', u'name', u'category', u'type', 
+                                   u'ping', u'elapsed'])         
     
     @expose(aliases=[u'add <type> <name> <json conn file>'], aliases_only=True)
     def add(self):

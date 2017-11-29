@@ -25,8 +25,8 @@ class BaseCreateRequestSchema(Schema):
                 error_messages={u'required': u'desc is required.'})
     
 class BaseUpdateRequestSchema(Schema):
-    name = fields.String(context=u'body', allow_none=True)
-    desc = fields.String(context=u'body', allow_none=True)    
+    name = fields.String(allow_none=True)
+    desc = fields.String(allow_none=True)    
     
 class BaseCreateExtendedParamRequestSchema(Schema):
     active = fields.Boolean(missing=True, allow_none=True)
@@ -405,8 +405,7 @@ class UpdateUserParamRoleRequestSchema(Schema):
     append = fields.List(fields.List(fields.String()))
     remove = fields.List(fields.String())
     
-class UpdateUserParamRequestSchema(BaseUpdateRequestSchema, 
-                                   BaseCreateExtendedParamRequestSchema):
+class UpdateUserParamRequestSchema(BaseUpdateRequestSchema):
     roles = fields.Nested(UpdateUserParamRoleRequestSchema)
     password = fields.String(validate=Length(min=10, max=20),
                              error=u'Password must be at least 8 characters')
