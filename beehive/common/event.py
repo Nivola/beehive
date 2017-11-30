@@ -94,7 +94,7 @@ class Event(object):
         :return: dict
         """
         msg = {
-            u'id':self.id, 
+            u'id':self.id,
             u'type':self.type, 
             u'creation':self.creation, 
             u'data':self.data, 

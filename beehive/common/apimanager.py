@@ -3406,7 +3406,7 @@ class ApiClient(BeehiveApiClient):
         """
         try:
             if self.exist(self.uid) is False:
-                self.login()
+                self.create_token()
         except BeehiveApiClientError as ex:
             raise ApiManagerError(ex.value, code=ex.code)
         

@@ -254,7 +254,6 @@ def trace(entity=None, op=u'view'):
                 if entity is None:
                     return inst
                 else:
-                    logger.warn(inst.__module__)
                     eclass = import_class(u'%s.%s' % (inst.__module__, entity))
                     return eclass(inst)
 
