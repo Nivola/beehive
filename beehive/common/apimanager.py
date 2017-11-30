@@ -685,6 +685,18 @@ class ApiManager(object):
                     self.logger.warning(u'Configure gateway - NOT CONFIGURED')
                 ##### gateway configuration #####
         
+                ##### service queue configuration #####
+                try:
+                    self.logger.info(u'Configure service queue- CONFIGURE')        
+        
+                    self.redis_service_uri = self.params[u'redis_queue_uri']
+                    self.redis_service_exchange = self.params[u'redis_queue_name']
+        
+                    self.logger.info(u'Configure service queue - CONFIGURED')
+                except:
+                    self.logger.warning(u'Configure service queue - NOT CONFIGURED')                
+                ##### service queue configuration #####
+        
                 ##### event queue configuration #####
                 try:
                     self.logger.info(u'Configure event queue- CONFIGURE')
