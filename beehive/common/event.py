@@ -169,9 +169,9 @@ class EventProducerRedis(EventProducer):
         
         if framework == u'simple':
             # set redis manager
-            host, port, db = parse_redis_uri(redis_uri)
+            res = parse_redis_uri(redis_uri)
             self.redis_manager = redis.StrictRedis(
-                host=host, port=int(port), db=int(db))        
+                host=res[u'host'], port=int(res[u'port']), db=int(res[u'db']))        
         
         elif framework == u'kombu':
             self.conn = Connection(redis_uri)
