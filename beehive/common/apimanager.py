@@ -2384,6 +2384,7 @@ class ApiObject(object):
             self.logger.error(ex.desc, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
+
 class ApiInternalObject(ApiObject):
     objtype = u'auth'
     objdef = u'abstract'
