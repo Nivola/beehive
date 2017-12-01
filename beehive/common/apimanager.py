@@ -17,8 +17,8 @@ from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA256
 from Crypto.Signature import PKCS1_v1_5
 from flask import request, Response, session
-#from flask.views import MethodView as FlaskMethodView
-#from flask.views import View as FlaskView
+# from flask.views import MethodView as FlaskMethodView
+# from flask.views import View as FlaskView
 from flask.views import MethodView as FlaskView
 from flask_session import Session
 from flask import current_app
@@ -50,17 +50,18 @@ except:
 from re import escape
 from marshmallow.validate import OneOf, Range
 from copy import deepcopy
+from flask_session.sessions import RedisSessionInterface
 
 logger = logging.getLogger(__name__)
 
-from flask_session.sessions import RedisSessionInterface
+
 class RedisSessionInterface2(RedisSessionInterface):
     def __init__(self, redis, key_prefix, use_signer=False, permanent=True):
         RedisSessionInterface.__init__(self, redis, key_prefix, use_signer, permanent)
 
     def save_session(self, app, session, response):
         RedisSessionInterface.save_session(self, app, session, response)
-        #oauth2_user = session.get(u'oauth2_user', None)
+        # oauth2_user = session.get(u'oauth2_user', None)
         logger.warn(session)
         if response.mimetype not in [u'text/html']:
             self.redis.delete(self.key_prefix + session.sid)
@@ -88,8 +89,9 @@ class ApiManagerWarning(Exception):
     def __str__(self):
         return u'%s' % self.value
 
+
 class ApiManagerError(Exception):
-    """Main excpetion raised by api manager and childs
+    """Main exception raised by api manager and childs
     
     **Parameters:**
         * **value** (:py:class:`str`): error description
@@ -106,6 +108,7 @@ class ApiManagerError(Exception):
     def __str__(self):
         return u'%s' % self.value
 
+
 class ApiManager(object):
     """Api Manager
     
@@ -114,7 +117,7 @@ class ApiManager(object):
         * **params** (:py:class:`dict`): configuration params
         * **app** (:py:class:`int`): error code [default=400]    
     """
-    #logger = logging.getLogger('gibbon.cloudapi')
+    # logger = logging.getLogger('gibbon.cloudapi')
     
     def __init__(self, params, app=None, hostname=None):
         self.logger = logging.getLogger(self.__class__.__module__+ \
@@ -981,40 +984,40 @@ class ApiModule(object):
         except SqlManagerError as e:
             raise ApiManagerError(e)
 
-
     def init_object(self):
-        """
+        """Init object
         
         :param session: database session
         """
-        #session = self.get_session()
+        # session = self.get_session()
         session = operation.session
         self.get_controller().init_object()
-        #self.release_session(session)
+        # self.release_session(session)
     
     def register_api(self):
         if self.api_manager.app is not None:
             for api in self.apis:
                 api.register_api(self)
-                #self.logger.debug('Register api view %s' % (api.__class__))
+                # self.logger.debug('Register api view %s' % (api.__class__))
 
     def get_superadmin_permissions(self):
         """
         
         :param session: database session
         """
-        #session = self.get_session()
+        # session = self.get_session()
         session = operation.session
         perms = self.get_controller().get_superadmin_permissions()
-        #self.release_session(session)
+        # self.release_session(session)
         return perms
     
     def get_controller(self):
         raise NotImplementedError()
 
+
 class ApiController(object):
     """ """
-    #logger = logging.getLogger('gibbon.cloudapi')
+    # logger = logging.getLogger('gibbon.cloudapi')
     
     def __init__(self, module):
         self.logger = logging.getLogger(self.__class__.__module__+ \

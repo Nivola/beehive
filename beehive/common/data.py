@@ -73,10 +73,6 @@ def transaction(fn):
             operation.id = str(uuid4())
             
         try:
-            # get runtime info
-            #cp = current_process()
-            #ct = current_thread()              
-            
             # format request params
             params = []
             for item in args:
@@ -228,6 +224,7 @@ def query(fn):
             raise QueryError(ex, code=400)
     return query_inner
 
+
 def trace(entity=None, op=u'view'):
     """Use this decorator to send an event after function execution.
     
@@ -263,14 +260,13 @@ def trace(entity=None, op=u'view'):
             
                 # calculate elasped time
                 elapsed = round(time() - start, 4)
-                get_entity(entity).send_event(op, args=args, params=kwargs, 
-                                              elapsed=elapsed)
+                get_entity(entity).send_event(op, args=args, params=kwargs, elapsed=elapsed)
             except Exception as ex:
+                logger.error(ex)
                 # calculate elasped time
                 elapsed = round(time() - start, 4)
                 ex_escaped = escape(str(ex))
-                get_entity(entity).send_event(op, args=args, params=kwargs, 
-                                      exception=ex_escaped, elapsed=elapsed)
+                get_entity(entity).send_event(op, args=args, params=kwargs, exception=ex_escaped, elapsed=elapsed)
                 raise
             return ret
         return decorated

@@ -80,6 +80,7 @@ class VspherePlatformControllerChild(BaseController):
     def default(self):
         self.app.args.print_help()
 
+
 class VspherePlatformDatacenterController(VspherePlatformControllerChild):
     headers = [u'id', u'name']
     
@@ -106,7 +107,8 @@ class VspherePlatformDatacenterController(VspherePlatformControllerChild):
             })
         logger.info(res)
         self.result(res, headers=self.headers)
-        
+
+
 class VspherePlatformClusterController(VspherePlatformControllerChild):
     headers = [u'id', u'name']
     
@@ -160,6 +162,7 @@ class VspherePlatformClusterController(VspherePlatformControllerChild):
         logger.info(res)
         self.result(res, headers=self.headers)
 
+
 class VspherePlatformDatastoreController(VspherePlatformControllerChild):
     headers = [u'id', u'name', u'overallStatus', u'accessible',
                  u'capacity', u'url', 
@@ -198,6 +201,7 @@ class VspherePlatformDatastoreController(VspherePlatformControllerChild):
         logger.info(res)
         self.result(res, headers=self.headers)
 
+
 class VspherePlatformFolderController(VspherePlatformControllerChild):
     headers = [u'id', u'parent', u'name', u'overallStatus']
     
@@ -226,7 +230,8 @@ class VspherePlatformFolderController(VspherePlatformControllerChild):
             })
         logger.info(res)
         self.result(res, headers=self.headers)
-        
+
+
 class VspherePlatformVappController(VspherePlatformControllerChild):
     headers = [u'id', u'parent', u'name', u'overallStatus']
     
@@ -256,6 +261,7 @@ class VspherePlatformVappController(VspherePlatformControllerChild):
         logger.info(res)
         self.result(res, headers=self.headers)         
 
+
 class VspherePlatformNetworkController(BaseController):
     class Meta:
         stacked_on = 'vsphere.platform'
@@ -269,6 +275,7 @@ class VspherePlatformNetworkController(BaseController):
     def default(self):
         self.app.args.print_help()
 
+
 class VspherePlatformNetworkChildController(VspherePlatformControllerChild):
     class Meta:
         stacked_on = 'vsphere.platform.network'
@@ -278,6 +285,7 @@ class VspherePlatformNetworkChildController(VspherePlatformControllerChild):
         VspherePlatformControllerChild._ext_parse_args(self)
         
         self.entity_class = self.client.network
+
 
 class VspherePlatformNetworkDvsController(VspherePlatformNetworkChildController):
     class Meta:
@@ -303,7 +311,8 @@ class VspherePlatformNetworkDvsController(VspherePlatformNetworkChildController)
         res = self.entity_class.detail_distributed_virtual_switch(res)
         logger.info(res)
         self.result(res, details=True)
-        
+
+
 class VspherePlatformNetworkDvpController(VspherePlatformNetworkChildController):
     class Meta:
         label = 'vsphere.platform.networks.dvpg'
@@ -337,6 +346,7 @@ class VspherePlatformNetworkDvpController(VspherePlatformNetworkChildController)
         self.wait_task(task)
         res = {u'msg':u'Delete dvpg %s' % (oid)}
         self.result(res, headers=[u'msg'])
+
 
 class VspherePlatformNetworkSecurityGroupController(VspherePlatformNetworkChildController):
     class Meta:
@@ -384,7 +394,8 @@ class VspherePlatformNetworkSecurityGroupController(VspherePlatformNetworkChildC
         logger.info(res)
         res = {u'msg':u'Delete security-group %s member %s' % (oid, member)}
         self.result(res, headers=[u'msg'])        
-        
+
+
 class VspherePlatformNetworkDfwController(VspherePlatformNetworkChildController):
     class Meta:
         label = 'vsphere.platform.networks.dfw'
@@ -509,7 +520,8 @@ class VspherePlatformNetworkDfwController(VspherePlatformNetworkChildController)
         logger.info(res)
         self.result(resp, headers=[u'objectId', u'name', u'scope.name',
                                           u'objectTypeName', u'revision'])        
-        
+
+
 class VspherePlatformNetworkLgController(VspherePlatformNetworkChildController):
     headers = [u'objectId', u'name']
     
@@ -540,7 +552,8 @@ class VspherePlatformNetworkLgController(VspherePlatformNetworkChildController):
         res = self.entity_class.detail(network)
         logger.info(res)
         self.result(res, details=True)     
-        
+
+
 class VspherePlatformNetworkIpsetController(VspherePlatformNetworkChildController):
     class Meta:
         label = 'vsphere.platform.networks.ipset'
@@ -576,7 +589,8 @@ class VspherePlatformNetworkIpsetController(VspherePlatformNetworkChildControlle
         res = self.entity_class.delete(oid)
         res = {u'msg':u'Delete ipset %s' % (oid)}
         self.result(res, headers=[u'msg'])                
-        
+
+
 class VspherePlatformNetworkEdgeController(VspherePlatformNetworkChildController):
     class Meta:
         label = 'vsphere.platform.networks.edge'
@@ -605,7 +619,8 @@ class VspherePlatformNetworkEdgeController(VspherePlatformNetworkChildController
         res = self.entity_class.detail(network)
         logger.info(res)
         self.result(res, details=True)        
-        
+
+
 class VspherePlatformNetworkDlrController(VspherePlatformNetworkChildController):
     class Meta:
         label = 'vsphere.platform.networks.dlr'
@@ -634,6 +649,7 @@ class VspherePlatformNetworkDlrController(VspherePlatformNetworkChildController)
         res = self.entity_class.detail(network)
         logger.info(res)
         self.result(res, details=True)
+
 
 class VspherePlatformServerController(VspherePlatformControllerChild):
     headers = [u'id', u'parent', u'name', u'os', u'state', u'ip_address', u'hostname',
@@ -809,6 +825,7 @@ vsphere_platform_controller_handlers = [
     VspherePlatformServerController,
 ]
 
+
 #
 # vsphere orchestrator
 #
@@ -823,48 +840,44 @@ class VsphereController(BaseController):
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
 
+
 class VsphereControllerChild(ApiController):
     subsystem = u'resource'
+    headers = [u'id', u'uuid', u'parent.name', u'name', u'state', u'ext_id']
     
     class Meta:
         stacked_on = 'vsphere'
         stacked_type = 'nested'
         arguments = [
-            ( ['extra_arguments'], dict(action='store', nargs='*')),            
-            ( ['-O', '--orchestrator'],
-              dict(action='store', help='Vsphere orchestrator id') ),
+            ( ['extra_arguments'], dict(action='store', nargs='*'))
         ]
 
     def _ext_parse_args(self):
         ApiController._ext_parse_args(self)
-        
-        self.cid = self.app.pargs.orchestrator
-        if self.cid is None:
-            raise Exception(u'Orchestrator id must be specified')
     
-    '''@expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
     def list(self):
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        uri = self.uri % self.cid
+        uri = self.uri
         res = self._call(uri, u'GET', data=data)
-        self.logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
-        self.result(res, other_headers=self.headers, key=self._meta.aliases[0])
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
+        self.result(res, headers=self.headers, key=self._meta.aliases[0])
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self, oid):
         oid = self.get_arg(name=u'id')
-        uri = self.uri % self.cid + u'/' + oid
+        uri = self.uri + u'/' + oid
         res = self._call(uri, u'GET')
-        self.logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
-        self.result(res, other_headers=self.headers, key=self._meta.aliases[0])
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
+        self.result(res, headers=self.headers, key=self._meta.aliases[0])
     
     @expose(aliases=[u'add <file data>'], aliases_only=True)
     def add(self, data):
         file_data = self.get_arg(name=u'data file')
         data = self.load_config(file_data)
-        uri = self.uri % self.cid
+        uri = self.uri
         res = self._call(uri, u'POST', data=data)
-        self.logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))     
+        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))     
         self.result(res)
 
     @expose(aliases=[u'update <id> <file data>'], aliases_only=True)
@@ -872,28 +885,66 @@ class VsphereControllerChild(ApiController):
         oid = self.get_arg(name=u'id')
         file_data = self.get_arg(name=u'data file')
         data = self.load_config(file_data)
-        uri = self.uri % self.cid + u'/' + oid
+        uri = self.uri + u'/' + oid
         res = self._call(uri, u'UPDATE', data=data)
-        self.logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))     
+        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))     
         self.result(res)
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
     def delete(self, oid):
         oid = self.get_arg(name=u'id')
-        uri = self.uri % self.cid + u'/' + oid
+        uri = self.uri + u'/' + oid
         res = self._call(uri, u'DELETE')
-        self.logger.info(u'Delete %s: %s' % (self._meta.aliases[0], oid))     
-        self.result(res)'''
-        
+        logger.info(u'Delete %s: %s' % (self._meta.aliases[0], oid))     
+        self.result(res)
+
+
+class VsphereDatacenterController(VsphereControllerChild):
+    uri = u'/v1.0/vsphere/datacenters'
+    headers = [u'id', u'uuid', u'parent', u'name', u'state', u'ext_id']
+
+    class Meta:
+        label = 'vsphere.beehive.datacenters'
+        aliases = ['datacenters']
+        aliases_only = True
+        description = "Vsphere datacenter management"
+
+
 class VsphereFolderController(VsphereControllerChild):
-    uri = u'/v1.0/vsphere/%s/folders'
-    headers = [u'id', u'parent_id', u'domain_id', u'name', u'enabled']
+    uri = u'/v1.0/vsphere/folders'
     
     class Meta:
         label = 'vsphere.beehive.folders'
         aliases = ['folders']
         aliases_only = True        
         description = "Vsphere Folder management"
+
+
+class VsphereClusterController(VsphereControllerChild):
+    uri = u'/v1.0/vsphere/clusters'
+
+    class Meta:
+        label = 'vsphere.beehive.clusters'
+        aliases = ['clusters']
+        aliases_only = True
+        description = "Vsphere Cluster management"
+
+    @expose(aliases=[u'host-list [field=value]'], aliases_only=True)
+    def host_list(self):
+        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = u'/v1.0/vsphere/hosts'
+        res = self._call(uri, u'GET', data=data)
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
+        self.result(res, headers=self.headers, key=u'hosts')
+
+    @expose(aliases=[u'respool-list [field=value]'], aliases_only=True)
+    def respool_list(self):
+        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = u'/v1.0/vsphere/resource_pools'
+        res = self._call(uri, u'GET', data=data)
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
+        self.result(res, headers=self.headers, key=u'resource_pools')
+
 
 class VsphereNetworkController(VsphereControllerChild):   
     class Meta:
@@ -902,15 +953,36 @@ class VsphereNetworkController(VsphereControllerChild):
         aliases_only = True
         description = "Vsphere Network management"
 
+
 class VsphereNetworkChildController(VsphereControllerChild):
-    headers = [u'id', u'uuid', u'name']
     class Meta:
         stacked_on = 'vsphere.beehive.network'
         stacked_type = 'nested'
 
     def _ext_parse_args(self):
         VsphereControllerChild._ext_parse_args(self)
-        
+
+
+class VsphereNetworkDvsController(VsphereNetworkChildController):
+    uri = u'/v1.0/vsphere/network/dvss'
+
+    class Meta:
+        label = 'vsphere.beehive.networks.dvs'
+        aliases = ['dvss']
+        aliases_only = True
+        description = "Vsphere Network distributed virtual switch management"
+
+
+class VsphereNetworkDvpgController(VsphereNetworkChildController):
+    uri = u'/v1.0/vsphere/network/dvpgs'
+
+    class Meta:
+        label = 'vsphere.beehive.networks.dvpg'
+        aliases = ['dvpgs']
+        aliases_only = True
+        description = "Vsphere Network distributed virtual port group management"
+
+
 class VsphereNetworkNsxController(VsphereNetworkChildController):
     uri = u'/v1.0/vsphere/network/nsxs'
     
@@ -930,7 +1002,7 @@ class VsphereNetworkNsxController(VsphereNetworkChildController):
         
     @expose(aliases=[u'transport-zones <id>'], aliases_only=True)
     def transport_zones(self):
-        #data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        # data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
         oid = self.get_arg(name=u'id')
         uri = self.uri + u'/%s/transport_zones' % oid
         res = self._call(uri, u'GET')
@@ -946,7 +1018,8 @@ class VsphereSecurityGroupController(VsphereControllerChild):
         aliases = ['security_groups']
         aliases_only = True         
         description = "Vsphere SecurityGroup management"
-        
+
+
 class VsphereServerController(VsphereControllerChild):
     headers = [u'id', u'parent_id', u'name']
     
@@ -958,8 +1031,12 @@ class VsphereServerController(VsphereControllerChild):
 
 vsphere_controller_handlers = [
     VsphereController,
+    VsphereDatacenterController,
     VsphereFolderController,
+    VsphereClusterController,
     VsphereNetworkController,
+    VsphereNetworkDvsController,
+    VsphereNetworkDvpgController,
     VsphereNetworkNsxController,
     
     VsphereSecurityGroupController,

@@ -725,10 +725,11 @@ class OpenstackController(BaseController):
     def default(self):
         self.app.args.print_help()
 
+
 class OpenstackControllerChild(ResourceEntityController):
     uri = u'/v1.0/openstacks'
     subsystem = u'resource'
-    headers = [u'id', u'uuid', u'name', u'state', u'etx_id']
+    headers = [u'id', u'uuid', u'name', u'parent.name', u'container.name', u'ext_id', u'state']
     
     class Meta:
         stacked_on = 'openstack'
@@ -794,7 +795,6 @@ class OpenstackControllerChild(ResourceEntityController):
 
 class OpenstackDomainController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/domains'
-    #headers = [u'id', u'parent_id', u'domain_id', u'name', u'enabled']
     
     class Meta:
         label = 'openstack.beehive.domains'

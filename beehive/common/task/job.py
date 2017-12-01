@@ -322,15 +322,12 @@ class JobTask(AbstractJob):
                  FAILURE
         """
         try:
-            uri = u'/v1.0/worker/tasks/%s/' % job_id
-            res = self.api_admin_request(module, uri, u'GET', u'')
+            uri = u'/v1.0/worker/tasks/%s' % job_id
+            res = self.api_admin_request(module, uri, u'GET', u'').get(u'task_instance', {})
             logger.debug(u'Query job %s: %s' % (job_id, res[u'status']))
         except ApiManagerError as ex:
             # remote job query fails. Return fake state and wait new query
-            res = {u'state':u'PROGRESS'}
-            #attempt += 1
-            #if attempt > 100:
-            #    res = {u'state':u'FAILURE'}    
+            res = {u'state': u'PROGRESS'}
         return res, attempt
 
     def invoke_api(self, module, uri, method, data, other_headers=None):
@@ -427,8 +424,7 @@ class JobTask(AbstractJob):
     #
     # task status management
     #    
-    def update(self, status, ex=None, traceback=None, result=None, msg=None,
-               start_time=None):
+    def update(self, status, ex=None, traceback=None, result=None, msg=None, start_time=None):
         """Update job and jobtask status
         
         :param status: jobtask status
@@ -459,6 +455,7 @@ class JobTask(AbstractJob):
                 msg = u'ERROR: %s' % (msg)
             else:
                 logger.debug(msg)
+                logger.warn(msg)
         
         # update jobtask result
         task_id = self.request.id

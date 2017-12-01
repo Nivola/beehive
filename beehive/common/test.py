@@ -8,7 +8,7 @@ import os
 #os.environ['GEVENT_RESOLVER'] = 'ares'
 #os.environ['GEVENTARES_SERVERS'] = 'ares'
 
-import beecell.server.gevent_ssl
+# import beecell.server.gevent_ssl
 
 import gevent.monkey
 from beehive.common.log import ColorFormatter
@@ -74,12 +74,12 @@ class BeehiveTestCase(unittest.TestCase):
 
         # load config
         try:
-            #config = self.load_config(u'%s/params.json' % path)
+            # config = self.load_config(u'%s/params.json' % path)
             home = os.path.expanduser(u'~')
             config = self.load_config(u'%s/beehive.json' % home)
             logger.info(u'get beehive test configuration')
-        except:
-            raise Exception(u'Test config file beehive.json was not find in user home')
+        except Exception as ex:
+            raise Exception(u'Error loading config file beehive.json. Search in user home. %s' % ex)
         
         env = config.get(u'env')
         current_schema = config.get(u'schema')
