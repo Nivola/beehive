@@ -2334,10 +2334,10 @@ class ApiObject(object):
             
             self.logger.debug(u'Update %s %s with data %s' % 
                               (self.objdef, self.oid, kvargs))
-            #self.send_event(u'update', params=params)
+            # self.send_event(u'update', params=params)
             return self.uuid
         except TransactionError as ex:
-            #self.send_event(u'update', params=params, exception=ex)        
+            # self.send_event(u'update', params=params, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 

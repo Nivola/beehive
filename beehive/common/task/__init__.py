@@ -115,4 +115,3 @@ class BaseTask(Task):
         
         if operation.session is not None:
             self.release_session()
-        

@@ -843,7 +843,7 @@ class VsphereController(BaseController):
 
 class VsphereControllerChild(ApiController):
     subsystem = u'resource'
-    headers = [u'id', u'uuid', u'parent.name', u'name', u'state', u'ext_id']
+    headers = [u'id', u'uuid', u'parent.name', u'conatiner.name', u'name', u'state', u'ext_id']
     
     class Meta:
         stacked_on = 'vsphere'
@@ -861,7 +861,7 @@ class VsphereControllerChild(ApiController):
         uri = self.uri
         res = self._call(uri, u'GET', data=data)
         logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
-        self.result(res, headers=self.headers, key=self._meta.aliases[0])
+        self.result(res, headers=self.headers, key=self._meta.aliases[0], maxsize=25)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self, oid):
@@ -918,6 +918,18 @@ class VsphereFolderController(VsphereControllerChild):
         aliases = ['folders']
         aliases_only = True        
         description = "Vsphere Folder management"
+
+
+class VsphereDatastoreController(VsphereControllerChild):
+    uri = u'/v1.0/vsphere/datastores'
+    headers = [u'id', u'uuid', u'parent.name', u'container.name', u'name', u'state', u'details.accessible',
+               u'details.maintenanceMode', u'details.freespace', u'details.type']
+
+    class Meta:
+        label = 'vsphere.beehive.datastores'
+        aliases = ['datastores']
+        aliases_only = True
+        description = "Vsphere Datastore management"
 
 
 class VsphereClusterController(VsphereControllerChild):
@@ -1021,8 +1033,10 @@ class VsphereSecurityGroupController(VsphereControllerChild):
 
 
 class VsphereServerController(VsphereControllerChild):
-    headers = [u'id', u'parent_id', u'name']
-    
+    uri = u'/v1.0/vsphere/servers'
+    headers = [u'id', u'parent.name', u'container.name', u'name', u'state', u'details.ip_address', u'details.hostname',
+               u'details.cpu', u'details.ram', u'details.template']
+
     class Meta:
         label = 'vsphere.beehive.servers'
         aliases = ['servers']
@@ -1033,6 +1047,7 @@ vsphere_controller_handlers = [
     VsphereController,
     VsphereDatacenterController,
     VsphereFolderController,
+    VsphereDatastoreController,
     VsphereClusterController,
     VsphereNetworkController,
     VsphereNetworkDvsController,
