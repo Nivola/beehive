@@ -461,7 +461,7 @@ commands:
                         __format_table_data(k, v)
 
                     data = resp
-                    headers=[u'attrib', u'value']
+                    headers = [u'attrib', u'value']
                     maxsize = 100
 
                 if isinstance(data, dict) or isinstance(data, list):

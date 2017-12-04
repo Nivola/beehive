@@ -762,7 +762,7 @@ class OpenstackControllerChild(ResourceEntityController):
         oid = self.get_arg(name=u'id')
         uri = self.uri + u'/' + oid
         res = self._call(uri, u'GET')
-        key = key=self._meta.aliases[0].rstrip(u's')
+        key = self._meta.aliases[0].rstrip(u's')
         logger.info(u'Get %s: %s' % (key, truncate(res)))
         self.result(res, details=True, key=key)
     
@@ -793,6 +793,7 @@ class OpenstackControllerChild(ResourceEntityController):
         logger.info(u'Delete %s: %s' % (self._meta.aliases[0], oid))     
         self.result(res)
 
+
 class OpenstackDomainController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/domains'
     
@@ -801,7 +802,8 @@ class OpenstackDomainController(OpenstackControllerChild):
         aliases = ['domains']
         aliases_only = True        
         description = "Openstack Domain management"
-        
+
+
 class OpenstackProjectController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/projects'
     headers = [u'id', u'uuid', u'name', u'parent.name', u'container.name',
@@ -812,6 +814,7 @@ class OpenstackProjectController(OpenstackControllerChild):
         aliases = ['projects']
         aliases_only = True        
         description = "Openstack Project management"
+
 
 class OpenstackNetworkController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/networks'
@@ -825,17 +828,42 @@ class OpenstackNetworkController(OpenstackControllerChild):
         aliases_only = True
         description = "Openstack Network management"
 
+
 class OpenstackSubnetController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/subnets'
-    headers = [u'id', u'parent.name', u'container.name',u'name', 
-               u'details.allocation_pools', u'details.cidr', u'details.gateway_ip']
+    headers = [u'id', u'parent', u'container', u'name', u'cidr', u'allocation_pools', u'gateway_ip']
     
     class Meta:
         label = 'openstack.beehive.subnets'
         aliases = ['subnets']
         aliases_only = True
         description = "Openstack Subnet management"
-        
+
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    def list(self):
+        """List openstack items
+        """
+        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = self.uri
+        res = self._call(uri, u'GET', data=data)
+        resp = []
+        for item in res.get(u'subnets'):
+            allocation_pools = item.get(u'details').get(u'allocation_pools')
+            allocation_pools = [u'%s - %s' % (a[u'start'], a[u'end']) for a in allocation_pools]
+            resp.append({
+                u'id': item.get(u'id'),
+                u'parent': item.get(u'parent', {}).get(u'name'),
+                u'container': item.get(u'container', {}).get(u'name'),
+                u'name': item.get(u'name'),
+                u'cidr': item.get(u'details').get(u'cidr'),
+                u'allocation_pools': allocation_pools,
+                u'gateway_ip': item.get(u'details').get(u'gateway_ip')
+            })
+        res[self._meta.aliases[0]] = resp
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], res))
+        self.result(res, headers=self.headers, key=self._meta.aliases[0], key_separator=u'|')
+
+
 class OpenstackPortController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/ports'
     headers = [u'id',  u'container.name', u'parent.name', u'name',
@@ -847,7 +875,8 @@ class OpenstackPortController(OpenstackControllerChild):
         aliases = ['ports']
         aliases_only = True         
         description = "Openstack Port management"     
-        
+
+
 class OpenstackFloatingIpController(OpenstackControllerChild):
     headers = [u'id',  u'container.name', u'parent.name', u'name']
     
@@ -862,7 +891,8 @@ class OpenstackFloatingIpController(OpenstackControllerChild):
         OpenstackControllerChild._ext_parse_args(self)
         
         self.entity_class = self.client.network.ip
-       
+
+
 class OpenstackRouterController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/routers'
     headers = [u'id', u'container.name', u'parent.name', u'name',]
@@ -872,7 +902,8 @@ class OpenstackRouterController(OpenstackControllerChild):
         aliases = ['routers']
         aliases_only = True         
         description = "Openstack Router management"
-        
+
+
 class OpenstackSecurityGroupController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/security_groups'
     headers = [u'id', u'container.name', u'parent.name', u'name', u'state', 
@@ -898,7 +929,8 @@ class OpenstackSecurityGroupController(OpenstackControllerChild):
         self.result(rules, headers=[u'id', u'direction', u'protocol', 
             u'ethertype', u'remote_ip_prefix', u'remote_group.name', 
             u'remote_group.id', u'port_range_min', u'port_range_max'])     
-        
+
+
 class OpenstackImageController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/images'
     headers = [u'id', u'container.name', u'name',
@@ -910,7 +942,8 @@ class OpenstackImageController(OpenstackControllerChild):
         aliases = ['images']
         aliases_only = True         
         description = "Openstack Image management"
-        
+
+
 class OpenstackFlavorController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/flavors'
     headers = [u'id', u'container.name', u'parent.name', u'name', u'state', 
@@ -921,7 +954,8 @@ class OpenstackFlavorController(OpenstackControllerChild):
         aliases = ['flavors']
         aliases_only = True         
         description = "Openstack Flavor management"
-        
+
+
 class OpenstackServerController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/servers'
     headers = [u'id', u'container.name', u'parent.name', u'name', u'state', 
@@ -1073,7 +1107,8 @@ class OpenstackServerController(OpenstackControllerChild):
         self.result({u'msg':u'Start server %s' % (oid)}, headers=[u'msg'], 
                     maxsize=400)
         self.wait_job(res[u'jobid'])         
-        
+
+
 class OpenstackVolumeController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/volumes'
     headers = [u'id', u'container.name', u'parent.name', u'name']
@@ -1083,6 +1118,7 @@ class OpenstackVolumeController(OpenstackControllerChild):
         aliases = ['volumes']
         aliases_only = True         
         description = "Openstack Volume management"
+
 
 class OpenstackHeatStackController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/stacks'
