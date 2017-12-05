@@ -25,6 +25,7 @@ from time import time
 
 logger = logging.getLogger(__name__)
 
+
 class TreeStyle(Style):
     default_style = ''
     styles = {
@@ -34,6 +35,7 @@ class TreeStyle(Style):
         Token.Literal.Number: u'#0099ff',
         Token.Operator: u'#ff3300' 
     } 
+
 
 class ResourceController(BaseController):
     class Meta:
@@ -45,7 +47,8 @@ class ResourceController(BaseController):
 
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
-        
+
+
 class ResourceControllerChild(ApiController):
     baseuri = u'/v1.0'
     subsystem = u'resource'
@@ -67,15 +70,12 @@ class ResourceControllerChild(ApiController):
     class Meta:
         stacked_on = 'resource'
         stacked_type = 'nested'        
-        
-class ContainerController(ResourceControllerChild):    
+
+
+class ContainerController(ResourceControllerChild):
     class Meta:
         label = 'containers'
         description = "Container management"
-        
-    @expose(help="Container management", hide=True)
-    def default(self):
-        self.app.args.print_help()
         
     @expose(aliases=[u'list [status]'], aliases_only=True)
     def list(self, *args):
@@ -302,7 +302,8 @@ class ContainerController(ResourceControllerChild):
         global contid
         uri = u'%s/resourcecontainer/%s/discover/scheduler' % (self.baseuri, contid)        
         self.invoke(u'resource', uri, u'DELETE', data='')'''
-        
+
+
 class ResourceEntityController(ResourceControllerChild):    
     class Meta:
         label = 'entities'
@@ -332,7 +333,7 @@ class ResourceEntityController(ResourceControllerChild):
                 data = format(create_data(), Terminal256Formatter(style=TreeStyle))
                 print data
             self.__print_tree(child, space=space+u'   ')
-        
+
     def get_resource_state(self, uuid):
         try:
             res = self._call(u'/v1.0/resources/%s' % uuid, u'GET')
@@ -352,8 +353,8 @@ class ResourceEntityController(ResourceControllerChild):
                 self.app.print_error(res[u'task_instance'][u'traceback'][-1])
             return state
         except (NotFoundException, Exception):
-            return u'EXPUNGED'        
-    
+            return u'EXPUNGED'
+
     def wait_resource(self, uuid, delta=1):
         """Wait resource
         """
@@ -404,7 +405,7 @@ class ResourceEntityController(ResourceControllerChild):
         if jobid is not None:
             self.wait_job(jobid)        
         logger.info(u'Add resource: %s' % truncate(res))
-        res = {u'msg':u'Add resource %s' % res}
+        res = {u'msg': u'Add resource %s' % res}
         self.result(res, headers=[u'msg'])
     
     @expose(aliases=[u'update <oid> [field=value]'], aliases_only=True)    
@@ -453,8 +454,7 @@ class ResourceEntityController(ResourceControllerChild):
         uri = u'%s/resources/types' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(u'Get resource types: %s' % truncate(res))
-        self.result(res, key=u'resourcetypes', headers=[u'id', u'type', u'resclass'], 
-                    maxsize=400)
+        self.result(res, key=u'resourcetypes', headers=[u'id', u'type', u'resclass'], maxsize=400)
     
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
@@ -464,8 +464,7 @@ class ResourceEntityController(ResourceControllerChild):
         uri = u'%s/resources/%s' % (self.baseuri, value)        
         res = self._call(uri, u'GET')
         logger.info(res)
-        self.result(res, key=u'resource', headers=self.res_headers, 
-                    details=True)
+        self.result(res, key=u'resource', headers=self.res_headers, details=True)
     
     @expose(aliases=[u'perms <id>'], aliases_only=True)
     def perms(self):

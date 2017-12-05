@@ -35,6 +35,7 @@ from beehive.manager.sections.catalog import catalog_controller_handlers
 from beehive.manager.sections.event import event_controller_handlers
 from beehive.manager.sections.scheduler import scheduler_controller_handlers
 from beehive.manager.sections.service import service_controller_handlers
+from beehive.manager.sections.organization import organization_controller_handlers
 from beehive.manager.sections.vsphere import vsphere_controller_handlers,\
     vsphere_platform_controller_handlers
 from beehive.manager.sections.openstack import openstack_controller_handlers,\
@@ -180,6 +181,7 @@ class CliManager(CementCmd):
         handlers.extend(event_controller_handlers)
         handlers.extend(scheduler_controller_handlers)
         handlers.extend(service_controller_handlers)
+        handlers.extend(organization_controller_handlers)
         handlers.extend(vsphere_controller_handlers)
         handlers.extend(vsphere_platform_controller_handlers)
         handlers.extend(openstack_controller_handlers)

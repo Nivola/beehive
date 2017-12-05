@@ -12,72 +12,53 @@ from beecell.simple import truncate
 logger = logging.getLogger(__name__)
 
 
-class ServiceController(BaseController):
+class OrganizationHierarchyController(BaseController):
     class Meta:
-        label = 'business_service'
+        label = 'business_hierarchy'
         stacked_on = 'base'
         stacked_type = 'nested'
-        description = "Service management"
+        description = "Organization Hierarchy management"
         arguments = []
 
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
 
 
-class ServiceControllerChild(ApiController):
+class OrganizationHierarchyControllerChild(ApiController):
     baseuri = u'/v1.0/nws'
     subsystem = u'service'
 
     class Meta:
-        stacked_on = 'business_service'
+        stacked_on = 'business_hierarchy'
         stacked_type = 'nested'
 
-    def get_service_state(self, uuid):
-        try:
-            res = self._call(u'/v1.0/service/%s' % uuid, u'GET')
-            state = res.get(u'service').get(u'state')
-            logger.debug(u'Get service %s state: %s' % (uuid, state))
-            return state
-        except (NotFoundException, Exception):
-            return u'EXPUNGED'
 
-    def wait_service(self, uuid, delta=1):
-        """Wait service
-        """
-        logger.debug(u'wait for service: %s' % uuid)
-        state = self.get_service_state(uuid)
-        while state not in [u'ACTIVE', u'ERROR', u'EXPUNGED']:
-            logger.info(u'.')
-            print((u'.'))
-            sleep(delta)
-            state = self.get_service_state(uuid)
-
-
-class ServiceTypeController(ServiceControllerChild):
+class OrganizationController(OrganizationHierarchyControllerChild):
     class Meta:
-        label = 'types'
-        description = "Service type management"
+        label = 'organizations'
+        description = "Organization management"
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     def list(self):
-        """List all resources by field: tags, type, objid, name, ext_id,
+        """List all organizations by field: tags, type, objid, name, ext_id,
     container, attribute, parent, state
         """
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        uri = u'%s/servicetype' % self.baseuri
+        uri = u'%s/organizations' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        self.result(res, key=u'servicetypes', headers=[u'id', u'uuid', u'name', u'version', u'status'])
+        self.result(res, key=u'organizations',
+                    headers=[u'id', u'uuid', u'name', u'org_type', u'ext_anag_id'], maxsize=30)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
-        """Get resource by value or id
+        """Get organization by value or id
         """
         value = self.get_arg(name=u'id')
-        uri = u'%s/servicetype/%s' % (self.baseuri, value)
+        uri = u'%s/organizations/%s' % (self.baseuri, value)
         res = self._call(uri, u'GET')
         logger.info(res)
-        self.result(res, key=u'servicetype', details=True)
+        self.result(res, key=u'organization', details=True)
 
     @expose(aliases=[u'add <container> <resclass> <name> [ext_id=..] '\
                      u'[parent=..] [attribute=..] [tags=..]'],
@@ -143,17 +124,26 @@ class ServiceTypeController(ServiceControllerChild):
         self.result(res, headers=[u'msg'])
 
 
-class ServiceInternalController(ServiceControllerChild):
+class DivisionController(OrganizationHierarchyControllerChild):
     class Meta:
-        label = 'services'
-        description = "Service management"
+        label = 'divisions'
+        description = "Divisions management"
+
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    def list(self):
+        """List all divisions by field: tags, type, objid, name, ext_id,
+    container, attribute, parent, state
+        """
+        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = u'%s/divisions' % self.baseuri
+        res = self._call(uri, u'GET', data=data)
+        logger.info(res)
+        self.result(res, key=u'divisions',
+                    headers=[u'id', u'uuid', u'name'], maxsize=30)
+
         
-    @expose(help="Service management", hide=True)
-    def default(self):
-        self.app.args.print_help()        
-
-
-service_controller_handlers = [
-    ServiceController,
-    ServiceTypeController,
+organization_controller_handlers = [
+    OrganizationHierarchyController,
+    OrganizationController,
+    DivisionController,
 ]        

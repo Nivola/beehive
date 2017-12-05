@@ -28,6 +28,19 @@ except Exception as ex:
     print(traceback.format_exc())
     print(u'ansible package not installed. %s' % ex)  
 
+
+class PlatformController(BaseController):
+    class Meta:
+        label = 'platform'
+        stacked_on = 'base'
+        stacked_type = 'nested'
+        description = "Platform management"
+        arguments = []
+
+    def _setup(self, base_app):
+        BaseController._setup(self, base_app)
+
+
 class AnsibleController(BaseController):
     class Meta:
         stacked_on = 'platform'
@@ -126,22 +139,8 @@ class AnsibleController(BaseController):
             ]
             runner.run_task(group, tasks=tasks, frmt=self.format)
         except Exception as ex:
-            self.error(ex)            
+            self.error(ex)
 
-class PlatformController(BaseController):
-    class Meta:
-        label = 'platform'
-        stacked_on = 'base'
-        stacked_type = 'nested'
-        description = "Platform management"
-        arguments = []
-
-    def _setup(self, base_app):
-        BaseController._setup(self, base_app)
-
-    @expose(help="Platform management", hide=True)
-    def default(self):
-        self.app.args.print_help()
 
 class RedisController(AnsibleController):
     class Meta:
@@ -1132,7 +1131,7 @@ class BeehiveController(AnsibleController):
     - vassal: vassal
         """
         subsystem = self.get_arg(name=u'subsystem')
-        vassal  = self.get_arg(name=u'vassal')        
+        vassal = self.get_arg(name=u'vassal')
         run_data = {
             u'local_package_path':self.local_package_path,
             u'subsystem':subsystem,
