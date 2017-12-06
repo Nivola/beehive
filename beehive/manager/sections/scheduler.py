@@ -141,8 +141,8 @@ class TaskController(SchedulerControllerChild):
         resp = []
         resp.append(res)
         resp.extend(res.get(u'children'))
-        self.result(resp, headers=[u'task_id', u'type', u'status', u'name', 
-                                  u'start_time', u'stop_time', u'elapsed'])
+        self.result(resp, headers=[u'task_id', u'type', u'status', u'name', u'start_time', u'stop_time', u'elapsed'],
+                    maxsize=100)
     
     @expose(aliases=[u'trace <id>'], aliases_only=True)
     def trace(self):

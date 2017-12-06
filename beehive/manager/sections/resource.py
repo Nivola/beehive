@@ -327,6 +327,7 @@ class ResourceEntityController(ResourceControllerChild):
                     yield (Token.Text.Whitespace, space)
                     yield (Token.Operator, u'--%s-->' % relation)
                     yield (Token.Name, u' [%s] ' % child.get(u'type'))
+                    yield (Token.Operator, u'(%s) ' % child.get(u'container_name'))
                     yield (Token.Literal.String, child.get(u'name'))
                     yield (Token.Text.Whitespace, u' - ')
                     yield (Token.Literal.Number, str(child.get(u'id')))

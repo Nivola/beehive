@@ -1,13 +1,13 @@
-'''
+"""
 Created on Jan 31, 2014
 
 @author: darkbk
-'''
+"""
 from time import time
 from functools import wraps
 import logging
 from uuid import uuid4
-from sqlalchemy.exc import IntegrityError, DBAPIError
+from sqlalchemy.exc import IntegrityError, DBAPIError, ArgumentError
 from beecell.simple import id_gen, truncate
 from beecell.simple import import_class
 from beecell.db import TransactionError, QueryError, ModelError
@@ -105,6 +105,15 @@ def transaction(fn):
             
             rollback(session, commit)
             raise TransactionError(ex.desc, code=ex.code)
+        except ArgumentError as ex:
+            elapsed = round(time() - start, 4)
+            logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
+                         operation.id, stmp_id, sessionid, fn.__name__,
+                         params, elapsed))
+            logger.error(ex.message)
+
+            rollback(session, commit)
+            raise TransactionError(ex.message, code=409)
         except IntegrityError as ex:
             elapsed = round(time() - start, 4)
             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
@@ -142,8 +151,7 @@ def transaction(fn):
                          params, elapsed))
             logger.error(ex, exc_info=1)
             #logger.error(ex)
-        
-            #session.rollback()
+
             rollback(session, commit)
             raise TransactionError(ex, code=400)
 

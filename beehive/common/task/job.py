@@ -498,7 +498,10 @@ class JobTask(AbstractJob):
         The return value of this handler is ignored.
         """
         BaseTask.on_failure(self, exc, task_id, args, kwargs, einfo)
-        err = str(exc)
+        try:
+            err = str(exc)
+        except:
+            err = exc
         trace = format_tb(einfo.tb)
         trace.append(err)
         logger.error(err, exc_info=1)
@@ -506,8 +509,8 @@ class JobTask(AbstractJob):
         self.update(u'FAILURE', ex=err, traceback=trace, result=None, msg=msg)
         
         # update job
-        self.update_job(params={}, status=u'FAILURE', current_time=time(), 
-                        ex=err, traceback=trace, result=None, msg=err)        
+        self.update_job(params={}, status=u'FAILURE', current_time=time(), ex=err, traceback=trace, result=None,
+                        msg=err)
         
     def on_retry(self, exc, task_id, args, kwargs, einfo):
         """This is run by the worker when the task is to be retried.
