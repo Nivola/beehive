@@ -40,8 +40,8 @@ class OrganizationController(OrganizationHierarchyControllerChild):
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     def list(self):
-        """List all organizations by field: tags, type, objid, name, ext_id,
-    container, attribute, parent, state
+        """List all organizations by field: id, uuid, name, org_type, ext_anag_id,
+    attributes, hasvat, partner, referent, email, legalemail, postaladdress
         """
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
         uri = u'%s/organizations' % self.baseuri
@@ -52,43 +52,47 @@ class OrganizationController(OrganizationHierarchyControllerChild):
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
-        """Get organization by value or id
+        """Get organization by value uuid or id
         """
         value = self.get_arg(name=u'id')
         uri = u'%s/organizations/%s' % (self.baseuri, value)
+        logger.info(uri)
         res = self._call(uri, u'GET')
         logger.info(res)
         self.result(res, key=u'organization', details=True)
 
-    @expose(aliases=[u'add <container> <resclass> <name> [ext_id=..] '\
-                     u'[parent=..] [attribute=..] [tags=..]'],
+    @expose(aliases=[u'add <name> <org_type> [desc=..] '\
+                     u'[ext_anag_id=..] [attributes=..] [hasvat=..]'\
+                     u'[partner=..] [referent=..] [email=..]'\
+                     u'[legalemail=..] [postaladdress=..]'],
             aliases_only=True)
     def add(self):
-        """Add resource <name>
+        """Add organization <name> <org_type>
+            - field: can be desc, ext_anag_id, attributes, hasvat, partner, referent, email, legaemail, postaladdress 
         """
-        container = self.get_arg(name=u'container')
-        resclass = self.get_arg(name=u'resclass')
         name = self.get_arg(name=u'name')
+        org_type = self.get_arg(name=u'org_type')        
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         data = {
-            u'resource': {
-                u'container': container,
-                u'resclass': resclass,
-                u'name': name,
-                u'desc': u'Resource %s' % name,
-                u'ext_id': params.get(u'ext_id', None),
-                u'parent': params.get(u'parent', None),
-                u'attribute': params.get(u'attribute', {}),
-                u'tags': params.get(u'tags', None)
-            }
-        }
-        uri = u'%s/resources' % (self.baseuri)
+            u'organization':{
+            u'name':name,
+            u'desc':params.get(u'desc', None),
+            u'org_type':org_type,
+            u'ext_anag_id':params.get(u'ext_anag_id',None),
+            u'attributes':params.get(u'attributes',None),
+#             u'attribute': params.get(u'attribute', {}),
+            u'hasvat':params.get(u'hasvat',None),
+            u'partner':params.get(u'partner',None),
+            u'referent':params.get(u'referent', None),
+            u'email':params.get(u'email', None),
+            u'legalemail':params.get(u'legalemail', None),
+            u'postaladdress':params.get(u'postaladdress', None),
+            }  
+         }
+        uri = u'%s/organizations' % (self.baseuri)
         res = self._call(uri, u'POST', data=data)
-        jobid = res.get(u'jobid', None)
-        if jobid is not None:
-            self.wait_job(jobid)
-        logger.info(u'Add resource: %s' % truncate(res))
-        res = {u'msg': u'Add resource %s' % res}
+        logger.info(u'Add organization: %s' % truncate(res))
+        res = {u'msg': u'Add organization %s' % res}
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'update <oid> [field=value]'], aliases_only=True)
@@ -140,6 +144,16 @@ class DivisionController(OrganizationHierarchyControllerChild):
         logger.info(res)
         self.result(res, key=u'divisions',
                     headers=[u'id', u'uuid', u'name'], maxsize=30)
+    
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        """Get division by value or id
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'%s/divisions/%s' % (self.baseuri, value)
+        res = self._call(uri, u'GET')
+        logger.info(res)
+        self.result(res, key=u'division', details=True)
 
         
 organization_controller_handlers = [
