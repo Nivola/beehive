@@ -5,7 +5,7 @@
         "cmdb":{},
         "db-uris":{},
         "redis":{
-            "uri":"",
+	    "uri":"",
             "cluster":[]
         }, 
         "broker":"",
@@ -51,7 +51,7 @@
             "resource":"mysql+pymysql://resource:resource@10.102.184.57:3306/resource"
         },
         "redis":{
-            "uri":"10.102.184.51;6379;0",
+	    "uri":"10.102.184.51;6379;0",
             "cluster":[
                 {"host": "10.102.184.121", "port": "6379"},
                 {"host": "10.102.91.23", "port": "6379"},
@@ -129,16 +129,6 @@
                 "auth":"keyauth",
                 "catalog":"beehive-internal"
             }
-        },
-        "hierarchy":{
-            "org1": {
-                "name": ""
-            },
-            "org2": {
-                "name": ""
-            }
-        },
-        "service":{
         },
         "resource":{
             "config":{
@@ -241,11 +231,12 @@
                     "rule3":{
                         "direction":"egress",
                         "protocol":null
+
                     },
                     "rule4":{
                         "direction":"egress",
-                        "remote_ip_prefix":"0.0.0.0/0",
-                        "protocol":null
+                        "protocol":null,
+                        "remote_ip_prefix":"0.0.0.0/0"
                     }
                 },
                 "router1":{
@@ -262,36 +253,35 @@
                     "name":"test-server-01",
                     "project":"test-project-01",
                     "network":{
+                        "hostname":"test-server-01",
                         "uuid":"test-network-01",
                         "gw":"10.102.185.1",
-                        "hostname":"test-server-01",
-                        "dns":["10.102.184.2","10.102.184.3"],
-                        "domain":"tstsddc.csi.it"
+                        "dns":["10.102.184.2", "10.102.184.3"]
                     },
                     "availability_zone":"nova",
                     "flavorRef":"m1.medium",
-                    "imageRef":"centos7-heat-raw",
+                    "imageRef":"centos7-heat",
                     "admin_pwd":"mypass",
                     "volume":{"size":20},
                     "security_groups": ["test-sg-01"],
                     "pubkey":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it"
                 },
-                "region1":{
-                    "name":"test-region-01",
-                    "geo_area":"turin",
-                    "coords":"12,23"
+                "prv-region1":{
+                     "name":"test-prv-region-01",
+                     "geo_area":"pedmont",
+                     "coords":"100,100"
                 },
                 "prv-site1":{
-                    "name":"test-site-01",
-                    "geo_area":"turin",
-                    "coords":"12,23",
-                    "limits":{
-                        "cpu":200,
-                        "ram":4096,
-                        "storage":524288,
-                        "instance":5000,
-                        "network":4096
-                    },
+                     "name":"test-prv-site-01",
+                     "geo_area":"pedmont",
+                     "coords":"100,100",
+                     "limits":{
+                          "cpu":200,
+                          "ram":4096,
+                          "storage":524288,
+                          "instance":5000,
+                          "network":4096
+                     },
                      "orchestrators":[
                         {
                             "type":"vsphere",
@@ -324,6 +314,7 @@
                     "subnets": [
                         {
                             "cidr":"10.102.185.0/24",
+                            "gateway":"10.102.185.1",
                             "allocation_pools":[{"start":"10.102.185.50", "end":"10.102.185.60"}],
                             "enable_dhcp":true,
                             "dns_nameservers":["10.102.184.2", "10.102.184.3"]
@@ -331,10 +322,12 @@
                     ],
                     "subnets_new": [
                         {
-                            "cidr":"10.102.185.0/24",
-                            "allocation_pools":[{"start":"10.102.185.50", "end":"10.102.185.60"}],
+                            "cidr":"10.102.186.0/24",
+                            "gateway":"10.102.186.1",
+                            "allocation_pools":[{"start":"10.102.186.50", "end":"10.102.186.60"}],
                             "enable_dhcp":true,
-                            "dns_nameservers":["10.102.184.2", "10.102.184.3"]
+                            "dns_nameservers":["10.102.184.2", "10.102.184.3"],
+                            "allocable":false
                         }
                     ]
                 },
@@ -363,6 +356,7 @@
                 },
                 "prv-compute-image1": {
                     "name": "test-prv-compute-image-01",
+                    "compute_zone":"test-prv-compute-zone-01",
                     "os":"centos",
                     "os_ver":"7.2",
                     "templates":[
@@ -383,6 +377,7 @@
                 },
                 "prv-compute-flavor1": {
                     "name": "test-prv-compute-flavor-01",
+                    "compute_zone":"test-prv-compute-zone-01",
                     "memory": 4096,
                     "disk": 50,
                     "disk_iops": 0,
@@ -400,21 +395,31 @@
                             "orchestrator_type":"openstack",
                             "availability_zone":"test-prv-site-01",
                             "orchestrator":"test-container-ops2",
-                            "flavor_id":""
+                            "flavor_id":"m1.large"
                         }
                     ]
                 },
                 "prv-vpc1": {
                     "name": "test-prv-vpc-01",
+                    "compute_zone":"test-prv-compute-zone-01",
                     "networks": [
-                        "prv-site-network1"
+                        "test-prv-site-network-01"
                     ]
                 },
                 "prv-security-group1": {
-                    "name": "test-prv-security-group-01"
+                    "name": "test-prv-security-group-01",
+                    "vpc": "test-prv-vpc-01"
                 },
                 "prv-rule1": {
-                    "name": "test-prv-rule-01"
+                    "name": "test-prv-rule-01",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "source": {"type":"SecurityGroup", "value":"test-prv-security-group-01"},
+                    "destination": {"type":"SecurityGroup", "value":"test-prv-security-group-01"},
+                    "service": {"port": "*", "protocol": "*"}
+                },
+                "prv-instance1": {
+                    "name": "test-prv-instance-01",
+                    "compute_zone":"test-prv-compute-zone-01"
                 }
             }
         },
@@ -423,20 +428,20 @@
                 "vsphere1":{
                     "name":"test-container-vsphere",                
                     "vcenter":{
-                    "host":"tst-vcenter.tstsddc.csi.it",
-                    "port":443,
-                    "user":"administrator@tstsddc.csi.it",
-                    "pwd":"cs1$topix",
-                    "verified":false,
-                    "timeout":5
+                        "host":"tst-vcenter.tstsddc.csi.it",
+                        "port":443,
+                        "user":"administrator@tstsddc.csi.it",
+                        "pwd":"cs1$topix",
+                        "verified":false,
+                        "timeout":5
                     },
                     "nsx":{
-                    "host":"tst-nsxmanager.tstsddc.csi.it",
-                    "port":443,
-                    "user":"admin",
-                    "pwd":"Cs1$topix",
-                    "verified":false,
-                    "timeout":600
+                        "host":"tst-nsxmanager.tstsddc.csi.it",
+                        "port":443,
+                        "user":"admin",
+                        "pwd":"Cs1$topix",
+                        "verified":false,
+                        "timeout":600
                     }
                 },
                 "openstack1":{
@@ -454,16 +459,15 @@
                     "name":"test-container-ops2",                
                     "api":{                
                         "uri":"http://10.102.184.200:5000/v3",
-                        "domain":"default",  
+                        "domain":"default",
                         "user":"admin",
                         "project":"admin",
-                        "pwd":"8fAwzAJAHQFMcJfrntpapzDpC",      
+                        "pwd":"8fAwzAJAHQFMcJfrntpapzDpC",
                         "region":"regionOne"
                     }
                 },
                 "provider1":{
-                    "name":"test-container-prv",     
-                    "conn":{}
+                    "name":"test-container-prv"
                 }
             }
         }
@@ -477,12 +481,11 @@
             "auth":"mysql+pymysql://auth:auth@10.102.184.66:3306/auth",
             "resource":"mysql+pymysql://resource:resource@10.102.184.66:3306/resource"
         },
-        "redis":{"uri":"10.102.184.66;6379;0"},
+        "redis-uri":"10.102.184.66;6379;0",
         "broker":"redis://10.102.184.66:6379/6",
         "endpoints":{
             "auth":"http://10.102.184.66:6060",
-            "service":"http://10.102.184.66:6110",
-            "resource":"http://10.102.184.66:6090"
+            "service":"http://10.102.184.66:6110"
         },
         "users":{
             "admin1":{
@@ -506,14 +509,6 @@
                 "auth":"keyauth",
                 "catalog":"beehive-internal"
             }
-        },
-        "resource":{
-            "config":{
-            }
-        },
-        "container":{
-            "config":{
-            }
         }
     },
     "lab1":{
@@ -525,7 +520,7 @@
             "auth":"mysql+pymysql://auth:auth@10.102.184.65:3306/auth",
             "resource":"mysql+pymysql://resource:resource@10.102.184.65:3306/resource"
         },
-        "redis":{"uri":"10.102.184.65;6379;0"},
+        "redis-uri":"10.102.184.65;6379;0",
         "broker":"redis://10.102.184.65:6379/6",
         "endpoints":{
             "auth":"http://10.102.184.65:6060",

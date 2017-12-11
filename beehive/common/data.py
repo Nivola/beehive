@@ -113,7 +113,7 @@ def transaction(fn):
             logger.error(ex.message)
 
             rollback(session, commit)
-            raise TransactionError(ex.message, code=409)
+            raise TransactionError(ex.message, code=400)
         except IntegrityError as ex:
             elapsed = round(time() - start, 4)
             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (
@@ -157,11 +157,13 @@ def transaction(fn):
 
     return transaction_inner
 
+
 def rollback(session, status):
     if status is True:
         session.rollback()
         logger.warn(u'Rollback transaction %s' % operation.transaction)
         operation.transaction = None
+
 
 def query(fn):
     """Use this decorator to transform a function that contains delete, insert
@@ -212,7 +214,14 @@ def query(fn):
                          truncate(params), elapsed))
             #logger.error(ex.desc, exc_info=1)
             logger.error(ex.desc)
-            raise QueryError(ex.desc, code=ex.code)    
+            raise QueryError(ex.desc, code=ex.code)
+        except ArgumentError as ex:
+            elapsed = round(time() - start, 4)
+            logger.error(u'%s.%s - %s - query - %s - %s - KO - %s' % (
+                         operation.id, stmp_id, sessionid, fn.__name__,
+                         truncate(params), elapsed))
+            logger.error(ex.message)
+            raise QueryError(ex.message, code=400)
         except DBAPIError as ex:
             elapsed = round(time() - start, 4)
             logger.error(u'%s.%s - %s - query - %s - %s - KO - %s' % (
@@ -221,15 +230,20 @@ def query(fn):
             #logger.error(ex.message, exc_info=1)
             logger.error(ex.message)
             raise QueryError(ex.message, code=400)
+        except TypeError as ex:
+            elapsed = round(time() - start, 4)
+            logger.error(u'%s.%s - %s - query - %s - %s - KO - %s' % (
+                         operation.id, stmp_id, sessionid, fn.__name__,
+                         truncate(params), elapsed))
+            logger.error(ex.message)
+            raise QueryError(ex.message, code=400)
         except Exception as ex:
             elapsed = round(time() - start, 4)
             logger.error(u'%s.%s - %s - query - %s - %s - KO - %s' % (
-                         operation.id, stmp_id, sessionid, fn.__name__, 
+                         operation.id, stmp_id, sessionid, fn.__name__,
                          truncate(params), elapsed))
-            #logger.error(ex, exc_info=1)
-            logger.error(ex)
-
-            raise QueryError(ex, code=400)
+            logger.error(ex.message)
+            raise QueryError(ex.message, code=400)
     return query_inner
 
 
