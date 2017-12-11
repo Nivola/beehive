@@ -295,7 +295,8 @@ class RedisController(AnsibleController):
         def func(server):
             return server.delete(pattern=pattern)
         self.run_cmd(func, dbs=range(0,8))
-        
+
+
 class RedisClutserController(RedisController):
     class Meta:
         label = 'redis-cluster'
@@ -411,7 +412,8 @@ class RedisClutserController(RedisController):
         self.result(resp, headers=[u'host', u'id', u'port', u'link-state', 
             u'flags', u'master', u'ping-sent', u'pong-recv'], 
             key_separator=u',', maxsize=25)        
-        
+
+
 class MysqlController(AnsibleController):
     class Meta:
         label = 'mysql'
@@ -574,6 +576,7 @@ class MysqlController(AnsibleController):
         
             self.result(resp, headers=resp[0].keys(), maxsize=20) 
 
+
 class CamundaController(AnsibleController):
     class Meta:
         label = 'camunda'
@@ -624,6 +627,7 @@ class CamundaController(AnsibleController):
             resp.append({u'host':client.connection.get(u'host'), u'response':res})
         logger.debug(u'Ping camunda: %s' % resp)
         self.result(resp, headers=[u'host', u'response'])           
+
 
 class OpenstackController(AnsibleController):
     class Meta:
@@ -913,7 +917,8 @@ class NodeController(AnsibleController):
             dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
         ]
         runner.run_task(group, tasks=tasks, frmt=u'text')
-        
+
+
 class BeehiveController(AnsibleController):
     class Meta:
         label = 'beehive'
@@ -1291,11 +1296,20 @@ class BeehiveController(AnsibleController):
         """Make e deploy beehive documentation
         """
         run_data = {
-            u'tags':[u'doc'],
-            u'local_package_path':self.local_package_path
+            u'tags': [u'doc'],
+            u'local_package_path': self.local_package_path
         }        
-        self.ansible_playbook(u'docs', run_data, 
-                              playbook=self.beehive_doc_playbook)          
+        self.ansible_playbook(u'docs', run_data, playbook=self.beehive_doc_playbook)
+
+    @expose()
+    def apidoc(self):
+        """Make e deploy beehive api documentation
+        """
+        run_data = {
+            u'tags': [u'apidoc'],
+            u'local_package_path': self.local_package_path
+        }
+        self.ansible_playbook(u'docs', run_data, playbook=self.beehive_doc_playbook)
         
 platform_controller_handlers = [
     PlatformController,

@@ -134,8 +134,6 @@ class ApiManager(object):
         self.app_subsytem = self.params[u'api_subsystem']
         self.app_endpoint_id = u'%s-%s' % (self.params[u'api_id'], hostname)
         try:
-            #self.app_uri = {u'uwsgi':u'%s:%s' % (host, self.params['socket']),
-            #                u'http':u'http://%s%s' % (host, self.params['http-socket'])}
             self.app_uri = u'http://%s%s' % (hostname, self.params[u'http-socket'])
             self.uwsgi_uri = u'uwsgi://%s%s' % (hostname, self.params[u'socket'])
         except:
@@ -153,10 +151,6 @@ class ApiManager(object):
         self.modules = {}
         
         # redis
-        #self.redis_msg_manager = None
-        #self.redis_msg_channel = None
-        #self.redis_process_manager = None
-        #self.redis_process_channel = None
         self.redis_manager = None
         
         # security
