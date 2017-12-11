@@ -326,8 +326,8 @@ class ResourceEntityController(ResourceControllerChild):
                 def create_data():
                     yield (Token.Text.Whitespace, space)
                     yield (Token.Operator, u'--%s-->' % relation)
-                    yield (Token.Name, u' [%s] ' % child.get(u'type'))
-                    yield (Token.Operator, u'(%s) ' % child.get(u'container_name'))
+                    yield (Token.Operator, u' (%s) ' % child.get(u'container_name'))
+                    yield (Token.Name, u'[%s] ' % child.get(u'type'))
                     yield (Token.Literal.String, child.get(u'name'))
                     yield (Token.Text.Whitespace, u' - ')
                     yield (Token.Literal.Number, str(child.get(u'id')))
@@ -496,33 +496,16 @@ class ResourceEntityController(ResourceControllerChild):
         data = format(create_data(), Terminal256Formatter(style=TreeStyle))
         print data
         self.__print_tree(res)
-        #else:
-        #    self.result(res)
-    
-    '''
-    @expose(aliases=[u'update <id> [name=..] [type=..] [start=..] [end=..]'], 
-            aliases_only=True)
-    def update(self):
-        """Update resource with some optional fields
+
+    @expose(aliases=[u'jobs <id>'], aliases_only=True)
+    def jobs(self, *args):
+        """List all resource types by field: type, subsystem
         """
-        value = self.get_arg(name=u'id')
-        params = self.get_query_params(*self.app.pargs.extra_arguments)
-        data = {
-            u'resource':{
-                u'name':params.get(u'name', None), 
-                u'desc':params.get(u'desc', None),
-                u'ext_id':params.get(u'ext_id', None),
-                #u'parent':params.get(u'desc', None),
-                u'attribute':params.get(u'attribute', None),
-                u'state':params.get(u'state', None),
-                u'active':params.get(u'active', None)             
-            }
-        }
-        uri = u'%s/resources/%s' % (self.baseuri, value)        
-        res = self._call(uri, u'PUT', data=data)
-        logger.info(res)
-        res = {u'msg':u'Update resource %s' % value}
-        self.result(res, headers=[u'msg'])'''
+        oid = self.get_arg(name=u'id')
+        uri = u'%s/resources/%s/jobs' % (self.baseuri, oid)
+        res = self._call(uri, u'GET', data=u'')
+        logger.info(u'Get resource jobs: %s' % truncate(res))
+        self.result(res, key=u'resourcejobs', headers=[u'job', u'name', u'timestamp'], maxsize=400)
     
     @expose(aliases=[u'delete <id>'], aliases_only=True)
     def delete(self):

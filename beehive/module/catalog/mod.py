@@ -8,6 +8,7 @@ from .view import CatalogAPI
 from beehive.common.apimanager import ApiModule
 from beehive.common.controller.authorization import AuthenticationManager
 
+
 class CatalogModule(ApiModule):
     """Catalog Module. This module depends by Auth Module and does not work 
     without it. Good deploy of this module is in server instance with Auth 
