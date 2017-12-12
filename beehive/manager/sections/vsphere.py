@@ -1,8 +1,8 @@
-'''
+"""
 Created on Sep 27, 2017
 
 @author: darkbk
-'''
+"""
 import logging
 from time import sleep
 from cement.core.controller import expose
@@ -15,6 +15,7 @@ from pyVmomi import vim
 from beecell.remote import RemoteClient
 
 logger = logging.getLogger(__name__)
+
 
 #
 # vsphere native platform
@@ -30,9 +31,6 @@ class VspherePlatformController(BaseController):
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
 
-    @expose(help="Vsphere Platform management", hide=True)
-    def default(self):
-        self.app.args.print_help()
 
 class VspherePlatformControllerChild(BaseController):
     headers = [u'id', u'name']
@@ -75,10 +73,6 @@ class VspherePlatformControllerChild(BaseController):
         if task.info.state in [vim.TaskInfo.State.success]:
             logger.info(u'Completed')
             self.app.print_output(u'Completed')
-
-    @expose(hide=True)
-    def default(self):
-        self.app.args.print_help()
 
 
 class VspherePlatformDatacenterController(VspherePlatformControllerChild):
@@ -271,10 +265,6 @@ class VspherePlatformNetworkController(BaseController):
         aliases_only = True
         description = "Vsphere Network management"
 
-    @expose(hide=True)
-    def default(self):
-        self.app.args.print_help()
-
 
 class VspherePlatformNetworkChildController(VspherePlatformControllerChild):
     class Meta:
@@ -376,8 +366,7 @@ class VspherePlatformNetworkSecurityGroupController(VspherePlatformNetworkChildC
         rules = res.pop(u'member', [])
         self.result(res, details=True)
         print(u'Members:')
-        self.result(rules, headers=[u'objectId', u'name', 
-                                           u'objectTypeName'])
+        self.result(rules, headers=[u'objectId', u'name', u'objectTypeName'])
     
     @expose(aliases=[u'delete <id>'], aliases_only=True)
     def delete(self):
@@ -702,11 +691,9 @@ class VspherePlatformServerController(VspherePlatformControllerChild):
         networks = res.pop(u'networks')
         self.result(res, details=True)
         print(u'Networks')
-        self.result(networks, headers=[u'name', u'mac_addr', u'dns', 
-                                       u'fixed_ips', u'net_id', u'port_state'])
+        self.result(networks, headers=[u'name', u'mac_addr', u'dns', u'fixed_ips', u'net_id', u'port_state'])
         print(u'Volumes')
-        self.result(volumes, headers=[u'id', u'name', u'storage', u'size', 
-                                       u'type', u'bootable', u'format', u'mode'])
+        self.result(volumes, headers=[u'id', u'name', u'storage', u'size', u'type', u'bootable', u'format', u'mode'])
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
     def delete(self):
@@ -777,8 +764,7 @@ class VspherePlatformServerController(VspherePlatformControllerChild):
         cmd = self.get_arg(name=u'cmd')
         server = self.entity_class.get_by_morid(oid)
         data = self.entity_class.data(server)
-        client = RemoteClient({u'host':data[u'networks'][0][u'fixed_ips'],
-                               u'port':22})
+        client = RemoteClient({u'host': data[u'networks'][0][u'fixed_ips'], u'port': 22})
         res = client.run_ssh_command(cmd, user, pwd)
         print(u'')
         if res.get(u'stderr') != u'':
@@ -861,18 +847,18 @@ class VsphereControllerChild(ApiController):
         uri = self.uri
         res = self._call(uri, u'GET', data=data)
         logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
-        self.result(res, headers=self.headers, key=self._meta.aliases[0], maxsize=25)
+        self.result(res, headers=self.headers, key=self._meta.aliases[0], maxsize=100)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
-    def get(self, oid):
+    def get(self):
         oid = self.get_arg(name=u'id')
         uri = self.uri + u'/' + oid
         res = self._call(uri, u'GET')
         logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
-        self.result(res, headers=self.headers, key=self._meta.aliases[0])
+        self.result(res, key=self._meta.aliases[0].rstrip(u's'), details=True)
     
     @expose(aliases=[u'add <file data>'], aliases_only=True)
-    def add(self, data):
+    def add(self):
         file_data = self.get_arg(name=u'data file')
         data = self.load_config(file_data)
         uri = self.uri
@@ -881,7 +867,7 @@ class VsphereControllerChild(ApiController):
         self.result(res)
 
     @expose(aliases=[u'update <id> <file data>'], aliases_only=True)
-    def update(self, oid, *args):
+    def update(self):
         oid = self.get_arg(name=u'id')
         file_data = self.get_arg(name=u'data file')
         data = self.load_config(file_data)
@@ -891,7 +877,7 @@ class VsphereControllerChild(ApiController):
         self.result(res)
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
-    def delete(self, oid):
+    def delete(self):
         oid = self.get_arg(name=u'id')
         uri = self.uri + u'/' + oid
         res = self._call(uri, u'DELETE')
