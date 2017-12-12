@@ -740,10 +740,6 @@ class OpenstackControllerChild(ResourceEntityController):
 
     def _ext_parse_args(self):
         ApiController._ext_parse_args(self)
-
-    @expose(hide=True)
-    def default(self):
-        self.app.args.print_help()
     
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     def list(self):

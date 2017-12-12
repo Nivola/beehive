@@ -42,6 +42,7 @@ from beehive.manager.sections.openstack import openstack_controller_handlers,\
     openstack_platform_controller_handlers
 from beehive.manager.sections.environment import env_controller_handlers
 from beehive.manager.sections.oauth2 import oauth2_controller_handlers
+from beehive.manager.sections.provider import provider_controller_handlers
 from beecell.cement_cmd.foundation import CementCmd, CementCmdBaseController
 from cement.core.controller import expose
 
@@ -104,15 +105,15 @@ def config_cli(app):
         # add any arguments after setup(), and before run()
         app.args.add_argument('-v', '--version', action='version', version=BANNER)
         app.args.add_argument('-e', '--env', action='store', dest='env',
-                          help='execution environment. Select from: %s' % envs)
+                              help='execution environment. Select from: %s' % envs)
         app.args.add_argument('-f', '--format', action='store', dest='format',
-                          help='response format. Select from: %s' % formats)
+                              help='response format. Select from: %s' % formats)
         app.args.add_argument('--color', action='store', dest='color',
-                          help='response colered. Can be true or false. [default=true]')
-        app.args.add_argument('--verbosity', action='store', dest='verbosity', 
-                              help='ansible verbosity')  
+                              help='response colered. Can be true or false. [default=true]')
+        app.args.add_argument('--verbosity', action='store', dest='verbosity', help='ansible verbosity')
     #else:
     #    app.args.add_argument('version', action='version', version=BANNER)
+
 
 class CliController(CementCmdBaseController):
     class Meta:
@@ -127,6 +128,7 @@ class CliController(CementCmdBaseController):
     @expose(hide=True)
     def default(self):
         self.app.print_help()
+
 
 class CliManager(CementCmd):
     """Cli manager
@@ -186,6 +188,7 @@ class CliManager(CementCmd):
         handlers.extend(vsphere_platform_controller_handlers)
         handlers.extend(openstack_controller_handlers)
         handlers.extend(openstack_platform_controller_handlers)
+        handlers.extend(provider_controller_handlers)
         
         
         configs_file = u'/etc/beehive/manage.conf'

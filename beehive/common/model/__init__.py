@@ -474,7 +474,7 @@ class AbstractDbManager(object):
             self.logger.error(msg)
             raise ModelError(msg, code=404)
                  
-        self.logger.debug(u'Get %s: %s' % (entityclass.__name__, truncate(entity)))
+        # self.logger.debug(u'Get %s: %s' % (entityclass.__name__, truncate(entity)))
         return query
     
     @query
@@ -739,12 +739,13 @@ class AbstractDbManager(object):
         # remove unused tag
         for tag in tags:           
             tagrecord = session.query(PermTag).filter_by(value=tag).first()
-            tagusage = session.query(PermTagEntity).filter_by(tag=tagrecord.id).all()
-            if len(tagusage) > 0:
-                self.logger.warn(u'Tag %s is used by other entities' % tag)
-            else:
-                session.delete(tagrecord)
-                self.logger.debug(u'Delete tag %s' % tag)
+            if tagrecord is not None:
+                tagusage = session.query(PermTagEntity).filter_by(tag=tagrecord.id).all()
+                if len(tagusage) > 0:
+                    self.logger.warn(u'Tag %s is used by other entities' % tag)
+                else:
+                    session.delete(tagrecord)
+                    self.logger.debug(u'Delete tag %s' % tag)
 
         return True
     
