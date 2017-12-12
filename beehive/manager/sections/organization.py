@@ -676,6 +676,10 @@ class AgreementController(OrganizationHierarchyControllerChild):
         res = {u'msg': u'Delete agreement %s' % value}
         self.result(res, headers=[u'msg'])
 
+class ConsumeController(OrganizationHierarchyControllerChild):
+    class Meta:
+        label = 'consumes'
+        description = "Consumes management"
         
 organization_controller_handlers = [
     OrganizationHierarchyController,
@@ -684,5 +688,6 @@ organization_controller_handlers = [
     AccountController,
     SubwalletController,
     WalletController,
-    AgreementController, 
+    AgreementController,
+    ConsumeController,
 ]        
