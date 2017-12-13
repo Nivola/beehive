@@ -627,6 +627,13 @@ class CamundaController(AnsibleController):
             resp.append({u'host':client.connection.get(u'host'), u'response':res})
         logger.debug(u'Ping camunda: %s' % resp)
         self.result(resp, headers=[u'host', u'response'])           
+    
+    @xpose (aliases=[u'deploy <bpmn>'], aliases_only=True)
+    def deploy(self):
+        """ deploy a proces to engine
+        """
+        filename = self.get_arg(name=u'bpmn')
+        
 
 
 class OpenstackController(AnsibleController):
