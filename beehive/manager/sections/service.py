@@ -10,6 +10,7 @@ from re import match
 from beecell.simple import truncate
 from beecell.remote import NotFoundException
 from time import sleep
+import json
  
 logger = logging.getLogger(__name__)
  
@@ -546,12 +547,12 @@ class ServiceInstanceConfigController(ServiceControllerChild):
         self.result(res, key=u'perms', headers=self.perm_headers)    
  
     @expose(aliases=[u'add <service_instance_id> <name> '\
-                      u'[desc=..] [json_cfg=..][status=..] [version=..] [active=..]'],
+                      u'[desc=..] [json_cfg=..][active=..]'],
             aliases_only=True)   
     def add(self):
-        """Add service instance configuration <service_instance_id> <name> <version> <params> params
+        """Add service instance configuration <service_instance_id> <name> 
          - service_instance_id: id or uuid of the service instance
-         - field: can be desc, json_cfg, status, version, active
+         - field: can be desc, json_cfg, active
         """
         service_instance_id = self.get_arg(name=u'service_instance_id')
         name = self.get_arg(name=u'name')
@@ -559,13 +560,11 @@ class ServiceInstanceConfigController(ServiceControllerChild):
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         data ={
             u'instancecfg':{
-                u'name':name, 
-                u'version': params.get(u'desc', u'1.0'),
+                u'name':name,
                 u'desc': params.get(u'desc', None),
-                u'status': params.get(u'status', u'DRAFT'),
                 u'active': params.get(u'active', False),
                 u'service_instance_id' : service_instance_id,
-                u'json_cfg':params.get(u'json_cfg', u'{}'),
+                u'json_cfg': json.loads(params.get(u'json_cfg', u'{}')),
             }
         }     
         uri = u'%s/instancecfgs' % (self.baseuri)
