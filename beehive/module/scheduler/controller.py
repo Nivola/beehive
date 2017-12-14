@@ -19,6 +19,7 @@ from beehive.module.scheduler.redis_scheduler import RedisScheduleEntry
 from beehive.common.task.manager import task_scheduler, task_manager
 from time import time
 from functools import wraps
+from celery import signature
 from beehive.common.data import trace
 
 class SchedulerController(ApiController):
@@ -48,7 +49,8 @@ class SchedulerController(ApiController):
         
     def get_scheduler(self):
         return Scheduler(self)        
-        
+
+
 class Scheduler(ApiObject):
     module = u'SchedulerModule'
     objtype = u'task'
@@ -64,8 +66,7 @@ class Scheduler(ApiObject):
             self.objid = '*'
             
             # create or get dictionary from redis
-            self.redis_entries = Dict(key=self._prefix, 
-                                      redis=self._redis)            
+            self.redis_entries = Dict(key=self._prefix, redis=self._redis)
         except:
             pass
 
@@ -214,14 +215,15 @@ class Scheduler(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)        
         self.redis_entries.clear()
-        
+
+
 class TaskManager(ApiObject):
     module = u'SchedulerModule'
     objtype = u'task'
     objdef = u'Manager'
     objdesc = u'Task Manager'
-    
-    prefix = 'celery-task-meta2'
+
+    prefix = task_manager.conf.CELERY_REDIS_RESULT_KEY_PREFIX
     prefix_base = 'celery-task-meta'
     
     def __init__(self, controller):
@@ -463,8 +465,8 @@ class TaskManager(ApiObject):
     def _get_task_info(self, task_id):
         """ """
         manager = self.controller.redis_taskmanager
-        keys = manager.inspect(pattern=self.prefix+u'-'+task_id, debug=False)
-        data = manager.query(keys, ttl=True)[self.prefix+u'-'+task_id]
+        keys = manager.inspect(pattern=self.prefix + task_id, debug=False)
+        data = manager.query(keys, ttl=True)[self.prefix + task_id]
         # get task info and time to live
         val = json.loads(data[0])
         ttl = data[1]
@@ -559,12 +561,12 @@ class TaskManager(ApiObject):
         try:
             res = []
             manager = self.controller.redis_taskmanager
-            keys = manager.inspect(pattern=self.prefix+u'-'+task_id, debug=False)
-            data = manager.query(keys, ttl=True)[self.prefix+u'-'+task_id]
-        except Exception as ex:
+            keys = manager.inspect(pattern=self.prefix + task_id, debug=False)
+            data = manager.query(keys, ttl=True)[self.prefix + task_id]
+        except Exception:
             err = u'Task %s not found' % task_id
-            self.logger.error(err)
-            raise ApiManagerError(err, code=404)            
+            self.logger.error(err, exc_info=1)
+            raise ApiManagerError(err, code=404)
             
         try:
             # get task info and time to live
@@ -718,14 +720,20 @@ class TaskManager(ApiObject):
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
         # verify permissions
-        self.verify_permisssions(u'view')      
-        
+        self.verify_permisssions(u'view')
+
+        graph_data = None
+
         try:
-            graph_data = None
             manager = self.controller.redis_taskmanager
-            keys = manager.inspect(pattern=self.prefix+'-'+task_id, debug=False)
-            data = manager.query(keys, ttl=True)[self.prefix+'-'+task_id]
-            
+            keys = manager.inspect(pattern=self.prefix + task_id, debug=False)
+            data = manager.query(keys, ttl=True)[self.prefix + task_id]
+        except Exception:
+            err = u'Task %s not found' % task_id
+            self.logger.error(err, exc_info=1)
+            raise ApiManagerError(err, code=404)
+
+        try:
             # get task info and time to live
             val = json.loads(data[0])
 
@@ -801,15 +809,24 @@ class TaskManager(ApiObject):
         """
         manager = self.controller.redis_taskmanager
         
-        res = AsyncResult(task_id, app=task_manager)
-        
+        # res = AsyncResult(task_id, app=task_manager)
+
+        try:
+            res = manager.server.get(self.prefix + task_id)
+        except Exception as ex:
+            self.logger.error(ex, exc_info=1)
+            raise ApiManagerError(ex, code=404)
+
         # get children
-        if res.children is not None:
-            for c in res.children:
-                self._delete_task_child(c.task_id)
-                task_name = 'celery-task-meta-%s' % c.task_id
+        if res is not None:
+            res = json.loads(res)
+            childrens = res.get(u'children', [])
+            for child_id in childrens:
+                self._delete_task_child(child_id)
+                # task_name = 'celery-task-meta-%s' % c.task_id
+                task_name = self.prefix + child_id
                 res = manager.delete(pattern=task_name)
-                self.logger.debug('Delete task instance %s: %s' % (c.task_id, res))
+                self.logger.debug(u'Delete task instance %s: %s' % (child_id, res))
         return True
     
     @trace(op=u'task.delete')
@@ -832,12 +849,13 @@ class TaskManager(ApiObject):
             
             # delete task instance
             manager = self.controller.redis_taskmanager
-            task_name = u'celery-task-meta2-%s' % task_id
+            # task_name = u'celery-task-meta2-%s' % task_id
+            task_name = self.prefix + task_id
             res = manager.delete(pattern=task_name)
             self.logger.debug('Delete task instance %s: %s' % (task_id, res))
             return res
         except Exception as ex:
-            self.logger.error(ex)
+            self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
     
     '''
@@ -915,12 +933,17 @@ class TaskManager(ApiObject):
         :raises ApiManagerError if query empty return error.
         """
         # verify permissions
-        self.controller.check_authorization(self.objtype, self.objdef, 
-                                            None, u'insert')
+        self.controller.check_authorization(self.objtype, self.objdef, None, u'insert')
         
-        from beehive.module.scheduler.tasks import jobtest
+        '''from beehive.module.scheduler.tasks import jobtest
 
         params.update(self.get_user())
         data = (self.objid, params)
-        job = jobtest.apply_async(data)
-        return job    
+        job = jobtest.apply_async(data)'''
+
+        params.update(self.get_user())
+        task = signature(u'beehive.module.scheduler.tasks.jobtest', (self.objid, params), app=task_manager,
+                         queue=self.celery_broker_queue)
+        job = task.apply_async()
+
+        return job

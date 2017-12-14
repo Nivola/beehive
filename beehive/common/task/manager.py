@@ -1,8 +1,8 @@
-'''
+"""
 Created on Nov 3, 2015
 
 @author: darkbk
-'''
+"""
 import logging
 from beecell.logger.helper import LoggerHelper
 from signal import SIGHUP, SIGABRT, SIGILL, SIGINT, SIGSEGV, SIGTERM, SIGQUIT
@@ -16,7 +16,9 @@ from celery import Celery
 from celery.utils.log import get_task_logger
 from celery._state import get_current_task
 import celery.signals
+from kombu import Exchange, Queue
 from beehive.common.apimanager import ApiManager
+
 
 class ExtTaskFormatter(ColorFormatter):
     COLORS = colored().names
@@ -27,14 +29,11 @@ class ExtTaskFormatter(ColorFormatter):
         task = get_current_task()
         if task and task.request:
             name = task.name.split(u'.')[-1]
-            record.__dict__.update(task_id=task.request.id,
-                                   task_name=name)
+            record.__dict__.update(task_id=task.request.id, task_name=name)
         else:
-            record.__dict__.update(task_id=u'xxx',
-                                   task_name=u'xxx')            
-            #record.__dict__.setdefault('task_name', '???')
-            #record.__dict__.setdefault('task_id', '???')
+            record.__dict__.update(task_id=u'xxx', task_name=u'xxx')
         return ColorFormatter.format(self, record)
+
 
 logger = get_task_logger(__name__)
 logger_level = logging.DEBUG
@@ -42,32 +41,29 @@ logger_level = logging.DEBUG
 task_manager = Celery('tasks')
 task_scheduler = Celery('scheduler')
 
+
 # setup logging
 @celery.signals.setup_logging.connect
 def on_celery_setup_logging(**args):
     print args
-    
-#@celery.signals.after_setup_logger.connect
-#def on_celery_after_setup_logger(**args):
-#    print args
 
-def configure_task_manager(broker_url, result_backend, tasks=[], 
-                           expire=60*60*24, task_queue=u'celery', 
+
+def configure_task_manager(broker_url, result_backend, tasks=[], expire=60*60*24, task_queue=u'celery',
                            logger_file=None):
     """
     :param broker_url: url of the broker
     :param result_backend: url of the result backend
     :param tasks: list of tasks module. Ex.
-                  ['beehive.module.scheduler.tasks',
-                   'beehive.module.service.plugins.filesharing',]
+                  ['beehive.module.scheduler.tasks', 'beehive.module.service.plugins.filesharing',]
     """
     task_manager.conf.update(
         BROKER_URL=broker_url,
         TASK_DEFAULT_QUEUE=task_queue,
         TASK_DEFAULT_EXCHANGE=task_queue,
         TASK_DEAFAULT_ROUTING_KEY=task_queue,
+        CELERY_QUEUES=(Queue(task_queue, Exchange(task_queue), routing_key=task_queue),),
         CELERY_RESULT_BACKEND=result_backend,
-        CELERY_REDIS_RESULT_KEY_PREFIX=u'celery-task-meta2-',
+        CELERY_REDIS_RESULT_KEY_PREFIX=u'%s.celery-task-meta2-' % task_queue,
         CELERY_REDIS_RESULT_EXPIRES=expire,
         CELERY_TASK_RESULT_EXPIRES=600,
         CELERY_TASK_SERIALIZER=u'json',
@@ -76,7 +72,7 @@ def configure_task_manager(broker_url, result_backend, tasks=[],
         CELERY_TIMEZONE=u'Europe/Rome',
         CELERY_ENABLE_UTC=True,
         CELERY_IMPORTS=tasks,
-        CELERY_DISABLE_RATE_LIMITS = True,
+        CELERY_DISABLE_RATE_LIMITS=True,
         CELERY_TRACK_STARTED=True,
         CELERY_CHORD_PROPAGATES=True,
         CELERYD_TASK_TIME_LIMIT=7200,
@@ -86,9 +82,13 @@ def configure_task_manager(broker_url, result_backend, tasks=[],
         #CELERY_EVENT_SERIALIZER='json',
         #CELERYD_LOG_FORMAT=u'[%(asctime)s: %(levelname)s/%(processName)s] %(name)s:%(funcName)s:%(lineno)d - %(message)s',
         CELERYD_TASK_LOG_FORMAT=u'[%(asctime)s: %(levelname)s/%(processName)s] [%(task_name)s:%(task_id)s] %(name)s:%(funcName)s:%(lineno)d - %(message)s'
-        #worker_task_log_format=u'[%(asctime)s: %(levelname)s/%(processName)s] [%(task_name)s:%(task_id)s] %(name)s:%(funcName)s:%(lineno)d - %(message)s'
     )
+    # task_manager.conf.TASK_DEFAULT_QUEUE = task_queue
+    # task_manager.conf.TASK_DEFAULT_EXCHANGE = task_queue
+    # task_manager.conf.TASK_DEAFAULT_ROUTING_KEY = task_queue
+
     return task_manager
+
 
 def configure_task_scheduler(broker_url, schedule_backend, tasks=[]):
     """
@@ -96,8 +96,7 @@ def configure_task_scheduler(broker_url, schedule_backend, tasks=[]):
     :param schedule_backend: url of the schedule backend where schedule entries 
                              are stored
     :param tasks: list of tasks module. Ex.
-                  ['beehive.module.scheduler.tasks',
-                   'beehive.module.service.plugins.filesharing',]
+                  ['beehive.module.scheduler.tasks', 'beehive.module.service.plugins.filesharing',]
     """
     task_scheduler.conf.update(
         BROKER_URL=broker_url,
@@ -132,12 +131,7 @@ def start_task_manager(params):
     log_path = u'/var/log/%s/%s' % (params[u'api_package'], 
                                     params[u'api_env'])
     run_path = u'/var/run/%s/%s' % (params[u'api_package'], 
-                                    params[u'api_env'])    
-    
-    #loggers = [logging.getLogger('beehive.common.event')]
-    #LoggerHelper.rotatingfile_handler(loggers, logger_level, 
-    #                                  '%s/%s.event.log' % (log_path, logname),
-    #                                  frmt=frmt)    
+                                    params[u'api_env'])
     
     # base logging
     loggers = [

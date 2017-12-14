@@ -1,15 +1,15 @@
-'''
+"""
 Created on Jan 31, 2014
 
 @author: darkbk
-'''
+"""
 import logging
 import ujson as json
 
 # patch redis socket to use async comunication 
 from time import time
 from socket import gethostname
-from flask import Flask, Response
+from flask import Flask, Response, request
 from os import urandom
 from beecell.logger.helper import LoggerHelper
 from beecell.server.uwsgi_server.wrapper import uwsgi_util
@@ -53,9 +53,9 @@ class BeehiveApp(Flask):
 
         def error405(e):
             error = {
-                u'code':405, 
-                u'message':u'Method Not Allowed',
-                u'description':u'Method Not Allowed'
+                u'code': 405,
+                u'message': u'Method Not Allowed',
+                u'description': u'Method Not Allowed'
             }
             logger.error(u'Api response: %s' % error)
             return Response(response=json.dumps(error), 
@@ -65,9 +65,9 @@ class BeehiveApp(Flask):
         
         def error404(e):
             error = {
-                u'code':404, 
-                u'message':u'Uri not found',
-                u'description':u'Uri not found'
+                u'code': 404,
+                u'message': u'Uri %s not found' % request.path,
+                u'description': u'Uri %s not found' % request.path
             }
             logger.error(u'Api response: %s' % error)
             return Response(response=json.dumps(error), 
@@ -126,8 +126,7 @@ class BeehiveApp(Flask):
                    logging.getLogger(u'beehive_monitor'),
                    logging.getLogger(u'beehive_service'),
                    logging.getLogger(u'beehive_resource')]
-        LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, file_name,
-                                          formatter=ColorFormatter)      
+        LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, file_name, formatter=ColorFormatter)
         
         # transaction and db logging
         file_name = u'%s/%s.db.log' % (self.log_path, logname)
@@ -140,8 +139,7 @@ class BeehiveApp(Flask):
         file_name = u'%s/%s.watch' % (self.log_path, logname)
         file_name = u'%s/beehive.watch' % (self.log_path)
         loggers = [logging.getLogger(u'beecell.perf')]
-        LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, file_name, 
-                                          frmt=u'%(asctime)s - %(message)s')        
+        LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, file_name, frmt=u'%(asctime)s - %(message)s')
         
         #from openstack import utils
         #utils.enable_logging(debug=True)

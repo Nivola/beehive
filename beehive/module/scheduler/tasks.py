@@ -3,6 +3,7 @@ Created on Nov 3, 2015
 
 @author: darkbk
 '''
+from celery import signature
 from celery.utils.log import get_task_logger
 from beehive.common.data import operation
 from beehive.common.task.job import JobTask, job_task, job, Job
@@ -32,6 +33,7 @@ def jobtest2(self, objid, params):
     ], ops).delay()
     return True
 
+
 @task_manager.task(bind=True, base=Job)
 @job(entity_class=TaskManager, name=u'insert', delta=1)
 def jobtest(self, objid, params):
@@ -46,14 +48,14 @@ def jobtest(self, objid, params):
     """
     ops = self.get_options()
     self.set_shared_data(params)
-    
+
     g1 = []
-    for i in range(0,len(params[u'numbers'])):
-        g1.append(jobtest_task3.si(ops, i))
+    for i in range(0, len(params[u'numbers'])):
+        g1.append(jobtest_task3.signature((ops, i), immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE))
     if params[u'error'] is True:
-        g1.append(test_raise.si(ops))
+        g1.append(test_raise.signature((ops, i), immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE))
     
-    g1.append(test_invoke_job.si(ops))
+    g1.append(test_invoke_job.signature((ops, i), immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE))
 
     j = Job.create([
         end_task,
@@ -65,13 +67,13 @@ def jobtest(self, objid, params):
     j.delay()
     return True
 
+
 @task_manager.task(bind=True, base=JobTask)
 @job_task()
 def jobtest_task0(self, options):
-    """Test job add x and y. Read x and y from shared data. Write mul in 
-    shared data.
+    """Test job add x and y. Read x and y from shared data. Write mul in shared data.
     
-    :param options: :param tupla options: Tupla with some useful options.
+    :param tupla options: Tupla with some useful options.
         (class_name, objid, job, job id, start time, time before new query, user)
     """
     data = self.get_shared_data()
@@ -87,12 +89,13 @@ def jobtest_task0(self, options):
     self.update(u'PROGRESS', msg=u'add %s' % data)
     return res
 
+
 @task_manager.task(bind=True, base=JobTask)
 @job_task()
 def jobtest_task1(self, options):
     """Test job sum numbers.
     
-    :param options: :param tupla options: Tupla with some useful options.
+    :param tupla options: Tupla with some useful options.
         (class_name, objid, job, job id, start time, time before new query, user))
     """
     res = 0
@@ -111,13 +114,14 @@ def jobtest_task1(self, options):
     self.update(u'PROGRESS', msg=u'sum %s' % numbers)
     return res
 
+
 @task_manager.task(bind=True, base=JobTask)
 @job_task()
 def jobtest_task2(self, options):
     """Test job sum numbers.
     Read mul_numbers from shared data. Write res in shared data.
     
-    :param options: :param tupla options: Tupla with some useful options.
+    :param tupla options: Tupla with some useful options.
         (class_name, objid, job, job id, start time, time before new query, user)
     """
     data = self.get_shared_data()
@@ -126,22 +130,29 @@ def jobtest_task2(self, options):
     self.update(u'PROGRESS', msg=u'%s' % data)
     return True
 
+
 @task_manager.task(bind=True, base=JobTask)
 @job_task()
-def test_invoke_job(self, options):
+def test_invoke_job(self, options, i):
     """Test job jovoke another job
     
-    :param options: :param tupla options: Tupla with some useful options.
+    :param tupla options: Tupla with some useful options.
         (class_name, objid, job, job id, start time, time before new query, user)
     """
     params = self.get_shared_data()
-    data = (u'*', params)
+    # data = (u'*', params)
     user = {
-        u'user':operation.user[0], 
-        u'server':operation.user[1], 
-        u'identity':operation.user[2]
+        u'user': operation.user[0],
+        u'server': operation.user[1],
+        u'identity': operation.user[2]
     }
-    job = jobtest2.apply_async(data, **user)
+    # job = jobtest2.apply_async(data, **user)
+
+    params.update(user)
+    task = signature(u'beehive.module.scheduler.tasks.jobtest2', (u'*', params), app=task_manager,
+                     queue=task_manager.conf.TASK_DEFAULT_QUEUE)
+    job = task.apply_async()
+
     job_id = job.id
     self.update(u'PROGRESS')
     
@@ -149,13 +160,14 @@ def test_invoke_job(self, options):
     resp = self.wait_for_job_complete(job_id)
     self.update(u'PROGRESS', msg=u'Job %s completed' % job_id)
 
+
 @task_manager.task(bind=True, base=JobTask)
 @job_task()
 def jobtest_task3(self, options, index):
     """Test job mul x and y.
     Read numbers and mul from shared data. Write mul_numbers item in shared data.
     
-    :param options: :param tupla options: Tupla with some useful options.
+    :param tupla options: Tupla with some useful options.
         (class_name, objid, job, job id, start time, time before new query, user)
     :param index: index of item in numbers list        
     """
@@ -169,16 +181,18 @@ def jobtest_task3(self, options, index):
     
     return res
 
+
 @task_manager.task(bind=True, base=JobTask)
 @job_task()
-def test_raise(self, options):
+def test_raise(self, options, i):
     """Test job mul x and y.
     Read numbers and mul from shared data. Write mul_numbers item in shared data.
     
-    :param options: :param tupla options: Tupla with some useful options.
+    :param tupla options: Tupla with some useful options.
         (class_name, objid, job, job id, start time, time before new query, user)
     """
     raise Exception('iiii')
+
 
 @task_manager.task(bind=True, base=JobTask)
 @job_task()
@@ -186,7 +200,7 @@ def jobtest_task4(self, options):
     """Test job mul x and y.
     Read numbers and mul from shared data. Write mul_numbers item in shared data.
     
-    :param options: :param tupla options: Tupla with some useful options.
+    :param tupla options: Tupla with some useful options.
         (class_name, objid, job, job id, start time, time before new query, user)
     """
     params = self.get_shared_data()

@@ -34,6 +34,7 @@ class BeehiveApiClientError(Exception):
     def __str__(self):
         return u'%s, %s' % (self.value, self.code)
 
+
 class BeehiveApiClient(object):
     """Beehive api client.
     
@@ -51,14 +52,15 @@ class BeehiveApiClient(object):
     """
     def __init__(self, auth_endpoints, authtype, user, pwd, catalog_id=None,
                  client_config=None):
-        self.logger = getLogger(self.__class__.__module__+ \
-                                '.'+self.__class__.__name__)
+        self.logger = getLogger(self.__class__.__module__ + u'.' + self.__class__.__name__)
         
         #atfork()
         self.pid = current_process().ident
         
-        if len(auth_endpoints) > 0: self.main_endpoint = auth_endpoints[0]
-        else: self.main_endpoint = None
+        if len(auth_endpoints) > 0:
+            self.main_endpoint = auth_endpoints[0]
+        else:
+            self.main_endpoint = None
         self.endpoints = {u'auth':[]}
         self.endpoint_weights = {u'auth':[]}
         self.api_authtype = authtype # can be: simplehttp, oauth2, keyauth
@@ -94,10 +96,9 @@ class BeehiveApiClient(object):
         try:
             t1 = endpoint_uri.split(u'://')
             t2 = t1[1].split(':')
-            return {u'proto':t1[0], u'host':t2[0],  u'port':int(t2[1])}
+            return {u'proto': t1[0], u'host': t2[0],  u'port': int(t2[1])}
         except Exception as ex:
-            self.logger.error('Error parsing endpoint %s: %s' % 
-                              (endpoint_uri, ex))  
+            self.logger.error('Error parsing endpoint %s: %s' % (endpoint_uri, ex))
 
     def endpoint(self, subsystem):
         """Select a subsystem endpoint from list
@@ -213,12 +214,10 @@ class BeehiveApiClient(object):
             self.logger.error("Identity %s doen't exist or is expired" % uid)
             raise BeehiveApiClientError("Identity %s doen't exist or is expired" % uid, code=1014)'''
 
-    def http_client(self, proto, host, path, method, 
-                          data=u'', headers={}, port=80, timeout=30):
+    def http_client(self, proto, host, path, method, data=u'', headers={}, port=80, timeout=30):
         """Http client. Usage:
         
-            res = http_client2('https', 'host1', '/api', 'POST',
-                                port=443, data='', headers={})        
+            res = http_client2('https', 'host1', '/api', 'POST', port=443, data='', headers={})
         
         :param proto: Request proto. Ex. http, https
         :param host: Request host. Ex. 10.102.90.30
@@ -227,8 +226,7 @@ class BeehiveApiClient(object):
         :param method: Request method. Ex. GET, POST, PUT, DELETE
         :param headers: Request headers. [default={}]. Ex.
         
-                        {"Content-type": "application/x-www-form-urlencoded",
-                         "Accept": "text/plain"}
+                        {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}
                          
         :param data: Request data. [default={}]. Ex.
         
@@ -243,20 +241,16 @@ class BeehiveApiClient(object):
             
             # append request-id to headers
             headers[u'request-id'] = id_gen()
-            
-            #self.logger.info(u'Send http %s to %s://%s:%s%s' % 
-            #                 (method, proto, host, port, path))
-            #self.logger.debug('Send headers: %s' % headers)
+
             if data.lower().find(u'password') < 0:
                 send_data = data
             else:
                 send_data = u'xxxxxxx'
             self.logger.info(u'Call: METHOD=%s, URI=%s://%s:%s%s, '\
-                             u'HEADERS=%s, DATA=%s' % (method, proto, host, 
-                             port, path, headers, send_data))
+                             u'HEADERS=%s, DATA=%s' % (method, proto, host, port, path, headers, send_data))
 
             # format curl string
-            curl_url = [u'curl -k -v -S -X %s' % method]
+            curl_url = [u'curl -k -v -S -X %s' % method.upper()]
             if data is not None and data != u'':
                 curl_url.append(u"-d '%s'" % data)
                 curl_url.append(u'-H "Content-Type: application/json"')
@@ -281,59 +275,45 @@ class BeehiveApiClient(object):
             response = conn.getresponse()
             content_type = response.getheader(u'content-type')            
 
-            if response.status in [200, 201, 202, 400, 401, 403, 404, 405, 
-                                   406, 408, 409, 415]:
+            if response.status in [200, 201, 202, 400, 401, 403, 404, 405, 406, 408, 409, 415]:
                 res = response.read()
                 if content_type.find(u'application/json') >= 0:
                     res = json.loads(res)
 
                 # insert for compliance with oauth2 error message
                 if u'error' in res:
-                    #res[u'status'] = u'error'
                     res[u'message'] = res[u'error_description']
                     res[u'description'] = res[u'error_description']
                     res[u'code'] = response.status
                     
             elif response.status in [204]:
-                #res = {u'status':u'ok', u'code':204, u'response':None}
                 res = {}
             elif response.status in [500]:
-                #res = {u'status':u'error',u'code':500, u'msg':u'Internal Server Error'}
-                res = {u'code':500, 
-                       u'message':u'Internal Server Error',
-                       u'description':u'Internal Server Error'}
+                res = {u'code': 500, u'message': u'Internal Server Error', u'description': u'Internal Server Error'}
             elif response.status in [501]:
-                #res = {u'status':u'error',u'code':501, u'msg':u'Not Implemented'}
-                res = {u'code':501, 
-                       u'message':u'Not Implemented',
-                       u'description':u'Not Implemented'}
+                res = {u'code': 501, u'message': u'Not Implemented', u'description': u'Not Implemented'}
             elif response.status in [503]:
-                #res = {u'status':u'error',u'code':503, u'msg':u'Service Unavailable'}
-                res = {u'code':503, 
-                       u'message':u'Service Unavailable',
-                       u'description':u'Service Unavailable'}
+                res = {u'code': 503,  u'message': u'Service Unavailable', u'description': u'Service Unavailable'}
             conn.close()
         except Exception as ex:
             elapsed = time() - start
             self.logger.error(ex, exc_info=True)
-            self.logger.info(u'Response: STATUS=%s, CONTENT-TYPE=%s, RES=%s, '\
-                             u'ELAPSED=%s' % (response.status, content_type, 
-                             truncate(res), elapsed))
+            self.logger.info(u'Response: HOST=%s, STATUS=%s, CONTENT-TYPE=%s, RES=%s, '\
+                             u'ELAPSED=%s' % (response.getheader(u'remote-server', u''), response.status,
+                                              content_type, truncate(res), elapsed))
             
             raise BeehiveApiClientError(ex, code=400)
-            
-        #if res.get(u'status', u'') == u'ok':
+
         if response.status in [200, 201, 202]:
-            #res[u'status'] = u'ok'
             elapsed = time() - start
-            self.logger.info(u'Response: STATUS=%s, CONTENT-TYPE=%s, RES=%s, '\
-                             u'ELAPSED=%s' % (response.status, content_type, 
-                             truncate(res), elapsed))
+            self.logger.info(u'Response: HOST=%s, STATUS=%s, CONTENT-TYPE=%s, RES=%s, '\
+                             u'ELAPSED=%s' % (response.getheader(u'remote-server', u''), response.status,
+                                              content_type, truncate(res), elapsed))
         elif response.status in [204]:
             elapsed = time() - start
-            self.logger.info(u'Response: STATUS=%s, CONTENT-TYPE=%s, RES=%s, '\
-                             u'ELAPSED=%s' % (response.status, content_type, 
-                             None, elapsed))
+            self.logger.info(u'Response: HOST=%s, STATUS=%s, CONTENT-TYPE=%s, RES=%s, '\
+                             u'ELAPSED=%s' % (response.getheader(u'remote-server', u''), response.status,
+                                              content_type, truncate(res), elapsed))
         else:
             err = res
             code = 400
@@ -343,11 +323,10 @@ class BeehiveApiClient(object):
                 code = res[u'code']
             self.logger.error(err)
             raise BeehiveApiClientError(err, code=int(code))
-        
+
         return res
     
-    def send_request(self, subsystem, path, method, data=u'', 
-                     uid=None, seckey=None, other_headers=None):
+    def send_request(self, subsystem, path, method, data=u'', uid=None, seckey=None, other_headers=None):
         """
         
         :raise BeehiveApiClientError:

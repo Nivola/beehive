@@ -1,8 +1,8 @@
-'''
+"""
 Created on Oct 31, 2014
 
 @author: darkbk
-'''
+"""
 import logging
 import time
 import binascii
@@ -364,7 +364,6 @@ class ApiManager(object):
         
         return identity
 
-
     def get_oauth2_identity(self, token):
         """Get identity that correspond to oauth2 access token
 
@@ -593,21 +592,24 @@ class ApiManager(object):
                     from beehive.common.task.manager import configure_task_scheduler
                     
                     # task manager
-                    broker_url = self.params['broker_url']
-                    result_backend = self.params['result_backend']
-                    configure_task_manager(broker_url, result_backend)
-                    self.redis_taskmanager = RedisManager(result_backend)
+                    broker_url = self.params[u'broker_url']
+                    result_backend = self.params[u'result_backend']
+                    internal_result_backend = self.params[u'redis_celery_uri']
+                    configure_task_manager(broker_url, result_backend, task_queue=self.params[u'broker_queue'])
+                    self.celery_broker_queue = self.params[u'broker_queue']
+                    self.redis_taskmanager = RedisManager(internal_result_backend)
                     
                     # scheduler
-                    broker_url = self.params['broker_url']
-                    schedule_backend = self.params['result_backend']                                                    
+                    broker_url = self.params[u'broker_url']
+                    schedule_backend = self.params[u'result_backend']
+                    internal_schedule_backend = self.params[u'redis_celery_uri']
                     configure_task_scheduler(broker_url, schedule_backend)
-                    self.redis_scheduler = RedisManager(schedule_backend)
+                    self.redis_scheduler = RedisManager(internal_schedule_backend)
     
                     self.logger.info(u'Configure scheduler reference - CONFIGURED')
                 except:
                     self.logger.warning(u'Configure scheduler reference - NOT CONFIGURED')            
-                ##### scheduler reference configuration #####            
+                ##### scheduler reference configuration #####
                 
                 ##### security configuration #####
                 # configure only with auth module
@@ -1673,6 +1675,7 @@ def make_event_class(name, event_class, **kwattrs):
     return type(str(name), (event_class,), dict(**kwattrs))
 '''
 
+
 class ApiObject(object):
     """ """
     module = None
@@ -1695,12 +1698,9 @@ class ApiObject(object):
     SYNC_OPERATION = u'CMD'
     ASYNC_OPERATION = u'JOB'
     
-    #event_ref_class = ApiEvent
-    
     def __init__(self, controller, oid=None, objid=None, name=None, 
                  desc=None, active=None, model=None):
-        self.logger = logging.getLogger(self.__class__.__module__+ \
-                                        u'.'+self.__class__.__name__)
+        self.logger = logging.getLogger(self.__class__.__module__ + u'.' + self.__class__.__name__)
         
         self.controller = controller
         self.model = model # db model if exist
@@ -1742,25 +1742,29 @@ class ApiObject(object):
     @property
     def api_client(self):
         return self.controller.module.api_manager.api_client
-    
+
+    @property
+    def celery_broker_queue(self):
+        return self.controller.module.api_manager.celery_broker_queue
+
     @staticmethod
     def join_typedef(parent, child):
         """ 
         Join typedef parent with typedef child
         """        
-        return u'.'.join ([parent, child])
+        return u'.'.join([parent, child])
     
     @staticmethod
     def get_type(self):
         """ """        
-        return (self.type, self.definition, self.__class__)
+        return self.type, self.definition, self.__class__
     
     def get_user(self):
         """ """
         user = {
-            u'user':operation.user[0],
-            u'server':operation.user[1],
-            u'identity':operation.user[2]
+            u'user': operation.user[0],
+            u'server': operation.user[1],
+            u'identity': operation.user[2]
         }
         return user
     
@@ -2644,26 +2648,26 @@ class ApiViewResponse(ApiObject):
         
         # send event
         data = {
-            u'opid':operation.id,
-            u'op':api,
-            u'params':params,
-            u'elapsed':elapsed,
-            u'response':response
+            u'opid': operation.id,
+            u'op': api,
+            u'params': params,
+            u'elapsed': elapsed,
+            u'response': response
         }
 
         source = {
-            u'user':operation.user[0],
-            u'ip':operation.user[1],
-            u'identity':operation.user[2]
+            u'user': operation.user[0],
+            u'ip': operation.user[1],
+            u'identity': operation.user[2]
         }
         
         dest = {
-            u'ip':self.controller.module.api_manager.server_name,
-            u'port':self.controller.module.api_manager.http_socket,
-            u'objid':objid, 
-            u'objtype':self.objtype,
-            u'objdef':self.objdef,
-            u'action':action
+            u'ip': self.controller.module.api_manager.server_name,
+            u'port': self.controller.module.api_manager.http_socket,
+            u'objid': objid,
+            u'objtype': self.objtype,
+            u'objdef': self.objdef,
+            u'action': action
         }      
         
         # send event
@@ -2689,14 +2693,7 @@ class ApiView(FlaskView):
     ]
     
     def __init__(self, *argc, **argv):
-        #FlaskView.__init__(self, *argc, **argv)
-        self.logger = logging.getLogger(self.__class__.__module__+ \
-                                        u'.'+self.__class__.__name__)
-        
-        #self.get.__func__.__doc__ = self.__class__.__doc__
-        #self.put.__func__.__doc__ = self.__class__.__doc__
-        #self.post.__func__.__doc__ = self.__class__.__doc__
-        #self.delete.__func__.__doc__ = self.__class__.__doc__
+        self.logger = logging.getLogger(self.__class__.__module__ + u'.' + self.__class__.__name__)
     
     def _get_response_mime_type(self):
         """ """
@@ -2913,21 +2910,22 @@ class ApiView(FlaskView):
         #return user
         
     # response methods
-    def get_warning(self, exception, code, msg):
-        self.get_error(exception, code, msg)
+    def get_warning(self, exception, code, msg, module=None):
+        self.get_error(exception, code, msg, module=module)
 
     # response methods
-    def get_error(self, exception, code, msg):
-        """
+    def get_error(self, exception, code, msg, module=None):
+        """Return error response
+
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        headers = {u'Cache-Control':u'no-store',
-                   u'Pragma':u'no-cache'}        
+        headers = {u'Cache-Control': u'no-store', u'Pragma': u'no-cache',
+                   u'remote-server': module.api_manager.server_name}
         
         error = {
-            u'code':code, 
-            u'message':str(msg),
-            u'description':u'%s - %s' % (exception, msg)
+            u'code': code,
+            u'message': str(msg),
+            u'description': u'%s - %s' % (exception, msg)
         }
         self.logger.error(u'Api response: %s' % error)
         
@@ -2961,25 +2959,24 @@ class ApiView(FlaskView):
                             headers=headers)
         else:  
             # 415 Unsupported Media Type
-            return Response(response=u'', 
-                            mimetype=u'text/plain', 
+            res = {u'msg': u'Unsupported media type'}
+            return Response(response=res,
+                            mimetype=u'application/xml',
                             status=415,
                             headers=headers)           
 
+    def get_response(self, response, code=200, headers={}, module=None):
+        """Return response
 
-    def get_response(self, response, code=200, headers=None):
-        """
         **raise** :class:`ApiManagerError`
         """
+        headers.update({u'Cache-Control': u'no-store', u'Pragma': u'no-cache',
+                        u'remote-server': module.api_manager.server_name})
+
         try:
             if response is None:
-                return Response(response=u'', 
-                                mimetype=u'text/plain', 
-                                status=code)
-            
-            #if self.response_mime == u'*/*':
-            #    self.response_mime = u'application/json'
-            
+                return Response(response=u'', mimetype=u'text/plain', status=code)
+
             self.logger.debug(u'Api response mime type: %s' % self.response_mime)
             
             # redirect to new uri
@@ -3001,40 +2998,30 @@ class ApiView(FlaskView):
             elif self.response_mime == u'application/json':
                 resp = json.dumps(response)
                 self.logger.debug(u'Api response: %s' % truncate(resp))
-                return Response(resp, 
-                                mimetype=u'application/json',
-                                status=code)
+                return Response(resp, mimetype=u'application/json', status=code, headers=headers)
             
             # render Bson
             elif self.response_mime == u'application/bson':
                 resp = json.dumps(response)
                 self.logger.debug(u'Api response: %s' % truncate(resp))
-                return Response(resp, 
-                                mimetype=u'application/bson',
-                                status=code)
-                
+                return Response(resp, mimetype=u'application/bson', status=code, headers=headers)
+
             # render xml
             elif self.response_mime in [u'text/xml', u'application/xml']:
                 resp = dicttoxml(response, root=False, attr_type=False)
-                #xml = dicttoxml.dicttoxml(res)
                 self.logger.debug(u'Api response: %s' % truncate(resp))
-                return Response(resp, 
-                                mimetype=u'application/xml',
-                                status=code)
+                return Response(resp, mimetype=u'application/xml', status=code, headers=headers)
                 
             # 415 Unsupported Media Type
             else:
                 self.logger.debug(u'Api response: ')
-                return Response(response=u'', 
-                                mimetype=u'text/plain', 
-                                status=code)
+                return Response(response=u'', mimetype=u'text/plain', status=code, headers=headers)
         except Exception as ex:
             msg = u'Error creating response - %s' % ex
             self.logger.error(msg)
             raise ApiManagerError(msg, code=400)
     
-    def format_paginated_response(self, response, entity, total, page=None, 
-                                  field=u'id', order=u'DESC', **kvargs):
+    def format_paginated_response(self, response, entity, total, page=None, field=u'id', order=u'DESC', **kvargs):
         """Format response with pagination info
         
         :param response: response
@@ -3046,13 +3033,13 @@ class ApiView(FlaskView):
         :return: dict with data
         """
         resp = {
-            entity:response,
-            u'count':len(response),
-            u'page':page,
-            u'total':total,
-            u'sort':{
-                u'field':field,
-                u'order':order           
+            entity: response,
+            u'count': len(response),
+            u'page': page,
+            u'total': total,
+            u'sort': {
+                u'field': field,
+                u'order': order
             }
         }
         
@@ -3076,7 +3063,7 @@ class ApiView(FlaskView):
         dbsession = None
         data = None
         try:
-            headers = [u'%s: %s' % (k,v) for k,v in request.headers.iteritems()]
+            headers = [u'%s: %s' % (k, v) for k, v in request.headers.iteritems()]
             
             # set operation
             operation.user = (u'guest', u'localhost', None)
@@ -3085,8 +3072,7 @@ class ApiView(FlaskView):
             
             self.logger.info(u'Start new operation [%s]' % (operation.id))
             
-            self.logger.info(u'Invoke api: %s [%s] - START' % 
-                             (request.path, request.method))
+            self.logger.info(u'Invoke api: %s [%s] - START' % (request.path, request.method))
             query_string = request.values.to_dict()
             # get chunked input data
             if request.headers.get(u'Transfer-Encoding', u'') == u'chunked':
@@ -3094,8 +3080,7 @@ class ApiView(FlaskView):
             else:
                 request_data = request.data
             
-            self.logger.debug(u'Api request headers:%s, data:%s, query:%s' % 
-                              (headers, request_data, query_string))
+            self.logger.debug(u'Api request headers:%s, data:%s, query:%s' % (headers, request_data, query_string))
             self._get_response_mime_type()
             
             # open database session.
@@ -3133,78 +3118,53 @@ class ApiView(FlaskView):
             
             if isinstance(resp, tuple):
                 if len(resp) == 3:
-                    res = self.get_response(resp[0], code=resp[1], 
-                                            headers=resp[2])
+                    res = self.get_response(resp[0], code=resp[1], headers=resp[2], module=module)
                 else:
-                    res = self.get_response(resp[0], code=resp[1])
+                    res = self.get_response(resp[0], code=resp[1], module=module)
             else:
-                res = self.get_response(resp)
+                res = self.get_response(resp, module=module)
             
             # unset user permisssions in local thread object
             operation.perms = None
             
             # get request elapsed time
             elapsed = round(time.time() - start, 4)
-            self.logger.info(u'Invoke api: %s [%s] - STOP - %s' % 
-                             (request.path, request.method, elapsed))
-            ApiViewResponse(controller).send_event({u'path':request.path,
-                                                    u'method':request.method,
-                                                    u'elapsed':elapsed}, 
-                                                   data)
+            self.logger.info(u'Invoke api: %s [%s] - STOP - %s' % (request.path, request.method, elapsed))
+            event_data = {u'path': request.path, u'method': request.method, u'elapsed': elapsed}
+            ApiViewResponse(controller).send_event(event_data, data)
         except gevent.Timeout:
             # get request elapsed time
             elapsed = round(time.time() - start, 4)
-            self.logger.error(u'Invoke api: %s [%s] - ERROR - %s' % 
-                              (request.path, request.method, elapsed))             
+            self.logger.error(u'Invoke api: %s [%s] - ERROR - %s' % (request.path, request.method, elapsed))
             msg = u'Request %s %s timeout' % (request.path, request.method)
-            ApiViewResponse(controller).send_event({u'path':request.path,
-                                                    u'method':request.method,
-                                                    u'elapsed':elapsed,
-                                                    u'code':408}, 
-                                                   data,
-                                                   exception=msg)            
-            return self.get_error(u'Timeout', 408, msg)
+            event_data = {u'path': request.path, u'method': request.method, u'elapsed': elapsed, u'code': 408}
+            ApiViewResponse(controller).send_event(event_data, data, exception=msg)
+            return self.get_error(u'Timeout', 408, msg, module=module)
         except ApiManagerError as ex:
             # get request elapsed time
             elapsed = round(time.time() - start, 4)
-            self.logger.error(u'Invoke api: %s [%s] - ERROR - %s' % 
-                              (request.path, request.method, elapsed))
-            ApiViewResponse(controller).send_event({u'path':request.path,
-                                                    u'method':request.method,
-                                                    u'elapsed':elapsed,
-                                                    u'code':ex.code}, 
-                                                   data,
-                                                   exception=ex.value)            
-            return self.get_error(u'ApiManagerError', ex.code, ex.value)
+            self.logger.error(u'Invoke api: %s [%s] - ERROR - %s' % (request.path, request.method, elapsed))
+            event_data = {u'path': request.path, u'method': request.method, u'elapsed': elapsed, u'code': ex.code}
+            ApiViewResponse(controller).send_event(event_data, data, exception=ex.value)
+            return self.get_error(u'ApiManagerError', ex.code, ex.value, module=module)
         except ApiManagerWarning as ex:
             # get request elapsed time
             elapsed = round(time.time() - start, 4)
-            self.logger.warning(u'Invoke api: %s [%s] - Warning - %s' % 
-                              (request.path, request.method, elapsed))
-            ApiViewResponse(controller).send_event({u'path':request.path,
-                                                    u'method':request.method,
-                                                    u'elapsed':elapsed,
-                                                    u'code':ex.code}, 
-                                                   data,
-                                                   exception=ex.value)            
-            return self.get_warning(u'ApiManagerWarning', ex.code, ex.value)
+            self.logger.warning(u'Invoke api: %s [%s] - Warning - %s' % (request.path, request.method, elapsed))
+            event_data = {u'path': request.path, u'method': request.method, u'elapsed': elapsed, u'code': ex.code}
+            ApiViewResponse(controller).send_event(event_data, data, exception=ex.value)
+            return self.get_warning(u'ApiManagerWarning', ex.code, ex.value, module=module)
         except Exception as ex:
             # get request elapsed time
             elapsed = round(time.time() - start, 4)
-            self.logger.error(u'Invoke api: %s [%s] - ERROR - %s' % 
-                              (request.path, request.method, elapsed))
-            ApiViewResponse(controller).send_event({u'path':request.path,
-                                                    u'method':request.method,
-                                                    u'elapsed':elapsed,
-                                                    u'code':400}, 
-                                                   data,
-                                                   exception=str(ex))            
-            return self.get_error(u'Exception', 400, str(ex))
+            self.logger.error(u'Invoke api: %s [%s] - ERROR - %s' % (request.path, request.method, elapsed))
+            event_data = {u'path': request.path, u'method': request.method, u'elapsed': elapsed, u'code': 400}
+            ApiViewResponse(controller).send_event(event_data, data, exception=str(ex))
+            return self.get_error(u'Exception', 400, str(ex), module=module)
         finally:
             if dbsession is not None:
                 module.release_session(dbsession)
             timeout.cancel()
-            #self.invalidate_user_session()
             self.logger.debug(u'Timeout released')
 
         return res
@@ -3233,34 +3193,29 @@ class ApiView(FlaskView):
         view_num = 0
         for rule in rules:
             uri = u'/%s/%s' % (version, rule[0])
-            defaults = {u'module':module}
+            defaults = {u'module': module}
             defaults.update(rule[3])
             view_name = u'%s-%s' % (get_class_name(rule[2]), view_num)
             view_func = rule[2].as_view(str(view_name))
 
             # setup flask route
-            app.add_url_rule(uri,
-                             methods=[rule[1]],
-                             view_func=view_func, 
-                             defaults=defaults)
+            app.add_url_rule(uri, methods=[rule[1]], view_func=view_func, defaults=defaults)
             
             view_num += 1
             logger.debug('Add route: %s %s' % (uri, rule[1]))
             
             # append route to module
-            module.api_routes.append({'uri':uri, 'method':rule[1]})
+            module.api_routes.append({'uri': uri, 'method': rule[1]})
+
 
 class PaginatedRequestQuerySchema(Schema):
     size = fields.Integer(default=10, example=10, missing=10, context=u'query',
                           description=u'enitities list page size',
-                          validate=Range(min=0, max=200,
-                                         error=u'Size is out from range'))
+                          validate=Range(min=0, max=200, error=u'Size is out from range'))
     page = fields.Integer(default=0, example=0, missing=0, context=u'query',
                           description=u'enitities list page selected',
-                          validate=Range(min=0, max=1000,
-                                         error=u'Page is out from range'))
-    order = fields.String(validate=OneOf([u'ASC', u'asc', u'DESC', u'desc'],
-                                         error=u'Order can be asc, ASC, desc, DESC'),
+                          validate=Range(min=0, max=1000, error=u'Page is out from range'))
+    order = fields.String(validate=OneOf([u'ASC', u'asc', u'DESC', u'desc'], error=u'Order can be asc, ASC, desc, DESC'),
                           description=u'enitities list order: ASC or DESC',
                           default=u'DESC', example=u'DESC', missing=u'DESC', context=u'query')
     field = fields.String(validate=OneOf([u'id', u'uuid', u'objid', u'name'],
@@ -3269,44 +3224,42 @@ class PaginatedRequestQuerySchema(Schema):
                           default=u'id', example=u'id', missing=u'id', context=u'query')
     
 class GetApiObjectRequestSchema(Schema):
-    oid = fields.String(required=True, description=u'id, uuid or name',
-                        context=u'path')
-    
-class ApiObjectPermsRequestSchema(PaginatedRequestQuerySchema,
-                                  GetApiObjectRequestSchema):
+    oid = fields.String(required=True, description=u'id, uuid or name', context=u'path')
+
+
+class ApiObjectPermsRequestSchema(PaginatedRequestQuerySchema, GetApiObjectRequestSchema):
     pass   
 
+
 class ApiObjectResponseDateSchema(Schema):
-    creation = fields.DateTime(required=True, default=u'1990-12-31T23:59:59Z', 
-                               example=u'1990-12-31T23:59:59Z')
-    modified = fields.DateTime(required=True, default=u'1990-12-31T23:59:59Z', 
-                               example=u'1990-12-31T23:59:59Z')
+    creation = fields.DateTime(required=True, default=u'1990-12-31T23:59:59Z', example=u'1990-12-31T23:59:59Z')
+    modified = fields.DateTime(required=True, default=u'1990-12-31T23:59:59Z', example=u'1990-12-31T23:59:59Z')
     expiry = fields.String(default=u'')
+
 
 class ApiObjecCountResponseSchema(Schema):
     count = fields.Integer(required=True, default=10)
 
+
 class ApiObjectMetadataResponseSchema(Schema):
-    objid = fields.String(required=True, default=u'396587362//3328462822',
-                          example=u'396587362//3328462822')
+    objid = fields.String(required=True, default=u'396587362//3328462822', example=u'396587362//3328462822')
     type = fields.String(required=True, default=u'auth', example=u'auth')
     definition = fields.String(required=True, default=u'Role', example=u'Role')
-    uri = fields.String(required=True, default=u'/v1.0/auht/roles', 
-                        example=u'/v1.0/auht/roles')
+    uri = fields.String(required=True, default=u'/v1.0/auht/roles', example=u'/v1.0/auht/roles')
+
 
 class ApiObjectSmallResponseSchema(Schema):
     id = fields.Integer(required=True, default=10, example=10)
-    uuid = fields.String(required=True, 
-                         default=u'4cdf0ea4-159a-45aa-96f2-708e461130e1',
+    uuid = fields.String(required=True, default=u'4cdf0ea4-159a-45aa-96f2-708e461130e1',
                          example=u'4cdf0ea4-159a-45aa-96f2-708e461130e1')
     name = fields.String(required=True, default=u'test', example=u'test')
     active = fields.Boolean(required=True, default=True, example=True)
     __meta__ = fields.Nested(ApiObjectMetadataResponseSchema, required=True)
 
+
 class ApiObjectResponseSchema(Schema):
     id = fields.Integer(required=True, default=10, example=10)
-    uuid = fields.String(required=True, 
-                         default=u'4cdf0ea4-159a-45aa-96f2-708e461130e1',
+    uuid = fields.String(required=True,  default=u'4cdf0ea4-159a-45aa-96f2-708e461130e1',
                          example=u'4cdf0ea4-159a-45aa-96f2-708e461130e1')
     name = fields.String(required=True, default=u'test', example=u'test')
     desc = fields.String(required=True, default=u'test', example=u'test')
@@ -3314,60 +3267,57 @@ class ApiObjectResponseSchema(Schema):
     active = fields.Boolean(required=True, default=True, example=True)
     __meta__ = fields.Nested(ApiObjectMetadataResponseSchema, required=True)
 
+
 class PaginatedResponseSortSchema(Schema):
-    order = fields.String(required=True, 
-                          validate=OneOf([u'ASC', u'asc', u'DESC', u'desc']),
+    order = fields.String(required=True, validate=OneOf([u'ASC', u'asc', u'DESC', u'desc']),
                           default=u'DESC', example=u'DESC')
     field = fields.String(required=True, default=u'id', example=u'id')
+
 
 class PaginatedResponseSchema(Schema):
     count = fields.Integer(required=True, default=10, example=10)
     page = fields.Integer(required=True, default=0, example=0)
     total = fields.Integer(required=True, default=20, example=20)
     sort = fields.Nested(PaginatedResponseSortSchema, required=True)
-    
+
+
 class CrudApiObjectResponseSchema(Schema):
-    uuid = fields.UUID(required=True, 
-                       default=u'6d960236-d280-46d2-817d-f3ce8f0aeff7',
+    uuid = fields.UUID(required=True,  default=u'6d960236-d280-46d2-817d-f3ce8f0aeff7',
                        example=u'6d960236-d280-46d2-817d-f3ce8f0aeff7')
-    
+
+
 class CrudApiJobResponseSchema(Schema):
-    jobid = fields.UUID(default=u'db078b20-19c6-4f0e-909c-94745de667d4',
-                        example=u'6d960236-d280-46d2-817d-f3ce8f0aeff7',
+    jobid = fields.UUID(default=u'db078b20-19c6-4f0e-909c-94745de667d4', example=u'6d960236-d280-46d2-817d-f3ce8f0aeff7',
                         required=True)
-    
-class CrudApiObjectJobResponseSchema(CrudApiObjectResponseSchema,
-                                     CrudApiJobResponseSchema):
+
+
+class CrudApiObjectJobResponseSchema(CrudApiObjectResponseSchema, CrudApiJobResponseSchema):
     pass    
 
+
 class ApiGraphResponseSchema(Schema):
-    directed = fields.Boolean(required=True, example=True, 
-                              description=u'if True graph is directed')
-    graph = fields.Dict(required=True, example={u'name': u'vShield V...'}, 
-                              description=u'if TRue graph is directed')
-    links = fields.List(fields.Dict(example={u'source': 2, u'target': 7}), 
-                        required=True, example=True, 
+    directed = fields.Boolean(required=True, example=True, description=u'if True graph is directed')
+    graph = fields.Dict(required=True, example={u'name': u'vShield V...'}, description=u'if TRue graph is directed')
+    links = fields.List(fields.Dict(example={u'source': 2, u'target': 7}), required=True, example=True,
                         description=u'links list')
-    multigraph = fields.Boolean(required=True, example=False, 
-                                description=u'if True graph is multigraph')
-    nodes = fields.List(fields.Dict(example={}), 
-                        required=True, example=True, 
-                        description=u'nodes list')
+    multigraph = fields.Boolean(required=True, example=False, description=u'if True graph is multigraph')
+    nodes = fields.List(fields.Dict(example={}), required=True, example=True, description=u'nodes list')
+
 
 class ApiObjectPermsParamsResponseSchema(Schema):
     id = fields.Integer(required=True, default=1, example=1)
     oid = fields.Integer(required=True, default=1, example=1)
-    objid = fields.String(required=True, default=u'396587362//3328462822', 
-                          example=u'396587362//3328462822')
+    objid = fields.String(required=True, default=u'396587362//3328462822', example=u'396587362//3328462822')
     type = fields.String(required=True, default=u'Objects', example=u'Objects')
     subsystem = fields.String(required=True, default=u'auth', example=u'auth')
     desc = fields.String(required=True, default=u'beehive', example=u'beehive')
     aid = fields.Integer(required=True, default=1, example=1)
     action = fields.String(required=True, default=u'view', example=u'view')
 
+
 class ApiObjectPermsResponseSchema(PaginatedResponseSchema):
-    perms = fields.Nested(ApiObjectPermsParamsResponseSchema, many=True, 
-                          required=True) 
+    perms = fields.Nested(ApiObjectPermsParamsResponseSchema, many=True, required=True)
+
 
 class SwaggerApiView(ApiView, SwaggerView):
     consumes = ['application/json',

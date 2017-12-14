@@ -186,8 +186,8 @@ class AbstractJob(BaseTask):
             logger.warning(u'Event can not be published. Event producer '\
                            u'is not configured - %s' % ex)    
     
-    def update_job(self, params=None, status=None, current_time=None, ex=None, 
-                   traceback=None, result=None, msg=None, start_time=None):
+    def update_job(self, params=None, status=None, current_time=None, ex=None, traceback=None, result=None, msg=None,
+                   start_time=None):
         """Update job status
         
         :param params: variables in shared area [optional]
@@ -217,16 +217,13 @@ class AbstractJob(BaseTask):
 
         # store job data
         msg = None
-        TaskResult.store(task_local.opid, status=status, 
-                         retval=retval, inner_type=u'JOB', traceback=traceback, 
-                         stop_time=current_time, start_time=start_time, 
-                         msg=msg)
+        TaskResult.store(task_local.opid, status=status, retval=retval, inner_type=u'JOB', traceback=traceback,
+                         stop_time=current_time, start_time=start_time, msg=msg)
         if status == u'FAILURE':
-            logger.error(u'JOB %s status change to %s' % 
-                        (task_local.opid, status))
+            logger.error(u'JOB %s status change to %s' % (task_local.opid, status))
         else:         
-            logger.info(u'JOB %s status change to %s' % 
-                        (task_local.opid, status))    
+            logger.info(u'JOB %s status change to %s' % (task_local.opid, status))
+
 
 class Job(AbstractJob):
     abstract = True
@@ -239,11 +236,11 @@ class Job(AbstractJob):
     def create(tasks, *args):
         """Create celery signature with chord, group and chain
         """
-        process = tasks.pop().si(*args)
+        process = tasks.pop().signature(args, immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE)
         last_task = None
         for task in tasks:
             if not isinstance(task, list):
-                item = task.si(*args)
+                item = task.signature(args, immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE)
                 if last_task is not None:
                     item.link(last_task)                
             elif isinstance(task, list) and len(task) > 0:

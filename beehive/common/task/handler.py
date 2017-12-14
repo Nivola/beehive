@@ -25,6 +25,7 @@ except:
     import threading
     task_local = threading.local()
 
+
 class TaskResult(object):
     @staticmethod
     def get(task_id):
@@ -35,24 +36,22 @@ class TaskResult(object):
         
         # get data from redis
         val = _redis.get(_prefix + task_id)
-        result = {u'type':None, u'status':None}
+        result = {u'type': None, u'status': None}
         if val is not None:
             result = json.loads(val)
         return result
     
     @staticmethod
-    def store(task_id, name=None, hostname=None, args=None, kwargs=None, 
-              status=None, retval=None, start_time=None, stop_time=None, 
-              childs=None, traceback=None, inner_type=None, msg=None,
-              jobs=None):
+    def store(task_id, name=None, hostname=None, args=None, kwargs=None, status=None, retval=None, start_time=None,
+              stop_time=None, childs=None, traceback=None, inner_type=None, msg=None, jobs=None):
         """Store task result in redis
         """
         _redis = task_manager.api_manager.redis_taskmanager.conn
-        _legacy_prefix = u'celery-task-meta-'
+        # _legacy_prefix = u'celery-task-meta-'
         _prefix = task_manager.conf[u'CELERY_REDIS_RESULT_KEY_PREFIX']
         _expire = task_manager.conf[u'CELERY_REDIS_RESULT_EXPIRES']
         
-        data = {u'task_id':task_id}
+        data = {u'task_id': task_id}
         
         def set_data(key, value):
             if value is not None:
@@ -71,31 +70,34 @@ class TaskResult(object):
         set_data(u'jobs', jobs)
         set_data(u'traceback', traceback)
         
-        def update_data(pipe):
+        def update_data():
+            # create pipe
+            # pipe = _redis.pipeline()
+
             # get data from redis
-            val = pipe.get(_prefix + task_id)
+            val = _redis.get(_prefix + task_id)
             if val is not None:
                 result = json.loads(val)
                 if result.get(u'status') != u'FAILURE':
                     result.update(data)
                 else:
-                    result.update({u'stop_time':stop_time})
+                    result.update({u'stop_time': stop_time})
             else:
                 result = {
-                    u'name':name,
-                    u'type':inner_type,
-                    u'task_id':task_id,
-                    u'worker':hostname,
-                    u'args':args,
-                    u'kwargs':kwargs,
-                    u'status':status,
-                    u'result':retval,
-                    u'traceback':traceback,
-                    u'start_time':start_time,
-                    u'stop_time':stop_time,
-                    u'children':childs,
-                    u'jobs':jobs,
-                    u'trace':[]}
+                    u'name': name,
+                    u'type': inner_type,
+                    u'task_id': task_id,
+                    u'worker': hostname,
+                    u'args': args,
+                    u'kwargs': kwargs,
+                    u'status': status,
+                    u'result': retval,
+                    u'traceback': traceback,
+                    u'start_time': start_time,
+                    u'stop_time': stop_time,
+                    u'children': childs,
+                    u'jobs': jobs,
+                    u'trace': []}
             
             # update task trace
             if msg is not None:
@@ -106,10 +108,13 @@ class TaskResult(object):
             val = json.dumps(result)
             
             # save data in redis
-            pipe.setex(_prefix + task_id, _expire, val)
+            _redis.setex(_prefix + task_id, _expire, val)
+            # pipe.execute()
         
         # redis transaction
-        _redis.transaction(update_data, _prefix + task_id)
+        # _redis.transaction(update_data, _prefix + task_id)
+
+        update_data()
         
         '''# save celery legacy data to redis
         if status == u'FAILURE':
@@ -132,42 +137,26 @@ class TaskResult(object):
         logout(u'Save %s %s result: %s' % (inner_type, task_id, truncate(data)))
 
         if status == u'STARTED':
-            logout(u'============= %s - %s - STARTED =============' % 
-                   (inner_type, task_id))
+            logout(u'============= %s - %s - STARTED =============' % (inner_type, task_id))
         elif status == u'SUCCESS':
-            logout(u'============= %s - %s - SUCCESS =============' % 
-                   (inner_type, task_id))            
+            logout(u'============= %s - %s - SUCCESS =============' % (inner_type, task_id))
         elif status == u'FAILURE':
-            logout(u'============= %s - %s - FAILURE =============' % 
-                   (inner_type, task_id)) 
+            logout(u'============= %s - %s - FAILURE =============' % (inner_type, task_id))
 
         return None
     
     @staticmethod
     def task_prerun(**args):
         # store task
-        #TaskResult.store(task_id, task.name, task.request.hostname, args, kwargs, 
-        #                  'PENDING', None, None, None, None, None, 
-        #                  task.inner_type)
-        
         task = args.get(u'task')
         task_id = args.get(u'task_id')
         vargs = args.get(u'args')
         kwargs = args.get(u'kwargs')
         
-        # get task start_time
-        #_start_time = time()
-        #str2uni(datetime.today().strftime(u'%d-%m-%y %H:%M:%S-%f'))
-        
-        # get task initial time
-        #task.inner_start = time()
-        
         # store task
-        TaskResult.store(task_id, name=task.name, hostname=task.request.hostname, 
-                         args=vargs, kwargs=kwargs, status=u'PENDING', retval=None, 
-                         start_time=None, stop_time=None, childs=None, 
-                         traceback=None, inner_type=task.inner_type, msg=None, 
-                         jobs=None)
+        TaskResult.store(task_id, name=task.name, hostname=task.request.hostname, args=vargs, kwargs=kwargs,
+                         status=u'PENDING', retval=None, start_time=None, stop_time=None, childs=None, traceback=None,
+                         inner_type=task.inner_type, msg=None, jobs=None)
     
     @staticmethod
     def task_postrun(**args):
@@ -201,11 +190,9 @@ class TaskResult(object):
                         childs.append(c.id)
                 elif isinstance(c, GroupResult):
                     for i in c:
-                        #if i.id != chord_callback_task:
                         childs.append(i.id)
     
         # get task stop_time
-        #duration = round(time() - task.inner_start, 3)
         stop_time = time()
     
         # set retval to None when failure occurs
@@ -220,11 +207,9 @@ class TaskResult(object):
             status = u'PROGRESS'
         
         # store task
-        TaskResult.store(task_id, name=task.name, hostname=task.request.hostname, 
-                         args=vargs, kwargs=kwargs, status=status, retval=retval, 
-                         start_time=None, stop_time=stop_time, childs=set(childs), 
-                         traceback=None, inner_type=task.inner_type, msg=None, 
-                         jobs=jobs)
+        TaskResult.store(task_id, name=task.name, hostname=task.request.hostname, args=vargs, kwargs=kwargs,
+                         status=status, retval=retval, start_time=None, stop_time=stop_time, childs=set(childs),
+                         traceback=None, inner_type=task.inner_type, msg=None, jobs=jobs)
 
     @staticmethod
     def task_failure(**args):
@@ -258,22 +243,25 @@ class TaskResult(object):
         trace.append(err)    
     
         # store task
-        TaskResult.store(task_id, name=None, hostname=None, 
-                         args=None, kwargs=None, status=status, retval=None, 
-                         start_time=None, stop_time=stop_time, childs=None, 
-                         traceback=trace, inner_type=None, msg=err, jobs=None)  
+        TaskResult.store(task_id, name=None, hostname=None, args=None, kwargs=None, status=status, retval=None,
+                         start_time=None, stop_time=stop_time, childs=None, traceback=trace, inner_type=None, msg=err,
+                         jobs=None)
+
 
 @task_prerun.connect
 def task_prerun(**args):
     TaskResult.task_prerun(**args)
 
+
 @task_postrun.connect
 def task_postrun(**args):
     TaskResult.task_postrun(**args)
 
+
 @task_failure.connect
 def task_failure(**args):
     TaskResult.task_failure(**args)
+
 
 '''
 @task_failure.connect
