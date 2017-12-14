@@ -627,6 +627,60 @@ class CamundaController(AnsibleController):
             resp.append({u'host':client.connection.get(u'host'), u'response':res})
         logger.debug(u'Ping camunda: %s' % resp)
         self.result(resp, headers=[u'host', u'response'])           
+    
+    @expose (aliases=[u'deploy <bpmn> [port]'], aliases_only=True)
+    def deploy(self):
+        """Deploy a proces defintion to engine
+        - <bpmn> a file containtg porces bpm definition
+        - [port] optionaleport
+        """
+        filename = self.get_arg(name=u'bpmn')
+        port = self.get_arg(name=u'port',default=8080)
+        clients = self.__get_engine(port=port)
+        resp = []
+        if os.path.isfile(filename):
+            f = open(filename, 'r')
+            content = f.read()
+            f.close()
+            name= os.path.splitext(os.path.split(filename)[1])[0]
+        else:
+            raise Exception(u'bpmn %s is not a file' % filename)
+            
+        for client in clients:
+            res = client.process_deployment_create( content.rstrip(), name, checkduplicate=True, changeonly=True, tenantid=None)
+            resp.append({u'host':client.connection.get(u'host'), u'response':res})
+        logger.debug(u'camunda deploy: %s' % resp)
+        self.result(resp, headers=[u'host', u'response'])           
+
+    @expose (aliases=[u'start <key>  <jsonparams> [port]'], aliases_only=True)
+    def start(self):
+        """ 
+            start a process instance 
+            <key>  the proces key to be started
+            <jsonparams>  the json definition of proces variables, support '@' operator json file
+            [port] optional port
+        """
+        key = self.get_arg(name=u'key')
+        jsonparams = self.get_arg(name=u'jsonparams',default=u'{}' )
+        if jsonparams[0] == '@':
+            filename=jsonparams[1:]
+            if os.path.isfile(filename):
+                f = open(filename, 'r')
+                jsonparams = f.read()
+                f.close()
+            else:
+               raise Exception(u'json specification %s is not a file' % filename)
+        port = self.get_arg(name=u'port',default=8080)
+        clients = self.__get_engine(port=port)
+        resp = []
+        paramdict = json.decode(jsonparams)
+        for client in clients:
+            # client.process_instance_start_processkey ( key, businessKey=None, variables=paramdict)
+            res = client.process_instance_start_processkey ( key,  variables=paramdict)
+            resp.append({u'host':client.connection.get(u'host'), u'response':res})
+        logger.debug(u'camunda start: %s' % resp)
+        self.result(resp, headers=[u'host', u'response'])           
+    
 
 
 class OpenstackController(AnsibleController):
