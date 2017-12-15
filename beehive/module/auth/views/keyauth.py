@@ -16,11 +16,10 @@ from marshmallow import fields, Schema, validates, ValidationError
 def get_ip():
     return get_remote_ip(request)
 
+
 class UserSchema(Schema):
-    user = fields.String(required=True, 
-                error_messages={u'required': u'user is required.'})
-    password = fields.String(required=True, 
-                error_messages={u'required': u'password is required.'})
+    user = fields.String(required=True, error_messages={u'required': u'user is required.'})
+    password = fields.String(required=True, error_messages={u'required': u'password is required.'})
     login_ip = fields.String(load_from=u'login-ip', missing=get_ip)
     
     @validates(u'user')
@@ -29,6 +28,7 @@ class UserSchema(Schema):
             value.index(u'@')
         except ValueError:
             raise ValidationError(u'User syntax must be <user>@<domain>')
+
 
 class CreateToken(ApiView):
     parameters_schema = UserSchema

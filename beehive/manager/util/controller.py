@@ -222,8 +222,7 @@ commands:
     
     def _parse_args(self):
         CementCmdBaseController._parse_args(self)
-        
-        #self.configs = self.app.config.get_section_dict(u'configs')
+
         envs = u', '.join(self.configs[u'environments'].keys())
         default_env = self.configs[u'environments'].get(u'default', None)
         if getattr(self.app._meta, u'env', None) is None:
@@ -233,6 +232,7 @@ commands:
         self.format = getattr(self.app.pargs, u'format', None)
         self.color = getattr(self.app.pargs, u'color', None)
         self.env = getattr(self.app.pargs, u'env', None)
+        self.envs = getattr(self.app.pargs, u'envs', None)
         self.verbosity = getattr(self.app.pargs, u'verbosity', None)
         if self.format is None:
             self.format = self.app._meta.format
@@ -248,12 +248,13 @@ commands:
                 self.env = self.app._meta.env
                 setattr(self.app._parsed_args, u'env', self.env)
             else:
-                raise Exception(u'Platform environment must be defined. '\
-                                u'Select from: %s' % envs)
+                raise Exception(u'Platform environment must be defined. Select from: %s' % envs)
         if self.env not in envs:
-            raise Exception(u'Platform environment %s does not exist. Select '\
-                            u'from: %s' % (self.env, envs))            
-    
+            raise Exception(u'Platform environment %s does not exist. Select from: %s' % (self.env, envs))
+        if self.envs is not None:
+            self.envs = self.envs.split(u',')
+
+
     def _ext_parse_args(self):
         """
         """

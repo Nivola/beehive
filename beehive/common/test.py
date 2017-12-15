@@ -4,16 +4,15 @@ Created on May 15, 2017
 @author: darkbk
 '''
 import os
-#from _random import Random
-#os.environ['GEVENT_RESOLVER'] = 'ares'
-#os.environ['GEVENTARES_SERVERS'] = 'ares'
-
-# import beecell.server.gevent_ssl
 
 import gevent.monkey
-from beehive.common.log import ColorFormatter
 from beehive.common.apiclient import BeehiveApiClient
-import xmltodict
+from beehive.common.log import ColorFormatter
+
+# from _random import Random
+# os.environ['GEVENT_RESOLVER'] = 'ares'
+# os.environ['GEVENTARES_SERVERS'] = 'ares'
+# import beecell.server.gevent_ssl
 gevent.monkey.patch_all()
 
 import logging
@@ -21,18 +20,15 @@ import unittest
 import pprint
 import time
 import json
-import urllib
 import redis
 import re
 from beecell.logger import LoggerHelper
-from sqlalchemy import create_engine, exc
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from beecell.test.runner import TextTestRunner
 from beecell.remote import RemoteClient, ServerErrorException,\
     UnsupporteMediaTypeException, ConflictException, TimeoutException,\
     NotAcceptableException, MethodNotAllowedException, NotFoundException,\
     ForbiddenException, BadRequestException, UnauthorizedException
-from base64 import b64encode
 import requests
 from beecell.swagger import ApiValidator
 from flex.core import load
@@ -44,12 +40,14 @@ token = None
 
 logger = logging.getLogger(__name__)
 
+
 def assert_exception(exception):
     def wrapper(fn):
         def decorated(self, *args, **kwargs):
             self.assertRaises(exception, fn, self, *args, **kwargs)
         return decorated
     return wrapper
+
 
 class BeehiveTestCase(unittest.TestCase):
     logger = logging.getLogger(u'beehive.test.log')

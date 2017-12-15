@@ -169,16 +169,13 @@ class BeehiveApiClient(object):
             key = RSA.importKey(seckey)
             
             # create data hash
-            hash_data = SHA256.new(data)#.digest()
-            #self.logger.debug('Get data: %s' % data)
-            #self.logger.debug('Created hash: %s' % binascii.b2a_base64(hash_data.digest()))
+            hash_data = SHA256.new(data)
         
             # sign data
             signer = PKCS1_v1_5.new(key)
             signature = signer.sign(hash_data)
             
             # encode signature in base64
-            #signature64 = binascii.b2a_base64(signature)
             signature64 = binascii.b2a_hex(signature)
             
             return signature64
@@ -335,15 +332,15 @@ class BeehiveApiClient(object):
         #identity = self.api_manager.get_identity(uid)
         #seckey = identity['seckey']
         # create sign
-        headers = {u'Accept':u'application/json'}
+        headers = {u'Accept': u'application/json'}
         if self.api_authtype == u'keyauth' and uid is not None:
             sign = self.sign_request(seckey, path)
-            headers.update({u'uid':uid, u'sign':sign})
+            headers.update({u'uid': uid, u'sign': sign})
         elif self.api_authtype == u'oauth2' and uid is not None:
-            headers.update({u'Authorization':u'Bearer %s' % uid})
+            headers.update({u'Authorization': u'Bearer %s' % uid})
         elif self.api_authtype == u'simplehttp':
             auth = b64encode(u'%s:%s' % (self.api_user, self.api_user_pwd))
-            headers.update({u'Authorization':u'Basic %s' % auth})
+            headers.update({u'Authorization': u'Basic %s' % auth})
             
         if other_headers is not None:
             headers.update(other_headers)            
@@ -357,8 +354,7 @@ class BeehiveApiClient(object):
             path = u'%s?%s' % (path, data)
         elif isinstance(data, dict) or isinstance(data, list):
             data = json.dumps(data)
-        res = self.http_client(proto, host, path, method,
-                               port=port, data=data, headers=headers)
+        res = self.http_client(proto, host, path, method, port=port, data=data, headers=headers)
         return res
 
     @watch    
@@ -377,19 +373,16 @@ class BeehiveApiClient(object):
         try:
             if parse is True and isinstance(data, dict) or isinstance(data, list):
                 data = json.dumps(data)
-            res = self.send_request(subsystem, path, method, data, 
-                                    self.uid, self.seckey, other_headers)
+            res = self.send_request(subsystem, path, method, data, self.uid, self.seckey, other_headers)
         except BeehiveApiClientError as ex:
-            self.logger.error(u'Send request to %s using uid %s: %s, %s' % 
-                              (path, self.uid, ex.value, ex.code))
+            self.logger.error(u'Send request to %s using uid %s: %s, %s' % (path, self.uid, ex.value, ex.code))
             # Request is not authorized
             if ex.code in [401]:
                 # try to get token and retry api call
                 self.uid = None
                 self.seckey = None
                 self.create_token()
-                res = self.send_request(subsystem, path, method, data, 
-                                        self.uid, self.seckey, other_headers)
+                res = self.send_request(subsystem, path, method, data, self.uid, self.seckey, other_headers)
             else:
                 raise
         
@@ -511,23 +504,21 @@ class BeehiveApiClient(object):
         :raise BeehiveApiClientError:
         """
         res = None
-        if api_user == None: api_user = self.api_user
-        if api_user_pwd == None: api_user_pwd = self.api_user_pwd            
+        if api_user == None:
+            api_user = self.api_user
+        if api_user_pwd == None:
+            api_user_pwd = self.api_user_pwd
         
         if self.api_authtype == u'keyauth':
-            data = {u'user':api_user, u'password':api_user_pwd}
+            data = {u'user': api_user, u'password': api_user_pwd}
             if login_ip is None:
                 data[u'login-ip'] = self.host
             else:
                 data[u'login-ip'] = login_ip
-            res = self.send_request(u'auth', u'/v1.0/keyauth/token', 
-                                    u'POST', data=data)
-            #res = res[u'response']
-            self.logger.info(u'Login user %s with token: %s' % 
-                             (self.api_user, res[u'access_token']))
+            res = self.send_request(u'auth', u'/v1.0/keyauth/token', u'POST', data=data)
+            self.logger.info(u'Login user %s with token: %s' % (self.api_user, res[u'access_token']))
             self.uid = res[u'access_token']
             self.seckey = res[u'seckey']
-            #self.filter = u'keyauth'
         elif self.api_authtype == u'oauth2':
             # get client
             client_id = self.api_client_config[u'uuid']
@@ -537,8 +528,7 @@ class BeehiveApiClient(object):
             client_token_uri = u'%s/v1.0/oauth2/token' % self.main_endpoint
             aud = self.api_client_config[u'aud']
 
-            res = JWTClient.create_token(client_id, client_email, client_scope, 
-                                         private_key, client_token_uri, aud, 
+            res = JWTClient.create_token(client_id, client_email, client_scope, private_key, client_token_uri, aud,
                                          api_user, api_user_pwd)
             self.uid = res[u'access_token']
         

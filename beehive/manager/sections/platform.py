@@ -9,6 +9,9 @@ import gevent
 from time import time
 from datetime import datetime
 from httplib import HTTPConnection
+
+import requests
+
 from beecell.simple import str2uni
 from beehive.manager.util.controller import BaseController
 from beecell.db.manager import RedisManager, MysqlManager
@@ -77,18 +80,16 @@ class AnsibleController(BaseController):
         try:
             path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
             path_lib = u'%s/library/beehive/' % (self.ansible_path)
-            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
-                            module=path_lib)
+            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
             res = runner.get_inventory(group)
             if isinstance(res, list):
-                res = {group:res}
+                res = {group: res}
             logger.debug(u'Ansible inventory nodes: %s' % res)
             resp = []
             for k,v in res.items():
                 resp.append({u'group':k, u'hosts':v})
             resp = sorted(resp, key=lambda x: x.get(u'group'))
 
-            #self.result(resp, headers=[u'group', u'hosts'], maxsize=400)
             for i in resp:
                 print(u'%30s : %s' % (i[u'group'], u', '.join(i[u'hosts'][:6])))
                 for n in range(1, len(i[u'hosts'])/6):
@@ -102,8 +103,7 @@ class AnsibleController(BaseController):
         try:
             path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
             path_lib = u'%s/library/beehive/' % (self.ansible_path)
-            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
-                            module=path_lib)
+            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
             logger.debug(u'Create new ansible runner: %s' % runner)
             tags = run_data.pop(u'tags')
             if playbook is None:
@@ -124,22 +124,130 @@ class AnsibleController(BaseController):
         p.join()
         logger.debug(u'Complete ansible playbook as process: %s' % p.pid)
     
-    def ansible_task(self, group):
+    def ansible_task(self, group, cmd):
         """Run ansible tasks over a group of hosts
         
         :parma group: ansible host group
+        :parma cmd: shell command
         """
+        runners = self.get_runners()
+
+
         try:
-            path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
-            path_lib = u'%s/library/beehive/' % (self.ansible_path)
-            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
-                            module=path_lib)
-            tasks = [
-                dict(action=dict(module='shell', args='ls'), register='shell_out'),
-            ]
-            runner.run_task(group, tasks=tasks, frmt=self.format)
+            # path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+            # path_lib = u'%s/library/beehive/' % self.ansible_path
+            # runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
+            for runner in runners:
+                tasks = [
+                    dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
+                ]
+                runner.run_task(group, tasks=tasks, frmt=u'text')
         except Exception as ex:
             self.error(ex)
+
+    def get_runners(self):
+        runners = []
+        envs = [self.env]
+        if self.envs is not None:
+            envs = self.envs
+
+        for env in envs:
+            try:
+                path_inventory = u'%s/inventories/%s' % (self.ansible_path, env)
+                path_lib = u'%s/library/beehive/' % (self.ansible_path)
+                runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
+                runners.append(runner)
+            except Exception as ex:
+                self.error(ex, exc_info=1)
+                raise
+        logger.debug(u'Get runners for ansible envs: %s' % envs)
+        return runners
+
+    def get_hosts(self, runner, groups):
+        all_hosts = []
+        if not isinstance(groups, list):
+            groups = [groups]
+        for group in groups:
+            hosts, vars = runner.get_inventory_with_vars(group)
+            all_hosts.extend(hosts)
+        logger.debug(u'Get hosts from ansible groups %s: %s' % (groups, all_hosts))
+        return all_hosts
+
+    def get_hosts_vars(self, runner, groups):
+        all_vars = {}
+        if not isinstance(groups, list):
+            groups = [groups]
+        for group in groups:
+            hosts_vars = runner.variable_manager.get_vars(runner.loader)
+            all_vars.update(hosts_vars)
+        logger.debug(u'Get hosts vars from ansible inventory: %s' % all_vars)
+        return hosts_vars
+
+    def get_multi_hosts(self, groups):
+        runners = self.get_runners()
+        all_hosts = []
+        for runner in runners:
+            hosts = self.get_hosts(runner, groups)
+            all_hosts.extend(hosts)
+        logger.debug(u'Get hosts from ansible groups %s: %s' % (groups, all_hosts))
+        return all_hosts
+
+
+class NginxController(AnsibleController):
+    class Meta:
+        label = 'nginx'
+        description = "Nginx management"
+
+    def run_cmd(self, func):
+        """Run command on redis instances
+        """
+        hosts = self.get_multi_hosts(u'nginx')
+
+        try:
+            resp = []
+            for host in hosts:
+                res = func(str(host))
+                resp.append({u'host': str(host), u'response': res})
+                logger.info(u'Exec %s on ngninx server %s : %s' % (func.__name__, str(host), resp))
+            self.result(resp, headers=[u'host', u'response'])
+        except Exception as ex:
+            self.error(ex)
+
+    @expose()
+    def ping(self):
+        """Ping redis instances
+        """
+        def func(server):
+            try:
+                res = requests.get(u'http://%s' % server)
+                if res.status_code == 200:
+                    res = True
+                else:
+                    res = False
+            except:
+                res = False
+
+            return res
+
+        self.run_cmd(func)
+
+    @expose()
+    def status(self):
+        """Status of nginx instances
+        """
+        self.ansible_task(u'nginx', u'systemctl status nginx')
+
+    @expose()
+    def start(self):
+        """Start nginx instances
+        """
+        self.ansible_task(u'nginx', u'systemctl start nginx')
+
+    @expose()
+    def stop(self):
+        """Start nginx instances
+        """
+        self.ansible_task(u'nginx', u'systemctl stop nginx')
 
 
 class RedisController(AnsibleController):
@@ -153,10 +261,9 @@ class RedisController(AnsibleController):
         try:
             path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
             path_lib = u'%s/library/beehive/' % (self.ansible_path)
-            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
-                            module=path_lib)
+            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
             hosts, vars = runner.get_inventory_with_vars(u'redis')        
-            cluster_hosts, vars = runner.get_inventory_with_vars(u'redis-master')
+
         except Exception as ex:
             self.error(ex)
             return            
@@ -170,19 +277,15 @@ class RedisController(AnsibleController):
                     uri = u'%s;%s;%s' % (host, 6379, db)
                     server = RedisManager(uri)
                     res = func(server)
-                    #res = server.ping()
                     
                     if isinstance(res, dict):
-                        for k,v in res.items():
-                            resp.append({u'host':str(host), u'db':db, 
-                                         u'response':u'%s = %s' % (k,v)})
+                        for k, v in res.items():
+                            resp.append({u'host': str(host), u'db': db, u'response': u'%s = %s' % (k, v)})
                     elif isinstance(res, list):
                         for v in res:
-                            resp.append({u'host':str(host), u'db':db, 
-                                         u'response':v})                        
+                            resp.append({u'host': str(host), u'db': db, u'response': v})
                     else:
-                        resp.append({u'host':str(host), u'db':db, u'response':res})
-                #logger.info(u'Ping redis %s : %s' % (uri, resp))
+                        resp.append({u'host': str(host), u'db': db, u'response': res})
             self.result(resp, headers=[u'host', u'db', u'response'])
         except Exception as ex:
             self.error(ex)         
@@ -308,8 +411,7 @@ class RedisClutserController(RedisController):
         try:
             path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
             path_lib = u'%s/library/beehive/' % (self.ansible_path)
-            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
-                            module=path_lib)
+            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
             cluster_hosts, vars = runner.get_inventory_with_vars(u'redis-master')
         except Exception as ex:
             self.error(ex)
@@ -852,8 +954,7 @@ class NodeController(AnsibleController):
         try:
             path_inventory = u'%s/inventories/%s' % (self.ansible_path, env)
             path_lib = u'%s/library/beehive/' % (self.ansible_path)
-            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
-                            module=path_lib)
+            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
             hosts, hvars = runner.get_inventory_with_vars(u'all')
             hvars = runner.variable_manager.get_vars(runner.loader)
             return hosts, hvars
@@ -873,7 +974,7 @@ class NodeController(AnsibleController):
         resp = []
         for e in envs.keys():
             hosts, hvars = self.__get_hosts_and_vars(e)
-            resp.append({u'environment':e, u'hosts':hosts})
+            resp.append({u'environment': e, u'hosts': hosts})
         logger.debug(resp)
         self.app.print_output(u'Default environment: %s' % default)
         self.result(resp, headers=[u'environment', u'hosts'], maxsize=400)
@@ -939,10 +1040,9 @@ class NodeController(AnsibleController):
         else:
             playbook = u'%s/%s.yml' % (self.ansible_path, group)
         run_data = {
-            u'tags':[u'install']
+            u'tags': [u'install']
         }        
-        self.ansible_playbook(group, run_data, 
-                              playbook=playbook)
+        self.ansible_playbook(group, run_data, playbook=playbook)
 
     @expose(aliases=[u'hosts <group>'], aliases_only=True)
     def hosts(self):
@@ -950,10 +1050,9 @@ class NodeController(AnsibleController):
         """
         group = self.get_arg(default=u'all')
         run_data = {
-            u'tags':[u'hosts']
+            u'tags': [u'hosts']
         }        
-        self.ansible_playbook(group, run_data, 
-                              playbook=self.site_playbook)
+        self.ansible_playbook(group, run_data, playbook=self.site_playbook)
         
     @expose(aliases=[u'cmd <group> <cmd>'], aliases_only=True)
     def cmd(self):
@@ -965,8 +1064,7 @@ class NodeController(AnsibleController):
         cmd  = self.get_arg(name=u'cmd')     
         path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
         path_lib = u'%s/library/beehive/' % (self.ansible_path)
-        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
-                        module=path_lib)
+        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
         tasks = [
             dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
         ]
@@ -1291,10 +1389,8 @@ class BeehiveController(AnsibleController):
                     resp.append({u'subsystem':vassal[0], u'instance':vassal[1], 
                                  u'host':host, u'port':port, u'ping':False,
                                  u'status':u'DOWN'})                    
-                    
-            
-        self.result(resp, headers=[u'subsystem', u'instance', u'host', u'port', 
-                                   u'status'])
+
+        self.result(resp, headers=[u'subsystem', u'instance', u'host', u'port', u'status'])
         
     @expose(aliases=[u'instance-log <subsystem> <vassal> [rows=100]'], aliases_only=True)
     def instance_log(self):
@@ -1364,9 +1460,11 @@ class BeehiveController(AnsibleController):
             u'local_package_path': self.local_package_path
         }
         self.ansible_playbook(u'docs', run_data, playbook=self.beehive_doc_playbook)
-        
+
+
 platform_controller_handlers = [
     PlatformController,
+    NginxController,
     RedisController,
     RedisClutserController,
     MysqlController,
@@ -1375,5 +1473,3 @@ platform_controller_handlers = [
     NodeController,
     BeehiveController,
 ]
-        
-        

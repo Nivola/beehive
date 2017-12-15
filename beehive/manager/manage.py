@@ -105,7 +105,9 @@ def config_cli(app):
         # add any arguments after setup(), and before run()
         app.args.add_argument('-v', '--version', action='version', version=BANNER)
         app.args.add_argument('-e', '--env', action='store', dest='env',
-                              help='execution environment. Select from: %s' % envs)
+                              help='Execution environment. Select from: %s' % envs)
+        app.args.add_argument('-E', '--envs', action='store', dest='envs',
+                              help='Comma separated execution environments. Select from: %s' % envs)
         app.args.add_argument('-f', '--format', action='store', dest='format',
                               help='response format. Select from: %s' % formats)
         app.args.add_argument('--color', action='store', dest='color',
