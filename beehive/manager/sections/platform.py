@@ -840,7 +840,6 @@ class CamundaController(AnsibleController):
         self.result(resp, headers=[u'host', u'response'])           
     
 
-
 class OpenstackController(AnsibleController):
     class Meta:
         label = 'platform.openstack'
@@ -878,8 +877,7 @@ class OpenstackController(AnsibleController):
                 inventory = u'%s-%s' % (inventory, subset)
             path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
             path_lib = u'%s/library/beehive/' % (self.ansible_path)
-            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
-                            module=path_lib)
+            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
             hosts, vars = runner.get_inventory_with_vars(inventory)
 
             resp = []
@@ -935,6 +933,7 @@ class OpenstackController(AnsibleController):
         if vip is True:
             subset = u'vip'
         self.run_cmd(func, instance, subset=subset)
+
 
 class NodeController(AnsibleController):
     class Meta:
@@ -1155,7 +1154,7 @@ class BeehiveController(AnsibleController):
                 res = json.loads(res)
                 logger.info(res)
             except:
-                res = {u'vassals':None, u'blacklist':None}
+                res = {u'vassals': None, u'blacklist': None}
         else:
             logger.error(u'Emperor %s does not respond' % server)
             res = u'Emperor %s does not respond' % server
@@ -1181,20 +1180,21 @@ class BeehiveController(AnsibleController):
         
         :param server: host name
         """
-        path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+        hosts = self.get_multi_hosts(system)
+
+        '''path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
         runner = Runner(inventory=path_inventory, verbosity=self.verbosity)
-        hosts = runner.get_inventory(group=system)
-        self.json = []
+        hosts = runner.get_inventory(group=system)'''
+
         resp = []
         for host in hosts:
+            host = str(host)
             res = self.__get_stats(host)
             vassals = res.pop(u'vassals')
             res.pop(u'blacklist')
             try:
-                temp = [u'%s [%s]' % (v[u'id']\
-                                  .replace(u'/etc/uwsgi/vassals/', u'')\
-                                  .replace(u'.ini', u'')\
-                                  , v[u'pid']) for v in vassals]
+                temp = [u'%s [%s]' % (v[u'id'].replace(u'/etc/uwsgi/vassals/', u'').replace(u'.ini', u''), v[u'pid'])
+                        for v in vassals]
                 res[u'vassals'] = u', '.join(temp)
             except:
                 res[u'vassals'] = []
@@ -1216,18 +1216,19 @@ class BeehiveController(AnsibleController):
         :param server: host name
         """
         try:
-            path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+            hosts = self.get_multi_hosts(system)
+
+            '''path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
             runner = Runner(inventory=path_inventory, verbosity=self.verbosity)
-            hosts = runner.get_inventory(group=system)
-            self.json = []
+            hosts = runner.get_inventory(group=system)'''
+
             resp = []
             for host in hosts:
+                host = str(host)
                 res = self.__get_stats(host)
                 vassals = res.pop(u'vassals')
                 for vassal in vassals or []:
-                    vassal[u'id'] = vassal[u'id']\
-                                      .replace(u'/etc/uwsgi/vassals/', u'')\
-                                      .replace(u'.ini', u'')
+                    vassal[u'id'] = vassal[u'id'].replace(u'/etc/uwsgi/vassals/', u'').replace(u'.ini', u'')
                     vassal.update({u'host':host})
                     for key in [u'first_run', u'last_run', u'last_ready', 
                                 u'last_mod', u'last_accepting']:
@@ -1245,11 +1246,14 @@ class BeehiveController(AnsibleController):
         
         :param server: host name
         """
-        path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+        hosts = self.get_multi_hosts(system)
+
+        '''path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
         runner = Runner(inventory=path_inventory, verbosity=self.verbosity)
-        hosts = runner.get_inventory(group=system)
-        self.json = []
+        hosts = runner.get_inventory(group=system)'''
+
         for host in hosts:
+            host = str(host)
             res = self.__get_stats(host)
             blacklist = res.pop(u'blacklist')          
             if self.format == u'json':
@@ -1271,20 +1275,18 @@ class BeehiveController(AnsibleController):
         """Sync beehive package an all nodes with remove git repository
         """
         run_data = {
-            u'tags':[u'sync']
+            u'tags': [u'sync']
         }        
-        self.ansible_playbook(u'beehive', run_data, 
-                              playbook=self.beehive_playbook)
+        self.ansible_playbook(u'beehive', run_data, playbook=self.beehive_playbook)
     
     @expose()
     def pip(self):
         """Sync beehive package an all nodes with remove git repository
         """
         run_data = {
-            u'tags':[u'pip']
+            u'tags': [u'pip']
         }        
-        self.ansible_playbook(u'beehive', run_data, 
-                              playbook=self.beehive_playbook)   
+        self.ansible_playbook(u'beehive', run_data, playbook=self.beehive_playbook)
     
     @expose()
     def subsystems(self):
@@ -1299,11 +1301,10 @@ class BeehiveController(AnsibleController):
         """
         subsystem = self.get_arg(name=u'subsystem')
         run_data = {
-            u'subsystem':subsystem,
-            u'tags':[u'subsystem']
+            u'subsystem': subsystem,
+            u'tags': [u'subsystem']
         }        
-        self.ansible_playbook(u'beehive-init', run_data, 
-                              playbook=self.beehive_playbook)      
+        self.ansible_playbook(u'beehive-init', run_data, playbook=self.beehive_playbook)
     
     @expose(aliases=[u'subsystem-update <subsystem>'], aliases_only=True)
     def subsystem_update(self):
@@ -1312,13 +1313,12 @@ class BeehiveController(AnsibleController):
         """
         subsystem = self.get_arg(name=u'subsystem')
         run_data = {
-            u'subsystem':subsystem,
-            u'tags':[u'subsystem'],
-            u'create':False,
-            u'update':True
+            u'subsystem': subsystem,
+            u'tags': [u'subsystem'],
+            u'create': False,
+            u'update': True
         }
-        self.ansible_playbook(u'beehive-init', run_data, 
-                              playbook=self.beehive_playbook)        
+        self.ansible_playbook(u'beehive-init', run_data, playbook=self.beehive_playbook)
     
     @expose(aliases=[u'instances [details=""]'], aliases_only=True)
     def instances(self):
@@ -1346,13 +1346,12 @@ class BeehiveController(AnsibleController):
         subsystem = self.get_arg(name=u'subsystem')
         vassal = self.get_arg(name=u'vassal')
         run_data = {
-            u'local_package_path':self.local_package_path,
-            u'subsystem':subsystem,
-            u'vassal':u'%s-%s' % (subsystem, vassal),
-            u'tags':[u'sync-dev']
+            u'local_package_path': self.local_package_path,
+            u'subsystem': subsystem,
+            u'vassal': u'%s-%s' % (subsystem, vassal),
+            u'tags': [u'sync-dev']
         }        
-        self.ansible_playbook(u'beehive', run_data, 
-                              playbook=self.beehive_playbook)
+        self.ansible_playbook(u'beehive', run_data, playbook=self.beehive_playbook)
     
     @expose(aliases=[u'instance-deploy <subsystem> <vassal>'], aliases_only=True)
     def instance_deploy(self):
@@ -1361,14 +1360,13 @@ class BeehiveController(AnsibleController):
     - vassal: vassal
         """
         subsystem = self.get_arg(name=u'subsystem')
-        vassal  = self.get_arg(name=u'vassal')        
+        vassal = self.get_arg(name=u'vassal')
         run_data = {
             u'subsystem':subsystem,
             u'vassal':u'%s-%s' % (subsystem, vassal),
             u'tags':[u'deploy']
         }        
-        self.ansible_playbook(u'beehive', run_data, 
-                              playbook=self.beehive_playbook)
+        self.ansible_playbook(u'beehive', run_data, playbook=self.beehive_playbook)
     
     @expose(aliases=[u'instance-undeploy <subsystem> <vassal>'], aliases_only=True)
     def instance_undeploy(self):
@@ -1377,11 +1375,11 @@ class BeehiveController(AnsibleController):
     - vassal: vassal
         """
         subsystem = self.get_arg(name=u'subsystem')
-        vassal  = self.get_arg(name=u'vassal')        
+        vassal = self.get_arg(name=u'vassal')
         run_data = {
-            u'subsystem':subsystem,
-            u'vassal':u'%s-%s' % (subsystem, vassal),
-            u'tags':[u'undeploy']
+            u'subsystem': subsystem,
+            u'vassal': u'%s-%s' % (subsystem, vassal),
+            u'tags': [u'undeploy']
         }        
         self.ansible_playbook(u'beehive', run_data, 
                               playbook=self.beehive_playbook)
@@ -1393,13 +1391,17 @@ class BeehiveController(AnsibleController):
     - vassal: vassal
         """
         subsystem = self.get_arg()
-        vassal  = self.get_arg()        
-        path_inventory = u'%s/inventories/%s' % (self.ansible_path, 
-                                                 self.env)
+        vassal = self.get_arg()
+        '''path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
         path_lib = u'%s/library/beehive/' % (self.ansible_path)
-        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
-                        module=path_lib)
+        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
         hosts, vars = runner.get_inventory_with_vars(u'beehive')
+        vars = runner.variable_manager.get_vars(runner.loader, host=hosts[0])'''
+
+        runners = self.get_runners()
+        hosts = []
+        for runner in runners:
+            hosts.extend(self.get_hosts(runner, [u'beehive']))
         vars = runner.variable_manager.get_vars(runner.loader, host=hosts[0])
         instances = vars.get(u'instance')
         vassals = []
@@ -1416,35 +1418,30 @@ class BeehiveController(AnsibleController):
             for host in hosts:
                 url = URL(u'http://%s:%s/v1.0/server/ping' % (host, port))
                 logger.debug(url)
-                http = HTTPClient(url.host, port=url.port, 
-                                  headers={u'Content-Type':u'application/json'})
+                http = HTTPClient(url.host, port=url.port, headers={u'Content-Type': u'application/json'})
                 try:
                     # issue a get request
                     response = http.get(url.request_uri)
                     # read status_code
                     response.status_code
                     # read response body
-                    res = json.loads(response.read())
+                    # res = json.loads(response.read())
                     # close connections
                     http.close()
                     if response.status_code == 200:
-                        resp.append({u'subsystem':vassal[0], u'instance':vassal[1], 
-                                     u'host':host, u'port':port, u'ping':True, 
-                                     u'status':u'UP'})
+                        resp.append({u'subsystem': vassal[0], u'instance': vassal[1], u'host': host, u'port': port,
+                                     u'ping': True, u'status': u'UP'})
                     else:
-                        resp.append({u'subsystem':vassal[0], u'instance':vassal[1], 
-                                     u'host':host, u'port':port, u'ping':False,
-                                     u'status':u'UP'})
+                        resp.append({u'subsystem': vassal[0], u'instance': vassal[1], u'host': host, u'port': port,
+                                     u'ping': False, u'status': u'DOWN'})
                 except gevent.socket.error as ex:
                     logger.error(ex)
-                    resp.append({u'subsystem':vassal[0], u'instance':vassal[1], 
-                                 u'host':host, u'port':port, u'ping':False,
-                                 u'status':u'DOWN'})
+                    resp.append({u'subsystem': vassal[0], u'instance': vassal[1], u'host': host, u'port': port,
+                                 u'ping': False, u'status': u'DOWN'})
                 except Exception as ex:
                     logger.error(ex)
-                    resp.append({u'subsystem':vassal[0], u'instance':vassal[1], 
-                                 u'host':host, u'port':port, u'ping':False,
-                                 u'status':u'DOWN'})                    
+                    resp.append({u'subsystem': vassal[0], u'instance': vassal[1], u'host': host, u'port': port,
+                                 u'ping': False, u'status': u'DOWN'})
 
         self.result(resp, headers=[u'subsystem', u'instance', u'host', u'port', u'status'])
         
@@ -1459,8 +1456,7 @@ class BeehiveController(AnsibleController):
         subsystem = self.get_arg(name=u'subsystem')
         vassal = self.get_arg(name=u'vassal')
         rows = self.get_arg(default=100)
-        cmd  = u'tail -%s /var/log/beehive/beehive100/%s-%s.log' % \
-            (rows, subsystem, vassal)
+        cmd  = u'tail -%s /var/log/beehive/beehive100/%s-%s.log' % (rows, subsystem, vassal)
         path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
         path_lib = u'%s/library/beehive/' % (self.ansible_path)
         runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
