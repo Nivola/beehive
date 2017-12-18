@@ -97,6 +97,7 @@ class OpenstackPlatformControllerChild(BaseController):
         logger.info(res)
         self.result(res, headers=[u'msg'])
 
+
 class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
     headers = [u'id', u'name', u'domain_id']
     
@@ -338,13 +339,6 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
         return res[0]['services']
 
 
-
-
-
-
-
-
-
 class OpenstackPlatformKeystoneController(OpenstackPlatformControllerChild):
     headers = [u'id', u'name', u'domain_id']
     
@@ -378,6 +372,7 @@ class OpenstackPlatformKeystoneController(OpenstackPlatformControllerChild):
         logger.info(res)
         self.result(res, headers=[u'id', u'parent_region_id', u'description'])         
 
+
 class OpenstackPlatformProjectController(OpenstackPlatformControllerChild):
     headers = [u'id', u'parent_id', u'domain_id', u'name', u'enabled']
     
@@ -391,6 +386,7 @@ class OpenstackPlatformProjectController(OpenstackPlatformControllerChild):
         OpenstackPlatformControllerChild._ext_parse_args(self)
         
         self.entity_class = self.client.project
+
 
 class OpenstackPlatformNetworkController(OpenstackPlatformControllerChild):
     headers = [u'id', u'tenant_id', u'name', u'provider:segmentation_id', 
@@ -407,6 +403,7 @@ class OpenstackPlatformNetworkController(OpenstackPlatformControllerChild):
         
         self.entity_class = self.client.network
 
+
 class OpenstackPlatformSubnetController(OpenstackPlatformControllerChild):
     headers = [u'id', u'tenant_id', u'name', u'subnet_id', u'cidr', 
                u'enable_dhcp']
@@ -421,7 +418,8 @@ class OpenstackPlatformSubnetController(OpenstackPlatformControllerChild):
         OpenstackPlatformControllerChild._ext_parse_args(self)
         
         self.entity_class = self.client.network.subnet
-        
+
+
 class OpenstackPlatformPortController(OpenstackPlatformControllerChild):
     headers = [u'id', u'tenant_id', u'port_id', u'security_groups', 
                u'mac_address', u'status', u'device_owner']
@@ -436,7 +434,8 @@ class OpenstackPlatformPortController(OpenstackPlatformControllerChild):
         OpenstackPlatformControllerChild._ext_parse_args(self)
         
         self.entity_class = self.client.network.port        
-        
+
+
 class OpenstackPlatformFloatingIpController(OpenstackPlatformControllerChild):
     headers = [u'id', u'tenant_id', u'status', u'floating_ip_address',
                u'fixed_ip_address']
@@ -451,7 +450,8 @@ class OpenstackPlatformFloatingIpController(OpenstackPlatformControllerChild):
         OpenstackPlatformControllerChild._ext_parse_args(self)
         
         self.entity_class = self.client.network.ip
-       
+
+
 class OpenstackPlatformRouterController(OpenstackPlatformControllerChild):
     headers = [u'id', u'tenant_id', u'name', u'ha', u'status']
     
@@ -465,7 +465,8 @@ class OpenstackPlatformRouterController(OpenstackPlatformControllerChild):
         OpenstackPlatformControllerChild._ext_parse_args(self)
         
         self.entity_class = self.client.network.router
-        
+
+
 class OpenstackPlatformSecurityGroupController(OpenstackPlatformControllerChild):
     headers = [u'id', u'tenant_id', u'name']
     
@@ -479,7 +480,8 @@ class OpenstackPlatformSecurityGroupController(OpenstackPlatformControllerChild)
         OpenstackPlatformControllerChild._ext_parse_args(self)
         
         self.entity_class = self.client.network.security_group             
-        
+
+
 class OpenstackPlatformImageController(OpenstackPlatformControllerChild):
     class Meta:
         label = 'openstack.platform.images'
@@ -503,7 +505,8 @@ class OpenstackPlatformImageController(OpenstackPlatformControllerChild):
         self.result(res, headers=[u'id', u'name', u'status', u'progress',
                                   u'created', u'minDisk', u'minRam',
                                   u'OS-EXT-IMG-SIZE:size'])        
-        
+
+
 class OpenstackPlatformFlavorController(OpenstackPlatformControllerChild):
     class Meta:
         label = 'openstack.platform.flavors'
@@ -527,9 +530,25 @@ class OpenstackPlatformFlavorController(OpenstackPlatformControllerChild):
         self.result(res, headers=[u'id', u'name', u'ram', u'vcpus', u'swap',
             u'os-flavor-access:is_public', u'rxtx_factor', u'disk', 
             u'OS-FLV-EXT-DATA:ephemeral', u'OS-FLV-DISABLED:disabled'])
-        
+
+
+class OpenstackPlatformKeyPairController(OpenstackPlatformControllerChild):
+    headers = [u'name', u'public_key', u'fingerprint']
+
+    class Meta:
+        label = 'openstack.platform.keypairs'
+        aliases = ['keypairs']
+        aliases_only = True
+        description = "Openstack KeyPair management"
+
+    def _ext_parse_args(self):
+        OpenstackPlatformControllerChild._ext_parse_args(self)
+
+        self.entity_class = self.client.keypair
+
+
 class OpenstackPlatformServerController(OpenstackPlatformControllerChild):
-    headers = [u'id', u'parent_id', u'name']
+    headers = [u'id', u'tenant_id', u'name', u'status', u'flavor.id', u'OS-EXT-SRV-ATTR:host', u'created']
     
     class Meta:
         label = 'openstack.platform.servers'
@@ -541,7 +560,17 @@ class OpenstackPlatformServerController(OpenstackPlatformControllerChild):
         OpenstackPlatformControllerChild._ext_parse_args(self)
         
         self.entity_class = self.client.server
-        
+
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    def list(self):
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        objs = self.entity_class.list(detail=True, **params)
+        res = []
+        for obj in objs:
+            res.append(obj)
+        self.result(res, headers=self.headers, maxsize=40)
+
+
 class OpenstackPlatformVolumeController(OpenstackPlatformControllerChild):
     headers = [u'id', u'name', u'os-vol-tenant-attr:tenant_id', u'size', 
                u'status', u'bootable']
@@ -567,6 +596,7 @@ class OpenstackPlatformVolumeController(OpenstackPlatformControllerChild):
         logger.info(res)
         self.result(res, headers=self.headers)        
 
+
 class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
     headers = [u'id', u'project', u'stack_name', u'stack_owner', 
                u'stack_status', u'stack_name', u'creation_time']
@@ -581,10 +611,6 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         OpenstackPlatformControllerChild._ext_parse_args(self)
         
         self.entity_class = self.client.heat
-        
-    @expose(hide=True)
-    def default(self):
-        self.app.args.print_help()
 
     @expose(hide=True)
     def list(self):
@@ -604,7 +630,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         """List heat stacks
         """
         params = self.get_query_params(*self.app.pargs.extra_arguments)
-        objs = self.entity_class.stacks_list(**params)
+        objs = self.entity_class.stack.list(**params)
         res = []
         for obj in objs:
             res.append(obj)
@@ -624,16 +650,16 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         self.result(res, details=True)'''
 
     @expose(aliases=[u'stack-get <name> <oid>'], aliases_only=True)
-    def get_stack(self):
+    def stack_get(self):
         """Get heat stack by id
         """        
         name = self.get_arg(name=u'name')
         oid = self.get_arg(name=u'id')
-        obj = self.entity_class.stacks_details(name, oid)
+        obj = self.entity_class.stack.get(name, oid)
         #res = self.entity_class.data(obj)
         res = obj
         logger.info(res)
-        self.result(res, details=True)
+        self.result(res, details=True, maxsize=800)
         
     @expose(aliases=[u'stack-preview <name>'], aliases_only=True)
     def stack_preview(self):
@@ -702,6 +728,7 @@ openstack_platform_controller_handlers = [
     OpenstackPlatformSecurityGroupController,
     OpenstackPlatformImageController,
     OpenstackPlatformFlavorController,
+    OpenstackPlatformKeyPairController,
     OpenstackPlatformServerController,
     OpenstackPlatformVolumeController,
     OpenstackPlatformHeatStackController

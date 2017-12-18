@@ -1,0 +1,41 @@
+platform:
+ vsphere:
+   tstsddc:
+     vcenter:
+       host: tst-vcenter.tstsddc.csi.it
+       port: 443 
+       user: administrator@tstsddc.csi.it 
+       pwd: cs1$topix
+       verified: false
+       timeout: 5
+     nsxmanager:
+       host: tst-nsxmanager.tstsddc.csi.it
+       port: 443
+       user: admin
+       pwd: Cs1$topix
+       verified: false
+       timeout: 600
+ openstack:
+   tstredhat:
+     uri: http://10.102.184.200:5000/v3
+     region: regionOne
+     domain: default
+     project: admin
+     user: admin
+     pwd: 8fAwzAJAHQFMcJfrntpapzDpC
+     verified: false
+     timeout: 5
+   tstocata:
+     uri: http://10.102.184.83:5000/v3
+     region: RegionOne
+     domain: default
+     project: admin
+     user: admin
+     pwd: cs1topix
+     verified: false
+     timeout: 5
+ veeam: null
+ graphite:
+   test:
+     host: tst-open-graphite
+ 

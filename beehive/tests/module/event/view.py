@@ -26,6 +26,7 @@ tests = [
 #     u'test_get_event_by_eventid'
 ]
 
+
 class EventTestCase(BeehiveTestCase):
     def setUp(self):
         BeehiveTestCase.setUp(self)
@@ -90,6 +91,7 @@ class EventTestCase(BeehiveTestCase):
         self.call(u'event', u'/v1.0/events/{oid}', u'get',
                   params={u'oid':4}, 
                   **self.users[u'admin'])
+
 
 if __name__ == u'__main__':
     runtest(EventTestCase, tests)  

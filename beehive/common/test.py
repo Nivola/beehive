@@ -33,7 +33,8 @@ import requests
 from beecell.swagger import ApiValidator
 from flex.core import load
 from requests.auth import HTTPBasicAuth
-#from requests import Request, Session
+from celery.utils.log import ColorFormatter as CeleryColorFormatter
+from celery.utils.term import colored
 
 seckey = None
 token = None
@@ -53,14 +54,16 @@ class BeehiveTestCase(unittest.TestCase):
     logger = logging.getLogger(u'beehive.test.log')
     runlogger = logging.getLogger(u'beehive.test.run')
     pp = pprint.PrettyPrinter(width=200)
+    logging.addLevelName(60, u'TESTPLAN')
+    logging.addLevelName(70, u'TEST')
     validatation_active = False
     validation_active = False
-    
+
     @classmethod
     def setUpClass(cls):
-        logger.info(u'#################### Testplan %s - START ####################' % cls.__name__)
+        logger.log(60, u'#################### Testplan %s - START ####################' % cls.__name__)
         logging.getLogger(u'beehive.test.run')\
-            .info(u'#################### Testplan %s - START ####################' % cls.__name__)
+            .log(60, u'#################### Testplan %s - START ####################' % cls.__name__)
         self = cls
 
         # ssl
@@ -91,8 +94,7 @@ class BeehiveTestCase(unittest.TestCase):
         self.redis_uri = cfg.get(u'redis').get(u'uri')
         if self.redis_uri is not None and self.redis_uri != u'':
             rhost, rport, db = self.redis_uri.split(u';')
-            self.redis = redis.StrictRedis(host=rhost, port=int(rport), 
-                                           db=int(db))
+            self.redis = redis.StrictRedis(host=rhost, port=int(rport), db=int(db))
         
         # celery broker
         self.broker = cfg.get(u'broker')
@@ -110,17 +112,15 @@ class BeehiveTestCase(unittest.TestCase):
         self.api = {}
         self.schema = {}
         for subsystem,endpoint in self.endpoints.items():
-            self.api[subsystem] = RemoteClient(endpoint, 
-                                               keyfile=keyfile, 
-                                               certfile=certfile)
-            #self.logger.info(u'Load swagger schema from %s' % endpoint)
-            #self.schema[subsystem] = self.validate_swagger_schema(endpoint)
+            self.api[subsystem] = RemoteClient(endpoint, keyfile=keyfile, certfile=certfile)
+            # self.logger.info(u'Load swagger schema from %s' % endpoint)
+            # self.schema[subsystem] = self.validate_swagger_schema(endpoint)
 
     @classmethod
     def tearDownClass(cls):
-        logger.info(u'#################### Testplan %s - STOP ####################' % cls.__name__)
+        logger.log(60, u'#################### Testplan %s - STOP ####################' % cls.__name__)
         logging.getLogger(u'beehive.test.run')\
-            .info(u'#################### Testplan %s - STOP ####################' % cls.__name__) 
+            .log(60, u'#################### Testplan %s - STOP ####################' % cls.__name__)
 
     @classmethod
     def load_config(cls, file_config):
@@ -131,16 +131,16 @@ class BeehiveTestCase(unittest.TestCase):
         return config
         
     def setUp(self):
-        logger.info(u'========== %s ==========' % self.id()[9:])
+        logger.log(70, u'========== %s ==========' % self.id()[9:])
         logging.getLogger(u'beehive.test.run')\
-            .info(u'========== %s ==========' % self.id()[9:])            
+            .log(70, u'========== %s ==========' % self.id()[9:])
         self.start = time.time()
         
     def tearDown(self):
         elapsed = round(time.time() - self.start, 4)
-        logger.info(u'========== %s ========== : %ss\n' % (self.id()[9:], elapsed))
+        logger.log(70, u'========== %s ========== : %ss' % (self.id()[9:], elapsed))
         logging.getLogger(u'beehive.test.run')\
-            .info(u'========== %s ========== : %ss\n' % (self.id()[9:], elapsed))            
+            .log(70, u'========== %s ========== : %ss' % (self.id()[9:], elapsed))
     
     def open_mysql_session(self, db_uri):
         engine = create_engine(db_uri)
@@ -447,6 +447,19 @@ class BeehiveTestCase(unittest.TestCase):
         uid = None
         seckey = None'''
 
+
+class ColorFormatter(CeleryColorFormatter):
+    #: Loglevel -> Color mapping.
+    COLORS = colored().names
+    colors = {u'DEBUG': COLORS[u'blue'],
+              u'WARNING': COLORS[u'yellow'],
+              u'WARN': COLORS[u'yellow'],
+              u'ERROR': COLORS[u'red'],
+              u'CRITICAL': COLORS[u'magenta'],
+              u'TEST': COLORS[u'yellow'],
+              u'TESTPLAN': COLORS[u'magenta']}
+
+
 def runtest(testcase_class, tests):
     log_file = u'/tmp/test.log'
     watch_file = u'/tmp/test.watch'
@@ -454,8 +467,8 @@ def runtest(testcase_class, tests):
     
     logging.captureWarnings(True)    
     
-    #setting logger
-    #frmt = "%(asctime)s - %(levelname)s - %(process)s:%(thread)s - %(message)s"
+    # setting logger
+    # frmt = "%(asctime)s - %(levelname)s - %(process)s:%(thread)s - %(message)s"
     frmt = u'%(asctime)s - %(levelname)s - %(message)s'
     loggers = [
         logging.getLogger(u'beehive'),
@@ -464,19 +477,16 @@ def runtest(testcase_class, tests):
         logging.getLogger(u'beehive_resource'),
         logging.getLogger(u'beehive_service'),
     ]
-    LoggerHelper.file_handler(loggers, logging.DEBUG, log_file, frmt=frmt, 
-                              formatter=ColorFormatter)
+    LoggerHelper.file_handler(loggers, logging.DEBUG, log_file, frmt=frmt, formatter=ColorFormatter)
     loggers = [
         logging.getLogger(u'beecell.perf'),
     ]
-    LoggerHelper.file_handler(loggers, logging.DEBUG, watch_file, 
-                              frmt=u'%(message)s', formatter=ColorFormatter)
+    LoggerHelper.file_handler(loggers, logging.DEBUG, watch_file, frmt=u'%(message)s', formatter=ColorFormatter)
     
     loggers = [
         logging.getLogger(u'beehive.test.run'),
     ]
-    LoggerHelper.file_handler(loggers, logging.INFO, run_file, 
-                              frmt=u'%(message)s', formatter=ColorFormatter)    
+    LoggerHelper.file_handler(loggers, logging.INFO, run_file, frmt=u'%(message)s', formatter=ColorFormatter)
     
     # run test suite
     runner = unittest.TextTestRunner(verbosity=2)

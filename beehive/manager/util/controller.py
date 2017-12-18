@@ -449,21 +449,21 @@ commands:
                         if isinstance(v, list):
                             i = 0
                             for n in v:
-                                __format_table_data(u'%s.%s' % (k,i), n)
+                                __format_table_data(u'%s.%s' % (k, i), n)
                                 i += 1
                         elif isinstance(v, dict):
-                            for k1,v1 in v.items():
-                                __format_table_data(u'%s.%s' % (k,k1), v1)
+                            for k1, v1 in v.items():
+                                __format_table_data(u'%s.%s' % (k, k1), v1)
                         else:
-                            resp.append({u'attrib':k, 
-                                         u'value':truncate(v, size=80)})                        
+                            resp.append({u'attrib': k,
+                                         u'value': truncate(v, size=maxsize)})
                     
-                    for k,v in data.items():
+                    for k, v in data.items():
                         __format_table_data(k, v)
 
                     data = resp
                     headers = [u'attrib', u'value']
-                    maxsize = 100
+                    # maxsize = 100
 
                 if isinstance(data, dict) or isinstance(data, list):
                     if u'page' in orig_data:
