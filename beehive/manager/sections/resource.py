@@ -52,20 +52,13 @@ class ResourceController(BaseController):
 class ResourceControllerChild(ApiController):
     baseuri = u'/v1.0'
     subsystem = u'resource'
-    res_headers = [u'id', u'__meta__.definition', u'name', 
-                   u'container.name', u'parent.name', u'state', 
+    res_headers = [u'id', u'__meta__.definition', u'name', u'container.name', u'parent.name', u'state', u'date.creation',
                    u'ext_id']
-    cont_headers = [u'id', u'uuid', u'category', u'__meta__.definition', 
-                    u'name', u'active', u'state', u'date.creation',
+    cont_headers = [u'id', u'uuid', u'category', u'__meta__.definition', u'name', u'active', u'state', u'date.creation',
                     u'date.modified']
-    tag_headers = [u'id', u'uuid', u'name', u'date.creation',
-                   u'date.modified', u'resources', u'containers',
-                   u'links']
-    link_headers = [u'id', u'uuid', u'name', u'active', 
-                    u'details.start_resource.id', 
-                    u'details.end_resource.id',
-                    u'details.attributes', u'date.creation',
-                    u'date.modified']
+    tag_headers = [u'id', u'uuid', u'name', u'date.creation', u'date.modified', u'resources', u'containers', u'links']
+    link_headers = [u'id', u'uuid', u'name', u'active', u'details.start_resource.id', u'details.end_resource.id',
+                    u'details.attributes', u'date.creation', u'date.modified']
     
     class Meta:
         stacked_on = 'resource'

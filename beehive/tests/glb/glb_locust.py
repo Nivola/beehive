@@ -18,6 +18,7 @@ locust -f tests/glb/glb_locust.py --slave --master-host=158.102.160.234 --host=h
 
 opens http://127.0.0.1:8089
 """
+import random
 import ujson as json
 import logging
 import os
@@ -140,12 +141,19 @@ class BaseTaskSet(TaskSet):
         self.__create_client()
         self.__create_token()
 
+        self.resources = []
+
+    def check_response(self, response):
+        if response.status_code in [400, 401, 403, 404, 405, 406, 408, 409, 415]:
+            response.failure(response.json().get(u'message'))
+
     def log_task(self, response, path, method):
         status = u'KO'
         if response.status_code in [200, 201, 202, 204]:
             status = u'OK'
         logger.info(u'User: %s - Status: %s - Remote: %s - Uri: %s - Method: %s' %
                     (id(self), status, response.headers.get(u'remote-server', None), path, method))
+        self.check_response(response)
 
     # @task(1)
     def ping(self):
@@ -165,12 +173,42 @@ class BaseTaskSet(TaskSet):
         response = self.client.get(path, headers=self.get_headers(path))
         self.log_task(response, path, method)
 
-    @task(1)
+    @task(3)
     def get_resources(self):
         path = u'/v1.0/resources'
         method = u'get'
         response = self.client.get(path, headers=self.get_headers(path))
         self.log_task(response, path, method)
+
+    @task(1)
+    def add_resource1(self):
+        path = u'/v1.0/resources'
+        method = u'post'
+        name = u'resource-test-%s' % random.randint(1, 100000)
+        data = {
+            u'resource': {
+                u'container': u'test-container',
+                u'resclass': u'beehive_resource.plugins.dummy.controller.DummySyncResource',
+                u'name': name,
+                u'desc': name,
+                u'ext_id': u'123'
+            }
+        }
+        response = self.client.post(path, json=data, headers=self.get_headers(path))
+        self.log_task(response, path, method)
+        self.resources.append(response.json()[u'uuid'])
+
+    @task(3)
+    def delete_resource1(self):
+        # if len(self.resources) > 0:
+        try:
+            uuid = self.resources.pop()
+            path = u'/v1.0/resources/%s' % uuid
+            method = u'delete'
+            response = self.client.delete(path, headers=self.get_headers(path), name=u'/v1.0/resources/[uuid]')
+            self.log_task(response, path, method)
+        except IndexError:
+            pass
 
 
 class ApiTaskSet(BaseTaskSet):
