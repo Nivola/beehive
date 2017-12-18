@@ -258,7 +258,7 @@ class RedisController(AnsibleController):
     def run_cmd(self, func, dbs=[0]):
         """Run command on redis instances
         """
-        try:
+        '''try:
             path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
             path_lib = u'%s/library/beehive/' % (self.ansible_path)
             runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
@@ -266,11 +266,11 @@ class RedisController(AnsibleController):
 
         except Exception as ex:
             self.error(ex)
-            return            
+            return'''
+
+        hosts = self.get_multi_hosts(u'redis')
             
         try:
-            self.app.print_output(u'Redis server:')
-            # sigle redis server
             resp = []
             for host in hosts:
                 for db in dbs:
@@ -323,12 +323,10 @@ class RedisController(AnsibleController):
             resp = {}
             for k,v in res.items():
                 raw = {}
-                for k1 in [u'role', u'redis_version', 
-                          u'process_id', u'uptime_in_seconds', u'os',
-                          u'connected_clients', u'total_commands_processed', u'pubsub_channels',
-                          u'total_system_memory_human', u'used_memory_rss_human', u'used_memory_human', 
-                          u'used_cpu_sys', u'used_cpu_user',
-                          u'instantaneous_output_kbps']:
+                for k1 in [u'role', u'redis_version', u'process_id', u'uptime_in_seconds', u'os', u'connected_clients',
+                           u'total_commands_processed', u'pubsub_channels', u'total_system_memory_human',
+                           u'used_memory_rss_human', u'used_memory_human', u'used_cpu_sys', u'used_cpu_user',
+                           u'instantaneous_output_kbps']:
                     raw[k1] = v[k1]
                 resp[k] = raw
             return resp
@@ -367,7 +365,7 @@ class RedisController(AnsibleController):
         
         def func(server): 
             return server.inspect(pattern=pattern, debug=False)
-        self.run_cmd(func, dbs=range(0,8))
+        self.run_cmd(func, dbs=range(0, 8))
     
     @expose(aliases=[u'query [pattern]'], aliases_only=True)
     def query(self):
@@ -382,11 +380,11 @@ class RedisController(AnsibleController):
             res = server.query(keys, ttl=False)
             if count:
                 resp = []
-                for k,v in res.items():
-                    resp.append({k:len(v)})
+                for k, v in res.items():
+                    resp.append({k: len(v)})
                 return resp
             return res
-        self.run_cmd(func, dbs=range(0,8))
+        self.run_cmd(func, dbs=range(0, 8))
     
     @expose(aliases=[u'delete [pattern]'], aliases_only=True)
     def delete(self):
@@ -397,7 +395,7 @@ class RedisController(AnsibleController):
         
         def func(server):
             return server.delete(pattern=pattern)
-        self.run_cmd(func, dbs=range(0,8))
+        self.run_cmd(func, dbs=range(0, 8))
 
 
 class RedisClutserController(RedisController):
@@ -408,14 +406,16 @@ class RedisClutserController(RedisController):
     def run_cmd(self, func, dbs=[0]):
         """Run command on redis instances
         """
-        try:
+        '''try:
             path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
             path_lib = u'%s/library/beehive/' % (self.ansible_path)
             runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
             cluster_hosts, vars = runner.get_inventory_with_vars(u'redis-master')
         except Exception as ex:
             self.error(ex)
-            return            
+            return'''
+
+        hosts = self.get_multi_hosts(u'redis-master')
 
         try:
             # redis cluster
@@ -423,7 +423,7 @@ class RedisClutserController(RedisController):
             headers = []
             cluster_nodes = []
             redis_uri = u'redis-cluster://'
-            for host in cluster_hosts:
+            for host in hosts:
                 cluster_nodes.append(u'%s:%s' % (str(host), u'6379'))
             redis_uri += u','.join(cluster_nodes)
             server = RedisManager(redis_uri)
@@ -445,7 +445,7 @@ class RedisClutserController(RedisController):
                             raws[k1][key] = v1
                         except:
                             # create new raw
-                            raws[k1] = {u'fields':k1, key:v1}
+                            raws[k1] = {u'fields': k1, key: v1}
                 headers.insert(0, u'fields')
                 resp = raws.values()
             elif isinstance(res, dict):
@@ -464,7 +464,7 @@ class RedisClutserController(RedisController):
     def super_ping(self):
         """Ping single redis instances in a cluster
         """
-        try:
+        '''try:
             path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
             path_lib = u'%s/library/beehive/' % (self.ansible_path)
             runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
@@ -472,27 +472,29 @@ class RedisClutserController(RedisController):
             cluster_hosts, vars = runner.get_inventory_with_vars(u'redis-cluster')
         except Exception as ex:
             self.error(ex)
-            return
-        
+            return'''
+
+        hosts = self.get_multi_hosts(u'redis-cluster')
+
         # redis cluster
         resp = []
         headers = []
         cluster_nodes = []
         db = 0
-        for host in cluster_hosts:
+        for host in hosts:
             redis_uri = u'redis://%s:%s/%s' % (str(host), u'6379', db)
             server = RedisManager(redis_uri, timeout=2)
             res = server.ping()
-            resp.append({u'host':str(host), u'db':db, u'response':res})
+            resp.append({u'host': str(host), u'db': db, u'response': res})
         
-        logger.info(u'Ping redis : %s' % (resp))
+        logger.info(u'Ping redis : %s' % resp)
         self.result(resp, headers=[u'host', u'db', u'response'])
         
     @expose()
     def cluster_nodes(self):
         """
         """
-        try:
+        '''try:
             path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
             path_lib = u'%s/library/beehive/' % (self.ansible_path)
             runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
@@ -500,51 +502,51 @@ class RedisClutserController(RedisController):
             cluster_hosts, vars = runner.get_inventory_with_vars(u'redis-master')
         except Exception as ex:
             self.error(ex)
-            return  
+            return'''
+
+        hosts = self.get_multi_hosts(u'redis-master')
 
         # redis cluster
         cluster_nodes = []
         redis_uri = u'redis-cluster://'
-        for host in cluster_hosts:
+        for host in hosts:
             cluster_nodes.append(u'%s:%s' % (str(host), u'6379'))
         redis_uri += u','.join(cluster_nodes)
         server = RedisManager(redis_uri)
         resp = server.server.cluster_nodes()
         logger.info(u'Cmd redis : %s' % (resp))
-        self.result(resp, headers=[u'host', u'id', u'port', u'link-state', 
-            u'flags', u'master', u'ping-sent', u'pong-recv'], 
-            key_separator=u',', maxsize=25)        
+        self.result(resp, headers=[u'host', u'id', u'port', u'link-state', u'flags', u'master', u'ping-sent',
+                    u'pong-recv'], key_separator=u',', maxsize=25)
 
 
 class MysqlController(AnsibleController):
     class Meta:
         label = 'mysql'
         description = "Mysql management"
-        
-    
+
     def __get_engine(self, host, port, user, db):
-        db_uri = u'mysql+pymysql://%s:%s@%s:%s/%s' % (
-            user[u'name'], user[u'password'], host, port, db)
+        db_uri = u'mysql+pymysql://%s:%s@%s:%s/%s' % (user[u'name'], user[u'password'], host, port, db)
         server = MysqlManager(1, db_uri)
         server.create_simple_engine()
         logger.info(u'Get mysql engine for %s' % (db_uri))
         return server
     
     def __get_hosts(self):
-        path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+        runners = self.get_runners()
+        hosts = []
+        for runner in runners:
+            hosts.extend(self.get_hosts(runner, [u'mysql', u'mysql-cluster']))
+        vars = runner.variable_manager.get_vars(runner.loader, host=hosts[0])
+
+        '''path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
         path_lib = u'%s/library/beehive/' % (self.ansible_path)
-        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
-                        module=path_lib)
+        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
         hosts, vars = runner.get_inventory_with_vars(u'mysql')
         hosts2, vars = runner.get_inventory_with_vars(u'mysql-cluster')
         hosts.extend(hosts2)
         # get root user
-        vars = runner.variable_manager.get_vars(runner.loader, host=hosts[0])
-        root = {u'name':u'root', u'password':vars[u'mysql_remote_root_password']}
-        #root = {}
-        #for user in users:
-        #    if user[u'name'] == u'root':
-        #        root = user
+        vars = runner.variable_manager.get_vars(runner.loader, host=hosts[0])'''
+        root = {u'name': u'root', u'password': vars[u'mysql_remote_root_password']}
         return hosts, root        
     
     @expose(aliases=[u'ping [port]'], aliases_only=True)
@@ -560,10 +562,10 @@ class MysqlController(AnsibleController):
         for host in hosts:
             server = self.__get_engine(host, port, root, db)
             res = server.ping()
-            resp.append({u'host':host, u'response':res})
+            resp.append({u'host': host, u'response': res})
             logger.info(u'Ping mysql : %s' % (res))
         
-            self.result(resp, headers=[u'host', u'response'])
+        self.result(resp, headers=[u'host', u'response'])
         
     @expose(aliases=[u'schemas [port]'], aliases_only=True)
     def schemas(self):
@@ -573,27 +575,36 @@ class MysqlController(AnsibleController):
         port = self.get_arg(default=3306)
         hosts, root = self.__get_hosts()
 
-        resp = []
+        resp = {}
         db = u'sys'
+        headers = [u'schema']
+        for host in hosts:
+            headers.append(u'%s.tables' % host)
         for host in hosts:
             self.app.print_output(u'Host: %s' % host)
             server = self.__get_engine(host, port, root, db)
-            resp = server.get_schemas()
+            schemas = server.get_schemas()
+            for schema_table in schemas:
+                schema = schema_table[u'schema']
+                tables = schema_table[u'tables']
+                if schema not in resp:
+                    resp[schema] = {u'schema': schema}
+                    for h in hosts:
+                        resp[schema][u'%s.tables' % h] = None
+                resp[schema][u'%s.tables' % host] = tables
             logger.info(u'Get mysql schemas : %s' % (resp))
         
-            self.result(resp, headers=[u'schema', u'tables'])
+        self.result(resp.values(), headers=headers, key_separator=u',')
         
     @expose()
     def schemas_update(self):
         """Update mysql users and schemas
         """
         run_data = {
-            u'tags':[u'schema']
+            u'tags': [u'schema']
         }        
-        self.ansible_playbook(u'mysql', run_data, 
-            playbook=u'%s/mysql.yml' % (self.ansible_path))
-        self.ansible_playbook(u'mysql-cluster-master', run_data, 
-            playbook=u'%s/mysql-cluster.yml' % (self.ansible_path))         
+        self.ansible_playbook(u'mysql', run_data, playbook=u'%s/mysql.yml' % self.ansible_path)
+        self.ansible_playbook(u'mysql-cluster-master', run_data, playbook=u'%s/mysql-cluster.yml' % self.ansible_path)
         
     @expose(aliases=[u'users [port]'], aliases_only=True)
     def users(self):
@@ -603,16 +614,66 @@ class MysqlController(AnsibleController):
         port = self.get_arg(default=3306)
         hosts, root = self.__get_hosts()
 
-        resp = []
+        resp = {}
         db = u'sys'
+        headers = [u'user']
         for host in hosts:
+            headers.append(u'%s.hosts' % host)
+        for host in hosts:
+            self.app.print_output(u'Host: %s' % host)
+            server = self.__get_engine(host, port, root, db)
+            users = server.get_users()
+            for user_host in users:
+                uhost = user_host[u'host']
+                user = user_host[u'user']
+                if user not in resp:
+                    resp[user] = {u'user': user}
+                    for h in hosts:
+                        resp[user][u'%s.hosts' % h] = None
+                resp[user][u'%s.hosts' % host] = uhost
+            logger.info(u'Get mysql users : %s' % resp)
+        self.result(resp.values(), headers=headers, key_separator=u',')
+
+
+        '''for host in hosts:
             self.app.print_output(u'Host: %s' % host)
             server = self.__get_engine(host, port, root, db)
             resp = server.get_users()
             logger.info(u'Get mysql users : %s' % (resp))
         
-            self.result(resp, headers=[u'host', u'user'])
-        
+            self.result(resp, headers=[u'host', u'user'])'''
+
+    @expose(aliases=[u'tables-check <schema> [port]'], aliases_only=True)
+    def tables_check(self):
+        """Get mysql users list
+    - schema: schema name
+    - port: instance port [default=3306]
+        """
+        schema = self.get_arg(name=u'schema')
+        port = self.get_arg(default=3306)
+        hosts, root = self.__get_hosts()
+
+        resp = {}
+        db = u'sys'
+        headers = [u'table']
+        for host in hosts:
+            headers.append(u'%s.rows-inc' % host)
+        for host in hosts:
+            self.app.print_output(u'Host: %s' % host)
+            server = self.__get_engine(host, port, root, db)
+            tables = server.get_schema_tables(schema)
+            for table_row in tables:
+                table = table_row[u'table_name']
+                rows = table_row[u'table_rows']
+                inc = table_row[u'auto_increment']
+                if table not in resp:
+                    resp[table] = {u'table': table}
+                    for h in hosts:
+                        resp[table][u'%s.rows-inc' % h] = None
+                resp[table][u'%s.rows-inc' % host] = u'%-8s %-8s' % (rows, inc)
+            logger.info(u'Get mysql tables : %s' % resp)
+        self.result(resp.values(), headers=headers, key_separator=u',')
+
     @expose(aliases=[u'tables <schema> [port]'], aliases_only=True)
     def tables(self):
         """Get mysql schema table list
@@ -630,8 +691,8 @@ class MysqlController(AnsibleController):
             resp = server.get_schema_tables(schema)
             logger.info(u'Get mysql schema %s tables : %s' % (schema, resp))
         
-            self.result(resp, headers=[u'table_name', u'table_rows', 
-                    u'auto_increment', u'data_length', u'index_length'])
+            self.result(resp, headers=[u'table_name', u'table_rows', u'auto_increment', u'data_length',
+                                       u'index_length'])
         
     @expose(aliases=[u'table-description <schema> <table> [port]'], aliases_only=True)
     def table_description(self):
@@ -648,11 +709,10 @@ class MysqlController(AnsibleController):
             self.app.print_output(u'Host: %s' % host)
             server = self.__get_engine(host, port, root, schema)
             resp = server.get_table_description(table)
-            logger.info(u'Get mysql schema %s table %s descs : %s' % 
-                        (schema, table, resp))
+            logger.info(u'Get mysql schema %s table %s descs : %s' % (schema, table, resp))
         
-            self.result(resp, headers=[u'name', u'type', u'default', u'index', 
-                        u'is_primary_key', u'is_nullable', u'is_unique'])        
+            self.result(resp, headers=[u'name', u'type', u'default', u'index', u'is_primary_key', u'is_nullable',
+                                       u'is_unique'])
 
     @expose(aliases=[u'table-query <schema> <table> [rows] [offset] [port]'], 
             aliases_only=True)
@@ -667,14 +727,11 @@ class MysqlController(AnsibleController):
         port = self.get_arg(default=3306)
         hosts, root = self.__get_hosts()
 
-        resp = []
         for host in hosts:
             self.app.print_output(u'Host: %s' % host)
             server = self.__get_engine(host, port, root, schema)
-            resp = server.query_table(table, where=None, fields="*", 
-                                       rows=rows, offset=offset)
-            logger.info(u'Get mysql schema %s table %s query : %s' % 
-                        (schema, table, resp))
+            resp = server.query_table(table, where=None, fields="*", rows=rows, offset=offset)
+            logger.info(u'Get mysql schema %s table %s query : %s' % (schema, table, resp))
         
             self.result(resp, headers=resp[0].keys(), maxsize=20) 
 
@@ -687,8 +744,7 @@ class CamundaController(AnsibleController):
     def __get_engine(self, port=8080):
         path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
         path_lib = u'%s/library/beehive/' % (self.ansible_path)
-        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
-                        module=path_lib)
+        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
         hosts, vars = runner.get_inventory_with_vars(u'camunda')
         
         clients = []
