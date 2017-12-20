@@ -516,6 +516,10 @@ commands:
             t = arg.split(u'=')
             if t[1] == 'null':
                 t[1] = None
+            if t[1] == 'True' or t[1] == 'true':
+                t[1] = True
+            if t[1] == 'False' or t[1] == 'false':
+                t[1] = False
             val[t[0]] = t[1]
         return val   
     

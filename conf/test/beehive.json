@@ -173,19 +173,72 @@
                 "nsx-section-default":{
                      "id":1003
                 },
-                "nsx-rule01":{
-                    "name":"test-rule-01",
-                    "direction":"out",
-                    "appliedto":[{"name":"DISTRIBUTED_FIREWALL", "value":"DISTRIBUTED_FIREWALL", "type":"DISTRIBUTED_FIREWALL"}],
-                    "sources":[{"name":null, "value":"158.102.160.0/24", "type":"Ipv4Address"}],
-                    "destinations":[{"name":null, "value":"158.102.160.0/24", "type":"Ipv4Address"}],
-                    "services":null,
-                    "action":"allow"
-                },
+                "nsx-rules":[
+                    {
+                        "name":"test-rule-01",
+                        "direction":"inout",
+                        "appliedto":[{"name":"DISTRIBUTED_FIREWALL", "value":"DISTRIBUTED_FIREWALL", "type":"DISTRIBUTED_FIREWALL"}],
+                        "sources":[{"name":null, "value":"", "type":"SecurityGroup"}],
+                        "destinations":[{"name":null, "value":"", "type":"SecurityGroup"}],
+                        "services":null,
+                        "action":"allow"
+                    },
+                    {
+                        "name":"test-rule-02",
+                        "direction":"in",
+                        "appliedto":[{"name":"DISTRIBUTED_FIREWALL", "value":"DISTRIBUTED_FIREWALL", "type":"DISTRIBUTED_FIREWALL"}],
+                        "sources":[{"name":null, "value":"158.102.160.0/24", "type":"Ipv4Address"}],
+                        "destinations":[{"name":null, "value":"", "type":"SecurityGroup"}],
+                        "services":null,
+                        "action":"allow"
+                    },
+                    {
+                        "name":"test-rule-03",
+                        "direction":"out",
+                        "appliedto":[{"name":"DISTRIBUTED_FIREWALL", "value":"DISTRIBUTED_FIREWALL", "type":"DISTRIBUTED_FIREWALL"}],
+                        "sources":[{"name":null, "value":"", "type":"SecurityGroup"}],
+                        "destinations":[{"name":null, "value":"0.0.0.0/0", "type":"Ipv4Address"}],
+                        "services":null,
+                        "action":"allow"
+                    }
+                ],
                 "nsx-service01":{
                     "name":"test-service-01",
                     "proto":"TCP",
                     "ports":"4000-4001"
+                },
+                "vs-server1":{
+                    "name":"test-vs-server-01",
+                    "folder":"test-folder-01",
+                    "network":{
+                        "fixed_ip": {
+                            "hostname":"test-vs-server-01",
+                            "ip": "10.102.185.55",
+                            "gw": "10.102.185.1",
+                            "dns": "10.102.184.2,10.102.184.3",
+                            "dns_search": "tstsddc.csi.it"
+                        },
+                        "uuid": "test-dvpg-01"
+                    },
+                    "availability_zone": "test-rpool-01",
+                    "flavorRef": {
+                        "core_x_socket": 1,
+                        "cpu": 2,
+                        "guest_id": "centos64Guest",
+                        "memory_mb": 1024,
+                        "version": "vmx-11"
+                    },
+                    "imageRef": "tmpl-centos7",
+                    "admin_pwd": "mypass",
+                    "template_pwd":"cs1$topix",
+                    "volume": {
+                        "destination_type": "volume",
+                        "source_type": "image",
+                        "uuid": "DS_LEGACY_VSP_LUN_00",
+                        "volume_size": 50
+                    },
+                    "security_groups": ["test-nsx-sg-01"],
+                    "pubkey":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it"
                 },
                 "domain1":{
                     "uuid":"13ca6d9c-2561-48a0-9343-24b647b4a0d2"

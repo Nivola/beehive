@@ -25,6 +25,7 @@ platform:
      pwd: 8fAwzAJAHQFMcJfrntpapzDpC
      verified: false
      timeout: 5
+     hor_url: https://10.102.184.26:1443/1362/beedrones/raw/master/tests/openstack/hot
    tstocata:
      uri: http://10.102.184.83:5000/v3
      region: RegionOne
@@ -34,6 +35,7 @@ platform:
      pwd: cs1topix
      verified: false
      timeout: 5
+     hor_url: https://10.102.184.26:1443/1362/beedrones/raw/master/tests/openstack/hot
  veeam: null
  graphite:
    test:
