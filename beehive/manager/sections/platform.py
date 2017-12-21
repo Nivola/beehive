@@ -735,6 +735,23 @@ class MysqlController(AnsibleController):
         
             self.result(resp, headers=resp[0].keys(), maxsize=20) 
 
+    @expose(aliases=[u'drop-all-tables <schema>'],
+            aliases_only=True)
+    def drop_all_tables(self):
+        """Get mysql schema table query
+        """
+        schema = self.get_arg(name=u'schema')
+        port = self.get_arg(default=3306)
+        hosts, root = self.__get_hosts()
+
+        for host in hosts:
+            self.app.print_output(u'Host: %s' % host)
+            server = self.__get_engine(host, port, root, schema)
+            resp = server.drop_all_tables(schema)
+            msg = {u'msg': u'drop all tables in schema %s' % schema}
+            logger.info(msg)
+            self.result(msg, headers=[u'msg'])
+
 
 class CamundaController(AnsibleController):
     class Meta:

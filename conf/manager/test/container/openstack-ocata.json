@@ -1,0 +1,11 @@
+{
+    "api":{
+        "uri":"http://10.102.184.83:5000/v3",
+        "domain":"default",
+        "user":"admin",
+        "project":"admin",
+        "pwd":"cs1topix",
+        "region":"RegionOne",
+        "timeout":5
+    }
+}

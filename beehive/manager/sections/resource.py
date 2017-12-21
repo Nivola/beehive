@@ -69,7 +69,30 @@ class ContainerController(ResourceControllerChild):
     class Meta:
         label = 'containers'
         description = "Container management"
-        
+
+    def get_job_state(self, jobid):
+        try:
+            res = self._call(u'/v1.0/worker/tasks/%s' % jobid, u'GET')
+            state = res.get(u'task_instance').get(u'status')
+            logger.debug(u'Get job %s state: %s' % (jobid, state))
+            if state == u'FAILURE':
+                # print(res)
+                self.app.print_error(res[u'task_instance'][u'traceback'][-1])
+            return state
+        except (NotFoundException, Exception):
+            return u'EXPUNGED'
+
+    def wait_job(self, jobid, delta=1):
+        """Wait resource
+        """
+        logger.debug(u'wait for job: %s' % jobid)
+        state = self.get_job_state(jobid)
+        while state not in [u'SUCCESS', u'FAILURE']:
+            logger.info(u'.')
+            print((u'.'))
+            sleep(delta)
+            state = self.get_job_state(jobid)
+
     @expose(aliases=[u'list [status]'], aliases_only=True)
     def list(self, *args):
         """List containers by: tags
@@ -241,15 +264,43 @@ class ContainerController(ResourceControllerChild):
     
     @expose(aliases=[u'discover <id> [type]'], aliases_only=True)
     def discover(self):
-        """Get container resource classes
+        """Discover container
         """
         contid = self.get_arg(name=u'id')
         resclass = self.get_arg(default=None)
         uri = u'%s/resourcecontainers/%s/discover' % (self.baseuri, contid)        
-        res = self._call(uri, u'GET', data=u'type=%s' % resclass)\
-                  .get(u'discover_resources')
+        res = self._call(uri, u'GET', data=u'type=%s' % resclass).get(u'discover_resources')
         headers = [u'id', u'name', u'parent', u'type', u'resclass']
         
+        print(u'New resources')
+        self.result(res, key=u'new', headers=headers)
+        print(u'Died resources')
+        self.result(res, key=u'died', headers=headers)
+        print(u'Changed resources')
+        self.result(res, key=u'changed', headers=headers)
+
+    @expose(aliases=[u'discover-all <id>'], aliases_only=True)
+    def discover_all(self):
+        """Discover container
+        """
+        contid = self.get_arg(name=u'id')
+
+        # get types
+        uri = u'%s/resources/types' % self.baseuri
+        res = self._call(uri, u'GET', data=u'type=Openstack%').get(u'resourcetypes')
+        logger.info(u'Get resource types: %s' % truncate(res))
+        types = [item[u'type'] for item in res]
+
+        res = {u'new':[], u'died':[], u'changed':[]}
+        for type in types:
+            uri = u'%s/resourcecontainers/%s/discover' % (self.baseuri, contid)
+            parres = self._call(uri, u'GET', data=u'type=%s' % type).get(u'discover_resources')
+            res[u'new'].extend(parres[u'new'])
+            res[u'died'].extend(parres[u'died'])
+            res[u'changed'].extend(parres[u'changed'])
+
+        headers = [u'id', u'name', u'parent', u'type', u'resclass']
+
         print(u'New resources')
         self.result(res, key=u'new', headers=headers)
         print(u'Died resources')
@@ -264,16 +315,45 @@ class ContainerController(ResourceControllerChild):
         contid = self.get_arg(name=u'id')
         resclass = self.get_arg(name=u'resclass')
         data = {
-            u'discover':{
-                u'resource_classes':resclass,
-                u'new':True,
-                u'died':True,
-                u'changed':True
+            u'discover': {
+                u'resource_classes': resclass,
+                u'new': True,
+                u'died': True,
+                u'changed': True
             }
         }
         uri = u'%s/resourcecontainers/%s/discover' % (self.baseuri, contid)        
         res = self._call(uri, u'PUT', data=data)
         self.result(res)
+
+    @expose(aliases=[u'synchronize-all <id>'], aliases_only=True)
+    def synchronize_all(self):
+        """Synchronize container <class> resources
+        """
+        contid = self.get_arg(name=u'id')
+
+        # get types
+        uri = u'%s/resources/types' % self.baseuri
+        res = self._call(uri, u'GET', data=u'type=Openstack%').get(u'resourcetypes')
+        logger.info(u'Get resource types: %s' % truncate(res))
+        types = [item[u'type'] for item in res]
+
+        for type in types:
+            self.app.print_output(u'Synchronize %s' % type)
+            data = {
+                u'synchronize': {
+                    u'types': type,
+                    u'new': True,
+                    u'died': True,
+                    u'changed': True
+                }
+            }
+            uri = u'%s/resourcecontainers/%s/discover' % (self.baseuri, contid)
+            res = self._call(uri, u'PUT', data=data)
+            jobid = res[u'jobid']
+            self.wait_job(jobid, delta=1)
+
+
 
     '''
     @expose(aliases=[u'ping <id>'], aliases_only=True)

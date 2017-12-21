@@ -255,6 +255,7 @@ class CliManager(CementCmd):
         logger.info(u'========================================================')
         logger.info(u'Setup loggers')
 
+
 if __name__ == u'__main__':    
     CliManager.setup_logging()
     app = CliManager('beehive')
@@ -262,5 +263,3 @@ if __name__ == u'__main__':
     
     # close the application
     app.close()
-    
-    

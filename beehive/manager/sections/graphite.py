@@ -87,7 +87,6 @@ class GraphiteNodePlatformController(GraphitePlatformControllerChild):
         self.result(res, headers=[u'id', u'name'])
 
 
-
 graphite_controller_handlers = [
     GraphitePlatformController,
     GraphiteNodePlatformController,

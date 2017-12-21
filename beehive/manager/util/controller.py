@@ -607,8 +607,7 @@ class ApiController(BaseController):
     @check_error 
     def _call(self, uri, method, data=u'', headers=None):        
         # make request
-        res = self.client.invoke(self.subsystem, uri, method, data=data, 
-                                 other_headers=headers, parse=True)
+        res = self.client.invoke(self.subsystem, uri, method, data=data, other_headers=headers, parse=True)
         
         # set token
         self.save_token(self.client.uid, self.client.seckey)
