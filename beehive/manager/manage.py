@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-'''
+"""
 Created on Sep 22, 2017
 
 @author: darkbk
-'''
+"""
 import os
 import logging
 import sys
@@ -14,19 +14,20 @@ from beehive.manager.util.logger import LoggingLogHandler
 
 from ansible.utils.display import Display as OrigDisplay
 
+
 class Display(OrigDisplay):
     def __init__(self, verbosity=0):
         super(Display, self).__init__(verbosity)
         
     def display(self, msg, color=None, stderr=False, screen_only=False, 
                 log_only=False):
-        OrigDisplay.display(self, msg, color=color, stderr=stderr, 
-                            screen_only=screen_only, log_only=log_only)
+        OrigDisplay.display(self, msg, color=color, stderr=stderr, screen_only=screen_only, log_only=log_only)
         logger.debug(msg)
-        
+
+
 display = Display()
 
-#from beehive.manager.sections.auth import AuthController
+
 from beehive.manager.util.controller import BaseController
 from beehive.manager.sections.platform import platform_controller_handlers
 from beehive.manager.sections.resource import resource_controller_handlers
@@ -95,7 +96,6 @@ class CliMinimalLogger(cement.utils.misc.MinimalLogger):
 cement.utils.misc.MinimalLogger = CliMinimalLogger'''
 
 
-
 def config_cli(app):
     # get configs
     configs = app.config.get_section_dict(u'configs')
@@ -142,8 +142,7 @@ class CliManager(CementCmd):
         prompt = u'beehive> '
         
         logging_level = logging.DEBUG
-        logging_format = u'%(asctime)s - %(levelname)s - ' \
-                         u'%(name)s.%(funcName)s:%(lineno)d - %(message)s'
+        logging_format = u'%(asctime)s - %(levelname)s - %(name)s.%(funcName)s:%(lineno)d - %(message)s'
         logging_file = u'/var/log/beehive/manage.log'
         logging_max_files = 4
         logging_max_size = 512000
@@ -193,14 +192,13 @@ class CliManager(CementCmd):
         handlers.extend(openstack_platform_controller_handlers)
         handlers.extend(provider_controller_handlers)
         handlers.extend(graphite_controller_handlers)
-        
-        
+
         configs_file = u'/etc/beehive/manage.conf'
         history_file = u'~/.beehive.manage'
         
         # authorization
-        token_file = u'.manage.token'
-        seckey_file = u'.manage.seckey'
+        token_file = u'/tmp/.manage.token'
+        seckey_file = u'/tmp/.manage.seckey'
         
         #config_files = [u'/etc/beehive/manage.conf']
         
@@ -233,8 +231,8 @@ class CliManager(CementCmd):
             
         else:
             configs = {
-                u'log':u'./',
-                u'endpoint':None
+                u'log': u'./',
+                u'endpoint': None
             }
         self.config.merge({u'configs':configs})
         logger.info(u'Load configuration from %s' % self._meta.configs_file)

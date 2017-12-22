@@ -1,8 +1,8 @@
-'''
+"""
 Created on Sep 25, 2017
 
 @author: darkbk
-'''
+"""
 import ujson as json
 import logging
 from beecell.db.manager import RedisManager, MysqlManager
@@ -45,15 +45,12 @@ class ResourceController(BaseController):
         description = "Resource management"
         arguments = []
 
-    def _setup(self, base_app):
-        BaseController._setup(self, base_app)
-
 
 class ResourceControllerChild(ApiController):
     baseuri = u'/v1.0'
     subsystem = u'resource'
-    res_headers = [u'id', u'__meta__.definition', u'name', u'container.name', u'parent.name', u'state', u'date.creation',
-                   u'ext_id']
+    res_headers = [u'id', u'__meta__.definition', u'name', u'container.name', u'parent.name', u'state',
+                   u'date.creation', u'ext_id']
     cont_headers = [u'id', u'uuid', u'category', u'__meta__.definition', u'name', u'active', u'state', u'date.creation',
                     u'date.modified']
     tag_headers = [u'id', u'uuid', u'name', u'date.creation', u'date.modified', u'resources', u'containers', u'links']
@@ -286,12 +283,10 @@ class ContainerController(ResourceControllerChild):
         contid = self.get_arg(name=u'id')
 
         # get types
-        uri = u'%s/resources/types' % self.baseuri
-        res = self._call(uri, u'GET', data=u'type=Openstack%').get(u'resourcetypes')
-        logger.info(u'Get resource types: %s' % truncate(res))
-        types = [item[u'type'] for item in res]
+        uri = u'%s/resourcecontainers/%s/discover/types' % (self.baseuri, contid)
+        types = self._call(uri, u'GET', data=u'').get(u'discover_types')
 
-        res = {u'new':[], u'died':[], u'changed':[]}
+        res = {u'new': [], u'died': [], u'changed': []}
         for type in types:
             uri = u'%s/resourcecontainers/%s/discover' % (self.baseuri, contid)
             parres = self._call(uri, u'GET', data=u'type=%s' % type).get(u'discover_resources')
@@ -333,10 +328,8 @@ class ContainerController(ResourceControllerChild):
         contid = self.get_arg(name=u'id')
 
         # get types
-        uri = u'%s/resources/types' % self.baseuri
-        res = self._call(uri, u'GET', data=u'type=Openstack%').get(u'resourcetypes')
-        logger.info(u'Get resource types: %s' % truncate(res))
-        types = [item[u'type'] for item in res]
+        uri = u'%s/resourcecontainers/%s/discover/types' % (self.baseuri, contid)
+        types = self._call(uri, u'GET', data=u'').get(u'discover_types')
 
         for type in types:
             self.app.print_output(u'Synchronize %s' % type)

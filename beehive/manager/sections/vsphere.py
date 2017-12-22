@@ -104,7 +104,7 @@ class VspherePlatformDatacenterController(VspherePlatformControllerChild):
 
 
 class VspherePlatformClusterController(VspherePlatformControllerChild):
-    headers = [u'id', u'name']
+    headers = [u'id', u'name', u'parent']
     
     class Meta:
         label = 'vsphere.platform.clusters'
@@ -124,8 +124,9 @@ class VspherePlatformClusterController(VspherePlatformControllerChild):
         res = []
         for o in objs:
             res.append({
-                u'id':o[u'obj']._moId,
-                u'name':o[u'name'],
+                u'id': o[u'obj']._moId,
+                u'name': o[u'name'],
+                u'parent': o[u'parent']._moId
             })
         logger.info(res)
         self.result(res, headers=self.headers)
@@ -137,8 +138,9 @@ class VspherePlatformClusterController(VspherePlatformControllerChild):
         res = []
         for o in objs:
             res.append({
-                u'id':o[u'obj']._moId,
-                u'name':o[u'name'],
+                u'id': o[u'obj']._moId,
+                u'name': o[u'name'],
+                u'parent': o[u'parent']._moId
             })
         logger.info(res)
         self.result(res, headers=self.headers)
@@ -149,9 +151,11 @@ class VspherePlatformClusterController(VspherePlatformControllerChild):
         objs = self.entity_class.resource_pool.list(**params)
         res = []
         for o in objs:
+            print o[u'parent']._moId
             res.append({
-                u'id':o[u'obj']._moId,
-                u'name':o[u'name'],
+                u'id': o[u'obj']._moId,
+                u'name': o[u'name'],
+                u'parent': o[u'parent']._moId
             })
         logger.info(res)
         self.result(res, headers=self.headers)

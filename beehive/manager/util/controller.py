@@ -20,7 +20,7 @@ try:
 except ImportError:
     from yaml import Loader, Dumper
 from pprint import PrettyPrinter
-from beehive.common.apiclient import BeehiveApiClient
+from beehive.common.apiclient import BeehiveApiClient, BeehiveApiClientError
 from logging import getLogger
 from urllib import urlencode
 from time import sleep
@@ -38,7 +38,7 @@ from time import sleep
 
 logger = getLogger(__name__)
 
-class bcolors:
+'''class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
     OKGREEN = '\033[92m'
@@ -59,11 +59,12 @@ class bcolors:
     def output(self, data, color):
         return getattr(self, color) + data + self.ENDC
 
+
 def print_error(error):
     """Print error
     """
     print(bcolors.FAIL + u'   ERROR : ' + bcolors.ENDC +
-      bcolors.FAIL + bcolors.BOLD + str(error) + bcolors.ENDC)
+      bcolors.FAIL + bcolors.BOLD + str(error) + bcolors.ENDC)'''
     
 
 def check_error(fn):
@@ -78,15 +79,20 @@ def check_error(fn):
     @wraps(fn)
     def check_error_inner(*args, **kwargs):
         try:
+            #print args[0].app.error
+            if args[0].app.error is True:
+                return None
+            #print 0
             # call internal function
             res = fn(*args, **kwargs)
-            return res      
+            return res
         except Exception as ex:
-            #logger.error(ex, exc_info=1)
+            # logger.error(ex, exc_info=1)
             args[0].app.print_error(ex)
-            #args[0].app.error = True
-            #exit(1)
+            # args[0].app.error = True
+            # exit(1)
     return check_error_inner
+
 
 class JsonStyle(Style):
     default_style = ''
@@ -96,7 +102,8 @@ class JsonStyle(Style):
         Token.Literal.Number: u'#0099ff',
         Token.Keyword.Constant: u'#ff3300'
     }
-    
+
+
 class YamlStyle(Style):
     default_style = ''
     styles = {
@@ -105,6 +112,7 @@ class YamlStyle(Style):
         Token.Literal.Number: u'#0099ff',
         Token.Operator: u'#ff3300'
     }    
+
 
 class JsonFilter(Filter):
     def __init__(self, **options):
@@ -117,6 +125,7 @@ class JsonFilter(Filter):
                      u'-[0-9a-f]{12}', value.strip(u'"')):
                 rtype = Token.Literal.Number            
             yield rtype, value
+
 
 class YamlFilter(Filter):
     def __init__(self, **options):
@@ -147,6 +156,7 @@ class YamlFilter(Filter):
             self.prev_tag1 = self.prev_tag2
             self.prev_tag2 = value
             yield rtype, value
+
 
 class BaseController(CementCmdBaseController):
     """
@@ -277,16 +287,14 @@ commands:
 
         if self._dispatch_command:
             if self._dispatch_command['func_name'] == '_dispatch':
-                func = getattr(self._dispatch_command['controller'],
-                               '_dispatch')
+                func = getattr(self._dispatch_command['controller'], '_dispatch')
                 return func()
             else:
                 self._process_arguments()
                 self._parse_args()
                 if not self._dispatch_command['func_name'] == 'default':
                     self._ext_parse_args()
-                func = getattr(self._dispatch_command['controller'],
-                               self._dispatch_command['func_name'])
+                func = getattr(self._dispatch_command['controller'], self._dispatch_command['func_name'])
                 return func()
         else:
             self._process_arguments()
@@ -487,7 +495,7 @@ commands:
             print(data)
     
     def output(self, data, color=u'WHITEonBLACK'):
-        print(bcolors().output(data, color))          
+        self.app.print_output(data, color=color)
     
     def error(self, error):
         self.app.print_error(error)
@@ -558,7 +566,7 @@ commands:
             f.write(seckey)
             f.close()
         
-    #@check_error
+    @check_error
     def get_arg(self, default=None, name=None):
         arg = None
         try:
@@ -569,7 +577,8 @@ commands:
             elif name is not None:
                 raise Exception(u'Param %s is not defined' % name)
         return arg            
-            
+
+
 class ApiController(BaseController):
     subsytem = None
     baseuri = None    
@@ -595,7 +604,7 @@ class ApiController(BaseController):
                                        client_config=client_config)
         
         # get token
-        self.client.uid, self.client.seckey  = self.get_token()        
+        self.client.uid, self.client.seckey = self.get_token()
     
         if self.client.uid is None:
             # create token
@@ -605,12 +614,15 @@ class ApiController(BaseController):
             self.save_token(self.client.uid, self.client.seckey)
     
     @check_error 
-    def _call(self, uri, method, data=u'', headers=None):        
-        # make request
-        res = self.client.invoke(self.subsystem, uri, method, data=data, other_headers=headers, parse=True)
-        
-        # set token
-        self.save_token(self.client.uid, self.client.seckey)
+    def _call(self, uri, method, data=u'', headers=None):
+        try:
+            # make request
+            res = self.client.invoke(self.subsystem, uri, method, data=data, other_headers=headers, parse=True)
+        except BeehiveApiClientError as ex:
+            raise
+        finally:
+            # set token
+            self.save_token(self.client.uid, self.client.seckey)
         
         return res
     

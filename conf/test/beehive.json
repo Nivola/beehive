@@ -338,20 +338,20 @@
                      "orchestrators":[
                         {
                             "type":"vsphere",
-                            "id":"test-container-vsphere",
+                            "id":"tst-vecenter-01",
                             "tag":"default",
                             "config":{
-                                "datacenter":"5717fb4c-0a33-4076-9334-7a6520cce77b",
-                                "resource_pool":"065aba41-e63f-478d-90a4-42a4f3732b93",
-                                "physical_network":"aeee25b7-1f73-42e0-a7f5-58ccc02ef1ba"
+                                "datacenter":"TST-SDDC",
+                                "resource_pool":"6865522b-2b7b-47e0-bece-d0f42be4f290",
+                                "physical_network":"DVS-LEGACY"
                             }
                         },
                         {
                             "type":"openstack",
-                            "id":"test-container-ops2",
+                            "id":"tst-opstk-redhat-01",
                             "tag":"default",
                             "config":{
-                                "domain":"13ca6d9c-2561-48a0-9343-24b647b4a0d2",
+                                "domain":"123c8f21-3f72-4d66-b43e-7efc47d16e3f",
                                 "availability_zone":"nova",
                                 "physical_network":"datacentre",
                                 "public_network":"internet"
@@ -416,14 +416,14 @@
                         {
                             "orchestrator_type":"vsphere",
                             "availability_zone":"test-prv-site-01",
-                            "orchestrator":"test-container-vsphere",
+                            "orchestrator":"tst-vecenter-01",
                             "template_id":"tmpl-centos7",
                             "admin_pwd":"testlab"
                         },
                         {
                             "orchestrator_type": "openstack",
                             "availability_zone": "test-prv-site-01",
-                            "orchestrator": "test-container-ops2",
+                            "orchestrator": "tst-opstk-redhat-01",
                             "template_id": "centos7-heat-raw"
                         }
                     ]
@@ -440,15 +440,15 @@
                         {
                             "orchestrator_type":"vsphere",
                             "availability_zone":"test-prv-site-01",
-                            "orchestrator":"test-container-vsphere",
+                            "orchestrator":"tst-vecenter-01",
                             "datastores":["DS_LEGACY_VSP_LUN_00", "DS_EX_OPSTK_VSP_LUN_00"],
                             "version":"vmx-11"
                         },
                         {
                             "orchestrator_type": "openstack",
                             "availability_zone": "test-prv-site-01",
-                            "orchestrator": "test-container-ops2",
-                            "flavor_id": "422"
+                            "orchestrator": "tst-opstk-redhat-01",
+                            "flavor_id": "9"
                         }
                     ]
                 },
@@ -503,7 +503,7 @@
         "container":{
             "config":{
                 "vsphere1":{
-                    "name":"test-container-vsphere",                
+                    "name":"tst-vecenter-01",
                     "vcenter":{
                         "host":"tst-vcenter.tstsddc.csi.it",
                         "port":443,
@@ -522,7 +522,7 @@
                     }
                 },
                 "openstack1":{
-                    "name":"test-container-ops",                
+                    "name":"tst-opstk-ocata-01",
                     "api":{                
                         "uri":"http://10.102.184.83:5000/v3",
                         "domain":"default",
@@ -533,7 +533,7 @@
                     }
                 },
                 "openstack2":{
-                    "name":"test-container-ops2",                
+                    "name":"tst-opstk-redhat-01",
                     "api":{                
                         "uri":"http://10.102.184.200:5000/v3",
                         "domain":"default",
@@ -544,7 +544,925 @@
                     }
                 },
                 "provider1":{
-                    "name":"test-container-prv"
+                    "name":"tst-provider-01"
+                }
+            }
+        }
+    },
+    "lab4":{
+        "cmdb":{
+            "uri":null,
+            "db_uri":"postgresql+psycopg2://pastext:pent4ho@vm-cmdbuild.csi.it:5432/cmdbprod"
+        },
+        "db-uris":{
+            "auth":"mysql+pymysql://auth:auth@10.102.184.68:3306/auth",
+            "resource":"mysql+pymysql://resource:resource@10.102.184.68:3306/resource"
+        },
+        "redis":{"uri":"10.102.184.68;6379;0"},
+        "broker":"redis://10.102.184.68:6379/6",
+        "endpoints":{
+            "auth":"http://10.102.184.68:6060",
+            "event":"http://10.102.184.68:6070",
+            "resource":"http://10.102.184.68:6090",
+            "service":"http://10.102.184.68:6110"
+        },
+        "users":{
+            "admin1":{
+                "user":"admin@local",
+                "pwd":"testlab",
+                "ip":"158.102.160.234",
+                "auth":"simplehttp",
+                "catalog":"beehive-internal"
+            },
+            "admin":{
+                "user":"admin@local",
+                "pwd":"testlab",
+                "ip":"158.102.160.234",
+                "auth":"keyauth",
+                "catalog":"beehive-internal"
+            },
+            "test":{
+                "user":"test1@local",
+                "pwd":"testlab",
+                "ip":"158.102.160.234",
+                "auth":"keyauth",
+                "catalog":"beehive-internal"
+            }
+        },
+        "resource":{
+            "config":{
+                "datacenter1":{
+                    "uuid":"db43d07d-506e-48dd-9390-1c8a668003e1"
+                },
+                "folder1":{
+                    "name":"test-folder-01",
+                    "parent":null
+                },
+                "folder2":{
+                    "name":"test-folder-02",
+                    "parent":"test-folder-01"
+                },
+                "dvs1":{
+                    "uuid":"d9fd2f3e-cfbd-4dd0-8198-1d762003d4a8"
+                },
+                "dvpg1":{
+                    "name":"test-dvpg-01",
+                    "vlan":565
+                },
+                "cluster1":{
+                    "uuid":"c71f1fcf-b3f1-4a5d-a632-df25f35355f2"
+                },
+                "rpool1":{
+                    "name":"test-rpool-01"
+                },
+                "ipset1":{
+                    "name":"test-ipset-01"
+                },
+                "lg1":{
+                    "name":"test-lg-01",
+                    "transport_zone":"vdnscope-1"
+                },
+                "nsx-sg1":{
+                    "name":"test-sg-01",
+                    "member":"9a0e9eb6-6381-4a5e-8cbb-bbe6d576b988"
+                },
+                "nsx-section01":{
+                    "name":"test-section-01"
+                },
+                "nsx-section-default":{
+                     "id":1003
+                },
+                "nsx-rules":[
+                    {
+                        "name":"test-rule-01",
+                        "direction":"inout",
+                        "appliedto":[{"name":"DISTRIBUTED_FIREWALL", "value":"DISTRIBUTED_FIREWALL", "type":"DISTRIBUTED_FIREWALL"}],
+                        "sources":[{"name":null, "value":"", "type":"SecurityGroup"}],
+                        "destinations":[{"name":null, "value":"", "type":"SecurityGroup"}],
+                        "services":null,
+                        "action":"allow"
+                    },
+                    {
+                        "name":"test-rule-02",
+                        "direction":"in",
+                        "appliedto":[{"name":"DISTRIBUTED_FIREWALL", "value":"DISTRIBUTED_FIREWALL", "type":"DISTRIBUTED_FIREWALL"}],
+                        "sources":[{"name":null, "value":"158.102.160.0/24", "type":"Ipv4Address"}],
+                        "destinations":[{"name":null, "value":"", "type":"SecurityGroup"}],
+                        "services":null,
+                        "action":"allow"
+                    },
+                    {
+                        "name":"test-rule-03",
+                        "direction":"out",
+                        "appliedto":[{"name":"DISTRIBUTED_FIREWALL", "value":"DISTRIBUTED_FIREWALL", "type":"DISTRIBUTED_FIREWALL"}],
+                        "sources":[{"name":null, "value":"", "type":"SecurityGroup"}],
+                        "destinations":[{"name":null, "value":"0.0.0.0/0", "type":"Ipv4Address"}],
+                        "services":null,
+                        "action":"allow"
+                    }
+                ],
+                "nsx-service01":{
+                    "name":"test-service-01",
+                    "proto":"TCP",
+                    "ports":"4000-4001"
+                },
+                "vs-server1":{
+                    "name":"test-vs-server-01",
+                    "folder":"test-folder-01",
+                    "network":{
+                        "fixed_ip": {
+                            "hostname":"test-vs-server-01",
+                            "ip": "10.102.185.55",
+                            "gw": "10.102.185.1",
+                            "dns": "10.102.184.2,10.102.184.3",
+                            "dns_search": "tstsddc.csi.it"
+                        },
+                        "uuid": "test-dvpg-01"
+                    },
+                    "availability_zone": "test-rpool-01",
+                    "flavorRef": {
+                        "core_x_socket": 1,
+                        "cpu": 2,
+                        "guest_id": "centos64Guest",
+                        "memory_mb": 1024,
+                        "version": "vmx-11"
+                    },
+                    "imageRef": "tmpl-centos7",
+                    "admin_pwd": "mypass",
+                    "template_pwd":"cs1$topix",
+                    "volume": {
+                        "destination_type": "volume",
+                        "source_type": "image",
+                        "uuid": "DS_LEGACY_VSP_LUN_00",
+                        "volume_size": 50
+                    },
+                    "security_groups": ["test-nsx-sg-01"],
+                    "pubkey":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it"
+                },
+                "domain1":{
+                    "uuid":"13ca6d9c-2561-48a0-9343-24b647b4a0d2"
+                },
+                "project1":{
+                    "name":"test-project-01",
+                    "parent":null,
+                    "user":"4b4bfb6d5ff0440d93ffb0c313d52ce0",
+                    "role":"688ecda68b63421d901e6714f07edd24"
+                },
+                "project2":{
+                    "name":"test-project-02",
+                    "parent":"test-project-01"
+                },
+                "network1":{
+                    "name":"test-network-01",
+                    "physical_network":"datacentre",
+                    "vlan":565
+                },
+                "subnet1":{
+                    "name":"test-subnet-01",
+                    "cidr":"10.102.185.0/24",
+                    "start_pool":"10.102.185.50",
+                    "end_pool":"10.102.185.60"
+                },
+                "port1":{
+                    "name":"test-port-01",
+                    "ip":"10.102.185.60"
+                },
+                "sg1":{
+                    "name":"test-sg-01",
+                    "rule1":{
+                        "direction":"ingress",
+                        "remote_ip_prefix":"158.102.160.0/24",
+                        "protocol":"tcp",
+                        "port_range_min":"1",
+                        "port_range_max":"65000"
+                    },
+                    "rule2":{
+                        "direction":"ingress",
+                        "protocol":null
+                    },
+                    "rule3":{
+                        "direction":"egress",
+                        "protocol":null
+
+                    },
+                    "rule4":{
+                        "direction":"egress",
+                        "protocol":null,
+                        "remote_ip_prefix":"0.0.0.0/0"
+                    }
+                },
+                "router1":{
+                    "name":"test-router-01",
+                    "routes": [
+                        {"destination": "102.109.178.23/24", "nexthop": "10.109.78.2"}
+                    ],
+                    "external_network":{
+                        "vlan":567
+                    },
+                    "internal_network":["test-subnet-01"]
+                },
+                "ops-server1":{
+                    "name":"test-server-01",
+                    "project":"test-project-01",
+                    "network":{
+                        "hostname":"test-server-01",
+                        "uuid":"test-network-01",
+                        "gw":"10.102.185.1",
+                        "dns":["10.102.184.2", "10.102.184.3"]
+                    },
+                    "availability_zone":"nova",
+                    "flavorRef":"m1.medium",
+                    "imageRef":"centos7-heat",
+                    "admin_pwd":"mypass",
+                    "volume":{"size":20},
+                    "security_groups": ["test-sg-01"],
+                    "pubkey":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it"
+                },
+                "prv-region1":{
+                     "name":"test-prv-region-01",
+                     "geo_area":"pedmont",
+                     "coords":"100,100"
+                },
+                "prv-site1":{
+                     "name":"test-prv-site-01",
+                     "geo_area":"pedmont",
+                     "coords":"100,100",
+                     "limits":{
+                          "cpu":200,
+                          "ram":4096,
+                          "storage":524288,
+                          "instance":5000,
+                          "network":4096
+                     },
+                     "orchestrators":[
+                        {
+                            "type":"vsphere",
+                            "id":"tst-vecenter-01",
+                            "tag":"default",
+                            "config":{
+                                "datacenter":"TST-SDDC",
+                                "resource_pool":"6865522b-2b7b-47e0-bece-d0f42be4f290",
+                                "physical_network":"DVS-LEGACY"
+                            }
+                        },
+                        {
+                            "type":"openstack",
+                            "id":"tst-opstk-redhat-01",
+                            "tag":"default",
+                            "config":{
+                                "domain":"123c8f21-3f72-4d66-b43e-7efc47d16e3f",
+                                "availability_zone":"nova",
+                                "physical_network":"datacentre",
+                                "public_network":"internet"
+                            }
+                        }
+                     ]
+                },
+                "prv-site-network1": {
+                    "name": "test-prv-site-network-01",
+                    "site": "test-prv-site-01",
+                    "external": false,
+                    "vlan": 565,
+                    "subnets": [
+                        {
+                            "cidr":"10.102.185.0/24",
+                            "gateway":"10.102.185.1",
+                            "allocation_pools":[{"start":"10.102.185.50", "end":"10.102.185.60"}],
+                            "enable_dhcp":true,
+                            "dns_nameservers":["10.102.184.2", "10.102.184.3"]
+                        }
+                    ],
+                    "subnets_new": [
+                        {
+                            "cidr":"10.102.186.0/24",
+                            "gateway":"10.102.186.1",
+                            "allocation_pools":[{"start":"10.102.186.50", "end":"10.102.186.60"}],
+                            "enable_dhcp":true,
+                            "dns_nameservers":["10.102.184.2", "10.102.184.3"],
+                            "allocable":false
+                        }
+                    ]
+                },
+                "prv-compute-zone1":{
+                     "name":"test-prv-compute-zone-01",
+                     "quota":{
+                          "cpu":10,
+                          "ram":1024,
+                          "storage":10000,
+                          "instance":100,
+                          "network":1024
+                     },
+                     "sites":[
+                         {
+                             "id":"test-prv-site-01",
+                             "tag":"default",
+                             "quota":{
+                                  "cpu":10,
+                                  "ram":1024,
+                                  "storage":10000,
+                                  "instance":100,
+                                  "network":1024
+                             }
+                         }
+                     ]
+                },
+                "prv-compute-image1": {
+                    "name": "test-prv-compute-image-01",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "os":"centos",
+                    "os_ver":"7.2",
+                    "templates":[
+                        {
+                            "orchestrator_type":"vsphere",
+                            "availability_zone":"test-prv-site-01",
+                            "orchestrator":"tst-vecenter-01",
+                            "template_id":"tmpl-centos7",
+                            "admin_pwd":"testlab"
+                        },
+                        {
+                            "orchestrator_type": "openstack",
+                            "availability_zone": "test-prv-site-01",
+                            "orchestrator": "tst-opstk-redhat-01",
+                            "template_id": "centos7-heat-raw"
+                        }
+                    ]
+                },
+                "prv-compute-flavor1": {
+                    "name": "test-prv-compute-flavor-01",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "memory": 4096,
+                    "disk": 50,
+                    "disk_iops": 0,
+                    "vcpus": 2,
+                    "bandwidth": 0,
+                    "flavors":[
+                        {
+                            "orchestrator_type":"vsphere",
+                            "availability_zone":"test-prv-site-01",
+                            "orchestrator":"tst-vecenter-01",
+                            "datastores":["DS_LEGACY_VSP_LUN_00", "DS_EX_OPSTK_VSP_LUN_00"],
+                            "version":"vmx-11"
+                        },
+                        {
+                            "orchestrator_type": "openstack",
+                            "availability_zone": "test-prv-site-01",
+                            "orchestrator": "tst-opstk-redhat-01",
+                            "flavor_id": "9"
+                        }
+                    ]
+                },
+                "prv-vpc1": {
+                    "name": "test-prv-vpc-01",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "networks": [
+                        "test-prv-site-network-01"
+                    ]
+                },
+                "prv-security-group1": {
+                    "name": "test-prv-security-group-01",
+                    "vpc": "test-prv-vpc-01"
+                },
+                "prv-rule1": {
+                    "name": "test-prv-rule-01",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "source": {"type":"SecurityGroup", "value":"test-prv-security-group-01"},
+                    "destination": {"type":"SecurityGroup", "value":"test-prv-security-group-01"},
+                    "service": {"port": "*", "protocol": "*"}
+                },
+                "prv-rule2": {
+                    "name": "test-prv-rule-02",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "source": {"type":"SecurityGroup", "value":"test-prv-security-group-01"},
+                    "destination": {"type":"Cidr", "value":"0.0.0.0/0"},
+                    "service": {"port": "*", "protocol": "*"}
+                },
+                "prv-rule3": {
+                    "name": "test-prv-rule-03",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "source": {"type":"Cidr", "value":"158.102.160.0/24"},
+                    "destination": {"type":"SecurityGroup", "value":"test-prv-security-group-01"},
+                    "service": {"port": "*", "protocol": "*"}
+                },
+                "prv-instance1": {
+                    "name": "test-prv-instance-01",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "site": "test-prv-site-01",
+                    "vpc": "test-prv-vpc-01",
+                    "subnet": "10.102.185.0/24",
+                    "flavor": "test-prv-compute-flavor-01",
+                    "image": "test-prv-compute-image-01",
+                    "security_groups":["test-prv-security-group-01"],
+                    "admin_pass": "mypass",
+                    "type": "openstack",
+                    "root_volume_size":50,
+                    "user_data":{"pubkey":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it"}
+                }
+            }
+        },
+        "container":{
+            "config":{
+                "vsphere1":{
+                    "name":"tst-vecenter-01",
+                    "vcenter":{
+                        "host":"tst-vcenter.tstsddc.csi.it",
+                        "port":443,
+                        "user":"administrator@tstsddc.csi.it",
+                        "pwd":"cs1$topix",
+                        "verified":false,
+                        "timeout":5
+                    },
+                    "nsx":{
+                        "host":"tst-nsxmanager.tstsddc.csi.it",
+                        "port":443,
+                        "user":"admin",
+                        "pwd":"Cs1$topix",
+                        "verified":false,
+                        "timeout":600
+                    }
+                },
+                "openstack1":{
+                    "name":"tst-opstk-ocata-01",
+                    "api":{
+                        "uri":"http://10.102.184.83:5000/v3",
+                        "domain":"default",
+                        "user":"admin",
+                        "project":"admin",
+                        "pwd":"cs1topix",
+                        "region":"RegionOne"
+                    }
+                },
+                "openstack2":{
+                    "name":"tst-opstk-redhat-01",
+                    "api":{
+                        "uri":"http://10.102.184.200:5000/v3",
+                        "domain":"default",
+                        "user":"admin",
+                        "project":"admin",
+                        "pwd":"8fAwzAJAHQFMcJfrntpapzDpC",
+                        "region":"regionOne"
+                    }
+                },
+                "provider1":{
+                    "name":"tst-provider-01"
+                }
+            }
+        }
+    },
+    "lab3":{
+        "cmdb":{
+            "uri":null,
+            "db_uri":"postgresql+psycopg2://pastext:pent4ho@vm-cmdbuild.csi.it:5432/cmdbprod"
+        },
+        "db-uris":{
+            "auth":"mysql+pymysql://auth:auth@10.102.184.67:3306/auth",
+            "resource":"mysql+pymysql://resource:resource@10.102.184.67:3306/resource"
+        },
+        "redis":{"uri":"10.102.184.67;6379;0"},
+        "broker":"redis://10.102.184.67:6379/6",
+        "endpoints":{
+            "auth":"http://10.102.184.67:6060",
+            "event":"http://10.102.184.67:6070",
+            "resource":"http://10.102.184.67:6090",
+            "service":"http://10.102.184.67:6110"
+        },
+        "users":{
+            "admin1":{
+                "user":"admin@local",
+                "pwd":"testlab",
+                "ip":"158.102.160.234",
+                "auth":"simplehttp",
+                "catalog":"beehive-internal"
+            },
+            "admin":{
+                "user":"admin@local",
+                "pwd":"testlab",
+                "ip":"158.102.160.234",
+                "auth":"keyauth",
+                "catalog":"beehive-internal"
+            },
+            "test":{
+                "user":"test1@local",
+                "pwd":"testlab",
+                "ip":"158.102.160.234",
+                "auth":"keyauth",
+                "catalog":"beehive-internal"
+            }
+        },
+        "resource":{
+            "config":{
+                "datacenter1":{
+                    "uuid":"db43d07d-506e-48dd-9390-1c8a668003e1"
+                },
+                "folder1":{
+                    "name":"test-folder-01",
+                    "parent":null
+                },
+                "folder2":{
+                    "name":"test-folder-02",
+                    "parent":"test-folder-01"
+                },
+                "dvs1":{
+                    "uuid":"d9fd2f3e-cfbd-4dd0-8198-1d762003d4a8"
+                },
+                "dvpg1":{
+                    "name":"test-dvpg-01",
+                    "vlan":565
+                },
+                "cluster1":{
+                    "uuid":"c71f1fcf-b3f1-4a5d-a632-df25f35355f2"
+                },
+                "rpool1":{
+                    "name":"test-rpool-01"
+                },
+                "ipset1":{
+                    "name":"test-ipset-01"
+                },
+                "lg1":{
+                    "name":"test-lg-01",
+                    "transport_zone":"vdnscope-1"
+                },
+                "nsx-sg1":{
+                    "name":"test-sg-01",
+                    "member":"9a0e9eb6-6381-4a5e-8cbb-bbe6d576b988"
+                },
+                "nsx-section01":{
+                    "name":"test-section-01"
+                },
+                "nsx-section-default":{
+                     "id":1003
+                },
+                "nsx-rules":[
+                    {
+                        "name":"test-rule-01",
+                        "direction":"inout",
+                        "appliedto":[{"name":"DISTRIBUTED_FIREWALL", "value":"DISTRIBUTED_FIREWALL", "type":"DISTRIBUTED_FIREWALL"}],
+                        "sources":[{"name":null, "value":"", "type":"SecurityGroup"}],
+                        "destinations":[{"name":null, "value":"", "type":"SecurityGroup"}],
+                        "services":null,
+                        "action":"allow"
+                    },
+                    {
+                        "name":"test-rule-02",
+                        "direction":"in",
+                        "appliedto":[{"name":"DISTRIBUTED_FIREWALL", "value":"DISTRIBUTED_FIREWALL", "type":"DISTRIBUTED_FIREWALL"}],
+                        "sources":[{"name":null, "value":"158.102.160.0/24", "type":"Ipv4Address"}],
+                        "destinations":[{"name":null, "value":"", "type":"SecurityGroup"}],
+                        "services":null,
+                        "action":"allow"
+                    },
+                    {
+                        "name":"test-rule-03",
+                        "direction":"out",
+                        "appliedto":[{"name":"DISTRIBUTED_FIREWALL", "value":"DISTRIBUTED_FIREWALL", "type":"DISTRIBUTED_FIREWALL"}],
+                        "sources":[{"name":null, "value":"", "type":"SecurityGroup"}],
+                        "destinations":[{"name":null, "value":"0.0.0.0/0", "type":"Ipv4Address"}],
+                        "services":null,
+                        "action":"allow"
+                    }
+                ],
+                "nsx-service01":{
+                    "name":"test-service-01",
+                    "proto":"TCP",
+                    "ports":"4000-4001"
+                },
+                "vs-server1":{
+                    "name":"test-vs-server-01",
+                    "folder":"test-folder-01",
+                    "network":{
+                        "fixed_ip": {
+                            "hostname":"test-vs-server-01",
+                            "ip": "10.102.185.55",
+                            "gw": "10.102.185.1",
+                            "dns": "10.102.184.2,10.102.184.3",
+                            "dns_search": "tstsddc.csi.it"
+                        },
+                        "uuid": "test-dvpg-01"
+                    },
+                    "availability_zone": "test-rpool-01",
+                    "flavorRef": {
+                        "core_x_socket": 1,
+                        "cpu": 2,
+                        "guest_id": "centos64Guest",
+                        "memory_mb": 1024,
+                        "version": "vmx-11"
+                    },
+                    "imageRef": "tmpl-centos7",
+                    "admin_pwd": "mypass",
+                    "template_pwd":"cs1$topix",
+                    "volume": {
+                        "destination_type": "volume",
+                        "source_type": "image",
+                        "uuid": "DS_LEGACY_VSP_LUN_00",
+                        "volume_size": 50
+                    },
+                    "security_groups": ["test-nsx-sg-01"],
+                    "pubkey":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it"
+                },
+                "domain1":{
+                    "uuid":"13ca6d9c-2561-48a0-9343-24b647b4a0d2"
+                },
+                "project1":{
+                    "name":"test-project-01",
+                    "parent":null,
+                    "user":"4b4bfb6d5ff0440d93ffb0c313d52ce0",
+                    "role":"688ecda68b63421d901e6714f07edd24"
+                },
+                "project2":{
+                    "name":"test-project-02",
+                    "parent":"test-project-01"
+                },
+                "network1":{
+                    "name":"test-network-01",
+                    "physical_network":"datacentre",
+                    "vlan":565
+                },
+                "subnet1":{
+                    "name":"test-subnet-01",
+                    "cidr":"10.102.185.0/24",
+                    "start_pool":"10.102.185.50",
+                    "end_pool":"10.102.185.60"
+                },
+                "port1":{
+                    "name":"test-port-01",
+                    "ip":"10.102.185.60"
+                },
+                "sg1":{
+                    "name":"test-sg-01",
+                    "rule1":{
+                        "direction":"ingress",
+                        "remote_ip_prefix":"158.102.160.0/24",
+                        "protocol":"tcp",
+                        "port_range_min":"1",
+                        "port_range_max":"65000"
+                    },
+                    "rule2":{
+                        "direction":"ingress",
+                        "protocol":null
+                    },
+                    "rule3":{
+                        "direction":"egress",
+                        "protocol":null
+
+                    },
+                    "rule4":{
+                        "direction":"egress",
+                        "protocol":null,
+                        "remote_ip_prefix":"0.0.0.0/0"
+                    }
+                },
+                "router1":{
+                    "name":"test-router-01",
+                    "routes": [
+                        {"destination": "102.109.178.23/24", "nexthop": "10.109.78.2"}
+                    ],
+                    "external_network":{
+                        "vlan":567
+                    },
+                    "internal_network":["test-subnet-01"]
+                },
+                "ops-server1":{
+                    "name":"test-server-01",
+                    "project":"test-project-01",
+                    "network":{
+                        "hostname":"test-server-01",
+                        "uuid":"test-network-01",
+                        "gw":"10.102.185.1",
+                        "dns":["10.102.184.2", "10.102.184.3"]
+                    },
+                    "availability_zone":"nova",
+                    "flavorRef":"m1.medium",
+                    "imageRef":"centos7-heat",
+                    "admin_pwd":"mypass",
+                    "volume":{"size":20},
+                    "security_groups": ["test-sg-01"],
+                    "pubkey":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it"
+                },
+                "prv-region1":{
+                     "name":"test-prv-region-01",
+                     "geo_area":"pedmont",
+                     "coords":"100,100"
+                },
+                "prv-site1":{
+                     "name":"test-prv-site-01",
+                     "geo_area":"pedmont",
+                     "coords":"100,100",
+                     "limits":{
+                          "cpu":200,
+                          "ram":4096,
+                          "storage":524288,
+                          "instance":5000,
+                          "network":4096
+                     },
+                     "orchestrators":[
+                        {
+                            "type":"vsphere",
+                            "id":"tst-vecenter-01",
+                            "tag":"default",
+                            "config":{
+                                "datacenter":"TST-SDDC",
+                                "resource_pool":"6865522b-2b7b-47e0-bece-d0f42be4f290",
+                                "physical_network":"DVS-LEGACY"
+                            }
+                        },
+                        {
+                            "type":"openstack",
+                            "id":"tst-opstk-redhat-01",
+                            "tag":"default",
+                            "config":{
+                                "domain":"123c8f21-3f72-4d66-b43e-7efc47d16e3f",
+                                "availability_zone":"nova",
+                                "physical_network":"datacentre",
+                                "public_network":"internet"
+                            }
+                        }
+                     ]
+                },
+                "prv-site-network1": {
+                    "name": "test-prv-site-network-01",
+                    "site": "test-prv-site-01",
+                    "external": false,
+                    "vlan": 565,
+                    "subnets": [
+                        {
+                            "cidr":"10.102.185.0/24",
+                            "gateway":"10.102.185.1",
+                            "allocation_pools":[{"start":"10.102.185.50", "end":"10.102.185.60"}],
+                            "enable_dhcp":true,
+                            "dns_nameservers":["10.102.184.2", "10.102.184.3"]
+                        }
+                    ],
+                    "subnets_new": [
+                        {
+                            "cidr":"10.102.186.0/24",
+                            "gateway":"10.102.186.1",
+                            "allocation_pools":[{"start":"10.102.186.50", "end":"10.102.186.60"}],
+                            "enable_dhcp":true,
+                            "dns_nameservers":["10.102.184.2", "10.102.184.3"],
+                            "allocable":false
+                        }
+                    ]
+                },
+                "prv-compute-zone1":{
+                     "name":"test-prv-compute-zone-01",
+                     "quota":{
+                          "cpu":10,
+                          "ram":1024,
+                          "storage":10000,
+                          "instance":100,
+                          "network":1024
+                     },
+                     "sites":[
+                         {
+                             "id":"test-prv-site-01",
+                             "tag":"default",
+                             "quota":{
+                                  "cpu":10,
+                                  "ram":1024,
+                                  "storage":10000,
+                                  "instance":100,
+                                  "network":1024
+                             }
+                         }
+                     ]
+                },
+                "prv-compute-image1": {
+                    "name": "test-prv-compute-image-01",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "os":"centos",
+                    "os_ver":"7.2",
+                    "templates":[
+                        {
+                            "orchestrator_type":"vsphere",
+                            "availability_zone":"test-prv-site-01",
+                            "orchestrator":"tst-vecenter-01",
+                            "template_id":"tmpl-centos7",
+                            "admin_pwd":"testlab"
+                        },
+                        {
+                            "orchestrator_type": "openstack",
+                            "availability_zone": "test-prv-site-01",
+                            "orchestrator": "tst-opstk-redhat-01",
+                            "template_id": "centos7-heat-raw"
+                        }
+                    ]
+                },
+                "prv-compute-flavor1": {
+                    "name": "test-prv-compute-flavor-01",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "memory": 4096,
+                    "disk": 50,
+                    "disk_iops": 0,
+                    "vcpus": 2,
+                    "bandwidth": 0,
+                    "flavors":[
+                        {
+                            "orchestrator_type":"vsphere",
+                            "availability_zone":"test-prv-site-01",
+                            "orchestrator":"tst-vecenter-01",
+                            "datastores":["DS_LEGACY_VSP_LUN_00", "DS_EX_OPSTK_VSP_LUN_00"],
+                            "version":"vmx-11"
+                        },
+                        {
+                            "orchestrator_type": "openstack",
+                            "availability_zone": "test-prv-site-01",
+                            "orchestrator": "tst-opstk-redhat-01",
+                            "flavor_id": "9"
+                        }
+                    ]
+                },
+                "prv-vpc1": {
+                    "name": "test-prv-vpc-01",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "networks": [
+                        "test-prv-site-network-01"
+                    ]
+                },
+                "prv-security-group1": {
+                    "name": "test-prv-security-group-01",
+                    "vpc": "test-prv-vpc-01"
+                },
+                "prv-rule1": {
+                    "name": "test-prv-rule-01",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "source": {"type":"SecurityGroup", "value":"test-prv-security-group-01"},
+                    "destination": {"type":"SecurityGroup", "value":"test-prv-security-group-01"},
+                    "service": {"port": "*", "protocol": "*"}
+                },
+                "prv-rule2": {
+                    "name": "test-prv-rule-02",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "source": {"type":"SecurityGroup", "value":"test-prv-security-group-01"},
+                    "destination": {"type":"Cidr", "value":"0.0.0.0/0"},
+                    "service": {"port": "*", "protocol": "*"}
+                },
+                "prv-rule3": {
+                    "name": "test-prv-rule-03",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "source": {"type":"Cidr", "value":"158.102.160.0/24"},
+                    "destination": {"type":"SecurityGroup", "value":"test-prv-security-group-01"},
+                    "service": {"port": "*", "protocol": "*"}
+                },
+                "prv-instance1": {
+                    "name": "test-prv-instance-01",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "site": "test-prv-site-01",
+                    "vpc": "test-prv-vpc-01",
+                    "subnet": "10.102.185.0/24",
+                    "flavor": "test-prv-compute-flavor-01",
+                    "image": "test-prv-compute-image-01",
+                    "security_groups":["test-prv-security-group-01"],
+                    "admin_pass": "mypass",
+                    "type": "openstack",
+                    "root_volume_size":50,
+                    "user_data":{"pubkey":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it"}
+                }
+            }
+        },
+        "container":{
+            "config":{
+                "vsphere1":{
+                    "name":"tst-vecenter-01",
+                    "vcenter":{
+                        "host":"tst-vcenter.tstsddc.csi.it",
+                        "port":443,
+                        "user":"administrator@tstsddc.csi.it",
+                        "pwd":"cs1$topix",
+                        "verified":false,
+                        "timeout":5
+                    },
+                    "nsx":{
+                        "host":"tst-nsxmanager.tstsddc.csi.it",
+                        "port":443,
+                        "user":"admin",
+                        "pwd":"Cs1$topix",
+                        "verified":false,
+                        "timeout":600
+                    }
+                },
+                "openstack1":{
+                    "name":"tst-opstk-ocata-01",
+                    "api":{
+                        "uri":"http://10.102.184.83:5000/v3",
+                        "domain":"default",
+                        "user":"admin",
+                        "project":"admin",
+                        "pwd":"cs1topix",
+                        "region":"RegionOne"
+                    }
+                },
+                "openstack2":{
+                    "name":"tst-opstk-redhat-01",
+                    "api":{
+                        "uri":"http://10.102.184.200:5000/v3",
+                        "domain":"default",
+                        "user":"admin",
+                        "project":"admin",
+                        "pwd":"8fAwzAJAHQFMcJfrntpapzDpC",
+                        "region":"regionOne"
+                    }
+                },
+                "provider1":{
+                    "name":"tst-provider-01"
                 }
             }
         }
@@ -558,10 +1476,11 @@
             "auth":"mysql+pymysql://auth:auth@10.102.184.66:3306/auth",
             "resource":"mysql+pymysql://resource:resource@10.102.184.66:3306/resource"
         },
-        "redis-uri":"10.102.184.66;6379;0",
+        "redis":{"uri":"10.102.184.66;6379;0"},
         "broker":"redis://10.102.184.66:6379/6",
         "endpoints":{
             "auth":"http://10.102.184.66:6060",
+            "resource":"http://10.102.184.66:6090",
             "service":"http://10.102.184.66:6110"
         },
         "users":{
@@ -585,6 +1504,424 @@
                 "ip":"158.102.160.234",
                 "auth":"keyauth",
                 "catalog":"beehive-internal"
+            }
+        },
+        "resource":{
+            "config":{
+                "datacenter1":{
+                    "uuid":"db43d07d-506e-48dd-9390-1c8a668003e1"
+                },
+                "folder1":{
+                    "name":"test-folder-01",
+                    "parent":null
+                },
+                "folder2":{
+                    "name":"test-folder-02",
+                    "parent":"test-folder-01"
+                },
+                "dvs1":{
+                    "uuid":"d9fd2f3e-cfbd-4dd0-8198-1d762003d4a8"
+                },
+                "dvpg1":{
+                    "name":"test-dvpg-01",
+                    "vlan":565
+                },
+                "cluster1":{
+                    "uuid":"c71f1fcf-b3f1-4a5d-a632-df25f35355f2"
+                },
+                "rpool1":{
+                    "name":"test-rpool-01"
+                },
+                "ipset1":{
+                    "name":"test-ipset-01"
+                },
+                "lg1":{
+                    "name":"test-lg-01",
+                    "transport_zone":"vdnscope-1"
+                },
+                "nsx-sg1":{
+                    "name":"test-sg-01",
+                    "member":"9a0e9eb6-6381-4a5e-8cbb-bbe6d576b988"
+                },
+                "nsx-section01":{
+                    "name":"test-section-01"
+                },
+                "nsx-section-default":{
+                     "id":1003
+                },
+                "nsx-rules":[
+                    {
+                        "name":"test-rule-01",
+                        "direction":"inout",
+                        "appliedto":[{"name":"DISTRIBUTED_FIREWALL", "value":"DISTRIBUTED_FIREWALL", "type":"DISTRIBUTED_FIREWALL"}],
+                        "sources":[{"name":null, "value":"", "type":"SecurityGroup"}],
+                        "destinations":[{"name":null, "value":"", "type":"SecurityGroup"}],
+                        "services":null,
+                        "action":"allow"
+                    },
+                    {
+                        "name":"test-rule-02",
+                        "direction":"in",
+                        "appliedto":[{"name":"DISTRIBUTED_FIREWALL", "value":"DISTRIBUTED_FIREWALL", "type":"DISTRIBUTED_FIREWALL"}],
+                        "sources":[{"name":null, "value":"158.102.160.0/24", "type":"Ipv4Address"}],
+                        "destinations":[{"name":null, "value":"", "type":"SecurityGroup"}],
+                        "services":null,
+                        "action":"allow"
+                    },
+                    {
+                        "name":"test-rule-03",
+                        "direction":"out",
+                        "appliedto":[{"name":"DISTRIBUTED_FIREWALL", "value":"DISTRIBUTED_FIREWALL", "type":"DISTRIBUTED_FIREWALL"}],
+                        "sources":[{"name":null, "value":"", "type":"SecurityGroup"}],
+                        "destinations":[{"name":null, "value":"0.0.0.0/0", "type":"Ipv4Address"}],
+                        "services":null,
+                        "action":"allow"
+                    }
+                ],
+                "nsx-service01":{
+                    "name":"test-service-01",
+                    "proto":"TCP",
+                    "ports":"4000-4001"
+                },
+                "vs-server1":{
+                    "name":"test-vs-server-01",
+                    "folder":"test-folder-01",
+                    "network":{
+                        "fixed_ip": {
+                            "hostname":"test-vs-server-01",
+                            "ip": "10.102.185.55",
+                            "gw": "10.102.185.1",
+                            "dns": "10.102.184.2,10.102.184.3",
+                            "dns_search": "tstsddc.csi.it"
+                        },
+                        "uuid": "test-dvpg-01"
+                    },
+                    "availability_zone": "test-rpool-01",
+                    "flavorRef": {
+                        "core_x_socket": 1,
+                        "cpu": 2,
+                        "guest_id": "centos64Guest",
+                        "memory_mb": 1024,
+                        "version": "vmx-11"
+                    },
+                    "imageRef": "tmpl-centos7",
+                    "admin_pwd": "mypass",
+                    "template_pwd":"cs1$topix",
+                    "volume": {
+                        "destination_type": "volume",
+                        "source_type": "image",
+                        "uuid": "DS_LEGACY_VSP_LUN_00",
+                        "volume_size": 50
+                    },
+                    "security_groups": ["test-nsx-sg-01"],
+                    "pubkey":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it"
+                },
+                "domain1":{
+                    "uuid":"13ca6d9c-2561-48a0-9343-24b647b4a0d2"
+                },
+                "project1":{
+                    "name":"test-project-01",
+                    "parent":null,
+                    "user":"4b4bfb6d5ff0440d93ffb0c313d52ce0",
+                    "role":"688ecda68b63421d901e6714f07edd24"
+                },
+                "project2":{
+                    "name":"test-project-02",
+                    "parent":"test-project-01"
+                },
+                "network1":{
+                    "name":"test-network-01",
+                    "physical_network":"datacentre",
+                    "vlan":565
+                },
+                "subnet1":{
+                    "name":"test-subnet-01",
+                    "cidr":"10.102.185.0/24",
+                    "start_pool":"10.102.185.50",
+                    "end_pool":"10.102.185.60"
+                },
+                "port1":{
+                    "name":"test-port-01",
+                    "ip":"10.102.185.60"
+                },
+                "sg1":{
+                    "name":"test-sg-01",
+                    "rule1":{
+                        "direction":"ingress",
+                        "remote_ip_prefix":"158.102.160.0/24",
+                        "protocol":"tcp",
+                        "port_range_min":"1",
+                        "port_range_max":"65000"
+                    },
+                    "rule2":{
+                        "direction":"ingress",
+                        "protocol":null
+                    },
+                    "rule3":{
+                        "direction":"egress",
+                        "protocol":null
+
+                    },
+                    "rule4":{
+                        "direction":"egress",
+                        "protocol":null,
+                        "remote_ip_prefix":"0.0.0.0/0"
+                    }
+                },
+                "router1":{
+                    "name":"test-router-01",
+                    "routes": [
+                        {"destination": "102.109.178.23/24", "nexthop": "10.109.78.2"}
+                    ],
+                    "external_network":{
+                        "vlan":567
+                    },
+                    "internal_network":["test-subnet-01"]
+                },
+                "ops-server1":{
+                    "name":"test-server-01",
+                    "project":"test-project-01",
+                    "network":{
+                        "hostname":"test-server-01",
+                        "uuid":"test-network-01",
+                        "gw":"10.102.185.1",
+                        "dns":["10.102.184.2", "10.102.184.3"]
+                    },
+                    "availability_zone":"nova",
+                    "flavorRef":"m1.medium",
+                    "imageRef":"centos7-heat",
+                    "admin_pwd":"mypass",
+                    "volume":{"size":20},
+                    "security_groups": ["test-sg-01"],
+                    "pubkey":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it"
+                },
+                "prv-region1":{
+                     "name":"test-prv-region-01",
+                     "geo_area":"pedmont",
+                     "coords":"100,100"
+                },
+                "prv-site1":{
+                     "name":"test-prv-site-01",
+                     "geo_area":"pedmont",
+                     "coords":"100,100",
+                     "limits":{
+                          "cpu":200,
+                          "ram":4096,
+                          "storage":524288,
+                          "instance":5000,
+                          "network":4096
+                     },
+                     "orchestrators":[
+                        {
+                            "type":"vsphere",
+                            "id":"tst-vecenter-01",
+                            "tag":"default",
+                            "config":{
+                                "datacenter":"TST-SDDC",
+                                "resource_pool":"93ab8620-bfc2-4d7c-99d3-9242d8958aab",
+                                "physical_network":"DVS-LEGACY"
+                            }
+                        },
+                        {
+                            "type":"openstack",
+                            "id":"tst-opstk-redhat-01",
+                            "tag":"default",
+                            "config":{
+                                "domain":"01957d14-eef0-49fc-a3a6-104f18d2173d",
+                                "availability_zone":"nova",
+                                "physical_network":"datacentre",
+                                "public_network":"internet"
+                            }
+                        }
+                     ]
+                },
+                "prv-site-network1": {
+                    "name": "test-prv-site-network-01",
+                    "site": "test-prv-site-01",
+                    "external": false,
+                    "vlan": 565,
+                    "subnets": [
+                        {
+                            "cidr":"10.102.185.0/24",
+                            "gateway":"10.102.185.1",
+                            "allocation_pools":[{"start":"10.102.185.50", "end":"10.102.185.60"}],
+                            "enable_dhcp":true,
+                            "dns_nameservers":["10.102.184.2", "10.102.184.3"]
+                        }
+                    ],
+                    "subnets_new": [
+                        {
+                            "cidr":"10.102.186.0/24",
+                            "gateway":"10.102.186.1",
+                            "allocation_pools":[{"start":"10.102.186.50", "end":"10.102.186.60"}],
+                            "enable_dhcp":true,
+                            "dns_nameservers":["10.102.184.2", "10.102.184.3"],
+                            "allocable":false
+                        }
+                    ]
+                },
+                "prv-compute-zone1":{
+                     "name":"test-prv-compute-zone-01",
+                     "quota":{
+                          "cpu":10,
+                          "ram":1024,
+                          "storage":10000,
+                          "instance":100,
+                          "network":1024
+                     },
+                     "sites":[
+                         {
+                             "id":"test-prv-site-01",
+                             "tag":"default",
+                             "quota":{
+                                  "cpu":10,
+                                  "ram":1024,
+                                  "storage":10000,
+                                  "instance":100,
+                                  "network":1024
+                             }
+                         }
+                     ]
+                },
+                "prv-compute-image1": {
+                    "name": "test-prv-compute-image-01",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "os":"centos",
+                    "os_ver":"7.2",
+                    "templates":[
+                        {
+                            "orchestrator_type":"vsphere",
+                            "availability_zone":"test-prv-site-01",
+                            "orchestrator":"tst-vecenter-01",
+                            "template_id":"tmpl-centos7",
+                            "admin_pwd":"testlab"
+                        },
+                        {
+                            "orchestrator_type": "openstack",
+                            "availability_zone": "test-prv-site-01",
+                            "orchestrator": "tst-opstk-redhat-01",
+                            "template_id": "centos7-heat-raw"
+                        }
+                    ]
+                },
+                "prv-compute-flavor1": {
+                    "name": "test-prv-compute-flavor-01",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "memory": 4096,
+                    "disk": 50,
+                    "disk_iops": 0,
+                    "vcpus": 2,
+                    "bandwidth": 0,
+                    "flavors":[
+                        {
+                            "orchestrator_type":"vsphere",
+                            "availability_zone":"test-prv-site-01",
+                            "orchestrator":"tst-vecenter-01",
+                            "datastores":["DS_LEGACY_VSP_LUN_00", "DS_EX_OPSTK_VSP_LUN_00"],
+                            "version":"vmx-11"
+                        },
+                        {
+                            "orchestrator_type": "openstack",
+                            "availability_zone": "test-prv-site-01",
+                            "orchestrator": "tst-opstk-redhat-01",
+                            "flavor_id": "193"
+                        }
+                    ]
+                },
+                "prv-vpc1": {
+                    "name": "test-prv-vpc-01",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "networks": [
+                        "test-prv-site-network-01"
+                    ]
+                },
+                "prv-security-group1": {
+                    "name": "test-prv-security-group-01",
+                    "vpc": "test-prv-vpc-01"
+                },
+                "prv-rule1": {
+                    "name": "test-prv-rule-01",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "source": {"type":"SecurityGroup", "value":"test-prv-security-group-01"},
+                    "destination": {"type":"SecurityGroup", "value":"test-prv-security-group-01"},
+                    "service": {"port": "*", "protocol": "*"}
+                },
+                "prv-rule2": {
+                    "name": "test-prv-rule-02",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "source": {"type":"SecurityGroup", "value":"test-prv-security-group-01"},
+                    "destination": {"type":"Cidr", "value":"0.0.0.0/0"},
+                    "service": {"port": "*", "protocol": "*"}
+                },
+                "prv-rule3": {
+                    "name": "test-prv-rule-03",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "source": {"type":"Cidr", "value":"158.102.160.0/24"},
+                    "destination": {"type":"SecurityGroup", "value":"test-prv-security-group-01"},
+                    "service": {"port": "*", "protocol": "*"}
+                },
+                "prv-instance1": {
+                    "name": "test-prv-instance-01",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "site": "test-prv-site-01",
+                    "vpc": "test-prv-vpc-01",
+                    "subnet": "10.102.185.0/24",
+                    "flavor": "test-prv-compute-flavor-01",
+                    "image": "test-prv-compute-image-01",
+                    "security_groups":["test-prv-security-group-01"],
+                    "admin_pass": "mypass",
+                    "type": "openstack",
+                    "root_volume_size":50,
+                    "user_data":{"pubkey":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it"}
+                }
+            }
+        },
+        "container":{
+            "config":{
+                "vsphere1":{
+                    "name":"tst-vecenter-01",
+                    "vcenter":{
+                        "host":"tst-vcenter.tstsddc.csi.it",
+                        "port":443,
+                        "user":"administrator@tstsddc.csi.it",
+                        "pwd":"cs1$topix",
+                        "verified":false,
+                        "timeout":5
+                    },
+                    "nsx":{
+                        "host":"tst-nsxmanager.tstsddc.csi.it",
+                        "port":443,
+                        "user":"admin",
+                        "pwd":"Cs1$topix",
+                        "verified":false,
+                        "timeout":600
+                    }
+                },
+                "openstack1":{
+                    "name":"tst-opstk-ocata-01",
+                    "api":{
+                        "uri":"http://10.102.184.83:5000/v3",
+                        "domain":"default",
+                        "user":"admin",
+                        "project":"admin",
+                        "pwd":"cs1topix",
+                        "region":"RegionOne"
+                    }
+                },
+                "openstack2":{
+                    "name":"tst-opstk-redhat-01",
+                    "api":{
+                        "uri":"http://10.102.184.200:5000/v3",
+                        "domain":"default",
+                        "user":"admin",
+                        "project":"admin",
+                        "pwd":"8fAwzAJAHQFMcJfrntpapzDpC",
+                        "region":"regionOne"
+                    }
+                },
+                "provider1":{
+                    "name":"tst-provider-01"
+                }
             }
         }
     },
@@ -625,39 +1962,423 @@
                 "auth":"keyauth",
                 "catalog":"beehive-internal"
             }
-        }
-    },
-    "lab":{
-        "cmdb-uri":"postgresql+psycopg2://pastext:pent4ho@vm-cmdbuild.csi.it:5432/cmdbprod",
-        "db-uris":{
-            "auth":"mysql+pymysql://auth:auth@10.102.160.240:3306/auth1"
         },
-        "broker":"redis://10.102.160.240:6379/1",
-        "redis-uri":"localhost;6379;0",
-        "endpoints":{
-            "resource2":"http://10.102.184.52:6062",
-            "service":"http://10.102.184.52:6110",
-            "monitor":"http://10.102.184.52:6080",
-            "auth":"http://10.102.160.12:6060",
-            "event":"http://10.102.160.12:6070",
-            "resource":"http://10.102.160.12:6090",
-            "resource2":"http://10.102.160.12:6062",
-            "service":"http://10.102.160.12:6063",
-            "tenant":"http://10.102.160.12:6100",
-            "monitor":"http://10.102.160.12:6080" 
+        "resource":{
+            "config":{
+                "datacenter1":{
+                    "uuid":"db43d07d-506e-48dd-9390-1c8a668003e1"
+                },
+                "folder1":{
+                    "name":"test-folder-01",
+                    "parent":null
+                },
+                "folder2":{
+                    "name":"test-folder-02",
+                    "parent":"test-folder-01"
+                },
+                "dvs1":{
+                    "uuid":"d9fd2f3e-cfbd-4dd0-8198-1d762003d4a8"
+                },
+                "dvpg1":{
+                    "name":"test-dvpg-01",
+                    "vlan":565
+                },
+                "cluster1":{
+                    "uuid":"c71f1fcf-b3f1-4a5d-a632-df25f35355f2"
+                },
+                "rpool1":{
+                    "name":"test-rpool-01"
+                },
+                "ipset1":{
+                    "name":"test-ipset-01"
+                },
+                "lg1":{
+                    "name":"test-lg-01",
+                    "transport_zone":"vdnscope-1"
+                },
+                "nsx-sg1":{
+                    "name":"test-sg-01",
+                    "member":"9a0e9eb6-6381-4a5e-8cbb-bbe6d576b988"
+                },
+                "nsx-section01":{
+                    "name":"test-section-01"
+                },
+                "nsx-section-default":{
+                     "id":1003
+                },
+                "nsx-rules":[
+                    {
+                        "name":"test-rule-01",
+                        "direction":"inout",
+                        "appliedto":[{"name":"DISTRIBUTED_FIREWALL", "value":"DISTRIBUTED_FIREWALL", "type":"DISTRIBUTED_FIREWALL"}],
+                        "sources":[{"name":null, "value":"", "type":"SecurityGroup"}],
+                        "destinations":[{"name":null, "value":"", "type":"SecurityGroup"}],
+                        "services":null,
+                        "action":"allow"
+                    },
+                    {
+                        "name":"test-rule-02",
+                        "direction":"in",
+                        "appliedto":[{"name":"DISTRIBUTED_FIREWALL", "value":"DISTRIBUTED_FIREWALL", "type":"DISTRIBUTED_FIREWALL"}],
+                        "sources":[{"name":null, "value":"158.102.160.0/24", "type":"Ipv4Address"}],
+                        "destinations":[{"name":null, "value":"", "type":"SecurityGroup"}],
+                        "services":null,
+                        "action":"allow"
+                    },
+                    {
+                        "name":"test-rule-03",
+                        "direction":"out",
+                        "appliedto":[{"name":"DISTRIBUTED_FIREWALL", "value":"DISTRIBUTED_FIREWALL", "type":"DISTRIBUTED_FIREWALL"}],
+                        "sources":[{"name":null, "value":"", "type":"SecurityGroup"}],
+                        "destinations":[{"name":null, "value":"0.0.0.0/0", "type":"Ipv4Address"}],
+                        "services":null,
+                        "action":"allow"
+                    }
+                ],
+                "nsx-service01":{
+                    "name":"test-service-01",
+                    "proto":"TCP",
+                    "ports":"4000-4001"
+                },
+                "vs-server1":{
+                    "name":"test-vs-server-01",
+                    "folder":"test-folder-01",
+                    "network":{
+                        "fixed_ip": {
+                            "hostname":"test-vs-server-01",
+                            "ip": "10.102.185.55",
+                            "gw": "10.102.185.1",
+                            "dns": "10.102.184.2,10.102.184.3",
+                            "dns_search": "tstsddc.csi.it"
+                        },
+                        "uuid": "test-dvpg-01"
+                    },
+                    "availability_zone": "test-rpool-01",
+                    "flavorRef": {
+                        "core_x_socket": 1,
+                        "cpu": 2,
+                        "guest_id": "centos64Guest",
+                        "memory_mb": 1024,
+                        "version": "vmx-11"
+                    },
+                    "imageRef": "tmpl-centos7",
+                    "admin_pwd": "mypass",
+                    "template_pwd":"cs1$topix",
+                    "volume": {
+                        "destination_type": "volume",
+                        "source_type": "image",
+                        "uuid": "DS_LEGACY_VSP_LUN_00",
+                        "volume_size": 50
+                    },
+                    "security_groups": ["test-nsx-sg-01"],
+                    "pubkey":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it"
+                },
+                "domain1":{
+                    "uuid":"13ca6d9c-2561-48a0-9343-24b647b4a0d2"
+                },
+                "project1":{
+                    "name":"test-project-01",
+                    "parent":null,
+                    "user":"4b4bfb6d5ff0440d93ffb0c313d52ce0",
+                    "role":"688ecda68b63421d901e6714f07edd24"
+                },
+                "project2":{
+                    "name":"test-project-02",
+                    "parent":"test-project-01"
+                },
+                "network1":{
+                    "name":"test-network-01",
+                    "physical_network":"datacentre",
+                    "vlan":565
+                },
+                "subnet1":{
+                    "name":"test-subnet-01",
+                    "cidr":"10.102.185.0/24",
+                    "start_pool":"10.102.185.50",
+                    "end_pool":"10.102.185.60"
+                },
+                "port1":{
+                    "name":"test-port-01",
+                    "ip":"10.102.185.60"
+                },
+                "sg1":{
+                    "name":"test-sg-01",
+                    "rule1":{
+                        "direction":"ingress",
+                        "remote_ip_prefix":"158.102.160.0/24",
+                        "protocol":"tcp",
+                        "port_range_min":"1",
+                        "port_range_max":"65000"
+                    },
+                    "rule2":{
+                        "direction":"ingress",
+                        "protocol":null
+                    },
+                    "rule3":{
+                        "direction":"egress",
+                        "protocol":null
+
+                    },
+                    "rule4":{
+                        "direction":"egress",
+                        "protocol":null,
+                        "remote_ip_prefix":"0.0.0.0/0"
+                    }
+                },
+                "router1":{
+                    "name":"test-router-01",
+                    "routes": [
+                        {"destination": "102.109.178.23/24", "nexthop": "10.109.78.2"}
+                    ],
+                    "external_network":{
+                        "vlan":567
+                    },
+                    "internal_network":["test-subnet-01"]
+                },
+                "ops-server1":{
+                    "name":"test-server-01",
+                    "project":"test-project-01",
+                    "network":{
+                        "hostname":"test-server-01",
+                        "uuid":"test-network-01",
+                        "gw":"10.102.185.1",
+                        "dns":["10.102.184.2", "10.102.184.3"]
+                    },
+                    "availability_zone":"nova",
+                    "flavorRef":"m1.medium",
+                    "imageRef":"centos7-heat",
+                    "admin_pwd":"mypass",
+                    "volume":{"size":20},
+                    "security_groups": ["test-sg-01"],
+                    "pubkey":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it"
+                },
+                "prv-region1":{
+                     "name":"test-prv-region-01",
+                     "geo_area":"pedmont",
+                     "coords":"100,100"
+                },
+                "prv-site1":{
+                     "name":"test-prv-site-01",
+                     "geo_area":"pedmont",
+                     "coords":"100,100",
+                     "limits":{
+                          "cpu":200,
+                          "ram":4096,
+                          "storage":524288,
+                          "instance":5000,
+                          "network":4096
+                     },
+                     "orchestrators":[
+                        {
+                            "type":"vsphere",
+                            "id":"tst-vecenter-01",
+                            "tag":"default",
+                            "config":{
+                                "datacenter":"TST-SDDC",
+                                "resource_pool":"6865522b-2b7b-47e0-bece-d0f42be4f290",
+                                "physical_network":"DVS-LEGACY"
+                            }
+                        },
+                        {
+                            "type":"openstack",
+                            "id":"tst-opstk-redhat-01",
+                            "tag":"default",
+                            "config":{
+                                "domain":"123c8f21-3f72-4d66-b43e-7efc47d16e3f",
+                                "availability_zone":"nova",
+                                "physical_network":"datacentre",
+                                "public_network":"internet"
+                            }
+                        }
+                     ]
+                },
+                "prv-site-network1": {
+                    "name": "test-prv-site-network-01",
+                    "site": "test-prv-site-01",
+                    "external": false,
+                    "vlan": 565,
+                    "subnets": [
+                        {
+                            "cidr":"10.102.185.0/24",
+                            "gateway":"10.102.185.1",
+                            "allocation_pools":[{"start":"10.102.185.50", "end":"10.102.185.60"}],
+                            "enable_dhcp":true,
+                            "dns_nameservers":["10.102.184.2", "10.102.184.3"]
+                        }
+                    ],
+                    "subnets_new": [
+                        {
+                            "cidr":"10.102.186.0/24",
+                            "gateway":"10.102.186.1",
+                            "allocation_pools":[{"start":"10.102.186.50", "end":"10.102.186.60"}],
+                            "enable_dhcp":true,
+                            "dns_nameservers":["10.102.184.2", "10.102.184.3"],
+                            "allocable":false
+                        }
+                    ]
+                },
+                "prv-compute-zone1":{
+                     "name":"test-prv-compute-zone-01",
+                     "quota":{
+                          "cpu":10,
+                          "ram":1024,
+                          "storage":10000,
+                          "instance":100,
+                          "network":1024
+                     },
+                     "sites":[
+                         {
+                             "id":"test-prv-site-01",
+                             "tag":"default",
+                             "quota":{
+                                  "cpu":10,
+                                  "ram":1024,
+                                  "storage":10000,
+                                  "instance":100,
+                                  "network":1024
+                             }
+                         }
+                     ]
+                },
+                "prv-compute-image1": {
+                    "name": "test-prv-compute-image-01",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "os":"centos",
+                    "os_ver":"7.2",
+                    "templates":[
+                        {
+                            "orchestrator_type":"vsphere",
+                            "availability_zone":"test-prv-site-01",
+                            "orchestrator":"tst-vecenter-01",
+                            "template_id":"tmpl-centos7",
+                            "admin_pwd":"testlab"
+                        },
+                        {
+                            "orchestrator_type": "openstack",
+                            "availability_zone": "test-prv-site-01",
+                            "orchestrator": "tst-opstk-redhat-01",
+                            "template_id": "centos7-heat-raw"
+                        }
+                    ]
+                },
+                "prv-compute-flavor1": {
+                    "name": "test-prv-compute-flavor-01",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "memory": 4096,
+                    "disk": 50,
+                    "disk_iops": 0,
+                    "vcpus": 2,
+                    "bandwidth": 0,
+                    "flavors":[
+                        {
+                            "orchestrator_type":"vsphere",
+                            "availability_zone":"test-prv-site-01",
+                            "orchestrator":"tst-vecenter-01",
+                            "datastores":["DS_LEGACY_VSP_LUN_00", "DS_EX_OPSTK_VSP_LUN_00"],
+                            "version":"vmx-11"
+                        },
+                        {
+                            "orchestrator_type": "openstack",
+                            "availability_zone": "test-prv-site-01",
+                            "orchestrator": "tst-opstk-redhat-01",
+                            "flavor_id": "9"
+                        }
+                    ]
+                },
+                "prv-vpc1": {
+                    "name": "test-prv-vpc-01",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "networks": [
+                        "test-prv-site-network-01"
+                    ]
+                },
+                "prv-security-group1": {
+                    "name": "test-prv-security-group-01",
+                    "vpc": "test-prv-vpc-01"
+                },
+                "prv-rule1": {
+                    "name": "test-prv-rule-01",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "source": {"type":"SecurityGroup", "value":"test-prv-security-group-01"},
+                    "destination": {"type":"SecurityGroup", "value":"test-prv-security-group-01"},
+                    "service": {"port": "*", "protocol": "*"}
+                },
+                "prv-rule2": {
+                    "name": "test-prv-rule-02",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "source": {"type":"SecurityGroup", "value":"test-prv-security-group-01"},
+                    "destination": {"type":"Cidr", "value":"0.0.0.0/0"},
+                    "service": {"port": "*", "protocol": "*"}
+                },
+                "prv-rule3": {
+                    "name": "test-prv-rule-03",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "source": {"type":"Cidr", "value":"158.102.160.0/24"},
+                    "destination": {"type":"SecurityGroup", "value":"test-prv-security-group-01"},
+                    "service": {"port": "*", "protocol": "*"}
+                },
+                "prv-instance1": {
+                    "name": "test-prv-instance-01",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "site": "test-prv-site-01",
+                    "vpc": "test-prv-vpc-01",
+                    "subnet": "10.102.185.0/24",
+                    "flavor": "test-prv-compute-flavor-01",
+                    "image": "test-prv-compute-image-01",
+                    "security_groups":["test-prv-security-group-01"],
+                    "admin_pass": "mypass",
+                    "type": "openstack",
+                    "root_volume_size":50,
+                    "user_data":{"pubkey":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it"}
+                }
+            }
         },
-        "users":{
-            "admin":{
-                "user":"admin@local",
-                "pwd":"testlab",
-                "ip":"158.102.160.234",
-                "catalog":"beehive-internal"
-            },
-            "camunda":{
-                "user":"camunda@local",
-                "pwd":"camunda1",
-                "ip":"158.102.160.234",
-                "catalog":"beehive-internal"
+        "container":{
+            "config":{
+                "vsphere1":{
+                    "name":"tst-vecenter-01",
+                    "vcenter":{
+                        "host":"tst-vcenter.tstsddc.csi.it",
+                        "port":443,
+                        "user":"administrator@tstsddc.csi.it",
+                        "pwd":"cs1$topix",
+                        "verified":false,
+                        "timeout":5
+                    },
+                    "nsx":{
+                        "host":"tst-nsxmanager.tstsddc.csi.it",
+                        "port":443,
+                        "user":"admin",
+                        "pwd":"Cs1$topix",
+                        "verified":false,
+                        "timeout":600
+                    }
+                },
+                "openstack1":{
+                    "name":"tst-opstk-ocata-01",
+                    "api":{
+                        "uri":"http://10.102.184.83:5000/v3",
+                        "domain":"default",
+                        "user":"admin",
+                        "project":"admin",
+                        "pwd":"cs1topix",
+                        "region":"RegionOne"
+                    }
+                },
+                "openstack2":{
+                    "name":"tst-opstk-redhat-01",
+                    "api":{
+                        "uri":"http://10.102.184.200:5000/v3",
+                        "domain":"default",
+                        "user":"admin",
+                        "project":"admin",
+                        "pwd":"8fAwzAJAHQFMcJfrntpapzDpC",
+                        "region":"regionOne"
+                    }
+                },
+                "provider1":{
+                    "name":"tst-provider-01"
+                }
             }
         }
     }
