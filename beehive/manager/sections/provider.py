@@ -26,7 +26,6 @@ class ProviderController(BaseController):
         
 class ProviderControllerChild(ApiController):
     subsystem = u'resource'
-    
     headers = [u'id', u'uuid', u'name', u'parent.name', u'state', u'date.creation', u'date.modified']
     
     class Meta:
@@ -177,12 +176,47 @@ class ProviderComputeComputeRuleController(ProviderControllerChild):
 
 class ProviderComputeComputeInstanceController(ProviderControllerChild):
     uri = u'/v1.0/provider/instances'
+    headers = [u'id', u'uuid', u'name', u'parent.name', u'state', u'date.creation', u'date.modified']
 
     class Meta:
         label = 'provider.beehive.instances'
         aliases = ['instances']
         aliases_only = True
         description = "Provider compute instance management"
+
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    def list(self):
+        """List provider items
+        """
+        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = self.uri
+        res = self._call(uri, u'GET', data=data)
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], res))
+        self.result(res, headers=self.headers, key=self._meta.aliases[0])
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        """Get provider item
+        """
+        oid = self.get_arg(name=u'id')
+        uri = self.uri + u'/' + oid
+        res = self._call(uri, u'GET')
+        key = self._meta.aliases[0].rstrip(u's')
+        res = res.get(key)
+        logger.info(u'Get %s: %s' % (key, res))
+        flavor = res.pop(u'flavor')
+        image = res.pop(u'image')
+        vpcs = res.pop(u'vpcs')
+        sgs = res.pop(u'security_groups')
+        self.result(res, details=True)
+        self.output(u'Flavor:')
+        self.result(flavor, headers=[u'vcpus', u'memory', u'disk', u'disk_iops', u'bandwidth'])
+        self.output(u'Image:')
+        self.result(image, headers=[u'os', u'os_ver'])
+        self.output(u'Security groups:')
+        self.result(sgs, headers=[u'uuid', u'name'])
+        self.output(u'Networks:')
+        self.result(vpcs, headers=[u'uuid', u'name', u'cidr', u'gateway', u'fixed_ip.ip'])
 
 
 provider_controller_handlers = [

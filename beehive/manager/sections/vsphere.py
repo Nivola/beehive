@@ -833,7 +833,7 @@ class VsphereController(BaseController):
 
 class VsphereControllerChild(ApiController):
     subsystem = u'resource'
-    headers = [u'id', u'uuid', u'parent.name', u'conatiner.name', u'name', u'state', u'ext_id']
+    headers = [u'id', u'uuid', u'parent.name', u'container.name', u'name', u'state', u'ext_id']
     
     class Meta:
         stacked_on = 'vsphere'

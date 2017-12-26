@@ -16,11 +16,14 @@ from beecell.server.uwsgi_server.wrapper import uwsgi_util
 from beecell.db.manager import MysqlManagerError
 from beehive.common.apimanager import ApiManager, ApiManagerError
 from beehive.common.data import operation
-from beehive.common.log import ColorFormatter
 
 logger = logging.getLogger(__name__)
 
-class BeehiveAppError(Exception): pass
+
+class BeehiveAppError(Exception):
+    pass
+
+
 class BeehiveApp(Flask):
     """Custom Flask app used to read configuration and initialize security.
     
@@ -47,8 +50,7 @@ class BeehiveApp(Flask):
         self.params = uwsgi_util.opt
         
         # set logging path
-        log_path = u'/var/log/%s/%s' % (self.params[u'api_package'], 
-                                        self.params[u'api_env'])        
+        log_path = u'/var/log/%s/%s' % (self.params[u'api_package'], self.params[u'api_env'])
         self.log_path = self.params.get(u'api_log', log_path)
 
         def error405(e):
@@ -58,9 +60,7 @@ class BeehiveApp(Flask):
                 u'description': u'Method Not Allowed'
             }
             logger.error(u'Api response: %s' % error)
-            return Response(response=json.dumps(error), 
-                            mimetype=u'application/json', 
-                            status=405)
+            return Response(response=json.dumps(error), mimetype=u'application/json', status=405)
         self._register_error_handler(None, 405, error405)
         
         def error404(e):
@@ -70,9 +70,7 @@ class BeehiveApp(Flask):
                 u'description': u'Uri %s not found' % request.path
             }
             logger.error(u'Api response: %s' % error)
-            return Response(response=json.dumps(error), 
-                            mimetype=u'application/json', 
-                            status=404)
+            return Response(response=json.dumps(error), mimetype=u'application/json', status=404)
         self._register_error_handler(None, 404, error404)        
         
         # setup loggers
@@ -82,8 +80,7 @@ class BeehiveApp(Flask):
         start = time()
         
         # api manager reference
-        self.api_manager = ApiManager(self.params, app=self, 
-                                      hostname=self.server_name)
+        self.api_manager = ApiManager(self.params, app=self, hostname=self.server_name)
 
         # server configuration
         #self.api_manager.configure_logger()
@@ -126,7 +123,8 @@ class BeehiveApp(Flask):
                    logging.getLogger(u'beehive_monitor'),
                    logging.getLogger(u'beehive_service'),
                    logging.getLogger(u'beehive_resource')]
-        LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, file_name, formatter=ColorFormatter)
+        # LoggerHelper.DEBUG2
+        LoggerHelper.rotatingfile_handler(loggers, LoggerHelper.DEBUG, file_name)
         
         # transaction and db logging
         file_name = u'%s/%s.db.log' % (self.log_path, logname)
@@ -140,9 +138,6 @@ class BeehiveApp(Flask):
         file_name = u'%s/beehive.watch' % (self.log_path)
         loggers = [logging.getLogger(u'beecell.perf')]
         LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, file_name, frmt=u'%(asctime)s - %(message)s')
-        
-        #from openstack import utils
-        #utils.enable_logging(debug=True)
 
     def open_db_session(self):
         """Open database session.

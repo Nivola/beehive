@@ -456,8 +456,9 @@ class ColorFormatter(CeleryColorFormatter):
               u'WARN': COLORS[u'yellow'],
               u'ERROR': COLORS[u'red'],
               u'CRITICAL': COLORS[u'magenta'],
-              u'TEST': COLORS[u'yellow'],
-              u'TESTPLAN': COLORS[u'magenta']}
+              u'TEST': COLORS[u'green'],
+              u'TESTPLAN': COLORS[u'cyan']
+    }
 
 
 def runtest(testcase_class, tests):

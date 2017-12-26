@@ -327,7 +327,6 @@ commands:
         
     def __textprint(self, data):
         if self.color == 1:
-            #lexer = lexers.
             lexer = lexers.VimLexer
             l = lexer()          
             print highlight(data, l, Terminal256Formatter())
@@ -344,11 +343,15 @@ commands:
                 res = res.get(k, {})
         if isinstance(res, list):
             res = u','.join(res)
+        if res is None or res == {}:
+            res = u'-'
         
         return res
     
     def __tabularprint(self, data, headers=None, other_headers=[], fields=None,
                        maxsize=20, separator=u'.'):
+        if data is None:
+            data = u'-'
         if not isinstance(data, list):
             values = [data]
         else:

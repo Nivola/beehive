@@ -51,11 +51,9 @@ class ResourceControllerChild(ApiController):
     subsystem = u'resource'
     res_headers = [u'id', u'__meta__.definition', u'name', u'container.name', u'parent.name', u'state',
                    u'date.creation', u'ext_id']
-    cont_headers = [u'id', u'uuid', u'category', u'__meta__.definition', u'name', u'active', u'state', u'date.creation',
+    cont_headers = [u'id', u'category', u'__meta__.definition', u'name', u'active', u'state', u'date.creation',
                     u'date.modified']
-    tag_headers = [u'id', u'uuid', u'name', u'date.creation', u'date.modified', u'resources', u'containers', u'links']
-    link_headers = [u'id', u'uuid', u'name', u'active', u'details.start_resource.id', u'details.end_resource.id',
-                    u'details.attributes', u'date.creation', u'date.modified']
+    tag_headers = [u'id', u'name', u'date.creation', u'date.modified', u'resources', u'containers', u'links']
     
     class Meta:
         stacked_on = 'resource'
@@ -652,8 +650,13 @@ class ResourceEntityController(ResourceControllerChild):
         res = self._call(uri, u'GET')
         logger.info(res)
         self.result(res, key=u'resources', headers=self.res_headers)
-        
-class LinkController(ResourceControllerChild):    
+
+
+class LinkController(ResourceControllerChild):
+    fields = [u'id', u'name', u'active', u'details.type', u'details.start_resource.id', u'details.end_resource.id',
+               u'details.attributes', u'date.creation', u'date.modified']
+    headers = [u'id', u'name', u'type', u'start', u'end', u'attributes', u'creation', u'modified']
+
     class Meta:
         label = 'links'
         description = "Link management"
@@ -676,8 +679,8 @@ class LinkController(ResourceControllerChild):
                 u'type':type,
                 u'name':name, 
                 u'attributes':{}, 
-                u'start_resource':start_resource, 
-                u'end_resource':end_resource, 
+                u'start_resource': start_resource,
+                u'end_resource': end_resource,
             }
         }
         uri = u'%s/resourcelinks' % self.baseuri        
@@ -704,7 +707,7 @@ class LinkController(ResourceControllerChild):
         uri = u'%s/resourcelinks' % self.baseuri        
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        self.result(res, key=u'resourcelinks', headers=self.link_headers)
+        self.result(res, key=u'resourcelinks', headers=self.headers, fields=self.fields)
     
     @expose(aliases=[u'get <value>'], aliases_only=True)
     def get(self):
@@ -760,7 +763,8 @@ class LinkController(ResourceControllerChild):
         logger.info(res)
         res = {u'msg':u'Delete link %s' % value}
         self.result(res, headers=[u'msg'])       
-        
+
+
 class TagController(ResourceControllerChild):    
     class Meta:
         label = 'tags'

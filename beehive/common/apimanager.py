@@ -22,8 +22,7 @@ from flask import request, Response, session
 from flask.views import MethodView as FlaskView
 from flask_session import Session
 from flask import current_app
-from random import randint
-from beecell.perf import watch
+from beecell.logger.helper import LoggerHelper
 from beecell.db import TransactionError, QueryError
 from beecell.db.manager import MysqlManager, SqlManagerError, RedisManager
 from beecell.auth import extract
@@ -32,8 +31,6 @@ from beecell.simple import str2uni, id_gen, import_class, truncate, get_class_na
 from beecell.sendmail import Mailer
 from beehive.common.data import operation, trace
 from beecell.auth import AuthError, DatabaseAuth, LdapAuth, SystemUser
-from beecell.logger.helper import LoggerHelper
-#from beecell.flask.redis_session import RedisSessionInterface
 import gevent
 from beehive.common.apiclient import BeehiveApiClient, BeehiveApiClientError
 from beehive.common.model.config import ConfigDbManager

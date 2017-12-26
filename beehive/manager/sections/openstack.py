@@ -742,6 +742,7 @@ openstack_platform_controller_handlers = [
     OpenstackPlatformHeatStackController
 ]
 
+
 #
 # openstack orchestrator
 #
@@ -849,9 +850,8 @@ class OpenstackProjectController(OpenstackControllerChild):
 
 class OpenstackNetworkController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/networks'
-    headers = [u'id', u'parent.name', u'container.name', u'name', 
-               u'details.segmentation_id', u'details.external', u'details.shared', 
-               u'details.provider_network_type']
+    headers = [u'id', u'parent.name', u'container.name', u'name', u'details.segmentation_id', u'details.external',
+               u'details.shared', u'details.provider_network_type']
     
     class Meta:
         label = 'openstack.beehive.networks'
@@ -897,9 +897,8 @@ class OpenstackSubnetController(OpenstackControllerChild):
 
 class OpenstackPortController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/ports'
-    headers = [u'id',  u'container.name', u'parent.name', u'name',
-               u'details.device_owner', 
-               u'details.mac_address', u'details.fixed_ips.0.ip_address']
+    headers = [u'id',  u'container.name', u'parent.name', u'name', u'details.device_owner', u'details.mac_address',
+               u'details.fixed_ips.0.ip_address']
     
     class Meta:
         label = 'openstack.beehive.ports'

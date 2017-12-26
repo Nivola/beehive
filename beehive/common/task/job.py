@@ -78,13 +78,11 @@ class AbstractJob(BaseTask):
     def get_shared_data(self):
         """ """
         data = BaseTask.get_shared_data(self, task_local.opid)
-        #logger.warn(u'Get shared data for job %s: %s' % (task_local.opid, data))
         return data
     
     def set_shared_data(self, data):
         """ """
         data = BaseTask.set_shared_data(self, task_local.opid, data)
-        #logger.warn(u'Set shared data for job %s: %s' % (task_local.opid, data))
         return data
     
     def remove_shared_area(self):
@@ -183,8 +181,7 @@ class AbstractJob(BaseTask):
             client = self.controller.module.api_manager.event_producer
             client.send(ApiObject.ASYNC_OPERATION, data, source, dest)
         except Exception as ex:
-            logger.warning(u'Event can not be published. Event producer '\
-                           u'is not configured - %s' % ex)    
+            logger.warn(u'Event can not be published. Event producer is not configured - %s' % ex)
     
     def update_job(self, params=None, status=None, current_time=None, ex=None, traceback=None, result=None, msg=None,
                    start_time=None):
@@ -437,32 +434,20 @@ class JobTask(AbstractJob):
         # get current time
         current_time = time()
         
-        # update job
-        #jobstatus = params[u'job-status']
-        #if status == u'STARTED':
-        #    jobstatus = u'PROGRESS'
-        #self.update_job(params, jobstatus, current_time, ex, traceback, 
-        #                result, msg)
-        
         # log message
         if msg is not None:
             if status == u'FAILURE':
-                #logger.error(msg, exc_info=1)
+                # logger.error(msg, exc_info=1)
                 logger.error(msg)
                 msg = u'ERROR: %s' % (msg)
             else:
                 logger.debug(msg)
-                logger.warn(msg)
         
         # update jobtask result
         task_id = self.request.id
-        TaskResult.store(task_id, status=status, traceback=traceback,
-                         retval=result, msg=msg, stop_time=current_time, 
+        TaskResult.store(task_id, status=status, traceback=traceback, retval=result, msg=msg, stop_time=current_time,
                          start_time=start_time, inner_type=u'JOBTASK')
-         
-        #if status == u'PROGRESS' and not self.request.called_directly:
-        #    self.update_state(state=u'PROGRESS', meta={u'elapsed': elapsed})
-        
+
         # get job start time
         job_start_time = params.get(u'start-time', 0)        
         
@@ -537,7 +522,8 @@ class JobTask(AbstractJob):
         The return value of this handler is ignored.
         """
         self.update(u'SUCCESS', msg=u'Stop %s:%s' % (self.name, task_id))
-        
+
+
 def job(entity_class=None, name=None, module=None, delta=2):
     #, op=None, act=u'use'):
     """Decorator used for workflow main task.
@@ -657,7 +643,7 @@ def job_task(module=u''):
             operation.perms = []
             operation.user = params[6]
             operation.session = None
-            operation.transaction = None       
+            operation.transaction = None
 
             task.update(u'STARTED', start_time=time(), 
                         msg=u'Start %s:%s' % (task.name, task.request.id))
