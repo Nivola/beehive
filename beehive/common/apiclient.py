@@ -358,12 +358,10 @@ class BeehiveApiClient(object):
         return res
 
     @watch    
-    def invoke(self, subsystem, path, method, data=u'', other_headers=None,
-               parse=False):
+    def invoke(self, subsystem, path, method, data=u'', other_headers=None, parse=False):
         """Make api request using subsystem internal admin user credentials.
         
-        :param parse: if True check if data is dict and transform in json
-                    else accept data as passed
+        :param parse: if True check if data is dict and transform in json else accept data as passed
         :parma debug: if True return curl syntax with result
         :raise BeehiveApiClientError:
         """

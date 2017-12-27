@@ -614,6 +614,17 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         
         self.entity_class = self.client.heat
 
+    def wait_stack_create(self, name, oid):
+        res = self.client.heat.stack.get(stack_name=name, oid=oid)
+        status = res[u'stack_status']
+
+        while status == u'CREATE_IN_PROGRESS':
+            self.logger.debug(status)
+            sleep(1)
+            res = self.client.heat.stack.get(stack_name=name, oid=oid)
+            status = res[u'stack_status']
+            print status
+
     def wait_stack_delete(self, name, oid):
         res = self.client.heat.stack.get(stack_name=name, oid=oid)
         status = res[u'stack_status']
@@ -649,19 +660,133 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         logger.info(res)
         self.result(res, details=True)'''
 
-    @expose(aliases=[u'get <name> <oid>'], aliases_only=True)
+    @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
         """Get heat stack by id
         """        
         # name = self.get_arg(name=u'name')
         oid = self.get_arg(name=u'id')
-        obj = self.entity_class.stack.list(oid=oid)[0]
-        # obj = self.entity_class.stack.get(name, oid)
-        #res = self.entity_class.data(obj)
-        res = obj
+        stack = self.entity_class.stack.list(oid=oid)[0]
+        res = self.entity_class.stack.get(stack_name=stack[u'stack_name'], oid=oid)
+        logger.info(res)
+        parameters = [{u'parameter': item, u'value': val} for item, val in res.pop(u'parameters').items()]
+        outputs = res.pop(u'outputs')
+        self.result(res, details=True, maxsize=800)
+        self.app.print_output(u'parameters:')
+        self.result(parameters, headers=[u'parameter', u'value'], maxsize=800)
+        self.app.print_output(u'outputs:')
+        self.result(outputs, headers=[u'key', u'value', u'desc'],
+                    fields=[u'output_key', u'output_value', u'description'], maxsize=100)
+
+    @expose(aliases=[u'template <id>'], aliases_only=True)
+    def template(self):
+        """Get heat stack template by id
+        """
+        # name = self.get_arg(name=u'name')
+        oid = self.get_arg(name=u'id')
+        stack = self.entity_class.stack.list(oid=oid)[0]
+        res = self.entity_class.stack.template(stack_name=stack[u'stack_name'], oid=oid)
         logger.info(res)
         self.result(res, details=True, maxsize=800)
-        
+
+    @expose(aliases=[u'environment <id>'], aliases_only=True)
+    def environment(self):
+        """Get heat stack environment by id
+        """
+        # name = self.get_arg(name=u'name')
+        oid = self.get_arg(name=u'id')
+        stack = self.entity_class.stack.list(oid=oid)[0]
+        res = self.entity_class.stack.environment(stack_name=stack[u'stack_name'], oid=oid)
+        logger.info(res)
+        self.result(res, details=True, maxsize=800)
+
+    @expose(aliases=[u'files <id>'], aliases_only=True)
+    def files(self):
+        """Get heat stack files by id
+        """
+        # name = self.get_arg(name=u'name')
+        oid = self.get_arg(name=u'id')
+        stack = self.entity_class.stack.list(oid=oid)[0]
+        res = self.entity_class.stack.files(stack_name=stack[u'stack_name'], oid=oid)
+        logger.info(res)
+        self.result(res, details=True, maxsize=800)
+
+    @expose(aliases=[u'outputs <id>'], aliases_only=True)
+    def outputs(self):
+        """Get heat stack outputs by id
+        """
+        # name = self.get_arg(name=u'name')
+        oid = self.get_arg(name=u'id')
+        stack = self.entity_class.stack.list(oid=oid)[0]
+        res = self.entity_class.stack.outputs(stack_name=stack[u'stack_name'], oid=oid)
+        logger.info(res)
+        self.result(res, details=True, maxsize=800)
+
+    @expose(aliases=[u'output <id> <key>'], aliases_only=True)
+    def output(self):
+        """Get heat stack output by id and key
+        """
+        # name = self.get_arg(name=u'name')
+        oid = self.get_arg(name=u'id')
+        key = self.get_arg(name=u'key')
+        stack = self.entity_class.stack.list(oid=oid)[0]
+        res = self.entity_class.stack.outputs(stack_name=stack[u'stack_name'], oid=oid, output_key=key)
+        logger.info(res)
+        self.result(res, details=True, maxsize=800)
+
+    @expose(aliases=[u'resources <id>'], aliases_only=True)
+    def resources(self):
+        """Get heat stack resources by id
+        """
+        # name = self.get_arg(name=u'name')
+        oid = self.get_arg(name=u'id')
+        stack = self.entity_class.stack.list(oid=oid)[0]
+        res = self.entity_class.stack.resource.list(stack_name=stack[u'stack_name'], oid=oid)
+        logger.info(res)
+        self.result(res, headers=[u'id', u'name', u'status', u'type', u'creation', u'required_by'],
+                    fields=[u'physical_resource_id', u'resource_name', u'resource_status', u'resource_type',
+                            u'creation_time', u'required_by'], maxsize=40)
+
+    @expose()
+    def resource_types(self):
+        """Get heat stack resources types
+        """
+        res = self.entity_class.stack.resource.list_types().get(u'resource_types')
+        logger.info(res)
+        self.result(res, headers=[u'type'], maxsize=100)
+
+    @expose(aliases=[u'resource-type <type>'], aliases_only=True)
+    def resource_type(self):
+        """Get heat stack resources types. Use with format json and yaml.
+        """
+        name = self.get_arg(name=u'type')
+        res = self.entity_class.stack.resource.get_type(resource_type=name)
+        logger.info(res)
+        self.result(res, headers=[u'type'], maxsize=100)
+
+    @expose(aliases=[u'resource-type-template <type>'], aliases_only=True)
+    def resource_type_template(self):
+        """Get heat stack resources types. Use with format json and yaml.
+        """
+        name = self.get_arg(name=u'type')
+        res = self.entity_class.stack.resource.get_type_template(resource_type=name, template_type='hot')
+        logger.info(res)
+        self.result(res, headers=[u'type'], maxsize=100)
+
+    @expose(aliases=[u'events <id>'], aliases_only=True)
+    def events(self):
+        """Get heat stack events by id
+        """
+        # name = self.get_arg(name=u'name')
+        oid = self.get_arg(name=u'id')
+        stack = self.entity_class.stack.list(oid=oid)[0]
+        res = self.entity_class.stack.event.list(stack_name=stack[u'stack_name'], oid=oid)
+        logger.info(res)
+        print res
+        self.result(res, headers=[u'id', u'name', u'resource_id', u'status', u'status_reason', u'event_time'],
+                    fields=[u'id', u'resource_name', u'physical_resource_id', u'resource_status',
+                            u'resource_status_reason', u'event_time'], maxsize=40)
+
     @expose(aliases=[u'preview <name>'], aliases_only=True)
     def preview(self):
         """Get heat stack preview
@@ -669,7 +794,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         name = self.get_arg(name=u'name')
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         obj = self.entity_class.stack.preview(name, **params)
-        #res = self.entity_class.data(obj)
+        # res = self.entity_class.data(obj)
         res = obj
         logger.info(res)
         self.result(res, details=True)        
@@ -680,10 +805,8 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         """
         name = self.get_arg(name=u'name')
         params = self.get_query_params(*self.app.pargs.extra_arguments)
-        objs = self.entity_class.stack.create(name, **params)
-        res = []
-        for obj in objs:
-            res.append(obj)
+        res = self.entity_class.stack.create(name, **params)
+        self.wait_stack_create(name, res[u'id'])
         logger.info(res)
         self.result(res, headers=self.headers)    
     
@@ -925,7 +1048,7 @@ class OpenstackFloatingIpController(OpenstackControllerChild):
 
 class OpenstackRouterController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/routers'
-    headers = [u'id', u'container.name', u'parent.name', u'name',]
+    headers = [u'id', u'container.name', u'parent.name', u'name']
     
     class Meta:
         label = 'openstack.beehive.routers'
@@ -1013,18 +1136,17 @@ class OpenstackServerController(OpenstackControllerChild):
         self.app.print_output(u'flavor:')
         self.result(flavor, headers=[u'id', u'memory', u'cpu'])
         self.app.print_output(u'volumes:')
-        self.result(volumes, headers=[u'id', u'name', u'format', u'bootable', 
-                                  u'storage', u'mode', u'type', u'size']) 
+        self.result(volumes, headers=[u'id', u'name', u'format', u'bootable', u'storage', u'mode', u'type', u'size'])
         self.app.print_output(u'networks:')
-        self.result(networks, headers=[u'net_id', u'name', u'port_id', u'mac_addr',
-                                  u'port_state', u'fixed_ips.0.ip_address']) 
+        self.result(networks, headers=[u'net_id', u'name', u'port_id', u'mac_addr', u'port_state',
+                                       u'fixed_ips.0.ip_address'])
         
     @expose(aliases=[u'actions <id>'], aliases_only=True)
     def actions(self):
         """Get openstack server actions
         """
         oid = self.get_arg(name=u'id')
-        uri = self.uri + u'/' + oid +u'/actions'
+        uri = self.uri + u'/' + oid + u'/actions'
         res = self._call(uri, u'GET').get(u'server_actions', {})
         logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
         self.result(res, headers=[u'action', u'request_id', u'message'])    
@@ -1034,7 +1156,7 @@ class OpenstackServerController(OpenstackControllerChild):
         """Get openstack server actions
         """
         oid = self.get_arg(name=u'id')
-        uri = self.uri + u'/' + oid +u'/runtime'
+        uri = self.uri + u'/' + oid + u'/runtime'
         res = self._call(uri, u'GET').get(u'server_runtime', {})
         logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
         self.result(res, headers=[u'action', u'request_id', u'message'], 
@@ -1045,7 +1167,7 @@ class OpenstackServerController(OpenstackControllerChild):
         """Get openstack server stats
         """
         oid = self.get_arg(name=u'id')
-        uri = self.uri + u'/' + oid +u'/stats'
+        uri = self.uri + u'/' + oid + u'/stats'
         res = self._call(uri, u'GET').get(u'server_stats', {})
         logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
         self.result(res, headers=[u'action', u'request_id', u'message'], 
@@ -1056,7 +1178,7 @@ class OpenstackServerController(OpenstackControllerChild):
         """Get openstack server metadata
         """
         oid = self.get_arg(name=u'id')
-        uri = self.uri + u'/' + oid +u'/metadata'
+        uri = self.uri + u'/' + oid + u'/metadata'
         res = self._call(uri, u'GET').get(u'server_metadata', {})
         logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
         self.result(res, headers=[u'action', u'request_id', u'message'])         
@@ -1066,7 +1188,7 @@ class OpenstackServerController(OpenstackControllerChild):
         """Get openstack server sgs
         """
         oid = self.get_arg(name=u'id')
-        uri = self.uri + u'/' + oid +u'/security_groups'
+        uri = self.uri + u'/' + oid + u'/security_groups'
         res = self._call(uri, u'GET').get(u'server_security_groups', {})
         logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
         self.result(res, headers=[u'id', u'uuid', u'name', u'ext_id', u'state'])         
@@ -1102,12 +1224,10 @@ class OpenstackServerController(OpenstackControllerChild):
         # open ssh client
         client = SSHClient()
         client.set_missing_host_key_policy(MissingHostKeyPolicy())
-        client.connect(ipaddress, port, username=user, password=pwd,
-            look_for_keys=False, compress=True)
+        client.connect(ipaddress, port, username=user, password=pwd, look_for_keys=False, compress=True)
         #timeout=None, #allow_agent=True,
         
-        channel = client.invoke_shell(term=u'vt100', width=80, height=24, 
-            width_pixels=500, height_pixels=400)
+        channel = client.invoke_shell(term=u'vt100', width=80, height=24, width_pixels=500, height_pixels=400)
         channel.send('ls\n')
         output=channel.recv(2024)
         print(output)
@@ -1121,8 +1241,7 @@ class OpenstackServerController(OpenstackControllerChild):
         data = {u'server_action':{u'stop':True}}
         res = self._call(uri, u'PUT', data=data)
         logger.info(u'Stop server %s' % (oid))
-        self.result({u'msg':u'Stop server %s' % (oid)}, headers=[u'msg'], 
-                    maxsize=400)
+        self.result({u'msg': u'Stop server %s' % (oid)}, headers=[u'msg'], maxsize=400)
         self.wait_job(res[u'jobid'])
         
     @expose(aliases=[u'start <id>'], aliases_only=True)
@@ -1134,8 +1253,7 @@ class OpenstackServerController(OpenstackControllerChild):
         data = {u'server_action':{u'start':True}}
         res = self._call(uri, u'PUT', data=data)
         logger.info(u'Start server %s' % (oid))
-        self.result({u'msg':u'Start server %s' % (oid)}, headers=[u'msg'], 
-                    maxsize=400)
+        self.result({u'msg': u'Start server %s' % (oid)}, headers=[u'msg'], maxsize=400)
         self.wait_job(res[u'jobid'])         
 
 
@@ -1152,121 +1270,74 @@ class OpenstackVolumeController(OpenstackControllerChild):
 
 class OpenstackHeatStackController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/stacks'
-    headers = [u'id', u'parent_id', u'name']
+    headers = [u'id', u'container.name', u'parent.name', u'name', u'state', u'ext_id']
     
     class Meta:
-        label = 'openstack.beehive.heat'
-        aliases = ['heat']
+        label = 'openstack.beehive.heat.stack'
+        aliases = ['stacks']
         aliases_only = True         
         description = "Openstack Heat Stack management"
-        
-    @expose(hide=True)
-    def default(self):
-        self.app.args.print_help()
 
-    @expose(hide=True)
-    def list(self):
-        pass
-
-    @expose(hide=True)
+    @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
-        pass
-    
-    @expose(hide=True)
-    def delete(self):
-        pass      
-        
-    @expose(aliases=[u'stack-list [field=..]'], aliases_only=True)
-    #@expose()
-    def stack_list(self):
-        """List heat stacks
+        """Get openstack stack
         """
-        params = self.get_query_params(*self.app.pargs.extra_arguments)
-        objs = self.entity_class.stacks_list(**params)
-        res = []
-        for obj in objs:
-            res.append(obj)
-        logger.info(res)
-        self.result(res, headers=self.headers)
-
-    '''
-    @expose(aliases=[u'stack-find <name>'], aliases_only=True)
-    def stack_find(self):
-        """Find heat stack by name
-        """        
-        name = self.get_arg(name=u'name')
-        obj = self.entity_class.stacks_find(stack_name=name)
-        #res = self.entity_class.data(obj)
-        res = obj
-        logger.info(res)
-        self.result(res, details=True)'''
-
-    @expose(aliases=[u'stack-get <name> <oid>'], aliases_only=True)
-    def get_stack(self):
-        """Get heat stack by id
-        """        
-        name = self.get_arg(name=u'name')
         oid = self.get_arg(name=u'id')
-        obj = self.entity_class.stacks_details(name, oid)
-        #res = self.entity_class.data(obj)
-        res = obj
+        uri = self.uri + u'/' + oid
+        res = self._call(uri, u'GET').get(u'stack', {})
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
         logger.info(res)
-        self.result(res, details=True)
-        
-    @expose(aliases=[u'stack-preview <name>'], aliases_only=True)
-    def stack_preview(self):
-        """Get heat stack preview
-        """        
-        name = self.get_arg(name=u'name')
-        params = self.get_query_params(*self.app.pargs.extra_arguments)
-        obj = self.entity_class.stacks_preview(name, **params)
-        #res = self.entity_class.data(obj)
-        res = obj
-        logger.info(res)
-        self.result(res, details=True)        
-    
-    @expose(aliases=[u'stack-create <name> ..'], aliases_only=True)
-    def stack_create(self):
-        """Create heat stacks
+        details = res.pop(u'details')
+        parameters = [{u'parameter': item, u'value': val} for item, val in details.pop(u'parameters').items()]
+        files = details.pop(u'files', {})
+        outputs = details.pop(u'outputs')
+        self.result(res, details=True, maxsize=800)
+        self.app.print_output(u'parameters:')
+        self.result(parameters, headers=[u'parameter', u'value'], maxsize=800)
+        self.app.print_output(u'files:')
+        self.result(files, headers=[u'file', u'content'], maxsize=800)
+        self.app.print_output(u'outputs:')
+        self.result(outputs, headers=[u'key', u'value', u'desc'],
+                    fields=[u'output_key', u'output_value', u'description'], maxsize=100)
+
+    @expose(aliases=[u'template <id>'], aliases_only=True)
+    def template(self):
+        """Get openstack stack template
         """
-        name = self.get_arg(name=u'name')
-        params = self.get_query_params(*self.app.pargs.extra_arguments)
-        objs = self.entity_class.stacks_create(name, **params)
-        res = []
-        for obj in objs:
-            res.append(obj)
-        logger.info(res)
-        self.result(res, headers=self.headers)    
-    
-    @expose(aliases=[u'stack-update <name> <oid> ..'], aliases_only=True)
-    def stack_update(self):
-        name = self.get_arg(name=u'name')
         oid = self.get_arg(name=u'id')
-        params = self.get_query_params(*self.app.pargs.extra_arguments)
-        res = self.entity_class.stacks_update(name, oid, **params)
-        res = {u'msg':u'Delete %s %s' % (oid, self.name)}
+        uri = self.uri + u'/' + oid + u'/template'
+        res = self._call(uri, u'GET').get(u'stack_template', {})
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
         logger.info(res)
-        self.result(res, headers=[u'msg'])
-        
-    @expose(aliases=[u'stack-update-preview <name> <oid> ..'], aliases_only=True)
-    def stack_update_preview(self):
-        name = self.get_arg(name=u'name')
+        self.result(res, format=u'yaml')
+
+    @expose(aliases=[u'resources <id>'], aliases_only=True)
+    def resources(self):
+        """Get openstack stack resources
+        """
         oid = self.get_arg(name=u'id')
-        params = self.get_query_params(*self.app.pargs.extra_arguments)
-        res = self.entity_class.stacks_update_preview(name, oid, **params)
-        res = {u'msg':u'Delete %s %s' % (oid, self.name)}
+        uri = self.uri + u'/' + oid + u'/resources'
+        res = self._call(uri, u'GET').get(u'stack_resources', {})
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
         logger.info(res)
-        self.result(res, headers=[u'msg'])
-    
-    @expose(aliases=[u'stack-delete <name> <oid>'], aliases_only=True)
-    def stack_delete(self):
-        name = self.get_arg(name=u'name')
+        self.result(res, headers=[u'id', u'name', u'status', u'type', u'creation', u'required_by'],
+                    fields=[u'physical_resource_id', u'resource_name', u'resource_status', u'resource_type',
+                            u'creation_time', u'required_by'], maxsize=40)
+
+    @expose(aliases=[u'events <id>'], aliases_only=True)
+    def events(self):
+        """Get heat stack events by id
+        """
         oid = self.get_arg(name=u'id')
-        res = self.entity_class.stacks_delete(name, oid)
-        res = {u'msg':u'Delete %s %s' % (oid, self.name)}
+        uri = self.uri + u'/' + oid + u'/events'
+        res = self._call(uri, u'GET').get(u'stack_events', {})
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
         logger.info(res)
-        self.result(res, headers=[u'msg'])      
-        
+        self.result(res, headers=[u'id', u'name', u'resource_id', u'status', u'status_reason', u'event_time'],
+                    fields=[u'id', u'resource_name', u'physical_resource_id', u'resource_status',
+                            u'resource_status_reason', u'event_time'], maxsize=40)
+
+
 openstack_controller_handlers = [
     OpenstackController,
     OpenstackDomainController,

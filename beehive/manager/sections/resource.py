@@ -5,13 +5,15 @@ Created on Sep 25, 2017
 """
 import ujson as json
 import logging
+from urllib import urlencode
+
 from beecell.db.manager import RedisManager, MysqlManager
 from geventhttpclient import HTTPClient
 from geventhttpclient.url import URL
 from pprint import PrettyPrinter
 from pandas import DataFrame, set_option
 import sys
-from beecell.simple import truncate
+from beecell.simple import truncate, str2bool
 from pygments.formatters import Terminal256Formatter
 from pygments.token import Keyword, Name, Comment, String, Error, \
      Number, Operator, Generic, Token
@@ -384,6 +386,7 @@ class ResourceEntityController(ResourceControllerChild):
                     yield (Token.Literal.String, child.get(u'name'))
                     yield (Token.Text.Whitespace, u' - ')
                     yield (Token.Literal.Number, str(child.get(u'id')))
+                    yield (Token.Literal.String, u' [%s]' % child.get(u'state'))
                 data = format(create_data(), Terminal256Formatter(style=TreeStyle))
                 print data
             else:
@@ -395,6 +398,7 @@ class ResourceEntityController(ResourceControllerChild):
                     yield (Token.Literal.String, child.get(u'name'))
                     yield (Token.Text.Whitespace, u' - ')
                     yield (Token.Literal.Number, str(child.get(u'id')))
+                    yield (Token.Literal.String, u' [%s]' % child.get(u'state'))
                 data = format(create_data(), Terminal256Formatter(style=TreeStyle))
                 print data
             self.__print_tree(child, space=space+u'   ')
@@ -453,15 +457,15 @@ class ResourceEntityController(ResourceControllerChild):
         name = self.get_arg(name=u'name')
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         data = {
-            u'resource':{
-                u'container':container,
-                u'resclass':resclass,
-                u'name':name, 
-                u'desc':u'Resource %s' % name,
-                u'ext_id':params.get(u'ext_id', None),
-                u'parent':params.get(u'parent', None),
-                u'attribute':params.get(u'attribute', {}),
-                u'tags':params.get(u'tags', None) 
+            u'resource': {
+                u'container': container,
+                u'resclass': resclass,
+                u'name': name,
+                u'desc': u'Resource %s' % name,
+                u'ext_id': params.get(u'ext_id', None),
+                u'parent': params.get(u'parent', None),
+                u'attribute': params.get(u'attribute', {}),
+                u'tags': params.get(u'tags', None)
             }
         }
         uri = u'%s/resources' % (self.baseuri)
@@ -482,12 +486,12 @@ class ResourceEntityController(ResourceControllerChild):
         oid = self.get_arg(name=u'oid')
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         data = {
-            u'resource':params
+            u'resource': params
         }
         uri = u'%s/resources/%s' % (self.baseuri, oid)
         self._call(uri, u'PUT', data=data)
         logger.info(u'Update resource %s with data %s' % (oid, params))
-        res = {u'msg':u'Update resource %s with data %s' % (oid, params)}
+        res = {u'msg': u'Update resource %s with data %s' % (oid, params)}
         self.result(res, headers=[u'msg'])        
     
     @expose
@@ -542,13 +546,16 @@ class ResourceEntityController(ResourceControllerChild):
         logger.info(res)
         self.result(res, key=u'perms', headers=self.perm_headers)
     
-    @expose(aliases=[u'tree <id>'], aliases_only=True)
+    @expose(aliases=[u'tree <id> [parent=true|false] [link=true|false]'], aliases_only=True)
     def tree(self):
         """Get resource tree
+    - parent: if True show tree by parent - child
+    - link: if True show tree by link relation
         """
-        value = self.get_arg(name=u'id')        
+        value = self.get_arg(name=u'id')
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
         uri = u'%s/resources/%s/tree' % (self.baseuri, value)
-        res = self._call(uri, u'GET')
+        res = self._call(uri, u'GET', data=urlencode(params))
         logger.info(u'Get resource tree: %s' % res)
         #if self.format == u'text':
         res = res[u'resourcetree']
@@ -557,9 +564,23 @@ class ResourceEntityController(ResourceControllerChild):
             yield (Token.Literal.String, res.get(u'name'))
             yield (Token.Text.Whitespace, u' - ')
             yield (Token.Literal.Number, str(res.get(u'id')))
+            yield (Token.Literal.String, u' [%s]' % res.get(u'state'))
         data = format(create_data(), Terminal256Formatter(style=TreeStyle))
         print data
         self.__print_tree(res)
+
+        '''import networkx as nx
+        import networkx.readwrite.json_graph as graph
+        options = {
+            # 'node_color': 'black',
+            # 'node_size': 100,
+            'width': 1,
+            'with_label': True,
+            # 'arrows': True
+        }
+        # import matplotlib.pyplot as plt
+        G = graph.tree_graph(res, attrs={'children': 'children', 'id': 'name', 'name':'name'})
+        nx.draw_networkx(G, **options)'''
 
     @expose(aliases=[u'jobs <id>'], aliases_only=True)
     def jobs(self, *args):

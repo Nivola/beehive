@@ -416,14 +416,17 @@ commands:
         else:
             self.__format(data, space)
     
-    def result(self, data, delta=None, other_headers=[], headers=None, key=None, 
-               fields=None, details=False, maxsize=50, key_separator=u'.'):
+    def result(self, data, delta=None, other_headers=[], headers=None, key=None, fields=None, details=False, maxsize=50,
+               key_separator=u'.', format=None):
         """
         """
         logger.debug(u'result format: %s' % self.format)
         orig_data = data
-        
-        if self.format == u'native':
+
+        if format is None:
+            format = self.format
+
+        if format == u'native':
             if data is not None:
                 if isinstance(data, dict) or isinstance(data, list):
                     self.__jsonprint(data)          
@@ -440,17 +443,17 @@ commands:
             self.query_task_status(jobid)
             return None
         
-        if self.format == u'json':
+        if format == u'json':
             if data is not None:
                 if isinstance(data, dict) or isinstance(data, list):
                     self.__jsonprint(data)         
             
-        elif self.format == u'yaml':
+        elif format == u'yaml':
             if data is not None:
                 if isinstance(data, dict) or isinstance(data, list):
                     self.__yamlprint(data)
             
-        elif self.format == u'table':
+        elif format == u'table':
             if data is not None:
                 # convert input data for query with one raw
                 if details is True:
@@ -484,12 +487,10 @@ commands:
                         print(u'Order: %s %s' % (orig_data.get(u'sort').get(u'field'), 
                                                  orig_data.get(u'sort').get(u'order')))
                         print(u'')               
-                    self.__tabularprint(data, other_headers=other_headers,
-                                        headers=headers, fields=fields,
-                                        maxsize=maxsize, 
-                                        separator=key_separator)
+                    self.__tabularprint(data, other_headers=other_headers, headers=headers, fields=fields,
+                                        maxsize=maxsize, separator=key_separator)
                     
-        elif self.format == u'custom':       
+        elif format == u'custom':
             self.format_text(data)
             if len(self.text) > 0:
                 print(u'\n'.join(self.text))
@@ -525,13 +526,14 @@ commands:
         val = {}
         for arg in args:
             t = arg.split(u'=')
-            if t[1] == 'null':
-                t[1] = None
-            if t[1] == 'True' or t[1] == 'true':
-                t[1] = True
-            if t[1] == 'False' or t[1] == 'false':
-                t[1] = False
-            val[t[0]] = t[1]
+            if len(t) == 2:
+                if t[1] == 'null':
+                    t[1] = None
+                if t[1] == 'True' or t[1] == 'true':
+                    t[1] = True
+                if t[1] == 'False' or t[1] == 'false':
+                    t[1] = False
+                val[t[0]] = t[1]
         return val   
     
     def get_token(self):
