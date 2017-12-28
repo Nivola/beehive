@@ -1837,7 +1837,29 @@ class ApiObject(object):
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
-        return self.info()
+        res = {
+            u'__meta__': {
+                u'objid': self.objid,
+                u'type': self.objtype,
+                u'definition': self.objdef,
+                u'uri': self.objuri,
+            },
+            u'id': self.oid,
+            u'uuid': self.uuid,
+            u'name': self.name,
+            u'desc': self.desc,
+            u'active': str2bool(self.active),
+            u'date': {
+                u'creation': format_date(self.model.creation_date),
+                u'modified': format_date(self.model.modification_date),
+                u'expiry': u''
+            }
+        }
+
+        if self.model.expiry_date is not None:
+            res[u'date'][u'expiry'] = format_date(self.model.expiry_date)
+
+        return res
 
     #
     # authorization

@@ -240,84 +240,165 @@
                     "security_groups": ["test-nsx-sg-01"],
                     "pubkey":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it"
                 },
-                "domain1":{
-                    "uuid":"13ca6d9c-2561-48a0-9343-24b647b4a0d2"
+                "ops-domain1":{
+                    "uuid":"6bcc848a-894b-4046-93fa-799a3dbded05"
                 },
-                "project1":{
-                    "name":"test-project-01",
+                "ops-project1":{
+                    "container":"tst-opstk-ocata-01",
+                    "name":"test-ops-project-01",
+                    "desc":"test-ops-project-01",
                     "parent":null,
-                    "user":"4b4bfb6d5ff0440d93ffb0c313d52ce0",
-                    "role":"688ecda68b63421d901e6714f07edd24"
+                    "domain_id":"6bcc848a-894b-4046-93fa-799a3dbded05",
+                    "enabled":true,
+                    "is_domain":false
                 },
-                "project2":{
-                    "name":"test-project-02",
-                    "parent":"test-project-01"
+                "ops-project1-member":{
+                    "user":"9c1b4dca24594677a9a238ab18e7e58e",
+                    "role":"0a779390ed91465d8ec6688b7112991a"
                 },
-                "network1":{
-                    "name":"test-network-01",
+                "ops-project2":{
+                    "container":"tst-opstk-ocata-01",
+                    "name":"test-ops-project-02",
+                    "desc":"test-ops-project-02",
+                    "parent":"test-ops-project-01",
+                    "domain_id":"6bcc848a-894b-4046-93fa-799a3dbded05",
+                    "enabled":true,
+                    "is_domain":false
+                },
+                "ops-network1":{
+                    "container":"tst-opstk-ocata-01",
+                    "name":"test-ops-network-01",
+                    "desc":"test-ops-network-01",
+                    "project":"test-ops-project-01",
                     "physical_network":"datacentre",
-                    "vlan":565
+                    "segmentation_id":1565,
+                    "network_type":"vlan",
+                    "external":false,
+                    "shared":false
                 },
-                "subnet1":{
-                    "name":"test-subnet-01",
-                    "cidr":"10.102.185.0/24",
-                    "start_pool":"10.102.185.50",
-                    "end_pool":"10.102.185.60"
+                "ops-subnet1":{
+                    "container":"tst-opstk-ocata-01",
+                    "name":"test-ops-subnet-01",
+                    "desc":"test-ops-subnet-01",
+                    "cidr":"10.202.185.0/24",
+                    "allocation_pools": [{
+                        "end":"10.202.185.60",
+                        "start":"10.202.185.50"
+                    }],
+                    "dns_nameservers": ["8.8.8.8"],
+                    "enable_dhcp":true,
+                    "gateway_ip": "10.202.185.61",
+                    "network":"test-ops-network-01",
+                    "project":"test-ops-project-01"
                 },
-                "port1":{
-                    "name":"test-port-01",
-                    "ip":"10.102.185.60"
+                "ops-port1":{
+                    "container":"tst-opstk-ocata-01",
+                    "name":"test-ops-port-01",
+                    "desc":"test-ops-port-01",
+                    "ip":"10.202.185.60",
+                    "network":"test-ops-network-01",
+                    "project":"test-ops-project-01",
+                    "fixed_ips": [
+                        {
+                            "ip_address":"10.202.185.60",
+                            "subnet_id":"test-ops-subnet-01"
+                        }
+                    ],
+                    "security_groups": [
+                    ]
                 },
-                "sg1":{
-                    "name":"test-sg-01",
+                "ops-sg1":{
+                    "container":"tst-opstk-ocata-01",
+                    "name":"test-ops-sg-01",
+                    "desc":"test-ops-sg-01",
+                    "project":"test-ops-project-01",
                     "rule1":{
                         "direction":"ingress",
                         "remote_ip_prefix":"158.102.160.0/24",
                         "protocol":"tcp",
                         "port_range_min":"1",
-                        "port_range_max":"65000"
+                        "port_range_max":"65000",
+                        "ethertype":"IPV4"
                     },
                     "rule2":{
                         "direction":"ingress",
-                        "protocol":null
+                        "protocol":null,
+                        "remote_group_id":"test-ops-sg-01",
+                        "ethertype":"IPV4"
                     },
                     "rule3":{
                         "direction":"egress",
-                        "protocol":null
+                        "protocol":null,
+                        "remote_group_id":"test-ops-sg-01",
+                        "ethertype":"IPV4"
 
                     },
                     "rule4":{
                         "direction":"egress",
                         "protocol":null,
-                        "remote_ip_prefix":"0.0.0.0/0"
+                        "remote_ip_prefix":"0.0.0.0/0",
+                        "ethertype":"IPV4"
                     }
                 },
-                "router1":{
-                    "name":"test-router-01",
-                    "routes": [
-                        {"destination": "102.109.178.23/24", "nexthop": "10.109.78.2"}
-                    ],
-                    "external_network":{
+                "ops-router1":{
+                    "container":"tst-opstk-ocata-01",
+                    "name":"test-ops-router-01",
+                    "desc":"test-ops-router-01",
+                    "project":"test-ops-project-01",
+                    "external_gateway_info": {
+                        "external_fixed_ips": [
+                            {
+                                "subnet_id": null
+                            }
+                        ],
+                        "network_id": null,
                         "vlan":567
-                    },
-                    "internal_network":["test-subnet-01"]
+                    }
+                },
+                "ops-router1-internal": {
+                    "internal_network": [565]
                 },
                 "ops-server1":{
-                    "name":"test-server-01",
-                    "project":"test-project-01",
-                    "network":{
-                        "hostname":"test-server-01",
-                        "uuid":"test-network-01",
+                    "container":"tst-opstk-ocata-01",
+                    "name":"test-ops-server-01",
+                    "desc":"test-ops-server-01",
+                    "project":"test-ops-project-01",
+                    "networks":[{
+                        "hostname":"test-ops-server-01",
+                        "vlan":565,
                         "gw":"10.102.185.1",
                         "dns":["10.102.184.2", "10.102.184.3"]
-                    },
+                    }],
                     "availability_zone":"nova",
                     "flavorRef":"m1.medium",
-                    "imageRef":"centos7-heat",
-                    "admin_pwd":"mypass",
-                    "volume":{"size":20},
-                    "security_groups": ["test-sg-01"],
+                    "imageRef":"centos7-guestagent-timezone",
+                    "adminPass":"mypass",
+                    "block_device_mapping_v2": [{
+                        "destination_type": "volume",
+                        "source_type": "volume",
+                        "volume_size": 20
+                    }],
+                    "security_groups": ["test-ops-sg-01"],
+                    "personality": [],
+                    "metadata": {},
                     "pubkey":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it"
+                },
+                "ops-stack1":{
+                    "container":"tst-opstk-ocata-01",
+                    "name":"test-ops-stack-01",
+                    "project":"test-ops-project-01",
+                    "template_uri":"https://10.102.184.26:1443/1362/beehive-resource/raw/devel/beehive_resource/tests/plugins/openstack/hot/test_template.yaml",
+                    "environment":null,
+                    "parameters":{
+                        "key_name": "opstkcsi",
+                        "image_id": "centos7-guestagent",
+                        "instance_type": "m1.medium",
+                        "net_id": "566"
+                    },
+                    "files":{
+                        "myfile": "#!\/bin\/bash\necho \"Hello world\" > \/root\/testfile.txt"
+                    },
+                    "owner":"admin"
                 },
                 "prv-region1":{
                      "name":"test-prv-region-01",

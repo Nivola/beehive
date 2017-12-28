@@ -111,7 +111,7 @@ class BeehiveTestCase(unittest.TestCase):
         # create api endpoint
         self.api = {}
         self.schema = {}
-        for subsystem,endpoint in self.endpoints.items():
+        for subsystem, endpoint in self.endpoints.items():
             self.api[subsystem] = RemoteClient(endpoint, keyfile=keyfile, certfile=certfile)
             # self.logger.info(u'Load swagger schema from %s' % endpoint)
             # self.schema[subsystem] = self.validate_swagger_schema(endpoint)
@@ -132,15 +132,13 @@ class BeehiveTestCase(unittest.TestCase):
         
     def setUp(self):
         logger.log(70, u'========== %s ==========' % self.id()[9:])
-        logging.getLogger(u'beehive.test.run')\
-            .log(70, u'========== %s ==========' % self.id()[9:])
+        logging.getLogger(u'beehive.test.run').log(70, u'========== %s ==========' % self.id()[9:])
         self.start = time.time()
         
     def tearDown(self):
         elapsed = round(time.time() - self.start, 4)
         logger.log(70, u'========== %s ========== : %ss' % (self.id()[9:], elapsed))
-        logging.getLogger(u'beehive.test.run')\
-            .log(70, u'========== %s ========== : %ss' % (self.id()[9:], elapsed))
+        logging.getLogger(u'beehive.test.run').log(70, u'========== %s ========== : %ss' % (self.id()[9:], elapsed))
     
     def open_mysql_session(self, db_uri):
         engine = create_engine(db_uri)
@@ -158,7 +156,7 @@ class BeehiveTestCase(unittest.TestCase):
     
     def create_keyauth_token(self, user, pwd):
         global token, seckey
-        data = {u'user':user, u'password':pwd}
+        data = {u'user': user, u'password': pwd}
         headers = {u'Content-Type':u'application/json'}
         endpoint = self.endpoints[u'auth']
         uri = u'/v1.0/keyauth/token'
@@ -188,8 +186,7 @@ class BeehiveTestCase(unittest.TestCase):
             return schema
         return None
     
-    def validate_response(self, resp_content_type, schema, path, method, 
-                          response, runlog):
+    def validate_response(self, resp_content_type, schema, path, method, response, runlog):
         validate = True
         if self.validatation_active is True or self.validation_active is True:
             # validate with swagger schema

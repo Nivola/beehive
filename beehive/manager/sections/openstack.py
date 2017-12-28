@@ -3,6 +3,7 @@ Created on Sep 27, 2017
 
 @author: darkbk
 '''
+import requests
 import sh
 import logging
 from cement.core.controller import expose
@@ -148,37 +149,28 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
         res = self.client.system.compute_zones()
         resp = []
         for item in res:
-            resp.append({u'state':item[u'zoneState'][u'available'],
-                         u'hosts':u','.join(item[u'hosts'].keys()),
-                         u'name':item[u'zoneName']})
+            resp.append({u'state': item[u'zoneState'][u'available'],
+                         u'hosts': u','.join(item[u'hosts'].keys()),
+                         u'name': item[u'zoneName']})
         logger.debug('Get openstack availability zone: %s' % (res))
         self.result(resp, headers=[u'name', u'hosts', u'state'], maxsize=200)    
     
     @expose()
     def compute_hosts(self):
         """Get physical hosts.
-        
-        :raises OpenstackError: raise :class:`.OpenstackError`
         """
-        path = '/os-hosts'
-        res = self.compute.call(path, 'GET', data='', 
-                                token=self.manager.identity.token)
-        self.logger.debug('Get openstack hosts: %s' % truncate(res))
-        return res[0]['hosts']
+        res = self.client.system.compute_hosts()
+        logger.debug('Get openstack hosts: %s' % (res))
+        self.result(res, headers=[u'service', u'host_name', u'zone'], maxsize=200)
     
     @expose()
     def compute_host_aggregates(self):
         """Get compute host aggregates.
-        An aggregate assigns metadata to groups of compute nodes. Aggregates 
-        are only visible to the cloud provider.
-        
-        :raises OpenstackError: raise :class:`.OpenstackError`
         """
-        path = '/os-aggregates'
-        res = self.compute.call(path, 'GET', data='', 
-                                token=self.manager.identity.token)
-        self.logger.debug('Get openstack host aggregates: %s' % truncate(res))
-        return res[0]['aggregates']
+        res = self.client.system.compute_host_aggregates()
+        print res
+        logger.debug('Get openstack hypervisors: %s' % (res))
+        self.result(res, headers=[u'service', u'host_name', u'zone'], maxsize=200)
     
     @expose()
     def compute_server_groups(self):
@@ -186,24 +178,21 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
         
         :raises OpenstackError: raise :class:`.OpenstackError`
         """
-        path = '/os-server-groups'
-        res = self.compute.call(path, 'GET', data='', 
-                                token=self.manager.identity.token)
-        self.logger.debug('Get openstack server groups: %s' % truncate(res))
-        return res[0]['server_groups']
+        res = self.client.system.compute_server_groups()
+        print res
+        logger.debug('Get openstack hypervisors: %s' % (res))
+        self.result(res, headers=[u'service', u'host_name', u'zone'], maxsize=200)
 
     @expose()
     def compute_hypervisors(self):
         """Displays extra statistical information from the machine that hosts 
         the hypervisor through the API for the hypervisor (XenAPI or KVM/libvirt).
-        
-        :raises OpenstackError: raise :class:`.OpenstackError`
         """
-        path = '/os-hypervisors/detail'
-        res = self.compute.call(path, 'GET', data='', 
-                                token=self.manager.identity.token)
-        self.logger.debug('Get openstack hypervisors: %s' % truncate(res))
-        return res[0]['hypervisors']
+        res = self.client.system.compute_hypervisors()
+        logger.debug('Get openstack hypervisors: %s' % (res))
+        self.result(res, headers=[u'id', u'hypervisor_hostname', u'host_ip', u'status', u'state', u'vcpus',
+                                  u'vcpus_used', u'memory_mb', u'free_ram_mb',u'local_gb', u'local_gb_used',
+                                  u'free_disk_gb', u'current_workload',u'running_vms'], maxsize=200)
     
     @expose()
     def compute_hypervisors_statistics(self):
@@ -212,8 +201,7 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
         :raises OpenstackError: raise :class:`.OpenstackError`
         """
         path = '/os-hypervisors/statistics'
-        res = self.compute.call(path, 'GET', data='', 
-                                token=self.manager.identity.token)
+        res = self.compute.call(path, 'GET', data='',token=self.manager.identity.token)
         self.logger.debug('Get openstack hypervisors statistics: %s' % truncate(res))
         return res[0]['hypervisor_statistics']
     
@@ -229,8 +217,7 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
         :raises OpenstackError: raise :class:`.OpenstackError`
         """
         path = '/os-agents'
-        res = self.compute.call(path, 'GET', data='', 
-                                token=self.manager.identity.token)
+        res = self.compute.call(path, 'GET', data='', token=self.manager.identity.token)
         self.logger.debug('Get openstack compute agents: %s' % truncate(res))
         return res[0]['agents']    
     
@@ -241,8 +228,7 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
         :raises OpenstackError: raise :class:`.OpenstackError`
         """
         path = '/os-services'
-        res = self.blockstore.call(path, 'GET', data='', 
-                                   token=self.manager.identity.token)
+        res = self.blockstore.call(path, 'GET', data='', token=self.manager.identity.token)
         self.logger.debug('Get openstack storage services: %s' % truncate(res))
         return res[0]['services']
     
@@ -284,8 +270,7 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
         :raises OpenstackError: raise :class:`.OpenstackError`
         """
         path = '/v2.0/agents'
-        res = self.network.call(path, 'GET', data='', 
-                                token=self.manager.identity.token)
+        res = self.network.call(path, 'GET', data='', token=self.manager.identity.token)
         self.logger.debug('Get openstack network agents: %s' % truncate(res))
         return res[0]['agents']
     
@@ -299,8 +284,7 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
         :raises OpenstackError: raise :class:`.OpenstackError`
         """
         path = '/v2.0/service-providers'
-        res = self.network.call(path, 'GET', data='', 
-                                token=self.manager.identity.token)
+        res = self.network.call(path, 'GET', data='', token=self.manager.identity.token)
         self.logger.debug('Get openstack network service providers: %s' % 
                           truncate(res))
         return res[0]['service_providers']
@@ -335,8 +319,7 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
         :raises OpenstackError: raise :class:`.OpenstackError`
         """
         path="/services"
-        res = self.heat.call(path, 'GET', data='', 
-                             token=self.manager.identity.token)
+        res = self.heat.call(path, 'GET', data='', token=self.manager.identity.token)
         self.logger.debug('Get openstack orchestrator services: %s' % \
                           truncate(res))
         return res[0]['services']
@@ -688,6 +671,37 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         res = self.entity_class.stack.template(stack_name=stack[u'stack_name'], oid=oid)
         logger.info(res)
         self.result(res, details=True, maxsize=800)
+
+    @expose()
+    def template_versions(self):
+        """Get available template versions
+        """
+        res = self.entity_class.template.versions().get(u'template_versions')
+        logger.info(res)
+        self.result(res, headers=[u'version', u'type', u'aliases'])
+
+    @expose(aliases=[u'template-functions <template>'], aliases_only=True)
+    def template_functions(self):
+        """Get available template functions
+        """
+        template = self.get_arg(name=u'template')
+        res = self.entity_class.template.functions(template).get(u'template_functions')
+        logger.info(res)
+        self.result(res, headers=[u'functions', u'description'], maxsize=200)
+
+    @expose(aliases=[u'template-validate <template-uri>'], aliases_only=True)
+    def template_validate(self):
+        """Get available template functions
+        """
+        template_uri = self.get_arg(name=u'template-uri')
+        rq = requests.get(template_uri, timeout=5, verify=False)
+        if rq.status_code == 200:
+            template = rq.content
+            res = self.entity_class.template.validate(template=template, environment={})
+            logger.info(res)
+            self.result(res, format=u'yaml')
+        else:
+            self.app.print_error(u'No response from uri found')
 
     @expose(aliases=[u'environment <id>'], aliases_only=True)
     def environment(self):
@@ -1048,7 +1062,8 @@ class OpenstackFloatingIpController(OpenstackControllerChild):
 
 class OpenstackRouterController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/routers'
-    headers = [u'id', u'container.name', u'parent.name', u'name']
+    headers = [u'id', u'container.name', u'parent.name', u'name', u'state', u'details.enable_snat',
+               u'details.external_network.name', u'details.external_ips.0.ip_address']
     
     class Meta:
         label = 'openstack.beehive.routers'
@@ -1056,11 +1071,37 @@ class OpenstackRouterController(OpenstackControllerChild):
         aliases_only = True         
         description = "Openstack Router management"
 
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        """Get openstack item
+        """
+        oid = self.get_arg(name=u'id')
+        uri = self.uri + u'/' + oid
+        res = self._call(uri, u'GET')
+        key = self._meta.aliases[0].rstrip(u's')
+        res = res.get(key)
+        logger.info(u'Get %s: %s' % (key, truncate(res)))
+        details = res.pop(u'details')
+        external_net = details.get(u'external_network')
+        external_ips = details.get(u'external_ips')
+        self.result(res, details=True)
+        self.app.print_output(u'External network:')
+        self.result(external_net, headers=[u'uuid', u'name', u'state'])
+        self.app.print_output(u'External ip:')
+        self.result(external_ips, headers=[u'subnet_id', u'ip_address'])
+
+        # get internal ports
+        uri = self.uri + u'/' + oid + u'/ports'
+        ports = self._call(uri, u'GET').get(u'router_ports', [])
+        self.app.print_output(u'Internal ports:')
+        self.result(ports, headers=[u'id', u'name', u'state', u'details.network.name', u'details.device_owner',
+                                    u'details.mac_address', u'details.device.name', u'details.fixed_ips.0.ip_address'],
+                    maxsize=30)
+
 
 class OpenstackSecurityGroupController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/security_groups'
-    headers = [u'id', u'container.name', u'parent.name', u'name', u'state', 
-               u'ext_id']
+    headers = [u'id', u'container.name', u'parent.name', u'name', u'state', u'ext_id']
     
     class Meta:
         label = 'openstack.beehive.security_groups'
@@ -1129,9 +1170,9 @@ class OpenstackServerController(OpenstackControllerChild):
         res = self._call(uri, u'GET').get(u'server', {})
         logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
         detail = res.get(u'details')
-        volumes = detail.pop(u'volumes')
-        networks = detail.pop(u'networks')
-        flavor = detail.pop(u'flavor')
+        volumes = detail.pop(u'volumes', [])
+        networks = detail.pop(u'networks', [])
+        flavor = detail.pop(u'flavor', [])
         self.result(res, details=True)
         self.app.print_output(u'flavor:')
         self.result(flavor, headers=[u'id', u'memory', u'cpu'])
@@ -1338,6 +1379,58 @@ class OpenstackHeatStackController(OpenstackControllerChild):
                             u'resource_status_reason', u'event_time'], maxsize=40)
 
 
+class OpenstackHeatStackTemplateController(OpenstackControllerChild):
+    uri = u'/v1.0/openstack/stack-templates'
+    headers = [u'id', u'container.name', u'parent.name', u'name', u'state', u'ext_id']
+
+    class Meta:
+        label = 'openstack.beehive.heat.template'
+        aliases = ['templates']
+        aliases_only = True
+        description = "Openstack Heat Stack template management"
+
+    @expose(aliases=[u'versions <orchestrator>'], aliases_only=True)
+    def versions(self):
+        """Get openstack orchestrator heat template versions
+        """
+        orchestrator = self.get_arg(name=u'orchestrator')
+        uri = self.uri
+        res = self._call(uri, u'GET', data=u'container=%s' % orchestrator).get(u'template_versions', {})
+        logger.info(u'Get template versions: %s' % truncate(res))
+        self.result(res, headers=[u'version', u'type', u'aliases'])
+
+    @expose(aliases=[u'template <orchestrator> <template>'], aliases_only=True)
+    def functions(self):
+        """Get openstack stack template functions
+        """
+        orchestrator = self.get_arg(name=u'orchestrator')
+        template = self.get_arg(name=u'template')
+        uri = u'/v1.0/openstack/stack-template-functions'
+        res = self._call(uri, u'GET', data=u'container=%s&template=%s' % (orchestrator, template))\
+                  .get(u'template_functions', {})
+        logger.info(u'Get template functions: %s' % truncate(res))
+        self.result(res, headers=[u'functions', u'description'], maxsize=200)
+
+    @expose(aliases=[u'validate <orchestrator> <template-uri>'], aliases_only=True)
+    def validate(self):
+        """Get openstack stack template functions
+        """
+        orchestrator = self.get_arg(name=u'orchestrator')
+        template = self.get_arg(name=u'template-uri')
+        data = {
+            u'stack_template': {
+                u'container': orchestrator,
+                u'template_uri': template
+            }
+        }
+        uri = u'/v1.0/openstack/stack-template-validate'
+        res = self._call(uri, u'POST', data=data)
+        logger.info(u'Validate template: %s' % truncate(res))
+        if res:
+            res[u'uri'] = template
+        self.result(res, headers=[u'uri', u'validate'], maxsize=200)
+
+
 openstack_controller_handlers = [
     OpenstackController,
     OpenstackDomainController,
@@ -1352,5 +1445,6 @@ openstack_controller_handlers = [
     OpenstackFlavorController,
     OpenstackServerController,
     OpenstackVolumeController,
-    OpenstackHeatStackController
+    OpenstackHeatStackController,
+    OpenstackHeatStackTemplateController
 ]

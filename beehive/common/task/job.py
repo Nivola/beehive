@@ -151,29 +151,29 @@ class AbstractJob(BaseTask):
         op = op.replace(u'.%s' % action, u'')
         entity_class = task_local.entity_class
         data={
-            u'opid':task_local.opid, 
-            u'op':u'%s.%s' % (task_local.entity_class.objdef, op),
-            u'taskid':self.request.id,
-            u'task':self.name,
-            u'params':self.request.args,
-            u'response':response,
-            u'elapsed':elapsed,
-            u'msg':msg
+            u'opid': task_local.opid,
+            u'op': u'%s.%s' % (task_local.entity_class.objdef, op),
+            u'taskid': self.request.id,
+            u'task': self.name,
+            u'params': self.request.args,
+            u'response': response,
+            u'elapsed': elapsed,
+            u'msg': msg
         }
         
         source = {
-            u'user':operation.user[0],
-            u'ip':operation.user[1],
-            u'identity':operation.user[2]
+            u'user': operation.user[0],
+            u'ip': operation.user[1],
+            u'identity': operation.user[2]
         }
         
         dest = {
-            u'ip':task_local.controller.module.api_manager.server_name,
-            u'port':task_local.controller.module.api_manager.http_socket,
-            u'objid':task_local.objid, 
-            u'objtype':entity_class.objtype,
-            u'objdef':entity_class.objdef,
-            u'action':action
+            u'ip': task_local.controller.module.api_manager.server_name,
+            u'port': task_local.controller.module.api_manager.http_socket,
+            u'objid': task_local.objid,
+            u'objtype': entity_class.objtype,
+            u'objdef': entity_class.objdef,
+            u'action': action
         }      
         
         # send event
@@ -360,7 +360,6 @@ class JobTask(AbstractJob):
                 except:
                     trace = u'Job %s was not found' % job_id
                 err = u'Remote job %s error: %s' % (job_id, trace)
-                #err = 'Task %s fails' % job_id
                 logger.error(err)
                 raise JobInvokeApiError(err)
             else:
@@ -373,45 +372,42 @@ class JobTask(AbstractJob):
     #    
     def wait_for_job_complete(self, task_id):
         """Query celery job and wait until status is not SUCCESS or FAILURE
-        
-        :param task: celery task id
-        :return: task results
+
+        **Parameters**:
+
+            * **task_id**: celery task id
+
+        **Return**:
+
+            task results
         """
         try:
             # get celery task
-            #inner_task = AsyncResult(task_id, app=task_manager)
             inner_task = TaskResult.get(task_id)
-            res = None
             start = time()
+
             # loop until inner_task finish with success or error
-            #while inner_task.status != u'SUCCESS' and inner_task.status != u'FAILURE':
             status = inner_task.get(u'status')
             while status != u'SUCCESS' and status != u'FAILURE':
                 sleep(task_local.delta)
-                #inner_task = AsyncResult(task_id, app=task_manager)
                 inner_task = TaskResult.get(task_id)
                 elapsed = time() - start
-                self.update(u'PROGRESS', msg=u'Task %s status %s after %ss' % 
-                             (task_id, status, elapsed))
+                self.update(u'PROGRESS', msg=u'Task %s status %s after %ss' % (task_id, status, elapsed))
                 status = inner_task.get(u'status')
             
             elapsed = time() - start
             if status == u'FAILURE':
-                logger.error(u'Task %s error after %ss' % 
-                             (task_id, elapsed))
+                logger.error(u'Task %s error after %ss' % (task_id, elapsed))
                 raise JobError(u'Task %s error' % task_id)
             elif status == u'SUCCESS':
-                logger.debug(u'Task %s success after %ss' % 
-                             (task_id, elapsed))
+                logger.debug(u'Task %s success after %ss' % (task_id, elapsed))
                 res = inner_task
             else:
-                logger.error(u'Task %s unknown error after %ss' % 
-                             (task_id, elapsed))
+                logger.error(u'Task %s unknown error after %ss' % (task_id, elapsed))
                 raise JobError(u'Unknown error with task %s' % task_id)
             
             return res
         except Exception as ex:
-            #logger.error(ex, exc_info=1)
             logger.error(ex)
             raise
     

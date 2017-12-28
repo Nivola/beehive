@@ -415,7 +415,8 @@ commands:
                     self.__format(v, space, u'', u'')
         else:
             self.__format(data, space)
-    
+
+    @check_error
     def result(self, data, delta=None, other_headers=[], headers=None, key=None, fields=None, details=False, maxsize=50,
                key_separator=u'.', format=None):
         """
