@@ -38,34 +38,6 @@ from time import sleep
 
 logger = getLogger(__name__)
 
-'''class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
-    
-    WHITEonBLACK = '\033[1;37;40m'
-    GREENonBLACK = '\033[1;32;40m'
-    BLUEonBLACK = '\033[1;34;40m'
-    REDonBLACK = '\033[1;31;40m'
-    YELLOWonBLACK = '\033[1;33;40m'
-    PURPLEonBLACK = '\033[1;35;40m'
-    CYANonBLACK = '\033[1;36;40m'
-    
-    def output(self, data, color):
-        return getattr(self, color) + data + self.ENDC
-
-
-def print_error(error):
-    """Print error
-    """
-    print(bcolors.FAIL + u'   ERROR : ' + bcolors.ENDC +
-      bcolors.FAIL + bcolors.BOLD + str(error) + bcolors.ENDC)'''
-    
 
 def check_error(fn):
     """Use this decorator to return error message if an exception was raised
@@ -79,18 +51,12 @@ def check_error(fn):
     @wraps(fn)
     def check_error_inner(*args, **kwargs):
         try:
-            #print args[0].app.error
-            if args[0].app.error is True:
-                return None
-            #print 0
             # call internal function
             res = fn(*args, **kwargs)
             return res
         except Exception as ex:
-            # logger.error(ex, exc_info=1)
             args[0].app.print_error(ex)
-            # args[0].app.error = True
-            # exit(1)
+            raise
     return check_error_inner
 
 
@@ -264,12 +230,7 @@ commands:
         if self.envs is not None:
             self.envs = self.envs.split(u',')
 
-
-    def _ext_parse_args(self):
-        """
-        """
-        pass
-    
+    '''
     @check_error
     def _dispatch(self):
         """
@@ -298,7 +259,7 @@ commands:
                 return func()
         else:
             self._process_arguments()
-            self._parse_args()
+            self._parse_args()'''
         
     def __jsonprint(self, data):
         data = json.dumps(data, indent=2)
@@ -520,7 +481,7 @@ commands:
             t = arg.split(u'=')
             val[t[0]] = t[1]
         return urlencode(val)
-    
+
     def get_query_params(self, *args):
         """
         """
@@ -573,16 +534,39 @@ commands:
             f.close()
         
     @check_error
-    def get_arg(self, default=None, name=None):
+    def get_arg(self, default=None, name=None, keyvalue=False):
+        if len(self.app.pargs.extra_arguments) > 0:
+            self.app.args = []
+            self.app.kvargs = {}
+
+        while len(self.app.pargs.extra_arguments) > 0:
+            item = self.app.pargs.extra_arguments.pop(0)
+            if item.find(u'=') >= 0:
+                t = item.split(u'=')
+                if len(t) == 2:
+                    if t[1] == 'null':
+                        t[1] = None
+                    if t[1] == 'True' or t[1] == 'true':
+                        t[1] = True
+                    if t[1] == 'False' or t[1] == 'false':
+                        t[1] = False
+                    self.app.kvargs[t[0]] = t[1]
+            else:
+                self.app.args.append(item)
+
+        if keyvalue is True:
+            kvargs = getattr(self.app, u'kvargs', {})
+            return kvargs.get(name, default)
+
         arg = None
         try:
-            arg = self.app.pargs.extra_arguments.pop(0)
+            arg = self.app.args.pop(0)
         except:
             if default is not None:
                 arg = default
             elif name is not None:
                 raise Exception(u'Param %s is not defined' % name)
-        return arg            
+        return arg
 
 
 class ApiController(BaseController):
@@ -596,7 +580,7 @@ class ApiController(BaseController):
     def _parse_args(self):
         BaseController._parse_args(self)
 
-        config = self.configs[u'environments'][self.env]
+        config = self.configs[u'environments'][self.env][u'cmp']
     
         if config[u'endpoint'] is None:
             raise Exception(u'Auth endpoint is not configured')

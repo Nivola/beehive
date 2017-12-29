@@ -40,19 +40,19 @@ class VspherePlatformControllerChild(BaseController):
         stacked_on = 'vsphere.platform'
         stacked_type = 'nested'
         arguments = [
-            ( ['extra_arguments'], dict(action='store', nargs='*')),            
-            ( ['-O', '--orchestrator'],
-              dict(action='store', help='Vsphere platform reference label') ),
+            (['extra_arguments'], dict(action='store', nargs='*')),
+            (['-O', '--orchestrator'], dict(action='store', help='Vsphere platform reference label')),
         ]
-        
+
+    @check_error
     def _ext_parse_args(self):
         BaseController._ext_parse_args(self)
         
-        orchestrators = self.configs.get(u'orchestrators').get(u'vsphere')
+        orchestrators = self.configs[u'environments'][self.env][u'orchestrators'].get(u'vsphere')
         label = self.app.pargs.orchestrator
         if label is None:
-            raise Exception(u'Vsphere platform label must be specified. '\
-                            u'Valid label are: %s' % u', '.join(orchestrators.keys()))
+            raise Exception(u'Vsphere platform label must be specified. Valid label are: %s' %
+                            u', '.join(orchestrators.keys()))
 
         if label not in orchestrators:
             raise Exception(u'Valid label are: %s' % u', '.join(orchestrators.keys()))
@@ -61,8 +61,7 @@ class VspherePlatformControllerChild(BaseController):
         self.client = VsphereManager(conf.get(u'vcenter'), conf.get(u'nsx'))
 
     def wait_task(self, task):
-        while task.info.state not in [vim.TaskInfo.State.success,
-                                      vim.TaskInfo.State.error]:
+        while task.info.state not in [vim.TaskInfo.State.success, vim.TaskInfo.State.error]:
             logger.info(task.info.state)
             print(u'*')
             sleep(1)
@@ -96,8 +95,8 @@ class VspherePlatformDatacenterController(VspherePlatformControllerChild):
         res = []
         for o in objs:
             res.append({
-                u'id':o[u'obj']._moId,
-                u'name':o[u'name'],
+                u'id': o[u'obj']._moId,
+                u'name': o[u'name'],
             })
         logger.info(res)
         self.result(res, headers=self.headers)

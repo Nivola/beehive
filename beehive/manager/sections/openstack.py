@@ -19,6 +19,7 @@ from paramiko.client import SSHClient, MissingHostKeyPolicy
 
 logger = logging.getLogger(__name__)
 
+
 #
 # openstack native platform
 #
@@ -46,28 +47,26 @@ class OpenstackPlatformControllerChild(BaseController):
         stacked_on = 'openstack.platform'
         stacked_type = 'nested'
         arguments = [
-            ( ['extra_arguments'], dict(action='store', nargs='*')),            
-            ( ['-O', '--orchestrator'],
-              dict(action='store', help='Openstack platform reference label') ),
+            (['extra_arguments'], dict(action='store', nargs='*')),
+            (['-O', '--orchestrator'], dict(action='store', help='Openstack platform reference label')),
         ]
-        
+
+    @check_error
     def _ext_parse_args(self):
         BaseController._ext_parse_args(self)
-        
-        orchestrators = self.configs.get(u'orchestrators').get(u'openstack')
+
+        orchestrators = self.configs[u'environments'][self.env][u'orchestrators'].get(u'openstack')
         label = self.app.pargs.orchestrator
         if label is None:
-            raise Exception(u'Openstack platform label must be specified. '\
+            raise Exception(u'Openstack platform label must be specified. '
                             u'Valid label are: %s' % u', '.join(orchestrators.keys()))
 
         if label not in orchestrators:
             raise Exception(u'Valid label are: %s' % u', '.join(orchestrators.keys()))
         conf = orchestrators.get(label)
             
-        self.client = OpenstackManager(conf.get(u'uri'), 
-                                       default_region=conf.get(u'region'))
-        self.client.authorize(conf.get(u'user'), conf.get(u'pwd'), 
-                              project=conf.get(u'project'), 
+        self.client = OpenstackManager(conf.get(u'uri'), default_region=conf.get(u'region'))
+        self.client.authorize(conf.get(u'user'), conf.get(u'pwd'), project=conf.get(u'project'),
                               domain=conf.get(u'domain'))
 
     @expose(hide=True)
@@ -88,7 +87,6 @@ class OpenstackPlatformControllerChild(BaseController):
     def get(self):
         oid = self.get_arg(name=u'id')
         obj = self.entity_class.get(oid)
-        #res = self.entity_class.data(obj)
         res = obj
         logger.info(res)
         self.result(res, details=True)
@@ -116,7 +114,6 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
         
     @expose()
     def users(self):
-        #params = self.get_query_params(*self.app.pargs.extra_arguments)
         res = self.client.identity.user.list(detail=True)
         logger.info(res)
         self.result(res, headers=self.headers)
@@ -127,21 +124,16 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
         """
         res = self.client.system.compute_api().get(u'versions', [])
         logger.debug('Get openstack compute services: %s' % (res))
-        self.result(res, headers=[u'id', u'version', u'min_version',
-                                  u'status', u'updated'])
+        self.result(res, headers=[u'id', u'version', u'min_version', u'status', u'updated'])
     
     @expose()
     def compute_services(self):
         """Get compute service.
-        
-        :raises OpenstackError: raise :class:`.OpenstackError`
         """
-        path = '/os-services'
-        res = self.compute.call(path, 'GET', data='', 
-                                token=self.manager.identity.token)
-        self.logger.debug('Get openstack compute services: %s' % truncate(res))
-        return res[0]['services']
-    
+        res = self.client.system.compute_services()
+        logger.debug('Get openstack availability zone: %s' % (res))
+        self.result(res, headers=[u'id', u'host', u'zone', u'binary', u'state', u'status', u'updated_at'], maxsize=200)
+
     @expose()
     def compute_zones(self):
         """Get compute availability zones.
@@ -175,8 +167,6 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
     @expose()
     def compute_server_groups(self):
         """Get compute server groups.
-        
-        :raises OpenstackError: raise :class:`.OpenstackError`
         """
         res = self.client.system.compute_server_groups()
         print res
@@ -186,143 +176,69 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
     @expose()
     def compute_hypervisors(self):
         """Displays extra statistical information from the machine that hosts 
-        the hypervisor through the API for the hypervisor (XenAPI or KVM/libvirt).
+    the hypervisor through the API for the hypervisor (XenAPI or KVM/libvirt).
         """
         res = self.client.system.compute_hypervisors()
         logger.debug('Get openstack hypervisors: %s' % (res))
         self.result(res, headers=[u'id', u'hypervisor_hostname', u'host_ip', u'status', u'state', u'vcpus',
-                                  u'vcpus_used', u'memory_mb', u'free_ram_mb',u'local_gb', u'local_gb_used',
+                                  u'vcpus_used', u'memory_mb', u'free_ram_mb', u'local_gb', u'local_gb_used',
                                   u'free_disk_gb', u'current_workload',u'running_vms'], maxsize=200)
     
     @expose()
     def compute_hypervisors_statistics(self):
         """Get compute hypervisors statistics.
-        
-        :raises OpenstackError: raise :class:`.OpenstackError`
         """
-        path = '/os-hypervisors/statistics'
-        res = self.compute.call(path, 'GET', data='',token=self.manager.identity.token)
-        self.logger.debug('Get openstack hypervisors statistics: %s' % truncate(res))
-        return res[0]['hypervisor_statistics']
-    
+        res = self.client.system.compute_hypervisors_statistics()
+        logger.debug('Get openstack hypervisors statistics: %s' % (res))
+        self.result(res, headers=["count", "vcpus_used", "local_gb_used", "memory_mb", "current_workload", "vcpus",
+                                  "running_vms", "free_disk_gb", "disk_available_least", "local_gb", "free_ram_mb",
+                                  "memory_mb_used"], maxsize=200)
+
     @expose()
     def compute_agents(self):
         """Get compute agents.
         Use guest agents to access files on the disk, configure networking, and 
-        run other applications and scripts in the guest while it runs. This 
-        hypervisor-specific extension is not currently enabled for KVM. Use of 
-        guest agents is possible only if the underlying service provider uses 
-        the Xen driver.  
-        
-        :raises OpenstackError: raise :class:`.OpenstackError`
+    run other applications and scripts in the guest while it runs. This
+    hypervisor-specific extension is not currently enabled for KVM. Use of
+    guest agents is possible only if the underlying service provider uses
+    the Xen driver.
         """
-        path = '/os-agents'
-        res = self.compute.call(path, 'GET', data='', token=self.manager.identity.token)
-        self.logger.debug('Get openstack compute agents: %s' % truncate(res))
-        return res[0]['agents']    
+        res = self.client.system.compute_agents()
+        logger.debug('Get openstack agents: %s' % (res))
+        self.result(res, headers=[], maxsize=200)
     
     @expose()
     def storage_services(self):
-        """Get storage service.  
-        
-        :raises OpenstackError: raise :class:`.OpenstackError`
+        """Get storage service.
         """
-        path = '/os-services'
-        res = self.blockstore.call(path, 'GET', data='', token=self.manager.identity.token)
-        self.logger.debug('Get openstack storage services: %s' % truncate(res))
-        return res[0]['services']
+        res = self.client.system.storage_services()
+        logger.debug('Get openstack storage services: %s' % truncate(res))
+        self.result(res, headers=[u'id', u'host', u'zone', u'binary', u'state', u'status', u'updated_at'], maxsize=200)
     
     @expose()
     def network_agents(self):
         """Get network agents.
-        
-        :return:
-           [...,
-            {u'admin_state_up': True,
-              u'agent_type': u'Metadata agent',
-              u'alive': True,
-              u'binary': u'neutron-metadata-agent',
-              u'configurations': {u'log_agent_heartbeats': False, u'metadata_proxy_socket': u'/var/lib/neutron/metadata_proxy', u'nova_metadata_ip': u'ctrl-liberty.nuvolacsi.it', u'nova_metadata_port': 8775},
-              u'created_at': u'2015-12-22 14:33:59',
-              u'description': None,
-              u'heartbeat_timestamp': u'2016-05-08 16:21:55',
-              u'host': u'ctrl-liberty2.nuvolacsi.it',
-              u'id': u'e6c1e736-d25c-45e8-a475-126a13a07332',
-              u'started_at': u'2016-04-29 21:31:22',
-              u'topic': u'N/A'},
-             {u'admin_state_up': True,
-              u'agent_type': u'Linux bridge agent',
-              u'alive': True,
-              u'binary': u'neutron-linuxbridge-agent',
-              u'configurations': {u'bridge_mappings': {},
-                                  u'devices': 21,
-                                  u'interface_mappings': {u'netall': u'enp10s0f1', u'public': u'enp10s0f1.62'},
-                                  u'l2_population': True,
-                                  u'tunnel_types': [u'vxlan'],
-                                  u'tunneling_ip': u'192.168.205.69'},
-              u'created_at': u'2015-12-22 14:33:59',
-              u'description': None,
-              u'heartbeat_timestamp': u'2016-05-08 16:21:55',
-              u'host': u'ctrl-liberty2.nuvolacsi.it',
-              u'id': u'eb1010c4-ad95-4d8c-b377-6fce6a78141e',
-              u'started_at': u'2016-04-29 21:31:22',
-              u'topic': u'N/A'}]
-        :raises OpenstackError: raise :class:`.OpenstackError`
         """
-        path = '/v2.0/agents'
-        res = self.network.call(path, 'GET', data='', token=self.manager.identity.token)
-        self.logger.debug('Get openstack network agents: %s' % truncate(res))
-        return res[0]['agents']
+        res = self.client.system.network_agents()
+        logger.debug('Get openstack network agents: %s' % truncate(res))
+        self.result(res, headers=[u'id', u'host', u'availability_zone', u'binary', u'agent_type', u'alive',
+                                  u'started_at'], maxsize=200)
     
     @expose()
     def network_service_providers(self):
         """Get network service providers.
-        
-        :return: [{u'default': True, 
-                   u'name': u'haproxy', 
-                   u'service_type': u'LOADBALANCER'}]
-        :raises OpenstackError: raise :class:`.OpenstackError`
         """
-        path = '/v2.0/service-providers'
-        res = self.network.call(path, 'GET', data='', token=self.manager.identity.token)
-        self.logger.debug('Get openstack network service providers: %s' % 
-                          truncate(res))
-        return res[0]['service_providers']
+        res = self.client.system.network_service_providers()
+        logger.debug('Get openstack network service providers: %s' % truncate(res))
+        self.result(res, headers=[u'service_type', u'name', u'default'], maxsize=200)
     
     @expose()
     def orchestrator_services(self):
         """Get heat services.
-        
-        :return: Ex.
-              [{u'binary': u'heat-engine',
-                u'created_at': u'2016-04-29T20:52:52.000000',
-                u'deleted_at': None,
-                u'engine_id': u'c1942356-3cf2-4e45-af5e-75334d7e6263',
-                u'host': u'ctrl-liberty2.nuvolacsi.it',
-                u'hostname': u'ctrl-liberty2.nuvolacsi.it',
-                u'id': u'07cf7fbc-22c3-4091-823c-12e297a0cc51',
-                u'report_interval': 60,
-                u'status': u'up',
-                u'topic': u'engine',
-                u'updated_at': u'2016-05-09T12:19:55.000000'},
-               {u'binary': u'heat-engine',
-                u'created_at': u'2016-04-29T20:52:52.000000',
-                u'deleted_at': None,
-                u'engine_id': u'd7316fa6-2e82-4fe0-94d2-09cbb5ad1bc6',
-                u'host': u'ctrl-liberty2.nuvolacsi.it',
-                u'hostname': u'ctrl-liberty2.nuvolacsi.it',
-                u'id': u'0a40b1ef-91e8-4f63-8c0b-861dbbfdcf31',
-                u'report_interval': 60,
-                u'status': u'up',
-                u'topic': u'engine',
-                u'updated_at': u'2016-05-09T12:19:58.000000'},..,]        
-        :raises OpenstackError: raise :class:`.OpenstackError`
         """
-        path="/services"
-        res = self.heat.call(path, 'GET', data='', token=self.manager.identity.token)
-        self.logger.debug('Get openstack orchestrator services: %s' % \
-                          truncate(res))
-        return res[0]['services']
+        res = self.client.system.orchestrator_services()
+        logger.debug('Get openstack orchestrator services: %s' % truncate(res))
+        self.result(res, headers=[u'id', u'host', u'zone', u'binary', u'state', u'status', u'updated_at'], maxsize=200)
 
 
 class OpenstackPlatformKeystoneController(OpenstackPlatformControllerChild):
@@ -1167,7 +1083,8 @@ class OpenstackServerController(OpenstackControllerChild):
         """
         oid = self.get_arg(name=u'id')
         uri = self.uri + u'/' + oid
-        res = self._call(uri, u'GET').get(u'server', {})
+        res = self._call(uri, u'GET')
+        res = res.get(u'server', {})
         logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
         detail = res.get(u'details')
         volumes = detail.pop(u'volumes', [])

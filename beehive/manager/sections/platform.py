@@ -1,8 +1,8 @@
-'''
+"""
 Created on Sep 22, 2017
 
 @author: darkbk
-'''
+"""
 import os
 import ujson as json
 import gevent
@@ -11,9 +11,10 @@ from datetime import datetime
 from httplib import HTTPConnection
 
 import requests
+from copy import deepcopy
 
 from beecell.simple import str2uni
-from beehive.manager.util.controller import BaseController
+from beehive.manager.util.controller import BaseController, check_error
 from beecell.db.manager import RedisManager, MysqlManager
 from cement.core.controller import expose
 from geventhttpclient import HTTPClient
@@ -22,6 +23,7 @@ from logging import getLogger
 import traceback
 from beedrones.camunda.engine import WorkFlowEngine
 from beedrones.openstack.client import OpenstackManager
+from beedrones.vsphere.client import VsphereManager
 
 logger = getLogger(__name__)
 
@@ -55,7 +57,7 @@ class AnsibleController(BaseController):
         self.baseuri = u'/v1.0/resource'
         self.subsystem = u'resource'
         self.ansible_path = self.configs[u'ansible_path']
-        #self.verbosity = self.app.pargs.verbosity
+        # self.verbosity = self.app.pargs.verbosity
         self.main_playbook= u'%s/site.yml' % (self.ansible_path)
         self.create_playbook= u'%s/server.yml' % (self.ansible_path)
         self.site_playbook= u'%s/site.yml' % (self.ansible_path)
@@ -154,7 +156,7 @@ class AnsibleController(BaseController):
         for env in envs:
             try:
                 path_inventory = u'%s/inventories/%s' % (self.ansible_path, env)
-                path_lib = u'%s/library/beehive/' % (self.ansible_path)
+                path_lib = u'%s/library/beehive/' % self.ansible_path
                 runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
                 runners.append(runner)
             except Exception as ex:
@@ -714,8 +716,7 @@ class MysqlController(AnsibleController):
             self.result(resp, headers=[u'name', u'type', u'default', u'index', u'is_primary_key', u'is_nullable',
                                        u'is_unique'])
 
-    @expose(aliases=[u'table-query <schema> <table> [rows] [offset] [port]'], 
-            aliases_only=True)
+    @expose(aliases=[u'table-query <schema> <table> [rows] [offset] [port]'], aliases_only=True)
     def table_query(self):
         """Get mysql schema table query
     - port: instance port [default=3306]
@@ -735,8 +736,7 @@ class MysqlController(AnsibleController):
         
             self.result(resp, headers=resp[0].keys(), maxsize=20) 
 
-    @expose(aliases=[u'drop-all-tables <schema>'],
-            aliases_only=True)
+    @expose(aliases=[u'drop-all-tables <schema>'], aliases_only=True)
     def drop_all_tables(self):
         """Get mysql schema table query
         """
@@ -767,10 +767,10 @@ class CamundaController(AnsibleController):
         clients = []
         for host in hosts:
             conn = {
-                u'host':str(host),
-                u'port':port,
-                u'path':u'/engine-rest',
-                u'proto':u'http'
+                u'host': str(host),
+                u'port': port,
+                u'path': u'/engine-rest',
+                u'proto': u'http'
             }
             user = u'admin'
             passwd = u'camunda'
@@ -803,7 +803,7 @@ class CamundaController(AnsibleController):
         logger.debug(u'Ping camunda: %s' % resp)
         self.result(resp, headers=[u'host', u'response'])           
     
-    @expose (aliases=[u'deploy <bpmn> [port]'], aliases_only=True)
+    @expose(aliases=[u'deploy <bpmn> [port]'], aliases_only=True)
     def deploy(self):
         """Deploy a proces defintion to engine
         - <bpmn> a file containtg porces bpm definition
@@ -827,7 +827,7 @@ class CamundaController(AnsibleController):
         logger.debug(u'camunda deploy: %s' % resp)
         self.result(resp, headers=[u'host', u'response'])           
 
-    @expose (aliases=[u'start <key>  <jsonparams> [port]'], aliases_only=True)
+    @expose(aliases=[u'start <key>  <jsonparams> [port]'], aliases_only=True)
     def start(self):
         """ 
             start a process instance 
@@ -854,8 +854,99 @@ class CamundaController(AnsibleController):
             res = client.process_instance_start_processkey ( key,  variables=paramdict)
             resp.append({u'host':client.connection.get(u'host'), u'response':res})
         logger.debug(u'camunda start: %s' % resp)
-        self.result(resp, headers=[u'host', u'response'])           
-    
+        self.result(resp, headers=[u'host', u'response'])
+
+
+class VsphereController(AnsibleController):
+    class Meta:
+        label = 'platform.vsphere'
+        aliases = ['vsphere']
+        aliases_only = True
+        description = "Vsphere management"
+
+    @check_error
+    def __get_orchestartors(self, instances, vip=True):
+        """
+        """
+        envs = [self.env]
+        if self.envs is not None:
+            envs = self.envs
+
+        orchestrators = {}
+        for env in envs:
+            os = self.configs[u'environments'][env][u'orchestrators'].get(u'vsphere')
+            orchestrators.update(os)
+
+        orchestrators_available = orchestrators.keys()
+
+        confs = []
+        if instances is None:
+            instances = orchestrators_available
+        else:
+            instances = instances.split(u',')
+        for instance in instances:
+            if instance not in orchestrators_available:
+                logger.error(u'Select orchestrators among: %s' % orchestrators_available)
+                raise Exception(u'Select orchestrators among: %s' % orchestrators_available)
+
+            conf = orchestrators.get(instance)
+            new_conf = deepcopy(conf)
+            new_conf[u'instance'] = instance
+            new_conf[u'host'] = new_conf[u'vcenter'][u'host']
+            confs.append(new_conf)
+        logger.warn(u'Get vsphere configs: %s' % confs)
+        return confs
+
+    def __get_client(self, conf):
+        """
+        """
+        client = VsphereManager(conf.get(u'vcenter'), conf.get(u'nsx'))
+        # client.authorize(conf.get(u'user'), conf.get(u'pwd'), project=conf.get(u'project'), domain=conf.get(u'domain'))
+        return client
+
+    def run_cmd(self, func, configs):
+        """Run command on vsphere instances
+
+        **Parameters:**
+
+            * **configs**: list of dictionary with openstack connection config
+        """
+        try:
+            resp = []
+            for config in configs:
+                start = time()
+                res = func(config)
+                elapsed = time() - start
+                resp.append({u'instance': config[u'instance'],
+                             u'host': config[u'host'],
+                             u'elapsed': elapsed, u'response': res})
+                logger.info(u'Query vsphere %s : %s' % (config[u'host'], elapsed))
+            self.result(resp, headers=[u'instance', u'host', u'elapsed', u'response'], maxsize=300)
+        except Exception as ex:
+            self.error(ex)
+
+    @expose(aliases=[u'ping [instances] [vip=true/false]'], aliases_only=True)
+    def ping(self):
+        """Ping vsphere instances
+    - instances: comma separated vsphere instances
+    - vip: if true query only the vip [default=True]
+        """
+        instances = self.get_arg(default=None)
+        vip = self.get_arg(default=True, name=u'vip', keyvalue=True)
+
+        def func(conf):
+            try:
+                client = self.__get_client(conf)
+                client.system.ping_vsphere()
+                client.system.ping_nsx()
+            except Exception as ex:
+                logger.error(ex, exc_info=1)
+                return False
+            return True
+
+        configs = self.__get_orchestartors(instances, vip=vip)
+        self.run_cmd(func, configs)
+
 
 class OpenstackController(AnsibleController):
     class Meta:
@@ -863,25 +954,59 @@ class OpenstackController(AnsibleController):
         aliases = ['openstack']
         aliases_only = True
         description = "Openstack management"
-    
-    def __get_client(self, instance, host):
+
+    @check_error
+    def __get_orchestartors(self, instances, vip=True):
         """
         """
-        orchestrators = self.configs.get(u'orchestrators').get(u'openstack')
-        conf = orchestrators.get(instance)
-                
-        uri = u'http://%s:5000/v3' % host
-        client = OpenstackManager(uri, default_region=conf.get(u'region'))
-        client.authorize(conf.get(u'user'), conf.get(u'pwd'), 
-                              project=conf.get(u'project'), 
-                              domain=conf.get(u'domain'))
-        return client 
+        envs = [self.env]
+        if self.envs is not None:
+            envs = self.envs
+
+        orchestrators = {}
+        for env in envs:
+            os = self.configs[u'environments'][env][u'orchestrators'].get(u'openstack')
+            orchestrators.update(os)
+
+        orchestrators_available = orchestrators.keys()
+
+        confs = []
+        if instances is None:
+            instances = orchestrators_available
+        else:
+            instances = instances.split(u',')
+        for instance in instances:
+            if instance not in orchestrators_available:
+                logger.error(u'Select orchestrators among: %s' % orchestrators_available)
+                raise Exception(u'Select orchestrators among: %s' % orchestrators_available)
+
+            conf = orchestrators.get(instance)
+            uris = conf.pop(u'uris')
+            if vip is True:
+                uris = [conf.get(u'uri')]
+            for uri in uris:
+                new_conf = deepcopy(conf)
+                new_conf[u'instance'] = instance
+                new_conf[u'uri'] = uri
+                new_conf[u'host'] = uri.split(u'//')[1].split(u':')[0]
+                confs.append(new_conf)
+        logger.warn(u'Get openstack configs: %s' % confs)
+        return confs
+
+    def __get_client(self, conf):
+        """
+        """
+        client = OpenstackManager(conf.get(u'uri'), default_region=conf.get(u'region'))
+        client.authorize(conf.get(u'user'), conf.get(u'pwd'), project=conf.get(u'project'), domain=conf.get(u'domain'))
+        return client
     
-    def run_cmd(self, func, instance, subset=u''):
+    def run_cmd(self, func, configs):
         """Run command on openstack instances
         
         **Parameters:**
-        
+
+            * **configs**: list of dictionary with openstack connection config
+
             * **instance** (:py:class:`str`): openstack label reference used in 
                 ansible to list the nodes
             * **subset** (:py:class:`str`): node subset. Use "controller", 
@@ -889,67 +1014,188 @@ class OpenstackController(AnsibleController):
             * **authorize** (:py:class:`str`): if True check permissions for authorization
         """
         try:
-            inventory = u'openstack-%s' % instance
+            '''inventory = u'openstack-%s' % instance
             if subset != u'':
                 inventory = u'%s-%s' % (inventory, subset)
             path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
-            path_lib = u'%s/library/beehive/' % (self.ansible_path)
+            path_lib = u'%s/library/beehive/' % self.ansible_path
             runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
-            hosts, vars = runner.get_inventory_with_vars(inventory)
+            hosts, vars = runner.get_inventory_with_vars(inventory)'''
 
             resp = []
-            for host in hosts:
+            for config in configs:
                 start = time()
-                res = func(host)
+                res = func(config)
                 elapsed = time() - start
-                resp.append({u'host':str(host), u'elapsed':elapsed, u'res':res})
-                logger.info(u'Query openstack %s : %s' % (host, elapsed))
-            self.result(resp, headers=[u'host', u'elapsed', u'res'])
+                resp.append({u'instance': config[u'instance'],
+                             u'host': config[u'host'],
+                             u'elapsed': elapsed, u'response': res})
+                logger.info(u'Query openstack %s : %s' % (config[u'host'], elapsed))
+            self.result(resp, headers=[u'instance', u'host', u'elapsed', u'response'], maxsize=300)
         except Exception as ex:
             self.error(ex)            
 
-    @expose(aliases=[u'ping <instance>'], aliases_only=True)
+    @expose(aliases=[u'ping [instances] [vip=true/false]'], aliases_only=True)
     def ping(self):
-        """Ping openstack instance nodes
-    - instance: openstack label reference used in ansible to list the controller
-        and set in cli orchestrator configuration
+        """Ping openstack instances
+    - instances: comma separated openstack instances
+    - vip: if true query only the vip [default=True]
         """
-        try:
-            import sh
-        except:
-            raise Exception(u'sh package is not installed')
-        instance = self.get_arg(name=u'instance')
-        def func(host):
-            print(u'.')
-            output = sh.ping(u'-c', 3, host)
-            logger.debug(output)
-            if output.exit_code == 0:
-                return True
-            return False
-        self.run_cmd(func, instance, subset=u'')
-        
-    @expose(aliases=[u'query <instance> [vip]'], aliases_only=True)
-    def query(self):
-        """Ping openstack instances using an heavy query
-    - instance: openstack label reference used in ansible to list the controller
-        and set in cli orchestrator configuration
-    - vip: if true query only the vip
-        """
-        instance = self.get_arg(name=u'instance')
-        vip = self.get_arg(default=True)
-        def func(host):
+        instances = self.get_arg(default=None)
+        vip = self.get_arg(default=True, name=u'vip', keyvalue=True)
+
+        def func(conf):
             try:
-                client = self.__get_client(instance, host)
-                client.server.list()
+                client = self.__get_client(conf)
+                # client.server.list()
+                client.ping()
             except Exception as ex:
-                logger.error(ex)
+                logger.error(ex, exc_info=1)
                 return False
             return True
-            #return client.network.router.list()
-        subset = u'controller'
-        if vip is True:
-            subset = u'vip'
-        self.run_cmd(func, instance, subset=subset)
+
+        configs = self.__get_orchestartors(instances, vip=vip)
+        self.run_cmd(func, configs)
+
+    @expose(aliases=[u'ping2 [instances] [vip=true/false]'], aliases_only=True)
+    def ping2(self):
+        """Ping openstack instances using an heavy query
+    - instances: comma separated openstack instances
+    - vip: if true query only the vip [default=True]
+        """
+        instances = self.get_arg(default=None)
+        vip = self.get_arg(default=True, name=u'vip', keyvalue=True)
+
+        def func(conf):
+            try:
+                client = self.__get_client(conf)
+                client.server.list()
+            except Exception as ex:
+                logger.error(ex, exc_info=1)
+                return False
+            return True
+
+        configs = self.__get_orchestartors(instances, vip=vip)
+        self.run_cmd(func, configs)
+
+    @expose(aliases=[u'ping3 [instances] [vip=true/false]'], aliases_only=True)
+    def ping3(self):
+        """Ping main components of openstack instances
+    - instances: comma separated openstack instances
+    - vip: if true query only the vip [default=True]
+        """
+        instances = self.get_arg(default=None)
+        vip = self.get_arg(default=True, name=u'vip', keyvalue=True)
+
+        def func(conf):
+            res = {u'compute': False,
+                   u'block-storage': False,
+                   u'object-storage': False,
+                   u'network': False,
+                   u'orchestrator': False}
+            try:
+                client = self.__get_client(conf)
+            except Exception as ex:
+                logger.error(ex, exc_info=1)
+                return res
+
+            try:
+                client.system.compute_api()
+                res[u'compute'] = True
+            except Exception as ex:
+                logger.error(ex, exc_info=1)
+
+            try:
+                client.system.object_storage_api()
+                res[u'object-storage'] = True
+            except Exception as ex:
+                logger.error(ex, exc_info=1)
+
+            try:
+                client.system.storage_api()
+                res[u'block-storage'] = True
+            except Exception as ex:
+                logger.error(ex, exc_info=1)
+
+            try:
+                client.system.network_api()
+                res[u'network'] = True
+            except Exception as ex:
+                logger.error(ex, exc_info=1)
+
+            try:
+                client.system.orchestrator_api()
+                res[u'orchestrator'] = True
+            except Exception as ex:
+                logger.error(ex, exc_info=1)
+
+            return res
+
+        configs = self.__get_orchestartors(instances, vip=vip)
+        self.run_cmd(func, configs)
+
+    @expose(aliases=[u'usage [instances]'], aliases_only=True)
+    def usage(self):
+        """Displays extra statistical information from the machine that hosts the hypervisor through the API for the
+    hypervisor (XenAPI or KVM/libvirt).
+    - instances: comma separated openstack instances [optional]
+        """
+        instances = self.get_arg(default=None)
+
+        configs = self.__get_orchestartors(instances, vip=True)
+        resp = []
+        for conf in configs:
+            client = self.__get_client(conf)
+
+            res = client.system.compute_hypervisors()
+            for i in res:
+                i[u'instance'] = conf[u'instance']
+            resp.extend(res)
+        logger.debug('Get openstack hypervisors: %s' % resp)
+        self.result(resp, headers=[u'instance', u'id', u'hypervisor_hostname', u'host_ip', u'status', u'state',
+                                   u'vcpus', u'vcpus_used', u'memory_mb', u'free_ram_mb', u'local_gb',
+                                   u'local_gb_used', u'running_vms'], maxsize=200)
+
+    @expose(aliases=[u'status [instances] [component=..]'], aliases_only=True)
+    def status(self):
+        """Get services/agents status: compute, storage, network, orchestrator
+    - component: openstack component. Can be: compute, storage, network, orchestrator [default=compute]
+    - instances: comma separated openstack instances [optional]
+        """
+        component = self.get_arg(default=u'compute', name=u'component', keyvalue=True)
+        instances = self.get_arg(default=None)
+
+        configs = self.__get_orchestartors(instances, vip=True)
+        resp = []
+
+        if component == u'compute':
+            headers = [u'instance', u'id', u'host', u'zone', u'binary', u'state', u'status', u'updated_at']
+        if component == u'network':
+            headers = [u'instance', u'id', u'host', u'availability_zone', u'binary', u'agent_type', u'alive',
+                       u'started_at']
+        if component == u'storage':
+            headers = [u'instance', u'id', u'host', u'zone', u'binary', u'state', u'status', u'updated_at']
+        if component == u'orchestrator':
+            headers = [u'instance', u'id', u'host', u'zone', u'binary', u'state', u'status', u'updated_at']
+
+        for conf in configs:
+            client = self.__get_client(conf)
+
+            if component == u'compute':
+                res = client.system.compute_services()
+            elif component == u'network':
+                res = client.system.network_agents()
+            elif component == u'storage':
+                res = client.system.storage_services()
+            elif component == u'orchestrator':
+                res = client.system.orchestrator_services()
+            else:
+                res = []
+            for i in res:
+                i[u'instance'] = conf[u'instance']
+            resp.extend(res)
+        logger.debug('Get openstack hypervisors: %s' % resp)
+        self.result(resp, headers=headers, maxsize=200)
 
 
 class NodeController(AnsibleController):
@@ -1066,8 +1312,7 @@ class NodeController(AnsibleController):
         run_data = {
             u'tags':[u'create']
         }        
-        self.ansible_playbook(group, run_data, 
-                              playbook=self.create_playbook)        
+        self.ansible_playbook(group, run_data, playbook=self.create_playbook)
 
     @expose(aliases=[u'update <group>'], aliases_only=True)
     def update(self):
@@ -1077,8 +1322,7 @@ class NodeController(AnsibleController):
         run_data = {
             u'tags':[u'update']
         }        
-        self.ansible_playbook(group, run_data, 
-                              playbook=self.site_playbook)
+        self.ansible_playbook(group, run_data, playbook=self.site_playbook)
 
     @expose(aliases=[u'configure <group>'], aliases_only=True)
     def configure(self):
@@ -1088,8 +1332,7 @@ class NodeController(AnsibleController):
         run_data = {
             u'tags':[u'configure']
         }        
-        self.ansible_playbook(group, run_data, 
-                              playbook=self.site_playbook)
+        self.ansible_playbook(group, run_data,playbook=self.site_playbook)
         
     @expose(aliases=[u'ssh-copy-id <group>'], aliases_only=True)
     def ssh_copy_id(self):
@@ -1099,8 +1342,7 @@ class NodeController(AnsibleController):
         run_data = {
             u'tags':[u'ssh']
         }        
-        self.ansible_playbook(group, run_data, 
-                              playbook=self.site_playbook)        
+        self.ansible_playbook(group, run_data, playbook=self.site_playbook)
         
     @expose(aliases=[u'install <group>'], aliases_only=True)
     def install(self):
@@ -1217,8 +1459,7 @@ class BeehiveController(AnsibleController):
                 res[u'vassals'] = []
             res[u'host'] = host
             resp.append(res)
-        self.result(resp, headers=[u'host', u'pid', u'version', u'uid', u'gid', 
-                                   u'throttle_level', u'emperor_tyrant', 
+        self.result(resp, headers=[u'host', u'pid', u'version', u'uid', u'gid', u'throttle_level', u'emperor_tyrant',
                                    u'vassals'], maxsize=300)
 
     def cdate(self, date):
@@ -1252,8 +1493,7 @@ class BeehiveController(AnsibleController):
                         vassal[key] = self.cdate(vassal[key])
                     resp.append(vassal)
     
-            self.result(resp, headers=[u'host', u'pid', u'uid', u'gid', u'id', 
-                                       u'first_run', u'last_run', u'last_ready', 
+            self.result(resp, headers=[u'host', u'pid', u'uid', u'gid', u'id', u'first_run', u'last_run', u'last_ready',
                                        u'last_mod', u'last_accepting'])
         except Exception as ex:
             self.error(ex)            
@@ -1538,6 +1778,7 @@ platform_controller_handlers = [
     RedisClutserController,
     MysqlController,
     CamundaController,
+    VsphereController,
     OpenstackController,
     NodeController,
     BeehiveController,
