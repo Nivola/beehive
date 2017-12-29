@@ -6,13 +6,12 @@ Created on Sep 22, 2017
 import os
 import ujson as json
 import gevent
+import sh
 from time import time
 from datetime import datetime
 from httplib import HTTPConnection
-
 import requests
 from copy import deepcopy
-
 from beecell.simple import str2uni
 from beehive.manager.util.controller import BaseController, check_error
 from beecell.db.manager import RedisManager, MysqlManager
@@ -45,6 +44,38 @@ class PlatformController(BaseController):
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
 
+    @expose()
+    def ping(self):
+        """Ping
+        """
+        env = [u'-e', self.env]
+        if self.envs is not None:
+            env = [u'-E', u','.join(self.envs)]
+
+        self.app.print_output(u'nginx:')
+        res = sh.beehive(u'platform', u'nginx', u'ping', *env)
+        print(res)
+        self.app.print_output(u'mysql:')
+        res = sh.beehive(u'platform', u'mysql', u'ping', *env)
+        print(res)
+        self.app.print_output(u'redis:')
+        res = sh.beehive(u'platform', u'redis', u'ping', *env)
+        print(res)
+        self.app.print_output(u'redis-cluster:')
+        res = sh.beehive(u'platform', u'redis-cluster', u'ping', *env)
+        print(res)
+        self.app.print_output(u'camunda:')
+        res = sh.beehive(u'platform', u'camunda', u'ping', *env)
+        print(res)
+        self.app.print_output(u'openstack:')
+        res = sh.beehive(u'platform', u'openstack', u'ping', *env)
+        print(res)
+        self.app.print_output(u'vsphere:')
+        res = sh.beehive(u'platform', u'vsphere', u'ping', *env)
+        print(res)
+        self.app.print_output(u'cmp:')
+        res = sh.beehive(u'platform', u'beehive', u'instance-ping', *env)
+        print(res)
 
 class AnsibleController(BaseController):
     class Meta:
