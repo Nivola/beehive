@@ -94,9 +94,10 @@ class WorkerController(SchedulerControllerChild):
             row = 0
             for val in vals:
                 row += 1
-                resp.append({u'worker':u'%s.%s' % (k, row), u'report':val}) 
+                resp.append({u'worker': u'%s.%s' % (k, row), u'report':val})
         self.result(resp, headers=[u'worker', u'report'], maxsize=300)
-    
+
+
 class TaskController(SchedulerControllerChild):    
     class Meta:
         label = 'tasks'
@@ -126,9 +127,8 @@ class TaskController(SchedulerControllerChild):
         uri = u'/v1.0/worker/tasks'
         res = self._call(uri, u'GET')
         logger.info(res)
-        self.result(res, key=u'task_instances', 
-                    headers=[u'task_id', u'type', u'status', u'name', 
-                             u'start_time', u'stop_time', u'elapsed'])
+        self.result(res, key=u'task_instances', headers=[u'task_id', u'type', u'status', u'name', u'start_time',
+                                                         u'stop_time', u'elapsed'], maxsize=200)
         
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):

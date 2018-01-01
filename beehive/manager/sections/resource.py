@@ -479,12 +479,12 @@ class ResourceEntityController(ResourceControllerChild):
     
     @expose(aliases=[u'update <oid> [field=value]'], aliases_only=True)    
     def update(self):
-        """Add resource
+        """Update resource
     - oid: id or uuid of the resource
     - field: can be name, desc, ext_id, active, attribute, state
         """
         oid = self.get_arg(name=u'oid')
-        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        params = self.app.kvargs
         data = {
             u'resource': params
         }

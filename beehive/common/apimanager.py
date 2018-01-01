@@ -2041,8 +2041,7 @@ class ApiObject(object):
         """Short method to verify permissions.
         
         :param authorize: if True check authorization
-        :param action: action to verify. Can be *, view, insert, update, delete, 
-            use
+        :param action: action to verify. Can be *, view, insert, update, delete, use
         :return: True if permissions overlap
         **Raise:** :class:`ApiManagerError`
         """        

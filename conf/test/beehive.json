@@ -386,6 +386,7 @@
                 "ops-stack1":{
                     "container":"tst-opstk-ocata-01",
                     "name":"test-ops-stack-01",
+                    "desc":"test-ops-stack-01",
                     "project":"test-ops-project-01",
                     "template_uri":"https://10.102.184.26:1443/1362/beehive-resource/raw/devel/beehive_resource/tests/plugins/openstack/hot/test_template.yaml",
                     "environment":null,
@@ -578,6 +579,30 @@
                     "type": "openstack",
                     "root_volume_size":50,
                     "user_data":{"pubkey":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it"}
+                },
+                "prv-stack1":{
+                    "container":"tst-provider-01",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "name":"test-prv-stack-01",
+                    "desc":"test-prv-stack-01",
+                    "templates":[
+                        {
+                            "orchestrator_type": "openstack",
+                            "availability_zone": "test-prv-site-01",
+                            "template_uri":"https://10.102.184.26:1443/1362/beehive-resource/raw/devel/beehive_resource/tests/plugins/openstack/hot/test_template.yaml",
+                            "environment":null,
+                            "parameters":{
+                                "key_name": "opstkcsi",
+                                "image_id": "centos7-guestagent",
+                                "instance_type": "m1.medium",
+                                "net_id": "566"
+                            },
+                            "files":{
+                                "myfile": "#!\/bin\/bash\necho \"Hello world\" > \/root\/testfile.txt"
+                            },
+                            "owner":"admin"
+                        }
+                    ]
                 }
             }
         },
