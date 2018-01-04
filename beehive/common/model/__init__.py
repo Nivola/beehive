@@ -612,7 +612,7 @@ class AbstractDbManager(object):
         oid = kvargs.pop(u'oid', None)
         query = self.query_entities(entityclass, session, oid=oid)
         
-        for k,v in kvargs.items():
+        for k, v in kvargs.items():
             if v is None:
                 kvargs.pop(k)
         
@@ -621,8 +621,7 @@ class AbstractDbManager(object):
         kvargs[u'modification_date'] = datetime.today()
         res = entity.update(kvargs)
             
-        self.logger.debug(u'Update %s %s with data: %s' % 
-                          (entityclass.__name__, oid, kvargs))
+        self.logger.debug(u'Update %s %s with data: %s' %  (entityclass.__name__, oid, kvargs))
         return oid
     
     @transaction

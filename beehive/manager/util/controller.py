@@ -476,13 +476,16 @@ commands:
         data = json.loads(data)
         f.close()
         return data
-    
+
+    @check_error
     def format_http_get_query_params(self, *args):
         """
         """
         val = {}
         for arg in args:
             t = arg.split(u'=')
+            if len(t) != 2:
+                raise Exception(u'Param syntax must be key=valve')
             val[t[0]] = t[1]
         return urlencode(val)
 

@@ -446,7 +446,7 @@ class JobTask(AbstractJob):
             if status == u'FAILURE':
                 # logger.error(msg, exc_info=1)
                 logger.error(msg)
-                msg = u'ERROR: %s' % (msg)
+                msg = u'ERROR: %s' % msg
             else:
                 logger.debug(msg)
         
@@ -494,7 +494,7 @@ class JobTask(AbstractJob):
         trace = format_tb(einfo.tb)
         trace.append(err)
         logger.error(err, exc_info=1)
-        msg=u'Error %s:%s %s' % (self.name, task_id, err)
+        msg = u'Error %s:%s %s' % (self.name, task_id, err)
         self.update(u'FAILURE', ex=err, traceback=trace, result=None, msg=msg)
         
         # update job

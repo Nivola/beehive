@@ -60,11 +60,11 @@ class ProviderControllerChild(ResourceEntityController):
             res.pop(i, None)
         main_info = []
         c = res.pop(u'container')
-        date = c.pop(u'date')
+        '''date = c.pop(u'date')
         c.update({u'type': u'container',
                   u'created': date.pop(u'creation'),
                   u'modified': date.pop(u'modified'),
-                  u'expiry': date.pop(u'expiry')})
+                  u'expiry': date.pop(u'expiry')})'''
         main_info.append(c)
         c = res.pop(u'parent')
         c.update({u'type': u'parent', u'desc': u'', u'state': u''})
@@ -414,12 +414,17 @@ class ProviderComputeComputeStackController(ProviderControllerChild):
         res = self.get_resource(oid)
         stacks = res.pop(u'stacks')
         self.result(res, details=True)
+        stack_res = []
         for i in stacks:
             i[u'type'] = u'stack'
-        self.result(stacks, headers=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'created',
-                                     u'modified', u'expiry'],
+            stack_res.append(i)
+            for s in i.pop(u'resources', []):
+                s[u'type'] = u'stack_resource' # s[u'__meta__'][u'definition']
+                stack_res.append(s)
+        self.result(stack_res, headers=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'created',
+                                        u'modified', u'expiry'],
                     fields=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'date.creation', u'date.modified',
-                            u'date.expiry'], maxsize=30)
+                            u'date.expiry'], maxsize=35)
         '''stacks = res.pop(u'stacks')
         image = res.pop(u'image')
         vpcs = res.pop(u'vpcs')

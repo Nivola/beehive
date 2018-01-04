@@ -539,7 +539,7 @@
                             "orchestrator_type": "openstack",
                             "availability_zone": "test-prv-site-01",
                             "orchestrator": "tst-opstk-ocata-01",
-                            "flavor_id": "m1.large"
+                            "flavor_id": "b3e7445b-b555-481b-9fc4-36ddc5978e6d"
                         }
                     ]
                 },
@@ -590,15 +590,19 @@
                     "name": "test-prv-instance-01",
                     "desc": "test-prv-instance-01",
                     "compute_zone":"test-prv-compute-zone-01",
-                    "site": "test-prv-site-01",
-                    "vpc": "test-prv-vpc-01",
-                    "subnet": "10.102.185.0/24",
+                    "availability_zone": "test-prv-site-01",
+                    "networks": [{
+                        "subnet": "10.102.185.0/24",
+                        "vpc": "test-prv-vpc-01"
+                    }],
                     "flavor": "test-prv-compute-flavor-01",
                     "image": "test-prv-compute-image-01",
+                    "storage": [
+                        {"volume_size": 20}
+                    ],
                     "security_groups":["test-prv-security-group-01"],
                     "admin_pass": "mypass",
                     "type": "openstack",
-                    "root_volume_size":50,
                     "user_data":{"pubkey":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it"}
                 },
                 "prv-stack1":{
@@ -610,7 +614,9 @@
                         "image_id": "centos7-guestagent",
                         "instance_type": "m1.medium",
                         "network": "b0be0443-fc33-4be9-b76a-68f85ba8d614",
-                        "security_group": "fb73dee1-17e9-4fc4-bde6-d3057209ac4c-sg"
+                        "gateway": "10.102.185.1",
+                        "security_group": "fb73dee1-17e9-4fc4-bde6-d3057209ac4c-sg",
+                        "user_pwd": "mypass"
                     },
                     "templates":[
                         {

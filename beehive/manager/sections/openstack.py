@@ -307,8 +307,7 @@ class OpenstackPlatformNetworkController(OpenstackPlatformControllerChild):
 
 
 class OpenstackPlatformSubnetController(OpenstackPlatformControllerChild):
-    headers = [u'id', u'tenant_id', u'name', u'subnet_id', u'cidr', 
-               u'enable_dhcp']
+    headers = [u'id', u'tenant_id', u'name', u'network_id', u'cidr', u'enable_dhcp']
     
     class Meta:
         label = 'openstack.platform.subnets'
@@ -323,8 +322,8 @@ class OpenstackPlatformSubnetController(OpenstackPlatformControllerChild):
 
 
 class OpenstackPlatformPortController(OpenstackPlatformControllerChild):
-    headers = [u'id', u'tenant_id', u'port_id', u'security_groups', 
-               u'mac_address', u'status', u'device_owner']
+    headers = [u'id', u'tenant_id', u'network_id', u'fixed_ips.0.ip_address', u'mac_address', u'status',
+               u'device_owner', u'created_at']
     
     class Meta:
         label = 'openstack.platform.ports'
@@ -928,7 +927,7 @@ class OpenstackSubnetController(OpenstackControllerChild):
         res = self._call(uri, u'GET', data=data)
         resp = []
         for item in res.get(u'subnets'):
-            allocation_pools = item.get(u'details').get(u'allocation_pools')
+            allocation_pools = item.get(u'details').get(u'allocation_pools', [])
             allocation_pools = [u'%s - %s' % (a[u'start'], a[u'end']) for a in allocation_pools]
             resp.append({
                 u'id': item.get(u'id'),
