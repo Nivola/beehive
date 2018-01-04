@@ -402,47 +402,52 @@
                     "owner":"admin"
                 },
                 "prv-region1":{
-                     "name":"test-prv-region-01",
-                     "geo_area":"pedmont",
-                     "coords":"100,100"
+                    "container":"tst-provider-01",
+                    "name":"test-prv-region-01",
+                    "desc":"test-prv-region-01",
+                    "geo_area":"pedmont",
+                    "coords":"100,100"
                 },
                 "prv-site1":{
-                     "name":"test-prv-site-01",
-                     "geo_area":"pedmont",
-                     "coords":"100,100",
-                     "limits":{
-                          "cpu":200,
-                          "ram":4096,
-                          "storage":524288,
-                          "instance":5000,
-                          "network":4096
-                     },
-                     "orchestrators":[
-                        {
-                            "type":"vsphere",
-                            "id":"tst-vecenter-01",
-                            "tag":"default",
-                            "config":{
-                                "datacenter":"TST-SDDC",
-                                "resource_pool":"6865522b-2b7b-47e0-bece-d0f42be4f290",
-                                "physical_network":"DVS-LEGACY"
-                            }
-                        },
-                        {
-                            "type":"openstack",
-                            "id":"tst-opstk-redhat-01",
-                            "tag":"default",
-                            "config":{
-                                "domain":"123c8f21-3f72-4d66-b43e-7efc47d16e3f",
-                                "availability_zone":"nova",
-                                "physical_network":"datacentre",
-                                "public_network":"internet"
-                            }
-                        }
-                     ]
+                    "container":"tst-provider-01",
+                    "region":"test-prv-region-01",
+                    "name":"test-prv-site-01",
+                    "desc":"test-prv-site-01",
+                    "geo_area":"pedmont",
+                    "coords":"100,100",
+                    "limits":{
+                        "cpu":200,
+                        "ram":4096,
+                        "storage":524288,
+                        "instance":5000,
+                        "network":4096
+                    }
+                },
+                "prv-site1-orchestrator1": {
+                    "type":"vsphere",
+                    "id":"tst-vecenter-01",
+                    "tag":"default",
+                    "config":{
+                        "datacenter":"TST-SDDC",
+                        "resource_pool":"6865522b-2b7b-47e0-bece-d0f42be4f290",
+                        "physical_network":"DVS-LEGACY"
+                    }
+                },
+                "prv-site1-orchestrator2": {
+                    "type":"openstack",
+                    "id":"tst-opstk-ocata-01",
+                    "tag":"default",
+                    "config":{
+                        "domain":"6bcc848a-894b-4046-93fa-799a3dbded05",
+                        "availability_zone":"nova",
+                        "physical_network":"datacentre",
+                        "public_network":"internet"
+                    }
                 },
                 "prv-site-network1": {
+                    "container":"tst-provider-01",
                     "name": "test-prv-site-network-01",
+                    "desc": "test-prv-site-network-01",
                     "site": "test-prv-site-01",
                     "external": false,
                     "vlan": 565,
@@ -454,43 +459,45 @@
                             "enable_dhcp":true,
                             "dns_nameservers":["10.102.184.2", "10.102.184.3"]
                         }
-                    ],
-                    "subnets_new": [
-                        {
-                            "cidr":"10.102.186.0/24",
-                            "gateway":"10.102.186.1",
-                            "allocation_pools":[{"start":"10.102.186.50", "end":"10.102.186.60"}],
-                            "enable_dhcp":true,
-                            "dns_nameservers":["10.102.184.2", "10.102.184.3"],
-                            "allocable":false
-                        }
                     ]
                 },
+                "prv-site-network1-subnets": [
+                    {
+                        "cidr":"10.102.186.0/24",
+                        "gateway":"10.102.186.1",
+                        "allocation_pools":[{"start":"10.102.186.50", "end":"10.102.186.60"}],
+                        "enable_dhcp":true,
+                        "dns_nameservers":["10.102.184.2", "10.102.184.3"],
+                        "allocable":false
+                    }
+                ],
                 "prv-compute-zone1":{
+                    "container":"tst-provider-01",
                      "name":"test-prv-compute-zone-01",
+                     "desc":"test-prv-compute-zone-01",
                      "quota":{
                           "cpu":10,
                           "ram":1024,
                           "storage":10000,
                           "instance":100,
                           "network":1024
-                     },
-                     "sites":[
-                         {
-                             "id":"test-prv-site-01",
-                             "tag":"default",
-                             "quota":{
-                                  "cpu":10,
-                                  "ram":1024,
-                                  "storage":10000,
-                                  "instance":100,
-                                  "network":1024
-                             }
-                         }
-                     ]
+                     }
+                },
+                "prv-compute-zone1-site1": {
+                     "id":"test-prv-site-01",
+                     "orchestrator_tag":"default",
+                     "quota":{
+                          "cpu":10,
+                          "ram":1024,
+                          "storage":10000,
+                          "instance":100,
+                          "network":1024
+                     }
                 },
                 "prv-compute-image1": {
+                    "container":"tst-provider-01",
                     "name": "test-prv-compute-image-01",
+                    "desc": "test-prv-compute-image-01",
                     "compute_zone":"test-prv-compute-zone-01",
                     "os":"centos",
                     "os_ver":"7.2",
@@ -505,13 +512,15 @@
                         {
                             "orchestrator_type": "openstack",
                             "availability_zone": "test-prv-site-01",
-                            "orchestrator": "tst-opstk-redhat-01",
-                            "template_id": "centos7-heat-raw"
+                            "orchestrator": "tst-opstk-ocata-01",
+                            "template_id": "centos7-guestagent"
                         }
                     ]
                 },
                 "prv-compute-flavor1": {
+                    "container":"tst-provider-01",
                     "name": "test-prv-compute-flavor-01",
+                    "desc": "test-prv-compute-flavor-01",
                     "compute_zone":"test-prv-compute-zone-01",
                     "memory": 4096,
                     "disk": 50,
@@ -529,45 +538,57 @@
                         {
                             "orchestrator_type": "openstack",
                             "availability_zone": "test-prv-site-01",
-                            "orchestrator": "tst-opstk-redhat-01",
-                            "flavor_id": "9"
+                            "orchestrator": "tst-opstk-ocata-01",
+                            "flavor_id": "m1.large"
                         }
                     ]
                 },
                 "prv-vpc1": {
+                    "container":"tst-provider-01",
                     "name": "test-prv-vpc-01",
+                    "desc": "test-prv-vpc-01",
                     "compute_zone":"test-prv-compute-zone-01",
                     "networks": [
                         "test-prv-site-network-01"
                     ]
                 },
                 "prv-security-group1": {
+                    "container":"tst-provider-01",
                     "name": "test-prv-security-group-01",
+                    "desc": "test-prv-security-group-01",
                     "vpc": "test-prv-vpc-01"
                 },
                 "prv-rule1": {
+                    "container":"tst-provider-01",
                     "name": "test-prv-rule-01",
+                    "desc": "test-prv-rule-01",
                     "compute_zone":"test-prv-compute-zone-01",
                     "source": {"type":"SecurityGroup", "value":"test-prv-security-group-01"},
                     "destination": {"type":"SecurityGroup", "value":"test-prv-security-group-01"},
                     "service": {"port": "*", "protocol": "*"}
                 },
                 "prv-rule2": {
+                    "container":"tst-provider-01",
                     "name": "test-prv-rule-02",
+                    "desc": "test-prv-rule-02",
                     "compute_zone":"test-prv-compute-zone-01",
                     "source": {"type":"SecurityGroup", "value":"test-prv-security-group-01"},
                     "destination": {"type":"Cidr", "value":"0.0.0.0/0"},
                     "service": {"port": "*", "protocol": "*"}
                 },
                 "prv-rule3": {
+                    "container":"tst-provider-01",
                     "name": "test-prv-rule-03",
+                    "desc": "test-prv-rule-03",
                     "compute_zone":"test-prv-compute-zone-01",
                     "source": {"type":"Cidr", "value":"158.102.160.0/24"},
                     "destination": {"type":"SecurityGroup", "value":"test-prv-security-group-01"},
                     "service": {"port": "*", "protocol": "*"}
                 },
                 "prv-instance1": {
+                    "container":"tst-provider-01",
                     "name": "test-prv-instance-01",
+                    "desc": "test-prv-instance-01",
                     "compute_zone":"test-prv-compute-zone-01",
                     "site": "test-prv-site-01",
                     "vpc": "test-prv-vpc-01",
@@ -585,17 +606,20 @@
                     "compute_zone":"test-prv-compute-zone-01",
                     "name":"test-prv-stack-01",
                     "desc":"test-prv-stack-01",
+                    "parameters":{
+                        "image_id": "centos7-guestagent",
+                        "instance_type": "m1.medium",
+                        "network": "b0be0443-fc33-4be9-b76a-68f85ba8d614",
+                        "security_group": "fb73dee1-17e9-4fc4-bde6-d3057209ac4c-sg"
+                    },
                     "templates":[
                         {
                             "orchestrator_type": "openstack",
                             "availability_zone": "test-prv-site-01",
-                            "template_uri":"https://10.102.184.26:1443/1362/beehive-resource/raw/devel/beehive_resource/tests/plugins/openstack/hot/test_template.yaml",
-                            "environment":null,
+                            "template_uri":"https://10.102.184.26:1443/1362/beehive-resource/raw/devel/stacks/test/test_template.yaml",
+                            "environment":{},
                             "parameters":{
-                                "key_name": "opstkcsi",
-                                "image_id": "centos7-guestagent",
-                                "instance_type": "m1.medium",
-                                "net_id": "566"
+                                "key_name": "opstkcsi"
                             },
                             "files":{
                                 "myfile": "#!\/bin\/bash\necho \"Hello world\" > \/root\/testfile.txt"
@@ -603,6 +627,35 @@
                             "owner":"admin"
                         }
                     ]
+                },
+                "prv-stack2":{
+                    "container":"tst-provider-01",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "name":"test-prv-stack-02",
+                    "desc":"test-prv-stack-02",
+                    "parameters":{
+                        "server_type": "m1.medium",
+                        "server_image": "centos7-nuovo",
+                        "volume_size": "40",
+                        "network": "eeab4682-1844-4b90-b4ef-3de497115f02",
+                        "subnet": "",
+                        "external_network_id": "rupar"
+                    },
+                    "templates":[
+                        {
+                            "orchestrator_type": "openstack",
+                            "availability_zone": "test-prv-site-01",
+                            "template_uri":"https://10.102.184.26:1443/1362/beehive-resource/raw/devel/stacks/test/preparatory/Propedeutiche_Base.yaml",
+                            "environment":{},
+                            "parameters":{
+                                "key_name": "opstkcsi"
+                            },
+                            "owner":"admin"
+                        }
+                    ]
+                },
+                "prv-stack3":{
+
                 }
             }
         },

@@ -59,7 +59,6 @@ class RedisSessionInterface2(RedisSessionInterface):
     def save_session(self, app, session, response):
         RedisSessionInterface.save_session(self, app, session, response)
         # oauth2_user = session.get(u'oauth2_user', None)
-        logger.warn(session)
         if response.mimetype not in [u'text/html']:
             self.redis.delete(self.key_prefix + session.sid)
             logger.debug(u'Delete user session. This is an Api request')
@@ -406,26 +405,19 @@ class ApiManager(object):
             
         **Raise:** :class:`ApiManagerError`
         """
-        # retrieve token and sign
-        #uid, sign, data = self.__get_token()
-        
         # get identity
         identity = self.get_identity(uid)
         # verify signature
         pubkey64 = identity[u'pubkey']
         
         try:
-            # import key        
-            #signature = binascii.a2b_base64(sign)
+            # import key
             signature = binascii.a2b_hex(sign)
             pub_key = binascii.a2b_base64(pubkey64)
             key = RSA.importKey(pub_key)
             
             # create data hash
             hash_data = SHA256.new(data)
-            #self.logger.debug('Get data: %s' % data)
-            #self.logger.debug('Created hash: %s' % binascii.b2a_base64(
-            #                                            hash_data.digest()))
 
             # verify sign
             verifier = PKCS1_v1_5.new(key)
@@ -434,16 +426,10 @@ class ApiManager(object):
             # extend expire time of the redis key
             if res is True:
                 self.redis_manager.expire(self.prefix + uid, self.expire)
-                self.logger.debug(u'Data signature %s for identity %s is valid. '\
-                                  u'Extend expire.' % (sign, uid))
+                self.logger.debug(u'Data signature %s for identity %s is valid. Extend expire.' % (sign, uid))
         except:
             self.logger.error(u'Data signature for identity %s is not valid' % uid)
             raise ApiManagerError(u'Data signature for identity %s is not valid' % uid, code=401)
-
-        if not res:
-            raise ApiManagerError(u'Data signature for identity %s is not valid' % uid, code=401)
-        else:    
-            self.logger.debug(u'Data signature is valid')
 
         return identity
 
@@ -1786,16 +1772,16 @@ class ApiObject(object):
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
         res = {
-            u'__meta__':{
-                u'objid':self.objid,             
-                u'type':self.objtype,
-                u'definition':self.objdef,
-                u'uri':self.objuri,
+            u'__meta__': {
+                u'objid': self.objid,
+                u'type': self.objtype,
+                u'definition': self.objdef,
+                u'uri': self.objuri,
             },            
-            u'id':self.oid,
-            u'uuid':self.uuid,
-            u'name':self.name,
-            u'active':str2bool(self.active),
+            u'id': self.oid,
+            u'uuid': self.uuid,
+            u'name': self.name,
+            u'active': str2bool(self.active),
         }
         return res
     
@@ -1808,20 +1794,20 @@ class ApiObject(object):
         """
         res = {
             u'__meta__':{
-                u'objid':self.objid,             
-                u'type':self.objtype,
-                u'definition':self.objdef,
-                u'uri':self.objuri,
+                u'objid': self.objid,
+                u'type': self.objtype,
+                u'definition': self.objdef,
+                u'uri': self.objuri,
             },
-            u'id':self.oid, 
-            u'uuid':self.uuid,
-            u'name':self.name, 
-            u'desc':self.desc, 
-            u'active':str2bool(self.active),
-            u'date':{
-                u'creation':format_date(self.model.creation_date),
-                u'modified':format_date(self.model.modification_date),
-                u'expiry':u''
+            u'id': self.oid,
+            u'uuid': self.uuid,
+            u'name': self.name,
+            u'desc': self.desc,
+            u'active': str2bool(self.active),
+            u'date': {
+                u'creation': format_date(self.model.creation_date),
+                u'modified': format_date(self.model.modification_date),
+                u'expiry': u''
             }
         }
         
@@ -2650,7 +2636,12 @@ class ApiViewResponse(ApiObject):
         :param exception: exception raised [optional]
         """
         objid = u'*'
-        if exception is not None: response = (False, escape(str(exception)))
+        if exception is not None:
+            try:
+                response = (False, escape(str(exception)))
+            except:
+                response = (False, escape(exception))
+
         method = api[u'method']
         if method in [u'GET']:
             action = u'view'
@@ -2728,13 +2719,8 @@ class ApiView(FlaskView):
 
         if self.response_mime is None:
             self.response_mime = u'application/json'
-        
-        '''if self.response_mime not in self.RESPONSE_MIME_TYPE:
-            self.logger.warn(u'Response mime type %s is not supported' % 
-                             self.response_mime)
-            self.response_mime = u'application/json'''
-        
-        self.logger.debug(u'Response mime type: %s' % self.response_mime)
+
+        # self.logger.debug(u'Response mime type: %s' % self.response_mime)
     
     def __get_auth_filter(self):
         """Get authentication filter. It can be keyauth, oauth2, simplehttp or ...
@@ -2760,13 +2746,12 @@ class ApiView(FlaskView):
             uid = header[u'uid']
             sign = header[u'sign']
             data = request.path
-            self.logger.info(u'Uid: %s' % uid)
-            self.logger.debug(u'Sign: %s' % sign)
-            self.logger.debug(u'Data: %s' % data)
+            self.logger.debug2(u'Uid: %s' % uid)
+            self.logger.debug2(u'Sign: %s' % sign)
+            self.logger.debug2(u'Data: %s' % data)
         except:
-            raise ApiManagerError(u'Error retrieving token and sign from http header', 
-                                  code=401)
-        return (uid, sign, data)
+            raise ApiManagerError(u'Error retrieving token and sign from http header', code=401)
+        return uid, sign, data
     
     def __get_oauth2_token(self):
         """Get oauth2 access token from headers
@@ -2859,11 +2844,11 @@ class ApiView(FlaskView):
         :raise AuthViewError:
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        self.logger.debug(u'Verify api authorization: %s' % request.path)
+        self.logger.debug(u'Verify api %s [%s] authorization' % (request.path, request.method))
 
         # select correct authentication filter
         authfilter = self.__get_auth_filter()
-        self.logger.debug(u'Select authentication filter "%s"' % authfilter)
+        self.logger.debug(u'Select authentication filter: "%s"' % authfilter)
         
         # get controller
         controller = module.get_controller()
@@ -2907,25 +2892,13 @@ class ApiView(FlaskView):
             compress_perms = user[u'perms']
             
             # get permissions
-            # u'id', u'oid', u'objtype', u'objdef', u'objid', u'aid', u'action'
-            '''if u'dbauth' in controller.__dict__:
-                user_obj = controller.dbauth.get_users(name=name)[0][0]
-                perms = controller.dbauth.get_login_permissions(user_obj)
-            else:
-                perms = controller.api_client.get_user_perms(name)
-            self.logger.warn(perms)'''
-            
             operation.perms = json.loads(decompress(binascii.a2b_base64(compress_perms)))
-            operation.user = (name, identity[u'ip'], uid, 
-                              identity.get(u'seckey', None))
-            self.logger.debug(u'Get user %s permissions: %s' % 
-                              (name, truncate(operation.perms)))
+            operation.user = (name, identity[u'ip'], uid, identity.get(u'seckey', None))
+            self.logger.debug2(u'Get user %s permissions: %s' % (name, truncate(operation.perms)))
         except Exception as ex:
             msg = u'Error retrieving user %s permissions: %s' % (name, ex)
             self.logger.error(msg, exc_info=1)
             raise ApiManagerError(msg, code=401)
-        
-        #return user
         
     # response methods
     def get_warning(self, exception, code, msg, module=None):
@@ -3088,7 +3061,7 @@ class ApiView(FlaskView):
             operation.id = request.headers.get(u'request-id', str(uuid4()))
             operation.transaction = None
             
-            self.logger.info(u'Start new operation [%s]' % (operation.id))
+            self.logger.info(u'Start new operation: %s' % operation.id)
             
             self.logger.info(u'Invoke api: %s [%s] - START' % (request.path, request.method))
             query_string = request.values.to_dict()

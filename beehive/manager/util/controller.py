@@ -299,11 +299,15 @@ commands:
         res = data
         for k in keys:
             if isinstance(res, list):
-                res = res[int(k)]
+                try:
+                    res = res[int(k)]
+                except:
+                    res = {}
             else:
                 res = res.get(k, {})
         if isinstance(res, list):
-            res = u','.join(res)
+            res = json.dumps(res)
+            # res = u','.join(str(res))
         if res is None or res == {}:
             res = u'-'
         
@@ -623,10 +627,10 @@ class ApiController(BaseController):
     
     @check_error 
     def query_task_status(self, task_id):
-        while(True):
+        while True:
             res = self.__query_task_status(task_id)
             status = res[u'status']
-            print status
+            print(u'.')
             if status in [u'SUCCESS', u'FAILURE']:
                 break
             sleep(1)

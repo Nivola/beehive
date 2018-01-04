@@ -86,7 +86,7 @@ class ContainerController(ResourceControllerChild):
         state = self.get_job_state(jobid)
         while state not in [u'SUCCESS', u'FAILURE']:
             logger.info(u'.')
-            print((u'.'))
+            print(u'.')
             sleep(delta)
             state = self.get_job_state(jobid)
 
@@ -310,8 +310,8 @@ class ContainerController(ResourceControllerChild):
         contid = self.get_arg(name=u'id')
         resclass = self.get_arg(name=u'resclass')
         data = {
-            u'discover': {
-                u'resource_classes': resclass,
+            u'synchronize': {
+                u'types': resclass,
                 u'new': True,
                 u'died': True,
                 u'changed': True
@@ -418,7 +418,6 @@ class ResourceEntityController(ResourceControllerChild):
             state = res.get(u'task_instance').get(u'status')
             logger.debug(u'Get job %s state: %s' % (jobid, state))
             if state == u'FAILURE':
-                #print(res)
                 self.app.print_error(res[u'task_instance'][u'traceback'][-1])
             return state
         except (NotFoundException, Exception):
@@ -427,22 +426,22 @@ class ResourceEntityController(ResourceControllerChild):
     def wait_resource(self, uuid, delta=1):
         """Wait resource
         """
-        logger.debug(u'wait for resource: %s' % uuid)
+        logger.debug(u'Wait for resource: %s' % uuid)
         state = self.get_resource_state(uuid)
         while state not in [u'ACTIVE', u'ERROR', u'EXPUNGED']:
             logger.info(u'.')
-            print((u'.'))
+            print(u'.')
             sleep(delta)
             state = self.get_resource_state(uuid)
     
     def wait_job(self, jobid, delta=1):
         """Wait resource
         """
-        logger.debug(u'wait for job: %s' % jobid)
+        logger.debug(u'Wait for job: %s' % jobid)
         state = self.get_job_state(jobid)
         while state not in [u'SUCCESS', u'FAILURE']:
             logger.info(u'.')
-            print((u'.'))
+            print(u'.')
             sleep(delta)
             state = self.get_job_state(jobid)
         
@@ -553,9 +552,9 @@ class ResourceEntityController(ResourceControllerChild):
     - link: if True show tree by link relation
         """
         value = self.get_arg(name=u'id')
-        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        # params = self.get_query_params(**self.app.kvargs)
         uri = u'%s/resources/%s/tree' % (self.baseuri, value)
-        res = self._call(uri, u'GET', data=urlencode(params))
+        res = self._call(uri, u'GET', data=urlencode(self.app.kvargs))
         logger.info(u'Get resource tree: %s' % res)
         #if self.format == u'text':
         res = res[u'resourcetree']

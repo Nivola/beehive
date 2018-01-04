@@ -586,24 +586,25 @@ class TaskManager(ApiObject):
                 val[u'start_time'] = self.__convert_timestamp(val[u'start_time'])           
                 try:
                     # get job childs
-                    first_child_id = val.pop(u'children')[0]
-                    first_child = self._get_task_info(first_child_id)
-                    first_child[u'inner_type'] = u'start'
-                    childs_index = {first_child_id:first_child}
-                    self._get_task_childs(childs_index, first_child)
-                    
-                    # sort childs by date
-                    childs = sorted(childs_index.values(), 
-                                    key=lambda task: task[u'start_time'])
-                    
-                    # get childs trace
-                    trace = []
-                    for c in childs:
-                        for t in c[u'trace']:
-                            trace.append((t[0], c[u'name'], c[u'task_id'], t[1]))
-                    # sort trace
-                    val[u'trace'] = sorted(trace, key=lambda row: row[0])                
-                    val[u'children'] = childs
+                    childrens = val.pop(u'children')
+                    if childrens > 0:
+                        first_child_id = childrens[0]
+                        first_child = self._get_task_info(first_child_id)
+                        first_child[u'inner_type'] = u'start'
+                        childs_index = {first_child_id: first_child}
+                        self._get_task_childs(childs_index, first_child)
+
+                        # sort childs by date
+                        childs = sorted(childs_index.values(), key=lambda task: task[u'start_time'])
+
+                        # get childs trace
+                        trace = []
+                        for c in childs:
+                            for t in c[u'trace']:
+                                trace.append((t[0], c[u'name'], c[u'task_id'], t[1]))
+                        # sort trace
+                        val[u'trace'] = sorted(trace, key=lambda row: row[0])
+                        val[u'children'] = childs
                 except:
                     self.logger.warn(u'', exc_info=1)
                     val[u'children'] = None

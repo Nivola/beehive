@@ -310,7 +310,7 @@ class JobTask(AbstractJob):
     def _query_job(self, module, job_id, attempt):
         """Query remote job status.
         
-        :param module: cloudapi module
+        :param module: beehive module
         :param task_id: id of the remote job
         :return: job status. Possible value are: PENDING, PROGRESS, SUCCESS,
                  FAILURE
@@ -324,19 +324,31 @@ class JobTask(AbstractJob):
             res = {u'state': u'PROGRESS'}
         return res, attempt
 
-    def invoke_api(self, module, uri, method, data, other_headers=None):
-        """Ivoke cloudapi api.
+    def invoke_api(self, module, uri, method, data, other_headers=None, link=None):
+        """Invoke beehive api.
         
         :param module: cloudapi module
         :param uri: api uri
         :param method: api method
-        :param data dict: api data
+        :param data: api data
         :param other_headers: extra headers to pass request
+        :param link: if not None define resoruce id to link with the new resource
         :return: api result
         :raise: ApiManagerError
         """
         res = self.api_admin_request(module, uri, method, data, other_headers)
-        
+
+        if link is not None:
+            # set up link from remote stack to instance
+            self.release_session()
+            self.get_session()
+            resource = self.get_resource(link)
+            resource.add_link(u'%s-link' % res[u'uuid'], u'relation', res[u'uuid'], attributes={}, authorize=False)
+            # self.release_session()
+            self.update(u'PROGRESS', msg=u'Setup link between resource %s and resource %s' %
+                                         (res[u'uuid'], resource.oid))
+            # self.release_session()
+
         if method in [u'POST', u'PUT', u'DELETE']:
             job_id = res[u'jobid']
             self.update(u'PROGRESS', msg=u'Invoke job %s' % job_id)
@@ -352,8 +364,7 @@ class JobTask(AbstractJob):
                 status = job[u'status']
                 self.update(u'PROGRESS')
     
-            self.update(u'PROGRESS', msg=u'Job %s completed with %s' % 
-                        (job_id, status))
+            self.update(u'PROGRESS', msg=u'Job %s completed with %s' % (job_id, status))
             if status == u'FAILURE':
                 try:
                     trace = job[u'traceback'][-1]
