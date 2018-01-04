@@ -1023,14 +1023,15 @@ class VsphereSecurityGroupController(VsphereControllerChild):
 
 class VsphereServerController(VsphereControllerChild):
     uri = u'/v1.0/vsphere/servers'
-    headers = [u'id', u'parent.name', u'container.name', u'name', u'state', u'details.ip_address', u'details.hostname',
-               u'details.cpu', u'details.ram', u'details.template']
+    headers = [u'id', u'parent.name', u'container.name', u'name', u'state', u'details.state', u'details.ip_address',
+               u'details.hostname', u'details.cpu', u'details.ram', u'details.template']
 
     class Meta:
         label = 'vsphere.beehive.servers'
         aliases = ['servers']
         aliases_only = True         
         description = "Vsphere Server management"
+
 
 vsphere_controller_handlers = [
     VsphereController,

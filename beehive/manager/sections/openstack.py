@@ -474,8 +474,8 @@ class OpenstackPlatformServerController(OpenstackPlatformControllerChild):
 
 
 class OpenstackPlatformVolumeController(OpenstackPlatformControllerChild):
-    headers = [u'id', u'name', u'os-vol-tenant-attr:tenant_id', u'size', 
-               u'status', u'bootable']
+    headers = [u'id', u'name', u'os-vol-tenant-attr:tenant_id', u'size', u'status', u'bootable',
+               u'attachments.0.server_id']
     
     class Meta:
         label = 'openstack.platform.volumes'
@@ -810,10 +810,6 @@ class OpenstackController(BaseController):
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
 
-    @expose(help="Beehive Openstack Orchestrator Wrapper management", hide=True)
-    def default(self):
-        self.app.args.print_help()
-
 
 class OpenstackControllerChild(ResourceEntityController):
     uri = u'/v1.0/openstacks'
@@ -824,7 +820,7 @@ class OpenstackControllerChild(ResourceEntityController):
         stacked_on = 'openstack'
         stacked_type = 'nested'
         arguments = [
-            ( ['extra_arguments'], dict(action='store', nargs='*'))
+            (['extra_arguments'], dict(action='store', nargs='*'))
         ]
 
     def _ext_parse_args(self):
@@ -1068,8 +1064,8 @@ class OpenstackFlavorController(OpenstackControllerChild):
 
 class OpenstackServerController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/servers'
-    headers = [u'id', u'container.name', u'parent.name', u'name', u'state', 
-               u'ext_id', u'details.state']
+    headers = [u'id', u'parent.name', u'container.name', u'name', u'state', u'details.state', u'details.ip_address',
+               u'details.hostname', u'details.cpu', u'details.memory', u'details.disk']
     
     class Meta:
         label = 'openstack.beehive.servers'
@@ -1090,6 +1086,7 @@ class OpenstackServerController(OpenstackControllerChild):
         volumes = detail.pop(u'volumes', [])
         networks = detail.pop(u'networks', [])
         flavor = detail.pop(u'flavor', [])
+        security_groups = detail.pop(u'security_groups', [])
         self.result(res, details=True)
         self.app.print_output(u'flavor:')
         self.result(flavor, headers=[u'id', u'memory', u'cpu'])
@@ -1098,6 +1095,8 @@ class OpenstackServerController(OpenstackControllerChild):
         self.app.print_output(u'networks:')
         self.result(networks, headers=[u'net_id', u'name', u'port_id', u'mac_addr', u'port_state',
                                        u'fixed_ips.0.ip_address'])
+        self.app.print_output(u'security_groups:')
+        self.result(security_groups, headers=[u'uuid', u'name'])
         
     @expose(aliases=[u'actions <id>'], aliases_only=True)
     def actions(self):
@@ -1269,18 +1268,32 @@ class OpenstackHeatStackController(OpenstackControllerChild):
         logger.info(res)
         self.result(res, format=u'yaml')
 
-    @expose(aliases=[u'resources <id>'], aliases_only=True)
-    def resources(self):
-        """Get openstack stack resources
+    @expose(aliases=[u'internal-resources <id>'], aliases_only=True)
+    def internal_resources(self):
+        """Get openstack stack internal resources
         """
         oid = self.get_arg(name=u'id')
-        uri = self.uri + u'/' + oid + u'/resources'
+        uri = self.uri + u'/' + oid + u'/internal_resources'
         res = self._call(uri, u'GET').get(u'stack_resources', {})
         logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
         logger.info(res)
         self.result(res, headers=[u'id', u'name', u'status', u'type', u'creation', u'required_by'],
                     fields=[u'physical_resource_id', u'resource_name', u'resource_status', u'resource_type',
                             u'creation_time', u'required_by'], maxsize=40)
+
+    @expose(aliases=[u'resources <id>'], aliases_only=True)
+    def resources(self):
+        """Get openstack stack resources
+        """
+        oid = self.get_arg(name=u'id')
+        uri = self.uri + u'/' + oid + u'/resources'
+        res = self._call(uri, u'GET').get(u'resources', {})
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
+        logger.info(res)
+        self.result(res, headers=[u'id', u'definition', u'name', u'container', u'parent', u'state',
+                                  u'date.creation', u'ext_id'],
+                    fields=[u'id', u'__meta__.definition', u'name', u'container.name', u'parent.name', u'state',
+                            u'date.creation', u'ext_id'], maxsize=40)
 
     @expose(aliases=[u'events <id>'], aliases_only=True)
     def events(self):

@@ -8,6 +8,7 @@ from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController
 from re import match
 from beecell.simple import truncate
+from beehive.manager.sections.resource import ResourceEntityController
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,8 @@ class ProviderController(BaseController):
         BaseController._setup(self, base_app)
         
         
-class ProviderControllerChild(ApiController):
+# class ProviderControllerChild(ApiController):
+class ProviderControllerChild(ResourceEntityController):
     subsystem = u'resource'
     headers = [u'id', u'uuid', u'name', u'parent.name', u'state', u'date.creation', u'date.modified']
     
@@ -32,8 +34,54 @@ class ProviderControllerChild(ApiController):
         stacked_on = 'provider'
         stacked_type = 'nested'
         arguments = [
-            ( ['extra_arguments'], dict(action='store', nargs='*'))
+            (['extra_arguments'], dict(action='store', nargs='*'))
         ]
+
+    def __get_key(self):
+        return self._meta.aliases[0].rstrip(u's')
+
+    def get_resource(self, oid):
+        """Get resource
+
+        **Parameters**:
+
+            * **oid**: id of the resource
+
+        **Return**:
+
+            resource dict
+        """
+        uri = self.uri + u'/' + oid
+        res = self._call(uri, u'GET')
+        key = self.__get_key()
+        res = res.get(key)
+        logger.info(u'Get %s: %s' % (key, truncate(res)))
+        for i in [u'__meta__', u'ext_id', u'active']:
+            res.pop(i, None)
+        main_info = []
+        c = res.pop(u'container')
+        date = c.pop(u'date')
+        c.update({u'type': u'container',
+                  u'created': date.pop(u'creation'),
+                  u'modified': date.pop(u'modified'),
+                  u'expiry': date.pop(u'expiry')})
+        main_info.append(c)
+        c = res.pop(u'parent')
+        c.update({u'type': u'parent', u'desc': u'', u'state': u''})
+        main_info.append(c)
+        date = res.pop(u'date')
+        main_info.append({u'id': res.pop(u'id'),
+                          u'uuid': res.pop(u'uuid'),
+                          u'name': res.pop(u'name'),
+                          u'type': u'',
+                          u'desc': res.pop(u'desc'),
+                          u'state': res.pop(u'state'),
+                          u'created': date.pop(u'creation'),
+                          u'modified': date.pop(u'modified'),
+                          u'expiry': date.pop(u'expiry')})
+        self.result(main_info, headers=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'created', u'modified',
+                                        u'expiry'])
+        return res
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     def list(self):
@@ -50,11 +98,8 @@ class ProviderControllerChild(ApiController):
         """Get provider item
         """
         oid = self.get_arg(name=u'id')
-        uri = self.uri + u'/' + oid
-        res = self._call(uri, u'GET')
-        key = self._meta.aliases[0].rstrip(u's')
-        logger.info(u'Get %s: %s' % (key, truncate(res)))
-        self.result(res, details=True, key=key)
+        res = self.get_resource(oid)
+        self.result(res, details=True)
     
     @expose(aliases=[u'add <file data>'], aliases_only=True)
     def add(self):
@@ -103,6 +148,21 @@ class ProviderSiteController(ProviderControllerChild):
         aliases_only = True
         description = "Provider site management"
 
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        """Get provider item
+        """
+        oid = self.get_arg(name=u'id')
+        res = self.get_resource(oid)
+        attributes = res.get(u'attributes', [])
+        orchestrators = attributes.pop(u'orchestrators', [])
+        limits = attributes.pop(u'limits', [])
+        self.result(res, details=True)
+        self.app.print_output(u'orchestrators:')
+        self.result(orchestrators, headers=[u'id', u'type', u'tag', u'config'], maxsize=200)
+        self.app.print_output(u'limits:')
+        self.result(limits, details=True)
+
 
 class ProviderSiteNetworkController(ProviderControllerChild):
     uri = u'/v1.0/provider/site_networks'
@@ -112,6 +172,20 @@ class ProviderSiteNetworkController(ProviderControllerChild):
         aliases = ['site_networks']
         aliases_only = True
         description = "Provider site network management"
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        """Get provider item
+        """
+        oid = self.get_arg(name=u'id')
+        res = self.get_resource(oid)
+        attributes = res.get(u'attributes', [])
+        configs = attributes.get(u'configs', [])
+        subnets = configs.pop(u'subnets', [])
+        self.result(res, details=True)
+        self.app.print_output(u'subnets:')
+        self.result(subnets, headers=[u'cidr', u'gateway', u'enable_dhcp', u'dns_nameservers', u'allocation_pools'],
+                    maxsize=200)
 
 
 class ProviderComputeZoneController(ProviderControllerChild):
@@ -123,6 +197,25 @@ class ProviderComputeZoneController(ProviderControllerChild):
         aliases_only = True
         description = "Provider compute zone management"
 
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        """Get provider item
+        """
+        oid = self.get_arg(name=u'id')
+        res = self.get_resource(oid)
+        attributes = res.get(u'attributes', [])
+        quotas = attributes.pop(u'quota', [])
+        availability_zones = res.pop(u'availability_zones', [])
+        self.result(res, details=True)
+        for i in availability_zones:
+            i[u'type'] = u'availability_zones'
+        self.result(availability_zones, headers=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'created',
+                                                 u'modified', u'expiry'],
+                    fields=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'date.creation', u'date.modified',
+                            u'date.expiry'], maxsize=200)
+        self.app.print_output(u'quotas:')
+        self.result(quotas, details=True)
+
 
 class ProviderComputeFlavorController(ProviderControllerChild):
     uri = u'/v1.0/provider/flavors'
@@ -132,6 +225,14 @@ class ProviderComputeFlavorController(ProviderControllerChild):
         aliases = ['flavors']
         aliases_only = True
         description = "Provider compute flavor management"
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        """Get provider item
+        """
+        oid = self.get_arg(name=u'id')
+        res = self.get_resource(oid)
+        self.result(res, details=True)
 
 
 class ProviderComputeImageController(ProviderControllerChild):
@@ -143,6 +244,14 @@ class ProviderComputeImageController(ProviderControllerChild):
         aliases_only = True
         description = "Provider compute image management"
 
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        """Get provider item
+        """
+        oid = self.get_arg(name=u'id')
+        res = self.get_resource(oid)
+        self.result(res, details=True)
+
 
 class ProviderComputeVpcController(ProviderControllerChild):
     uri = u'/v1.0/provider/vpcs'
@@ -152,6 +261,26 @@ class ProviderComputeVpcController(ProviderControllerChild):
         aliases = ['vpcs']
         aliases_only = True
         description = "Provider compute vpc management"
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        """Get provider item
+        """
+        oid = self.get_arg(name=u'id')
+        res = self.get_resource(oid)
+        self.result(res, details=True)
+        '''attributes = res.get(u'attributes', [])
+        quotas = attributes.pop(u'quota', [])
+        availability_zones = res.pop(u'availability_zones', [])
+        self.result(res, details=True)
+        for i in availability_zones:
+            i[u'type'] = u'availability_zones'
+        self.result(availability_zones, headers=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'created',
+                                                 u'modified', u'expiry'],
+                    fields=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'date.creation', u'date.modified',
+                            u'date.expiry'], maxsize=200)
+        self.app.print_output(u'quotas:')
+        self.result(quotas, details=True)'''
 
 
 class ProviderComputeSecurityGroupController(ProviderControllerChild):
@@ -163,6 +292,14 @@ class ProviderComputeSecurityGroupController(ProviderControllerChild):
         aliases_only = True
         description = "Provider compute security group management"
 
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        """Get provider item
+        """
+        oid = self.get_arg(name=u'id')
+        res = self.get_resource(oid)
+        self.result(res, details=True)
+
 
 class ProviderComputeComputeRuleController(ProviderControllerChild):
     uri = u'/v1.0/provider/rules'
@@ -172,6 +309,40 @@ class ProviderComputeComputeRuleController(ProviderControllerChild):
         aliases = ['rules']
         aliases_only = True
         description = "Provider compute rule management"
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        """Get provider item
+        """
+        oid = self.get_arg(name=u'id')
+        res = self.get_resource(oid)
+        attributes = res.get(u'attributes', [])
+        configs = attributes.pop(u'configs', [])
+        source = configs.pop(u'source', [])
+        dest = configs.pop(u'destination', [])
+        service = configs.pop(u'service', [])
+        rules = res.pop(u'rules', [])
+        self.result(res, details=True)
+        fromto = []
+        if not isinstance(source, list):
+            source = [source]
+        for i in source:
+            i[u'fromto'] = u'source'
+        fromto.extend(source)
+        if not isinstance(dest, list):
+            dest = [dest]
+        for i in dest:
+            i[u'fromto'] = u'destination'
+        fromto.extend(dest)
+        self.app.print_output(u'rules:')
+        self.result(rules, headers=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'created',
+                                    u'modified', u'expiry'],
+                    fields=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'date.creation', u'date.modified',
+                            u'date.expiry'], maxsize=200)
+        self.app.print_output(u'Source / Destination:')
+        self.result(fromto, headers=[u'fromto', u'type', u'value'], maxsize=200)
+        self.app.print_output(u'service:')
+        self.result(service, headers=[u'protocol', u'port'], maxsize=200)
 
 
 class ProviderComputeComputeInstanceController(ProviderControllerChild):
@@ -199,11 +370,7 @@ class ProviderComputeComputeInstanceController(ProviderControllerChild):
         """Get provider item
         """
         oid = self.get_arg(name=u'id')
-        uri = self.uri + u'/' + oid
-        res = self._call(uri, u'GET')
-        key = self._meta.aliases[0].rstrip(u's')
-        res = res.get(key)
-        logger.info(u'Get %s: %s' % (key, res))
+        res = self.get_resource(oid)
         flavor = res.pop(u'flavor')
         image = res.pop(u'image')
         vpcs = res.pop(u'vpcs')
@@ -219,6 +386,55 @@ class ProviderComputeComputeInstanceController(ProviderControllerChild):
         self.result(vpcs, headers=[u'uuid', u'name', u'cidr', u'gateway', u'fixed_ip.ip'])
 
 
+class ProviderComputeComputeStackController(ProviderControllerChild):
+    uri = u'/v1.0/provider/stacks'
+    headers = [u'id', u'uuid', u'name', u'parent.name', u'state', u'date.creation', u'date.modified']
+
+    class Meta:
+        label = 'provider.beehive.stacks'
+        aliases = ['stacks']
+        aliases_only = True
+        description = "Provider compute stack management"
+
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    def list(self):
+        """List provider items
+        """
+        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = self.uri
+        res = self._call(uri, u'GET', data=data)
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], res))
+        self.result(res, headers=self.headers, key=self._meta.aliases[0])
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        """Get provider item
+        """
+        oid = self.get_arg(name=u'id')
+        res = self.get_resource(oid)
+        stacks = res.pop(u'stacks')
+        self.result(res, details=True)
+        for i in stacks:
+            i[u'type'] = u'stack'
+        self.result(stacks, headers=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'created',
+                                     u'modified', u'expiry'],
+                    fields=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'date.creation', u'date.modified',
+                            u'date.expiry'], maxsize=30)
+        '''stacks = res.pop(u'stacks')
+        image = res.pop(u'image')
+        vpcs = res.pop(u'vpcs')
+        sgs = res.pop(u'security_groups')
+        
+        self.output(u'Flavor:')
+        self.result(flavor, headers=[u'vcpus', u'memory', u'disk', u'disk_iops', u'bandwidth'])
+        self.output(u'Image:')
+        self.result(image, headers=[u'os', u'os_ver'])
+        self.output(u'Security groups:')
+        self.result(sgs, headers=[u'uuid', u'name'])
+        self.output(u'Networks:')
+        self.result(vpcs, headers=[u'uuid', u'name', u'cidr', u'gateway', u'fixed_ip.ip'])'''
+
+
 provider_controller_handlers = [
     ProviderController,
     ProviderRegionController,
@@ -231,4 +447,5 @@ provider_controller_handlers = [
     ProviderComputeSecurityGroupController,
     ProviderComputeComputeRuleController,
     ProviderComputeComputeInstanceController,
+    ProviderComputeComputeStackController,
 ]        
