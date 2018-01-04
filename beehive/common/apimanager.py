@@ -2633,7 +2633,7 @@ class ApiViewResponse(ApiObject):
         :param api: api to audit {u'path':.., u'method':.., u'elapsed':..}
         :param params: operation params [default={}]
         :param response: operation response. [default=True]
-        :param exception: exceptione raised [optinal]
+        :param exception: exception raised [optional]
         """
         objid = u'*'
         if exception is not None:
