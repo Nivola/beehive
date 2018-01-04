@@ -2687,6 +2687,7 @@ class ApiViewResponse(ApiObject):
             self.logger.warning(u'Event can not be published. Event producer '\
                                 u'is not configured - %s' % ex)            
 
+
 class ApiView(FlaskView):
     """ """
     prefix = u'identity:'

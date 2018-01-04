@@ -834,7 +834,7 @@ class OpenstackControllerChild(ResourceEntityController):
         uri = self.uri
         res = self._call(uri, u'GET', data=data)
         logger.info(u'Get %s: %s' % (self._meta.aliases[0], res))
-        self.result(res, headers=self.headers, key=self._meta.aliases[0])
+        self.result(res, headers=self.headers, key=self._meta.aliases[0], maxsize=30)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
