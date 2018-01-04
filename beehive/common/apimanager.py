@@ -3150,8 +3150,8 @@ class ApiView(FlaskView):
             elapsed = round(time.time() - start, 4)
             self.logger.error(u'Invoke api: %s [%s] - ERROR - %s' % (request.path, request.method, elapsed))
             event_data = {u'path': request.path, u'method': request.method, u'elapsed': elapsed, u'code': 400}
-            ApiViewResponse(controller).send_event(event_data, data, exception=str(ex))
-            return self.get_error(u'Exception', 400, str(ex), module=module)
+            ApiViewResponse(controller).send_event(event_data, data, exception=ex.message)
+            return self.get_error(u'Exception', 400, ex.message, module=module)
         finally:
             if dbsession is not None:
                 module.release_session(dbsession)
