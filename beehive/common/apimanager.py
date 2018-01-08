@@ -196,6 +196,9 @@ class ApiManager(object):
         # scheduler
         self.redis_taskmanager = None
         self.redis_scheduler = None
+        
+        # Camunda Engine
+        self.camunda_engine = None
 
     def create_pool_engine(self, dbconf):
         """Create mysql pool engine.
@@ -622,15 +625,17 @@ class ApiManager(object):
         
                 ##### camunda configuration #####
                 try:
-                    self.logger.debug(u'Configure Camunda - CONFIGURE')            
+                    self.logger.info(u'Configure Camunda - CONFIGURE')            
                     from beedrones.camunda import WorkFlowEngine as CamundaEngine
                     confs = configurator.get(app=self.app_name, group='bpmn')
+                    self.logger.info(u'Configure Camunda - CONFIG app%s: %s' %(self.app_name, confs))
                     for conf in confs:
                         item = json.loads(conf.value)
+
                     self.camunda_engine = CamundaEngine( item['conn'],
-                            user=item['USER'],
-                            passwd=item['PASSWD'])
-                    self.logger.debug(u'Configure Camunda  - CONFIGURED')            
+                            user=item['user'],
+                            passwd=item['passwd'])
+                    self.logger.info(u'Configure Camunda  - CONFIGURED')            
                 except:
                     self.logger.warning(u'Configure Camunda  - NOT CONFIGURED')
                 ##### camunda configuration #####
@@ -1725,6 +1730,10 @@ class ApiObject(object):
     @property
     def api_client(self):
         return self.controller.module.api_manager.api_client
+    
+    @property
+    def camunda_engine(self):
+        return self.controller.module.api_manager.camunda_engine
 
     @property
     def celery_broker_queue(self):
