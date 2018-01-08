@@ -28,7 +28,8 @@ class ProviderController(BaseController):
 # class ProviderControllerChild(ApiController):
 class ProviderControllerChild(ResourceEntityController):
     subsystem = u'resource'
-    headers = [u'id', u'uuid', u'name', u'parent.name', u'state', u'date.creation', u'date.modified']
+    headers = [u'id', u'uuid', u'name', u'parent', u'state', u'creation', u'modified']
+    fields = [u'id', u'uuid', u'name', u'parent.name', u'state', u'date.creation', u'date.modified']
     
     class Meta:
         stacked_on = 'provider'
@@ -91,7 +92,7 @@ class ProviderControllerChild(ResourceEntityController):
         uri = self.uri
         res = self._call(uri, u'GET', data=data)
         logger.info(u'Get %s: %s' % (self._meta.aliases[0], res))
-        self.result(res, headers=self.headers, key=self._meta.aliases[0])
+        self.result(res, headers=self.headers, fields=self.fields, key=self._meta.aliases[0])
     
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
@@ -347,7 +348,10 @@ class ProviderComputeComputeRuleController(ProviderControllerChild):
 
 class ProviderComputeComputeInstanceController(ProviderControllerChild):
     uri = u'/v1.0/provider/instances'
-    headers = [u'id', u'uuid', u'name', u'parent.name', u'state', u'date.creation', u'date.modified']
+    fields = [u'id', u'uuid', u'name', u'parent.name', u'availability_zone.name', u'attributes.type', u'state',
+              u'date.creation', u'image', u'vpcs.0.name', u'flavor.vcpus', u'flavor.memory', u'flavor.disk']
+    headers = [u'id', u'uuid', u'name', u'parent', u'av_zone', u'type', u'state', u'creation', u'image',
+               u'vpc', u'vcpus', u'memory', u'disk']
 
     class Meta:
         label = 'provider.beehive.instances'
@@ -361,9 +365,12 @@ class ProviderComputeComputeInstanceController(ProviderControllerChild):
         """
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
         uri = self.uri
-        res = self._call(uri, u'GET', data=data)
+        res = self._call(uri, u'GET', data=data).get(self._meta.aliases[0], [])
+        for item in res:
+            image = item.pop(u'image', {})
+            item[u'image'] = u'%s %s' % (image.get(u'os', u''), image.get(u'os_ver', u''))
         logger.info(u'Get %s: %s' % (self._meta.aliases[0], res))
-        self.result(res, headers=self.headers, key=self._meta.aliases[0])
+        self.result(res, headers=self.headers, fields=self.fields)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
@@ -388,6 +395,7 @@ class ProviderComputeComputeInstanceController(ProviderControllerChild):
 
 class ProviderComputeComputeStackController(ProviderControllerChild):
     uri = u'/v1.0/provider/stacks'
+    headers = [u'id', u'uuid', u'name', u'parent', u'state', u'creation']
     headers = [u'id', u'uuid', u'name', u'parent.name', u'state', u'date.creation', u'date.modified']
 
     class Meta:
@@ -419,12 +427,10 @@ class ProviderComputeComputeStackController(ProviderControllerChild):
             i[u'type'] = u'stack'
             stack_res.append(i)
             for s in i.pop(u'resources', []):
-                s[u'type'] = u'stack_resource' # s[u'__meta__'][u'definition']
+                s[u'type'] = s[u'__meta__'][u'definition']
                 stack_res.append(s)
-        self.result(stack_res, headers=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'created',
-                                        u'modified', u'expiry'],
-                    fields=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'date.creation', u'date.modified',
-                            u'date.expiry'], maxsize=35)
+        self.result(stack_res, headers=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'created'],
+                    fields=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'date.creation'], maxsize=35)
         '''stacks = res.pop(u'stacks')
         image = res.pop(u'image')
         vpcs = res.pop(u'vpcs')

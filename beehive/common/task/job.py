@@ -332,7 +332,7 @@ class JobTask(AbstractJob):
         :param method: api method
         :param data: api data
         :param other_headers: extra headers to pass request
-        :param link: if not None define resoruce id to link with the new resource
+        :param link: if not None define resource id to link with the new resource
         :return: api result
         :raise: ApiManagerError
         """
