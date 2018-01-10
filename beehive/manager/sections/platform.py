@@ -848,12 +848,13 @@ class CamundaController(AnsibleController):
             f = open(filename, 'r')
             content = f.read()
             f.close()
-            name= os.path.splitext(os.path.split(filename)[1])[0]
+            name,dtype = os.path.splitext(os.path.split(filename)[1])
+            dtype = dtype[1:]
         else:
             raise Exception(u'bpmn %s is not a file' % filename)
             
         for client in clients:
-            res = client.process_deployment_create( content.rstrip(), name, checkduplicate=True, changeonly=True, tenantid=None)
+            res = client.process_deployment_create( content.rstrip(), name, type=dtype, checkduplicate=True, changeonly=True, tenantid=None)
             resp.append({u'host':client.connection.get(u'host'), u'response':res})
         logger.debug(u'camunda deploy: %s' % resp)
         self.result(resp, headers=[u'host', u'response'])           
