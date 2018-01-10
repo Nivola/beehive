@@ -44,34 +44,45 @@ with producers[conn].acquire() as producer:
 #print base64.decodestring("eyJtc2ciOiAiY2lhbyJ9")
 
 #body = "eyJtc2ciOiAiY2lhbyJ9"
-body = {u'msg':u'ciao'}
+body = {
+    "date":"Wed Dec 13 14:52:06 CET 2017",
+    "data":{
+            "resource_uuid":None,
+            "action":"updateStatus",
+            "instance_uuid":"ab868339-8470-400c-9237-9c471e740c71",
+            "entity":"ServiceInstance",
+            "status":"PENDING"
+        },
+    "source":"Camunda",
+    "dest":"beehive.service"
+}
 client = redis.StrictRedis(host=u'10.102.184.65', port=6379, db=0)
 
 
 ################# redis kombu
 body = base64.encodestring(json.dumps(body))
 message = {"body": body,
-           "headers": {}, 
-           "content-type": "application/json", 
-           "properties": {
-               "priority": 0, 
-               "body_encoding": "base64", 
-               "expiration": "60000", 
-               "delivery_info": {
-                   "routing_key": "beehive.service.key", 
-                   "exchange": "beehive.service"}, 
-                "delivery_mode": 1, 
-                "delivery_tag": "c353f7f9-03e6-4376-8fa7-2e19f0763e56"
-            }, 
-           "content-encoding": "utf-8"
-           }
+        "headers": {}, 
+        "content-type": "application/json", 
+        "properties": {
+            "priority": 0, 
+            "body_encoding": "base64", 
+            "expiration": "60000", 
+            "delivery_info": {
+                "routing_key": "beehive.service.key", 
+                "exchange": "beehive.service"}, 
+            "delivery_mode": 1, 
+            "delivery_tag": "c353f7f9-03e6-4376-8fa7-2e19f0763e56"
+        }, 
+        "content-encoding": "utf-8"
+    }
 
 res = client.lpush(u'beehive.service.queue', json.dumps(message))
 print res
 
 ################### redis semple
-message = json.dumps(body)
-res = client.publish(u'beehive.service', message)
-print res
+# message = json.dumps(body)
+# res = client.publish(u'beehive.service', message)
+# print res
 
 
