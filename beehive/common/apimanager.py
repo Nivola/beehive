@@ -3352,15 +3352,13 @@ class SwaggerApiView(ApiView, SwaggerView):
         new.update(data)
         return new    
 
+
 class ApiClient(BeehiveApiClient):
     """ """
-    def __init__(self, auth_endpoints, user, pwd, catalog_id=None, 
-                 authtype=u'keyauth'):
-        BeehiveApiClient.__init__(self, auth_endpoints, authtype, 
-                                  user, pwd, catalog_id)
+    def __init__(self, auth_endpoints, user, pwd, catalog_id=None, authtype=u'keyauth'):
+        BeehiveApiClient.__init__(self, auth_endpoints, authtype, user, pwd, catalog_id)
     
-    def admin_request(self, subsystem, path, method, data=u'', 
-                      other_headers=None):
+    def admin_request(self, subsystem, path, method, data=u'', other_headers=None):
         """Make api request using module internal admin user credentials.
         
         **Raise:** :class:`ApiManagerError`
@@ -3372,11 +3370,9 @@ class ApiClient(BeehiveApiClient):
             raise ApiManagerError(ex.value, code=ex.code)
         
         try:
-            res = self.send_request(subsystem, path, method, data, 
-                                    self.uid, self.seckey, other_headers)
+            res = self.send_request(subsystem, path, method, data, self.uid, self.seckey, other_headers)
         except BeehiveApiClientError as ex:
-            self.logger.error('Send admin request to %s using uid %s: %s' % 
-                              (path, self.uid, ex.value))
+            self.logger.error('Send admin request to %s using uid %s: %s' % (path, self.uid, ex.value))
             raise ApiManagerError(ex.value, code=ex.code)
         
 #         if res['status'] == 'error':

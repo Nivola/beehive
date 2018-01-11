@@ -559,6 +559,12 @@
                     "desc": "test-prv-security-group-01",
                     "vpc": "test-prv-vpc-01"
                 },
+                "prv-security-group2": {
+                    "container":"tst-provider-01",
+                    "name": "test-prv-security-group-02",
+                    "desc": "test-prv-security-group-02",
+                    "vpc": "test-prv-vpc-01"
+                },
                 "prv-rule1": {
                     "container":"tst-provider-01",
                     "name": "test-prv-rule-01",
@@ -586,6 +592,33 @@
                     "destination": {"type":"SecurityGroup", "value":"test-prv-security-group-01"},
                     "service": {"port": "*", "protocol": "*"}
                 },
+                "prv-rule1a": {
+                    "container":"tst-provider-01",
+                    "name": "test-prv-rule-01a",
+                    "desc": "test-prv-rule-01a",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "source": {"type":"SecurityGroup", "value":"test-prv-security-group-02"},
+                    "destination": {"type":"SecurityGroup", "value":"test-prv-security-group-02"},
+                    "service": {"port": "*", "protocol": "*"}
+                },
+                "prv-rule2a": {
+                    "container":"tst-provider-01",
+                    "name": "test-prv-rule-02a",
+                    "desc": "test-prv-rule-02a",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "source": {"type":"SecurityGroup", "value":"test-prv-security-group-02"},
+                    "destination": {"type":"Cidr", "value":"0.0.0.0/0"},
+                    "service": {"port": "*", "protocol": "*"}
+                },
+                "prv-rule3a": {
+                    "container":"tst-provider-01",
+                    "name": "test-prv-rule-03a",
+                    "desc": "test-prv-rule-03a",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "source": {"type":"Cidr", "value":"158.102.160.0/24"},
+                    "destination": {"type":"SecurityGroup", "value":"test-prv-security-group-02"},
+                    "service": {"port": "*", "protocol": "*"}
+                },
                 "prv-instance1": {
                     "container":"tst-provider-01",
                     "name": "test-prv-instance-01",
@@ -601,7 +634,7 @@
                     "storage": [
                         {"volume_size": 20}
                     ],
-                    "security_groups":["test-prv-security-group-01"],
+                    "security_groups":["test-prv-security-group-02"],
                     "admin_pass": "mypass",
                     "type": "openstack",
                     "user_data":{"pubkey":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it"}
@@ -647,6 +680,7 @@
                     "templates":[
                         {
                             "orchestrator_type": "openstack",
+                            "orchestrator_tag": "default",
                             "availability_zone": "test-prv-site-01",
                             "template_uri":"https://10.102.184.26:1443/1362/beehive-resource/raw/devel/stacks/test/test_template.yaml",
                             "environment":{},
@@ -666,18 +700,24 @@
                     "name":"test-prv-stack-02",
                     "desc":"test-prv-stack-02",
                     "parameters":{
-                        "server_type": "m1.medium",
-                        "server_image": "centos7-nuovo",
+                        "instance_type": "m1.medium",
                         "volume_size": "40",
-                        "network": "eeab4682-1844-4b90-b4ef-3de497115f02",
-                        "subnet": "",
-                        "external_network_id": "rupar"
+                        "db_network": "b0be0443-fc33-4be9-b76a-68f85ba8d614",
+                        "proxy_server": "http://proxy-srv.csi.it:3128",
+                        "security_groups": "fb73dee1-17e9-4fc4-bde6-d3057209ac4c-sg",
+                        "image_id": "centos7-nuovo",
+                        "db_name": "dbtest",
+                        "db_appuser_name": "usertest",
+                        "db_appuser_password": "N!v0la12vr",
+                        "db_root_name": "root",
+                        "db_root_password": "N!v0la12vr"
                     },
                     "templates":[
                         {
                             "orchestrator_type": "openstack",
+                            "orchestrator_tag": "default",
                             "availability_zone": "test-prv-site-01",
-                            "template_uri":"https://10.102.184.26:1443/1362/beehive-resource/raw/devel/stacks/test/preparatory/Propedeutiche_Base.yaml",
+                            "template_uri":"https://10.102.184.26:1443/1362/beehive-resource/raw/devel/stacks/test/database/mysql5.7.yaml",
                             "environment":{},
                             "parameters":{
                                 "key_name": "opstkcsi"

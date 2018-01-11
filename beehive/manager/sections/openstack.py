@@ -1,8 +1,8 @@
-'''
+"""
 Created on Sep 27, 2017
 
 @author: darkbk
-'''
+"""
 import requests
 import sh
 import logging
@@ -573,8 +573,8 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         self.app.print_output(u'parameters:')
         self.result(parameters, headers=[u'parameter', u'value'], maxsize=800)
         self.app.print_output(u'outputs:')
-        self.result(outputs, headers=[u'key', u'value', u'desc'],
-                    fields=[u'output_key', u'output_value', u'description'], maxsize=100)
+        self.result(outputs, headers=[u'key', u'value', u'desc', u'error'],
+                    fields=[u'output_key', u'output_value', u'description', u'output_error'], maxsize=50)
 
     @expose(aliases=[u'template <id>'], aliases_only=True)
     def template(self):

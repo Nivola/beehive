@@ -499,7 +499,7 @@ class BeehiveApiClient(object):
     def create_token(self, api_user=None, api_user_pwd=None, login_ip=None):
         """Login module internal user
         
-        :raise BeehiveApiClientError:
+        :raise BeehiveApiClientError:s
         """
         res = None
         if api_user == None:

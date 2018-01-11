@@ -207,7 +207,7 @@ class CliManager(CementCmd):
         ]
         
         color = True
-        format = u'table'
+        format = u'text'
         verbosity = 0
         
     def setup(self):

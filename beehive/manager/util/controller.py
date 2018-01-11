@@ -127,8 +127,7 @@ class YamlFilter(Filter):
 class BaseController(CementCmdBaseController):
     """
     """
-    perm_headers = [u'id', u'oid', u'objid', u'subsystem', u'type', u'aid', 
-                    u'action', u'desc']    
+    perm_headers = [u'id', u'oid', u'objid', u'subsystem', u'type', u'aid', u'action', u'desc']
     
     class Meta:
         label = u'abstract'
@@ -313,8 +312,8 @@ commands:
         
         return res
     
-    def __tabularprint(self, data, headers=None, other_headers=[], fields=None,
-                       maxsize=20, separator=u'.'):
+    def __tabularprint(self, data, table_style, headers=None, other_headers=[], fields=None, maxsize=20,
+                       separator=u'.'):
         if data is None:
             data = u'-'
         if not isinstance(data, list):
@@ -337,7 +336,7 @@ commands:
                 raw.append(truncate(item, maxsize))
             
             table.append(raw)
-        print(tabulate(table, headers=headers, tablefmt=u'fancy_grid'))
+        print(tabulate(table, headers=headers, tablefmt=table_style))
         print(u'')
     
     def __format(self, data, space=u'', delimiter=u':', key=None):
@@ -366,7 +365,7 @@ commands:
         """
         """
         if isinstance(data, dict):
-            for k,v in data.items():
+            for k, v in data.items():
                 if isinstance(v, dict) or isinstance(v, list):
                     self.__format(u'', space, u':', k)
                     self.format_text(v, space+u'  ')
@@ -383,10 +382,10 @@ commands:
 
     @check_error
     def result(self, data, delta=None, other_headers=[], headers=None, key=None, fields=None, details=False, maxsize=50,
-               key_separator=u'.', format=None):
+               key_separator=u'.', format=None, table_style=u'fancy_grid'):
         """
         """
-        logger.debug(u'result format: %s' % self.format)
+        logger.debug(u'Result format: %s' % self.format)
         orig_data = data
 
         if format is None:
@@ -419,7 +418,7 @@ commands:
                 if isinstance(data, dict) or isinstance(data, list):
                     self.__yamlprint(data)
             
-        elif format == u'table':
+        elif format == u'table' or format == u'text':
             if data is not None:
                 # convert input data for query with one raw
                 if details is True:
@@ -435,8 +434,7 @@ commands:
                             for k1, v1 in v.items():
                                 __format_table_data(u'%s.%s' % (k, k1), v1)
                         else:
-                            resp.append({u'attrib': k,
-                                         u'value': truncate(v, size=maxsize)})
+                            resp.append({u'attrib': k, u'value': truncate(v, size=maxsize)})
                     
                     for k, v in data.items():
                         __format_table_data(k, v)
@@ -453,13 +451,8 @@ commands:
                         print(u'Order: %s %s' % (orig_data.get(u'sort').get(u'field'), 
                                                  orig_data.get(u'sort').get(u'order')))
                         print(u'')               
-                    self.__tabularprint(data, other_headers=other_headers, headers=headers, fields=fields,
+                    self.__tabularprint(data, table_style, other_headers=other_headers, headers=headers, fields=fields,
                                         maxsize=maxsize, separator=key_separator)
-                    
-        elif format == u'custom':
-            self.format_text(data)
-            if len(self.text) > 0:
-                print(u'\n'.join(self.text))
                     
         elif self.format == u'doc':
             print(data)

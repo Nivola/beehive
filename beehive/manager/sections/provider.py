@@ -5,7 +5,7 @@ Created on Dec 11, 2017
 """
 import logging
 from cement.core.controller import expose
-from beehive.manager.util.controller import BaseController, ApiController
+from beehive.manager.util.controller import BaseController, ApiController, check_error
 from re import match
 from beecell.simple import truncate
 from beehive.manager.sections.resource import ResourceEntityController
@@ -41,7 +41,8 @@ class ProviderControllerChild(ResourceEntityController):
     def __get_key(self):
         return self._meta.aliases[0].rstrip(u's')
 
-    def get_resource(self, oid):
+    @check_error
+    def get_resource(self, oid, format_result=None):
         """Get resource
 
         **Parameters**:
@@ -57,32 +58,36 @@ class ProviderControllerChild(ResourceEntityController):
         key = self.__get_key()
         res = res.get(key)
         logger.info(u'Get %s: %s' % (key, truncate(res)))
-        for i in [u'__meta__', u'ext_id', u'active']:
-            res.pop(i, None)
-        main_info = []
-        c = res.pop(u'container')
-        '''date = c.pop(u'date')
-        c.update({u'type': u'container',
-                  u'created': date.pop(u'creation'),
-                  u'modified': date.pop(u'modified'),
-                  u'expiry': date.pop(u'expiry')})'''
-        main_info.append(c)
-        c = res.pop(u'parent')
-        c.update({u'type': u'parent', u'desc': u'', u'state': u''})
-        main_info.append(c)
-        date = res.pop(u'date')
-        main_info.append({u'id': res.pop(u'id'),
-                          u'uuid': res.pop(u'uuid'),
-                          u'name': res.pop(u'name'),
-                          u'type': u'',
-                          u'desc': res.pop(u'desc'),
-                          u'state': res.pop(u'state'),
-                          u'created': date.pop(u'creation'),
-                          u'modified': date.pop(u'modified'),
-                          u'expiry': date.pop(u'expiry')})
-        self.result(main_info, headers=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'created', u'modified',
-                                        u'expiry'])
-        return res
+        if self.format == u'text':
+            for i in [u'__meta__', u'ext_id', u'active']:
+                res.pop(i, None)
+            main_info = []
+            c = res.pop(u'container')
+            c.update({u'type': u'container'})
+            main_info.append(c)
+            c = res.pop(u'parent')
+            c.update({u'type': u'parent', u'desc': u'', u'state': u''})
+            main_info.append(c)
+            date = res.pop(u'date')
+            main_info.append({u'id': res.pop(u'id'),
+                              u'uuid': res.pop(u'uuid'),
+                              u'name': res.pop(u'name'),
+                              u'type': u'',
+                              u'desc': res.pop(u'desc'),
+                              u'state': res.pop(u'state'),
+                              u'created': date.pop(u'creation'),
+                              u'modified': date.pop(u'modified'),
+                              u'expiry': date.pop(u'expiry')})
+            self.result(main_info, headers=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'created',
+                                            u'modified', u'expiry'], table_style=u'simple')
+
+            if format_result is not None:
+                format_result(res)
+
+            self.app.print_output(u'Other infos:')
+            self.result(res, details=True, table_style=u'simple')
+        else:
+            self.result(res, details=True)
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     def list(self):
@@ -348,10 +353,11 @@ class ProviderComputeComputeRuleController(ProviderControllerChild):
 
 class ProviderComputeComputeInstanceController(ProviderControllerChild):
     uri = u'/v1.0/provider/instances'
-    fields = [u'id', u'uuid', u'name', u'parent.name', u'availability_zone.name', u'attributes.type', u'state',
-              u'date.creation', u'image', u'vpcs.0.name', u'flavor.vcpus', u'flavor.memory', u'flavor.disk']
-    headers = [u'id', u'uuid', u'name', u'parent', u'av_zone', u'type', u'state', u'creation', u'image',
-               u'vpc', u'vcpus', u'memory', u'disk']
+    fields = [u'id', u'name', u'parent.name', u'availability_zone.name', u'attributes.type', u'state',
+              u'date.creation', u'image', u'vpcs.0.name', u'flavor.vcpus', u'flavor.memory', u'flavor.disk',
+              u'vpcs.0.fixed_ip.ip']
+    headers = [u'id', u'name', u'parent', u'av_zone', u'type', u'state', u'creation', u'image',
+               u'vpc', u'vcpus', u'memory', u'disk', u'ip']
 
     class Meta:
         label = 'provider.beehive.instances'
@@ -419,31 +425,39 @@ class ProviderComputeComputeStackController(ProviderControllerChild):
         """Get provider item
         """
         oid = self.get_arg(name=u'id')
-        res = self.get_resource(oid)
-        stacks = res.pop(u'stacks')
-        self.result(res, details=True)
-        stack_res = []
-        for i in stacks:
-            i[u'type'] = u'stack'
-            stack_res.append(i)
-            for s in i.pop(u'resources', []):
-                s[u'type'] = s[u'__meta__'][u'definition']
-                stack_res.append(s)
-        self.result(stack_res, headers=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'created'],
-                    fields=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'date.creation'], maxsize=35)
-        '''stacks = res.pop(u'stacks')
-        image = res.pop(u'image')
-        vpcs = res.pop(u'vpcs')
-        sgs = res.pop(u'security_groups')
-        
-        self.output(u'Flavor:')
-        self.result(flavor, headers=[u'vcpus', u'memory', u'disk', u'disk_iops', u'bandwidth'])
-        self.output(u'Image:')
-        self.result(image, headers=[u'os', u'os_ver'])
-        self.output(u'Security groups:')
-        self.result(sgs, headers=[u'uuid', u'name'])
-        self.output(u'Networks:')
-        self.result(vpcs, headers=[u'uuid', u'name', u'cidr', u'gateway', u'fixed_ip.ip'])'''
+
+        def format_result(data):
+            stacks = data.pop(u'stacks')
+            resp = []
+            for stack in stacks:
+                availability_zone = stack.get(u'availability_zone')
+                for output in stack.get(u'outputs'):
+                    resp.append({u'availability_zone': availability_zone,
+                                 u'key': output.get(u'output_key'),
+                                 u'value': output.get(u'output_value'),
+                                 u'desc': output.get(u'description'),
+                                 u'error': output.get(u'output_error', None)})
+            self.app.print_output(u'Stack outputs:')
+            self.result(resp, headers=[u'availability_zone', u'key', u'value', u'desc', u'error'],
+                        table_style=u'simple', maxsize=40)
+
+        self.get_resource(oid, format_result=format_result)
+
+    @expose(aliases=[u'resources <id>'], aliases_only=True)
+    def resources(self):
+        """Get provider item
+        """
+        oid = self.get_arg(name=u'id')
+        uri = self.uri + u'/' + oid + u'/resources'
+        res = self._call(uri, u'GET', data=u'').get(u'stack_resources')
+        resp = []
+        for item in res:
+            availability_zone = item.get(u'availability_zone')
+            for resource in item.get(u'resources'):
+                resource[u'availability_zone'] = availability_zone
+            resp.append(resource)
+        self.result(resp, headers=[u'availability_zone', u'id', u'uuid', u'name', u'type'],
+                    fields=[u'availability_zone', u'id', u'uuid', u'name', u'__meta__.definition'], maxsize=200)
 
 
 provider_controller_handlers = [
