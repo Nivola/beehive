@@ -200,6 +200,9 @@ class ApiManager(object):
         # Camunda Engine
         self.camunda_engine = None
 
+        # stack uri reference
+        self.stacks_uri = None
+
     def create_pool_engine(self, dbconf):
         """Create mysql pool engine.
         
@@ -780,7 +783,7 @@ class ApiManager(object):
     
                 ##### http proxy configuration #####
                 try:
-                    self.logger.info(u'Configure http proxy- CONFIGURE')
+                    self.logger.info(u'Configure http proxy - CONFIGURE')
                     conf = configurator.get(app=self.app_name, group=u'httpproxy')                    
                     self.http_proxy = conf[0].value
                     self.logger.info(u'Setup http proxy: %s' % self.http_proxy)
@@ -788,6 +791,17 @@ class ApiManager(object):
                 except:
                     self.logger.warning(u'Configure http proxy - NOT CONFIGURED') 
                 ##### http proxy configuration #####
+
+                ##### stacks uri reference configuration #####
+                try:
+                    self.logger.info(u'Configure stacks uri reference - CONFIGURE')
+                    conf = configurator.get(app=self.app_name, group=u'resource', name=u'stacks_uri')
+                    self.stacks_uri = conf[0].value
+                    self.logger.info(u'Setup stacks uri reference: %s' % self.stacks_uri)
+                    self.logger.info(u'Configure stacks uri reference - CONFIGURED')
+                except:
+                    self.logger.warning(u'Configure stacks uri reference - NOT CONFIGURED')
+                ##### stacks uri reference configuration #####
                 
                 ##### api authentication configuration #####
                 # not configure for auth module

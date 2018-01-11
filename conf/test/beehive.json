@@ -680,7 +680,6 @@
                     "templates":[
                         {
                             "orchestrator_type": "openstack",
-                            "orchestrator_tag": "default",
                             "availability_zone": "test-prv-site-01",
                             "template_uri":"https://10.102.184.26:1443/1362/beehive-resource/raw/devel/stacks/test/test_template.yaml",
                             "environment":{},
@@ -715,7 +714,6 @@
                     "templates":[
                         {
                             "orchestrator_type": "openstack",
-                            "orchestrator_tag": "default",
                             "availability_zone": "test-prv-site-01",
                             "template_uri":"https://10.102.184.26:1443/1362/beehive-resource/raw/devel/stacks/test/database/mysql5.7.yaml",
                             "environment":{},
