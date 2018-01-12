@@ -200,6 +200,10 @@ class ApiManager(object):
         # Camunda Engine
         self.camunda_engine = None
 
+        # proxy
+        self.http_proxy = None
+        self.tcp_proxy = None
+
         # stack uri reference
         self.stacks_uri = None
 
