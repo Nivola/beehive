@@ -967,14 +967,15 @@ class VsphereController(AnsibleController):
         vip = self.get_arg(default=True, name=u'vip', keyvalue=True)
 
         def func(conf):
+            res = {u'vpshere': False, u'nsx': False}
             try:
                 client = self.__get_client(conf)
-                client.system.ping_vsphere()
-                client.system.ping_nsx()
+                res[u'vpshere'] = client.system.ping_vsphere()
+                res[u'nsx'] = client.system.ping_nsx()
             except Exception as ex:
                 logger.error(ex, exc_info=1)
-                return False
-            return True
+
+            return res
 
         configs = self.__get_orchestartors(instances, vip=vip)
         self.run_cmd(func, configs)

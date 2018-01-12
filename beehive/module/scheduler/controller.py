@@ -227,7 +227,7 @@ class TaskManager(ApiObject):
         ApiObject.__init__(self, controller, oid='', name='', desc='', active='')
         self.control = task_manager.control.inspect()
         self.objid = '*'
-        
+
         try:
             self.prefix = task_manager.conf.CELERY_REDIS_RESULT_KEY_PREFIX
             self.prefix_base = u'celery-task-meta'
