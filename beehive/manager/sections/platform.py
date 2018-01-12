@@ -77,6 +77,7 @@ class PlatformController(BaseController):
         res = sh.beehive(u'platform', u'beehive', u'instance-ping', *env)
         print(res)
 
+
 class AnsibleController(BaseController):
     class Meta:
         stacked_on = 'platform'
@@ -135,14 +136,13 @@ class AnsibleController(BaseController):
         """
         try:
             path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
-            path_lib = u'%s/library/beehive/' % (self.ansible_path)
+            path_lib = u'%s/library/beehive/' % self.ansible_path
             runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
             logger.debug(u'Create new ansible runner: %s' % runner)
             tags = run_data.pop(u'tags')
             if playbook is None:
                 playbook = self.playbook
-            runner.run_playbook(group, playbook, None, run_data, None, 
-                                tags=tags)
+            runner.run_playbook(group, playbook, None, run_data, None, tags=tags)
             logger.debug(u'Run ansible playbook: %s' % playbook)
             runner = None
         except Exception as ex:
@@ -1651,9 +1651,9 @@ class BeehiveController(AnsibleController):
         subsystem = self.get_arg(name=u'subsystem')
         vassal = self.get_arg(name=u'vassal')
         run_data = {
-            u'subsystem':subsystem,
-            u'vassal':u'%s-%s' % (subsystem, vassal),
-            u'tags':[u'deploy']
+            u'subsystem': subsystem,
+            u'vassal': u'%s-%s' % (subsystem, vassal),
+            u'tags': [u'deploy']
         }        
         self.ansible_playbook(u'beehive', run_data, playbook=self.beehive_playbook)
     
@@ -1670,8 +1670,7 @@ class BeehiveController(AnsibleController):
             u'vassal': u'%s-%s' % (subsystem, vassal),
             u'tags': [u'undeploy']
         }        
-        self.ansible_playbook(u'beehive', run_data, 
-                              playbook=self.beehive_playbook)
+        self.ansible_playbook(u'beehive', run_data, playbook=self.beehive_playbook)
     
     @expose(aliases=[u'instance-ping [subsystem] [vassal]'], aliases_only=True)
     def instance_ping(self):

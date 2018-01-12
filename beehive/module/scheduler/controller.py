@@ -223,17 +223,21 @@ class TaskManager(ApiObject):
     objdef = u'Manager'
     objdesc = u'Task Manager'
 
-    prefix = task_manager.conf.CELERY_REDIS_RESULT_KEY_PREFIX
-    prefix_base = 'celery-task-meta'
-    
     def __init__(self, controller):
         ApiObject.__init__(self, controller, oid='', name='', desc='', active='')
         self.control = task_manager.control.inspect()
         self.objid = '*'
         
-        #print i.memdump()
-        #print i.memsample()
-        #print i.objgraph()
+        try:
+            self.prefix = task_manager.conf.CELERY_REDIS_RESULT_KEY_PREFIX
+            self.prefix_base = u'celery-task-meta'
+        except:
+            self.prefix = u''
+            self.prefix_base = u''
+
+        # print i.memdump()
+        # print i.memsample()
+        # print i.objgraph()
         
     @trace(op=u'use')
     def ping(self, id=None):
