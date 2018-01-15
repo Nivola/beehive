@@ -382,8 +382,9 @@ commands:
 
     @check_error
     def result(self, data, delta=None, other_headers=[], headers=None, key=None, fields=None, details=False, maxsize=50,
-               key_separator=u'.', format=None, table_style=u'fancy_grid'):
+               key_separator=u'.', format=None, table_style=u'simple'):
         """
+        u'fancy_grid'
         """
         logger.debug(u'Result format: %s' % self.format)
         orig_data = data
@@ -423,6 +424,7 @@ commands:
                 # convert input data for query with one raw
                 if details is True:
                     resp = []
+                    maxsize = 200
                     
                     def __format_table_data(k, v):
                         if isinstance(v, list):

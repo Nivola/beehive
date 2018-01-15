@@ -514,7 +514,7 @@
                             "orchestrator_type": "openstack",
                             "availability_zone": "test-prv-site-01",
                             "orchestrator": "tst-opstk-ocata-01",
-                            "template_id": "centos7-guestagent"
+                            "template_id": "centos7-guestagent-timezone"
                         }
                     ]
                 },
@@ -540,7 +540,7 @@
                             "orchestrator_type": "openstack",
                             "availability_zone": "test-prv-site-01",
                             "orchestrator": "tst-opstk-ocata-01",
-                            "flavor_id": "b3e7445b-b555-481b-9fc4-36ddc5978e6d"
+                            "flavor_id": "4c63b225-353d-482e-9e07-e7b3571ec5fc"
                         }
                     ]
                 },
@@ -670,7 +670,7 @@
                     "name":"test-prv-stack-01",
                     "desc":"test-prv-stack-01",
                     "parameters":{
-                        "image_id": "centos7-guestagent",
+                        "image_id": "centos7-guestagent-timezone",
                         "instance_type": "m1.medium",
                         "network": "b0be0443-fc33-4be9-b76a-68f85ba8d614",
                         "gateway": "10.102.185.1",
@@ -699,12 +699,12 @@
                     "name":"test-prv-stack-02",
                     "desc":"test-prv-stack-02",
                     "parameters":{
-                        "instance_type": "m1.medium",
+                        "instance_type": "m1.large",
                         "volume_size": "40",
                         "db_network": "b0be0443-fc33-4be9-b76a-68f85ba8d614",
                         "proxy_server": "http://proxy-srv.csi.it:3128",
                         "security_groups": "fb73dee1-17e9-4fc4-bde6-d3057209ac4c-sg",
-                        "image_id": "centos7-nuovo",
+                        "image_id": "centos7-guestagent-timezone",
                         "db_name": "dbtest",
                         "db_appuser_name": "usertest",
                         "db_appuser_password": "N!v0la12vr",
@@ -724,8 +724,22 @@
                         }
                     ]
                 },
-                "prv-stack3":{
-
+                "prv-mysql-stack1":{
+                    "container":"tst-provider-01",
+                    "compute_zone":"test-prv-compute-zone-01",
+                    "availability_zone": "test-prv-site-01",
+                    "name":"test-prv-mysql-stack-02",
+                    "desc":"test-prv-mysql-stack-02",
+                    "vpc": "test-prv-vpc-01",
+                    "flavor": "test-prv-compute-flavor-01",
+                    "image": "test-prv-compute-image-01",
+                    "security_group": "test-prv-security-group-01",
+                    "db_name": "dbtest",
+                    "db_appuser_name": "usertest",
+                    "db_appuser_password": "N!v0la12vr",
+                    "db_root_name": "root",
+                    "db_root_password": "N!v0la12vr",
+                    "key_name": "opstkcsi"
                 }
             }
         },

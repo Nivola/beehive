@@ -1,0 +1,34 @@
+{
+    "inputs": [
+        {
+            "value": "prova",
+            "type": "String",
+            "name": "schema",
+            "description": "schema name"
+        },
+        {
+            "value": "prova",
+            "type": "String",
+            "name": "user",
+            "description": "user name"
+        },
+        {
+            "value": "N!v0la12vr",
+            "type": "String",
+            "name": "root_password",
+            "description": "root password"
+        }
+    ],
+    "group": "script",
+    "name": "create_mysql_user_and_schema",
+    "outputs": [
+        {
+            "type": "String",
+            "name": "result",
+            "error_output": true,
+            "description": null
+        }
+    ],
+    "config": "#!/bin/sh -x\n mysql -u root --password=$root_password -e \"DROP USER IF EXISTS '$user'@'%'; DROP DATABASE IF EXISTS $schema;\" 1>&2",
+    "options": null
+}

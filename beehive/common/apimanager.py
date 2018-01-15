@@ -1028,7 +1028,7 @@ class ApiController(object):
         self.module = module
 
         # base event_class. Change in every controller with ApiEvent subclass
-        #self.event_class = ApiEvent
+        # self.event_class = ApiEvent
         
         # child classes
         self.child_classes = []
@@ -1050,17 +1050,17 @@ class ApiController(object):
     
     @property
     def redis_manager(self):
-        return self.module.redis_manager   
-
-    #@property
-    #def job_manager(self):
-    #    return self.module.job_manager
+        return self.module.redis_manager
     
     @property
     def mailer(self):
         return (self.module.api_manager.mailer, 
                 self.module.api_manager.mail_sender)
-    
+
+    @property
+    def api_manager(self):
+        return self.module.api_manager
+
     @property
     def api_client(self):
         return self.module.api_manager.api_client 

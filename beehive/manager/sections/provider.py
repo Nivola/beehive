@@ -354,7 +354,7 @@ class ProviderComputeComputeRuleController(ProviderControllerChild):
 class ProviderComputeComputeInstanceController(ProviderControllerChild):
     uri = u'/v1.0/provider/instances'
     fields = [u'id', u'name', u'parent.name', u'availability_zone.name', u'attributes.type', u'state',
-              u'date.creation', u'image', u'vpcs.0.name', u'flavor.vcpus', u'flavor.memory', u'flavor.disk',
+              u'date.creation', u'image_desc', u'vpcs.0.name', u'flavor.vcpus', u'flavor.memory', u'flavor.disk',
               u'vpcs.0.fixed_ip.ip']
     headers = [u'id', u'name', u'parent', u'av_zone', u'type', u'state', u'creation', u'image',
                u'vpc', u'vcpus', u'memory', u'disk', u'ip']
@@ -373,8 +373,8 @@ class ProviderComputeComputeInstanceController(ProviderControllerChild):
         uri = self.uri
         res = self._call(uri, u'GET', data=data).get(self._meta.aliases[0], [])
         for item in res:
-            image = item.pop(u'image', {})
-            item[u'image'] = u'%s %s' % (image.get(u'os', u''), image.get(u'os_ver', u''))
+            image = item.get(u'image', {})
+            item[u'image_desc'] = u'%s %s' % (image.get(u'os', u''), image.get(u'os_ver', u''))
         logger.info(u'Get %s: %s' % (self._meta.aliases[0], res))
         self.result(res, headers=self.headers, fields=self.fields)
 
@@ -427,23 +427,25 @@ class ProviderComputeComputeStackController(ProviderControllerChild):
         oid = self.get_arg(name=u'id')
 
         def format_result(data):
-            stacks = data.pop(u'stacks')
+            stacks = data.pop(u'stacks', [])
             resp = []
             for stack in stacks:
+                self.app.print_output(u'Availability zone: %s' % stack.get(u'availability_zone'))
                 availability_zone = stack.get(u'availability_zone')
-                for output in stack.get(u'outputs'):
+                '''for output in stack.get(u'outputs'):
                     resp.append({u'availability_zone': availability_zone,
                                  u'key': output.get(u'output_key'),
                                  u'value': output.get(u'output_value'),
                                  u'desc': output.get(u'description'),
-                                 u'error': output.get(u'output_error', None)})
-            self.app.print_output(u'Stack outputs:')
-            self.result(resp, headers=[u'availability_zone', u'key', u'value', u'desc', u'error'],
-                        table_style=u'simple', maxsize=40)
+                                 u'error': output.get(u'output_error', None)})'''
+                self.result(stack.get(u'outputs'), headers=[u'output_key', u'output_value', u'description',
+                                                            u'output_error'],
+                            table_style=u'simple', maxsize=40)
 
         self.get_resource(oid, format_result=format_result)
 
     @expose(aliases=[u'resources <id>'], aliases_only=True)
+    @check_error
     def resources(self):
         """Get provider item
         """
@@ -452,12 +454,18 @@ class ProviderComputeComputeStackController(ProviderControllerChild):
         res = self._call(uri, u'GET', data=u'').get(u'stack_resources')
         resp = []
         for item in res:
-            availability_zone = item.get(u'availability_zone')
-            for resource in item.get(u'resources'):
-                resource[u'availability_zone'] = availability_zone
-            resp.append(resource)
-        self.result(resp, headers=[u'availability_zone', u'id', u'uuid', u'name', u'type'],
-                    fields=[u'availability_zone', u'id', u'uuid', u'name', u'__meta__.definition'], maxsize=200)
+            self.app.print_output(u'Availability zone: %s' % item.get(u'availability_zone'))
+            self.app.print_output(u'------------------------------------------')
+            self.app.print_output(u'Resources')
+            self.result(item.get(u'resources', []), headers=[u'availability_zone', u'id', u'uuid', u'name', u'type'],
+                        fields=[u'id', u'uuid', u'name', u'__meta__.definition'], maxsize=200, table_style=u'simple')
+            self.app.print_output(u'Internal Resources')
+            self.result(item.get(u'internal_resources', []),
+                        headers=[u'id', u'logical_id', u'name', u'type', u'creation', u'status', u'reason',
+                                 u'required'],
+                        fields=[u'physical_resource_id', u'logical_resource_id', u'resource_name', u'resource_type',
+                                u'creation_time', u'resource_status', u'resource_status_reason',
+                                u'required_by'], maxsize=40, table_style=u'simple')
 
 
 provider_controller_handlers = [

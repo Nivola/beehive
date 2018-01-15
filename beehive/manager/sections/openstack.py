@@ -12,7 +12,7 @@ from gevent import sleep
 from beehive.manager.util.controller import BaseController, ApiController,\
     check_error
 from re import match
-from beecell.simple import truncate
+from beecell.simple import truncate, id_gen
 from beedrones.openstack.client import OpenstackManager
 from beehive.manager.sections.resource import ResourceEntityController
 from paramiko.client import SSHClient, MissingHostKeyPolicy
@@ -49,6 +49,7 @@ class OpenstackPlatformControllerChild(BaseController):
         arguments = [
             (['extra_arguments'], dict(action='store', nargs='*')),
             (['-O', '--orchestrator'], dict(action='store', help='Openstack platform reference label')),
+            (['-p', '--project'], dict(action='store', help='Openstack current project')),
         ]
 
     @check_error
@@ -64,10 +65,12 @@ class OpenstackPlatformControllerChild(BaseController):
         if label not in orchestrators:
             raise Exception(u'Valid label are: %s' % u', '.join(orchestrators.keys()))
         conf = orchestrators.get(label)
-            
+
+        project = self.app.pargs.project
+        if project is None:
+            project = conf.get(u'project')
         self.client = OpenstackManager(conf.get(u'uri'), default_region=conf.get(u'region'))
-        self.client.authorize(conf.get(u'user'), conf.get(u'pwd'), project=conf.get(u'project'),
-                              domain=conf.get(u'domain'))
+        self.client.authorize(conf.get(u'user'), conf.get(u'pwd'), project=project, domain=conf.get(u'domain'))
 
     @expose(hide=True)
     def default(self):
@@ -546,18 +549,6 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         logger.info(res)
         self.result(res, headers=self.headers)
 
-    '''
-    @expose(aliases=[u'stack-find <name>'], aliases_only=True)
-    def stack_find(self):
-        """Find heat stack by name
-        """        
-        name = self.get_arg(name=u'name')
-        obj = self.entity_class.stacks_find(stack_name=name)
-        #res = self.entity_class.data(obj)
-        res = obj
-        logger.info(res)
-        self.result(res, details=True)'''
-
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
         """Get heat stack by id
@@ -730,7 +721,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
     
     @expose(aliases=[u'create <name> ..'], aliases_only=True)
     def create(self):
-        """Create heat stacks
+        """Create heat stack
         """
         name = self.get_arg(name=u'name')
         params = self.get_query_params(*self.app.pargs.extra_arguments)
@@ -738,7 +729,21 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         self.wait_stack_create(name, res[u'id'])
         logger.info(res)
         self.result(res, headers=self.headers)    
-    
+
+    @expose(aliases=[u'action <oid> <action>'], aliases_only=True)
+    def action(self):
+        """Execute heat stack action
+        """
+        oid = self.get_arg(name=u'oid')
+        action = self.get_arg(name=u'action')
+        stack = self.entity_class.stack.list(oid=oid)[0]
+        res = self.entity_class.stack.action(stack[u'stack_name'], oid, action)
+        logger.info(res)
+        print(res)
+        # self.wait_stack_create(name, res[u'id'])
+        # logger.info(res)
+        # self.result(res, headers=self.headers)
+
     @expose(aliases=[u'update <name> <oid> ..'], aliases_only=True)
     def update(self):
         name = self.get_arg(name=u'name')
@@ -775,6 +780,179 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         self.result(res, headers=[u'msg'])
 
 
+class OpenstackPlatformHeatSoftwareConfigController(OpenstackPlatformControllerChild):
+    headers = [u'id', u'project', u'name', u'group', u'creation_time']
+
+    class Meta:
+        label = 'openstack.platform.software_config'
+        aliases = ['software_configs']
+        aliases_only = True
+        description = "Openstack Heat Software Config management"
+
+    def _ext_parse_args(self):
+        OpenstackPlatformControllerChild._ext_parse_args(self)
+
+        self.entity_class = self.client.heat.software_config
+
+    @expose(aliases=[u'list [field=..]'], aliases_only=True)
+    @check_error
+    def list(self):
+        """List heat software config
+        """
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        objs = self.entity_class.list(**params)
+        logger.info(objs)
+        self.result(objs, headers=self.headers, maxsize=70)
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        """Get heat software config by id
+        """
+        # name = self.get_arg(name=u'name')
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.get(oid)
+        logger.info(res)
+        self.result(res, details=True)
+
+    @expose(aliases=[u'create <file data>'], aliases_only=True)
+    def add(self):
+        """Create heat software config
+        """
+        file_data = self.get_arg(name=u'data file')
+        data = self.load_config(file_data)
+        res = self.entity_class.create(**data).get(u'software_config', {})
+        # self.wait_stack_create(name, res[u'id'])
+        logger.info(res)
+        self.result(res, headers=[u'id', u'name', u'group', ])
+
+    @expose(aliases=[u'delete <oid>'], aliases_only=True)
+    def delete(self):
+        """Delete heat software config
+        """
+        # name = self.get_arg(name=u'name')
+        oid = self.get_arg(name=u'id')
+        obj = self.entity_class.delete(oid)
+        res = {u'msg': u'Delete software config %s' % oid}
+        logger.info(res)
+        self.result(res, headers=[u'msg'])
+
+
+class OpenstackPlatformHeatSoftwareDeploymentController(OpenstackPlatformControllerChild):
+    headers = [u'id', u'action', u'server_id', u'config_id', u'creation_time', u'updated_time', u'status',
+               u'status_reason']
+
+    class Meta:
+        label = 'openstack.platform.software_deployment'
+        aliases = ['software_deployments']
+        aliases_only = True
+        description = "Openstack Heat Software Deployment management"
+
+    def _ext_parse_args(self):
+        OpenstackPlatformControllerChild._ext_parse_args(self)
+
+        self.entity_class = self.client.heat.software_deployment
+
+    def wait_deployment_create(self, oid):
+        res = self.entity_class.get(oid)
+        status = res[u'status']
+
+        while status not in [u'FAILED', u'COMPLETE']:
+            logger.debug(status)
+            sleep(1)
+            res = self.entity_class.get(oid)
+            status = res[u'status']
+            print(u'.')
+        if status == u'FAILED':
+            print(res[u'status_reason'])
+
+    @expose(aliases=[u'list [field=..]'], aliases_only=True)
+    @check_error
+    def list(self):
+        """List heat software deployment
+        """
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        objs = self.entity_class.list(**params)
+        logger.info(objs)
+        self.result(objs, headers=self.headers, maxsize=70)
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
+    def get(self):
+        """Get heat software deployment by id
+        """
+        # name = self.get_arg(name=u'name')
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.get(oid)
+        logger.info(res)
+        self.result(res, details=True)
+
+    @expose(aliases=[u'create <stack_id> <server_id> <config>'], aliases_only=True)
+    @check_error
+    def add(self):
+        """Create heat software deployment
+        """
+        stack_id = self.get_arg(name=u'stack_id')
+        server_id = self.get_arg(name=u'server_id')
+        file_data = self.get_arg(name=u'config')
+        data = self.load_config(file_data)
+
+        sw_config_name = data[u'name'] + u'-' + id_gen()
+
+        timeout = 3600
+        container = u'signaling'#stack_id
+        method = u'PUT'
+        key = id_gen()
+
+        try:
+            self.client.swift.container_read(container=container)
+        except:
+            self.client.swift.container_put(container=container)
+        print self.client.swift.generate_key(container=container, key=key)
+        print self.client.swift.object_put(container=container, c_object=sw_config_name)
+        temp_url = self.client.swift.generate_temp_url(container=container, c_object=sw_config_name, timeout=timeout,
+                                                       method=method, key=key)
+        print temp_url
+
+        data[u'inputs'].extend([
+            {"type": "String", "name": "deploy_signal_transport", "value": "TEMP_URL_SIGNAL"},
+            {"type": "String", "name": "deploy_signal_id", "value": temp_url},
+            {"type": "String", "name": "deploy_signal_verb", "value": "PUT"},
+            {"type": "String", "name": "deploy_stack_id", "value": stack_id}
+        ])
+        data[u'name'] = sw_config_name
+        
+        sw_config = self.client.heat.software_config.create(**data).get(u'software_config', {})
+
+        action = u'resume'
+        res = self.entity_class.create(sw_config[u'id'], server_id, action=action, status="IN_PROGRESS",
+                                       status_reason="Deploy data available")
+        res = res.get(u'software_deployment', {})
+        # print res
+        print sw_config[u'id']
+        print res[u'id']
+
+        obj = self.client.heat.stack.list(oid=stack_id)
+        obj = obj[0]
+        res1 = self.client.heat.stack.action(obj[u'stack_name'], stack_id, u'resume')
+        # res = self.client.heat.stack.update(obj[u'stack_name'], stack_id)
+
+        # self.wait_deployment_create(res[u'id'])
+        logger.info(res)
+        self.result(res, headers=[u'id', u'server_id', u'config_id', u'status', u'action'])
+
+    @expose(aliases=[u'delete <oid>'], aliases_only=True)
+    @check_error
+    def delete(self):
+        """Delete heat software deployment
+        """
+        # name = self.get_arg(name=u'name')
+        oid = self.get_arg(name=u'id')
+        obj = self.entity_class.delete(oid)
+        res = {u'msg': u'Delete software deployment %s' % oid}
+        logger.info(res)
+        self.result(res, headers=[u'msg'])
+
+
 openstack_platform_controller_handlers = [
     OpenstackPlatformController,
     OpenstackPlatformSystemController,
@@ -791,7 +969,9 @@ openstack_platform_controller_handlers = [
     OpenstackPlatformKeyPairController,
     OpenstackPlatformServerController,
     OpenstackPlatformVolumeController,
-    OpenstackPlatformHeatStackController
+    OpenstackPlatformHeatStackController,
+    OpenstackPlatformHeatSoftwareConfigController,
+    OpenstackPlatformHeatSoftwareDeploymentController
 ]
 
 
@@ -833,7 +1013,7 @@ class OpenstackControllerChild(ResourceEntityController):
         uri = self.uri
         res = self._call(uri, u'GET', data=data)
         logger.info(u'Get %s: %s' % (self._meta.aliases[0], res))
-        self.result(res, headers=self.headers, key=self._meta.aliases[0], maxsize=30)
+        self.result(res, headers=self.headers, key=self._meta.aliases[0], maxsize=40)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
@@ -1051,7 +1231,7 @@ class OpenstackImageController(OpenstackControllerChild):
 
 class OpenstackFlavorController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/flavors'
-    headers = [u'id', u'container.name', u'parent.name', u'name', u'state', 
+    headers = [u'id', u'uuid', u'container.name', u'parent.name', u'name', u'state',
                u'ext_id']
     
     class Meta:
@@ -1248,6 +1428,7 @@ class OpenstackHeatStackController(OpenstackControllerChild):
         files = details.pop(u'files', {})
         outputs = details.pop(u'outputs')
         self.result(res, details=True, maxsize=800)
+        self.result(details, details=True, maxsize=800)
         self.app.print_output(u'parameters:')
         self.result(parameters, headers=[u'parameter', u'value'], maxsize=800)
         self.app.print_output(u'files:')
