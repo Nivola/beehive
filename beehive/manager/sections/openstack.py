@@ -1066,6 +1066,68 @@ class OpenstackPlatformSwiftController(OpenstackPlatformControllerChild):
         self.result(msg, headers=[u'msg'])
 
 
+class OpenstackPlatformManilaController(OpenstackPlatformControllerChild):
+    class Meta:
+        label = 'openstack.platform.manila'
+        aliases = ['manila']
+        aliases_only = True
+        description = "Openstack Manila management"
+
+    def _ext_parse_args(self):
+        OpenstackPlatformControllerChild._ext_parse_args(self)
+
+        self.entity_class = self.client.manila
+
+    @expose()
+    @check_error
+    def api(self):
+        """List manila api versions
+        """
+        res = self.entity_class.api()
+        logger.debug(res)
+        self.result(res, headers=[u'id', u'version', u'min_version', u'status', u'updated'])
+
+
+class OpenstackPlatformManilaChildController(OpenstackPlatformControllerChild):
+    class Meta:
+        stacked_on = 'openstack.platform.manila'
+        stacked_type = 'nested'
+
+
+class OpenstackPlatformManilaShareController(OpenstackPlatformManilaChildController):
+    class Meta:
+        label = 'openstack.platform.manila.share'
+        aliases = ['shares']
+        aliases_only = True
+        description = "Openstack Manila Share management"
+
+    def _ext_parse_args(self):
+        OpenstackPlatformControllerChild._ext_parse_args(self)
+
+        self.entity_class = self.client.manila.share
+
+    @expose(aliases=[u'list [key=value]'], aliases_only=True)
+    @check_error
+    def list(self):
+        """List manila shares
+        """
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        res = self.entity_class.list(details=True, **params)
+        logger.debug(res)
+        self.result(res, headers=[u'id', u'name', u'project_id', u'size', u'created_at', u'share_type', u'share_proto',
+                                  u'export_location'], maxsize=40)
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
+    def get(self):
+        """Get manila share by id
+        """
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.get(oid)
+        logger.debug(res)
+        self.result(res, details=True)
+
+
 openstack_platform_controller_handlers = [
     OpenstackPlatformController,
     OpenstackPlatformSystemController,
@@ -1085,7 +1147,9 @@ openstack_platform_controller_handlers = [
     OpenstackPlatformHeatStackController,
     OpenstackPlatformHeatSoftwareConfigController,
     OpenstackPlatformHeatSoftwareDeploymentController,
-    OpenstackPlatformSwiftController
+    OpenstackPlatformSwiftController,
+    OpenstackPlatformManilaController,
+    OpenstackPlatformManilaShareController
 ]
 
 
