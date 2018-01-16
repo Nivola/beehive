@@ -899,7 +899,7 @@ class OpenstackPlatformHeatSoftwareDeploymentController(OpenstackPlatformControl
         sw_config_name = data[u'name'] + u'-' + id_gen()
 
         timeout = 3600
-        container = u'signaling'#stack_id
+        container = stack_id
         method = u'PUT'
         key = id_gen()
 
@@ -907,11 +907,13 @@ class OpenstackPlatformHeatSoftwareDeploymentController(OpenstackPlatformControl
             self.client.swift.container_read(container=container)
         except:
             self.client.swift.container_put(container=container)
-        print self.client.swift.generate_key(container=container, key=key)
-        print self.client.swift.object_put(container=container, c_object=sw_config_name)
+        self.client.swift.generate_key(container=container, key=key)
+        self.client.swift.object_put(container=container, c_object=sw_config_name)
         temp_url = self.client.swift.generate_temp_url(container=container, c_object=sw_config_name, timeout=timeout,
                                                        method=method, key=key)
-        print temp_url
+        # print temp_url
+        # print self.client.swift.container_read(container=container)
+        # print self.client.swift.object_get(container=container, c_object=sw_config_name)
 
         data[u'inputs'].extend([
             {"type": "String", "name": "deploy_signal_transport", "value": "TEMP_URL_SIGNAL"},
@@ -923,22 +925,37 @@ class OpenstackPlatformHeatSoftwareDeploymentController(OpenstackPlatformControl
         
         sw_config = self.client.heat.software_config.create(**data).get(u'software_config', {})
 
-        action = u'resume'
+        action = u'CREATE'
         res = self.entity_class.create(sw_config[u'id'], server_id, action=action, status="IN_PROGRESS",
                                        status_reason="Deploy data available")
         res = res.get(u'software_deployment', {})
         # print res
-        print sw_config[u'id']
-        print res[u'id']
+        print u'stack: %s' % stack_id
+        print u'Sw config name: %s' % sw_config_name
+        print u'Sw config id: %s' % sw_config[u'id']
+        print u'Sw deployment id: %s' % res[u'id']
 
-        obj = self.client.heat.stack.list(oid=stack_id)
-        obj = obj[0]
-        res1 = self.client.heat.stack.action(obj[u'stack_name'], stack_id, u'resume')
+        # obj = self.client.heat.stack.list(oid=stack_id)
+        # obj = obj[0]
+        # res1 = self.client.heat.stack.action(obj[u'stack_name'], stack_id, u'resume')
         # res = self.client.heat.stack.update(obj[u'stack_name'], stack_id)
 
         # self.wait_deployment_create(res[u'id'])
         logger.info(res)
         self.result(res, headers=[u'id', u'server_id', u'config_id', u'status', u'action'])
+
+    @expose(aliases=[u'update <config> <oid>'], aliases_only=True)
+    @check_error
+    def update(self):
+        """Update heat software deployment
+        """
+        # name = self.get_arg(name=u'name')
+        config = self.get_arg(name=u'config')
+        oid = self.get_arg(name=u'id')
+        obj = self.entity_class.update(config, oid, **self.app.kvargs)
+        res = {u'msg': u'Update software deployment %s' % oid}
+        logger.info(res)
+        self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'delete <oid>'], aliases_only=True)
     @check_error
@@ -951,6 +968,102 @@ class OpenstackPlatformHeatSoftwareDeploymentController(OpenstackPlatformControl
         res = {u'msg': u'Delete software deployment %s' % oid}
         logger.info(res)
         self.result(res, headers=[u'msg'])
+
+
+class OpenstackPlatformSwiftController(OpenstackPlatformControllerChild):
+    headers = [u'id', u'action', u'server_id', u'config_id', u'creation_time', u'updated_time', u'status',
+               u'status_reason']
+
+    class Meta:
+        label = 'openstack.platform.swift'
+        aliases = ['swift']
+        aliases_only = True
+        description = "Openstack Swift management"
+
+    def _ext_parse_args(self):
+        OpenstackPlatformControllerChild._ext_parse_args(self)
+
+        self.entity_class = self.client.swift
+
+    @expose()
+    @check_error
+    def containers(self):
+        """List containers
+        """
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.container_read()
+        logger.debug(res)
+        if self.format == u'text':
+            for item in res:
+                if isinstance(item, list):
+                    self.result(item, headers=[u'name', u'count', u'last_modified', u'bytes'], maxsize=60)
+                elif isinstance(item, dict):
+                    self.result(item, details=True)
+        else:
+            self.result(res, details=True)
+
+    @expose(aliases=[u'container <oid>'], aliases_only=True)
+    @check_error
+    def container(self):
+        """Get container by name
+        """
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.container_read(container=oid)
+        logger.debug(res)
+        if self.format == u'text':
+            for item in res:
+                if isinstance(item, list):
+                    self.result(item, headers=[u'name', u'hash', u'content_type', u'last_modified', u'bytes'],
+                                maxsize=80)
+                elif isinstance(item, dict):
+                    self.result(item, details=True)
+        else:
+            self.result(res, details=True)
+
+    @expose(aliases=[u'container_add <oid>'], aliases_only=True)
+    @check_error
+    def container_add(self):
+        container = 'prova'
+        res = self.entity_class.container_put(container=container, x_container_meta_name={'meta1': '', 'meta2': ''})
+        logger.debug(res)
+
+    @expose(aliases=[u'container_delete <oid>'], aliases_only=True)
+    @check_error
+    def container_delete(self):
+        container = 'morbido'
+        res = self.entity_class.container_delete(container=container)
+        logger.debug(res)
+
+    @expose(aliases=[u'object <container> <oid>'], aliases_only=True)
+    @check_error
+    def object(self):
+        """Get object by name
+        """
+        container = self.get_arg(name=u'container')
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.object_get(container=container, c_object=oid)
+        logger.debug(res)
+        if self.format == u'text':
+            for item in res:
+                if isinstance(item, list):
+                    self.result(item, headers=[u'name', u'hash', u'content_type', u'last_modified', u'bytes'],
+                                maxsize=80)
+                elif isinstance(item, dict):
+                    self.result(item, details=True)
+        else:
+            self.result(res, details=True)
+
+    @expose(aliases=[u'object-delete <container> <oid>'], aliases_only=True)
+    @check_error
+    def object_delete(self):
+        """Delete object by name
+        """
+        container = self.get_arg(name=u'container')
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.object_delete(container=container, c_object=oid)
+        msg = {u'msg': u'Delete object %s:%s' % (container, oid)}
+        logger.debug(msg)
+        self.result(msg, headers=[u'msg'])
 
 
 openstack_platform_controller_handlers = [
@@ -971,7 +1084,8 @@ openstack_platform_controller_handlers = [
     OpenstackPlatformVolumeController,
     OpenstackPlatformHeatStackController,
     OpenstackPlatformHeatSoftwareConfigController,
-    OpenstackPlatformHeatSoftwareDeploymentController
+    OpenstackPlatformHeatSoftwareDeploymentController,
+    OpenstackPlatformSwiftController
 ]
 
 
