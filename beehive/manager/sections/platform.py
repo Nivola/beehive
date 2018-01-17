@@ -820,10 +820,10 @@ class CamundaController(AnsibleController):
     @expose(aliases=[u'ping [port]'], aliases_only=True)
     def ping(self):
         """Test camunda instance
-    - user: user
-    - pwd: user password
-    - db: db schema
-    - port: instance port [default=3306]
+        - user: user
+        - pwd: user password
+        - db: db schema
+        - port: instance port [default=3306]
         """
         port = self.get_arg(default=8080)
         clients = self.__get_engine(port=port)
@@ -887,6 +887,57 @@ class CamundaController(AnsibleController):
             resp.append({u'host':client.connection.get(u'host'), u'response':res})
         logger.debug(u'camunda start: %s' % resp)
         self.result(resp, headers=[u'host', u'response'])
+    
+    @expose(aliases=[u'processlist  [port]'], aliases_only=True)
+    def processlist(self):
+        """ 
+            get a list of proceses defined  
+            [port] optional port
+        """
+        port = self.get_arg(name=u'port',default=8080)
+        clients = self.__get_engine(port=port)
+        resp = []
+        for client in clients:
+            # plist =  json.decode(client.process_definition_list() )
+            plist =  client.process_definition_list() 
+            # print plist
+            for definition in plist:
+                resp.append({
+                    u'host': client.connection.get(u'host'), 
+                    u'id': definition[u'id'], 
+                    u'key': definition[u'key'],
+                    # u'category': definition[u'category'],
+                    u'description': definition[u'description'] ,
+                    u'name': definition[u'name'],
+                    u'version': definition[u'version'],
+                    u'resource': definition[u'resource'] ,
+                    # u'deploymentId': definition[u'deploymentId'],
+                    # u'diagram': definition[u'diagram'] ,
+                    u'suspended': definition[u'suspended'],
+                    # u'tenantId': definition[u'tenantId'],
+                    u'versionTag': definition[u'versionTag'],
+                    # u'historyTimeToLive': definition[u'historyTimeToLive'],
+                    })
+        logger.debug(u'camunda proceslist: %s' % resp)
+        self.result(resp, headers=[ 
+            u'host', 
+            u'id' , 
+            u'key', 
+            # u'category', 
+            u'description',
+            u'name',
+            u'version', 
+            u'resource', 
+            # u'deploymentId',  
+            #u'diagram',
+            u'suspended', 
+            # u'tenantId', 
+            u'versionTag', 
+            # u'historyTimeToLive', 
+            ])
+
+
+
 
 
 class VsphereController(AnsibleController):
