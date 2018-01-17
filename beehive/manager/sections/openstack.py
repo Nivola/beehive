@@ -990,7 +990,6 @@ class OpenstackPlatformSwiftController(OpenstackPlatformControllerChild):
     def containers(self):
         """List containers
         """
-        oid = self.get_arg(name=u'id')
         res = self.entity_class.container_read()
         logger.debug(res)
         if self.format == u'text':
@@ -1128,6 +1127,29 @@ class OpenstackPlatformManilaShareController(OpenstackPlatformManilaChildControl
         self.result(res, details=True)
 
 
+class OpenstackPlatformManilaStoragePoolController(OpenstackPlatformManilaChildController):
+    class Meta:
+        label = 'openstack.platform.manila.storage_pool'
+        aliases = ['storage_pools']
+        aliases_only = True
+        description = "Openstack Manila storage Pool management"
+
+    def _ext_parse_args(self):
+        OpenstackPlatformControllerChild._ext_parse_args(self)
+
+        self.entity_class = self.client.manila.storage_pool
+
+    @expose(aliases=[u'list [key=value]'], aliases_only=True)
+    @check_error
+    def list(self):
+        """List manila storage pools
+        """
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        res = self.entity_class.list(details=True, **params)
+        logger.debug(res)
+        self.result(res, headers=[u'name', u'pool', u'backend', u'host'], maxsize=60)
+
+
 openstack_platform_controller_handlers = [
     OpenstackPlatformController,
     OpenstackPlatformSystemController,
@@ -1149,7 +1171,8 @@ openstack_platform_controller_handlers = [
     OpenstackPlatformHeatSoftwareDeploymentController,
     OpenstackPlatformSwiftController,
     OpenstackPlatformManilaController,
-    OpenstackPlatformManilaShareController
+    OpenstackPlatformManilaShareController,
+    OpenstackPlatformManilaStoragePoolController
 ]
 
 
