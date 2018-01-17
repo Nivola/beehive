@@ -2667,7 +2667,10 @@ class ApiViewResponse(ApiObject):
             try:
                 response = (False, escape(str(exception)))
             except:
-                response = (False, escape(exception))
+                try:
+                    response = (False, escape(exception))
+                except:
+                    response = (False, exception.message)
 
         method = api[u'method']
         if method in [u'GET']:
