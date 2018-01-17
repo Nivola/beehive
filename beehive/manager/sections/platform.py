@@ -1121,16 +1121,24 @@ class OpenstackController(AnsibleController):
         vip = self.get_arg(default=True, name=u'vip', keyvalue=True)
 
         def func(conf):
-            res = {u'compute': False,
+            res = {u'keystone': False,
+                   u'compute': False,
                    u'block-storage': False,
                    u'object-storage': False,
                    u'network': False,
-                   u'orchestrator': False}
+                   u'orchestrator': False,
+                   u'manila': False}
             try:
                 client = self.__get_client(conf)
             except Exception as ex:
                 logger.error(ex, exc_info=1)
                 return res
+
+            try:
+                client.identity.api()
+                res[u'keystone'] = True
+            except Exception as ex:
+                logger.error(ex, exc_info=1)
 
             try:
                 client.system.compute_api()
@@ -1159,6 +1167,12 @@ class OpenstackController(AnsibleController):
             try:
                 client.system.orchestrator_api()
                 res[u'orchestrator'] = True
+            except Exception as ex:
+                logger.error(ex, exc_info=1)
+
+            try:
+                client.manila.api()
+                res[u'manila'] = True
             except Exception as ex:
                 logger.error(ex, exc_info=1)
 

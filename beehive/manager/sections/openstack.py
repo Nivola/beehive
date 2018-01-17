@@ -990,7 +990,6 @@ class OpenstackPlatformSwiftController(OpenstackPlatformControllerChild):
     def containers(self):
         """List containers
         """
-        oid = self.get_arg(name=u'id')
         res = self.entity_class.container_read()
         logger.debug(res)
         if self.format == u'text':
