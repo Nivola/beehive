@@ -34,10 +34,6 @@ class OpenstackPlatformController(BaseController):
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
 
-    @expose(help="Openstack Platform management", hide=True)
-    def default(self):
-        self.app.args.print_help()
-
 
 class OpenstackPlatformControllerChild(BaseController):
     headers = [u'id', u'name']
@@ -1150,6 +1146,39 @@ class OpenstackPlatformManilaStoragePoolController(OpenstackPlatformManilaChildC
         self.result(res, headers=[u'name', u'pool', u'backend', u'host'], maxsize=60)
 
 
+class OpenstackPlatformManilaQuotaSetController(OpenstackPlatformManilaChildController):
+    class Meta:
+        label = 'openstack.platform.manila.quota_set'
+        aliases = ['quota_set']
+        aliases_only = True
+        description = "Openstack Manila Quota Set management"
+
+    def _ext_parse_args(self):
+        OpenstackPlatformControllerChild._ext_parse_args(self)
+
+        self.entity_class = self.client.manila.quota_set
+
+    @expose(aliases=[u'get-default <project_id>'], aliases_only=True)
+    @check_error
+    def get_default(self):
+        """List manila default quota set per project
+        """
+        project_id = self.get_arg(name=u'project_id')
+        res = self.entity_class.get_default(project_id)
+        logger.debug(res)
+        self.result(res, details=True)
+
+    @expose(aliases=[u'get <project_id>'], aliases_only=True)
+    @check_error
+    def get(self):
+        """List manila quota set per project
+        """
+        project_id = self.get_arg(name=u'project_id')
+        res = self.entity_class.get(project_id)
+        logger.debug(res)
+        self.result(res, details=True)
+
+
 openstack_platform_controller_handlers = [
     OpenstackPlatformController,
     OpenstackPlatformSystemController,
@@ -1172,7 +1201,8 @@ openstack_platform_controller_handlers = [
     OpenstackPlatformSwiftController,
     OpenstackPlatformManilaController,
     OpenstackPlatformManilaShareController,
-    OpenstackPlatformManilaStoragePoolController
+    OpenstackPlatformManilaStoragePoolController,
+    OpenstackPlatformManilaQuotaSetController
 ]
 
 
