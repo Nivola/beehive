@@ -1296,7 +1296,8 @@ class OpenstackController(AnsibleController):
                    u'object-storage': False,
                    u'network': False,
                    u'orchestrator': False,
-                   u'manila': False}
+                   u'manila': False,
+                   u'aodh': False}
             try:
                 client = self.__get_client(conf)
             except Exception as ex:
@@ -1342,6 +1343,12 @@ class OpenstackController(AnsibleController):
             try:
                 client.manila.api()
                 res[u'manila'] = True
+            except Exception as ex:
+                logger.error(ex, exc_info=1)
+
+            try:
+                client.aodh.api()
+                res[u'aodh'] = True
             except Exception as ex:
                 logger.error(ex, exc_info=1)
 
