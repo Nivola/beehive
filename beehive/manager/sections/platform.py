@@ -1178,7 +1178,7 @@ class OpenstackController(AnsibleController):
                    u'object-storage': False,
                    u'network': False,
                    u'orchestrator': False,
-                   u'manila': False},
+                   u'manila': False,
                    u'aodh': False}
             try:
                 client = self.__get_client(conf)
