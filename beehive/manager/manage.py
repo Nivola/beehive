@@ -121,6 +121,8 @@ def config_cli(app):
 
 
 class CliController(CementCmdBaseController):
+    """Base cli controller
+    """
     class Meta:
         label = u'base'
         description = "Beehive manager."
@@ -132,6 +134,8 @@ class CliController(CementCmdBaseController):
 
     @expose(hide=True)
     def default(self):
+        """Default controller command
+        """
         self.app.print_help()
 
 
@@ -214,11 +218,15 @@ class CliManager(CementCmd):
         verbosity = 0
         
     def setup(self):
+        """App main setup
+        """
         CementCmd.setup(self)
         self.load_configs()
         logger.info(u'App %s configured' % self._meta.label)
 
     def setup_once(self):
+        """App main setup execute only once
+        """
         #if self.has_setup is False:
         #    self.setup_logging()
         CementCmd.setup_once(self)            

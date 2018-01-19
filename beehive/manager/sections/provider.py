@@ -367,7 +367,7 @@ class ProviderComputeComputeInstanceController(ProviderControllerChild):
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     def list(self):
-        """List provider items
+        """List provider instances
         """
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
         uri = self.uri
@@ -380,7 +380,7 @@ class ProviderComputeComputeInstanceController(ProviderControllerChild):
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
-        """Get provider item
+        """Get provider instance
         """
         oid = self.get_arg(name=u'id')
         res = self.get_resource(oid)
@@ -397,6 +397,15 @@ class ProviderComputeComputeInstanceController(ProviderControllerChild):
         self.result(sgs, headers=[u'uuid', u'name'])
         self.output(u'Networks:')
         self.result(vpcs, headers=[u'uuid', u'name', u'cidr', u'gateway', u'fixed_ip.ip'])
+
+    @expose(aliases=[u'ssh <id> <user> [pwd=..] [pubkey=..]'], aliases_only=True)
+    def ssh(self):
+        """Opens ssh connection over provider instance
+        """
+        oid = self.get_arg(name=u'id')
+        user = self.get_arg(name=u'user')
+        server = self.get_resource(oid)
+        # fixep_ip = server(vpcs.0.fixed_ip.ip
 
 
 class ProviderComputeComputeStackController(ProviderControllerChild):

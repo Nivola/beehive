@@ -381,10 +381,22 @@ commands:
             self.__format(data, space)
 
     @check_error
-    def result(self, data, delta=None, other_headers=[], headers=None, key=None, fields=None, details=False, maxsize=50,
+    def result(self, data, other_headers=[], headers=None, key=None, fields=None, details=False, maxsize=50,
                key_separator=u'.', format=None, table_style=u'simple'):
-        """
-        u'fancy_grid'
+        """Print result with a certain format
+
+        :param data: data to print
+        :param other_headers:
+        :param headers: list of headers to print with tabular format
+        :param key: if set use data from data.get(key)
+        :param fields: list of fields key used to print data with tabular format
+        :param details: if True and format tabular print a vertical table where first column is the key and second
+            column is the value
+        :param maxsize: max field value length [default=50, 200 with details=True]
+        :param key_separator: key separator used when parsing key [defualt=.]
+        :param format: format used when print [default=text]
+        :param table_style: table style used when format is tabular [defualt=simple]
+        :return:
         """
         logger.debug(u'Result format: %s' % self.format)
         orig_data = data
@@ -466,6 +478,12 @@ commands:
         self.app.print_error(error)
     
     def load_config(self, file_config):
+        """Load dict from a json formtted file.
+
+        :param file_config: file name
+        :return: data
+        :rtype: dict
+        """
         f = open(file_config, 'r')
         data = f.read()
         data = json.loads(data)
@@ -524,6 +542,7 @@ commands:
         """Save token and secret key on a file.
         
         :param token: token to save
+        :param seckey: secret key to save
         """
         # save token
         f = open(self.app._meta.token_file, u'w')
@@ -534,9 +553,23 @@ commands:
             f = open(self.app._meta.seckey_file, u'w')
             f.write(seckey)
             f.close()
-        
-    @check_error
+
     def get_arg(self, default=None, name=None, keyvalue=False):
+        """Get arguments from command line. Arguments can be positional or key/value. Example::
+
+            arg1 arg2 key1=val1
+
+        **arg1** and **arg2** are positional, **key1** is key/value. To read this value correctly use::
+
+            arg1 = get_arg(name=u'arg1')
+            arg2 = get_arg(name=u'arg2')
+            arg3 = get_arg(name=u'key1', default=u'value1', keyvalue=True)
+
+        :param default: default value for keyvalue argument
+        :param name: argument name
+        :param keyvalue: if True argument is keyvalue, if False argument i postional
+        :return: argument value
+        """
         if len(self.app.pargs.extra_arguments) > 0:
             self.app.args = []
             self.app.kvargs = {}

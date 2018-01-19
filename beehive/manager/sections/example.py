@@ -11,19 +11,9 @@ passi principali:
 
 - per ogni nuovo controller ....
 """
-import requests
-import sh
 import logging
 from cement.core.controller import expose
-from gevent import sleep
-
-from beehive.manager.util.controller import BaseController, ApiController,\
-    check_error
-from re import match
-from beecell.simple import truncate, id_gen
-from beedrones.openstack.client import OpenstackManager
-from beehive.manager.sections.resource import ResourceEntityController
-from paramiko.client import SSHClient, MissingHostKeyPolicy
+from beehive.manager.util.controller import BaseController, ApiController, check_error
 
 logger = logging.getLogger(__name__)
 
@@ -33,13 +23,47 @@ class ExampleController(BaseController):
         label = 'example'
         stacked_on = 'base'
         stacked_type = 'nested'
-        description = "Example section tree"
-        arguments = []
+        description = "Example section"
+        arguments = [
+            (['extra_arguments'], dict(action='store', nargs='*'))
+        ]
 
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
 
+    @expose(aliases=[u'cmd1 [key=value]'], aliases_only=True)
+    @check_error
+    def cmd1(self):
+        """This is an example command
+        """
+        self.app.print_output(u'I am cmd1')
+
+    @expose(aliases=[u'cmd2 <arg1> [arg2=value]'], aliases_only=True)
+    @check_error
+    def cmd2(self):
+        """This is another example command
+        """
+        arg1 = self.get_arg(name=u'arg1')
+        arg2 = self.get_arg(name=u'arg2', default=u'arg2_val', keyvalue=True)
+        res = [
+            {u'k': u'arg1', u'v': arg1},
+            {u'k': u'arg2', u'v': arg2},
+        ]
+        self.result(res, headers=[u'key', u'value'], fields=[u'k', u'v'])
+
+
+class Example2Controller(BaseController):
+    class Meta:
+        label = 'example2'
+        stacked_on = 'example'
+        stacked_type = 'nested'
+        description = "Example nested section"
+        arguments = [
+            (['extra_arguments'], dict(action='store', nargs='*'))
+        ]
+
 
 example_controller_handlers = [
     ExampleController,
+    Example2Controller,
 ]
