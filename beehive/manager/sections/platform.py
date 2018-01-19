@@ -1298,7 +1298,8 @@ class OpenstackController(AnsibleController):
                    u'orchestrator': False,
                    u'manila': False,
                    u'aodh': False,
-                   u'glance': False}
+                   u'glance': False,
+                   u'gnocchi': False}
             try:
                 client = self.__get_client(conf)
             except Exception as ex:
@@ -1356,6 +1357,12 @@ class OpenstackController(AnsibleController):
             try:
                 client.glance.api()
                 res[u'glance'] = True
+            except Exception as ex:
+                logger.error(ex, exc_info=1)
+
+            try:
+                client.gnocchi.api()
+                res[u'gnocchi'] = True
             except Exception as ex:
                 logger.error(ex, exc_info=1)
 
