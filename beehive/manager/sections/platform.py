@@ -783,7 +783,6 @@ class MysqlController(AnsibleController):
             logger.info(msg)
             self.result(msg, headers=[u'msg'])
 
-
 class CamundaController(AnsibleController):
     class Meta:
         label = 'camunda'
@@ -813,6 +812,10 @@ class CamundaController(AnsibleController):
             clients.append(client)
         return clients
     
+    
+    def camunda_engine(self, port=8080):
+        return self.__get_engine( port)
+
     @expose(help="Camunda management", hide=True)
     def default(self):
         self.app.args.print_help()
@@ -834,7 +837,14 @@ class CamundaController(AnsibleController):
         logger.debug(u'Ping camunda: %s' % resp)
         self.result(resp, headers=[u'host', u'response'])           
     
-    @expose(aliases=[u'deploy <bpmn> [port]'], aliases_only=True)
+class CamundaDeployController (CamundaController):
+    class Meta:
+        stacked_on = 'camunda'
+        label = 'deploy'
+        description = "Camunda deploy  management"
+
+    @expose(aliases=[ u'file' , u'file <bpmn> [port]'], aliases_only=True)
+    @check_error
     def deploy(self):
         """Deploy a proces defintion to engine
         - <bpmn> a file containtg porces bpm definition
@@ -842,7 +852,7 @@ class CamundaController(AnsibleController):
         """
         filename = self.get_arg(name=u'bpmn')
         port = self.get_arg(name=u'port',default=8080)
-        clients = self.__get_engine(port=port)
+        clients = self.camunda_engine(port=port) #__get_engine(port=port)
         resp = []
         if os.path.isfile(filename):
             f = open(filename, 'r')
@@ -859,7 +869,72 @@ class CamundaController(AnsibleController):
         logger.debug(u'camunda deploy: %s' % resp)
         self.result(resp, headers=[u'host', u'response'])           
 
+    
+    @expose(aliases=[u'list'], aliases_only=True)
+    @check_error
+    def deploylist(self):
+        """ 
+            get a list of proceses defined  
+            [port] optional port
+        """
+        port = self.get_arg(name=u'port',default=8080)
+        clients = self.camunda_engine(port=port) #__get_engine(port=port)
+        resp = []
+        for client in clients:
+            # plist =  json.decode(client.process_definition_list() )
+            plist =  client.process_deployment_list() 
+            # print plist
+            for deploy in plist:
+                resp.append({
+                    u'host': client.connection.get(u'host'), 
+                    u"id": deploy[u"id"],
+                    u"name": deploy[u"name"],
+                    u"source": deploy[u"source"],
+                    u"deploymentTime": deploy[u"deploymentTime"],
+                    })
+        self.result(resp, headers=[ 
+            u'host', 
+            u"id",
+            u"name",
+            u"source",
+            u"deploymentTime",
+            ])
+    # TODO  delete deploy
+    # @expose(aliases=[u'delete', u'delete <id>'], aliases_only=True)
+    # @check_error
+    # def deldeploy(self):
+    #     """ 
+    #         <id> [port]
+    #         Delete a deploy and all process definition and running instances 
+    #         <id>  the definitin id from deploy list    
+    #         [port] optional port
+    #     """
+    #     deployid = self.get_arg(name=u'id')
+        
+    #     port = self.get_arg(name=u'port',default=8080)
+    #     clients = self.camunda_engine(port=port) #__get_engine(port=port)
+    #     resp = []
+        
+    #     for client in clients:
+    #         try:
+    #             result =  client.process_deployment_delete ( deployid) 
+    #             resp.append({ u'host': client.connection.get(u'host'), u'status': u'OK', })
+    #         except  :
+    #             resp.append({ u'host': client.connection.get(u'host'), u'status': u'KO', })
+
+    #     self.result(resp, headers=[ 
+    #         u'host', 
+    #         u'status' , 
+    #         ])
+
+class CamundaProcessController (CamundaController):
+    class Meta:
+        stacked_on = 'camunda'
+        label = 'process'
+        description = "Camunda process  management"
+
     @expose(aliases=[u'start <key>  <jsonparams> [port]'], aliases_only=True)
+    @check_error
     def start(self):
         """ 
             start a process instance 
@@ -878,7 +953,7 @@ class CamundaController(AnsibleController):
             else:
                raise Exception(u'json specification %s is not a file' % filename)
         port = self.get_arg(name=u'port',default=8080)
-        clients = self.__get_engine(port=port)
+        clients = self.camunda_engine(port=port) # __get_engine(port=port)
         resp = []
         paramdict = json.decode(jsonparams)
         for client in clients:
@@ -888,14 +963,15 @@ class CamundaController(AnsibleController):
         logger.debug(u'camunda start: %s' % resp)
         self.result(resp, headers=[u'host', u'response'])
     
-    @expose(aliases=[u'processlist  [port]'], aliases_only=True)
+    @expose(aliases=[u'list'], aliases_only=True)
+    @check_error
     def processlist(self):
         """ 
             get a list of proceses defined  
             [port] optional port
         """
         port = self.get_arg(name=u'port',default=8080)
-        clients = self.__get_engine(port=port)
+        clients = self.camunda_engine(port=port) # __get_engine(port=port)
         resp = []
         for client in clients:
             # plist =  json.decode(client.process_definition_list() )
@@ -936,8 +1012,50 @@ class CamundaController(AnsibleController):
             # u'historyTimeToLive', 
             ])
 
+    @expose(aliases=[u'delete',u'delete  [id=]  [key=] [version=] [port]'], aliases_only=True)
+    @check_error
+    def deldefinition(self):
+        """ 
+            Delete a process definition and al runing unsace
+            in order to identify the process definition to be deleted use his id or the key and version 
+            id the definitin id (from list)    
 
+            key the process key (fromn list)
+            version the porcess version (from list)
+            [port] optional port
+        """
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        # logger.debug (params)
+        port = self.get_arg(name=u'port',default=8080)
+        clients = self.camunda_engine(port=port) #__get_engine(port=port)
+        resp = []
+        
+        for client in clients:
+            if params.has_key("id"):
+                did = params["id"]
+            elif params.has_key ("key") and params.has_key("version") :
+                key = params["key"]
+                version = params["version"]
+                plist =  client.process_definition_list()
+                for definition in plist:
+                    if definition[u'key'] == key and definition[u'version']:
+                        did = definition[u'id']
+                        break
+            else:
+                did = None
+            logger.debug ("definitionid : " + str(did)  )
+            try:
+                result =  client.process_definition_delete( did) 
+                resp.append({ u'host': client.connection.get(u'host'), u'status': u'OK', })
+            except  :
+                resp.append({ u'host': client.connection.get(u'host'), u'status': u'KO', })
 
+        self.result(resp, headers=[ 
+            u'host', 
+            u'status' , 
+            ])
+
+    
 
 
 class VsphereController(AnsibleController):
@@ -1889,6 +2007,8 @@ platform_controller_handlers = [
     RedisClutserController,
     MysqlController,
     CamundaController,
+    CamundaDeployController,
+    CamundaProcessController,
     VsphereController,
     OpenstackController,
     NodeController,
