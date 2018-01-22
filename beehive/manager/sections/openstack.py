@@ -1408,7 +1408,8 @@ class OpenstackPlatformManilaShareController(OpenstackPlatformManilaChildControl
         force = self.get_arg(name=u'force', default=False, keyvalue=True)
         if force is True:
             res = self.entity_class.action.force_delete(oid)
-        res = self.entity_class.delete(oid)
+        else:
+            res = self.entity_class.delete(oid)
         res = {u'msg': u'Delete manila share %s' % (oid)}
         logger.info(res)
         self.result(res, headers=[u'msg'])
@@ -1472,7 +1473,7 @@ class OpenstackPlatformManilaShareController(OpenstackPlatformManilaChildControl
 
     @expose(aliases=[u'size-extend <id> <new_size>'], aliases_only=True)
     def size_extend(self):
-        """Reset manila share <id> status
+        """Extend manila share <id>
     - new_size: New size of the share, in GBs.
         """
         oid = self.get_arg(name=u'id')
@@ -1484,7 +1485,7 @@ class OpenstackPlatformManilaShareController(OpenstackPlatformManilaChildControl
 
     @expose(aliases=[u'size-shrink <id> <new_size>'], aliases_only=True)
     def size_shrink(self):
-        """Reset manila share <id> status
+        """Shrink manila share <id>
     - new_size: New size of the share, in GBs.
         """
         oid = self.get_arg(name=u'id')
@@ -1496,7 +1497,7 @@ class OpenstackPlatformManilaShareController(OpenstackPlatformManilaChildControl
 
     @expose(aliases=[u'revert-to-snapshot <id> <snapshot_id>'], aliases_only=True)
     def revert_to_snapshot(self):
-        """Reset manila share <id> status
+        """Revert manila share <id> to snapshot
     - snapshot_id: New size of the share, in GBs.
         """
         oid = self.get_arg(name=u'id')
