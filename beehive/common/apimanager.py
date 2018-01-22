@@ -3276,7 +3276,7 @@ class ApiObjectSmallResponseSchema(Schema):
                          example=u'4cdf0ea4-159a-45aa-96f2-708e461130e1')
     name = fields.String(required=True, default=u'test', example=u'test')
     active = fields.Boolean(required=True, default=True, example=True)
-    __meta__ = fields.Nested(ApiObjectMetadataResponseSchema, required=True, allow_none=True)
+    __meta__ = fields.Nested(ApiObjectMetadataResponseSchema, required=True)
 
 
 class ApiObjectResponseSchema(Schema):
@@ -3287,7 +3287,7 @@ class ApiObjectResponseSchema(Schema):
     desc = fields.String(required=True, default=u'test', example=u'test')
     date = fields.Nested(ApiObjectResponseDateSchema, required=True)
     active = fields.Boolean(required=True, default=True, example=True)
-    __meta__ = fields.Nested(ApiObjectMetadataResponseSchema, required=True, allow_none=True)
+    __meta__ = fields.Nested(ApiObjectMetadataResponseSchema, required=True)
 
 
 class PaginatedResponseSortSchema(Schema):
@@ -3300,7 +3300,7 @@ class PaginatedResponseSchema(Schema):
     count = fields.Integer(required=True, default=10, example=10)
     page = fields.Integer(required=True, default=0, example=0)
     total = fields.Integer(required=True, default=20, example=20)
-    sort = fields.Nested(PaginatedResponseSortSchema, required=True, allow_none=True)
+    sort = fields.Nested(PaginatedResponseSortSchema, required=True)
 
 
 class CrudApiObjectResponseSchema(Schema):
