@@ -68,36 +68,6 @@ class OpenstackPlatformControllerChild(BaseController):
         self.client = OpenstackManager(conf.get(u'uri'), default_region=conf.get(u'region'))
         self.client.authorize(conf.get(u'user'), conf.get(u'pwd'), project=project, domain=conf.get(u'domain'))
 
-    @expose(hide=True)
-    def default(self):
-        self.app.args.print_help()
-
-    @expose(aliases=[u'list [field=value]'], aliases_only=True)
-    def list(self):
-        params = self.get_query_params(*self.app.pargs.extra_arguments)
-        objs = self.entity_class.list(**params)
-        res = []
-        for obj in objs:
-            res.append(obj)
-        logger.info(res)
-        self.result(res, headers=self.headers)
-
-    @expose(aliases=[u'get <id>'], aliases_only=True)
-    def get(self):
-        oid = self.get_arg(name=u'id')
-        obj = self.entity_class.get(oid)
-        res = obj
-        logger.info(res)
-        self.result(res, details=True)
-    
-    @expose(aliases=[u'delete <id>'], aliases_only=True)
-    def delete(self):
-        oid = self.get_arg(name=u'id')
-        res = self.entity_class.delete(oid)
-        res = {u'msg':u'Delete %s %s' % (self.entity_class, oid)}
-        logger.info(res)
-        self.result(res, headers=[u'msg'])
-
 
 class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
     headers = [u'id', u'name', u'domain_id']
@@ -254,21 +224,21 @@ class OpenstackPlatformKeystoneController(OpenstackPlatformControllerChild):
         
     @expose()
     def users(self):
-        #params = self.get_query_params(*self.app.pargs.extra_arguments)
+        # params = self.get_query_params(*self.app.pargs.extra_arguments)
         res = self.client.identity.user.list(detail=True)
         logger.info(res)
         self.result(res, headers=self.headers)
         
     @expose()
     def roles(self):
-        #params = self.get_query_params(*self.app.pargs.extra_arguments)
+        # params = self.get_query_params(*self.app.pargs.extra_arguments)
         res = self.client.identity.role.list(detail=False)
         logger.info(res)
         self.result(res, headers=[u'id', u'name'])
         
     @expose()
     def regions(self):
-        #params = self.get_query_params(*self.app.pargs.extra_arguments)
+        # params = self.get_query_params(*self.app.pargs.extra_arguments)
         res = self.client.identity.get_regions()
         logger.info(res)
         self.result(res, headers=[u'id', u'parent_region_id', u'description'])         
@@ -288,6 +258,32 @@ class OpenstackPlatformProjectController(OpenstackPlatformControllerChild):
         
         self.entity_class = self.client.project
 
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    def list(self):
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        objs = self.entity_class.list(**params)
+        res = []
+        for obj in objs:
+            res.append(obj)
+        logger.info(res)
+        self.result(res, headers=self.headers)
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        oid = self.get_arg(name=u'id')
+        obj = self.entity_class.get(oid)
+        res = obj
+        logger.info(res)
+        self.result(res, details=True)
+
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    def delete(self):
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.delete(oid)
+        res = {u'msg': u'Delete %s %s' % (self.entity_class, oid)}
+        logger.info(res)
+        self.result(res, headers=[u'msg'])
+
 
 class OpenstackPlatformNetworkController(OpenstackPlatformControllerChild):
     headers = [u'id', u'tenant_id', u'name', u'provider:segmentation_id', 
@@ -304,6 +300,32 @@ class OpenstackPlatformNetworkController(OpenstackPlatformControllerChild):
         
         self.entity_class = self.client.network
 
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    def list(self):
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        objs = self.entity_class.list(**params)
+        res = []
+        for obj in objs:
+            res.append(obj)
+        logger.info(res)
+        self.result(res, headers=self.headers)
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        oid = self.get_arg(name=u'id')
+        obj = self.entity_class.get(oid)
+        res = obj
+        logger.info(res)
+        self.result(res, details=True)
+
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    def delete(self):
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.delete(oid)
+        res = {u'msg': u'Delete %s %s' % (self.entity_class, oid)}
+        logger.info(res)
+        self.result(res, headers=[u'msg'])
+
 
 class OpenstackPlatformSubnetController(OpenstackPlatformControllerChild):
     headers = [u'id', u'tenant_id', u'name', u'network_id', u'cidr', u'enable_dhcp']
@@ -319,6 +341,32 @@ class OpenstackPlatformSubnetController(OpenstackPlatformControllerChild):
         
         self.entity_class = self.client.network.subnet
 
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    def list(self):
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        objs = self.entity_class.list(**params)
+        res = []
+        for obj in objs:
+            res.append(obj)
+        logger.info(res)
+        self.result(res, headers=self.headers)
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        oid = self.get_arg(name=u'id')
+        obj = self.entity_class.get(oid)
+        res = obj
+        logger.info(res)
+        self.result(res, details=True)
+
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    def delete(self):
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.delete(oid)
+        res = {u'msg': u'Delete %s %s' % (self.entity_class, oid)}
+        logger.info(res)
+        self.result(res, headers=[u'msg'])
+
 
 class OpenstackPlatformPortController(OpenstackPlatformControllerChild):
     headers = [u'id', u'tenant_id', u'network_id', u'fixed_ips.0.ip_address', u'mac_address', u'status',
@@ -333,7 +381,33 @@ class OpenstackPlatformPortController(OpenstackPlatformControllerChild):
     def _ext_parse_args(self):
         OpenstackPlatformControllerChild._ext_parse_args(self)
         
-        self.entity_class = self.client.network.port        
+        self.entity_class = self.client.network.port
+
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    def list(self):
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        objs = self.entity_class.list(**params)
+        res = []
+        for obj in objs:
+            res.append(obj)
+        logger.info(res)
+        self.result(res, headers=self.headers)
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        oid = self.get_arg(name=u'id')
+        obj = self.entity_class.get(oid)
+        res = obj
+        logger.info(res)
+        self.result(res, details=True)
+
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    def delete(self):
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.delete(oid)
+        res = {u'msg': u'Delete %s %s' % (self.entity_class, oid)}
+        logger.info(res)
+        self.result(res, headers=[u'msg'])
 
 
 class OpenstackPlatformFloatingIpController(OpenstackPlatformControllerChild):
@@ -351,6 +425,32 @@ class OpenstackPlatformFloatingIpController(OpenstackPlatformControllerChild):
         
         self.entity_class = self.client.network.ip
 
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    def list(self):
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        objs = self.entity_class.list(**params)
+        res = []
+        for obj in objs:
+            res.append(obj)
+        logger.info(res)
+        self.result(res, headers=self.headers)
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        oid = self.get_arg(name=u'id')
+        obj = self.entity_class.get(oid)
+        res = obj
+        logger.info(res)
+        self.result(res, details=True)
+
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    def delete(self):
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.delete(oid)
+        res = {u'msg': u'Delete %s %s' % (self.entity_class, oid)}
+        logger.info(res)
+        self.result(res, headers=[u'msg'])
+
 
 class OpenstackPlatformRouterController(OpenstackPlatformControllerChild):
     headers = [u'id', u'tenant_id', u'name', u'ha', u'status']
@@ -366,6 +466,32 @@ class OpenstackPlatformRouterController(OpenstackPlatformControllerChild):
         
         self.entity_class = self.client.network.router
 
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    def list(self):
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        objs = self.entity_class.list(**params)
+        res = []
+        for obj in objs:
+            res.append(obj)
+        logger.info(res)
+        self.result(res, headers=self.headers)
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        oid = self.get_arg(name=u'id')
+        obj = self.entity_class.get(oid)
+        res = obj
+        logger.info(res)
+        self.result(res, details=True)
+
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    def delete(self):
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.delete(oid)
+        res = {u'msg': u'Delete %s %s' % (self.entity_class, oid)}
+        logger.info(res)
+        self.result(res, headers=[u'msg'])
+
 
 class OpenstackPlatformSecurityGroupController(OpenstackPlatformControllerChild):
     headers = [u'id', u'tenant_id', u'name']
@@ -379,7 +505,33 @@ class OpenstackPlatformSecurityGroupController(OpenstackPlatformControllerChild)
     def _ext_parse_args(self):
         OpenstackPlatformControllerChild._ext_parse_args(self)
         
-        self.entity_class = self.client.network.security_group             
+        self.entity_class = self.client.network.security_group
+
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    def list(self):
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        objs = self.entity_class.list(**params)
+        res = []
+        for obj in objs:
+            res.append(obj)
+        logger.info(res)
+        self.result(res, headers=self.headers)
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        oid = self.get_arg(name=u'id')
+        obj = self.entity_class.get(oid)
+        res = obj
+        logger.info(res)
+        self.result(res, details=True)
+
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    def delete(self):
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.delete(oid)
+        res = {u'msg': u'Delete %s %s' % (self.entity_class, oid)}
+        logger.info(res)
+        self.result(res, headers=[u'msg'])
 
 
 class OpenstackPlatformImageController(OpenstackPlatformControllerChild):
@@ -402,9 +554,24 @@ class OpenstackPlatformImageController(OpenstackPlatformControllerChild):
         for obj in objs:
             res.append(obj)
         logger.info(res)
-        self.result(res, headers=[u'id', u'name', u'status', u'progress',
-                                  u'created', u'minDisk', u'minRam',
-                                  u'OS-EXT-IMG-SIZE:size'])        
+        self.result(res, headers=[u'id', u'name', u'status', u'progress', u'created', u'minDisk', u'minRam',
+                                  u'OS-EXT-IMG-SIZE:size'])
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        oid = self.get_arg(name=u'id')
+        obj = self.entity_class.get(oid)
+        res = obj
+        logger.info(res)
+        self.result(res, details=True)
+
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    def delete(self):
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.delete(oid)
+        res = {u'msg': u'Delete %s %s' % (self.entity_class, oid)}
+        logger.info(res)
+        self.result(res, headers=[u'msg'])
 
 
 class OpenstackPlatformFlavorController(OpenstackPlatformControllerChild):
@@ -427,9 +594,24 @@ class OpenstackPlatformFlavorController(OpenstackPlatformControllerChild):
         for obj in objs:
             res.append(obj)
         logger.info(res)
-        self.result(res, headers=[u'id', u'name', u'ram', u'vcpus', u'swap',
-            u'os-flavor-access:is_public', u'rxtx_factor', u'disk', 
-            u'OS-FLV-EXT-DATA:ephemeral', u'OS-FLV-DISABLED:disabled'])
+        self.result(res, headers=[u'id', u'name', u'ram', u'vcpus', u'swap', u'os-flavor-access:is_public',
+                                  u'rxtx_factor', u'disk', u'OS-FLV-EXT-DATA:ephemeral', u'OS-FLV-DISABLED:disabled'])
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        oid = self.get_arg(name=u'id')
+        obj = self.entity_class.get(oid)
+        res = obj
+        logger.info(res)
+        self.result(res, details=True)
+
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    def delete(self):
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.delete(oid)
+        res = {u'msg': u'Delete %s %s' % (self.entity_class, oid)}
+        logger.info(res)
+        self.result(res, headers=[u'msg'])
 
 
 class OpenstackPlatformKeyPairController(OpenstackPlatformControllerChild):
@@ -445,6 +627,32 @@ class OpenstackPlatformKeyPairController(OpenstackPlatformControllerChild):
         OpenstackPlatformControllerChild._ext_parse_args(self)
 
         self.entity_class = self.client.keypair
+
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    def list(self):
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        objs = self.entity_class.list(**params)
+        res = []
+        for obj in objs:
+            res.append(obj)
+        logger.info(res)
+        self.result(res, headers=self.headers)
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        oid = self.get_arg(name=u'id')
+        obj = self.entity_class.get(oid)
+        res = obj
+        logger.info(res)
+        self.result(res, details=True)
+
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    def delete(self):
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.delete(oid)
+        res = {u'msg': u'Delete %s %s' % (self.entity_class, oid)}
+        logger.info(res)
+        self.result(res, headers=[u'msg'])
 
 
 class OpenstackPlatformServerController(OpenstackPlatformControllerChild):
@@ -470,6 +678,22 @@ class OpenstackPlatformServerController(OpenstackPlatformControllerChild):
             res.append(obj)
         self.result(res, headers=self.headers, maxsize=40)
 
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        oid = self.get_arg(name=u'id')
+        obj = self.entity_class.get(oid)
+        res = obj
+        logger.info(res)
+        self.result(res, details=True)
+
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    def delete(self):
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.delete(oid)
+        res = {u'msg': u'Delete %s %s' % (self.entity_class, oid)}
+        logger.info(res)
+        self.result(res, headers=[u'msg'])
+
 
 class OpenstackPlatformVolumeController(OpenstackPlatformControllerChild):
     headers = [u'id', u'name', u'os-vol-tenant-attr:tenant_id', u'size', u'status', u'bootable',
@@ -494,7 +718,23 @@ class OpenstackPlatformVolumeController(OpenstackPlatformControllerChild):
         for obj in objs:
             res.append(obj)
         logger.info(res)
-        self.result(res, headers=self.headers)        
+        self.result(res, headers=self.headers)
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    def get(self):
+        oid = self.get_arg(name=u'id')
+        obj = self.entity_class.get(oid)
+        res = obj
+        logger.info(res)
+        self.result(res, details=True)
+
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    def delete(self):
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.delete(oid)
+        res = {u'msg': u'Delete %s %s' % (self.entity_class, oid)}
+        logger.info(res)
+        self.result(res, headers=[u'msg'])
 
 
 class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
@@ -1128,7 +1368,7 @@ class OpenstackPlatformManilaShareController(OpenstackPlatformManilaChildControl
         res = self.entity_class.list(details=True, **params)
         logger.debug(res)
         self.result(res, headers=[u'id', u'name', u'project_id', u'size', u'created_at', u'share_type', u'share_proto',
-                                  u'export_location'], maxsize=40)
+                                  u'status', u'is_public'], maxsize=40)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -1139,6 +1379,282 @@ class OpenstackPlatformManilaShareController(OpenstackPlatformManilaChildControl
         res = self.entity_class.get(oid)
         logger.debug(res)
         self.result(res, details=True)
+
+    @expose(aliases=[u'add <name> <size> <proto> <share_type>'], aliases_only=True)
+    @check_error
+    def add(self):
+        """Add manila share
+    - name: share name
+    - size: share in GB
+    - proto: share protocol (NFS, CIFS, GlusterFS, HDFS, or CephFS. CephFS)
+    - share_type: share type
+        """
+        name = self.get_arg(name=u'name')
+        size = self.get_arg(name=u'size')
+        proto = self.get_arg(name=u'proto')
+        share_type = self.get_arg(name=u'share_type')
+        res = self.entity_class.create(proto, size, name=name, description=name, share_type=share_type,
+                                       is_public=False, availability_zone=u'nova')
+        res = {u'msg': u'Create manila share %s' % (name)}
+        logger.info(res)
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'delete <id> [force=true]'], aliases_only=True)
+    def delete(self):
+        """Delete manila share
+    - force: if true force delete
+        """
+        oid = self.get_arg(name=u'id')
+        force = self.get_arg(name=u'force', default=False, keyvalue=True)
+        if force is True:
+            res = self.entity_class.action.force_delete(oid)
+        res = self.entity_class.delete(oid)
+        res = {u'msg': u'Delete manila share %s' % (oid)}
+        logger.info(res)
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'grant-list <id>'], aliases_only=True)
+    def grant_list(self):
+        """List manila share <id> access list
+        """
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.action.list_access(oid)
+        logger.info(res)
+        self.result(res, headers=[u'id', u'access_type', u'access_level', u'state', u'access_to'])
+
+    @expose(aliases=[u'grant-add <id> <level> <type> <to>'], aliases_only=True)
+    def grant_add(self):
+        """Add manila share <id> access grant
+    - level: The access level to the share. To grant or deny access to a share:
+        - rw: Read and write (RW) access.
+        - ro: Read-only (RO) access.
+    - type: The access rule type. Valid values are:
+        - ip: Authenticates an instance through its IP address.
+        - cert: Authenticates an instance through a TLS certificate.
+        - user: Authenticates by a user or group name.
+    - to: The value that defines the access. The back end grants or denies the access to it. Valid values are:
+        - ip: A valid format is XX.XX.XX.XX or XX.XX.XX.XX/XX. For example 0.0.0.0/0.
+        - cert: Specify the TLS identity as the IDENTKEY. A valid value is any string up to 64 characters long in the
+                common name (CN) of the certificate. The meaning of a string depends on its interpretation.
+        - user: A valid value is an alphanumeric string that can contain some special characters and is from 4 to 32
+                characters long.
+        """
+        oid = self.get_arg(name=u'id')
+        access_level = self.get_arg(name=u'access_level')
+        access_type = self.get_arg(name=u'access_type')
+        access_to = self.get_arg(name=u'access_to')
+        res = self.entity_class.action.grant_access(oid, access_level, access_type, access_to)
+        logger.info(res)
+        self.result(res, headers=[u'id', u'access_type', u'access_level', u'state', u'access_to'])
+
+    @expose(aliases=[u'grant-remove <id> <access_id>'], aliases_only=True)
+    def grant_remove(self):
+        """Remove manila share <id> access grant
+        """
+        oid = self.get_arg(name=u'id')
+        access_id = self.get_arg(name=u'access_id')
+        res = self.entity_class.action.revoke_access(oid, access_id)
+        res = {u'msg': u'Revoke access %s to share %s' % (oid, access_id)}
+        logger.info(res)
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'reset-status <id> <status>'], aliases_only=True)
+    def reset_status(self):
+        """Reset manila share <id> status
+    - status: The share access status, which is new, error, active
+        """
+        oid = self.get_arg(name=u'id')
+        access_id = self.get_arg(name=u'access_id')
+        res = self.entity_class.action.reset_status(oid, access_id)
+        res = {u'msg': u'Reset status of share %s to %s' % (oid, status)}
+        logger.info(res)
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'size-extend <id> <new_size>'], aliases_only=True)
+    def size_extend(self):
+        """Reset manila share <id> status
+    - new_size: New size of the share, in GBs.
+        """
+        oid = self.get_arg(name=u'id')
+        new_size = self.get_arg(name=u'new_size')
+        res = self.entity_class.action.extend(oid, new_size)
+        res = {u'msg': u'Extend share %s to %s' % (oid, new_size)}
+        logger.info(res)
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'size-shrink <id> <new_size>'], aliases_only=True)
+    def size_shrink(self):
+        """Reset manila share <id> status
+    - new_size: New size of the share, in GBs.
+        """
+        oid = self.get_arg(name=u'id')
+        new_size = self.get_arg(name=u'new_size')
+        res = self.entity_class.action.shrink(oid, new_size)
+        res = {u'msg': u'Shrink share %s to %s' % (oid, new_size)}
+        logger.info(res)
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'revert-to-snapshot <id> <snapshot_id>'], aliases_only=True)
+    def revert_to_snapshot(self):
+        """Reset manila share <id> status
+    - snapshot_id: New size of the share, in GBs.
+        """
+        oid = self.get_arg(name=u'id')
+        snapshot_id = self.get_arg(name=u'snapshot_id')
+        res = self.entity_class.action.revert(oid, snapshot_id)
+        res = {u'msg': u'Revert share %s to snapshot_id %s' % (oid, snapshot_id)}
+        logger.info(res)
+        self.result(res, headers=[u'msg'])
+
+
+class OpenstackPlatformManilaShareSnapshotController(OpenstackPlatformManilaChildController):
+    class Meta:
+        label = 'openstack.platform.manila.share_snapshot'
+        aliases = ['snapshots']
+        aliases_only = True
+        description = "Openstack Manila Share Snapshots management"
+
+    def _ext_parse_args(self):
+        OpenstackPlatformControllerChild._ext_parse_args(self)
+
+        self.entity_class = self.client.manila.share.snapshot
+
+    @expose(aliases=[u'list [key=value]'], aliases_only=True)
+    @check_error
+    def list(self):
+        """List manila share snapshots
+        """
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        res = self.entity_class.list(details=True, **params)
+        logger.debug(res)
+        self.result(res, headers=[u'id', u'name', u'project_id', u'size', u'created_at', u'share_type', u'share_proto',
+                                  u'export_location'], maxsize=40)
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
+    def get(self):
+        """Get manila share snapshot by id
+        """
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.get(oid)
+        logger.debug(res)
+        self.result(res, details=True)
+
+    @expose(aliases=[u'add <share_id> <name>'], aliases_only=True)
+    @check_error
+    def add(self):
+        """Add manila share snapshot
+    - name: share name
+    - share_id: id of the share
+        """
+        share_id = self.get_arg(name=u'share_id')
+        name = self.get_arg(name=u'name')
+        res = self.entity_class.create(share_id, name=name)
+        res = {u'msg': u'Create %s %s' % (self.entity_class, name)}
+        logger.info(res)
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    def delete(self):
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.delete(oid)
+        res = {u'msg': u'Delete %s %s' % (self.entity_class, oid)}
+        logger.info(res)
+        self.result(res, headers=[u'msg'])
+
+
+class OpenstackPlatformManilaShareTypeController(OpenstackPlatformManilaChildController):
+    class Meta:
+        label = 'openstack.platform.manila.share_types'
+        aliases = ['types']
+        aliases_only = True
+        description = "Openstack Manila Share Type management"
+
+    def _ext_parse_args(self):
+        OpenstackPlatformControllerChild._ext_parse_args(self)
+
+        self.entity_class = self.client.manila.share_type
+
+    @expose(aliases=[u'list [default=true/false]'], aliases_only=True)
+    @check_error
+    def list(self):
+        """List manila share types
+    - default=true list default share types
+        """
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        res = self.entity_class.list(**params)
+        logger.debug(res)
+        self.result(res, headers=[u'id', u'name', u'access', u'backend'], fields=[u'id', u'name',
+                    u'os-share-type-access:is_public', u'extra_specs.share_backend_name'], maxsize=60)
+
+    @expose(aliases=[u'extra-spec <id>'], aliases_only=True)
+    @check_error
+    def extra_spec(self):
+        """Get manila share type extra spec by id
+        """
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.get_extra_spec(oid)
+        logger.debug(res)
+        self.result(res, details=True)
+
+    @expose(aliases=[u'access <id>'], aliases_only=True)
+    @check_error
+    def access(self):
+        """Get manila share type access by id. If share type access is True this command return error.
+        """
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.get_access(oid)
+        logger.debug(res)
+        self.result(res, details=True)
+
+    @expose(aliases=[u'add <name> [key=value]'], aliases_only=True)
+    @check_error
+    def add(self):
+        """Creates a share type
+    - name: The share type name.
+    - desc: (Optional) The description of the share type.
+    - is_public: (Optional) Indicates whether is publicly accessible. Default is false.
+    - replication_type: (Optional) The share replication type.
+    - driver_handles_share_servers: (Optional) An extra specification that defines the driver mode for share server, or
+    storage, life cycle management. The Shared File Systems service creates a share server for the export of shares.
+    This value is true when the share driver manages, or handles, the share server life cycle. This value is false when
+    an administrator rather than a share driver manages the storage life cycle.
+    - mount_snapshot_support: (Optional) Boolean extra spec used for filtering of back ends by their capability to mount
+    share snapshots.
+    - revert_to_snapshot_support: (Optional) Boolean extra spec used for filtering of back ends by their capability to
+    revert shares to snapshots.
+    - create_share_from_snapshot_support: (Optional) Boolean extra spec used for filtering of back ends by their
+    capability to create shares from snapshots.
+    - snapshot_support: (Optional) An extra specification that filters back ends by whether they do or do not support
+    share snapshots.
+        """
+        name = self.get_arg(name=u'name')
+        desc = self.get_arg(name=u'desc', default=name, keyvalue=True)
+        is_public = self.get_arg(name=u'is_public', default=False, keyvalue=True)
+        replication_type = self.get_arg(name=u'replication_type', default=None, keyvalue=True)
+        driver_handles_share_servers = self.get_arg(name=u'driver_handles_share_servers', default=None, keyvalue=True)
+        mount_snapshot_support = self.get_arg(name=u'mount_snapshot_support', default=None, keyvalue=True)
+        revert_to_snapshot_support = self.get_arg(name=u'revert_to_snapshot_support', default=None, keyvalue=True)
+        create_share_from_snapshot_support = self.get_arg(name=u'create_share_from_snapshot_support', default=None,
+                                                          keyvalue=True)
+        snapshot_support = self.get_arg(name=u'snapshot_support', default=None, keyvalue=True)
+        res = self.entity_class.create(name, desc=desc, is_public=is_public, replication_type=replication_type,
+                                       driver_handles_share_servers=driver_handles_share_servers,
+                                       mount_snapshot_support=mount_snapshot_support,
+                                       revert_to_snapshot_support=revert_to_snapshot_support,
+                                       create_share_from_snapshot_support=create_share_from_snapshot_support,
+                                       snapshot_support=snapshot_support)
+        res = {u'msg': u'Create %s %s' % (self.entity_class, name)}
+        logger.info(res)
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    def delete(self):
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.delete(oid)
+        res = {u'msg': u'Delete %s %s' % (self.entity_class, oid)}
+        logger.info(res)
+        self.result(res, headers=[u'msg'])
 
 
 class OpenstackPlatformManilaStoragePoolController(OpenstackPlatformManilaChildController):
@@ -1196,6 +1712,36 @@ class OpenstackPlatformManilaQuotaSetController(OpenstackPlatformManilaChildCont
         logger.debug(res)
         self.result(res, details=True)
 
+    @expose(aliases=[u'update <project_id> [key=value]'], aliases_only=True)
+    @check_error
+    def update(self):
+        """Update manila quota set per project
+    - gigabytes: The number of gigabytes for the tenant.
+    - snapshots: The number of snapshots for the tenant.
+    - snapshot_gigabytes: The number of gigabytes for the snapshots for the tenant.
+    - shares: The number of shares for the tenant.
+    - share_networks: The number of share networks for the tenant.
+    - share_groups: The number of share groups allowed for each tenant or user.
+    - share_group_snapshots: The number of share group snapshots allowed for each tenant or user.
+    - share_type: The name or UUID of the share type. If you specify this parameter in the URI, you show, update, or
+    delete quotas for this share type.
+        """
+        project_id = self.get_arg(name=u'project_id')
+        gigabytes = self.get_arg(name=u'gigabytes', default=None, keyvalue=True)
+        snapshots = self.get_arg(name=u'snapshots', default=None, keyvalue=True)
+        snapshot_gigabytes = self.get_arg(name=u'snapshot_gigabytes', default=None, keyvalue=True)
+        shares = self.get_arg(name=u'shares', default=None, keyvalue=True)
+        share_networks = self.get_arg(name=u'share_networks', default=None, keyvalue=True)
+        share_groups = self.get_arg(name=u'share_groups', default=None, keyvalue=True)
+        share_group_snapshots = self.get_arg(name=u'share_group_snapshots', default=None, keyvalue=True)
+        share_type = self.get_arg(name=u'share_type', default=None, keyvalue=True)
+        res = self.entity_class.update(project_id, snapshots=snapshots, snapshot_gigabytes=snapshot_gigabytes,
+                                       shares=shares, share_networks=share_networks, share_groups=share_groups,
+                                       share_group_snapshots=share_group_snapshots, share_type=share_type,
+                                       gigabytes=gigabytes)
+        logger.debug(res)
+        self.result(res, details=True)
+
 
 openstack_platform_controller_handlers = [
     OpenstackPlatformController,
@@ -1219,6 +1765,8 @@ openstack_platform_controller_handlers = [
     OpenstackPlatformSwiftController,
     OpenstackPlatformManilaController,
     OpenstackPlatformManilaShareController,
+    OpenstackPlatformManilaShareSnapshotController,
+    OpenstackPlatformManilaShareTypeController,
     OpenstackPlatformManilaStoragePoolController,
     OpenstackPlatformManilaQuotaSetController
 ]
