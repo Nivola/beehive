@@ -1082,6 +1082,24 @@ class OpenstackPlatformManilaController(OpenstackPlatformControllerChild):
         logger.debug(res)
         self.result(res, headers=[u'id', u'version', u'min_version', u'status', u'updated'])
 
+    @expose()
+    @check_error
+    def limits(self):
+        """List manila limits
+        """
+        res = self.entity_class.limits()
+        logger.debug(res)
+        self.result(res, details=True)
+
+    @expose()
+    @check_error
+    def services(self):
+        """List manila api services
+        """
+        res = self.entity_class.services()
+        logger.debug(res)
+        self.result(res, headers=[u'id', u'state', u'host', u'status', u'zone', u'binary', u'updated_at'])
+
 
 class OpenstackPlatformManilaChildController(OpenstackPlatformControllerChild):
     class Meta:

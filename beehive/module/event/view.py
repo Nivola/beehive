@@ -18,6 +18,7 @@ from marshmallow.exceptions import ValidationError
 from beecell.swagger import SwaggerHelper
 from flasgger.marshmallow_apispec import SwaggerView
 
+
 #
 # event
 #
@@ -33,6 +34,7 @@ class ListEventsRequestSchema(PaginatedRequestQuerySchema):
     source = fields.String(default=u'{}', context=u'query')
     dest = fields.String(default=u'{}', context=u'query')
 
+
 class EventsParamsResponseSchema(Schema):
     id = fields.Integer(required=True, default=1)
     event_id = fields.String(required=True, default=u'384jnd7d4')
@@ -45,8 +47,10 @@ class EventsParamsResponseSchema(Schema):
     source = fields.Dict(required=True)
     dest = fields.Dict(required=True)
 
+
 class ListEventsResponseSchema(PaginatedResponseSchema):
-    events = fields.Nested(EventsParamsResponseSchema, many=True, required=True)
+    events = fields.Nested(EventsParamsResponseSchema, many=True, required=True, allow_none=True)
+
 
 class ListEvents(SwaggerApiView):
     tags = [u'event']
@@ -71,9 +75,11 @@ class ListEvents(SwaggerApiView):
         res = [r.info() for r in events]
         return self.format_paginated_response(res, u'events', total, **data)
 
+
 ## get
 class GetEventResponseSchema(Schema):
-    event = fields.Nested(EventsParamsResponseSchema, required=True)
+    event = fields.Nested(EventsParamsResponseSchema, required=True, allow_none=True)
+
 
 class GetEvent(SwaggerApiView):
     tags = [u'event']
@@ -93,6 +99,7 @@ class GetEvent(SwaggerApiView):
         res = event.detail()
         resp = {u'event':res}        
         return resp
+
 
 # types
 class GetEventTypesResponseSchema(Schema):

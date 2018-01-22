@@ -4,11 +4,12 @@ Created on Dec 11, 2017
 @author: darkbk
 """
 import logging
+import sh
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController, check_error
-from re import match
-from beecell.simple import truncate
+from beecell.simple import truncate, getkey
 from beehive.manager.sections.resource import ResourceEntityController
+from beecell.paramiko_shell.shell import ParamikoShell
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,6 @@ class ProviderControllerChild(ResourceEntityController):
     def __get_key(self):
         return self._meta.aliases[0].rstrip(u's')
 
-    @check_error
     def get_resource(self, oid, format_result=None):
         """Get resource
 
@@ -90,6 +90,7 @@ class ProviderControllerChild(ResourceEntityController):
             self.result(res, details=True)
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List provider items
         """
@@ -100,6 +101,7 @@ class ProviderControllerChild(ResourceEntityController):
         self.result(res, headers=self.headers, fields=self.fields, key=self._meta.aliases[0])
     
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get provider item
         """
@@ -108,6 +110,7 @@ class ProviderControllerChild(ResourceEntityController):
         self.result(res, details=True)
     
     @expose(aliases=[u'add <file data>'], aliases_only=True)
+    @check_error
     def add(self):
         file_data = self.get_arg(name=u'data file')
         data = self.load_config(file_data)
@@ -117,6 +120,7 @@ class ProviderControllerChild(ResourceEntityController):
         self.result(res)
     
     @expose(aliases=[u'update <id> <file data>'], aliases_only=True)
+    @check_error
     def update(self):
         oid = self.get_arg(name=u'id')
         file_data = self.get_arg(name=u'data file')
@@ -127,6 +131,7 @@ class ProviderControllerChild(ResourceEntityController):
         self.result(res)
     
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         oid = self.get_arg(name=u'id')
         uri = self.uri + u'/' + oid
@@ -155,6 +160,7 @@ class ProviderSiteController(ProviderControllerChild):
         description = "Provider site management"
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get provider item
         """
@@ -180,6 +186,7 @@ class ProviderSiteNetworkController(ProviderControllerChild):
         description = "Provider site network management"
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get provider item
         """
@@ -204,6 +211,7 @@ class ProviderComputeZoneController(ProviderControllerChild):
         description = "Provider compute zone management"
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get provider item
         """
@@ -233,6 +241,7 @@ class ProviderComputeFlavorController(ProviderControllerChild):
         description = "Provider compute flavor management"
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get provider item
         """
@@ -251,6 +260,7 @@ class ProviderComputeImageController(ProviderControllerChild):
         description = "Provider compute image management"
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get provider item
         """
@@ -269,6 +279,7 @@ class ProviderComputeVpcController(ProviderControllerChild):
         description = "Provider compute vpc management"
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get provider item
         """
@@ -299,6 +310,7 @@ class ProviderComputeSecurityGroupController(ProviderControllerChild):
         description = "Provider compute security group management"
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get provider item
         """
@@ -317,6 +329,7 @@ class ProviderComputeComputeRuleController(ProviderControllerChild):
         description = "Provider compute rule management"
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get provider item
         """
@@ -366,6 +379,7 @@ class ProviderComputeComputeInstanceController(ProviderControllerChild):
         description = "Provider compute instance management"
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List provider instances
         """
@@ -379,6 +393,7 @@ class ProviderComputeComputeInstanceController(ProviderControllerChild):
         self.result(res, headers=self.headers, fields=self.fields)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get provider instance
         """
@@ -398,14 +413,20 @@ class ProviderComputeComputeInstanceController(ProviderControllerChild):
         self.output(u'Networks:')
         self.result(vpcs, headers=[u'uuid', u'name', u'cidr', u'gateway', u'fixed_ip.ip'])
 
-    @expose(aliases=[u'ssh <id> <user> [pwd=..] [pubkey=..]'], aliases_only=True)
+    @expose(aliases=[u'ssh <id> <user> [sshkey=..]'], aliases_only=True)
+    @check_error
     def ssh(self):
         """Opens ssh connection over provider instance
         """
         oid = self.get_arg(name=u'id')
         user = self.get_arg(name=u'user')
-        server = self.get_resource(oid)
-        # fixep_ip = server(vpcs.0.fixed_ip.ip
+        sshkey = self.get_arg(name=u'sshkey', default=None, keyvalue=True)
+        uri = self.uri + u'/' + oid
+        server = self._call(uri, u'GET').get(u'instance')
+        fixed_ip = getkey(server, u'vpcs.0.fixed_ip.ip')
+
+        client = ParamikoShell(fixed_ip, user, keyfile=sshkey)
+        client.run()
 
 
 class ProviderComputeComputeStackController(ProviderControllerChild):
@@ -420,6 +441,7 @@ class ProviderComputeComputeStackController(ProviderControllerChild):
         description = "Provider compute stack management"
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List provider items
         """
@@ -430,6 +452,7 @@ class ProviderComputeComputeStackController(ProviderControllerChild):
         self.result(res, headers=self.headers, key=self._meta.aliases[0])
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get provider item
         """

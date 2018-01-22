@@ -54,17 +54,16 @@ class BaseUpdateMultiRequestSchema(Schema):
 class ListDomainsRequestSchema(Schema):
     pass
 
+
 class ListDomainsParamsResponseSchema(Schema):
-    name = fields.String(required=True, example=u'local', 
-                       description=u'login domain name')
-    type = fields.String(required=True, example=u'DatabaseAuth', 
-                       description=u'login domain description')
+    name = fields.String(required=True, example=u'local', description=u'login domain name')
+    type = fields.String(required=True, example=u'DatabaseAuth', description=u'login domain description')
+
 
 class ListDomainsResponseSchema(Schema):
-    domains = fields.Nested(ListDomainsParamsResponseSchema, many=True, 
-                           required=True)
-    count = fields.Integer(required=True, example=1, 
-                           description=u'Domains count')
+    domains = fields.Nested(ListDomainsParamsResponseSchema, many=True, required=True, allow_none=True)
+    count = fields.Integer(required=True, example=1, description=u'Domains count')
+
 
 class ListDomains(SwaggerApiView):
     tags = [u'auth']
@@ -101,25 +100,20 @@ class ListDomains(SwaggerApiView):
 class ListTokensRequestSchema(Schema):
     pass
 
+
 class ListTokensParamsResponseSchema(Schema):
-    ip = fields.String(required=True, example=u'pc160234.csi.it', 
-                       description=u'client login ip address')
-    ttl = fields.Integer(required=True, example=3600, 
-                         description=u'token ttl')
-    token = fields.String(required=True, 
-                          example=u'28ff1dd5-5520-42f3-a361-c58f19d20b7c', 
-                          description=u'token')
-    user = fields.String(required=True, example=u'admin@local', 
-                         description=u'client login user')
-    timestamp = fields.String(required=True, example=u'internal', 
-                              description=u'token timestamp')
-    type = fields.String(required=True, example=u'internal', 
-                         description=u'token type') 
+    ip = fields.String(required=True, example=u'pc160234.csi.it', description=u'client login ip address')
+    ttl = fields.Integer(required=True, example=3600, description=u'token ttl')
+    token = fields.String(required=True, example=u'28ff1dd5-5520-42f3-a361-c58f19d20b7c', description=u'token')
+    user = fields.String(required=True, example=u'admin@local', description=u'client login user')
+    timestamp = fields.String(required=True, example=u'internal', description=u'token timestamp')
+    type = fields.String(required=True, example=u'internal', description=u'token type')
+
 
 class ListTokensResponseSchema(Schema):
-    tokens = fields.Nested(ListTokensParamsResponseSchema, many=True, 
-                           required=True)
+    tokens = fields.Nested(ListTokensParamsResponseSchema, many=True, required=True, allow_none=True)
     count = fields.Integer(required=True, example=1, description=u'Token count')
+
 
 class ListTokens(SwaggerApiView):
     tags = [u'auth']
@@ -155,40 +149,32 @@ class ListTokens(SwaggerApiView):
                 u'ttl':i[u'ttl'], 
                 u'ip':i[u'ip']
             })
-        resp = {u'tokens':res,
-                u'count':len(res)}
+        resp = {u'tokens': res,
+                u'count': len(res)}
         return resp
+
 
 ## get
 class GetTokenUserResponseSchema(Schema):
-    name = fields.String(required=True, example=u'admin@local', 
-                         description=u'client login user')
-    roles = fields.List(fields.String(example=u'admin@local'), required=True,
-                        description=u'client login user')
-    perms = fields.String(required=True, example=u'admin@local', 
-                          description=u'client login perms')
-    active = fields.Boolean(required=True, example=True, 
-                            description=u'client login active')
-    id = fields.UUID(required=True, description=u'client login uuid',
-                     example=u'6d960236-d280-46d2-817d-f3ce8f0aeff7')
+    name = fields.String(required=True, example=u'admin@local', description=u'client login user')
+    roles = fields.List(fields.String(example=u'admin@local'), required=True, description=u'client login user')
+    perms = fields.String(required=True, example=u'admin@local', description=u'client login perms')
+    active = fields.Boolean(required=True, example=True, description=u'client login active')
+    id = fields.UUID(required=True, description=u'client login uuid', example=u'6d960236-d280-46d2-817d-f3ce8f0aeff7')
+
 
 class GetTokenParamsResponseSchema(Schema):
-    ip = fields.String(required=True, example=u'pc160234.csi.it', 
-                       description=u'client login ip address')
-    ttl = fields.Integer(required=True, example=3600, 
-                         description=u'token ttl')
-    token = fields.String(required=True, 
-                          example=u'28ff1dd5-5520-42f3-a361-c58f19d20b7c', 
-                          description=u'token')
-    user = fields.Nested(GetTokenUserResponseSchema, required=True, 
-                         description=u'client login user')
-    timestamp = fields.String(required=True, example=u'internal', 
-                              description=u'token timestamp')
-    type = fields.String(required=True, example=u'internal', 
-                         description=u'token type') 
+    ip = fields.String(required=True, example=u'pc160234.csi.it', description=u'client login ip address')
+    ttl = fields.Integer(required=True, example=3600, description=u'token ttl')
+    token = fields.String(required=True, example=u'28ff1dd5-5520-42f3-a361-c58f19d20b7c', description=u'token')
+    user = fields.Nested(GetTokenUserResponseSchema, required=True, description=u'client login user', allow_none=True)
+    timestamp = fields.String(required=True, example=u'internal', description=u'token timestamp')
+    type = fields.String(required=True, example=u'internal', description=u'token type')
+
 
 class GetTokenResponseSchema(Schema):
-    token = fields.Nested(ListTokensParamsResponseSchema, required=True)
+    token = fields.Nested(ListTokensParamsResponseSchema, required=True, allow_none=True)
+
 
 class GetToken(SwaggerApiView):
     tags = [u'auth']
@@ -260,11 +246,12 @@ class ListUsersRequestSchema(PaginatedRequestQuerySchema):
     group = fields.String(context=u'query')
     role = fields.String(context=u'query')
     active = fields.Boolean(context=u'query')
-    expiry_date = fields.String(load_from=u'expirydate', default=u'2099-12-31',
-                                context=u'query')
+    expiry_date = fields.String(load_from=u'expirydate', default=u'2099-12-31',context=u'query')
+
 
 class ListUsersResponseSchema(PaginatedResponseSchema):
-    users = fields.Nested(ApiObjectResponseSchema, many=True, required=True)
+    users = fields.Nested(ApiObjectResponseSchema, many=True, required=True, allow_none=True)
+
 
 class ListUsers(SwaggerApiView):
     tags = [u'authorization']
@@ -290,9 +277,11 @@ class ListUsers(SwaggerApiView):
 
         return self.format_paginated_response(res, u'users', total, **data)
 
+
 ## get
 class GetUserResponseSchema(Schema):
-    user = fields.Nested(ApiObjectResponseSchema, required=True)
+    user = fields.Nested(ApiObjectResponseSchema, required=True, allow_none=True)
+
 
 class GetUser(SwaggerApiView):
     tags = [u'authorization']
@@ -320,16 +309,18 @@ class GetUser(SwaggerApiView):
         resp = {u'user':res} 
         return resp
 
+
 ## list attributes
 class GetUserAtributesParamResponseSchema(Schema):
     name = fields.String(required=True, default=u'test')
     value = fields.String(required=True, default=u'test')
     desc = fields.String(required=True, default=u'test')
 
+
 class GetUserAtributesResponseSchema(Schema):
     count = fields.Integer(required=True, defaut=0)
-    user_attributes = fields.Nested(GetUserAtributesParamResponseSchema,
-                                    many=True, required=True)
+    user_attributes = fields.Nested(GetUserAtributesParamResponseSchema, many=True, required=True, allow_none=True)
+
 
 class GetUserAtributes(SwaggerApiView):
     tags = [u'authorization']
@@ -355,14 +346,12 @@ class GetUserAtributes(SwaggerApiView):
                 u'count':len(res)} 
         return resp
 
+
 ## create
-class CreateUserParamRequestSchema(BaseCreateRequestSchema, 
-                                   BaseCreateExtendedParamRequestSchema):
-    password = fields.String(validate=Length(min=10, max=20),
-                             error=u'Password must be at least 8 characters')
+class CreateUserParamRequestSchema(BaseCreateRequestSchema, BaseCreateExtendedParamRequestSchema):
+    password = fields.String(validate=Length(min=10, max=20), error=u'Password must be at least 8 characters')
     storetype = fields.String(validate=OneOf([u'DBUSER', u'LDAPUSER', u'SPID'],
-                          error=u'Field can be DBUSER, LDAPUSER or SPIDUSER'),
-                          missing=u'DBUSER')
+                                             error=u'Field can be DBUSER, LDAPUSER or SPIDUSER'), missing=u'DBUSER')
     base = fields.Boolean(missing=False)
     system = fields.Boolean(missing=False)
     
@@ -371,11 +360,14 @@ class CreateUserParamRequestSchema(BaseCreateRequestSchema,
         if not match(u'[a-zA-z0-9]+@[a-zA-z0-9]+', value):
             raise ValidationError(u'User name syntax must be <name>@<domain>') 
 
+
 class CreateUserRequestSchema(Schema):
-    user = fields.Nested(CreateUserParamRequestSchema, context=u'body')
-    
+    user = fields.Nested(CreateUserParamRequestSchema, context=u'body', allow_none=True)
+
+
 class CreateUserBodyRequestSchema(Schema):
-    body = fields.Nested(CreateUserRequestSchema, context=u'body')
+    body = fields.Nested(CreateUserRequestSchema, context=u'body', allow_none=True)
+
 
 class CreateUser(SwaggerApiView):
     tags = [u'authorization']
@@ -400,35 +392,37 @@ class CreateUser(SwaggerApiView):
         resp = controller.add_user(**data.get(u'user'))
         return ({u'uuid':resp}, 201)
 
+
 ## update
 class UpdateUserParamRoleRequestSchema(Schema):
     append = fields.List(fields.List(fields.String()))
     remove = fields.List(fields.String())
-    
+
+
 class UpdateUserParamRequestSchema(BaseUpdateRequestSchema):
-    roles = fields.Nested(UpdateUserParamRoleRequestSchema)
-    password = fields.String(validate=Length(min=10, max=20),
-                             error=u'Password must be at least 8 characters')
+    roles = fields.Nested(UpdateUserParamRoleRequestSchema, allow_none=True)
+    password = fields.String(validate=Length(min=10, max=20), error=u'Password must be at least 8 characters')
     
     @validates(u'name')
     def validate_user(self, value):
         if not match(u'[a-zA-z0-9]+@[a-zA-z0-9]+', value):
             raise ValidationError(u'User name syntax must be <name>@<domain>')     
 
+
 class UpdateUserRequestSchema(Schema):
-    user = fields.Nested(UpdateUserParamRequestSchema)
+    user = fields.Nested(UpdateUserParamRequestSchema, allow_none=True)
+
 
 class UpdateUserBodyRequestSchema(GetApiObjectRequestSchema):
-    body = fields.Nested(UpdateUserRequestSchema, context=u'body')
-    
+    body = fields.Nested(UpdateUserRequestSchema, context=u'body', allow_none=True)
+
+
 class UpdateUserResponseSchema(Schema):
-    update = fields.String(default=u'6d960236-d280-46d2-817d-f3ce8f0aeff7',
-                           required=True)
-    role_append = fields.List(fields.String, dump_to=u'role_append', 
-                              required=True)
-    role_remove = fields.List(fields.String, dump_to=u'role_remove',
-                              required=True)
-    
+    update = fields.String(default=u'6d960236-d280-46d2-817d-f3ce8f0aeff7', required=True)
+    role_append = fields.List(fields.String, dump_to=u'role_append', required=True)
+    role_remove = fields.List(fields.String, dump_to=u'role_remove', required=True)
+
+
 class UpdateUser(SwaggerApiView):
     tags = [u'authorization']
     definitions = {
@@ -474,6 +468,7 @@ class UpdateUser(SwaggerApiView):
         resp[u'update'] = res
         return resp
 
+
 ## create attributes
 class UserAttribSchemaCreateParam(Schema):
     name = fields.String(required=True)
@@ -481,17 +476,20 @@ class UserAttribSchemaCreateParam(Schema):
     value = fields.String(required=True)
     desc = fields.String(required=True)
 
+
 class CreateUserAttributeRequestSchema(Schema):
-    user_attribute = fields.Nested(UserAttribSchemaCreateParam,
-                                   load_from=u'user_attribute')
+    user_attribute = fields.Nested(UserAttribSchemaCreateParam, load_from=u'user_attribute', allow_none=True)
+
 
 class CreateUserAttributeBodyRequestSchema(GetApiObjectRequestSchema):
     body = fields.Nested(CreateUserAttributeRequestSchema, context=u'body')
+
 
 class CreateUserAttributeResponseSchema(Schema):
     name = fields.String(required=True, default=u'test')
     value = fields.String(required=True, default=u'test')
     desc = fields.String(required=True, default=u'test')
+
 
 class CreateUserAttribute(SwaggerApiView):
     tags = [u'authorization']
@@ -570,8 +568,10 @@ class ListRolesRequestSchema(PaginatedRequestQuerySchema):
     user = fields.String(context=u'query')
     group = fields.String(context=u'query')
 
+
 class ListRolesResponseSchema(PaginatedResponseSchema):
-    roles = fields.Nested(ApiObjectResponseSchema, many=True, required=True)
+    roles = fields.Nested(ApiObjectResponseSchema, many=True, required=True, allow_none=True)
+
 
 class ListRoles(SwaggerApiView):
     tags = [u'authorization']
@@ -597,8 +597,10 @@ class ListRoles(SwaggerApiView):
         res = [r.info() for r in objs]
         return self.format_paginated_response(res, u'roles', total, **data)
 
+
 class GetRoleResponseSchema(Schema):
-    role = fields.Nested(ApiObjectResponseSchema, required=True)
+    role = fields.Nested(ApiObjectResponseSchema, required=True, allow_none=True)
+
 
 class GetRole(SwaggerApiView):
     tags = [u'authorization']
@@ -623,12 +625,15 @@ class GetRole(SwaggerApiView):
         resp = {u'role':res} 
         return resp
 
+
 ## create
 class CreateRoleRequestSchema(Schema):
-    role = fields.Nested(BaseCreateRequestSchema, context=u'body')
-    
+    role = fields.Nested(BaseCreateRequestSchema, context=u'body', allow_none=True)
+
+
 class CreateRoleBodyRequestSchema(Schema):
-    body = fields.Nested(CreateRoleRequestSchema, context=u'body')
+    body = fields.Nested(CreateRoleRequestSchema, context=u'body', allow_none=True)
+
 
 class CreateRole(SwaggerApiView):
     tags = [u'authorization']
@@ -653,6 +658,7 @@ class CreateRole(SwaggerApiView):
         resp = controller.add_role(**data.get(u'role'))
         return ({u'uuid':resp}, 201)
 
+
 ## update
 class UpdateRoleParamPermDescRequestSchema(Schema):
     type = fields.String()
@@ -662,26 +668,27 @@ class UpdateRoleParamPermDescRequestSchema(Schema):
     id = fields.Integer()
 
 class UpdateRoleParamPermRequestSchema(Schema):
-    append = fields.Nested(UpdateRoleParamPermDescRequestSchema, many=True)
-    remove = fields.Nested(UpdateRoleParamPermDescRequestSchema, many=True)
-    
-class UpdateRoleParamRequestSchema(BaseUpdateRequestSchema, 
-                                   BaseCreateExtendedParamRequestSchema):
-    perms = fields.Nested(UpdateRoleParamPermRequestSchema) 
+    append = fields.Nested(UpdateRoleParamPermDescRequestSchema, many=True, allow_none=True)
+    remove = fields.Nested(UpdateRoleParamPermDescRequestSchema, many=True, allow_none=True)
+
+
+class UpdateRoleParamRequestSchema(BaseUpdateRequestSchema, BaseCreateExtendedParamRequestSchema):
+    perms = fields.Nested(UpdateRoleParamPermRequestSchema, allow_none=True)
+
 
 class UpdateRoleRequestSchema(Schema):
-    role = fields.Nested(UpdateRoleParamRequestSchema)
+    role = fields.Nested(UpdateRoleParamRequestSchema, allow_none=True)
+
 
 class UpdateRoleBodyRequestSchema(GetApiObjectRequestSchema):
-    body = fields.Nested(UpdateRoleRequestSchema, context=u'body')
-    
+    body = fields.Nested(UpdateRoleRequestSchema, context=u'body', allow_none=True)
+
+
 class UpdateRoleResponseSchema(Schema):
-    update = fields.String(default=u'6d960236-d280-46d2-817d-f3ce8f0aeff7',
-                           required=True)
-    perm_append = fields.List(fields.String, dump_to=u'perm_append',
-                              required=True)
-    perm_remove = fields.List(fields.String, dump_to=u'perm_remove',
-                              required=True)
+    update = fields.String(default=u'6d960236-d280-46d2-817d-f3ce8f0aeff7', required=True)
+    perm_append = fields.List(fields.String, dump_to=u'perm_append', required=True)
+    perm_remove = fields.List(fields.String, dump_to=u'perm_remove', required=True)
+
     
 class UpdateRole(SwaggerApiView):
     tags = [u'authorization']
@@ -752,6 +759,7 @@ class DeleteRole(SwaggerApiView):
         resp = role.delete()
         return (resp, 204)
 
+
 #
 # group
 #
@@ -760,11 +768,12 @@ class ListGroupsRequestSchema(PaginatedRequestQuerySchema):
     user = fields.String(context=u'query')
     role = fields.String(context=u'query')
     active = fields.Boolean(context=u'query')
-    expiry_date = fields.String(load_from=u'expirydate', default=u'2099-12-31',
-                                context=u'query')
+    expiry_date = fields.String(load_from=u'expirydate', default=u'2099-12-31', context=u'query')
+
 
 class ListGroupsResponseSchema(PaginatedResponseSchema):
-    groups = fields.Nested(ApiObjectResponseSchema, many=True, required=True)
+    groups = fields.Nested(ApiObjectResponseSchema, many=True, required=True, allow_none=True)
+
 
 class ListGroups(SwaggerApiView):
     tags = [u'authorization']
@@ -790,9 +799,11 @@ class ListGroups(SwaggerApiView):
         res = [r.info() for r in objs]  
         return self.format_paginated_response(res, u'groups', total, **data)
 
+
 ## get
 class GetGroupResponseSchema(Schema):
-    group = fields.Nested(ApiObjectResponseSchema, required=True)
+    group = fields.Nested(ApiObjectResponseSchema, required=True, allow_none=True)
+
 
 class GetGroup(SwaggerApiView):
     tags = [u'authorization']
@@ -805,7 +816,8 @@ class GetGroup(SwaggerApiView):
             u'description': u'success',
             u'schema': GetGroupResponseSchema
         }
-    })  
+    })
+
     def get(self, controller, data, oid, *args, **kwargs):
         """
         Get group
@@ -816,16 +828,19 @@ class GetGroup(SwaggerApiView):
         resp = {u'group':res} 
         return resp
 
+
 ## create
-class CreateGroupParamRequestSchema(BaseCreateRequestSchema, 
-                                    BaseCreateExtendedParamRequestSchema):
+class CreateGroupParamRequestSchema(BaseCreateRequestSchema, BaseCreateExtendedParamRequestSchema):
     pass
 
+
 class CreateGroupRequestSchema(Schema):
-    group = fields.Nested(CreateGroupParamRequestSchema, context=u'body')
-    
+    group = fields.Nested(CreateGroupParamRequestSchema, context=u'body', allow_none=True)
+
+
 class CreateGroupBodyRequestSchema(Schema):
-    body = fields.Nested(CreateGroupRequestSchema, context=u'body')
+    body = fields.Nested(CreateGroupRequestSchema, context=u'body', allow_none=True)
+
 
 class CreateGroup(SwaggerApiView):
     tags = [u'authorization']
@@ -850,34 +865,34 @@ class CreateGroup(SwaggerApiView):
         resp = controller.add_group(**data.get(u'group'))
         return ({u'uuid':resp}, 201)   
 
+
 ## update
 class UpdateGroupParamRoleRequestSchema(Schema):
     append = fields.List(fields.String())
     remove = fields.List(fields.String())
-    
-class UpdateGroupParamRequestSchema(BaseUpdateRequestSchema, 
-                                   BaseCreateExtendedParamRequestSchema):
-    roles = fields.Nested(UpdateGroupParamRoleRequestSchema)
-    users = fields.Nested(UpdateGroupParamRoleRequestSchema) 
+
+
+class UpdateGroupParamRequestSchema(BaseUpdateRequestSchema, BaseCreateExtendedParamRequestSchema):
+    roles = fields.Nested(UpdateGroupParamRoleRequestSchema, allow_none=True)
+    users = fields.Nested(UpdateGroupParamRoleRequestSchema, allow_none=True)
+
 
 class UpdateGroupRequestSchema(Schema):
-    group = fields.Nested(UpdateGroupParamRequestSchema)
+    group = fields.Nested(UpdateGroupParamRequestSchema, allow_none=True)
+
 
 class UpdateGroupBodyRequestSchema(GetApiObjectRequestSchema):
-    body = fields.Nested(UpdateGroupRequestSchema, context=u'body')
-    
+    body = fields.Nested(UpdateGroupRequestSchema, context=u'body', allow_none=True)
+
+
 class UpdateGroupResponseSchema(Schema):
-    update = fields.String(default=u'6d960236-d280-46d2-817d-f3ce8f0aeff7',
-                           required=True)
-    role_append = fields.List(fields.String, dump_to=u'role_append',
-                              required=True)
-    role_remove = fields.List(fields.String, dump_to=u'role_remove',
-                              required=True)
-    user_append = fields.List(fields.String, dump_to=u'user_append',
-                              required=True)
-    user_remove = fields.List(fields.String, dump_to=u'user_remove',
-                              required=True)    
-    
+    update = fields.String(default=u'6d960236-d280-46d2-817d-f3ce8f0aeff7', required=True)
+    role_append = fields.List(fields.String, dump_to=u'role_append', required=True)
+    role_remove = fields.List(fields.String, dump_to=u'role_remove', required=True)
+    user_append = fields.List(fields.String, dump_to=u'user_append', required=True)
+    user_remove = fields.List(fields.String, dump_to=u'user_remove', required=True)
+
+
 class UpdateGroup(SwaggerApiView):
     tags = [u'authorization']
     definitions = {
@@ -972,6 +987,7 @@ class ListObjectsRequestSchema(PaginatedRequestQuerySchema):
     type = fields.String(context=u'query')
     objid = fields.String(context=u'query')
 
+
 class ListObjectsParamsResponseSchema(Schema):
     id = fields.Integer(required=True, default=10)
     uuid = fields.String(required=True, default=u'4cdf0ea4-159a-45aa-96f2-708e461130e1')
@@ -979,12 +995,13 @@ class ListObjectsParamsResponseSchema(Schema):
     subsystem = fields.String(required=True, default=u'auth')
     type = fields.String(required=True, default=u'Role')
     desc = fields.String(required=True, default=u'test')
-    date = fields.Nested(ApiObjectResponseDateSchema, required=True)
+    date = fields.Nested(ApiObjectResponseDateSchema, required=True, allow_none=True)
     active = fields.Boolean(required=True, default=True)
 
+
 class ListObjectsResponseSchema(PaginatedResponseSchema):
-    objects = fields.Nested(ListObjectsParamsResponseSchema, many=True, 
-                            required=True)
+    objects = fields.Nested(ListObjectsParamsResponseSchema, many=True, required=True, allow_none=True)
+
 
 class ListObjects(SwaggerApiView):
     tags = [u'authorization']
@@ -1012,9 +1029,11 @@ class ListObjects(SwaggerApiView):
         
         return self.format_paginated_response(res, u'objects', total, **data)
 
+
 ## get
 class GetObjectResponseSchema(Schema):
-    object = fields.Nested(ListObjectsParamsResponseSchema, required=True)
+    object = fields.Nested(ListObjectsParamsResponseSchema, required=True, allow_none=True)
+
 
 class GetObject(SwaggerApiView):
     tags = [u'authorization']
@@ -1039,6 +1058,7 @@ class GetObject(SwaggerApiView):
         resp = {u'object':res} 
         return resp
 
+
 ## create
 class CreateObjectParamRequestSchema(Schema):
     subsystem = fields.String(required=True)
@@ -1046,17 +1066,18 @@ class CreateObjectParamRequestSchema(Schema):
     objid = fields.String(required=True)
     desc = fields.String(required=True)    
 
+
 class CreateObjectRequestSchema(Schema):
-    objects = fields.Nested(CreateObjectParamRequestSchema, many=True,
-                            context=u'body')
+    objects = fields.Nested(CreateObjectParamRequestSchema, many=True, context=u'body', allow_none=True)
+
     
 class CreateObjectBodyRequestSchema(Schema):
-    body = fields.Nested(CreateObjectRequestSchema, context=u'body')
-
+    body = fields.Nested(CreateObjectRequestSchema, context=u'body', allow_none=True)
 
 
 class CreateObjectResponseSchema(Schema):
     ids = fields.List(fields.Int(required=True, default=10))
+
 
 class CreateObject(SwaggerApiView):
     tags = [u'authorization']
@@ -1240,13 +1261,15 @@ class ListObjectTypes(ApiView):
         res, total = controller.objects.get_type(**data)
         return self.format_paginated_response(res, u'object_types', total, **data)
 
+
 class ObjectTypeSchemaCreateParam(Schema):
     subsystem = fields.String()
     type = fields.String()
 
+
 class ObjectTypeSchemaCreate(Schema):
-    object_types = fields.Nested(ObjectTypeSchemaCreateParam, many=True, 
-                                 required=True)
+    object_types = fields.Nested(ObjectTypeSchemaCreateParam, many=True, required=True, allow_none=True)
+
 
 class CreateObjectType(ApiView):
     parameters_schema = ObjectTypeSchemaCreate
@@ -1444,6 +1467,7 @@ class ListObjectPermsRequestSchema(PaginatedRequestQuerySchema):
     group = fields.String(context=u'query')
     cascade = fields.Boolean(context=u'query')
 
+
 class ListObjectPermsParamsResponseSchema(Schema):
     id = fields.Integer(required=True, default=10)
     oid = fields.Integer(required=True, default=11)
@@ -1454,9 +1478,10 @@ class ListObjectPermsParamsResponseSchema(Schema):
     aid = fields.Integer(required=True, default=12)
     action = fields.String(required=True, default=u'view')
 
+
 class ListObjectPermsResponseSchema(PaginatedResponseSchema):
-    perms = fields.Nested(ListObjectPermsParamsResponseSchema, many=True, 
-                          required=True)
+    perms = fields.Nested(ListObjectPermsParamsResponseSchema, many=True, required=True, allow_none=True)
+
 
 class ListObjectPerms(SwaggerApiView):
     tags = [u'authorization']
@@ -1497,9 +1522,11 @@ class ListObjectPerms(SwaggerApiView):
             objs, total = controller.objects.get_permissions(**data)
         return self.format_paginated_response(objs, u'perms', total, **data)
 
+
 ## get
 class GetObjectPermsResponseSchema(Schema):
-    perm = fields.Nested(ListObjectPermsParamsResponseSchema, required=True)
+    perm = fields.Nested(ListObjectPermsParamsResponseSchema, required=True, allow_none=True)
+
 
 class GetObjectPerms(SwaggerApiView):
     tags = [u'authorization']
@@ -1522,6 +1549,7 @@ class GetObjectPerms(SwaggerApiView):
         res = controller.objects.get_permission(oid)
         resp = {u'perm':res}
         return resp
+
 
 class AuthorizationAPI(ApiView):
     """Authorization API

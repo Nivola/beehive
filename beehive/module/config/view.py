@@ -5,6 +5,7 @@ Created on May 23, 2017
 '''
 from beehive.common.apimanager import ApiView
 
+
 class ListConfig(ApiView):
     def dispatch(self, controller, data, app, *args, **kwargs):
         configs = controller.get_configs()
@@ -13,6 +14,7 @@ class ListConfig(ApiView):
                 u'count':len(res)}
         return resp
 
+
 class FilterConfig(ApiView):
     def dispatch(self, controller, data, app, *args, **kwargs):
         configs = controller.get_configs(app=app)
@@ -20,6 +22,7 @@ class FilterConfig(ApiView):
         resp = {u'configs':res,
                 u'count':len(res)}
         return resp
+
 
 class ConfigAPI(ApiView):
     """

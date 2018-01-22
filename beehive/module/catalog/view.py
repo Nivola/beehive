@@ -17,7 +17,8 @@ from marshmallow.decorators import post_load, validates
 from marshmallow.exceptions import ValidationError
 from beecell.swagger import SwaggerHelper
 from flasgger.marshmallow_apispec import SwaggerView
-        
+
+
 #
 # catalog
 #
@@ -25,12 +26,14 @@ from flasgger.marshmallow_apispec import SwaggerView
 class ListCatalogsRequestSchema(PaginatedRequestQuerySchema):
     zone = fields.String(context=u'query', default=u'internal')
 
+
 class ListCatalogsParamsResponseSchema(ApiObjectResponseSchema):
     zone = fields.String(required=True, default=u'internal')
 
+
 class ListCatalogsResponseSchema(PaginatedResponseSchema):
-    catalogs = fields.Nested(ListCatalogsParamsResponseSchema, many=True, 
-                             required=True)
+    catalogs = fields.Nested(ListCatalogsParamsResponseSchema, many=True, required=True, allow_none=True)
+
 
 class ListCatalogs(SwaggerApiView):
     tags = [u'directory']
@@ -55,18 +58,21 @@ class ListCatalogs(SwaggerApiView):
         res = [r.info() for r in catalogs]
         return self.format_paginated_response(res, u'catalogs', total, **data)
 
+
 ## get
 class GetCatalogParamsServicesResponseSchema(Schema):
     service = fields.String(required=True, default=u'auth')
     endpoints = fields.List(fields.String(default=u'http://localhost:6060'))
 
+
 class GetCatalogParamsResponseSchema(ApiObjectResponseSchema):
     zone = fields.String(required=True, default=u'internal')
-    services = fields.Nested(GetCatalogParamsServicesResponseSchema, many=True, 
-                             required=True)
+    services = fields.Nested(GetCatalogParamsServicesResponseSchema, many=True, required=True, allow_none=True)
+
 
 class GetCatalogResponseSchema(Schema):
-    catalog = fields.Nested(GetCatalogParamsResponseSchema, required=True)
+    catalog = fields.Nested(GetCatalogParamsResponseSchema, required=True, allow_none=True)
+
 
 class GetCatalog(SwaggerApiView):
     tags = [u'directory']
@@ -108,17 +114,21 @@ class GetCatalogPerms(SwaggerApiView):
         res, total = catalog.authorization(**data)
         return self.format_paginated_response(res, u'perms', total, **data)
 
+
 ## create
 class CreateCatalogParamRequestSchema(Schema):
     name = fields.String(required=True)
     desc = fields.String(required=True)
     zone = fields.String(required=True)
 
+
 class CreateCatalogRequestSchema(Schema):
-    catalog = fields.Nested(CreateCatalogParamRequestSchema, context=u'body')
-    
+    catalog = fields.Nested(CreateCatalogParamRequestSchema, context=u'body', allow_none=True)
+
+
 class CreateCatalogBodyRequestSchema(Schema):
-    body = fields.Nested(CreateCatalogRequestSchema, context=u'body')
+    body = fields.Nested(CreateCatalogRequestSchema, context=u'body', allow_none=True)
+
 
 class CreateCatalog(SwaggerApiView):
     tags = [u'directory']
@@ -139,18 +149,22 @@ class CreateCatalog(SwaggerApiView):
         resp = controller.add_catalog(**data.get(u'catalog'))
         return ({u'uuid':resp}, 201)
 
+
 ## update
 class UpdateCatalogParamRequestSchema(Schema):
     name = fields.String()
     desc = fields.String()
-    zone = fields.String()   
+    zone = fields.String()
+
 
 class UpdateCatalogRequestSchema(Schema):
-    catalog = fields.Nested(UpdateCatalogParamRequestSchema)
+    catalog = fields.Nested(UpdateCatalogParamRequestSchema, allow_none=True)
+
 
 class UpdateCatalogBodyRequestSchema(GetApiObjectRequestSchema):
-    body = fields.Nested(UpdateCatalogRequestSchema, context=u'body')
-    
+    body = fields.Nested(UpdateCatalogRequestSchema, context=u'body', allow_none=True)
+
+
 class UpdateCatalog(SwaggerApiView):
     tags = [u'directory']
     definitions = {
@@ -187,6 +201,7 @@ class DeleteCatalog(SwaggerApiView):
         resp = catalog.delete()
         return (resp, 204)
 
+
 #
 # endpoint
 #
@@ -194,20 +209,21 @@ class ListEndpointsRequestSchema(PaginatedRequestQuerySchema):
     service = fields.String(context=u'query')
     catalog = fields.String(context=u'query')
 
+
 class ListEndpointsParamsCatalogResponseSchema(Schema):
     name = fields.String(required=True, default=u'test')
-    uuid = fields.UUID(required=True, 
-                       default=u'6d960236-d280-46d2-817d-f3ce8f0aeff7') 
+    uuid = fields.UUID(required=True, default=u'6d960236-d280-46d2-817d-f3ce8f0aeff7')
+
 
 class ListEndpointsParamsResponseSchema(ApiObjectResponseSchema):
-    catalog = fields.Nested(ListEndpointsParamsCatalogResponseSchema, 
-                            required=True)
+    catalog = fields.Nested(ListEndpointsParamsCatalogResponseSchema, required=True, allow_none=True)
     service = fields.String(required=True, default=u'auth')
     endpoint = fields.String(required=True, default=u'http://localhost:6060')
 
+
 class ListEndpointsResponseSchema(PaginatedResponseSchema):
-    endpoints = fields.Nested(ListEndpointsParamsResponseSchema, many=True, 
-                              required=True)
+    endpoints = fields.Nested(ListEndpointsParamsResponseSchema, many=True, required=True, allow_none=True)
+
 
 class ListEndpoints(SwaggerApiView):
     tags = [u'directory']
@@ -228,9 +244,11 @@ class ListEndpoints(SwaggerApiView):
         res = [r.info() for r in endpoints]
         return self.format_paginated_response(res, u'endpoints', total, **data)
 
+
 ## get
 class GetEndpointResponseSchema(Schema):
-    endpoint = fields.Nested(ListEndpointsParamsResponseSchema, required=True)
+    endpoint = fields.Nested(ListEndpointsParamsResponseSchema, required=True, allow_none=True)
+
 
 class GetEndpoint(SwaggerApiView):
     tags = [u'directory']
@@ -272,6 +290,7 @@ class GetEndpointPerms(SwaggerApiView):
         res, total = endpoint.authorization(**data)
         return self.format_paginated_response(res, u'perms', total, **data)    
 
+
 ## create
 class CreateEndpointParamRequestSchema(Schema):
     name = fields.String()
@@ -280,12 +299,15 @@ class CreateEndpointParamRequestSchema(Schema):
     service = fields.String()
     uri = fields.String()
     active = fields.Boolean()
-    
+
+
 class CreateEndpointRequestSchema(Schema):
-    endpoint = fields.Nested(CreateEndpointParamRequestSchema, context=u'body')
-    
+    endpoint = fields.Nested(CreateEndpointParamRequestSchema, context=u'body', allow_none=True)
+
+
 class CreateEndpointBodyRequestSchema(Schema):
-    body = fields.Nested(CreateEndpointRequestSchema, context=u'body')
+    body = fields.Nested(CreateEndpointRequestSchema, context=u'body', allow_none=True)
+
 
 class CreateEndpoint(SwaggerApiView):
     tags = [u'directory']
@@ -309,6 +331,7 @@ class CreateEndpoint(SwaggerApiView):
         resp = endpoint_obj.add_endpoint(**data)
         return ({u'uuid':resp}, 201)
 
+
 ## update
 class UpdateEndpointParamRequestSchema(Schema):
     name = fields.String()
@@ -317,12 +340,15 @@ class UpdateEndpointParamRequestSchema(Schema):
     uri = fields.String()
     active = fields.Boolean() 
 
+
 class UpdateEndpointRequestSchema(Schema):
-    endpoint = fields.Nested(UpdateEndpointParamRequestSchema)
+    endpoint = fields.Nested(UpdateEndpointParamRequestSchema, allow_none=True)
+
 
 class UpdateEndpointBodyRequestSchema(GetApiObjectRequestSchema):
-    body = fields.Nested(UpdateEndpointRequestSchema, context=u'body')
-    
+    body = fields.Nested(UpdateEndpointRequestSchema, context=u'body', allow_none=True)
+
+
 class UpdateEndpoint(SwaggerApiView):
     tags = [u'directory']
     definitions = {

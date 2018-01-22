@@ -29,8 +29,7 @@ class SchedulerEntryResponseSchema(Schema):
     total_run_count = fields.Integer(required=True, default=679)
 
 class GetSchedulerEntriesResponseSchema(Schema):
-    schedules = fields.Nested(SchedulerEntryResponseSchema, 
-                              many=True,required=True)
+    schedules = fields.Nested(SchedulerEntryResponseSchema, many=True, required=True, allow_none=True)
     count = fields.Integer(required=True, default=1)
 
 class GetSchedulerEntries(TaskApiView):
@@ -60,7 +59,7 @@ class GetSchedulerEntries(TaskApiView):
 
 ## get
 class GetSchedulerEntryResponseSchema(Schema):
-    schedule = fields.Nested(SchedulerEntryResponseSchema, required=True)
+    schedule = fields.Nested(SchedulerEntryResponseSchema, required=True, allow_none=True)
 
 class GetSchedulerEntry(TaskApiView):
     definitions = {
@@ -97,11 +96,10 @@ class CreateSchedulerEntryParamRequestSchema(Schema):
     relative = fields.Boolean(allow_none=True)
 
 class CreateSchedulerEntryRequestSchema(Schema):
-    schedule = fields.Nested(CreateSchedulerEntryParamRequestSchema, 
-                             context=u'body')
+    schedule = fields.Nested(CreateSchedulerEntryParamRequestSchema, context=u'body', allow_none=True)
     
 class CreateSchedulerEntryBodyRequestSchema(Schema):
-    body = fields.Nested(CreateSchedulerEntryRequestSchema, context=u'body')
+    body = fields.Nested(CreateSchedulerEntryRequestSchema, context=u'body', allow_none=True)
 
 class CreateSchedulerEntryResponseSchema(Schema):
     name = fields.String(required=True, defualt=u'sched')
@@ -290,8 +288,7 @@ class GetAllTasksParamsResponseSchema(Schema):
                            required=False)
 
 class GetAllTasksResponseSchema(Schema):
-    task_instances = fields.Nested(GetAllTasksParamsResponseSchema, 
-                                   many=True,required=True)
+    task_instances = fields.Nested(GetAllTasksParamsResponseSchema, many=True, required=True, allow_none=True)
     count = fields.Integer(required=True, default=1)
 
 class GetAllTasks(TaskApiView):
@@ -341,8 +338,7 @@ class GetTasksCount(TaskApiView):
 
 ## get
 class QueryTaskResponseSchema(Schema):
-    task_instance = fields.Nested(GetAllTasksParamsResponseSchema, 
-                                  required=True)
+    task_instance = fields.Nested(GetAllTasksParamsResponseSchema, required=True, allow_none=True)
 
 class QueryTask(TaskApiView):
     definitions = {
@@ -470,7 +466,7 @@ class RunJobTestBodyParamRequestSchema(Schema):
     suberror = fields.Boolean(required=False, default=False)
 
 class RunJobTestBodyRequestSchema(Schema):
-    body = fields.Nested(RunJobTestBodyParamRequestSchema, context=u'body')
+    body = fields.Nested(RunJobTestBodyParamRequestSchema, context=u'body', allow_none=True)
 
 class RunJobTest(TaskApiView):
     definitions = {
