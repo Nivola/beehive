@@ -123,11 +123,11 @@ class CreateCatalogParamRequestSchema(Schema):
 
 
 class CreateCatalogRequestSchema(Schema):
-    catalog = fields.Nested(CreateCatalogParamRequestSchema, context=u'body', allow_none=True)
+    catalog = fields.Nested(CreateCatalogParamRequestSchema)
 
 
 class CreateCatalogBodyRequestSchema(Schema):
-    body = fields.Nested(CreateCatalogRequestSchema, context=u'body', allow_none=True)
+    body = fields.Nested(CreateCatalogRequestSchema, context=u'body')
 
 
 class CreateCatalog(SwaggerApiView):
@@ -158,11 +158,11 @@ class UpdateCatalogParamRequestSchema(Schema):
 
 
 class UpdateCatalogRequestSchema(Schema):
-    catalog = fields.Nested(UpdateCatalogParamRequestSchema, allow_none=True)
+    catalog = fields.Nested(UpdateCatalogParamRequestSchema)
 
 
 class UpdateCatalogBodyRequestSchema(GetApiObjectRequestSchema):
-    body = fields.Nested(UpdateCatalogRequestSchema, context=u'body', allow_none=True)
+    body = fields.Nested(UpdateCatalogRequestSchema, context=u'body')
 
 
 class UpdateCatalog(SwaggerApiView):
@@ -302,11 +302,11 @@ class CreateEndpointParamRequestSchema(Schema):
 
 
 class CreateEndpointRequestSchema(Schema):
-    endpoint = fields.Nested(CreateEndpointParamRequestSchema, context=u'body', allow_none=True)
+    endpoint = fields.Nested(CreateEndpointParamRequestSchema)
 
 
 class CreateEndpointBodyRequestSchema(Schema):
-    body = fields.Nested(CreateEndpointRequestSchema, context=u'body', allow_none=True)
+    body = fields.Nested(CreateEndpointRequestSchema, context=u'body')
 
 
 class CreateEndpoint(SwaggerApiView):
@@ -342,11 +342,11 @@ class UpdateEndpointParamRequestSchema(Schema):
 
 
 class UpdateEndpointRequestSchema(Schema):
-    endpoint = fields.Nested(UpdateEndpointParamRequestSchema, allow_none=True)
+    endpoint = fields.Nested(UpdateEndpointParamRequestSchema)
 
 
 class UpdateEndpointBodyRequestSchema(GetApiObjectRequestSchema):
-    body = fields.Nested(UpdateEndpointRequestSchema, context=u'body', allow_none=True)
+    body = fields.Nested(UpdateEndpointRequestSchema, context=u'body')
 
 
 class UpdateEndpoint(SwaggerApiView):

@@ -96,10 +96,10 @@ class CreateSchedulerEntryParamRequestSchema(Schema):
     relative = fields.Boolean(allow_none=True)
 
 class CreateSchedulerEntryRequestSchema(Schema):
-    schedule = fields.Nested(CreateSchedulerEntryParamRequestSchema, context=u'body', allow_none=True)
+    schedule = fields.Nested(CreateSchedulerEntryParamRequestSchema)
     
 class CreateSchedulerEntryBodyRequestSchema(Schema):
-    body = fields.Nested(CreateSchedulerEntryRequestSchema, context=u'body', allow_none=True)
+    body = fields.Nested(CreateSchedulerEntryRequestSchema, context=u'body')
 
 class CreateSchedulerEntryResponseSchema(Schema):
     name = fields.String(required=True, defualt=u'sched')
@@ -466,7 +466,7 @@ class RunJobTestBodyParamRequestSchema(Schema):
     suberror = fields.Boolean(required=False, default=False)
 
 class RunJobTestBodyRequestSchema(Schema):
-    body = fields.Nested(RunJobTestBodyParamRequestSchema, context=u'body', allow_none=True)
+    body = fields.Nested(RunJobTestBodyParamRequestSchema, context=u'body')
 
 class RunJobTest(TaskApiView):
     definitions = {

@@ -362,11 +362,11 @@ class CreateUserParamRequestSchema(BaseCreateRequestSchema, BaseCreateExtendedPa
 
 
 class CreateUserRequestSchema(Schema):
-    user = fields.Nested(CreateUserParamRequestSchema, context=u'body', allow_none=True)
+    user = fields.Nested(CreateUserParamRequestSchema)
 
 
 class CreateUserBodyRequestSchema(Schema):
-    body = fields.Nested(CreateUserRequestSchema, context=u'body', allow_none=True)
+    body = fields.Nested(CreateUserRequestSchema, context=u'body')
 
 
 class CreateUser(SwaggerApiView):
@@ -410,11 +410,11 @@ class UpdateUserParamRequestSchema(BaseUpdateRequestSchema):
 
 
 class UpdateUserRequestSchema(Schema):
-    user = fields.Nested(UpdateUserParamRequestSchema, allow_none=True)
+    user = fields.Nested(UpdateUserParamRequestSchema)
 
 
 class UpdateUserBodyRequestSchema(GetApiObjectRequestSchema):
-    body = fields.Nested(UpdateUserRequestSchema, context=u'body', allow_none=True)
+    body = fields.Nested(UpdateUserRequestSchema, context=u'body')
 
 
 class UpdateUserResponseSchema(Schema):
@@ -478,7 +478,7 @@ class UserAttribSchemaCreateParam(Schema):
 
 
 class CreateUserAttributeRequestSchema(Schema):
-    user_attribute = fields.Nested(UserAttribSchemaCreateParam, load_from=u'user_attribute', allow_none=True)
+    user_attribute = fields.Nested(UserAttribSchemaCreateParam, load_from=u'user_attribute')
 
 
 class CreateUserAttributeBodyRequestSchema(GetApiObjectRequestSchema):
@@ -628,11 +628,11 @@ class GetRole(SwaggerApiView):
 
 ## create
 class CreateRoleRequestSchema(Schema):
-    role = fields.Nested(BaseCreateRequestSchema, context=u'body', allow_none=True)
+    role = fields.Nested(BaseCreateRequestSchema)
 
 
 class CreateRoleBodyRequestSchema(Schema):
-    body = fields.Nested(CreateRoleRequestSchema, context=u'body', allow_none=True)
+    body = fields.Nested(CreateRoleRequestSchema, context=u'body')
 
 
 class CreateRole(SwaggerApiView):
@@ -677,11 +677,11 @@ class UpdateRoleParamRequestSchema(BaseUpdateRequestSchema, BaseCreateExtendedPa
 
 
 class UpdateRoleRequestSchema(Schema):
-    role = fields.Nested(UpdateRoleParamRequestSchema, allow_none=True)
+    role = fields.Nested(UpdateRoleParamRequestSchema)
 
 
 class UpdateRoleBodyRequestSchema(GetApiObjectRequestSchema):
-    body = fields.Nested(UpdateRoleRequestSchema, context=u'body', allow_none=True)
+    body = fields.Nested(UpdateRoleRequestSchema, context=u'body')
 
 
 class UpdateRoleResponseSchema(Schema):
@@ -835,11 +835,11 @@ class CreateGroupParamRequestSchema(BaseCreateRequestSchema, BaseCreateExtendedP
 
 
 class CreateGroupRequestSchema(Schema):
-    group = fields.Nested(CreateGroupParamRequestSchema, context=u'body', allow_none=True)
+    group = fields.Nested(CreateGroupParamRequestSchema)
 
 
 class CreateGroupBodyRequestSchema(Schema):
-    body = fields.Nested(CreateGroupRequestSchema, context=u'body', allow_none=True)
+    body = fields.Nested(CreateGroupRequestSchema, context=u'body')
 
 
 class CreateGroup(SwaggerApiView):
@@ -878,11 +878,11 @@ class UpdateGroupParamRequestSchema(BaseUpdateRequestSchema, BaseCreateExtendedP
 
 
 class UpdateGroupRequestSchema(Schema):
-    group = fields.Nested(UpdateGroupParamRequestSchema, allow_none=True)
+    group = fields.Nested(UpdateGroupParamRequestSchema)
 
 
 class UpdateGroupBodyRequestSchema(GetApiObjectRequestSchema):
-    body = fields.Nested(UpdateGroupRequestSchema, context=u'body', allow_none=True)
+    body = fields.Nested(UpdateGroupRequestSchema, context=u'body')
 
 
 class UpdateGroupResponseSchema(Schema):
@@ -1068,11 +1068,11 @@ class CreateObjectParamRequestSchema(Schema):
 
 
 class CreateObjectRequestSchema(Schema):
-    objects = fields.Nested(CreateObjectParamRequestSchema, many=True, context=u'body', allow_none=True)
+    objects = fields.Nested(CreateObjectParamRequestSchema, many=True)
 
     
 class CreateObjectBodyRequestSchema(Schema):
-    body = fields.Nested(CreateObjectRequestSchema, context=u'body', allow_none=True)
+    body = fields.Nested(CreateObjectRequestSchema, context=u'body')
 
 
 class CreateObjectResponseSchema(Schema):
