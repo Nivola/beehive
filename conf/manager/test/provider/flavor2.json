@@ -21,7 +21,7 @@
         "orchestrator_type": "openstack",
         "availability_zone": "prv-site-01",
         "orchestrator": "tst-opstk-ocata-01",
-        "flavor_id": "061ccfca-04de-4457-af96-56354ff8c368"
+        "flavor_id": "m1.large"
       }
     ]
   }
