@@ -927,33 +927,34 @@ class CamundaDeployController (CamundaController):
             u"source",
             u"deploymentTime",
             ])
+    
     # TODO  delete deploy
-    # @expose(aliases=[u'delete', u'delete <id>'], aliases_only=True)
-    # @check_error
-    # def deldeploy(self):
-    #     """ 
-    #         <id> [port]
-    #         Delete a deploy and all process definition and running instances 
-    #         <id>  the definitin id from deploy list    
-    #         [port] optional port
-    #     """
-    #     deployid = self.get_arg(name=u'id')
+    @expose(aliases=[u'delete', u'delete <id>'], aliases_only=True)
+    @check_error
+    def deldeploy(self):
+        """ 
+            <id> [port]
+            Delete a deploy and all process definition and running instances 
+            <id>  the definitin id from deploy list    
+            [port] optional port
+        """
+        deployid = self.get_arg(name=u'id')
         
-    #     port = self.get_arg(name=u'port',default=8080)
-    #     clients = self.camunda_engine(port=port) #__get_engine(port=port)
-    #     resp = []
+        port = self.get_arg(name=u'port',default=8080)
+        clients = self.camunda_engine(port=port) #__get_engine(port=port)
+        resp = []
         
-    #     for client in clients:
-    #         try:
-    #             result =  client.process_deployment_delete ( deployid) 
-    #             resp.append({ u'host': client.connection.get(u'host'), u'status': u'OK', })
-    #         except  :
-    #             resp.append({ u'host': client.connection.get(u'host'), u'status': u'KO', })
+        for client in clients:
+            try:
+                result =  client.process_deployment_delete ( deployid) 
+                resp.append({ u'host': client.connection.get(u'host'), u'status': u'OK', })
+            except  :
+                resp.append({ u'host': client.connection.get(u'host'), u'status': u'KO', })
 
-    #     self.result(resp, headers=[ 
-    #         u'host', 
-    #         u'status' , 
-    #         ])
+        self.result(resp, headers=[ 
+            u'host', 
+            u'status' , 
+            ])
 
 class CamundaProcessController (CamundaController):
     class Meta:
