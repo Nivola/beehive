@@ -637,8 +637,7 @@ class ApiController(BaseController):
         
             # set token
             self.save_token(self.client.uid, self.client.seckey)
-    
-    @check_error 
+
     def _call(self, uri, method, data=u'', headers=None):
         try:
             # make request

@@ -45,6 +45,7 @@ class PlatformController(BaseController):
         BaseController._setup(self, base_app)
 
     @expose()
+    @check_error
     def ping(self):
         """Ping
         """
@@ -247,6 +248,7 @@ class NginxController(AnsibleController):
             self.error(ex)
 
     @expose()
+    @check_error
     def ping(self):
         """Ping redis instances
         """
@@ -265,18 +267,21 @@ class NginxController(AnsibleController):
         self.run_cmd(func)
 
     @expose()
+    @check_error
     def status(self):
         """Status of nginx instances
         """
         self.ansible_task(u'nginx', u'systemctl status nginx')
 
     @expose()
+    @check_error
     def start(self):
         """Start nginx instances
         """
         self.ansible_task(u'nginx', u'systemctl start nginx')
 
     @expose()
+    @check_error
     def stop(self):
         """Start nginx instances
         """
@@ -324,6 +329,7 @@ class RedisController(AnsibleController):
             self.error(ex)         
         
     @expose()
+    @check_error
     def ping(self):
         """Ping redis instances
         """        
@@ -332,6 +338,7 @@ class RedisController(AnsibleController):
         self.run_cmd(func)
     
     @expose()
+    @check_error
     def info(self):
         """Info from redis instances
         """        
@@ -340,6 +347,7 @@ class RedisController(AnsibleController):
         self.run_cmd(func)
     
     @expose()
+    @check_error
     def config(self):
         """Config of redis instances
         """        
@@ -348,6 +356,7 @@ class RedisController(AnsibleController):
         self.run_cmd(func) 
     
     @expose()
+    @check_error
     def summary(self):
         """Info from redis instances
         """        
@@ -366,6 +375,7 @@ class RedisController(AnsibleController):
         self.run_cmd(func)    
     
     @expose()
+    @check_error
     def size(self):
         """Size of redis instances
         """
@@ -374,6 +384,7 @@ class RedisController(AnsibleController):
         self.run_cmd(func, dbs=range(0,8))
     
     @expose()
+    @check_error
     def client_list(self):
         """Client list of redis instances
         """        
@@ -382,6 +393,7 @@ class RedisController(AnsibleController):
         self.run_cmd(func)         
     
     @expose()
+    @check_error
     def flush(self):
         """Flush redis instances
         """        
@@ -390,6 +402,7 @@ class RedisController(AnsibleController):
         self.run_cmd(func)  
     
     @expose(aliases=[u'inspect [pattern]'], aliases_only=True)
+    @check_error
     def inspect(self):
         """Inspect redis instances
     - pattern: keys search pattern [default=*]
@@ -401,6 +414,7 @@ class RedisController(AnsibleController):
         self.run_cmd(func, dbs=range(0, 8))
     
     @expose(aliases=[u'query [pattern]'], aliases_only=True)
+    @check_error
     def query(self):
         """Query redis instances by key
     - pattern: keys search pattern [default=*]
@@ -420,6 +434,7 @@ class RedisController(AnsibleController):
         self.run_cmd(func, dbs=range(0, 8))
     
     @expose(aliases=[u'delete [pattern]'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete redis instances keys.
     - pattern: keys search pattern [default=*]
@@ -494,6 +509,7 @@ class RedisClutserController(RedisController):
             self.error(ex)            
         
     @expose()
+    @check_error
     def super_ping(self):
         """Ping single redis instances in a cluster
         """
@@ -524,6 +540,7 @@ class RedisClutserController(RedisController):
         self.result(resp, headers=[u'host', u'db', u'response'])
         
     @expose()
+    @check_error
     def cluster_nodes(self):
         """
         """
@@ -583,6 +600,7 @@ class MysqlController(AnsibleController):
         return hosts, root        
     
     @expose(aliases=[u'ping [port]'], aliases_only=True)
+    @check_error
     def ping(self):
         """Test mysql instance
     - port: instance port [default=3306]
@@ -601,6 +619,7 @@ class MysqlController(AnsibleController):
         self.result(resp, headers=[u'host', u'response'])
         
     @expose(aliases=[u'schemas [port]'], aliases_only=True)
+    @check_error
     def schemas(self):
         """Get mysql schemas list
     - port: instance port [default=3306]
@@ -630,6 +649,7 @@ class MysqlController(AnsibleController):
         self.result(resp.values(), headers=headers, key_separator=u',')
         
     @expose()
+    @check_error
     def schemas_update(self):
         """Update mysql users and schemas
         """
@@ -640,6 +660,7 @@ class MysqlController(AnsibleController):
         self.ansible_playbook(u'mysql-cluster-master', run_data, playbook=u'%s/mysql-cluster.yml' % self.ansible_path)
         
     @expose(aliases=[u'users [port]'], aliases_only=True)
+    @check_error
     def users(self):
         """Get mysql users list
     - port: instance port [default=3306]
@@ -677,6 +698,7 @@ class MysqlController(AnsibleController):
             self.result(resp, headers=[u'host', u'user'])'''
 
     @expose(aliases=[u'tables-check <schema> [port]'], aliases_only=True)
+    @check_error
     def tables_check(self):
         """Get mysql users list
     - schema: schema name
@@ -708,6 +730,7 @@ class MysqlController(AnsibleController):
         self.result(resp.values(), headers=headers, key_separator=u',')
 
     @expose(aliases=[u'tables <schema> [port]'], aliases_only=True)
+    @check_error
     def tables(self):
         """Get mysql schema table list
     - port: instance port [default=3306]
@@ -728,6 +751,7 @@ class MysqlController(AnsibleController):
                                        u'index_length'])
         
     @expose(aliases=[u'table-description <schema> <table> [port]'], aliases_only=True)
+    @check_error
     def table_description(self):
         """Get mysql schema table description
     - port: instance port [default=3306]
@@ -748,6 +772,7 @@ class MysqlController(AnsibleController):
                                        u'is_unique'])
 
     @expose(aliases=[u'table-query <schema> <table> [rows] [offset] [port]'], aliases_only=True)
+    @check_error
     def table_query(self):
         """Get mysql schema table query
     - port: instance port [default=3306]
@@ -768,6 +793,7 @@ class MysqlController(AnsibleController):
             self.result(resp, headers=resp[0].keys(), maxsize=20) 
 
     @expose(aliases=[u'drop-all-tables <schema>'], aliases_only=True)
+    @check_error
     def drop_all_tables(self):
         """Get mysql schema table query
         """
@@ -782,6 +808,7 @@ class MysqlController(AnsibleController):
             msg = {u'msg': u'drop all tables in schema %s' % schema}
             logger.info(msg)
             self.result(msg, headers=[u'msg'])
+
 
 class CamundaController(AnsibleController):
     class Meta:
@@ -811,16 +838,17 @@ class CamundaController(AnsibleController):
                 proxy=proxy, keyfile=keyfile, certfile=certfile)
             clients.append(client)
         return clients
-    
-    
+
     def camunda_engine(self, port=8080):
         return self.__get_engine( port)
 
     @expose(help="Camunda management", hide=True)
+    @check_error
     def default(self):
         self.app.args.print_help()
     
     @expose(aliases=[u'ping [port]'], aliases_only=True)
+    @check_error
     def ping(self):
         """Test camunda instance
         - user: user
@@ -836,7 +864,7 @@ class CamundaController(AnsibleController):
             resp.append({u'host':client.connection.get(u'host'), u'response':res})
         logger.debug(u'Ping camunda: %s' % resp)
         self.result(resp, headers=[u'host', u'response'])           
-    
+
 class CamundaDeployController (CamundaController):
     class Meta:
         stacked_on = 'camunda'
@@ -869,7 +897,7 @@ class CamundaDeployController (CamundaController):
         logger.debug(u'camunda deploy: %s' % resp)
         self.result(resp, headers=[u'host', u'response'])           
 
-    
+
     @expose(aliases=[u'list'], aliases_only=True)
     @check_error
     def deploylist(self):
@@ -1065,7 +1093,6 @@ class VsphereController(AnsibleController):
         aliases_only = True
         description = "Vsphere management"
 
-    @check_error
     def __get_orchestartors(self, instances, vip=True):
         """
         """
@@ -1127,6 +1154,7 @@ class VsphereController(AnsibleController):
             self.error(ex)
 
     @expose(aliases=[u'ping [instances] [vip=true/false]'], aliases_only=True)
+    @check_error
     def ping(self):
         """Ping vsphere instances
     - instances: comma separated vsphere instances
@@ -1157,7 +1185,6 @@ class OpenstackController(AnsibleController):
         aliases_only = True
         description = "Openstack management"
 
-    @check_error
     def __get_orchestartors(self, instances, vip=True):
         """
         """
@@ -1238,6 +1265,7 @@ class OpenstackController(AnsibleController):
             self.error(ex)            
 
     @expose(aliases=[u'ping [instances] [vip=true/false]'], aliases_only=True)
+    @check_error
     def ping(self):
         """Ping openstack instances
     - instances: comma separated openstack instances
@@ -1260,6 +1288,7 @@ class OpenstackController(AnsibleController):
         self.run_cmd(func, configs)
 
     @expose(aliases=[u'ping2 [instances] [vip=true/false]'], aliases_only=True)
+    @check_error
     def ping2(self):
         """Ping openstack instances using an heavy query
     - instances: comma separated openstack instances
@@ -1281,6 +1310,7 @@ class OpenstackController(AnsibleController):
         self.run_cmd(func, configs)
 
     @expose(aliases=[u'ping3 [instances] [vip=true/false]'], aliases_only=True)
+    @check_error
     def ping3(self):
         """Ping main components of openstack instances
     - instances: comma separated openstack instances
@@ -1372,6 +1402,7 @@ class OpenstackController(AnsibleController):
         self.run_cmd(func, configs)
 
     @expose(aliases=[u'usage [instances]'], aliases_only=True)
+    @check_error
     def usage(self):
         """Displays extra statistical information from the machine that hosts the hypervisor through the API for the
     hypervisor (XenAPI or KVM/libvirt).
@@ -1394,6 +1425,7 @@ class OpenstackController(AnsibleController):
                                    u'local_gb_used', u'running_vms'], maxsize=200)
 
     @expose(aliases=[u'status [instances] [component=..]'], aliases_only=True)
+    @check_error
     def status(self):
         """Get services/agents status: compute, storage, network, orchestrator
     - component: openstack component. Can be: compute, storage, network, orchestrator [default=compute]
@@ -1441,6 +1473,7 @@ class NodeController(AnsibleController):
         description = "Nodes management"
     
     @expose(aliases=[u'power <pod>'], aliases_only=True)
+    @check_error
     def power(self):
         """Get task instance by id
         """
@@ -1521,6 +1554,7 @@ class NodeController(AnsibleController):
         #vars = runner.variable_manager.get_vars(runner.loader, host=hosts[0])
 
     @expose()
+    @check_error
     def environments(self):
         """List configured environments
         """
@@ -1535,6 +1569,7 @@ class NodeController(AnsibleController):
         self.result(resp, headers=[u'environment', u'hosts'], maxsize=400)
     
     @expose(aliases=[u'list <group>'], aliases_only=True)
+    @check_error
     def list(self):
         """List managed platform nodes
         """
@@ -1542,6 +1577,7 @@ class NodeController(AnsibleController):
         self.ansible_inventory(group)
         
     @expose(aliases=[u'create <group>'], aliases_only=True)
+    @check_error
     def create(self):
         """Create group nodes
         """
@@ -1552,6 +1588,7 @@ class NodeController(AnsibleController):
         self.ansible_playbook(group, run_data, playbook=self.create_playbook)
 
     @expose(aliases=[u'update <group>'], aliases_only=True)
+    @check_error
     def update(self):
         """Update group nodes - change hardware configuration
         """
@@ -1562,6 +1599,7 @@ class NodeController(AnsibleController):
         self.ansible_playbook(group, run_data, playbook=self.site_playbook)
 
     @expose(aliases=[u'configure <group>'], aliases_only=True)
+    @check_error
     def configure(self):
         """Make main configuration on group nodes
         """
@@ -1572,6 +1610,7 @@ class NodeController(AnsibleController):
         self.ansible_playbook(group, run_data,playbook=self.site_playbook)
         
     @expose(aliases=[u'ssh-copy-id <group>'], aliases_only=True)
+    @check_error
     def ssh_copy_id(self):
         """Copy ssh id on group nodes
         """
@@ -1582,6 +1621,7 @@ class NodeController(AnsibleController):
         self.ansible_playbook(group, run_data, playbook=self.site_playbook)
         
     @expose(aliases=[u'install <group>'], aliases_only=True)
+    @check_error
     def install(self):
         """Install software on group nodes
         """
@@ -1596,6 +1636,7 @@ class NodeController(AnsibleController):
         self.ansible_playbook(group, run_data, playbook=playbook)
 
     @expose(aliases=[u'hosts <group>'], aliases_only=True)
+    @check_error
     def hosts(self):
         """Configure nodes hosts local resolution
         """
@@ -1606,6 +1647,7 @@ class NodeController(AnsibleController):
         self.ansible_playbook(group, run_data, playbook=self.site_playbook)
         
     @expose(aliases=[u'cmd <group> <cmd>'], aliases_only=True)
+    @check_error
     def cmd(self):
         """Execute command on managed platform nodes
     - group: ansible group
@@ -1765,6 +1807,7 @@ class BeehiveController(AnsibleController):
     # commands
     #
     @expose()
+    @check_error
     def sync(self):
         """Sync beehive package an all nodes with remove git repository
         """
@@ -1774,6 +1817,7 @@ class BeehiveController(AnsibleController):
         self.ansible_playbook(u'beehive', run_data, playbook=self.beehive_playbook)
     
     @expose()
+    @check_error
     def pip(self):
         """Sync beehive package an all nodes with remove git repository
         """
@@ -1783,12 +1827,14 @@ class BeehiveController(AnsibleController):
         self.ansible_playbook(u'beehive', run_data, playbook=self.beehive_playbook)
     
     @expose()
+    @check_error
     def subsystems(self):
         """List beehive subsystems
         """        
         self.get_emperor_nodes_stats(u'beehive')    
     
     @expose(aliases=[u'subsystem-create <subsystem>'], aliases_only=True)
+    @check_error
     def subsystem_create(self):
         """Create beehive subsystem
     - subsystem: subsystem
@@ -1801,6 +1847,7 @@ class BeehiveController(AnsibleController):
         self.ansible_playbook(u'beehive-init', run_data, playbook=self.beehive_playbook)
     
     @expose(aliases=[u'subsystem-update <subsystem>'], aliases_only=True)
+    @check_error
     def subsystem_update(self):
         """Create beehive subsystem
     - subsystem: subsystem
@@ -1815,6 +1862,7 @@ class BeehiveController(AnsibleController):
         self.ansible_playbook(u'beehive-init', run_data, playbook=self.beehive_playbook)
     
     @expose(aliases=[u'instances [details=""]'], aliases_only=True)
+    @check_error
     def instances(self):
         """List beehive subsystem instances
     - details: if True print details
@@ -1823,6 +1871,7 @@ class BeehiveController(AnsibleController):
         self.get_emperor_vassals(details, u'beehive')    
     
     @expose(aliases=[u'blacklist [details=""]'], aliases_only=True)
+    @check_error
     def blacklist(self):
         """List beehive subsystem instances blacklist
     - details: if True print details
@@ -1831,6 +1880,7 @@ class BeehiveController(AnsibleController):
         self.get_emperor_blacklist(details, u'beehive')    
     
     @expose(aliases=[u'instance-sync <subsystem> <vassal>'], aliases_only=True)
+    @check_error
     def instance_sync(self):
         """Sync beehive package an all nodes with local git repository and
         restart instances
@@ -1848,6 +1898,7 @@ class BeehiveController(AnsibleController):
         self.ansible_playbook(u'beehive', run_data, playbook=self.beehive_playbook)
     
     @expose(aliases=[u'instance-deploy <subsystem> <vassal>'], aliases_only=True)
+    @check_error
     def instance_deploy(self):
         """Deploy beehive instance for subsystem
     - subsystem: subsystem
@@ -1863,6 +1914,7 @@ class BeehiveController(AnsibleController):
         self.ansible_playbook(u'beehive', run_data, playbook=self.beehive_playbook)
     
     @expose(aliases=[u'instance-undeploy <subsystem> <vassal>'], aliases_only=True)
+    @check_error
     def instance_undeploy(self):
         """Undeploy beehive instance for subsystem
     - subsystem: subsystem
@@ -1878,6 +1930,7 @@ class BeehiveController(AnsibleController):
         self.ansible_playbook(u'beehive', run_data, playbook=self.beehive_playbook)
     
     @expose(aliases=[u'instance-ping [subsystem] [vassal]'], aliases_only=True)
+    @check_error
     def instance_ping(self):
         """Ping beehive instance
     - subsystem: subsystem
@@ -1939,6 +1992,7 @@ class BeehiveController(AnsibleController):
         self.result(resp, headers=[u'subsystem', u'instance', u'host', u'port', u'status'])
         
     @expose(aliases=[u'instance-log <subsystem> <vassal> [rows=100]'], aliases_only=True)
+    @check_error
     def instance_log(self):
         """Get instance log
     - subsystem: beehive subsystem. Ex. auth, event
@@ -1960,6 +2014,7 @@ class BeehiveController(AnsibleController):
         runner.run_task(group, tasks=tasks, frmt=u'text')
                 
     @expose(aliases=[u'uwsgi-log <subsystem> <vassal> [rows=100]'], aliases_only=True)
+    @check_error
     def uwsgi_log(self):
         """Get uwsgi instance log
     - subsystem: beehive subsystem. Ex. auth, event
@@ -1987,6 +2042,7 @@ class BeehiveController(AnsibleController):
         self.__get_uwsgi_tree(self.env, u'beehive')'''
     
     @expose()
+    @check_error
     def doc(self):
         """Make e deploy beehive documentation
         """
@@ -1997,6 +2053,7 @@ class BeehiveController(AnsibleController):
         self.ansible_playbook(u'docs', run_data, playbook=self.beehive_doc_playbook)
 
     @expose()
+    @check_error
     def apidoc(self):
         """Make e deploy beehive api documentation
         """

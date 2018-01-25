@@ -1,0 +1,14 @@
+{
+  "compute_zone": {
+    "container": "tst-provider-01",
+    "name": "prv-compute-zone-common-01",
+    "desc": "compute zone common",
+    "quota": {
+      "cpu": 10,
+      "ram": 1024,
+      "storage": 10000,
+      "instance": 100,
+      "network": 1024
+    }
+  }
+}

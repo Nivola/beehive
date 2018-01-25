@@ -117,7 +117,8 @@ class ProviderControllerChild(ResourceEntityController):
         uri = self.uri
         res = self._call(uri, u'POST', data=data)
         logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))
-        self.result(res)
+        res = {u'msg': u'Add %s %s' % (self._meta.aliases[0], res[u'uuid'])}
+        self.result(res, headers=[u'msg'])
     
     @expose(aliases=[u'update <id> <file data>'], aliases_only=True)
     @check_error
@@ -128,7 +129,8 @@ class ProviderControllerChild(ResourceEntityController):
         uri = self.uri + u'/' + oid
         res = self._call(uri, u'UPDATE', data=data)
         logger.info(u'Update %s: %s' % (self._meta.aliases[0], truncate(res)))
-        self.result(res)
+        res = {u'msg': u'Add %s %s' % (self._meta.aliases[0], res[u'uuid'])}
+        self.result(res, headers=[u'msg'])
     
     @expose(aliases=[u'delete <id>'], aliases_only=True)
     @check_error
@@ -137,7 +139,8 @@ class ProviderControllerChild(ResourceEntityController):
         uri = self.uri + u'/' + oid
         res = self._call(uri, u'DELETE')
         logger.info(u'Delete %s: %s' % (self._meta.aliases[0], oid))
-        self.result(res)
+        res = {u'msg': u'Add %s %s' % (self._meta.aliases[0], res[u'uuid'])}
+        self.result(res, headers=[u'msg'])
 
 
 class ProviderRegionController(ProviderControllerChild):
@@ -165,15 +168,31 @@ class ProviderSiteController(ProviderControllerChild):
         """Get provider item
         """
         oid = self.get_arg(name=u'id')
-        res = self.get_resource(oid)
-        attributes = res.get(u'attributes', [])
-        orchestrators = attributes.pop(u'orchestrators', [])
-        limits = attributes.pop(u'limits', [])
-        self.result(res, details=True)
-        self.app.print_output(u'orchestrators:')
-        self.result(orchestrators, headers=[u'id', u'type', u'tag', u'config'], maxsize=200)
-        self.app.print_output(u'limits:')
-        self.result(limits, details=True)
+        def format_result(data):
+            attributes = data.get(u'attributes', [])
+            orchestrators = attributes.pop(u'orchestrators', [])
+            limits = attributes.pop(u'limits', [])
+            self.app.print_output(u'orchestrators:')
+            self.result(orchestrators, headers=[u'id', u'type', u'tag', u'config'], maxsize=200)
+            self.app.print_output(u'limits:')
+            self.result(limits, details=True)
+
+        self.get_resource(oid, format_result=format_result)
+
+    @expose(aliases=[u'add-orchestrator <id> <file data>'], aliases_only=True)
+    @check_error
+    def add_orchestrator(self):
+        """Add orchestrator
+    - file data: json file
+        """
+        oid = self.get_arg(name=u'id')
+        file_data = self.get_arg(name=u'data file')
+        data = self.load_config(file_data)
+        uri = self.uri + u'/%s/orchestrators' % oid
+        res = self._call(uri, u'POST', data=data)
+        logger.info(u'Add orchestrator to site %s: %s' % (oid, truncate(res)))
+        res = {u'msg': u'Add orchestrator to site %s: %s' % (oid, truncate(res))}
+        self.result(res, headers=[u'msg'])
 
 
 class ProviderSiteNetworkController(ProviderControllerChild):
@@ -191,14 +210,17 @@ class ProviderSiteNetworkController(ProviderControllerChild):
         """Get provider item
         """
         oid = self.get_arg(name=u'id')
-        res = self.get_resource(oid)
-        attributes = res.get(u'attributes', [])
-        configs = attributes.get(u'configs', [])
-        subnets = configs.pop(u'subnets', [])
-        self.result(res, details=True)
-        self.app.print_output(u'subnets:')
-        self.result(subnets, headers=[u'cidr', u'gateway', u'enable_dhcp', u'dns_nameservers', u'allocation_pools'],
-                    maxsize=200)
+
+        def format_result(data):
+            attributes = data.get(u'attributes', [])
+            configs = attributes.get(u'configs', [])
+            subnets = configs.pop(u'subnets', [])
+            # self.result(data, details=True)
+            self.app.print_output(u'subnets:')
+            self.result(subnets, headers=[u'cidr', u'gateway', u'enable_dhcp', u'dns_nameservers', u'allocation_pools'],
+                        maxsize=200)
+
+        self.get_resource(oid, format_result=format_result)
 
 
 class ProviderComputeZoneController(ProviderControllerChild):
@@ -210,25 +232,56 @@ class ProviderComputeZoneController(ProviderControllerChild):
         aliases_only = True
         description = "Provider compute zone management"
 
+    @expose(aliases=[u'add-site <id> <file data>'], aliases_only=True)
+    @check_error
+    def add_site(self):
+        """Add site
+    - file data: json file
+        """
+        oid = self.get_arg(name=u'id')
+        file_data = self.get_arg(name=u'data file')
+        data = self.load_config(file_data)
+        uri = self.uri + u'/%s/sites' % oid
+        res = self._call(uri, u'POST', data=data)
+        logger.info(u'Add site to compute zone %s: %s' % (oid, truncate(res)))
+        res = {u'msg': u'Add site to compute zone %s: %s' % (oid, truncate(res))}
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'delete-site <id> <site_id>'], aliases_only=True)
+    @check_error
+    def delete_site(self):
+        """Delete site
+        """
+        oid = self.get_arg(name=u'id')
+        site_id = self.get_arg(name=u'site id')
+        data = {u'site': {u'id': site_id}}
+        uri = self.uri + u'/%s/sites' % oid
+        res = self._call(uri, u'DELETE', data=data)
+        logger.info(u'Remove site %s from compute zone %s' % (site_id, oid))
+        res = {u'msg': u'Remove site %s from compute zone %s' % (site_id, oid)}
+        self.result(res, headers=[u'msg'])
+
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
     def get(self):
         """Get provider item
         """
         oid = self.get_arg(name=u'id')
-        res = self.get_resource(oid)
-        attributes = res.get(u'attributes', [])
-        quotas = attributes.pop(u'quota', [])
-        availability_zones = res.pop(u'availability_zones', [])
-        self.result(res, details=True)
-        for i in availability_zones:
-            i[u'type'] = u'availability_zones'
-        self.result(availability_zones, headers=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'created',
-                                                 u'modified', u'expiry'],
-                    fields=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'date.creation', u'date.modified',
-                            u'date.expiry'], maxsize=200)
-        self.app.print_output(u'quotas:')
-        self.result(quotas, details=True)
+
+        def format_result(data):
+            attributes = data.get(u'attributes', [])
+            quotas = attributes.pop(u'quota', [])
+            availability_zones = data.pop(u'availability_zones', [])
+            for i in availability_zones:
+                i[u'type'] = u'availability_zones'
+            self.result(availability_zones, headers=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'created',
+                                                     u'modified', u'expiry'],
+                        fields=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'date.creation', u'date.modified',
+                                u'date.expiry'], maxsize=200)
+            self.app.print_output(u'quotas:')
+            self.result(quotas, details=True)
+
+        self.get_resource(oid, format_result=format_result)
 
 
 class ProviderComputeFlavorController(ProviderControllerChild):
@@ -246,12 +299,21 @@ class ProviderComputeFlavorController(ProviderControllerChild):
         """Get provider item
         """
         oid = self.get_arg(name=u'id')
-        res = self.get_resource(oid)
-        self.result(res, details=True)
+
+        def format_result(data):
+            attributes = data.get(u'attributes', [])
+            configs = attributes.pop(u'configs', [])
+            flavors = data.pop(u'flavors', [])
+            self.app.print_output(u'configs:')
+            self.result(configs, details=True)
+
+        self.get_resource(oid, format_result=format_result)
 
 
 class ProviderComputeImageController(ProviderControllerChild):
     uri = u'/v1.0/provider/images'
+    headers = [u'id', u'uuid', u'name', u'parent', u'state', u'creation', u'modified']
+    fields = [u'id', u'uuid', u'name', u'parent.name', u'state', u'date.creation', u'date.modified']
 
     class Meta:
         label = 'provider.beehive.images'
@@ -259,14 +321,45 @@ class ProviderComputeImageController(ProviderControllerChild):
         aliases_only = True
         description = "Provider compute image management"
 
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
+    def list(self):
+        """List provider items
+        """
+        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = self.uri
+        res = self._call(uri, u'GET', data=data)
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], res))
+        self.result(res, headers=self.headers, fields=self.fields, key=self._meta.aliases[0])
+
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
     def get(self):
         """Get provider item
         """
         oid = self.get_arg(name=u'id')
-        res = self.get_resource(oid)
-        self.result(res, details=True)
+
+        def format_result(data):
+            attributes = data.get(u'attributes', [])
+            configs = attributes.pop(u'configs', [])
+            images = data.pop(u'images', [])
+            self.app.print_output(u'configs:')
+            self.result(configs, details=True)
+
+        self.get_resource(oid, format_result=format_result)
+
+    @expose(aliases=[u'add <file data>'], aliases_only=True)
+    @check_error
+    def add(self):
+        """Add image. To get a list of guestid:  http://www.fatpacket.com/blog/2016/12/vm-guestos-identifiers/
+        """
+        file_data = self.get_arg(name=u'data file')
+        data = self.load_config(file_data)
+        uri = self.uri
+        res = self._call(uri, u'POST', data=data)
+        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))
+        res = {u'msg': u'Add %s %s' % (self._meta.aliases[0], res[u'uuid'])}
+        self.result(res, headers=[u'msg'])
 
 
 class ProviderComputeVpcController(ProviderControllerChild):

@@ -1400,6 +1400,7 @@ class OpenstackPlatformManilaShareController(OpenstackPlatformManilaChildControl
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'delete <id> [force=true]'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete manila share
     - force: if true force delete
@@ -1415,6 +1416,7 @@ class OpenstackPlatformManilaShareController(OpenstackPlatformManilaChildControl
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'grant-list <id>'], aliases_only=True)
+    @check_error
     def grant_list(self):
         """List manila share <id> access list
         """
@@ -1424,6 +1426,7 @@ class OpenstackPlatformManilaShareController(OpenstackPlatformManilaChildControl
         self.result(res, headers=[u'id', u'access_type', u'access_level', u'state', u'access_to'])
 
     @expose(aliases=[u'grant-add <id> <level> <type> <to>'], aliases_only=True)
+    @check_error
     def grant_add(self):
         """Add manila share <id> access grant
     - level: The access level to the share. To grant or deny access to a share:
@@ -1449,6 +1452,7 @@ class OpenstackPlatformManilaShareController(OpenstackPlatformManilaChildControl
         self.result(res, headers=[u'id', u'access_type', u'access_level', u'state', u'access_to'])
 
     @expose(aliases=[u'grant-remove <id> <access_id>'], aliases_only=True)
+    @check_error
     def grant_remove(self):
         """Remove manila share <id> access grant
         """
@@ -1460,18 +1464,20 @@ class OpenstackPlatformManilaShareController(OpenstackPlatformManilaChildControl
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'reset-status <id> <status>'], aliases_only=True)
+    @check_error
     def reset_status(self):
         """Reset manila share <id> status
     - status: The share access status, which is new, error, active
         """
         oid = self.get_arg(name=u'id')
-        access_id = self.get_arg(name=u'access_id')
-        res = self.entity_class.action.reset_status(oid, access_id)
+        status = self.get_arg(name=u'status')
+        res = self.entity_class.action.reset_status(oid, status)
         res = {u'msg': u'Reset status of share %s to %s' % (oid, status)}
         logger.info(res)
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'size-extend <id> <new_size>'], aliases_only=True)
+    @check_error
     def size_extend(self):
         """Extend manila share <id>
     - new_size: New size of the share, in GBs.
@@ -1484,6 +1490,7 @@ class OpenstackPlatformManilaShareController(OpenstackPlatformManilaChildControl
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'size-shrink <id> <new_size>'], aliases_only=True)
+    @check_error
     def size_shrink(self):
         """Shrink manila share <id>
     - new_size: New size of the share, in GBs.
@@ -1496,6 +1503,7 @@ class OpenstackPlatformManilaShareController(OpenstackPlatformManilaChildControl
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'revert-to-snapshot <id> <snapshot_id>'], aliases_only=True)
+    @check_error
     def revert_to_snapshot(self):
         """Revert manila share <id> to snapshot
     - snapshot_id: New size of the share, in GBs.
@@ -1556,6 +1564,7 @@ class OpenstackPlatformManilaShareSnapshotController(OpenstackPlatformManilaChil
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         oid = self.get_arg(name=u'id')
         res = self.entity_class.delete(oid)
@@ -1650,6 +1659,7 @@ class OpenstackPlatformManilaShareTypeController(OpenstackPlatformManilaChildCon
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         oid = self.get_arg(name=u'id')
         res = self.entity_class.delete(oid)
@@ -1791,7 +1801,7 @@ class OpenstackController(BaseController):
 class OpenstackControllerChild(ResourceEntityController):
     uri = u'/v1.0/openstacks'
     subsystem = u'resource'
-    headers = [u'id', u'uuid', u'name', u'parent.name', u'container.name', u'ext_id', u'state']
+    headers = [u'id', u'uuid', u'ext_id', u'name', u'parent.name', u'container.name', u'state']
     
     class Meta:
         stacked_on = 'openstack'
@@ -2029,8 +2039,8 @@ class OpenstackImageController(OpenstackControllerChild):
 
 class OpenstackFlavorController(OpenstackControllerChild):
     uri = u'/v1.0/openstack/flavors'
-    headers = [u'id', u'uuid', u'container.name', u'parent.name', u'name', u'state',
-               u'ext_id']
+    headers = [u'id', u'uuid', u'ext_id', u'container.name', u'parent.name', u'name', u'state',
+               u'details.vcpus', u'details.ram', u'details.disk']
     
     class Meta:
         label = 'openstack.beehive.flavors'

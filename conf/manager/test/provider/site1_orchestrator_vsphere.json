@@ -1,0 +1,12 @@
+{
+  "orchestrator": {
+    "type":"vsphere",
+    "id":"tst-vecenter-01",
+    "tag":"default",
+    "config":{
+        "datacenter":"TST-SDDC",
+        "resource_pool":"9f926d42-33d3-4ef9-bb49-d4d5ceb48d5f",
+        "physical_network":"DVS-LEGACY"
+    }
+  }
+}

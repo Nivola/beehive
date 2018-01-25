@@ -472,7 +472,7 @@
                     }
                 ],
                 "prv-compute-zone1":{
-                    "container":"tst-provider-01",
+                     "container":"tst-provider-01",
                      "name":"test-prv-compute-zone-01",
                      "desc":"test-prv-compute-zone-01",
                      "quota":{

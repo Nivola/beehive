@@ -1,0 +1,28 @@
+{
+  "flavor": {
+    "container":"tst-provider-01",
+    "name": "prv-compute-flavor-02",
+    "desc": "prv-compute-flavor-02",
+    "compute_zone":"prv-compute-zone-common-01",
+    "memory": 8192,
+    "disk": 80,
+    "disk_iops": 0,
+    "vcpus": 8,
+    "bandwidth": 0,
+    "flavors":[
+      {
+        "orchestrator_type":"vsphere",
+        "availability_zone":"prv-site-01",
+        "orchestrator":"tst-vecenter-01",
+        "datastores":["DS_LEGACY_VSP_LUN_00", "DS_EX_OPSTK_VSP_LUN_00"],
+        "version":"vmx-11"
+      },
+      {
+        "orchestrator_type": "openstack",
+        "availability_zone": "prv-site-01",
+        "orchestrator": "tst-opstk-ocata-01",
+        "flavor_id": "061ccfca-04de-4457-af96-56354ff8c368"
+      }
+    ]
+  }
+}
