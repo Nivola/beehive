@@ -5,7 +5,7 @@
     "tag":"default",
     "config":{
         "datacenter":"TST-SDDC",
-        "resource_pool":"9f926d42-33d3-4ef9-bb49-d4d5ceb48d5f",
+        "resource_pool":"0f40adc7-716d-4af0-8d07-1f5a0ed106c1",
         "physical_network":"DVS-LEGACY"
     }
   }
