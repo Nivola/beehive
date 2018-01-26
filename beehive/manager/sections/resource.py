@@ -19,7 +19,7 @@ from pygments.token import Keyword, Name, Comment, String, Error, \
      Number, Operator, Generic, Token
 from pygments.style import Style     
 from pygments import format
-from beehive.manager.util.controller import BaseController, ApiController
+from beehive.manager.util.controller import BaseController, ApiController, check_error
 from cement.core.controller import expose
 from time import sleep
 from beecell.remote import NotFoundException
@@ -91,6 +91,7 @@ class ContainerController(ResourceControllerChild):
             state = self.get_job_state(jobid)
 
     @expose(aliases=[u'list [status]'], aliases_only=True)
+    @check_error
     def list(self, *args):
         """List containers by: tags
         """
@@ -101,6 +102,7 @@ class ContainerController(ResourceControllerChild):
         self.result(res, key=u'resourcecontainers', headers=self.cont_headers)
     
     @expose()
+    @check_error
     def types(self):
         """List container types
         """        
@@ -110,6 +112,7 @@ class ContainerController(ResourceControllerChild):
         self.result(res, key=u'resourcecontainertypes', headers=[u'category', u'type'])
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get container by id, uuid or name
         """
@@ -127,6 +130,7 @@ class ContainerController(ResourceControllerChild):
         self.result(res)'''
     
     @expose(aliases=[u'perms <id>'], aliases_only=True)
+    @check_error
     def perms(self):
         """Get container permissions by id, uuid or name
         """
@@ -146,6 +150,7 @@ class ContainerController(ResourceControllerChild):
         self.result(res)'''
     
     @expose(aliases=[u'ping <id>'], aliases_only=True)
+    @check_error
     def ping(self):
         """Ping container by id, uuid or name
         """        
@@ -157,6 +162,7 @@ class ContainerController(ResourceControllerChild):
                     headers=[u'resourcecontainer', u'ping'])
         
     @expose()
+    @check_error
     def pings(self):
         """Ping all containers
         """
@@ -180,6 +186,7 @@ class ContainerController(ResourceControllerChild):
                                    u'ping', u'elapsed'])         
     
     @expose(aliases=[u'add <type> <name> <json conn file>'], aliases_only=True)
+    @check_error
     def add(self):
         """Add container
         """          
@@ -202,6 +209,7 @@ class ContainerController(ResourceControllerChild):
         self.result(res, headers=[u'msg'])
     
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete container by id, uuid or name
         """
@@ -213,6 +221,7 @@ class ContainerController(ResourceControllerChild):
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'add-tag <id> <tag>'], aliases_only=True)
+    @check_error
     def add_tag(self):
         """Add container tag
         """
@@ -232,6 +241,7 @@ class ContainerController(ResourceControllerChild):
         self.result(res, headers=[u'msg'])
     
     @expose(aliases=[u'delete-tag <id> <tag>'], aliases_only=True)
+    @check_error
     def delete_tag(self):
         """Delete container tag
         """
@@ -251,6 +261,7 @@ class ContainerController(ResourceControllerChild):
         self.result(res, headers=[u'msg'])
         
     @expose(aliases=[u'discover-types <id>'], aliases_only=True)
+    @check_error
     def discover_types(self):
         """discover container <class> resources
         """
@@ -260,6 +271,7 @@ class ContainerController(ResourceControllerChild):
         self.result(res, headers=[u'resource class'], fields=[0], maxsize=200)
     
     @expose(aliases=[u'discover <id> [type]'], aliases_only=True)
+    @check_error
     def discover(self):
         """Discover container
         """
@@ -277,6 +289,7 @@ class ContainerController(ResourceControllerChild):
         self.result(res, key=u'changed', headers=headers)
 
     @expose(aliases=[u'discover-all <id>'], aliases_only=True)
+    @check_error
     def discover_all(self):
         """Discover container
         """
@@ -304,6 +317,7 @@ class ContainerController(ResourceControllerChild):
         self.result(res, key=u'changed', headers=headers)
 
     @expose(aliases=[u'synchronize <id> <resclass>'], aliases_only=True)
+    @check_error
     def synchronize(self):
         """Synchronize container <class> resources
         """
@@ -322,6 +336,7 @@ class ContainerController(ResourceControllerChild):
         self.result(res)
 
     @expose(aliases=[u'synchronize-all <id>'], aliases_only=True)
+    @check_error
     def synchronize_all(self):
         """Synchronize container <class> resources
         """
@@ -448,6 +463,7 @@ class ResourceEntityController(ResourceControllerChild):
     @expose(aliases=[u'add <container> <resclass> <name> [ext_id=..] '\
                      u'[parent=..] [attribute=..] [tags=..]'], 
             aliases_only=True)
+    @check_error
     def add(self):
         """Add resource <name>
         """
@@ -476,7 +492,8 @@ class ResourceEntityController(ResourceControllerChild):
         res = {u'msg': u'Add resource %s' % res}
         self.result(res, headers=[u'msg'])
     
-    @expose(aliases=[u'update <oid> [field=value]'], aliases_only=True)    
+    @expose(aliases=[u'update <oid> [field=value]'], aliases_only=True)
+    @check_error
     def update(self):
         """Update resource
     - oid: id or uuid of the resource
@@ -493,7 +510,8 @@ class ResourceEntityController(ResourceControllerChild):
         res = {u'msg': u'Update resource %s with data %s' % (oid, params)}
         self.result(res, headers=[u'msg'])        
     
-    @expose
+    @expose()
+    @check_error
     def count(self):
         """Count all resource
         """        
@@ -504,6 +522,7 @@ class ResourceEntityController(ResourceControllerChild):
         self.result(res, headers=[u'msg'])
     
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List all resources by field: tags, type, objid, name, ext_id, 
     container, attribute, parent, state
@@ -515,6 +534,7 @@ class ResourceEntityController(ResourceControllerChild):
         self.result(res, key=u'resources', headers=self.res_headers)
     
     @expose(aliases=[u'types [field=value]'], aliases_only=True)
+    @check_error
     def types(self, *args):
         """List all resource types by field: type, subsystem
         """        
@@ -525,6 +545,7 @@ class ResourceEntityController(ResourceControllerChild):
         self.result(res, key=u'resourcetypes', headers=[u'id', u'type', u'resclass'], maxsize=400)
     
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get resource by value or id
         """
@@ -535,6 +556,7 @@ class ResourceEntityController(ResourceControllerChild):
         self.result(res, key=u'resource', headers=self.res_headers, details=True)
     
     @expose(aliases=[u'perms <id>'], aliases_only=True)
+    @check_error
     def perms(self):
         """Get resource permissions
         """
@@ -546,6 +568,7 @@ class ResourceEntityController(ResourceControllerChild):
         self.result(res, key=u'perms', headers=self.perm_headers)
     
     @expose(aliases=[u'tree <id> [parent=true|false] [link=true|false]'], aliases_only=True)
+    @check_error
     def tree(self):
         """Get resource tree
     - parent: if True show tree by parent - child
@@ -582,6 +605,7 @@ class ResourceEntityController(ResourceControllerChild):
         nx.draw_networkx(G, **options)'''
 
     @expose(aliases=[u'jobs <id>'], aliases_only=True)
+    @check_error
     def jobs(self, *args):
         """List all resource types by field: type, subsystem
         """
@@ -592,6 +616,7 @@ class ResourceEntityController(ResourceControllerChild):
         self.result(res, key=u'resourcejobs', headers=[u'job', u'name', u'timestamp'], maxsize=400)
     
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete resource
         """
@@ -607,6 +632,7 @@ class ResourceEntityController(ResourceControllerChild):
         self.result(res, headers=[u'msg'])
         
     @expose(aliases=[u'deletes <id1,id2>'], aliases_only=True)
+    @check_error
     def deletes(self):
         """Delete resources id1, id2, ..
         """
@@ -624,6 +650,7 @@ class ResourceEntityController(ResourceControllerChild):
         self.result(res, headers=[u'msg'])  
     
     @expose(aliases=[u'add-tag <id> <tag>'], aliases_only=True)
+    @check_error
     def add_tag(self):
         """Add resource tag
         """        
@@ -643,6 +670,7 @@ class ResourceEntityController(ResourceControllerChild):
         self.result(res, headers=[u'msg'])
     
     @expose(aliases=[u'delete-tag <id> <tag>'], aliases_only=True)
+    @check_error
     def delete_tag(self):
         """Delete resource tag
         """          
@@ -662,6 +690,7 @@ class ResourceEntityController(ResourceControllerChild):
         self.result(res, headers=[u'msg'])
     
     @expose(aliases=[u'linked <id>'], aliases_only=True)
+    @check_error
     def linked(self):
         """Get linked resources
         """
@@ -682,11 +711,13 @@ class LinkController(ResourceControllerChild):
         description = "Link management"
         
     @expose(help="Link management", hide=True)
+    @check_error
     def default(self):
         self.app.args.print_help()
         
     @expose(aliases=[u'add <name> <type> <start> <end>'], 
             aliases_only=True)
+    @check_error
     def add(self):
         """Add link <name> of type <type> from resource <start> to resource <end>
         """
@@ -709,7 +740,8 @@ class LinkController(ResourceControllerChild):
         res = {u'msg':u'Add link %s' % res[u'uuid']}
         self.result(res, headers=[u'msg'])
     
-    @expose
+    @expose()
+    @check_error
     def count(self):
         """Count all link
         """        
@@ -720,6 +752,7 @@ class LinkController(ResourceControllerChild):
         self.result(res, headers=[u'msg'])
     
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self, *args):
         """List all links by field: type, resource, tags
         """
@@ -730,6 +763,7 @@ class LinkController(ResourceControllerChild):
         self.result(res, key=u'resourcelinks', headers=self.headers, fields=self.fields)
     
     @expose(aliases=[u'get <value>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get link by value or id
         """
@@ -741,6 +775,7 @@ class LinkController(ResourceControllerChild):
                     details=True)
     
     @expose(aliases=[u'perms <value>'], aliases_only=True)
+    @check_error
     def perms(self):
         """Get link permissions
         """
@@ -753,6 +788,7 @@ class LinkController(ResourceControllerChild):
     
     @expose(aliases=[u'update <value> [name=..] [type=..] [start=..] [end=..]'], 
             aliases_only=True)
+    @check_error
     def update(self):
         """Update link with some optional fields
         """
@@ -774,6 +810,7 @@ class LinkController(ResourceControllerChild):
         self.result(res, headers=[u'msg'])  
     
     @expose(aliases=[u'delete <value>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete link
         """
@@ -791,10 +828,12 @@ class TagController(ResourceControllerChild):
         description = "Tag management"
         
     @expose(help="Tag management", hide=True)
+    @check_error
     def default(self):
         self.app.args.print_help()
     
     @expose(aliases=[u'add <value>'], aliases_only=True)
+    @check_error
     def add(self):
         """Add tag <value>
         """
@@ -810,7 +849,8 @@ class TagController(ResourceControllerChild):
         res = {u'msg':u'Add tag %s' % res[u'uuid']}
         self.result(res, headers=[u'msg'])
 
-    @expose
+    @expose()
+    @check_error
     def count(self):
         """Count all tag
         """        
@@ -821,6 +861,7 @@ class TagController(ResourceControllerChild):
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self, *args):
         """List all tags by field: value, container, resource, link
         """
@@ -831,6 +872,7 @@ class TagController(ResourceControllerChild):
         self.result(res, key=u'resourcetags', headers=self.tag_headers)
     
     @expose(aliases=[u'get <value>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get tag by value or id
         """
@@ -845,6 +887,7 @@ class TagController(ResourceControllerChild):
         #                [u'id', u'uuid', u'definition', u'name'])
 
     @expose(aliases=[u'perms <value>'], aliases_only=True)
+    @check_error
     def perms(self):
         """Get tag permissions
         """
@@ -856,6 +899,7 @@ class TagController(ResourceControllerChild):
         self.result(res, key=u'perms', headers=self.perm_headers)
     
     @expose(aliases=[u'update <value> <new_value>'], aliases_only=True)
+    @check_error
     def update(self):
         """Update tag with new value
         """
@@ -873,6 +917,7 @@ class TagController(ResourceControllerChild):
         self.result(res, headers=[u'msg'])  
     
     @expose(aliases=[u'delete <value>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete tag
         """
@@ -882,7 +927,8 @@ class TagController(ResourceControllerChild):
         logger.info(res)
         res = {u'msg':u'Delete tag %s' % value}
         self.result(res, headers=[u'msg'])        
-        
+
+
 resource_controller_handlers = [
     ResourceController,
     ContainerController,
@@ -890,5 +936,3 @@ resource_controller_handlers = [
     LinkController,
     TagController
 ]        
-        
-        

@@ -4,7 +4,7 @@
     "id":"tst-opstk-ocata-01",
     "tag":"default",
     "config":{
-      "domain":"46155eb5-028a-474b-a5c9-84200844b352",
+      "domain":"9e9332a1-acb4-4d5d-bc05-cfc0cac38a2e",
       "availability_zone":"nova",
       "physical_network":"datacentre",
       "public_network":"internet"

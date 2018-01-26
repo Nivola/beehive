@@ -46,6 +46,7 @@ from beehive.manager.sections.oauth2 import oauth2_controller_handlers
 from beehive.manager.sections.provider import provider_controller_handlers
 from beehive.manager.sections.graphite import graphite_controller_handlers
 from beehive.manager.sections.example import example_controller_handlers
+from beehive.manager.sections.veeam import veeam_controller_handlers
 from beecell.cement_cmd.foundation import CementCmd, CementCmdBaseController
 
 from cement.core.controller import expose
@@ -199,6 +200,7 @@ class CliManager(CementCmd):
         handlers.extend(provider_controller_handlers)
         handlers.extend(graphite_controller_handlers)
         handlers.extend(example_controller_handlers)
+        handlers.extend(veeam_controller_handlers)
 
         configs_file = u'/etc/beehive/manage.conf'
         history_file = u'~/.beehive.manage'

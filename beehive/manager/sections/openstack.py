@@ -82,6 +82,7 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
         OpenstackPlatformControllerChild._ext_parse_args(self)
         
     @expose()
+    @check_error
     def users(self):
         res = self.client.identity.user.list(detail=True)
         logger.info(res)
