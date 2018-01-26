@@ -129,7 +129,7 @@ class ProviderControllerChild(ResourceEntityController):
         uri = self.uri + u'/' + oid
         res = self._call(uri, u'UPDATE', data=data)
         logger.info(u'Update %s: %s' % (self._meta.aliases[0], truncate(res)))
-        res = {u'msg': u'Add %s %s' % (self._meta.aliases[0], res[u'uuid'])}
+        res = {u'msg': u'Upd %s %s' % (self._meta.aliases[0], res[u'uuid'])}
         self.result(res, headers=[u'msg'])
     
     @expose(aliases=[u'delete <id>'], aliases_only=True)
@@ -139,7 +139,7 @@ class ProviderControllerChild(ResourceEntityController):
         uri = self.uri + u'/' + oid
         res = self._call(uri, u'DELETE')
         logger.info(u'Delete %s: %s' % (self._meta.aliases[0], oid))
-        res = {u'msg': u'Add %s %s' % (self._meta.aliases[0], res[u'uuid'])}
+        res = {u'msg': u'Del %s %s' % (self._meta.aliases[0], res[u'uuid'])}
         self.result(res, headers=[u'msg'])
 
 
