@@ -1,0 +1,12 @@
+{
+  "share":{
+    "container":"tst-opstk-ocata-01",
+    "name":"test-ops-share-02",
+    "desc":"test-ops-share-02",
+    "project":"test-ops-project-01",
+    "share_proto":"CIFS",
+    "size":10,
+    "share_type":"netapp-cifs-565",
+    "availability_zone":"nova"
+  }
+}

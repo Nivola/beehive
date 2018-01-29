@@ -534,6 +534,17 @@ class OpenstackPlatformSecurityGroupController(OpenstackPlatformControllerChild)
         logger.info(res)
         self.result(res, headers=[u'msg'])
 
+    @expose()
+    @check_error
+    def check(self):
+        obj = self.entity_class.list()
+        sg_index = {i[u'tenant_id']: i for i in obj}
+        projects = self.client.project.list()
+        projects_ids = [i[u'id'] for i in projects]
+        for k, v in sg_index.items():
+            if k not in projects_ids:
+                print v[u'id'], v[u'name']
+
 
 class OpenstackPlatformImageController(OpenstackPlatformControllerChild):
     class Meta:
@@ -1829,11 +1840,7 @@ class OpenstackControllerChild(ResourceEntityController):
         """Get openstack item
         """
         oid = self.get_arg(name=u'id')
-        uri = self.uri + u'/' + oid
-        res = self._call(uri, u'GET')
-        key = self._meta.aliases[0].rstrip(u's')
-        logger.info(u'Get %s: %s' % (key, truncate(res)))
-        self.result(res, details=True, key=key)
+        self.get_resource(oid, format_result=None)
     
     @expose(aliases=[u'add <file data>'], aliases_only=True)
     def add(self):
@@ -1844,7 +1851,7 @@ class OpenstackControllerChild(ResourceEntityController):
         logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))     
         self.result(res)
 
-    @expose(aliases=[u'update <id> <file data>'], aliases_only=True)
+    '''@expose(aliases=[u'update <id> <file data>'], aliases_only=True)
     def update(self):
         oid = self.get_arg(name=u'id')
         file_data = self.get_arg(name=u'data file')
@@ -1852,7 +1859,7 @@ class OpenstackControllerChild(ResourceEntityController):
         uri = self.uri + u'/' + oid
         res = self._call(uri, u'UPDATE', data=data)
         logger.info(u'Update %s: %s' % (self._meta.aliases[0], truncate(res)))
-        self.result(res)
+        self.result(res)'''
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
     def delete(self):
@@ -2350,6 +2357,93 @@ class OpenstackHeatStackTemplateController(OpenstackControllerChild):
         self.result(res, headers=[u'uri', u'validate'], maxsize=200)
 
 
+class OpenstackManilaShareController(OpenstackControllerChild):
+    uri = u'/v1.0/openstack/shares'
+    headers = [u'id', u'container.name', u'parent.name', u'name', u'state', u'details.share_type',
+               u'details.share_proto', u'details.size']
+
+    class Meta:
+        label = 'openstack.beehive.manila.share'
+        aliases = ['shares']
+        aliases_only = True
+        description = "Openstack Manila Share management"
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
+    def get(self):
+        """Get openstack share
+        """
+        oid = self.get_arg(name=u'id')
+        self.get_resource(oid, format_result=None)
+
+    @expose(aliases=[u'types <container_id>'], aliases_only=True)
+    @check_error
+    def types(self):
+        """Get openstack share types
+        """
+        container_id = self.get_arg(name=u'container_id')
+        uri = self.uri + u'/types?container=%s' % container_id
+        res = self._call(uri, u'get', data=u'').get(u'share_types', [])
+        logger.info(u'Get container %s share types: %s' % (container_id, truncate(res)))
+        self.result(res, headers=[u'id', u'name', u'snapshot_support', u'backend'], fields=[u'id', u'name',
+                    u'extra_specs.snapshot_support', u'extra_specs.share_backend_name'], maxsize=60)
+
+    @expose(aliases=[u'grant <id>'], aliases_only=True)
+    @check_error
+    def grant(self):
+        """Get openstack share grants
+        """
+        oid = self.get_arg(name=u'id')
+        uri = self.uri + u'/%s/grant' % oid
+        res = self._call(uri, u'get', data=u'').get(u'share_grant', [])
+        logger.info(u'Get share %s grants: %s' % (oid, truncate(res)))
+        self.result(res, headers=[u'id', u'state', u'access_level', u'access_type', u'access_to'], maxsize=80)
+
+    @expose(aliases=[u'grant-add <id> <access_level> <access_type> <access_to>'], aliases_only=True)
+    @check_error
+    def grant_add(self):
+        """Add share grant
+    - access_level: RW, RO
+    - access_type: access type like IP or USER
+    - access_to: access to like 10.102.185.0/24 or admin/user
+        """
+        oid = self.get_arg(name=u'id')
+        access_level = self.get_arg(name=u'access_level')
+        access_type = self.get_arg(name=u'access_type')
+        access_to = self.get_arg(name=u'access_to')
+        data = {
+            u'share_grant': {
+                u'access_level': access_level,
+                u'access_type': access_type,
+                u'access_to': access_to
+            }
+        }
+        uri = self.uri + u'/%s/grant' % oid
+        res = self._call(uri, u'post', data=data)
+        self.wait_job(res[u'jobid'])
+        logger.info(u'Add grant to share %s: %s' % (oid, truncate(res)))
+        self.result({u'msg': u'Add grant to share %s: %s' % (oid, truncate(res))}, headers=[u'msg'])
+
+    @expose(aliases=[u'grant-delete <id> <access_id>'], aliases_only=True)
+    @check_error
+    def grant_delete(self):
+        """Delete share grant
+    - access_id: access grant id
+        """
+        oid = self.get_arg(name=u'id')
+        access_id = self.get_arg(name=u'access_id')
+        data = {
+            u'share_grant': {
+                u'access_id': access_id
+            }
+        }
+        uri = self.uri + u'/%s/grant' % oid
+        res = self._call(uri, u'delete', data=data)
+        self.wait_job(res[u'jobid'])
+        logger.info(u'Remove grant from share %s: %s' % (oid, truncate(res)))
+        self.result({u'msg': u'Remove grant from share %s: %s' % (oid, truncate(res))}, headers=[u'msg'])
+
+
 openstack_controller_handlers = [
     OpenstackController,
     OpenstackDomainController,
@@ -2365,5 +2459,6 @@ openstack_controller_handlers = [
     OpenstackServerController,
     OpenstackVolumeController,
     OpenstackHeatStackController,
-    OpenstackHeatStackTemplateController
+    OpenstackHeatStackTemplateController,
+    OpenstackManilaShareController
 ]

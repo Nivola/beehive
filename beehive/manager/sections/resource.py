@@ -279,7 +279,7 @@ class ContainerController(ResourceControllerChild):
         resclass = self.get_arg(default=None)
         uri = u'%s/resourcecontainers/%s/discover' % (self.baseuri, contid)        
         res = self._call(uri, u'GET', data=u'type=%s' % resclass).get(u'discover_resources')
-        headers = [u'id', u'name', u'parent', u'type', u'resclass']
+        headers = [u'id', u'name', u'parent', u'type']
         
         print(u'New resources')
         self.result(res, key=u'new', headers=headers)
@@ -307,7 +307,7 @@ class ContainerController(ResourceControllerChild):
             res[u'died'].extend(parres[u'died'])
             res[u'changed'].extend(parres[u'changed'])
 
-        headers = [u'id', u'name', u'parent', u'type', u'resclass']
+        headers = [u'id', u'name', u'parent', u'type']
 
         print(u'New resources')
         self.result(res, key=u'new', headers=headers)
@@ -334,6 +334,8 @@ class ContainerController(ResourceControllerChild):
         uri = u'%s/resourcecontainers/%s/discover' % (self.baseuri, contid)        
         res = self._call(uri, u'PUT', data=data)
         self.result(res)
+        jobid = res[u'jobid']
+        self.wait_job(jobid, delta=1)
 
     @expose(aliases=[u'synchronize-all <id>'], aliases_only=True)
     @check_error
@@ -358,6 +360,7 @@ class ContainerController(ResourceControllerChild):
             }
             uri = u'%s/resourcecontainers/%s/discover' % (self.baseuri, contid)
             res = self._call(uri, u'PUT', data=data)
+            self.result(res)
             jobid = res[u'jobid']
             self.wait_job(jobid, delta=1)
 
@@ -459,9 +462,58 @@ class ResourceEntityController(ResourceControllerChild):
             print(u'.')
             sleep(delta)
             state = self.get_job_state(jobid)
-        
-    @expose(aliases=[u'add <container> <resclass> <name> [ext_id=..] '\
-                     u'[parent=..] [attribute=..] [tags=..]'], 
+
+    def __get_key(self):
+        return self._meta.aliases[0].rstrip(u's')
+
+    def get_resource(self, oid, format_result=None):
+        """Get resource
+
+        **Parameters**:
+
+            * **oid**: id of the resource
+
+        **Return**:
+
+            resource dict
+        """
+        uri = self.uri + u'/' + oid
+        res = self._call(uri, u'GET')
+        key = self.__get_key()
+        res = res.get(key)
+        logger.info(u'Get %s: %s' % (key, truncate(res)))
+        if self.format == u'text':
+            for i in [u'__meta__', u'ext_id', u'active']:
+                res.pop(i, None)
+            main_info = []
+            c = res.pop(u'container')
+            c.update({u'type': u'container'})
+            main_info.append(c)
+            c = res.pop(u'parent')
+            c.update({u'type': u'parent', u'desc': u'', u'state': u''})
+            main_info.append(c)
+            date = res.pop(u'date')
+            main_info.append({u'id': res.pop(u'id'),
+                              u'uuid': res.pop(u'uuid'),
+                              u'name': res.pop(u'name'),
+                              u'type': u'',
+                              u'desc': res.pop(u'desc'),
+                              u'state': res.pop(u'state'),
+                              u'created': date.pop(u'creation'),
+                              u'modified': date.pop(u'modified'),
+                              u'expiry': date.pop(u'expiry')})
+            self.result(main_info, headers=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'created',
+                                            u'modified', u'expiry'], table_style=u'simple')
+
+            if format_result is not None:
+                format_result(res)
+
+            self.app.print_output(u'Other infos:')
+            self.result(res, details=True, table_style=u'simple')
+        else:
+            self.result(res, details=True)
+
+    @expose(aliases=[u'add <container> <resclass> <name> [ext_id=..] [parent=..] [attribute=..] [tags=..]'],
             aliases_only=True)
     @check_error
     def add(self):
@@ -579,8 +631,9 @@ class ResourceEntityController(ResourceControllerChild):
         uri = u'%s/resources/%s/tree' % (self.baseuri, value)
         res = self._call(uri, u'GET', data=urlencode(self.app.kvargs))
         logger.info(u'Get resource tree: %s' % res)
-        #if self.format == u'text':
+        # if self.format == u'text':
         res = res[u'resourcetree']
+
         def create_data():
             yield (Token.Name, u' [%s] ' % res.get(u'type'))
             yield (Token.Literal.String, res.get(u'name'))

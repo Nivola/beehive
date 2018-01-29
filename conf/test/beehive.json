@@ -401,6 +401,21 @@
                     },
                     "owner":"admin"
                 },
+                "ops-share1":{
+                    "container":"tst-opstk-ocata-01",
+                    "name":"test-ops-share-01",
+                    "desc":"test-ops-share-01",
+                    "project":"test-ops-project-01",
+                    "share_proto":"NFS",
+                    "size":10,
+                    "share_type":"netapp-nfs-565",
+                    "availability_zone":"nova"
+                },
+                "ops-share-grant1":{
+                    "access_level": "rw",
+                    "access_type": "ip",
+                    "access_to": "10.102.185.0/24"
+                },
                 "prv-region1":{
                     "container":"tst-provider-01",
                     "name":"test-prv-region-01",
