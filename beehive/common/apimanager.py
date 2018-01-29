@@ -1412,6 +1412,53 @@ class ApiController(object):
         except QueryError as ex:         
             self.logger.warn(ex)
             return [], 0
+        
+        
+    def get_entities(self, entity_class, get_entities, authorize=True,
+            *args, **kvargs):
+        """Get entities less pagination
+
+        :param entity_class: ApiObject Extension class
+        :param get_entities: model get_entities function. Return (entities, total)
+        :param name: name like [optional]
+        :param active: active [optional]
+        :param creation_date: creation_date [optional]
+        :param modification_date: modification_date [optional]
+        :param args: custom params
+        :param kvargs: custom params
+        :return: (list of entity_class instances, total)
+        :raises ApiManagerError: raise :class:`ApiManagerError`
+        """
+        res = []
+        objs =  []
+        
+        if authorize is True:
+            # verify permissions
+            objs = self.can(u'view', entity_class.objtype, 
+                            definition=entity_class.objdef)
+            objs = objs.get(entity_class.objdef.lower())
+        
+        # create permission tags
+        tags = []
+        for p in objs:
+            tags.append(self.manager.hash_from_permission(entity_class.objdef, p))
+        self.logger.debug(u'Permission tags to apply: %s' % tags)
+                
+        try:
+            entities, total = get_entities(tags=tags, *args, **kvargs)
+            
+            for entity in entities:
+                obj = entity_class(self, oid=entity.id, objid=entity.objid, 
+                               name=entity.name, active=entity.active, 
+                               desc=entity.desc, model=entity)
+                res.append(obj)
+            
+            self.logger.debug(u'Get %s (total:%s): %s' % 
+                              (entity_class.__name__, total, truncate(res)))
+            return res, total
+        except QueryError as ex:         
+            self.logger.warn(ex)
+            return [], 0
     
     '''
     def get_paginated_entities2(self, object_class, get_entities, 
