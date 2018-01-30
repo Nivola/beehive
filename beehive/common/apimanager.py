@@ -1430,35 +1430,38 @@ class ApiController(object):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         res = []
-        objs =  []
         
-        if authorize is True:
-            # verify permissions
-            objs = self.can(u'view', entity_class.objtype, 
-                            definition=entity_class.objdef)
-            objs = objs.get(entity_class.objdef.lower())
         
-        # create permission tags
-        tags = []
-        for p in objs:
-            tags.append(self.manager.hash_from_permission(entity_class.objdef, p))
-        self.logger.debug(u'Permission tags to apply: %s' % tags)
+        #TODO da capire se usare le permission tags
+#         objs =  []
+        
+#         if authorize is True:
+#             # verify permissions
+#             objs = self.can(u'view', entity_class.objtype, 
+#                             definition=entity_class.objdef)
+#             objs = objs.get(entity_class.objdef.lower())
+#         
+        
+        
+#         # create permission tags
+#         tags = []
+#         for p in objs:
+#             tags.append(self.manager.hash_from_permission(entity_class.objdef, p))
+#         self.logger.debug(u'Permission tags to apply: %s' % tags)
                 
         try:
-            entities, total = get_entities(tags=tags, *args, **kvargs)
-            
+            entities = get_entities( *args, **kvargs)
             for entity in entities:
                 obj = entity_class(self, oid=entity.id, objid=entity.objid, 
                                name=entity.name, active=entity.active, 
                                desc=entity.desc, model=entity)
                 res.append(obj)
-            
-            self.logger.debug(u'Get %s (total:%s): %s' % 
-                              (entity_class.__name__, total, truncate(res)))
-            return res, total
+            self.logger.debug(u'Get %s : %s' % 
+                              (entity_class.__name__, truncate(res)))
+            return res
         except QueryError as ex:         
             self.logger.warn(ex)
-            return [], 0
+            return []
     
     '''
     def get_paginated_entities2(self, object_class, get_entities, 
