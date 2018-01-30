@@ -14,14 +14,14 @@ from beedrones.vsphere.client import VsphereManager
 from beecell.remote import RemoteClient
 
 # get graphite data
-from pylab import plot,hist, show, title, text, xlabel, ylabel
-from scipy import stats
+# from pylab import plot,hist, show, title, text, xlabel, ylabel
+# from scipy import stats
 import time
 import os
 import sys
 import requests
 import yaml
-import numpy as np
+# import numpy as np
 import json
 from texttable import Texttable
 
@@ -141,6 +141,7 @@ def getdata_from_graphite(ip_address_graphite_f,pod_f,vm_f,metrics_f,function_f,
     tab1.add_row(row)
     print tab1.draw()
 
+    '''
     # print as graph
     if grafico == True:
 
@@ -153,7 +154,7 @@ def getdata_from_graphite(ip_address_graphite_f,pod_f,vm_f,metrics_f,function_f,
         title (titolo_plot)
         xlabel ('Seconds')
         ylabel ('Value Metrics')
-        show()
+        show()'''
 
     # print as table
 
