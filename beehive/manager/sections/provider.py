@@ -39,56 +39,6 @@ class ProviderControllerChild(ResourceEntityController):
             (['extra_arguments'], dict(action='store', nargs='*'))
         ]
 
-    def __get_key(self):
-        return self._meta.aliases[0].rstrip(u's')
-
-    def get_resource(self, oid, format_result=None):
-        """Get resource
-
-        **Parameters**:
-
-            * **oid**: id of the resource
-
-        **Return**:
-
-            resource dict
-        """
-        uri = self.uri + u'/' + oid
-        res = self._call(uri, u'GET')
-        key = self.__get_key()
-        res = res.get(key)
-        logger.info(u'Get %s: %s' % (key, truncate(res)))
-        if self.format == u'text':
-            for i in [u'__meta__', u'ext_id', u'active']:
-                res.pop(i, None)
-            main_info = []
-            c = res.pop(u'container')
-            c.update({u'type': u'container'})
-            main_info.append(c)
-            c = res.pop(u'parent')
-            c.update({u'type': u'parent', u'desc': u'', u'state': u''})
-            main_info.append(c)
-            date = res.pop(u'date')
-            main_info.append({u'id': res.pop(u'id'),
-                              u'uuid': res.pop(u'uuid'),
-                              u'name': res.pop(u'name'),
-                              u'type': u'',
-                              u'desc': res.pop(u'desc'),
-                              u'state': res.pop(u'state'),
-                              u'created': date.pop(u'creation'),
-                              u'modified': date.pop(u'modified'),
-                              u'expiry': date.pop(u'expiry')})
-            self.result(main_info, headers=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'created',
-                                            u'modified', u'expiry'], table_style=u'simple')
-
-            if format_result is not None:
-                format_result(res)
-
-            self.app.print_output(u'Other infos:')
-            self.result(res, details=True, table_style=u'simple')
-        else:
-            self.result(res, details=True)
-
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     @check_error
     def list(self):
@@ -116,6 +66,9 @@ class ProviderControllerChild(ResourceEntityController):
         data = self.load_config(file_data)
         uri = self.uri
         res = self._call(uri, u'POST', data=data)
+        jobid = res.get(u'jobid', None)
+        if jobid is not None:
+            self.wait_job(jobid)
         logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))
         res = {u'msg': u'Add %s %s' % (self._meta.aliases[0], res[u'uuid'])}
         self.result(res, headers=[u'msg'])
@@ -190,6 +143,9 @@ class ProviderSiteController(ProviderControllerChild):
         data = self.load_config(file_data)
         uri = self.uri + u'/%s/orchestrators' % oid
         res = self._call(uri, u'POST', data=data)
+        jobid = res.get(u'jobid', None)
+        if jobid is not None:
+            self.wait_job(jobid)
         logger.info(u'Add orchestrator to site %s: %s' % (oid, truncate(res)))
         res = {u'msg': u'Add orchestrator to site %s: %s' % (oid, truncate(res))}
         self.result(res, headers=[u'msg'])
@@ -243,6 +199,9 @@ class ProviderComputeZoneController(ProviderControllerChild):
         data = self.load_config(file_data)
         uri = self.uri + u'/%s/sites' % oid
         res = self._call(uri, u'POST', data=data)
+        jobid = res.get(u'jobid', None)
+        if jobid is not None:
+            self.wait_job(jobid)
         logger.info(u'Add site to compute zone %s: %s' % (oid, truncate(res)))
         res = {u'msg': u'Add site to compute zone %s: %s' % (oid, truncate(res))}
         self.result(res, headers=[u'msg'])
@@ -257,6 +216,9 @@ class ProviderComputeZoneController(ProviderControllerChild):
         data = {u'site': {u'id': site_id}}
         uri = self.uri + u'/%s/sites' % oid
         res = self._call(uri, u'DELETE', data=data)
+        jobid = res.get(u'jobid', None)
+        if jobid is not None:
+            self.wait_job(jobid)
         logger.info(u'Remove site %s from compute zone %s' % (site_id, oid))
         res = {u'msg': u'Remove site %s from compute zone %s' % (site_id, oid)}
         self.result(res, headers=[u'msg'])
