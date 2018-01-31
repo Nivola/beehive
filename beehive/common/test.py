@@ -202,7 +202,7 @@ class BeehiveTestCase(unittest.TestCase):
         return validate
     
     def call(self, subsystem, path, method, params=None, headers=None,
-             user=None, pwd=None, auth=None, data=None, query=None, runlog=True,
+             user=None, pwd=None, auth=None, data=None, query=None, runlog=True, timeout=10,
              *args, **kvargs):
         global token, seckey
         
@@ -254,7 +254,7 @@ class BeehiveTestCase(unittest.TestCase):
             # execute request
             response = requests.request(method, endpoint + uri, auth=cred, 
                                    params=query, data=data, headers=headers,
-                                   timeout=10, verify=False)
+                                   timeout=timeout, verify=False)
             
             if runlog is True:
                 self.runlogger.info(u'response headers: %s' % response.headers)
