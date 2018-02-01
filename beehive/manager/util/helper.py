@@ -202,10 +202,13 @@ class BeehiveHelper(object):
                     controller.set_superadmin_permissions()  
                     
                 elif module.name == u'CatalogModule':
-                    res = self.__create_main_catalogs(
-                        controller, config, config_db_manager)
+                    res = self.__create_main_catalogs(controller, config, config_db_manager)
                     controller.set_superadmin_permissions()
                     msgs.extend(res)
+
+                elif module.name == u'ServiceModule':
+                    controller.populate(config[u'db_uri'])
+                    msgs.extend(u'Populate service database')
               
             except Exception as ex:
                 self.logger.error(ex, exc_info=1)
@@ -229,7 +232,7 @@ class BeehiveHelper(object):
     
         if update is False:
             # add superadmin role
-            #perms_to_assign = controller.get_superadmin_permissions()
+            # perms_to_assign = controller.get_superadmin_permissions()
             perms_to_assign = []
             controller.add_superadmin_role(perms_to_assign)
             
@@ -251,9 +254,9 @@ class BeehiveHelper(object):
                         password=user[u'pwd'], desc=user[u'desc'], 
                         expiry_date=expiry_date, base=False, system=True)
 
-                    #users, total = controller.get_users(name=user[u'name'])
-                    #users[0].append_role(u'ApiSuperadmin', 
-                    #                     expiry_date=expiry_date)
+                    # users, total = controller.get_users(name=user[u'name'])
+                    # users[0].append_role(u'ApiSuperadmin',
+                    #                      expiry_date=expiry_date)
                     
                 # create users
                 elif user[u'type'] == u'user':
@@ -282,7 +285,7 @@ class BeehiveHelper(object):
         
         catalog = config[u'catalog']
         
-        #for catalog in catalogs:
+        # for catalog in catalogs:
         # check if catalog already exist
         try:
             controller.get_catalog(catalog[u'name'])
@@ -290,7 +293,7 @@ class BeehiveHelper(object):
                              (catalog[u'name']))
             msgs.append(u'Catalog %s already exist' % 
                              (catalog[u'name']))
-            #res = cats[0][u'oid']
+            # res = cats[0][u'oid']
         except:
             # create new catalog
             res = controller.add_catalog(catalog[u'name'], 
@@ -329,7 +332,7 @@ class BeehiveHelper(object):
         # read subsystem config
         config = self.read_config(subsystem_config)
         subsystem = get_value(config, u'api_subsystem', None, exception=True)
-        #update = get_value(config, u'update', False)
+        # update = get_value(config, u'update', False)
         api_config = get_value(config, u'api', {})
 
         if update is True:
@@ -393,5 +396,5 @@ class BeehiveHelper(object):
     
             res.extend(self.__configure(config, update=update))
             res.extend(self.__init_subsystem(config, update=update))
-            
+
         return res

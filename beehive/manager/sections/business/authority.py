@@ -1,8 +1,8 @@
-'''
-Created on Sep 27, 2017
+"""
+Created on Nov 20, 2017
 
 @author: darkbk
-'''
+"""
 import logging
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController
@@ -12,30 +12,30 @@ from beecell.simple import truncate
 logger = logging.getLogger(__name__)
 
 
-class OrganizationHierarchyController(BaseController):
+class AuthorityController(BaseController):
     class Meta:
-        label = 'business_hierarchy'
-        stacked_on = 'base'
+        label = 'authority'
+        stacked_on = 'business'
         stacked_type = 'nested'
-        description = "Organization Hierarchy management"
+        description = "Business Authority Management"
         arguments = []
 
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
 
 
-class OrganizationHierarchyControllerChild(ApiController):
+class AuthorityControllerChild(ApiController):
     baseuri = u'/v1.0/nws'
     subsystem = u'service'
 
     class Meta:
-        stacked_on = 'business_hierarchy'
+        stacked_on = 'authority'
         stacked_type = 'nested'
 
 
-class OrganizationController(OrganizationHierarchyControllerChild):
+class OrganizationController(AuthorityControllerChild):
     class Meta:
-        label = 'organizations'
+        label = 'orgs'
         description = "Organization management"
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
@@ -48,7 +48,7 @@ class OrganizationController(OrganizationHierarchyControllerChild):
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
         self.result(res, key=u'organizations',
-                    headers=[u'id', u'uuid', u'name', u'org_type', u'ext_anag_id'], maxsize=30)
+                    headers=[u'id', u'uuid', u'name', u'org_type', u'ext_anag_id'], maxsize=40)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
@@ -60,7 +60,6 @@ class OrganizationController(OrganizationHierarchyControllerChild):
         res = self._call(uri, u'GET')
         logger.info(res)
         self.result(res, key=u'organization', details=True)
-
 
     @expose(aliases=[u'perms <id>'], aliases_only=True)
     def perms(self):
@@ -87,20 +86,20 @@ class OrganizationController(OrganizationHierarchyControllerChild):
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         data = {
             u'organization':{
-#             u'name':name.split(u'=')[1],
-            u'name':name,
-            u'desc':params.get(u'desc', None),
-#             u'org_type':org_type.split(u'=')[1],
-            u'org_type':org_type,
-            u'ext_anag_id':params.get(u'ext_anag_id',None),
-            u'attributes':params.get(u'attributes',None),
-#             u'attribute': params.get(u'attribute', {}),
-            u'hasvat':params.get(u'hasvat',None),
-            u'partner':params.get(u'partner',None),
-            u'referent':params.get(u'referent', None),
-            u'email':params.get(u'email', None),
-            u'legalemail':params.get(u'legalemail', None),
-            u'postaladdress':params.get(u'postaladdress', None),
+                # u'name':name.split(u'=')[1],
+                u'name':name,
+                u'desc':params.get(u'desc', None),
+                # u'org_type':org_type.split(u'=')[1],
+                u'org_type':org_type,
+                u'ext_anag_id':params.get(u'ext_anag_id',None),
+                u'attributes':params.get(u'attributes',None),
+                # u'attribute': params.get(u'attribute', {}),
+                u'hasvat':params.get(u'hasvat',None),
+                u'partner':params.get(u'partner',None),
+                u'referent':params.get(u'referent', None),
+                u'email':params.get(u'email', None),
+                u'legalemail':params.get(u'legalemail', None),
+                u'postaladdress':params.get(u'postaladdress', None),
             }  
          }
         uri = u'%s/organizations' % (self.baseuri)
@@ -138,9 +137,9 @@ class OrganizationController(OrganizationHierarchyControllerChild):
         self.result(res, headers=[u'msg'])
 
 
-class DivisionController(OrganizationHierarchyControllerChild):
+class DivisionController(AuthorityControllerChild):
     class Meta:
-        label = 'divisions'
+        label = 'divs'
         description = "Divisions management"
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
@@ -156,12 +155,10 @@ class DivisionController(OrganizationHierarchyControllerChild):
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
         self.result(res, key=u'divisions',
-                        headers=[u'id', u'uuid', u'name', 
-                             u'organization_id', u'contact', u'email', 
-                             u'postaladdress', u'active', u'date'], 
-                        maxsize=30)
+                        headers=[u'id', u'uuid', u'name', u'organization_id', u'contact', u'email',
+                             u'postaladdress', u'active', u'date.creation'], 
+                        maxsize=40)
 
-    
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
         """Get division by value or id
@@ -197,16 +194,16 @@ class DivisionController(OrganizationHierarchyControllerChild):
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         data = {
             u'division':{
-#                 u'name':name.split(u'=')[1],
+                # u'name':name.split(u'=')[1],
                 u'name':name,
                 u'desc':params.get(u'desc', None),
-#                 u'organization_id':organization_id.split(u'=')[1],
+                # u'organization_id':organization_id.split(u'=')[1],
                 u'organization_id':organization_id,
                 u'contact':params.get(u'contact', None),
                 u'email':params.get(u'email', None),
                 u'postaladdress':params.get(u'postaladdress', None),
             }  
-         }        
+        }
         uri = u'%s/divisions' % (self.baseuri)
         res = self._call(uri, u'POST', data=data)
         logger.info(u'Add division: %s' % truncate(res))
@@ -241,7 +238,7 @@ class DivisionController(OrganizationHierarchyControllerChild):
         res = {u'msg': u'Delete division %s' % value}
         self.result(res, headers=[u'msg'])
 
-
+'''
 class DivisionControllerChild(ApiController):
     baseuri = u'/v1.0/nws'
     subsystem = u'service'
@@ -249,8 +246,10 @@ class DivisionControllerChild(ApiController):
     class Meta:
         stacked_on = 'business_hierarchy.divisions'
         stacked_type = 'nested'
+'''
 
-class AccountController(OrganizationHierarchyControllerChild):
+
+class AccountController(AuthorityControllerChild):
     class Meta:
         label = 'accounts'
         description = "Accounts management"
@@ -271,10 +270,9 @@ class AccountController(OrganizationHierarchyControllerChild):
                         headers=[u'id', u'uuid', u'name', 
                             u'division_id', u'contact', u'email',
                             u'email_support', u'email_support_link',
-                            u'active', u'date'], 
-                        maxsize=30)
+                            u'active', u'date.creation'], 
+                        maxsize=40)
 
-    
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
         """Get account by value or id
@@ -310,10 +308,10 @@ class AccountController(OrganizationHierarchyControllerChild):
         
         data = {
             u'account':{
-#                 u'name': name.split(u'=')[1],
+                # u'name': name.split(u'=')[1],
                 u'name': name,
                 u'desc':params.get(u'desc', None),
-#                 u'division_id':division_id.split(u'=')[1],
+                #  u'division_id':division_id.split(u'=')[1],
                 u'division_id':division_id,
                 u'contact':params.get(u'contact', None),
                 u'email':params.get(u'email', None),
@@ -356,7 +354,8 @@ class AccountController(OrganizationHierarchyControllerChild):
         res = {u'msg': u'Delete account %s' % value}
         self.result(res, headers=[u'msg'])
 
-class SubwalletController(OrganizationHierarchyControllerChild):
+
+class SubwalletController(AuthorityControllerChild):
     class Meta:
         label = 'subwallets'
         description = "Subwallets management"
@@ -379,10 +378,9 @@ class SubwalletController(OrganizationHierarchyControllerChild):
         self.result(res, key=u'subwallets',
                         headers=[u'id', u'uuid', u'name', 
                             u'wallet_id', u'account_id, 'u'amount', u'agreement_date',
-                            u'active', u'date'], 
-                        maxsize=30)
+                            u'active', u'date.creation'], 
+                        maxsize=40)
 
-    
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
         """Get subwallet by value id or uuid
@@ -409,7 +407,6 @@ class SubwalletController(OrganizationHierarchyControllerChild):
                     u'[capital_total=..] [capital_used=..]'\
                      ],
             aliases_only=True)
-    
     def add(self):
         """Add subwallet <wallet_id> <account_id>
             - field: can be name, desc, capital_total, capital_used, evaluation_date
@@ -421,11 +418,11 @@ class SubwalletController(OrganizationHierarchyControllerChild):
     
         data = {
             u'subwallet':{
-#                 u'name': name.split(u'=')[1],
+                # u'name': name.split(u'=')[1],
                 u'name': name,
                 u'desc':params.get(u'desc', None),
-#                 u'wallet_id':wallet_id.split(u'=')[1],    
-#                 u'account_id':account_id.split(u'=')[1], 
+                #  u'wallet_id':wallet_id.split(u'=')[1],
+                # u'account_id':account_id.split(u'=')[1],
                 u'wallet_id':wallet_id,    
                 u'account_id':account_id,         
                 u'capital_total':params.get(u'capital_total', None),
@@ -468,7 +465,8 @@ class SubwalletController(OrganizationHierarchyControllerChild):
         res = {u'msg': u'Delete subwallet %s' % value}
         self.result(res, headers=[u'msg'])
 
-class WalletController(OrganizationHierarchyControllerChild):
+
+class WalletController(AuthorityControllerChild):
     class Meta:
         label = 'wallets'
         description = "Wallets management"
@@ -490,10 +488,9 @@ class WalletController(OrganizationHierarchyControllerChild):
         self.result(res, key=u'wallets',
                         headers=[u'id', u'uuid', u'name', 
                             u'division_id', u'capital_total', u'capital_used', u'evaluation_date'
-                            u'active', u'date'], 
-                        maxsize=30)
+                            u'active', u'date.creation'], 
+                        maxsize=40)
 
-    
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
         """Get wallet by value id or uuid
@@ -531,7 +528,7 @@ class WalletController(OrganizationHierarchyControllerChild):
             u'wallet':{
                 u'name': params.get(u'name', None),
                 u'desc':params.get(u'desc', None),   
-#                 u'division_id':division_id.split(u'=')[1],          
+                # u'division_id':division_id.split(u'=')[1],
                 u'division_id': division_id,
                 u'capital_total':params.get(u'capital_total', None),
                 u'capital_used':params.get(u'capital_used', None),
@@ -574,10 +571,11 @@ class WalletController(OrganizationHierarchyControllerChild):
         self.result(res, headers=[u'msg'])
 
 
-class AgreementController(OrganizationHierarchyControllerChild):
+class AgreementController(AuthorityControllerChild):
     class Meta:
         label = 'agreements'
         description = "Agreements management"
+
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     def list(self):
         """List all agreements by field: name, uuid, wallet_id,
@@ -594,10 +592,9 @@ class AgreementController(OrganizationHierarchyControllerChild):
         self.result(res, key=u'agreements',
                         headers=[u'id', u'uuid', u'name', 
                             u'wallet_id', u'amount', u'agreement_date',
-                            u'active', u'date'], 
-                        maxsize=30)
+                            u'active', u'date.creation'], 
+                        maxsize=40)
 
-    
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
         """Get agreement by value or id
@@ -632,10 +629,10 @@ class AgreementController(OrganizationHierarchyControllerChild):
         
         data = {
             u'agreement':{
-#                 u'name': name.split(u'=')[1],
+                # u'name': name.split(u'=')[1],
                 u'name': name,
                 u'desc':params.get(u'desc', None),
-#                 u'wallet_id':wallet_id.split(u'=')[1], 
+                # u'wallet_id':wallet_id.split(u'=')[1],
                 u'wallet_id':wallet_id,                              
                 u'amount':params.get(u'amount', None),
                 u'agreement_date': params.get(u'agreement_date', None)            
@@ -676,13 +673,15 @@ class AgreementController(OrganizationHierarchyControllerChild):
         res = {u'msg': u'Delete agreement %s' % value}
         self.result(res, headers=[u'msg'])
 
-class ConsumeController(OrganizationHierarchyControllerChild):
+
+class ConsumeController(AuthorityControllerChild):
     class Meta:
         label = 'consumes'
         description = "Consumes management"
-        
-organization_controller_handlers = [
-    OrganizationHierarchyController,
+
+
+authority_controller_handlers = [
+    AuthorityController,
     OrganizationController,
     DivisionController,
     AccountController,
@@ -690,4 +689,4 @@ organization_controller_handlers = [
     WalletController,
     AgreementController,
     ConsumeController,
-]        
+]

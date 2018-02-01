@@ -824,12 +824,12 @@ service_controller_handlers = [
     ServiceDefinitionController,
     ServiceConfigController,
     ServiceCostController,
-#     ServiceLinkDefinitionController,
+    # ServiceLinkDefinitionController,
     ServiceInstanceController,
     ServiceInstanceConfigController,
     ServiceLinkInstanceController,
-#     ServiceInstanteCostController,
-#     ServiceAggregateCostController,    
+    # ServiceInstanteCostController,
+    # ServiceAggregateCostController,
     ServiceCatalogController,
     
 ]        

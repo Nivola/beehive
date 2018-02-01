@@ -38,6 +38,7 @@ from celery.utils.term import colored
 
 seckey = None
 token = None
+result = {}
 
 logger = logging.getLogger(__name__)
 
@@ -116,8 +117,11 @@ class BeehiveTestCase(unittest.TestCase):
             # self.logger.info(u'Load swagger schema from %s' % endpoint)
             # self.schema[subsystem] = self.validate_swagger_schema(endpoint)
 
+        self.load_result()
+
     @classmethod
     def tearDownClass(cls):
+        cls.store_result()
         logger.log(60, u'#################### Testplan %s - STOP ####################' % cls.__name__)
         logging.getLogger(u'beehive.test.run')\
             .log(60, u'#################### Testplan %s - STOP ####################' % cls.__name__)
@@ -129,7 +133,31 @@ class BeehiveTestCase(unittest.TestCase):
         config = json.loads(config)
         f.close()
         return config
-        
+
+    @classmethod
+    def store_result(cls):
+        global result
+        if len(result.keys()) > 0:
+            f = open(u'/tmp/test.result', u'w')
+            f.write(json.dumps(result))
+            f.close()
+
+    @classmethod
+    def load_result(cls):
+        global result
+        f = open(u'/tmp/test.result', u'r')
+        config = f.read()
+        result = json.loads(config)
+        f.close()
+
+    def set_result(self, key, value):
+        global result
+        result[key] = value
+
+    def get_result(self, key):
+        global result
+        return result.get(key, None)
+
     def setUp(self):
         logger.log(70, u'========== %s ==========' % self.id()[9:])
         logging.getLogger(u'beehive.test.run').log(70, u'========== %s ==========' % self.id()[9:])
@@ -223,7 +251,7 @@ class BeehiveTestCase(unittest.TestCase):
                 headers = {}
     
             endpoint = self.endpoints[subsystem]
-            #schema = self.schema[subsystem]
+            # schema = self.schema[subsystem]
             schema = self.get_schema(subsystem, endpoint)
             if u'Content-Type' not in headers:
                 headers[u'Content-Type'] = u'application/json'            
