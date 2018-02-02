@@ -145,10 +145,13 @@ class BeehiveTestCase(unittest.TestCase):
     @classmethod
     def load_result(cls):
         global result
-        f = open(u'/tmp/test.result', u'r')
-        config = f.read()
-        result = json.loads(config)
-        f.close()
+        try:
+            f = open(u'/tmp/test.result', u'r')
+            config = f.read()
+            result = json.loads(config)
+            f.close()
+        except:
+            config = {}
 
     def set_result(self, key, value):
         global result

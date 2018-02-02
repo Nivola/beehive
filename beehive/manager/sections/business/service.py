@@ -17,10 +17,10 @@ logger = logging.getLogger(__name__)
  
 class ServiceController(BaseController):
     class Meta:
-        label = 'business_service'
-        stacked_on = 'base'
+        label = 'service'
+        stacked_on = 'business'
         stacked_type = 'nested'
-        description = "Service management"
+        description = "Business Service management"
         arguments = []
  
     def _setup(self, base_app):
@@ -32,7 +32,7 @@ class ServiceControllerChild(ApiController):
     subsystem = u'service'
  
     class Meta:
-        stacked_on = 'business_service'
+        stacked_on = 'service'
         stacked_type = 'nested'
 # 
 #     def get_service_state(self, uuid):
@@ -73,7 +73,8 @@ class ServiceTypeController(ServiceControllerChild):
         uri = u'%s/servicetypes' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        self.result(res, key=u'servicetypes', headers=[u'id', u'uuid', u'name', u'version', u'status', u'flag_container', u'objclass', u'active', u'date' ])
+        self.result(res, key=u'servicetypes', headers=[u'id', u'uuid', u'name', u'version', u'status',
+                    u'flag_container', u'objclass', u'active', u'date' ])
  
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
