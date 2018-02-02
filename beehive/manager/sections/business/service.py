@@ -5,7 +5,7 @@ Created on Sep 27, 2017
 '''
 import logging
 from cement.core.controller import expose
-from beehive.manager.util.controller import BaseController, ApiController
+from beehive.manager.util.controller import BaseController, ApiController, check_error
 from re import match
 from beecell.simple import truncate
 from beecell.remote import NotFoundException
@@ -34,28 +34,8 @@ class ServiceControllerChild(ApiController):
     class Meta:
         stacked_on = 'service'
         stacked_type = 'nested'
-# 
-#     def get_service_state(self, uuid):
-#         try:
-#             res = self._call(u'/v1.0/service/%s' % uuid, u'GET')
-#             state = res.get(u'service').get(u'state')
-#             logger.debug(u'Get service %s state: %s' % (uuid, state))
-#             return state
-#         except (NotFoundException, Exception):
-#             return u'EXPUNGED'
-# 
-#     def wait_service(self, uuid, delta=1):
-#         """Wait service
-#         """
-#         logger.debug(u'wait for service: %s' % uuid)
-#         state = self.get_service_state(uuid)
-#         while state not in [u'ACTIVE', u'ERROR', u'EXPUNGED']:
-#             logger.info(u'.')
-#             print((u'.'))
-#             sleep(delta)
-#             state = self.get_service_state(uuid)
- 
- 
+
+
 class ServiceTypeController(ServiceControllerChild):
     class Meta:
         label = 'types'
@@ -74,9 +54,10 @@ class ServiceTypeController(ServiceControllerChild):
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
         self.result(res, key=u'servicetypes', headers=[u'id', u'uuid', u'name', u'version', u'status',
-                    u'flag_container', u'objclass', u'active', u'date' ])
+                    u'flag_container', u'objclass', u'active', u'date.creation'])
  
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get service type by value id or uuid
         """
@@ -85,7 +66,23 @@ class ServiceTypeController(ServiceControllerChild):
         res = self._call(uri, u'GET')
         logger.info(res)
         self.result(res, key=u'servicetype', details=True)
- 
+
+        if self.format == u'text':
+            # get cost params
+            uri = u'%s/servicecostparams' % self.baseuri
+            res = self._call(uri, u'GET', data=u'service_type_id=%s' % value).get(u'servicecostparams', [])
+            logger.info(res)
+            self.app.print_output(u'Cost params:')
+            self.result(res, headers=[u'id', u'uuid', u'name', u'param_definition', u'param_unit', u'active',
+                                      u'date.creation'])
+
+            # get process definition
+            uri = u'%s/serviceprocesses' % self.baseuri
+            res = self._call(uri, u'GET', data=u'service_type_id=%s' % value).get(u'serviceprocesses', [])
+            logger.info(res)
+            self.app.print_output(u'Process definition:')
+            self.result(res, headers=[u'id', u'uuid', u'name', u'method_key', u'process_key', u'active',
+                                      u'date.creation'])
 
     @expose(aliases=[u'perms <id>'], aliases_only=True)
     def perms(self):
@@ -98,8 +95,7 @@ class ServiceTypeController(ServiceControllerChild):
         logger.info(u'Get servicetype perms: %s' % truncate(res))
         self.result(res, key=u'perms', headers=self.perm_headers)         
     
-    @expose(aliases=[u'add <name> <version> [flag_container=..] [objclass=..] '\
-                     u'[active=..] [status=..] '],
+    @expose(aliases=[u'add <name> <version> [flag_container=..] [objclass=..] [active=..] [status=..]'],
             aliases_only=True)      
     def add(self):
         """Add service type <name> <version>
@@ -151,24 +147,53 @@ class ServiceTypeController(ServiceControllerChild):
         uri = u'%s/servicetypes/%s' % (self.baseuri, value)
         res = self._call(uri, u'DELETE')
         logger.info(res)
-#         jobid = res.get(u'jobid', None)
-#         if jobid is not None:
-#             self.wait_job(jobid)
- 
         res = {u'msg': u'Delete service type %s' % value}
         self.result(res, headers=[u'msg'])
- 
-class ServiceCostParamController(ServiceControllerChild):
+
+
+class ServiceCostParamController(ApiController):
+    baseuri = u'/v1.0/nws'
+    subsystem = u'service'
+
     class Meta:
-        label = 'types.costs'
+        label = 'costs'
+        stacked_on = 'types'
+        stacked_type = 'nested'
         description = "Service type cost management"
-  
- 
-class ServiceControllerDefinitionChild(ServiceControllerChild):
+
+    @expose(aliases=[u'list <oid>'], aliases_only=True)
+    def list(self):
+        """List all service type cost params
+        """
+        value = self.get_arg(name=u'oid')
+        uri = u'%s/servicecostparams' % self.baseuri
+        res = self._call(uri, u'GET', data=u'service_type_id=%s' % value)
+        logger.info(res)
+        self.result(res, key=u'servicecostparams', headers=[u'id', u'uuid', u'name', u'param_definition', u'param_unit',
+                    u'active', u'date.creation'])
+
+
+class ServiceTypeProcessController(ApiController):
+    baseuri = u'/v1.0/nws'
+    subsystem = u'service'
+
     class Meta:
-        stacked_on = 'business_service'
-        stacked_type = 'nested' 
- 
+        label = 'processes'
+        stacked_on = 'types'
+        stacked_type = 'nested'
+        description = "Service type process management"
+
+    @expose(aliases=[u'list <oid>'], aliases_only=True)
+    def list(self):
+        """List all service type process
+        """
+        value = self.get_arg(name=u'oid')
+        uri = u'%s/serviceprocesses' % self.baseuri
+        res = self._call(uri, u'GET', data=u'service_type_id=%s' % value).get(u'serviceprocesses', [])
+        logger.info(res)
+        self.result(res, headers=[u'id', u'uuid', u'name', u'method_key', u'process_key', u'active', u'date.creation'])
+
+
 class ServiceDefinitionController(ServiceControllerChild):
     class Meta:
         label = 'definitions'
@@ -186,7 +211,7 @@ class ServiceDefinitionController(ServiceControllerChild):
         uri = u'%s/servicedefs' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        self.result(res, key=u'servicedefs', headers=[u'id', u'uuid', u'name', u'version', u'status', u'flag_container', u'objclass', u'active', u'date' ])
+        self.result(res, key=u'servicedefs', headers=[u'id', u'uuid', u'name', u'version', u'status', u'flag_container', u'objclass', u'active', u'date.creation' ])
  
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
@@ -311,7 +336,7 @@ class ServiceConfigController(ServiceControllerChild):
         uri = u'%s/servicecfgs' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        self.result(res, key=u'servicecfgs', headers=[u'id', u'uuid', u'name', u'version', u'service_definition_id', u'params', u'params_type',u'status',  u'active', u'date',  ])
+        self.result(res, key=u'servicecfgs', headers=[u'id', u'uuid', u'name', u'version', u'service_definition_id', u'params', u'params_type',u'status',  u'active', u'date.creation',  ])
  
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
@@ -417,7 +442,7 @@ class ServiceInstanceController(ServiceControllerChild):
         uri = u'%s/serviceinsts' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        self.result(res, key=u'serviceinsts', headers=[u'id', u'uuid', u'name', u'version', u'status', u'flag_container', u'objclass', u'active', u'date' ])
+        self.result(res, key=u'serviceinsts', headers=[u'id', u'uuid', u'name', u'version', u'status', u'flag_container', u'objclass', u'active', u'date.creation' ])
  
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
@@ -524,7 +549,7 @@ class ServiceInstanceConfigController(ServiceControllerChild):
         uri = u'%s/instancecfgs' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        self.result(res, key=u'instancecfgs', headers=[u'id', u'uuid', u'name', u'version', u'service_instance_id',u'status',  u'active', u'date', ])
+        self.result(res, key=u'instancecfgs', headers=[u'id', u'uuid', u'name', u'version', u'service_instance_id',u'status',  u'active', u'date.creation', ])
  
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
@@ -625,7 +650,7 @@ class ServiceLinkInstanceController(ServiceControllerChild):
         uri = u'%s/serviceinstlinks' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        self.result(res, key=u'instancelinks', headers=[u'id', u'uuid', u'name', u'start_service_id', u'end_service_id', u'priority', u'version',u'status',  u'active', u'date', ])
+        self.result(res, key=u'instancelinks', headers=[u'id', u'uuid', u'name', u'start_service_id', u'end_service_id', u'priority', u'version',u'status',  u'active', u'date.creation', ])
  
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
@@ -738,7 +763,7 @@ class ServiceCatalogController(ServiceControllerChild):
         uri = u'%s/srvcatalogs' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        self.result(res, key=u'catalogs', headers=[u'id', u'uuid', u'name', u'version', u'status', u'flag_container', u'objclass', u'active', u'date' ])
+        self.result(res, key=u'catalogs', headers=[u'id', u'uuid', u'name', u'version', u'status', u'flag_container', u'objclass', u'active', u'date.creation' ])
  
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
@@ -822,6 +847,7 @@ service_controller_handlers = [
     ServiceController,
     ServiceTypeController,
     ServiceCostParamController,
+    ServiceTypeProcessController,
     ServiceDefinitionController,
     ServiceConfigController,
     ServiceCostController,

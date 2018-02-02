@@ -121,6 +121,7 @@ class ProviderSiteController(ProviderControllerChild):
         """Get provider item
         """
         oid = self.get_arg(name=u'id')
+
         def format_result(data):
             attributes = data.get(u'attributes', [])
             orchestrators = attributes.pop(u'orchestrators', [])
