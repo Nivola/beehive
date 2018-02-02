@@ -5,7 +5,7 @@ Created on Nov 20, 2017
 """
 import logging
 from cement.core.controller import expose
-from beehive.manager.util.controller import BaseController, ApiController
+from beehive.manager.util.controller import BaseController, ApiController, check_error
 from re import match
 from beecell.simple import truncate
 
@@ -48,7 +48,8 @@ class OrganizationController(AuthorityControllerChild):
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
         self.result(res, key=u'organizations',
-                    headers=[u'id', u'uuid', u'name', u'org_type', u'ext_anag_id'], maxsize=40)
+                    headers=[u'id', u'uuid', u'name', u'org_type', u'ext_anag_id', u'active', u'date.creation'],
+                    maxsize=40)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
@@ -115,7 +116,7 @@ class OrganizationController(AuthorityControllerChild):
     - field: can be name, desc, org_type, ext_anag_id, active, attributes, hasvat,partner (name surname), referent (name surname), email, legalemail, postaladdress
         """
         oid = self.get_arg(name=u'id')
-        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        params = self.app.kvargs
         data = {
             u'organization': params
         }
@@ -154,10 +155,8 @@ class DivisionController(AuthorityControllerChild):
         uri = u'%s/divisions' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        self.result(res, key=u'divisions',
-                        headers=[u'id', u'uuid', u'name', u'organization_id', u'contact', u'email',
-                             u'postaladdress', u'active', u'date.creation'], 
-                        maxsize=40)
+        self.result(res, key=u'divisions', headers=[u'id', u'uuid', u'name', u'organization_id', u'contact', u'email',
+                    u'postaladdress', u'active', u'date.creation'], maxsize=40)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
@@ -217,7 +216,7 @@ class DivisionController(AuthorityControllerChild):
             - field: can be name, desc, email, postaladdress, active
         """
         oid = self.get_arg(name=u'id')
-        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        params = self.app.kvargs
         data = {
             u'division': params
         }
@@ -238,15 +237,79 @@ class DivisionController(AuthorityControllerChild):
         res = {u'msg': u'Delete division %s' % value}
         self.result(res, headers=[u'msg'])
 
-'''
-class DivisionControllerChild(ApiController):
-    baseuri = u'/v1.0/nws'
-    subsystem = u'service'
+    @expose(aliases=[u'wallet <id>'], aliases_only=True)
+    @check_error
+    def wallet(self):
+        """Get division subwallet
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'%s/wallets' % self.baseuri
+        wallet = self._call(uri, u'GET', data=u'division_id=%s' % value).get(u'wallets')[0]
+        logger.info(wallet)
+        self.result(wallet, headers=[u'id', u'uuid', u'name', u'capital_total', u'capital_used', u'active',
+                    u'date.creation'], maxsize=40)
 
-    class Meta:
-        stacked_on = 'business_hierarchy.divisions'
-        stacked_type = 'nested'
-'''
+        # get agreements
+        self.app.pargs.extra_arguments.append(u'wallet_id=%s' % wallet[u'id'])
+        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = u'%s/agreements' % self.baseuri
+        res = self._call(uri, u'GET', data=data).get(u'agreements', [])
+        logger.info(res)
+        self.app.print_output(u'Agreements:')
+        self.result(res, headers=[u'id', u'uuid', u'name', u'amount', u'agreement_date', u'active',
+                    u'date.creation'], maxsize=40)
+
+        # get consumes
+        consumes = []
+        uri = u'%s/subwallets' % self.baseuri
+        subwallets = self._call(uri, u'GET', data=u'wallet_id=%s' % wallet[u'id']).get(u'subwallets')
+        for subwallet in subwallets:
+            uri = u'%s/consumes' % self.baseuri
+            res = self._call(uri, u'GET', data=u'subwallet_id=%s' % subwallet[u'id']).get(u'consumes', [])
+            for item in res:
+                item[u'account_id'] = subwallet[u'account_id']
+            consumes.extend(res)
+        logger.info(consumes)
+        self.app.print_output(u'Consumes:')
+        self.result(consumes, headers=[u'id', u'uuid', u'name', u'account_id', u'amount', u'evaluation_date', u'active',
+                                       u'date.creation'],
+                    maxsize=40)
+
+    @expose(aliases=[u'accounts <id>'], aliases_only=True)
+    @check_error
+    def accounts(self):
+        """List all accounts by parent division
+        """
+        value = self.get_arg(name=u'id')
+        data = u'division_id=%s' % value
+        uri = u'%s/accounts' % self.baseuri
+        accounts = self._call(uri, u'GET', data=data).get(u'accounts', [])
+
+        # get subwallets
+        for account in accounts:
+            uri = u'%s/subwallets' % self.baseuri
+            res = self._call(uri, u'GET', data=u'account_id=%s' % account[u'id']).get(u'subwallets')[0]
+            account[u'capital_total'] = res[u'capital_total']
+            account[u'capital_used'] = res[u'capital_used']
+
+        logger.info(accounts)
+        self.result(accounts, headers=[u'id', u'uuid', u'name', u'contact', u'email',
+                    u'capital_total', u'capital_used', u'active', u'date.creation'], maxsize=40)
+
+    @expose(aliases=[u'consumes <id>'], aliases_only=True)
+    @check_error
+    def consumes(self):
+        """List all consumes of the account
+        """
+        value = self.get_arg(name=u'id')
+        # get subwallet
+        uri = u'%s/subwallets' % self.baseuri
+        subwallet = self._call(uri, u'GET', data=u'wallet_id=%s' % value).get(u'subwallets')[0]
+        uri = u'%s/consumes' % self.baseuri
+        res = self._call(uri, u'GET', data=u'subwallet_id=%s' % subwallet[u'id']).get(u'consumes', [])
+        logger.info(res)
+        self.result(res, headers=[u'id', u'uuid', u'name', u'amount', u'evaluation_date', u'active', u'date.creation'],
+                    maxsize=40)
 
 
 class AccountController(AuthorityControllerChild):
@@ -266,12 +329,8 @@ class AccountController(AuthorityControllerChild):
         uri = u'%s/accounts' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        self.result(res, key=u'accounts',
-                        headers=[u'id', u'uuid', u'name', 
-                            u'division_id', u'contact', u'email',
-                            u'email_support', u'email_support_link',
-                            u'active', u'date.creation'], 
-                        maxsize=40)
+        self.result(res, key=u'accounts', headers=[u'id', u'uuid', u'name', u'division_id', u'contact', u'email',
+                    u'email_support', u'email_support_link', u'active', u'date.creation'], maxsize=40)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
@@ -294,13 +353,11 @@ class AccountController(AuthorityControllerChild):
         logger.info(u'Get account perms: %s' % truncate(res))
         self.result(res, key=u'perms', headers=self.perm_headers)
   
-    @expose(aliases=[u'add <name> <division_id> [desc=..] '\
-                     u'[note=..] [contact=..] [email=..]'\
-                     u'[email_support=..] [email_support_link=..]'],
-            aliases_only=True)
+    @expose(aliases=[u'add <name> <division_id> [desc=..] [note=..] [contact=..] [email=..] [email_support=..] '
+                     u'[email_support_link=..]'], aliases_only=True)
     def add(self):
         """Add account <name> <division_id>
-            - field: can be desc, contact, email, postaladdress 
+    - field: can be desc, contact, email, postaladdress
         """
         name = self.get_arg(name=u'name')
         division_id = self.get_arg(name=u'division_id')
@@ -333,7 +390,7 @@ class AccountController(AuthorityControllerChild):
             - field: can be name, desc, email, contact, active, note, email_support, email_support_link
         """
         oid = self.get_arg(name=u'id')
-        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        params = self.app.kvargs
         data = {
             u'account': params
         }
@@ -353,6 +410,33 @@ class AccountController(AuthorityControllerChild):
         logger.info(res)
         res = {u'msg': u'Delete account %s' % value}
         self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'wallet <id>'], aliases_only=True)
+    @check_error
+    def wallet(self):
+        """Get account subwallet
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'%s/subwallets' % self.baseuri
+        res = self._call(uri, u'GET', data=u'account_id=%s' % value).get(u'subwallets')[0]
+        logger.info(res)
+        self.result(res, headers=[u'id', u'uuid', u'name', u'capital_total', u'capital_used', u'active',
+                    u'date.creation'], maxsize=40)
+
+    @expose(aliases=[u'consumes <id>'], aliases_only=True)
+    @check_error
+    def consumes(self):
+        """List all consumes of the account
+        """
+        value = self.get_arg(name=u'id')
+        # get subwallet
+        uri = u'%s/subwallets' % self.baseuri
+        subwallet = self._call(uri, u'GET', data=u'wallet_id=%s' % value).get(u'subwallets')[0]
+        uri = u'%s/consumes' % self.baseuri
+        res = self._call(uri, u'GET', data=u'subwallet_id=%s' % subwallet[u'id']).get(u'consumes', [])
+        logger.info(res)
+        self.result(res, headers=[u'id', u'uuid', u'name', u'amount', u'evaluation_date', u'active', u'date.creation'],
+                    maxsize=40)
 
 
 class SubwalletController(AuthorityControllerChild):
@@ -375,11 +459,8 @@ class SubwalletController(AuthorityControllerChild):
         uri = u'%s/subwallets' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        self.result(res, key=u'subwallets',
-                        headers=[u'id', u'uuid', u'name', 
-                            u'wallet_id', u'account_id, 'u'amount', u'agreement_date',
-                            u'active', u'date.creation'], 
-                        maxsize=40)
+        self.result(res, key=u'subwallets', headers=[u'id', u'uuid', u'name', u'account_id', u'wallet_id',
+                    u'capital_total', u'capital_used', u'active', u'date.creation'], maxsize=40)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
@@ -402,11 +483,8 @@ class SubwalletController(AuthorityControllerChild):
         logger.info(u'Get subwallet perms: %s' % truncate(res))
         self.result(res, key=u'perms', headers=self.perm_headers)
   
-    @expose(aliases=[u'add <wallet_id> <account_id> [name=..]'\
-                    u'[desc=..] [active=..] [evaluation_date=..]'\
-                    u'[capital_total=..] [capital_used=..]'\
-                     ],
-            aliases_only=True)
+    @expose(aliases=[u'add <wallet_id> <account_id> [name=..] [desc=..] [active=..] [evaluation_date=..] '
+                     u'[capital_total=..] [capital_used=..]'], aliases_only=True)
     def add(self):
         """Add subwallet <wallet_id> <account_id>
             - field: can be name, desc, capital_total, capital_used, evaluation_date
@@ -444,7 +522,7 @@ class SubwalletController(AuthorityControllerChild):
             - field: can be name, desc, active, capital_total, capital_used, evaluation_date 
         """
         oid = self.get_arg(name=u'id')
-        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        params = self.app.kvargs
         data = {
             u'subwallet': params
         }
@@ -465,12 +543,26 @@ class SubwalletController(AuthorityControllerChild):
         res = {u'msg': u'Delete subwallet %s' % value}
         self.result(res, headers=[u'msg'])
 
+    @expose(aliases=[u'consumes <id> [field=value]'], aliases_only=True)
+    @check_error
+    def consumes(self):
+        """List all consumes by subwallets and by field:
+        """
+        value = self.get_arg(name=u'id')
+        self.app.pargs.extra_arguments.append(u'subwallet_id=%s' % value)
+        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = u'%s/consumes' % self.baseuri
+        res = self._call(uri, u'GET', data=data)
+        logger.info(res)
+        self.result(res, key=u'consumes', headers=[u'id', u'uuid', u'name', u'subwallet_id', u'amount',
+                    u'evaluation_date', u'active', u'date.creation'], maxsize=40)
+
 
 class WalletController(AuthorityControllerChild):
     class Meta:
         label = 'wallets'
         description = "Wallets management"
-        
+
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     def list(self):
         """List all Wallets by field: name, uuid, division_id,
@@ -485,11 +577,8 @@ class WalletController(AuthorityControllerChild):
         uri = u'%s/wallets' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        self.result(res, key=u'wallets',
-                        headers=[u'id', u'uuid', u'name', 
-                            u'division_id', u'capital_total', u'capital_used', u'evaluation_date'
-                            u'active', u'date.creation'], 
-                        maxsize=40)
+        self.result(res, key=u'wallets', headers=[u'id', u'uuid', u'name', u'division_id', u'capital_total',
+                    u'capital_used', u'evaluation_date' u'active', u'date.creation'], maxsize=40)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
@@ -512,11 +601,8 @@ class WalletController(AuthorityControllerChild):
         logger.info(u'Get wallet perms: %s' % truncate(res))
         self.result(res, key=u'perms', headers=self.perm_headers)
   
-    @expose(aliases=[u'add <division_id> [desc=..]'\
-                    u'[name=..] [active=..] [evaluation_date=..]'\
-                    u'[capital_total=..] [capital_used=..]'\
-                     ],
-            aliases_only=True)
+    @expose(aliases=[u'add <division_id> [desc=..] [name=..] [active=..] [evaluation_date=..] [capital_total=..] '
+                     u'[capital_used=..]'], aliases_only=True)
     def add(self):
         """Add wallet <division_id>
             - field: can be name, desc, active, capital_total, capital_used, evaluation_date
@@ -549,7 +635,8 @@ class WalletController(AuthorityControllerChild):
             - field: can be name, desc, active, capital_total, capital_used, evaluation_date 
         """
         oid = self.get_arg(name=u'id')
-        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        print self.app.kvargs
+        params = self.app.kvargs #self.app.kvargs
         data = {
             u'wallet': params
         }
@@ -570,6 +657,54 @@ class WalletController(AuthorityControllerChild):
         res = {u'msg': u'Delete wallet %s' % value}
         self.result(res, headers=[u'msg'])
 
+    @expose(aliases=[u'agreements <id> [field=value]'], aliases_only=True)
+    @check_error
+    def agreements(self):
+        """List all agreements of the wallet
+        """
+        value = self.get_arg(name=u'id')
+        self.app.pargs.extra_arguments.append(u'wallet_id=%s' % value)
+        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = u'%s/agreements' % self.baseuri
+        res = self._call(uri, u'GET', data=data)
+        logger.info(res)
+        self.result(res, key=u'agreements', headers=[u'id', u'uuid', u'name', u'amount', u'agreement_date', u'active',
+                    u'date.creation'], maxsize=40)
+
+    @expose(aliases=[u'subwallets <id> [field=value]'], aliases_only=True)
+    @check_error
+    def subwallets(self):
+        """List all subwallets by parent wallet
+        """
+        value = self.get_arg(name=u'id')
+        self.app.pargs.extra_arguments.append(u'wallet_id=%s' % value)
+        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = u'%s/subwallets' % self.baseuri
+        res = self._call(uri, u'GET', data=data)
+        logger.info(res)
+        self.result(res, key=u'subwallets', headers=[u'id', u'uuid', u'name', u'capital_total', u'capital_used',
+                    u'active', u'date.creation'], maxsize=40)
+
+    @expose(aliases=[u'consumes <id> [field=value]'], aliases_only=True)
+    @check_error
+    def consumes(self):
+        """List all consumes by wallet
+        """
+        value = self.get_arg(name=u'id')
+        # get subwallets
+        uri = u'%s/subwallets' % self.baseuri
+        subwallets = self._call(uri, u'GET', data=u'wallet_id=%s' % value).get(u'subwallets', [])
+        res = []
+        for subwallet in subwallets:
+            uri = u'%s/consumes' % self.baseuri
+            consumes = self._call(uri, u'GET', data=u'subwallet_id=%s' % subwallet[u'id']).get(u'consumes', [])
+            for consume in consumes:
+                consume[u'account_id'] = subwallet[u'account_id']
+            res.extend(consumes)
+        logger.info(res)
+        self.result(res, headers=[u'id', u'uuid', u'name', u'account_id', u'amount', u'evaluation_date', u'active',
+                    u'date.creation'], maxsize=40)
+
 
 class AgreementController(AuthorityControllerChild):
     class Meta:
@@ -589,11 +724,8 @@ class AgreementController(AuthorityControllerChild):
         uri = u'%s/agreements' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        self.result(res, key=u'agreements',
-                        headers=[u'id', u'uuid', u'name', 
-                            u'wallet_id', u'amount', u'agreement_date',
-                            u'active', u'date.creation'], 
-                        maxsize=40)
+        self.result(res, key=u'agreements', headers=[u'id', u'uuid', u'name', u'wallet_id', u'amount',
+                    u'agreement_date', u'active', u'date.creation'], maxsize=40)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
@@ -652,7 +784,7 @@ class AgreementController(AuthorityControllerChild):
             - field: can be name, desc, amount, agreement_date, active 
         """
         oid = self.get_arg(name=u'id')
-        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        params = self.app.kvargs
         data = {
             u'agreement': params
         }
@@ -678,6 +810,21 @@ class ConsumeController(AuthorityControllerChild):
     class Meta:
         label = 'consumes'
         description = "Consumes management"
+
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    def list(self):
+        """List all agreements by field: name, uuid, subwallet_id,
+        active,
+        filter_expired,filter_creation_date_start,filter_creation_date_stop,
+        filter_modification_date_start, filter_modification_date_stop,
+        filter_expiry_date_start,filter_expiry_date_stop
+        """
+        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = u'%s/consumes' % self.baseuri
+        res = self._call(uri, u'GET', data=data)
+        logger.info(res)
+        self.result(res, key=u'consumes', headers=[u'id', u'uuid', u'name', u'account_id', u'subwallet_id', u'amount',
+                    u'evaluation_date', u'active', u'date.creation'], maxsize=40)
 
 
 authority_controller_handlers = [
