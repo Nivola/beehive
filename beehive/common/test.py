@@ -151,7 +151,7 @@ class BeehiveTestCase(unittest.TestCase):
             result = json.loads(config)
             f.close()
         except:
-            config = {}
+            result = {}
 
     def set_result(self, key, value):
         global result
