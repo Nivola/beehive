@@ -166,6 +166,7 @@ class PermTagEntity(Base):
         return u'<PermTagEntity(%s, %s, %s, %s)>' % (self.id, self.tag, 
                                                      self.entity, self.type)
 
+
 class PaginatedQueryGenerator(object):
     def __init__(self, entity, session, other_entities=[], custom_select=None, with_perm_tag=True):
         """Use this class to generate and configure query with pagination

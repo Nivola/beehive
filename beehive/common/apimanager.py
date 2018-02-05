@@ -1334,30 +1334,29 @@ class ApiController(object):
             entity = self.manager.get_entity(model_class, oid)
         except QueryError as ex:         
             self.logger.error(ex, exc_info=1)
-            entity_name =  entity_class.__name__
-            raise ApiManagerError(u'%s %s not found' % (entity_name, oid), 
-                                  code=404)            
+            entity_name = entity_class.__name__
+            raise ApiManagerError(u'%s %s not found' % (entity_name, oid), code=404)
+
+        if entity is None:
+            entity_name = entity_class.__name__
+            self.logger.warn(u'%s %s not found' % (entity_name, oid))
+            raise ApiManagerError(u'%s %s not found' % (entity_name, oid), code=404)
             
         # check authorization
         if authorize is True:
-            self.check_authorization(entity_class.objtype, 
-                                     entity_class.objdef, 
-                                     entity.objid, u'view')
+            self.check_authorization(entity_class.objtype, entity_class.objdef, entity.objid, u'view')
         
-        res = entity_class(self, oid=entity.id, objid=entity.objid, 
-                       name=entity.name, active=entity.active, 
-                       desc=entity.desc, model=entity)
+        res = entity_class(self, oid=entity.id, objid=entity.objid, name=entity.name, active=entity.active,
+                           desc=entity.desc, model=entity)
         
         # execute custom post_get
         res.post_get()        
         
-        self.logger.debug(u'Get %s : %s' % 
-                          (entity_class.__name__, res))
+        self.logger.debug(u'Get %s : %s' % (entity_class.__name__, res))
         return res
 
-    def get_paginated_entities(self, entity_class, get_entities, 
-            page=0, size=10, order=u'DESC', field=u'id', customize=None, authorize=True,
-            *args, **kvargs):
+    def get_paginated_entities(self, entity_class, get_entities, page=0, size=10, order=u'DESC', field=u'id',
+                               customize=None, authorize=True, *args, **kvargs):
         """Get entities with pagination
 
         :param entity_class: ApiObject Extension class
@@ -3294,7 +3293,8 @@ class PaginatedRequestQuerySchema(Schema):
                                          error=u'Field can be id, uuid, objid, name'),
                           description=u'enitities list order field. Ex. id, uuid, name',
                           default=u'id', example=u'id', missing=u'id', context=u'query')
-    
+
+
 class GetApiObjectRequestSchema(Schema):
     oid = fields.String(required=True, description=u'id, uuid or name', context=u'path')
 
