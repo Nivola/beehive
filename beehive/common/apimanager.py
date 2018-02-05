@@ -166,7 +166,7 @@ class ApiManager(object):
         #self.process_event_producer = None
         
         # api listener
-        self.api_timeout = 10.0
+        self.api_timeout = 600.0
         
         # api endpoints
         self.endpoints = {}

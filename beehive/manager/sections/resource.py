@@ -660,14 +660,46 @@ class ResourceEntityController(ResourceControllerChild):
     @expose(aliases=[u'jobs <id>'], aliases_only=True)
     @check_error
     def jobs(self, *args):
-        """List all resource types by field: type, subsystem
+        """List all resource jobs
+    - id : resource id
         """
         oid = self.get_arg(name=u'id')
         uri = u'%s/resources/%s/jobs' % (self.baseuri, oid)
         res = self._call(uri, u'GET', data=u'')
         logger.info(u'Get resource jobs: %s' % truncate(res))
         self.result(res, key=u'resourcejobs', headers=[u'job', u'name', u'timestamp'], maxsize=400)
-    
+
+    @expose(aliases=[u'job <id>'], aliases_only=True)
+    @check_error
+    def job(self):
+        """Get resource job
+    - id : job id
+        """
+        task_id = self.get_arg(name=u'id')
+        uri = u'/v1.0/worker/tasks/%s' % task_id
+        res = self._call(uri, u'GET').get(u'task_instance')
+        logger.info(res)
+        resp = []
+        resp.append(res)
+        resp.extend(res.get(u'children'))
+        self.result(resp, headers=[u'task_id', u'type', u'status', u'name', u'start_time', u'stop_time', u'elapsed'],
+                    maxsize=100)
+
+    @expose(aliases=[u'trace <id>'], aliases_only=True)
+    @check_error
+    def trace(self):
+        """Get resource job trace
+    - id : job id
+        """
+        task_id = self.get_arg(name=u'id')
+        uri = u'/v1.0/worker/tasks/%s' % task_id
+        res = self._call(uri, u'GET').get(u'task_instance').get(u'trace')
+        logger.info(res)
+        resp = []
+        for i in res:
+            resp.append({u'timestamp': i[0], u'task': i[1], u'task id': i[2], u'msg': truncate(i[3], 150)})
+        self.result(resp, headers=[u'timestamp', u'msg'], maxsize=200)
+
     @expose(aliases=[u'delete <id>'], aliases_only=True)
     @check_error
     def delete(self):
