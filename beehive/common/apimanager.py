@@ -166,7 +166,7 @@ class ApiManager(object):
         #self.process_event_producer = None
         
         # api listener
-        self.api_timeout = 10.0
+        self.api_timeout = 600.0
         
         # api endpoints
         self.endpoints = {}
@@ -1381,8 +1381,7 @@ class ApiController(object):
         
         if authorize is True:
             # verify permissions
-            objs = self.can(u'view', entity_class.objtype, 
-                            definition=entity_class.objdef)
+            objs = self.can(u'view', entity_class.objtype, definition=entity_class.objdef)
             objs = objs.get(entity_class.objdef.lower())
         
         # create permission tags
@@ -1392,21 +1391,18 @@ class ApiController(object):
         self.logger.debug(u'Permission tags to apply: %s' % tags)
                 
         try:
-            entities, total = get_entities(tags=tags, page=page, size=size, 
-                order=order, field=field, *args, **kvargs)
+            entities, total = get_entities(tags=tags, page=page, size=size, order=order, field=field, *args, **kvargs)
             
             for entity in entities:
-                obj = entity_class(self, oid=entity.id, objid=entity.objid, 
-                               name=entity.name, active=entity.active, 
-                               desc=entity.desc, model=entity)
+                obj = entity_class(self, oid=entity.id, objid=entity.objid, name=entity.name, active=entity.active,
+                                   desc=entity.desc, model=entity)
                 res.append(obj)
         
             # customize enitities
             if customize is not None:
                 customize(res, tags=tags, *args, **kvargs)
             
-            self.logger.debug(u'Get %s (total:%s): %s' % 
-                              (entity_class.__name__, total, truncate(res)))
+            self.logger.debug(u'Get %s (total:%s): %s' % (entity_class.__name__, total, truncate(res)))
             return res, total
         except QueryError as ex:         
             self.logger.warn(ex)
