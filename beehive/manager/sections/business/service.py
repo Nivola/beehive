@@ -547,19 +547,20 @@ class ServiceInstanceController(ServiceControllerChild):
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     def list(self):
-        """List all service instance by field: 
-        name, id, uuid, objid, version, status,
-        account_id, service_definition_id, bpmn_process_id, resource_uuid
-        filter_creation_date_stop, filter_modification_date_start,
-        filter_modification_date_stop, filter_expiry_date_start,
-        filter_expiry_date_stop
+        """List service instances.
+    - field: name, id, uuid, objid, version, status, account_id, service_definition_id, bpmn_process_id, resource_uuid
+             filter_creation_date_stop, filter_modification_date_start, filter_modification_date_stop,
+             filter_expiry_date_start, filter_expiry_date_stop
         """
-  
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
         uri = u'%s/serviceinsts' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        self.result(res, key=u'serviceinsts', headers=[u'id', u'uuid', u'name', u'version', u'status', u'flag_container', u'objclass', u'active', u'date.creation' ])
+        fields = [u'id', u'uuid', u'name', u'version', u'account_id', u'service_definition_id', u'status', u'active',
+                  u'resource_uuid', u'date.creation']
+        headers = [u'id', u'uuid', u'name', u'version', u'account', u'definition', u'status', u'active', u'resource',
+                   u'creation']
+        self.result(res, key=u'serviceinsts', headers=headers, fields=fields)
  
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
@@ -582,9 +583,8 @@ class ServiceInstanceController(ServiceControllerChild):
         logger.info(u'Get service instance perms: %s' % truncate(res))
         self.result(res, key=u'perms', headers=self.perm_headers)    
   
-    @expose(aliases=[u'add <service_definition_id> <account_id> <name>  '\
-                      u'[desc=..] [bpmn_process_id=..] [status=..] [version=..] [active=..] '],
-            aliases_only=True)    
+    @expose(aliases=[u'add <service_definition_id> <account_id> <name> [desc=..] [bpmn_process_id=..] [status=..] '
+                     u'[version=..] [active=..]'], aliases_only=True)
     def add(self):
         """Add service instance <service_definition_id> <account_id> <name> <version> 
          - service_definition_id: id or uuid of the service definition
@@ -594,7 +594,6 @@ class ServiceInstanceController(ServiceControllerChild):
         service_definition_id = self.get_arg(name=u'service_definition_id')
         account_id = self.get_arg(name=u'account_id')
         name = self.get_arg(name=u'name')
-
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         data = {
             u'serviceinst':{
@@ -617,8 +616,8 @@ class ServiceInstanceController(ServiceControllerChild):
     @expose(aliases=[u'update <oid> [field=value]'], aliases_only=True)
     def update(self):
         """Update service instance
-        - oid: id or uuid of the service instance
-        - field: can be name, version, desc, status, active, 
+    - oid: id or uuid of the service instance
+    - field: can be name, version, desc, status, active,
         bpmn_process_id, resource_uuid,  
         """
         oid = self.get_arg(name=u'oid')
@@ -640,36 +639,45 @@ class ServiceInstanceController(ServiceControllerChild):
         uri = u'%s/serviceinsts/%s' % (self.baseuri, value)
         res = self._call(uri, u'DELETE')
         logger.info(res)
-#         jobid = res.get(u'jobid', None)
-#         if jobid is not None:
-#             self.wait_job(jobid)
- 
         res = {u'msg': u'Delete service instance %s' % value}
         self.result(res, headers=[u'msg'])
  
 
-class ServiceInstanceConfigController(ServiceControllerChild):
+class ServiceInstanceConfigController(ApiController):
+    baseuri = u'/v1.0/nws'
+    subsystem = u'service'
+
     class Meta:
-        label = 'instances.configs'
+        label = 'instance.configs'
+        aliases = ['configs']
+        aliases_only = True
+        stacked_on = 'instances'
+        stacked_type = 'nested'
         description = "Service instance configuration management"
 
-    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @expose(aliases=[u'list <id> [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
-        """List all service configuration by field: 
-        name, id, uuid, objid, version, status, service_instance_id,
-        filter_creation_date_stop, filter_modification_date_start,
-        filter_modification_date_stop, filter_expiry_date_start,
-        filter_expiry_date_stop
+        """List service instance configurations.
+    - id : instance id
+    - field : name, id, uuid, objid, version, status, service_instance_id, filter_creation_date_stop,
+              filter_modification_date_start, filter_modification_date_stop, filter_expiry_date_start,
+              filter_expiry_date_stop
         """
-        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        value = self.get_arg(name=u'id')
+        self.app.kvargs[u'service_instance_id'] = value
+        data = urllib.urlencode(self.app.kvargs)
         uri = u'%s/instancecfgs' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        self.result(res, key=u'instancecfgs', headers=[u'id', u'uuid', u'name', u'version', u'service_instance_id',u'status',  u'active', u'date.creation', ])
+        fields = [u'id', u'uuid', u'name', u'service_instance_id', u'json_cfg', u'active', u'date.creation']
+        headers = [u'id', u'uuid', u'name', u'service', u'config', u'active', u'creation']
+        self.result(res, key=u'instancecfgs', headers=headers, fields=fields)
  
     @expose(aliases=[u'get <id>'], aliases_only=True)
     def get(self):
-        """Get  service instance configuration  by value id or uuid
+        """Get service instance configuration  by value id or uuid
+    - id : config id
         """
         value = self.get_arg(name=u'id')
         uri = u'%s/instancecfgs/%s' % (self.baseuri, value)
@@ -688,11 +696,9 @@ class ServiceInstanceConfigController(ServiceControllerChild):
         logger.info(u'Get service instance cfgs perms: %s' % truncate(res))
         self.result(res, key=u'perms', headers=self.perm_headers)    
  
-    @expose(aliases=[u'add <service_instance_id> <name> '\
-                      u'[desc=..] [json_cfg=..][active=..]'],
-            aliases_only=True)   
+    @expose(aliases=[u'add <service_instance_id> <name> [desc=..] [json_cfg=..][active=..]'], aliases_only=True)
     def add(self):
-        """Add service instance configuration <service_instance_id> <name> 
+        """[TODO] Add service instance configuration <service_instance_id> <name>
          - service_instance_id: id or uuid of the service instance
          - field: can be desc, json_cfg, active
         """
@@ -700,7 +706,7 @@ class ServiceInstanceConfigController(ServiceControllerChild):
         name = self.get_arg(name=u'name')
 
         params = self.get_query_params(*self.app.pargs.extra_arguments)
-        data ={
+        data = {
             u'instancecfg':{
                 u'name':name,
                 u'desc': params.get(u'desc', None),
@@ -717,7 +723,7 @@ class ServiceInstanceConfigController(ServiceControllerChild):
  
     @expose(aliases=[u'update <oid> [field=value]'], aliases_only=True)
     def update(self):
-        """Update service instance configuration
+        """[TODO] Update service instance configuration
         - oid: id or uuid of the service instance
         - field: can be name, version, desc, json_cfg, status, active
         """
@@ -734,126 +740,68 @@ class ServiceInstanceConfigController(ServiceControllerChild):
  
     @expose(aliases=[u'delete <id>'], aliases_only=True)
     def delete(self):
-        """Delete service instance configuration
+        """[TODO] Delete service instance configuration
         """
         value = self.get_arg(name=u'id')
         uri = u'%s/instancecfgs/%s' % (self.baseuri, value)
         res = self._call(uri, u'DELETE')
         logger.info(res)
-#         jobid = res.get(u'jobid', None)
-#         if jobid is not None:
-#             self.wait_job(jobid)
- 
         res = {u'msg': u'Delete service instancecfgs cfgs %s' % value}
         self.result(res, headers=[u'msg'])
 
-class ServiceLinkInstanceController(ServiceControllerChild):
+
+class ServiceLinkInstanceController(ApiController):
+    baseuri = u'/v1.0/nws'
+    subsystem = u'service'
+
     class Meta:
-        label = 'instances.links'
-        description = "Service instance link management"
+        label = 'instance.links'
+        aliases = ['links']
+        aliases_only = True
+        stacked_on = 'instances'
+        stacked_type = 'nested'
+        description = "Service instance links management"
 
-    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @expose(aliases=[u'list <id>'], aliases_only=True)
+    @check_error
     def list(self):
-        """List all service instance link by field: 
-        name, id, uuid, objid, version, status, 
-        attributes, start_service_id, end_service_id, priority
-        filter_creation_date_stop, filter_modification_date_start,
-        filter_modification_date_stop, filter_expiry_date_start,
-        filter_expiry_date_stop
-        """
-        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        uri = u'%s/serviceinstlinks' % self.baseuri
-        res = self._call(uri, u'GET', data=data)
-        logger.info(res)
-        self.result(res, key=u'instancelinks', headers=[u'id', u'uuid', u'name', u'start_service_id', u'end_service_id', u'priority', u'version',u'status',  u'active', u'date.creation', ])
- 
-    @expose(aliases=[u'get <id>'], aliases_only=True)
-    def get(self):
-        """Get service instance link by value id or uuid
+        """List service instance links.
+    - id : instance id
         """
         value = self.get_arg(name=u'id')
-        uri = u'%s/serviceinstlinks/%s' % (self.baseuri, value)
-        res = self._call(uri, u'GET')
+        uri = u'%s/serviceinsts/%s/links' % (self.baseuri, value)
+        res = self._call(uri, u'GET', data=u'')
         logger.info(res)
-        self.result(res, key=u'instancelink', details=True)
-     
-    @expose(aliases=[u'perms <id>'], aliases_only=True)
-    def perms(self):
-        """Get service instance link permissions by value id or uuid
-        """
-        value = self.get_arg(name=u'id')
-        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        uri = u'%s/serviceinstlinks/%s/perms' % (self.baseuri, value)
-        res = self._call(uri, u'GET', data=data)
-        logger.info(u'Get service instance link perms: %s' % truncate(res))
-        self.result(res, key=u'perms', headers=self.perm_headers)    
- 
-    @expose(aliases=[u'add <start_service_id> <end_service_id> '\
-                      u' [name=..] [desc=..] [priority=..] [attributes=..] '],
-            aliases_only=True)   
-    def add(self):
-        """Add service instance link <start_service_id> <end_service_id>
-         - start_service_id: id or uuid of the service instance 
-         - end_service_id: id or uuid of the service instance 
-         - field: can be name, desc, priority, attributes
-        """
-        start_service_id = self.get_arg(name=u'start_service_id')
-        end_service_id = self.get_arg(name=u'end_service_id')
+        fields = [u'id', u'uuid', u'name', u'end_service_id', u'priority', u'version', u'active', u'date.creation']
+        headers = [u'id', u'uuid', u'name', u'child_service', u'priority', u'version', u'active', u'creation']
+        self.result(res, key=u'service_links', headers=headers, fields=fields)
 
-        params = self.get_query_params(*self.app.pargs.extra_arguments)
-        data ={
-            u'instancelink':{
-                u'name':params.get(u'name', u''), 
-                u'desc': params.get(u'desc', u''),
-                u'start_service_id' : start_service_id,
-                u'end_service_id' : end_service_id,
-                u'priority':params.get(u'priority', 0),
-                u'attributes':params.get(u'attributes', u''),
-            }
-        }    
-        uri = u'%s/serviceinstlinks' % (self.baseuri)
-        res = self._call(uri, u'POST', data=data)
-        logger.info(u'Add service instance link: %s' % truncate(res))
-        res = {u'msg': u'Add service instance link %s' % res}
-        self.result(res, headers=[u'msg'])
- 
-    @expose(aliases=[u'update <oid> [field=value]'], aliases_only=True)
+    @expose(aliases=[u'update <id> <end_service_id> [field=value]'], aliases_only=True)
+    @check_error
     def update(self):
         """Update service instance link
-        - oid: id or uuid of the service instance link
-         - field: can be name, desc, priority, attributes, version, active
-        """
-        oid = self.get_arg(name=u'oid')
-        params = self.get_query_params(*self.app.pargs.extra_arguments)
-        data = {
-            u'instancelink': params
-        }
-        uri = u'%s/serviceinstlinks/%s' % (self.baseuri, oid)
-        self._call(uri, u'PUT', data=data)
-        logger.info(u'Update service instance link %s with data %s' % (oid, params))
-        res = {u'msg': u'Update service instance link %s with data %s' % (oid, params)}
-        self.result(res, headers=[u'msg'])
- 
-    @expose(aliases=[u'delete <id>'], aliases_only=True)
-    def delete(self):
-        """Delete service instance configuration
+    - id: id or uuid of the service instance
+    - end_service_id: id or uuid of the child service instance
+    - field: can be name, desc, priority,
         """
         value = self.get_arg(name=u'id')
-        uri = u'%s/serviceinstlinks/%s' % (self.baseuri, value)
-        res = self._call(uri, u'DELETE')
-        logger.info(res)
-#         jobid = res.get(u'jobid', None)
-#         if jobid is not None:
-#             self.wait_job(jobid)
- 
-        res = {u'msg': u'Delete service instance link %s' % value}
+        self.app.kvargs[u'end_service_id'] = self.get_arg(name=u'end_service_id')
+        data = {
+            u'serviceinst': self.app.kvargs
+        }
+        uri = u'%s/serviceinsts/%s/link' % (self.baseuri, value)
+        self._call(uri, u'PUT', data=data)
+        logger.info(u'Update service instance link %s with data %s' % (value, data))
+        res = {u'msg': u'Update service instance link %s with data %s' % (value, data)}
         self.result(res, headers=[u'msg'])
+
 
 # TODO cli commands to manage  ServiceInstanteCost   
 class ServiceInstanteCostController(ServiceControllerChild):
     class Meta:
         label = 'instances.instantecosts'
         description = "Service instance instante cost management"
+
 
 # TODO cli commands to manage  ServiceAggregateCost     
 class ServiceAggregateCostController(ServiceControllerChild):
