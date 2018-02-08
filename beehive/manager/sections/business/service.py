@@ -582,7 +582,17 @@ class ServiceInstanceController(ServiceControllerChild):
         res = self._call(uri, u'GET', data=data)
         logger.info(u'Get service instance perms: %s' % truncate(res))
         self.result(res, key=u'perms', headers=self.perm_headers)    
-  
+
+    @expose(aliases=[u'resource <id>'], aliases_only=True)
+    def resource(self):
+        """Get service instance linked resource
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'v1.0//serviceinsts/%s' % (self.baseuri, value)
+        res = self._call(uri, u'GET')
+        logger.info(res)
+        self.result(res, key=u'serviceinst', details=True)
+
     @expose(aliases=[u'add <service_definition_id> <account_id> <name> [desc=..] [bpmn_process_id=..] [status=..] '
                      u'[version=..] [active=..]'], aliases_only=True)
     def add(self):

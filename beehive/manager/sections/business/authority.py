@@ -4,6 +4,8 @@ Created on Nov 20, 2017
 @author: darkbk
 """
 import logging
+import urllib
+
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController, check_error
 from re import match
@@ -437,6 +439,25 @@ class AccountController(AuthorityControllerChild):
         logger.info(res)
         self.result(res, headers=[u'id', u'uuid', u'name', u'amount', u'evaluation_date', u'active', u'date.creation'],
                     maxsize=40)
+
+    @expose(aliases=[u'services <id> [field=value]'], aliases_only=True)
+    def services(self):
+        """List service instances.
+    - id : account id
+    - field: name, id, uuid, objid, version, status, service_definition_id, bpmn_process_id, resource_uuid
+             filter_creation_date_stop, filter_modification_date_start, filter_modification_date_stop,
+             filter_expiry_date_start, filter_expiry_date_stop
+        """
+        self.app.kvargs[u'account_id'] = self.get_arg(name=u'id')
+        data = urllib.urlencode(self.app.kvargs)
+        uri = u'%s/serviceinsts' % self.baseuri
+        res = self._call(uri, u'GET', data=data)
+        logger.info(res)
+        fields = [u'id', u'uuid', u'name', u'version', u'service_definition_id', u'status', u'active',
+                  u'resource_uuid', u'date.creation']
+        headers = [u'id', u'uuid', u'name', u'version', u'definition', u'status', u'active', u'resource',
+                   u'creation']
+        self.result(res, key=u'serviceinsts', headers=headers, fields=fields)
 
 
 class SubwalletController(AuthorityControllerChild):
