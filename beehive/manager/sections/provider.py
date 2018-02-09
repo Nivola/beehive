@@ -81,6 +81,9 @@ class ProviderControllerChild(ResourceEntityController):
         data = self.load_config(file_data)
         uri = self.uri + u'/' + oid
         res = self._call(uri, u'UPDATE', data=data)
+        jobid = res.get(u'jobid', None)
+        if jobid is not None:
+            self.wait_job(jobid)
         logger.info(u'Update %s: %s' % (self._meta.aliases[0], truncate(res)))
         res = {u'msg': u'Upd %s %s' % (self._meta.aliases[0], res[u'uuid'])}
         self.result(res, headers=[u'msg'])
@@ -91,6 +94,9 @@ class ProviderControllerChild(ResourceEntityController):
         oid = self.get_arg(name=u'id')
         uri = self.uri + u'/' + oid
         res = self._call(uri, u'DELETE')
+        jobid = res.get(u'jobid', None)
+        if jobid is not None:
+            self.wait_job(jobid)
         logger.info(u'Delete %s: %s' % (self._meta.aliases[0], oid))
         res = {u'msg': u'Del %s %s' % (self._meta.aliases[0], res[u'uuid'])}
         self.result(res, headers=[u'msg'])

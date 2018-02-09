@@ -11,25 +11,26 @@ from beecell.remote import BadRequestException,\
 oid = None
 
 tests = [
-u'test_add_catalog',
-u'test_add_catalog_twice',
-u'test_get_catalogs',
-u'test_get_catalogs_by_zone',
-u'test_get_catalog',
-u'test_get_catalog_perms',
-u'test_get_catalog_by_name',
-u'test_update_catalog',
-    
-u'test_add_endpoint',
-u'test_add_endpoint_twice',
-u'test_get_endpoints',
-u'test_filter_endpoints',
-u'test_get_endpoint',
-u'test_update_endpoint',
-u'test_delete_endpoint',
-    
-u'test_delete_catalog',
+    u'test_add_catalog',
+    u'test_add_catalog_twice',
+    u'test_get_catalogs',
+    u'test_get_catalogs_by_zone',
+    u'test_get_catalog',
+    u'test_get_catalog_perms',
+    u'test_get_catalog_by_name',
+    u'test_update_catalog',
+
+    u'test_add_endpoint',
+    u'test_add_endpoint_twice',
+    u'test_get_endpoints',
+    u'test_filter_endpoints',
+    u'test_get_endpoint',
+    u'test_update_endpoint',
+    u'test_delete_endpoint',
+
+    u'test_delete_catalog',
 ]
+
 
 class CatalogTestCase(BeehiveTestCase):
     def setUp(self):

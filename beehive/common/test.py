@@ -13,6 +13,8 @@ from beehive.common.log import ColorFormatter
 # os.environ['GEVENT_RESOLVER'] = 'ares'
 # os.environ['GEVENTARES_SERVERS'] = 'ares'
 # import beecell.server.gevent_ssl
+from beecell.simple import truncate
+
 gevent.monkey.patch_all()
 
 import logging
@@ -86,7 +88,7 @@ class BeehiveTestCase(unittest.TestCase):
         env = config.get(u'env')
         current_schema = config.get(u'schema')
         cfg = config.get(env)
-        self.test_config = cfg
+        self.test_config = config.get(u'configs', {})
         
         # endpoints
         self.endpoints = cfg.get(u'endpoints')
@@ -197,8 +199,7 @@ class BeehiveTestCase(unittest.TestCase):
         res = response.json()
         token = res[u'access_token']
         seckey = res[u'seckey']
-    
-    #@classmethod
+
     def validate_swagger_schema(self, endpoint):
         start = time.time()
         schema_uri = u'%s/apispec_1.json' % endpoint
@@ -232,9 +233,8 @@ class BeehiveTestCase(unittest.TestCase):
                 validate = True
         return validate
     
-    def call(self, subsystem, path, method, params=None, headers=None,
-             user=None, pwd=None, auth=None, data=None, query=None, runlog=True, timeout=10,
-             *args, **kvargs):
+    def call(self, subsystem, path, method, params=None, headers=None, user=None, pwd=None, auth=None, data=None,
+             query=None, runlog=True, timeout=10, *args, **kvargs):
         global token, seckey
         
         start = time.time()
@@ -261,15 +261,13 @@ class BeehiveTestCase(unittest.TestCase):
     
             if user is not None and auth == u'simplehttp':
                 cred = HTTPBasicAuth(user, pwd)
-                logger.debug(u'Make simple http authentication: %s' % 
-                             time.time()-start)
+                logger.debug(u'Make simple http authentication: %s' % time.time()-start)
             elif user is not None and auth == u'keyauth':
                 if token is None:
                     self.create_keyauth_token(user, pwd)
-                    logger.debug(u'Create keyauth token: %s - %s' % 
-                                 (token, time.time()-start))
+                    logger.debug(u'Create keyauth token: %s - %s' % (token, time.time()-start))
                 sign = self.auth_client.sign_request(seckey, uri)
-                headers.update({u'uid':token, u'sign':sign})
+                headers.update({u'uid': token, u'sign': sign})
             
             if runlog is True:
                 self.runlogger.info(u'request endpoint: %s' % endpoint)
@@ -283,9 +281,8 @@ class BeehiveTestCase(unittest.TestCase):
                 self.runlogger.info(u'request headers:  %s' % headers)  
             
             # execute request
-            response = requests.request(method, endpoint + uri, auth=cred, 
-                                   params=query, data=data, headers=headers,
-                                   timeout=timeout, verify=False)
+            response = requests.request(method, endpoint + uri, auth=cred, params=query, data=data, headers=headers,
+                                        timeout=timeout, verify=False)
             
             if runlog is True:
                 self.runlogger.info(u'response headers: %s' % response.headers)
@@ -361,20 +358,19 @@ class BeehiveTestCase(unittest.TestCase):
                     res = response.json()
                     logger.debug(self.pp.pformat(res))
                 elif resp_content_type.find(u'application/xml') >= 0:
-                    #res = xmltodict.parse(response.text, dict_constructor=dict)
+                    # res = xmltodict.parse(response.text, dict_constructor=dict)
                     res = response.text
                 elif resp_content_type.find(u'text/xml') >= 0:
-                    #res = xmltodict.parse(response.text, dict_constructor=dict)
+                    # res = xmltodict.parse(response.text, dict_constructor=dict)
                     res = response.text
                 else:
                     res = response.text
             
             if runlog is True:
-                self.runlogger.info(u'response data:    %s' % response.text)
+                self.runlogger.info(u'response data:    %s' % truncate(response.text))
             
             # validate with swagger schema
-            validate = self.validate_response(resp_content_type, schema, 
-                path, method, response, runlog)
+            validate = self.validate_response(resp_content_type, schema, path, method, response, runlog)
         except:
             logger.error(u'', exc_info=1)
             if runlog is True:

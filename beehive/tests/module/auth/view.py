@@ -11,67 +11,68 @@ from beecell.remote import BadRequestException, UnauthorizedException,\
 oid = None
 
 tests = [
-#     u'test_get_domains',
-#     u'test_get_tokens',
-#     u'test_get_token',
-#     u'test_delete_token',
+    u'test_get_domains',
+    u'test_get_tokens',
+    u'test_get_token',
+    u'test_delete_token',
     
-#     u'test_add_role',
-#     u'test_add_role_twice',
-#     u'test_get_roles',
-#     u'test_get_role',
-#     u'test_update_role',
-#     u'test_add_role_perm',
-#     u'test_get_perms_by_role',
-#     u'test_remove_role_perm',
-#     u'test_delete_role',
+    u'test_add_role',
+    u'test_add_role_twice',
+    u'test_get_roles',
+    u'test_get_role',
+    u'test_update_role',
+    u'test_add_role_perm',
+    u'test_get_perms_by_role',
+    u'test_remove_role_perm',
+    u'test_delete_role',
     
     u'test_add_user',
-#     u'test_add_user_twice',
-#     u'test_get_users',
-#     u'test_get_users_by_role',
-#     u'test_get_user',
-#     u'test_get_user_roles',
-#     u'test_add_user_attributes',
-#     u'test_get_user_attributes',    
-#     u'test_delete_user_attributes',
+    u'test_add_user_twice',
+    u'test_get_users',
+    u'test_get_users_by_role',
+    u'test_get_user',
+    u'test_get_user_roles',
+    u'test_add_user_attributes',
+    u'test_get_user_attributes',
+    u'test_delete_user_attributes',
     u'test_update_user',
-#     u'test_add_user_role',
-#     u'test_get_perms_by_user',
-#     u'test_remove_user_role',
+    u'test_add_user_role',
+    u'test_get_perms_by_user',
+    u'test_remove_user_role',
     u'test_delete_user',
     
-#     u'test_add_group',
-#     u'test_add_group_twice',
-#     u'test_get_groups',
-#     u'test_get_group',
-#     u'test_update_group',
-#     u'test_add_group_user',
-#     u'test_get_groups_by_user',    
-#     u'test_remove_group_user',
-#     u'test_add_group_role',
-#     u'test_get_groups_by_role',
-#     u'test_get_perms_by_group',
-#     u'test_remove_group_role',    
-#     u'test_delete_group',
+    u'test_add_group',
+    u'test_add_group_twice',
+    u'test_get_groups',
+    u'test_get_group',
+    u'test_update_group',
+    u'test_add_group_user',
+    u'test_get_groups_by_user',
+    u'test_remove_group_user',
+    u'test_add_group_role',
+    u'test_get_groups_by_role',
+    u'test_get_perms_by_group',
+    u'test_remove_group_role',
+    u'test_delete_group',
     
-#     u'test_get_actions',
-# 
-#     u'test_add_type',
-#     u'test_add_type_twice',
-#     u'test_get_types',
-#     u'test_delete_type',
-# 
-#     u'test_add_object',
-#     u'test_add_object_twice',
-#     u'test_get_objects',
-#     u'test_get_object',
-#     u'test_delete_object',
+    u'test_get_actions',
+
+    u'test_add_type',
+    u'test_add_type_twice',
+    u'test_get_types',
+    u'test_delete_type',
+
+    u'test_add_object',
+    u'test_add_object_twice',
+    u'test_get_objects',
+    u'test_get_object',
+    u'test_delete_object',
  
-#     u'test_get_perms',
-#     u'test_get_perms_by_type',
-#     u'test_get_perm',
+    u'test_get_perms',
+    u'test_get_perms_by_type',
+    u'test_get_perm',
 ]
+
 
 class AuthTestCase(BeehiveTestCase):
     def setUp(self):
@@ -514,8 +515,7 @@ class AuthTestCase(BeehiveTestCase):
     #
     def test_get_perms(self):
         global oid
-        res = self.call(u'auth', u'/v1.0/auth/objects/perms', u'get', 
-                  **self.users[u'admin'])
+        res = self.call(u'auth', u'/v1.0/auth/objects/perms', u'get', **self.users[u'admin'])
         oids = res[u'perms']
         if len(oids) > 0:
             oid = oids[0][u'oid']
@@ -532,5 +532,6 @@ class AuthTestCase(BeehiveTestCase):
                   params={u'oid':oid}, 
                   **self.users[u'admin'])    
 
+
 if __name__ == u'__main__':
-    runtest(AuthTestCase, tests)      
+    runtest(AuthTestCase, tests)

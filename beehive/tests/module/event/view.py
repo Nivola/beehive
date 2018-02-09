@@ -15,15 +15,15 @@ tests = [
     u'test_get_event_entities',
     
     u'test_get_events',
-#     u'test_get_events_by_type',
-#     u'test_get_events_by_objtype',
-#     u'test_get_events_by_objdef',
-#     u'test_get_events_by_objid',
-#     u'test_get_events_by_date',
-#     u'test_get_events_by_source',
-#     u'test_get_events_by_data',
-#     u'test_get_event_by_id',
-#     u'test_get_event_by_eventid'
+    # u'test_get_events_by_type',
+    # u'test_get_events_by_objtype',
+    # u'test_get_events_by_objdef',
+    # u'test_get_events_by_objid',
+    # u'test_get_events_by_date',
+    # u'test_get_events_by_source',
+    # u'test_get_events_by_data',
+    # u'test_get_event_by_id',
+    # u'test_get_event_by_eventid'
 ]
 
 

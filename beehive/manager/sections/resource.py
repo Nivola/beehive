@@ -557,10 +557,32 @@ class ResourceEntityController(ResourceControllerChild):
             u'resource': params
         }
         uri = u'%s/resources/%s' % (self.baseuri, oid)
-        self._call(uri, u'PUT', data=data)
+        res = self._call(uri, u'PUT', data=data)
+        jobid = res.get(u'jobid', None)
+        if jobid is not None:
+            self.wait_job(jobid)
         logger.info(u'Update resource %s with data %s' % (oid, params))
         res = {u'msg': u'Update resource %s with data %s' % (oid, params)}
-        self.result(res, headers=[u'msg'])        
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'reset <oid>'], aliases_only=True)
+    @check_error
+    def reset(self):
+        """Reset resource setting ext_id to None
+    - oid: id or uuid of the resource
+        """
+        oid = self.get_arg(name=u'oid')
+        data = {
+            u'resource': {u'ext_id': u''}
+        }
+        uri = u'%s/resources/%s' % (self.baseuri, oid)
+        res = self._call(uri, u'PUT', data=data)
+        jobid = res.get(u'jobid', None)
+        if jobid is not None:
+            self.wait_job(jobid)
+        logger.info(u'Reset resource %s' % (oid))
+        res = {u'msg': u'Reset resource %s' % (oid)}
+        self.result(res, headers=[u'msg'])
     
     @expose()
     @check_error
@@ -685,9 +707,9 @@ class ResourceEntityController(ResourceControllerChild):
         self.result(resp, headers=[u'task_id', u'type', u'status', u'name', u'start_time', u'stop_time', u'elapsed'],
                     maxsize=100)
 
-    @expose(aliases=[u'trace <id>'], aliases_only=True)
+    @expose(aliases=[u'jobtrace <id>'], aliases_only=True)
     @check_error
-    def trace(self):
+    def jobtrace(self):
         """Get resource job trace
     - id : job id
         """
@@ -712,7 +734,6 @@ class ResourceEntityController(ResourceControllerChild):
         jobid = res.get(u'jobid', None)
         if jobid is not None:
             self.wait_job(jobid)
-            
         res = {u'msg':u'Delete resource %s' % value}
         self.result(res, headers=[u'msg'])
         

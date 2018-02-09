@@ -44,6 +44,7 @@ class ServiceTypeController(ServiceControllerChild):
         description = "Service type management"
  
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List all service type by field: 
         name, id, uuid, objid, flag_container, version, status,
@@ -69,24 +70,8 @@ class ServiceTypeController(ServiceControllerChild):
         logger.info(res)
         self.result(res, key=u'servicetype', details=True)
 
-        if self.format == u'text':
-            # get cost params
-            uri = u'%s/servicecostparams' % self.baseuri
-            res = self._call(uri, u'GET', data=u'service_type_id=%s' % value).get(u'servicecostparams', [])
-            logger.info(res)
-            self.app.print_output(u'Cost params:')
-            self.result(res, headers=[u'id', u'uuid', u'name', u'param_definition', u'param_unit', u'active',
-                                      u'date.creation'])
-
-            # get process definition
-            uri = u'%s/serviceprocesses' % self.baseuri
-            res = self._call(uri, u'GET', data=u'service_type_id=%s' % value).get(u'serviceprocesses', [])
-            logger.info(res)
-            self.app.print_output(u'Process definition:')
-            self.result(res, headers=[u'id', u'uuid', u'name', u'method_key', u'process_key', u'active',
-                                      u'date.creation'])
-
     @expose(aliases=[u'perms <id>'], aliases_only=True)
+    @check_error
     def perms(self):
         """Get service type permissions by value id or uuid
         """
@@ -98,7 +83,8 @@ class ServiceTypeController(ServiceControllerChild):
         self.result(res, key=u'perms', headers=self.perm_headers)         
     
     @expose(aliases=[u'add <name> <version> [flag_container=..] [objclass=..] [active=..] [status=..]'],
-            aliases_only=True)      
+            aliases_only=True)
+    @check_error
     def add(self):
         """Add service type <name> <version>
          - field: can be desc, objclass, flag_container, status, active 
@@ -107,15 +93,14 @@ class ServiceTypeController(ServiceControllerChild):
         version = self.get_arg(name=u'version')
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         data ={
-            u'servicetype':{
-                u'name':name, 
+            u'servicetype': {
+                u'name': name,
                 u'version': version,
                 u'desc': params.get(u'desc', None),
                 u'objclass': params.get(u'objclass', u''),
                 u'flag_container': params.get(u'flag_container', None),
                 u'status': params.get(u'status', u'DRAFT'),
                 u'active': params.get(u'active', False),
-                 
             }
         }
         uri = u'%s/servicetypes' % (self.baseuri)
@@ -125,6 +110,7 @@ class ServiceTypeController(ServiceControllerChild):
         self.result(res, headers=[u'msg'])
  
     @expose(aliases=[u'update <oid> [field=value]'], aliases_only=True)
+    @check_error
     def update(self):
         """Update service type
         - oid: id or uuid of the service type
@@ -142,6 +128,7 @@ class ServiceTypeController(ServiceControllerChild):
         self.result(res, headers=[u'msg'])
  
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete servicetype
         """
@@ -164,6 +151,7 @@ class ServiceCostParamController(ApiController):
         description = "Service type cost management"
 
     @expose(aliases=[u'list <oid>'], aliases_only=True)
+    @check_error
     def list(self):
         """List all service type cost params
         """
@@ -186,6 +174,7 @@ class ServiceTypeProcessController(ApiController):
         description = "Service type process management"
 
     @expose(aliases=[u'list <oid>'], aliases_only=True)
+    @check_error
     def list(self):
         """List all service type process
         """
@@ -202,6 +191,7 @@ class ServiceDefinitionController(ServiceControllerChild):
         description = "Service definition management"
  
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List all service definitions by field: 
         name, id, uuid, objid, version, status,
@@ -227,24 +217,21 @@ class ServiceDefinitionController(ServiceControllerChild):
         logger.info(res)
         self.result(res, key=u'servicedef', details=True)
 
-        if self.format == u'text':
-            # get cost params
-            uri = u'%s/links' % uri
-            res = self._call(uri, u'GET').get(u'service_links', [])
-            logger.info(res)
-            self.app.print_output(u'Service Links:')
-            self.result(res, headers=[u'id', u'uuid', u'name', u'param_definition', u'param_unit', u'active',
-                                      u'date.creation'])
-
-            # get service configs
-            uri = u'%s/servicecfgs' % self.baseuri
-            res = self._call(uri, u'GET', data=u'service_definition_id=%s' % value).get(u'servicecfgs', [])
-            logger.info(res)
-            self.app.print_output(u'Service Configs:')
-            self.result(res, headers=[u'id', u'uuid', u'name', u'version', u'params_type', u'params', u'active',
-                                      u'date.creation'])
+    @expose(aliases=[u'links <id>'], aliases_only=True)
+    @check_error
+    def links(self):
+        """Get service definition links
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'%s/servicedefs/%s/links' % (self.baseuri, value)
+        res = self._call(uri, u'GET')
+        logger.info(res)
+        self.app.print_output(u'Service Links:')
+        headers = [u'id', u'uuid', u'name', u'param_definition', u'param_unit', u'active', u'date.creation']
+        self.result(res, key=u'service_links', headers=headers)
 
     @expose(aliases=[u'perms <id>'], aliases_only=True)
+    @check_error
     def perms(self):
         """Get service definition permissions by value id or uuid
         """
@@ -256,6 +243,7 @@ class ServiceDefinitionController(ServiceControllerChild):
         self.result(res, key=u'perms', headers=self.perm_headers)    
   
     @expose(aliases=[u'add <service_type_id> <name> [field=value]'], aliases_only=True)
+    @check_error
     def add(self):
         """Add service definition
     - service_type_id: id or uuid of the service type
@@ -285,6 +273,7 @@ class ServiceDefinitionController(ServiceControllerChild):
         self.result(res, headers=[u'msg'])
  
     @expose(aliases=[u'update <oid> [field=value]'], aliases_only=True)
+    @check_error
     def update(self):
         """Update service definition
         - oid: id or uuid of the servicedef
@@ -302,6 +291,7 @@ class ServiceDefinitionController(ServiceControllerChild):
         self.result(res, headers=[u'msg'])
  
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete service definition
         """
@@ -349,10 +339,11 @@ class ServiceDefinitionConfigController(ApiController):
         uri = u'%s/servicecfgs' % self.baseuri
         res = self._call(uri, u'GET', data=u'service_definition_id=%s' % value)
         logger.info(res)
-        self.result(res, key=u'servicecfgs', headers=[u'id', u'uuid', u'name', u'version', u'params_type', u'params',
-                                                      u'active', u'date.creation'])
+        headers = [u'id', u'uuid', u'name', u'version', u'params_type', u'params', u'active', u'date.creation']
+        self.result(res, key=u'servicecfgs', headers=headers)
  
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get  service definition configuration  by value id or uuid
         """
@@ -361,21 +352,10 @@ class ServiceDefinitionConfigController(ApiController):
         res = self._call(uri, u'GET')
         logger.info(res)
         self.result(res, key=u'servicecfg', details=True)
-     
-    @expose(aliases=[u'perms <id>'], aliases_only=True)
-    def perms(self):
-        """Get service definition configuration permissions by value id or uuid
-        """
-        value = self.get_arg(name=u'id')
-        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        uri = u'%s/servicecfgs/%s/perms' % (self.baseuri, value)
-        res = self._call(uri, u'GET', data=data)
-        logger.info(u'Get service definition cfgs perms: %s' % truncate(res))
-        self.result(res, key=u'perms', headers=self.perm_headers)    
- 
+
     @expose(aliases=[u'add <service_definition_id> <name> [desc=..] [params=..] [params_type=..] [status=..] '
-                     u'[version=..] [active=..]'],
-            aliases_only=True)   
+                     u'[version=..] [active=..]'], aliases_only=True)
+    @check_error
     def add(self):
         """Add service definition configuration <service_definition_id> <name> <params>
          - service_definition_id: id or uuid of the service definition
@@ -405,6 +385,7 @@ class ServiceDefinitionConfigController(ApiController):
         self.result(res, headers=[u'msg'])
  
     @expose(aliases=[u'update <oid> [field=value]'], aliases_only=True)
+    @check_error
     def update(self):
         """Update service definition configuration
         - oid: id or uuid of the servicedef
@@ -422,6 +403,7 @@ class ServiceDefinitionConfigController(ApiController):
         self.result(res, headers=[u'msg'])
  
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete service definition configuration
         """
@@ -441,6 +423,7 @@ class ServiceCatalogController(ServiceControllerChild):
         description = "Service catalog management"
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List all service catalog by field:
         name, id, uuid, objid, version, status,
@@ -455,6 +438,7 @@ class ServiceCatalogController(ServiceControllerChild):
         self.result(res, key=u'catalogs', headers=[u'id', u'uuid', u'name', u'version', u'active', u'date.creation'])
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get service catalog by value id or uuid
         """
@@ -465,6 +449,7 @@ class ServiceCatalogController(ServiceControllerChild):
         self.result(res, key=u'catalog', details=True)
 
     @expose(aliases=[u'perms <id>'], aliases_only=True)
+    @check_error
     def perms(self):
         """Get service catalog permissions by value id or uuid
         """
@@ -476,6 +461,7 @@ class ServiceCatalogController(ServiceControllerChild):
         self.result(res, key=u'perms', headers=self.perm_headers)
 
     @expose(aliases=[u'add <name>  [desc=..]'], aliases_only=True)
+    @check_error
     def add(self):
         """Add service catalogo <name>
          - service_type_id: id or uuid of the service type
@@ -496,6 +482,7 @@ class ServiceCatalogController(ServiceControllerChild):
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'update <oid> [field=value]'], aliases_only=True)
+    @check_error
     def update(self):
         """Update service catalog
         - oid: id or uuid of the catalog
@@ -513,6 +500,7 @@ class ServiceCatalogController(ServiceControllerChild):
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete service catalog
         """
@@ -546,6 +534,7 @@ class ServiceInstanceController(ServiceControllerChild):
         description = "Service instance management"
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List service instances.
     - field: name, id, uuid, objid, version, status, account_id, service_definition_id, bpmn_process_id, resource_uuid
@@ -563,6 +552,7 @@ class ServiceInstanceController(ServiceControllerChild):
         self.result(res, key=u'serviceinsts', headers=headers, fields=fields)
  
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get service instance by value id or uuid
         """
@@ -573,6 +563,7 @@ class ServiceInstanceController(ServiceControllerChild):
         self.result(res, key=u'serviceinst', details=True)
  
     @expose(aliases=[u'perms <id>'], aliases_only=True)
+    @check_error
     def perms(self):
         """Get service instance permissions by value id or uuid
         """
@@ -584,6 +575,7 @@ class ServiceInstanceController(ServiceControllerChild):
         self.result(res, key=u'perms', headers=self.perm_headers)    
 
     @expose(aliases=[u'resource <id>'], aliases_only=True)
+    @check_error
     def resource(self):
         """Get service instance linked resource
         """
@@ -595,6 +587,7 @@ class ServiceInstanceController(ServiceControllerChild):
 
     @expose(aliases=[u'add <service_definition_id> <account_id> <name> [desc=..] [bpmn_process_id=..] [status=..] '
                      u'[version=..] [active=..]'], aliases_only=True)
+    @check_error
     def add(self):
         """Add service instance <service_definition_id> <account_id> <name> <version> 
          - service_definition_id: id or uuid of the service definition
@@ -624,6 +617,7 @@ class ServiceInstanceController(ServiceControllerChild):
         self.result(res, headers=[u'msg'])
  
     @expose(aliases=[u'update <oid> [field=value]'], aliases_only=True)
+    @check_error
     def update(self):
         """Update service instance
     - oid: id or uuid of the service instance
@@ -642,6 +636,7 @@ class ServiceInstanceController(ServiceControllerChild):
         self.result(res, headers=[u'msg'])
  
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete service instance
         """
@@ -685,6 +680,7 @@ class ServiceInstanceConfigController(ApiController):
         self.result(res, key=u'instancecfgs', headers=headers, fields=fields)
  
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get service instance configuration  by value id or uuid
     - id : config id
@@ -696,6 +692,7 @@ class ServiceInstanceConfigController(ApiController):
         self.result(res, key=u'instancecfg', details=True)
      
     @expose(aliases=[u'perms <id>'], aliases_only=True)
+    @check_error
     def perms(self):
         """Get service instance configuration permissions by value id or uuid
         """
@@ -707,6 +704,7 @@ class ServiceInstanceConfigController(ApiController):
         self.result(res, key=u'perms', headers=self.perm_headers)    
  
     @expose(aliases=[u'add <service_instance_id> <name> [desc=..] [json_cfg=..][active=..]'], aliases_only=True)
+    @check_error
     def add(self):
         """[TODO] Add service instance configuration <service_instance_id> <name>
          - service_instance_id: id or uuid of the service instance
@@ -732,6 +730,7 @@ class ServiceInstanceConfigController(ApiController):
         self.result(res, headers=[u'msg'])
  
     @expose(aliases=[u'update <oid> [field=value]'], aliases_only=True)
+    @check_error
     def update(self):
         """[TODO] Update service instance configuration
         - oid: id or uuid of the service instance
@@ -749,6 +748,7 @@ class ServiceInstanceConfigController(ApiController):
         self.result(res, headers=[u'msg'])
  
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         """[TODO] Delete service instance configuration
         """
@@ -806,6 +806,33 @@ class ServiceLinkInstanceController(ApiController):
         self.result(res, headers=[u'msg'])
 
 
+class ServiceInstanceConsumeController(ApiController):
+    baseuri = u'/v1.0/nws'
+    subsystem = u'service'
+
+    class Meta:
+        label = 'instance.consumes'
+        aliases = ['consumes']
+        aliases_only = True
+        stacked_on = 'instances'
+        stacked_type = 'nested'
+        description = "Service instance consume management"
+
+    @expose(aliases=[u'list <id>'], aliases_only=True)
+    @check_error
+    def list(self):
+        """List service instance links.
+    - id : instance id
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'%s/serviceinsts/%s/consumes' % (self.baseuri, value)
+        res = self._call(uri, u'GET', data=u'')
+        logger.info(res)
+        fields = [u'id', u'uuid', u'name', u'end_service_id', u'priority', u'version', u'active', u'date.creation']
+        headers = [u'id', u'uuid', u'name', u'child_service', u'priority', u'version', u'active', u'creation']
+        self.result(res, key=u'service_links', headers=headers, fields=fields)
+
+
 # TODO cli commands to manage  ServiceInstanteCost   
 class ServiceInstanteCostController(ServiceControllerChild):
     class Meta:
@@ -832,8 +859,8 @@ service_controller_handlers = [
     ServiceInstanceController,
     ServiceInstanceConfigController,
     ServiceLinkInstanceController,
+    ServiceInstanceConsumeController,
     # ServiceInstanteCostController,
     # ServiceAggregateCostController,
     ServiceCatalogController,
-    
 ]        

@@ -89,6 +89,7 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
         self.result(res, headers=self.headers)
 
     @expose()
+    @check_error
     def compute_api(self):
         """Get compute api versions.
         """
@@ -97,6 +98,7 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
         self.result(res, headers=[u'id', u'version', u'min_version', u'status', u'updated'])
     
     @expose()
+    @check_error
     def compute_services(self):
         """Get compute service.
         """
@@ -105,6 +107,7 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
         self.result(res, headers=[u'id', u'host', u'zone', u'binary', u'state', u'status', u'updated_at'], maxsize=200)
 
     @expose()
+    @check_error
     def compute_zones(self):
         """Get compute availability zones.
         """
@@ -118,6 +121,7 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
         self.result(resp, headers=[u'name', u'hosts', u'state'], maxsize=200)    
     
     @expose()
+    @check_error
     def compute_hosts(self):
         """Get physical hosts.
         """
@@ -126,6 +130,7 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
         self.result(res, headers=[u'service', u'host_name', u'zone'], maxsize=200)
     
     @expose()
+    @check_error
     def compute_host_aggregates(self):
         """Get compute host aggregates.
         """
@@ -135,6 +140,7 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
         self.result(res, headers=[u'service', u'host_name', u'zone'], maxsize=200)
     
     @expose()
+    @check_error
     def compute_server_groups(self):
         """Get compute server groups.
         """
@@ -144,6 +150,7 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
         self.result(res, headers=[u'service', u'host_name', u'zone'], maxsize=200)
 
     @expose()
+    @check_error
     def compute_hypervisors(self):
         """Displays extra statistical information from the machine that hosts 
     the hypervisor through the API for the hypervisor (XenAPI or KVM/libvirt).
@@ -155,6 +162,7 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
                                   u'free_disk_gb', u'current_workload',u'running_vms'], maxsize=200)
     
     @expose()
+    @check_error
     def compute_hypervisors_statistics(self):
         """Get compute hypervisors statistics.
         """
@@ -165,6 +173,7 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
                                   "memory_mb_used"], maxsize=200)
 
     @expose()
+    @check_error
     def compute_agents(self):
         """Get compute agents.
         Use guest agents to access files on the disk, configure networking, and 
@@ -178,6 +187,7 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
         self.result(res, headers=[], maxsize=200)
     
     @expose()
+    @check_error
     def storage_services(self):
         """Get storage service.
         """
@@ -186,6 +196,7 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
         self.result(res, headers=[u'id', u'host', u'zone', u'binary', u'state', u'status', u'updated_at'], maxsize=200)
     
     @expose()
+    @check_error
     def network_agents(self):
         """Get network agents.
         """
@@ -195,6 +206,7 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
                                   u'started_at'], maxsize=200)
     
     @expose()
+    @check_error
     def network_service_providers(self):
         """Get network service providers.
         """
@@ -203,6 +215,7 @@ class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):
         self.result(res, headers=[u'service_type', u'name', u'default'], maxsize=200)
     
     @expose()
+    @check_error
     def orchestrator_services(self):
         """Get heat services.
         """
@@ -224,6 +237,7 @@ class OpenstackPlatformKeystoneController(OpenstackPlatformControllerChild):
         OpenstackPlatformControllerChild._ext_parse_args(self)
         
     @expose()
+    @check_error
     def users(self):
         # params = self.get_query_params(*self.app.pargs.extra_arguments)
         res = self.client.identity.user.list(detail=True)
@@ -231,6 +245,7 @@ class OpenstackPlatformKeystoneController(OpenstackPlatformControllerChild):
         self.result(res, headers=self.headers)
         
     @expose()
+    @check_error
     def roles(self):
         # params = self.get_query_params(*self.app.pargs.extra_arguments)
         res = self.client.identity.role.list(detail=False)
@@ -238,6 +253,7 @@ class OpenstackPlatformKeystoneController(OpenstackPlatformControllerChild):
         self.result(res, headers=[u'id', u'name'])
         
     @expose()
+    @check_error
     def regions(self):
         # params = self.get_query_params(*self.app.pargs.extra_arguments)
         res = self.client.identity.get_regions()
@@ -260,6 +276,7 @@ class OpenstackPlatformProjectController(OpenstackPlatformControllerChild):
         self.entity_class = self.client.project
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         objs = self.entity_class.list(**params)
@@ -270,6 +287,7 @@ class OpenstackPlatformProjectController(OpenstackPlatformControllerChild):
         self.result(res, headers=self.headers)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         oid = self.get_arg(name=u'id')
         obj = self.entity_class.get(oid)
@@ -278,6 +296,7 @@ class OpenstackPlatformProjectController(OpenstackPlatformControllerChild):
         self.result(res, details=True)
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         oid = self.get_arg(name=u'id')
         res = self.entity_class.delete(oid)
@@ -302,6 +321,7 @@ class OpenstackPlatformNetworkController(OpenstackPlatformControllerChild):
         self.entity_class = self.client.network
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         objs = self.entity_class.list(**params)
@@ -312,6 +332,7 @@ class OpenstackPlatformNetworkController(OpenstackPlatformControllerChild):
         self.result(res, headers=self.headers)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         oid = self.get_arg(name=u'id')
         obj = self.entity_class.get(oid)
@@ -320,6 +341,7 @@ class OpenstackPlatformNetworkController(OpenstackPlatformControllerChild):
         self.result(res, details=True)
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         oid = self.get_arg(name=u'id')
         res = self.entity_class.delete(oid)
@@ -343,6 +365,7 @@ class OpenstackPlatformSubnetController(OpenstackPlatformControllerChild):
         self.entity_class = self.client.network.subnet
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         objs = self.entity_class.list(**params)
@@ -353,6 +376,7 @@ class OpenstackPlatformSubnetController(OpenstackPlatformControllerChild):
         self.result(res, headers=self.headers)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         oid = self.get_arg(name=u'id')
         obj = self.entity_class.get(oid)
@@ -361,6 +385,7 @@ class OpenstackPlatformSubnetController(OpenstackPlatformControllerChild):
         self.result(res, details=True)
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         oid = self.get_arg(name=u'id')
         res = self.entity_class.delete(oid)
@@ -385,6 +410,7 @@ class OpenstackPlatformPortController(OpenstackPlatformControllerChild):
         self.entity_class = self.client.network.port
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         objs = self.entity_class.list(**params)
@@ -395,6 +421,7 @@ class OpenstackPlatformPortController(OpenstackPlatformControllerChild):
         self.result(res, headers=self.headers)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         oid = self.get_arg(name=u'id')
         obj = self.entity_class.get(oid)
@@ -403,6 +430,7 @@ class OpenstackPlatformPortController(OpenstackPlatformControllerChild):
         self.result(res, details=True)
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         oid = self.get_arg(name=u'id')
         res = self.entity_class.delete(oid)
@@ -427,6 +455,7 @@ class OpenstackPlatformFloatingIpController(OpenstackPlatformControllerChild):
         self.entity_class = self.client.network.ip
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         objs = self.entity_class.list(**params)
@@ -437,6 +466,7 @@ class OpenstackPlatformFloatingIpController(OpenstackPlatformControllerChild):
         self.result(res, headers=self.headers)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         oid = self.get_arg(name=u'id')
         obj = self.entity_class.get(oid)
@@ -445,6 +475,7 @@ class OpenstackPlatformFloatingIpController(OpenstackPlatformControllerChild):
         self.result(res, details=True)
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         oid = self.get_arg(name=u'id')
         res = self.entity_class.delete(oid)
@@ -468,6 +499,7 @@ class OpenstackPlatformRouterController(OpenstackPlatformControllerChild):
         self.entity_class = self.client.network.router
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         objs = self.entity_class.list(**params)
@@ -478,6 +510,7 @@ class OpenstackPlatformRouterController(OpenstackPlatformControllerChild):
         self.result(res, headers=self.headers)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         oid = self.get_arg(name=u'id')
         obj = self.entity_class.get(oid)
@@ -486,6 +519,7 @@ class OpenstackPlatformRouterController(OpenstackPlatformControllerChild):
         self.result(res, details=True)
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         oid = self.get_arg(name=u'id')
         res = self.entity_class.delete(oid)
@@ -509,6 +543,7 @@ class OpenstackPlatformSecurityGroupController(OpenstackPlatformControllerChild)
         self.entity_class = self.client.network.security_group
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         objs = self.entity_class.list(**params)
@@ -519,6 +554,7 @@ class OpenstackPlatformSecurityGroupController(OpenstackPlatformControllerChild)
         self.result(res, headers=self.headers)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         oid = self.get_arg(name=u'id')
         obj = self.entity_class.get(oid)
@@ -527,6 +563,7 @@ class OpenstackPlatformSecurityGroupController(OpenstackPlatformControllerChild)
         self.result(res, details=True)
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         oid = self.get_arg(name=u'id')
         res = self.entity_class.delete(oid)
@@ -559,6 +596,7 @@ class OpenstackPlatformImageController(OpenstackPlatformControllerChild):
         self.entity_class = self.client.image
         
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         objs = self.entity_class.list(detail=True, **params)
@@ -570,6 +608,7 @@ class OpenstackPlatformImageController(OpenstackPlatformControllerChild):
                                   u'OS-EXT-IMG-SIZE:size'])
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         oid = self.get_arg(name=u'id')
         obj = self.entity_class.get(oid)
@@ -578,6 +617,7 @@ class OpenstackPlatformImageController(OpenstackPlatformControllerChild):
         self.result(res, details=True)
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         oid = self.get_arg(name=u'id')
         res = self.entity_class.delete(oid)
@@ -599,6 +639,7 @@ class OpenstackPlatformFlavorController(OpenstackPlatformControllerChild):
         self.entity_class = self.client.flavor
         
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         objs = self.entity_class.list(detail=True, **params)
@@ -610,6 +651,7 @@ class OpenstackPlatformFlavorController(OpenstackPlatformControllerChild):
                                   u'rxtx_factor', u'disk', u'OS-FLV-EXT-DATA:ephemeral', u'OS-FLV-DISABLED:disabled'])
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         oid = self.get_arg(name=u'id')
         obj = self.entity_class.get(oid)
@@ -618,6 +660,7 @@ class OpenstackPlatformFlavorController(OpenstackPlatformControllerChild):
         self.result(res, details=True)
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         oid = self.get_arg(name=u'id')
         res = self.entity_class.delete(oid)
@@ -641,6 +684,7 @@ class OpenstackPlatformKeyPairController(OpenstackPlatformControllerChild):
         self.entity_class = self.client.keypair
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         objs = self.entity_class.list(**params)
@@ -651,6 +695,7 @@ class OpenstackPlatformKeyPairController(OpenstackPlatformControllerChild):
         self.result(res, headers=self.headers)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         oid = self.get_arg(name=u'id')
         obj = self.entity_class.get(oid)
@@ -659,6 +704,7 @@ class OpenstackPlatformKeyPairController(OpenstackPlatformControllerChild):
         self.result(res, details=True)
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         oid = self.get_arg(name=u'id')
         res = self.entity_class.delete(oid)
@@ -682,6 +728,7 @@ class OpenstackPlatformServerController(OpenstackPlatformControllerChild):
         self.entity_class = self.client.server
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         objs = self.entity_class.list(detail=True, **params)
@@ -691,6 +738,7 @@ class OpenstackPlatformServerController(OpenstackPlatformControllerChild):
         self.result(res, headers=self.headers, maxsize=40)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         oid = self.get_arg(name=u'id')
         obj = self.entity_class.get(oid)
@@ -699,6 +747,7 @@ class OpenstackPlatformServerController(OpenstackPlatformControllerChild):
         self.result(res, details=True)
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         oid = self.get_arg(name=u'id')
         res = self.entity_class.delete(oid)
@@ -723,6 +772,7 @@ class OpenstackPlatformVolumeController(OpenstackPlatformControllerChild):
         self.entity_class = self.client.volume
         
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         objs = self.entity_class.list(detail=True, **params)
@@ -733,6 +783,7 @@ class OpenstackPlatformVolumeController(OpenstackPlatformControllerChild):
         self.result(res, headers=self.headers)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         oid = self.get_arg(name=u'id')
         obj = self.entity_class.get(oid)
@@ -741,6 +792,7 @@ class OpenstackPlatformVolumeController(OpenstackPlatformControllerChild):
         self.result(res, details=True)
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         oid = self.get_arg(name=u'id')
         res = self.entity_class.delete(oid)
@@ -786,6 +838,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
             print(u'.')
 
     @expose(aliases=[u'list [field=..]'], aliases_only=True)
+    @check_error
     def list(self):
         """List heat stacks
         """
@@ -798,6 +851,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         self.result(res, headers=self.headers)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get heat stack by id
         """        
@@ -816,6 +870,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
                     fields=[u'output_key', u'output_value', u'description', u'output_error'], maxsize=50)
 
     @expose(aliases=[u'template <id>'], aliases_only=True)
+    @check_error
     def template(self):
         """Get heat stack template by id
         """
@@ -827,6 +882,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         self.result(res, details=True, maxsize=800)
 
     @expose()
+    @check_error
     def template_versions(self):
         """Get available template versions
         """
@@ -835,6 +891,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         self.result(res, headers=[u'version', u'type', u'aliases'])
 
     @expose(aliases=[u'template-functions <template>'], aliases_only=True)
+    @check_error
     def template_functions(self):
         """Get available template functions
         """
@@ -844,6 +901,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         self.result(res, headers=[u'functions', u'description'], maxsize=200)
 
     @expose(aliases=[u'template-validate <template-uri>'], aliases_only=True)
+    @check_error
     def template_validate(self):
         """Get available template functions
         """
@@ -858,6 +916,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
             self.app.print_error(u'No response from uri found')
 
     @expose(aliases=[u'environment <id>'], aliases_only=True)
+    @check_error
     def environment(self):
         """Get heat stack environment by id
         """
@@ -869,6 +928,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         self.result(res, details=True, maxsize=800)
 
     @expose(aliases=[u'files <id>'], aliases_only=True)
+    @check_error
     def files(self):
         """Get heat stack files by id
         """
@@ -880,6 +940,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         self.result(res, details=True, maxsize=800)
 
     @expose(aliases=[u'outputs <id>'], aliases_only=True)
+    @check_error
     def outputs(self):
         """Get heat stack outputs by id
         """
@@ -891,6 +952,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         self.result(res, details=True, maxsize=800)
 
     @expose(aliases=[u'output <id> <key>'], aliases_only=True)
+    @check_error
     def output(self):
         """Get heat stack output by id and key
         """
@@ -903,6 +965,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         self.result(res, details=True, maxsize=800)
 
     @expose(aliases=[u'resources <id>'], aliases_only=True)
+    @check_error
     def resources(self):
         """Get heat stack resources by id
         """
@@ -916,6 +979,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
                             u'creation_time', u'required_by'], maxsize=40)
 
     @expose()
+    @check_error
     def resource_types(self):
         """Get heat stack resources types
         """
@@ -924,6 +988,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         self.result(res, headers=[u'type'], maxsize=100)
 
     @expose(aliases=[u'resource-type <type>'], aliases_only=True)
+    @check_error
     def resource_type(self):
         """Get heat stack resources types. Use with format json and yaml.
         """
@@ -933,6 +998,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         self.result(res, headers=[u'type'], maxsize=100)
 
     @expose(aliases=[u'resource-type-template <type>'], aliases_only=True)
+    @check_error
     def resource_type_template(self):
         """Get heat stack resources types. Use with format json and yaml.
         """
@@ -942,6 +1008,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         self.result(res, headers=[u'type'], maxsize=100)
 
     @expose(aliases=[u'events <id>'], aliases_only=True)
+    @check_error
     def events(self):
         """Get heat stack events by id
         """
@@ -956,6 +1023,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
                             u'resource_status_reason', u'event_time'], maxsize=40)
 
     @expose(aliases=[u'preview <name>'], aliases_only=True)
+    @check_error
     def preview(self):
         """Get heat stack preview
         """        
@@ -968,6 +1036,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         self.result(res, details=True)        
     
     @expose(aliases=[u'create <name> ..'], aliases_only=True)
+    @check_error
     def create(self):
         """Create heat stack
         """
@@ -979,6 +1048,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         self.result(res, headers=self.headers)    
 
     @expose(aliases=[u'action <oid> <action>'], aliases_only=True)
+    @check_error
     def action(self):
         """Execute heat stack action
         """
@@ -993,6 +1063,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         # self.result(res, headers=self.headers)
 
     @expose(aliases=[u'update <name> <oid> ..'], aliases_only=True)
+    @check_error
     def update(self):
         name = self.get_arg(name=u'name')
         oid = self.get_arg(name=u'id')
@@ -1003,6 +1074,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         self.result(res, headers=[u'msg'])
         
     @expose(aliases=[u'update-preview <name> <oid> ..'], aliases_only=True)
+    @check_error
     def update_preview(self):
         name = self.get_arg(name=u'name')
         oid = self.get_arg(name=u'id')
@@ -1013,6 +1085,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         self.result(res, headers=[u'msg'])
     
     @expose(aliases=[u'delete <name> <oid>'], aliases_only=True)
+    @check_error
     def delete(self):
         # name = self.get_arg(name=u'name')
         oid = self.get_arg(name=u'id')
@@ -1053,6 +1126,7 @@ class OpenstackPlatformHeatSoftwareConfigController(OpenstackPlatformControllerC
         self.result(objs, headers=self.headers, maxsize=70)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get heat software config by id
         """
@@ -1063,6 +1137,7 @@ class OpenstackPlatformHeatSoftwareConfigController(OpenstackPlatformControllerC
         self.result(res, details=True)
 
     @expose(aliases=[u'create <file data>'], aliases_only=True)
+    @check_error
     def add(self):
         """Create heat software config
         """
@@ -1074,6 +1149,7 @@ class OpenstackPlatformHeatSoftwareConfigController(OpenstackPlatformControllerC
         self.result(res, headers=[u'id', u'name', u'group', ])
 
     @expose(aliases=[u'delete <oid>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete heat software config
         """
@@ -1826,6 +1902,7 @@ class OpenstackControllerChild(ResourceEntityController):
         ApiController._ext_parse_args(self)
     
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List openstack items
         """        
@@ -1836,6 +1913,7 @@ class OpenstackControllerChild(ResourceEntityController):
         self.result(res, headers=self.headers, key=self._meta.aliases[0], maxsize=40)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get openstack item
         """
@@ -1843,6 +1921,7 @@ class OpenstackControllerChild(ResourceEntityController):
         self.get_resource(oid, format_result=None)
     
     @expose(aliases=[u'add <file data>'], aliases_only=True)
+    @check_error
     def add(self):
         file_data = self.get_arg(name=u'data file')
         data = self.load_config(file_data)
@@ -1862,6 +1941,7 @@ class OpenstackControllerChild(ResourceEntityController):
         self.result(res)'''
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         oid = self.get_arg(name=u'id')
         uri = self.uri + u'/' + oid
@@ -1915,6 +1995,7 @@ class OpenstackSubnetController(OpenstackControllerChild):
         description = "Openstack Subnet management"
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List openstack items
         """
@@ -1959,8 +2040,7 @@ class OpenstackFloatingIpController(OpenstackControllerChild):
         aliases = ['floatingips']
         aliases_only = True         
         description = "Openstack FloatingIp management"
-        
-    @check_error
+
     def _ext_parse_args(self):
         OpenstackControllerChild._ext_parse_args(self)
         
@@ -1979,6 +2059,7 @@ class OpenstackRouterController(OpenstackControllerChild):
         description = "Openstack Router management"
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get openstack item
         """
@@ -2017,6 +2098,7 @@ class OpenstackSecurityGroupController(OpenstackControllerChild):
         description = "Openstack SecurityGroup management"           
         
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get openstack item
         """
@@ -2069,6 +2151,7 @@ class OpenstackServerController(OpenstackControllerChild):
         description = "Openstack Server management"
         
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get openstack item
         """
@@ -2094,6 +2177,7 @@ class OpenstackServerController(OpenstackControllerChild):
         self.result(security_groups, headers=[u'uuid', u'name'])
         
     @expose(aliases=[u'actions <id>'], aliases_only=True)
+    @check_error
     def actions(self):
         """Get openstack server actions
         """
@@ -2104,6 +2188,7 @@ class OpenstackServerController(OpenstackControllerChild):
         self.result(res, headers=[u'action', u'request_id', u'message'])    
 
     @expose(aliases=[u'runtime <id>'], aliases_only=True)
+    @check_error
     def runtime(self):
         """Get openstack server actions
         """
@@ -2115,6 +2200,7 @@ class OpenstackServerController(OpenstackControllerChild):
                     details=True) 
         
     @expose(aliases=[u'stats <id>'], aliases_only=True)
+    @check_error
     def stats(self):
         """Get openstack server stats
         """
@@ -2126,6 +2212,7 @@ class OpenstackServerController(OpenstackControllerChild):
                     details=True)         
         
     @expose(aliases=[u'metadata <id>'], aliases_only=True)
+    @check_error
     def metadata(self):
         """Get openstack server metadata
         """
@@ -2136,6 +2223,7 @@ class OpenstackServerController(OpenstackControllerChild):
         self.result(res, headers=[u'action', u'request_id', u'message'])         
         
     @expose(aliases=[u'security-groups <id>'], aliases_only=True)
+    @check_error
     def security_groups(self):
         """Get openstack server sgs
         """
@@ -2146,6 +2234,7 @@ class OpenstackServerController(OpenstackControllerChild):
         self.result(res, headers=[u'id', u'uuid', u'name', u'ext_id', u'state'])         
         
     @expose(aliases=[u'console <id>'], aliases_only=True)
+    @check_error
     def console(self):
         """Get openstack server console
         """
@@ -2158,6 +2247,7 @@ class OpenstackServerController(OpenstackControllerChild):
         sh.firefox(res.get(u'url'))
 
     @expose(aliases=[u'ssh <id> <user>'], aliases_only=True)
+    @check_error
     def ssh(self):
         """Get openstack server console
         """
@@ -2185,6 +2275,7 @@ class OpenstackServerController(OpenstackControllerChild):
         print(output)
         
     @expose(aliases=[u'stop <id>'], aliases_only=True)
+    @check_error
     def stop(self):
         """Stop openstack server
         """
@@ -2197,6 +2288,7 @@ class OpenstackServerController(OpenstackControllerChild):
         self.wait_job(res[u'jobid'])
         
     @expose(aliases=[u'start <id>'], aliases_only=True)
+    @check_error
     def start(self):
         """start openstack server
         """
@@ -2231,6 +2323,7 @@ class OpenstackHeatStackController(OpenstackControllerChild):
         description = "Openstack Heat Stack management"
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get openstack stack
         """
@@ -2254,6 +2347,7 @@ class OpenstackHeatStackController(OpenstackControllerChild):
                     fields=[u'output_key', u'output_value', u'description'], maxsize=100)
 
     @expose(aliases=[u'template <id>'], aliases_only=True)
+    @check_error
     def template(self):
         """Get openstack stack template
         """
@@ -2265,6 +2359,7 @@ class OpenstackHeatStackController(OpenstackControllerChild):
         self.result(res, format=u'yaml')
 
     @expose(aliases=[u'internal-resources <id>'], aliases_only=True)
+    @check_error
     def internal_resources(self):
         """Get openstack stack internal resources
         """
@@ -2278,6 +2373,7 @@ class OpenstackHeatStackController(OpenstackControllerChild):
                             u'creation_time', u'required_by'], maxsize=40)
 
     @expose(aliases=[u'resources <id>'], aliases_only=True)
+    @check_error
     def resources(self):
         """Get openstack stack resources
         """
@@ -2292,6 +2388,7 @@ class OpenstackHeatStackController(OpenstackControllerChild):
                             u'date.creation', u'ext_id'], maxsize=40)
 
     @expose(aliases=[u'events <id>'], aliases_only=True)
+    @check_error
     def events(self):
         """Get heat stack events by id
         """
@@ -2316,6 +2413,7 @@ class OpenstackHeatStackTemplateController(OpenstackControllerChild):
         description = "Openstack Heat Stack template management"
 
     @expose(aliases=[u'versions <orchestrator>'], aliases_only=True)
+    @check_error
     def versions(self):
         """Get openstack orchestrator heat template versions
         """
@@ -2326,6 +2424,7 @@ class OpenstackHeatStackTemplateController(OpenstackControllerChild):
         self.result(res, headers=[u'version', u'type', u'aliases'])
 
     @expose(aliases=[u'template <orchestrator> <template>'], aliases_only=True)
+    @check_error
     def functions(self):
         """Get openstack stack template functions
         """
@@ -2338,6 +2437,7 @@ class OpenstackHeatStackTemplateController(OpenstackControllerChild):
         self.result(res, headers=[u'functions', u'description'], maxsize=200)
 
     @expose(aliases=[u'validate <orchestrator> <template-uri>'], aliases_only=True)
+    @check_error
     def validate(self):
         """Get openstack stack template functions
         """

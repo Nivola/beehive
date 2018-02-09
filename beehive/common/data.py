@@ -273,7 +273,7 @@ def trace(entity=None, op=u'view'):
                 logger.error(ex)
                 # calculate elasped time
                 elapsed = round(time() - start, 4)
-                ex_escaped = escape(str(ex))
+                ex_escaped = escape(str(ex.message))
                 get_entity(entity).send_event(op, args=args, params=kwargs, exception=ex_escaped, elapsed=elapsed)
                 raise
             return ret

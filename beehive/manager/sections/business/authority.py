@@ -41,6 +41,7 @@ class OrganizationController(AuthorityControllerChild):
         description = "Organization management"
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List all organizations by field: id, uuid, name, org_type, ext_anag_id,
     attributes, hasvat, partner, referent, email, legalemail, postaladdress
@@ -54,6 +55,7 @@ class OrganizationController(AuthorityControllerChild):
                     maxsize=40)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get organization by value uuid or id
         """
@@ -65,6 +67,7 @@ class OrganizationController(AuthorityControllerChild):
         self.result(res, key=u'organization', details=True)
 
     @expose(aliases=[u'perms <id>'], aliases_only=True)
+    @check_error
     def perms(self):
         """Get organization permissions by id, uuid or name
         """
@@ -80,6 +83,7 @@ class OrganizationController(AuthorityControllerChild):
                      u'[partner=..] [referent=..] [email=..]'\
                      u'[legalemail=..] [postaladdress=..]'],
             aliases_only=True)
+    @check_error
     def add(self):
         """Add organization <name> <org_type>
             - field: can be desc, ext_anag_id, attributes, hasvat, partner, referent, email, legaemail, postaladdress 
@@ -112,10 +116,12 @@ class OrganizationController(AuthorityControllerChild):
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'update <id> [field=value]'], aliases_only=True)
+    @check_error
     def update(self):
         """Update organization
     - id: id or uuid of the organization
-    - field: can be name, desc, org_type, ext_anag_id, active, attributes, hasvat,partner (name surname), referent (name surname), email, legalemail, postaladdress
+    - field: can be name, desc, org_type, ext_anag_id, active, attributes, hasvat,partner (name surname),
+      referent (name surname), email, legalemail, postaladdress
         """
         oid = self.get_arg(name=u'id')
         params = self.app.kvargs
@@ -129,6 +135,7 @@ class OrganizationController(AuthorityControllerChild):
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete organization
         """
@@ -146,6 +153,7 @@ class DivisionController(AuthorityControllerChild):
         description = "Divisions management"
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List all divisions by field: organization_id, name, objid,
         contact, email, postaladdress, active
@@ -161,6 +169,7 @@ class DivisionController(AuthorityControllerChild):
                     u'postaladdress', u'active', u'date.creation'], maxsize=40)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get division by value or id
         """
@@ -171,6 +180,7 @@ class DivisionController(AuthorityControllerChild):
         self.result(res, key=u'division', details=True)
 
     @expose(aliases=[u'perms <id>'], aliases_only=True)
+    @check_error
     def perms(self):
         """Get division permissions by id, uuid or name
         """
@@ -186,6 +196,7 @@ class DivisionController(AuthorityControllerChild):
                      u'[partner=..] [referent=..] [email=..]'\
                      u'[legalemail=..] [postaladdress=..]'],
             aliases_only=True)
+    @check_error
     def add(self):
         """Add division <name> <organization_id>
             - field: can be desc, contact, email, postaladdress 
@@ -212,6 +223,7 @@ class DivisionController(AuthorityControllerChild):
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'update <id> [field=value]'], aliases_only=True)
+    @check_error
     def update(self):
         """Update division
             - id: id or uuid of the division
@@ -229,6 +241,7 @@ class DivisionController(AuthorityControllerChild):
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete division
         """
@@ -240,6 +253,7 @@ class DivisionController(AuthorityControllerChild):
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'wallet <id>'], aliases_only=True)
+    @check_error
     @check_error
     def wallet(self):
         """Get division subwallet
@@ -320,6 +334,7 @@ class AccountController(AuthorityControllerChild):
         description = "Accounts management"
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List all accounts by field: name, uuid, division_id,
         active, contact, email, email_support, email_support_link,
@@ -335,6 +350,7 @@ class AccountController(AuthorityControllerChild):
                     u'email_support', u'email_support_link', u'active', u'date.creation'], maxsize=40)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get account by value or id
         """
@@ -345,6 +361,7 @@ class AccountController(AuthorityControllerChild):
         self.result(res, key=u'account', details=True)
 
     @expose(aliases=[u'perms <id>'], aliases_only=True)
+    @check_error
     def perms(self):
         """Get account permissions by id, uuid or name
         """
@@ -357,6 +374,7 @@ class AccountController(AuthorityControllerChild):
   
     @expose(aliases=[u'add <name> <division_id> [desc=..] [note=..] [contact=..] [email=..] [email_support=..] '
                      u'[email_support_link=..]'], aliases_only=True)
+    @check_error
     def add(self):
         """Add account <name> <division_id>
     - field: can be desc, contact, email, postaladdress
@@ -386,6 +404,7 @@ class AccountController(AuthorityControllerChild):
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'update <id> [field=value]'], aliases_only=True)
+    @check_error
     def update(self):
         """Update account
             - id: id or uuid of the account
@@ -403,6 +422,7 @@ class AccountController(AuthorityControllerChild):
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete account
         """
@@ -441,6 +461,7 @@ class AccountController(AuthorityControllerChild):
                     maxsize=40)
 
     @expose(aliases=[u'services <id> [field=value]'], aliases_only=True)
+    @check_error
     def services(self):
         """List service instances.
     - id : account id
@@ -466,6 +487,7 @@ class SubwalletController(AuthorityControllerChild):
         description = "Subwallets management"
         
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List all subwallets by field: name, uuid, account_id,
         active, capital_used_max_range, evaluation_date_start,evaluation_date_stop, 
@@ -484,6 +506,7 @@ class SubwalletController(AuthorityControllerChild):
                     u'capital_total', u'capital_used', u'active', u'date.creation'], maxsize=40)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get subwallet by value id or uuid
         """
@@ -494,6 +517,7 @@ class SubwalletController(AuthorityControllerChild):
         self.result(res, key=u'subwallet', details=True)
 
     @expose(aliases=[u'perms <id>'], aliases_only=True)
+    @check_error
     def perms(self):
         """Get subwallet permissions by value id or uuid
         """
@@ -506,6 +530,7 @@ class SubwalletController(AuthorityControllerChild):
   
     @expose(aliases=[u'add <wallet_id> <account_id> [name=..] [desc=..] [active=..] [evaluation_date=..] '
                      u'[capital_total=..] [capital_used=..]'], aliases_only=True)
+    @check_error
     def add(self):
         """Add subwallet <wallet_id> <account_id>
             - field: can be name, desc, capital_total, capital_used, evaluation_date
@@ -537,6 +562,7 @@ class SubwalletController(AuthorityControllerChild):
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'update <id> [field=value]'], aliases_only=True)
+    @check_error
     def update(self):
         """Update subwallet
             - id: id or uuid of the subwallet
@@ -554,6 +580,7 @@ class SubwalletController(AuthorityControllerChild):
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete subwallet
         """
@@ -585,6 +612,7 @@ class WalletController(AuthorityControllerChild):
         description = "Wallets management"
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List all Wallets by field: name, uuid, division_id,
         active, capital_used_max_range, evaluation_date_start,evaluation_date_stop, 
@@ -602,6 +630,7 @@ class WalletController(AuthorityControllerChild):
                     u'capital_used', u'evaluation_date' u'active', u'date.creation'], maxsize=40)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get wallet by value id or uuid
         """
@@ -612,6 +641,7 @@ class WalletController(AuthorityControllerChild):
         self.result(res, key=u'wallet', details=True)
 
     @expose(aliases=[u'perms <id>'], aliases_only=True)
+    @check_error
     def perms(self):
         """Get wallet permissions by value id or uuid
         """
@@ -624,6 +654,7 @@ class WalletController(AuthorityControllerChild):
   
     @expose(aliases=[u'add <division_id> [desc=..] [name=..] [active=..] [evaluation_date=..] [capital_total=..] '
                      u'[capital_used=..]'], aliases_only=True)
+    @check_error
     def add(self):
         """Add wallet <division_id>
             - field: can be name, desc, active, capital_total, capital_used, evaluation_date
@@ -650,6 +681,7 @@ class WalletController(AuthorityControllerChild):
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'update <id> [field=value]'], aliases_only=True)
+    @check_error
     def update(self):
         """Update wallet
             - id: id or uuid of the wallet
@@ -668,6 +700,7 @@ class WalletController(AuthorityControllerChild):
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete wallet
         """
@@ -733,6 +766,7 @@ class AgreementController(AuthorityControllerChild):
         description = "Agreements management"
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List all agreements by field: name, uuid, wallet_id,
         active, amount, amount_min_range, amount_max_range,
@@ -749,6 +783,7 @@ class AgreementController(AuthorityControllerChild):
                     u'agreement_date', u'active', u'date.creation'], maxsize=40)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get agreement by value or id
         """
@@ -759,6 +794,7 @@ class AgreementController(AuthorityControllerChild):
         self.result(res, key=u'agreement', details=True)
 
     @expose(aliases=[u'perms <id>'], aliases_only=True)
+    @check_error
     def perms(self):
         """Get agreement permissions by id, uuid or name
         """
@@ -769,9 +805,8 @@ class AgreementController(AuthorityControllerChild):
         logger.info(u'Get agreement perms: %s' % truncate(res))
         self.result(res, key=u'perms', headers=self.perm_headers)
   
-    @expose(aliases=[u'add <name> <wallet_id> [desc=..] '\
-                     u'[amount=..] [agreement_date=..]'],
-            aliases_only=True)
+    @expose(aliases=[u'add <name> <wallet_id> [desc=..] [amount=..] [agreement_date=..]'], aliases_only=True)
+    @check_error
     def add(self):
         """Add agreement <name> <wallet_id>
             - field: can be desc, amount, agreement_date 
@@ -799,6 +834,7 @@ class AgreementController(AuthorityControllerChild):
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'update <id> [field=value]'], aliases_only=True)
+    @check_error
     def update(self):
         """Update agreement
             - id: id or uuid of the agreement
@@ -816,6 +852,7 @@ class AgreementController(AuthorityControllerChild):
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete agreement
         """
@@ -833,6 +870,7 @@ class ConsumeController(AuthorityControllerChild):
         description = "Consumes management"
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List all agreements by field: name, uuid, subwallet_id,
         active,
