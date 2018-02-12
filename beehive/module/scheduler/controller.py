@@ -240,7 +240,7 @@ class TaskManager(ApiObject):
         # print i.objgraph()
         
     @trace(op=u'use')
-    def ping(self, id=None):
+    def ping(self):
         """Ping all task manager workers.
         
         :return: 
@@ -250,7 +250,7 @@ class TaskManager(ApiObject):
         self.verify_permisssions(u'use')
         
         try:
-            res = self.control.ping(timeout=0.5)
+            res = task_manager.control.ping(timeout=0.5)
             self.logger.debug('Ping task manager workers: %s' % res)
             resp = {}
             for item in res:
@@ -294,8 +294,29 @@ class TaskManager(ApiObject):
             return res
         except Exception as ex:
             self.logger.error(ex)
-            raise ApiManagerError(ex, code=400)       
-    
+            raise ApiManagerError(ex, code=400)
+
+    @trace(op=u'use')
+    def get_active_queues(self):
+        """Ping all task manager active queues.
+
+        :return:
+        :rtype: dict
+        :raises ApiManagerError: raise :class:`.ApiManagerError`
+        """
+        self.verify_permisssions(u'use')
+
+        try:
+            res = self.control.active_queues()
+            self.logger.debug('Get task manager active queues: %s' % res)
+            resp = {}
+            for item in res:
+                resp.update(item)
+            return resp
+        except Exception as ex:
+            self.logger.error(ex)
+            raise ApiManagerError(ex, code=400)
+
     @trace(op=u'definitions.view')
     def get_registered_tasks(self):
         """Get task definitions

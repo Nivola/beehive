@@ -193,7 +193,7 @@ class ManagerPing(TaskApiView):
 
 ## stats
 class ManagerStatsResponseSchema(Schema):
-    workers_ping = fields.List(fields.Dict(), required=True)
+    workers_stats = fields.List(fields.Dict(), required=True)
 
 
 class ManagerStats(TaskApiView):
@@ -219,7 +219,8 @@ class ManagerStats(TaskApiView):
 
 ## report
 class ManagerReportResponseSchema(Schema):
-    workers_ping = fields.List(fields.Dict(), required=True)
+    workers_report = fields.List(fields.Dict(), required=True)
+
 
 class ManagerReport(TaskApiView):
     definitions = {
@@ -240,12 +241,38 @@ class ManagerReport(TaskApiView):
         task_manager = controller.get_task_manager()
         resp = task_manager.report()
         return {u'workers_report':resp}
-    
+
+
+class ManagerActiveQueuesResponseSchema(Schema):
+    workers_queues = fields.List(fields.Dict(), required=True)
+
+
+class ManagerActiveQueues(TaskApiView):
+    definitions = {
+        u'ManagerActiveQueuesResponseSchema': ManagerActiveQueuesResponseSchema,
+    }
+    responses = SwaggerApiView.setResponses({
+        200: {
+            u'description': u'success',
+            u'schema': ManagerActiveQueuesResponseSchema
+        }
+    })
+
+    def get(self, controller, data, *args, **kwargs):
+        """
+        Worker Report
+        Get all active workers report
+        """
+        task_manager = controller.get_task_manager()
+        resp = task_manager.get_active_queues()
+        return {u'workers_queues': resp}
+
+
 ## definition
 class GetTasksDefinitionResponseSchema(Schema):
-    task_definitions = fields.List(fields.String(default=u'task.test'), 
-                                   required=True)
+    task_definitions = fields.List(fields.String(default=u'task.test'), required=True)
     count = fields.Integer(required=True, default=1)
+
 
 class GetTasksDefinition(TaskApiView):
     definitions = {
@@ -516,6 +543,7 @@ class TaskAPI(ApiView):
             (u'worker/ping', u'GET', ManagerPing, {}),
             (u'worker/stats', u'GET', ManagerStats, {}),
             (u'worker/report', u'GET', ManagerReport, {}),
+            (u'worker/queues', u'GET', ManagerActiveQueues, {}),
             (u'worker/tasks', u'GET', GetAllTasks, {}),
             (u'worker/tasks/count', u'GET', GetTasksCount, {}),
             (u'worker/tasks/definitions', u'GET', GetTasksDefinition, {}),

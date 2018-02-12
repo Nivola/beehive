@@ -111,6 +111,7 @@ tests_scheduler = [
     'test_ping_task_manager',
     'test_stat_task_manager',
     'test_report_task_manager',
+    'test_queues_task_manager',
     'test_get_all_tasks',
     'test_count_all_tasks',
     'test_registered_tasks',
