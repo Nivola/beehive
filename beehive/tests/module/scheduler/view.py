@@ -17,7 +17,7 @@ tests = [
     'test_queues_task_manager',
     'test_get_all_tasks',
     'test_count_all_tasks',
-    'test_registered_tasks',
+    'test_get_task_definitions',
     # 'test_run_job_test',
     # 'test_get_task',
     # 'test_get_task_graph',
@@ -92,11 +92,11 @@ class SchedulerAPITestCase(BeehiveTestCase):
         res = self.call(self.module, uri, u'GET', data=data, **self.users[u'admin'])
         self.logger.info(self.pp.pformat(res))
 
-    def test_registered_tasks(self):
+    def test_get_task_definitions(self):
         global uid, seckey
 
         data = u''
-        uri = u'/v1.0/worker/tasks/registered'
+        uri = u'/v1.0/worker/tasks/definitions'
 
         res = self.call(self.module, uri, u'GET', data=data, **self.users[u'admin'])
         self.logger.info(self.pp.pformat(res))

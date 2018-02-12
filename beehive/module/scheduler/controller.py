@@ -309,10 +309,7 @@ class TaskManager(ApiObject):
         try:
             res = self.control.active_queues()
             self.logger.debug('Get task manager active queues: %s' % res)
-            resp = {}
-            for item in res:
-                resp.update(item)
-            return resp
+            return res
         except Exception as ex:
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)

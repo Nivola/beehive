@@ -114,7 +114,7 @@ tests_scheduler = [
     'test_queues_task_manager',
     'test_get_all_tasks',
     'test_count_all_tasks',
-    'test_registered_tasks',
+    'test_get_task_definitions',
     # 'test_run_job_test',
     # 'test_get_task',
     # 'test_get_task_graph',
