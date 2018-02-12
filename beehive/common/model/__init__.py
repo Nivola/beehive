@@ -380,6 +380,7 @@ class PaginatedQueryGenerator(object):
                           (self.entity.__tablename__, total, truncate(query)))
         return query, total
 
+
 class AbstractDbManager(object):
     """Abstarct db manager
     """
@@ -407,6 +408,7 @@ class AbstractDbManager(object):
         statements in raw SQL."""
         try:
             engine = create_engine(db_uri)
+            engine.execute("SET FOREIGN_KEY_CHECKS=1;")
             Base.metadata.create_all(engine)
             logger.info(u'Create tables on : %s' % (db_uri))
             del engine
@@ -419,6 +421,7 @@ class AbstractDbManager(object):
         statements in raw SQL."""
         try:
             engine = create_engine(db_uri)
+            engine.execute("SET FOREIGN_KEY_CHECKS=0;")
             Base.metadata.drop_all(engine)
             logger.info(u'Remove tables from : %s' % (db_uri))
             del engine

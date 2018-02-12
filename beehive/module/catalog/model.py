@@ -11,7 +11,8 @@ from beehive.common.model import AbstractDbManager, BaseEntity
 from sqlalchemy import create_engine, exc
 from sqlalchemy.ext.declarative import declarative_base
 
-Base = declarative_base()
+# Base = declarative_base()
+from beehive.common.model.authorization import Base
 
 logger = logging.getLogger(__name__)
 

@@ -25,8 +25,7 @@ from sqlalchemy.dialects import mysql
 
 Base = declarative_base()
 
-from beehive.common.model import AbstractDbManager, BaseEntity,\
-    PaginatedQueryGenerator
+from beehive.common.model import AbstractDbManager, BaseEntity, PaginatedQueryGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -341,7 +340,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         """Create all tables in the engine. This is equivalent to "Create Table"
         statements in raw SQL."""
         AbstractDbManager.create_table(db_uri)
-        
+
         try:
             engine = create_engine(db_uri)
             engine.execute("SET FOREIGN_KEY_CHECKS=1;")
@@ -356,7 +355,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         """ Remove all tables in the engine. This is equivalent to "Drop Table"
         statements in raw SQL."""
         AbstractDbManager.remove_table(db_uri)
-        
+
         try:
             engine = create_engine(db_uri)
             engine.execute("SET FOREIGN_KEY_CHECKS=0;")

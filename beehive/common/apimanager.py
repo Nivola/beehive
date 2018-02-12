@@ -634,14 +634,12 @@ class ApiManager(object):
                 try:
                     self.logger.info(u'Configure Camunda - CONFIGURE')            
                     from beedrones.camunda import WorkFlowEngine as CamundaEngine
-                    confs = configurator.get(app=self.app_name, group='bpmn')
-                    self.logger.info(u'Configure Camunda - CONFIG app%s: %s' %(self.app_name, confs))
+                    confs = configurator.get(app=self.app_name, group=u'bpmn', name=u'bpmn_endpoint')[0].value
+                    self.logger.info(u'Configure Camunda - CONFIG app%s: %s' % (self.app_name, confs))
                     for conf in confs:
                         item = json.loads(conf.value)
 
-                    self.camunda_engine = CamundaEngine( item['conn'],
-                            user=item['user'],
-                            passwd=item['passwd'])
+                    self.camunda_engine = CamundaEngine(item[u'conn'], user=item[u'user'], passwd=item[u'passwd'])
                     self.logger.info(u'Configure Camunda  - CONFIGURED')            
                 except:
                     self.logger.warning(u'Configure Camunda  - NOT CONFIGURED')
@@ -770,7 +768,6 @@ class ApiManager(object):
                                       self.redis_catalog_uri))                    
                     self.logger.info(u'Configure catalog queue - CONFIGURED')
                 except Exception as ex:
-                    self.logger.warn(u'', exc_info=1)
                     self.logger.warning(u'Configure catalog queue - NOT CONFIGURED')
                 ##### catalog queue configuration #####          
         
