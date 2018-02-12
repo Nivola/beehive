@@ -9,6 +9,7 @@ import ujson as json
 uid = None
 seckey = None
 task_id = 'd124ef29-7c57-423e-b6d9-b72d519d7600'
+schedule_id = None
 
 tests = [
     'test_ping_task_manager',
@@ -27,6 +28,7 @@ tests = [
 
     # 'test_create_scheduler_entries',
     # 'test_get_scheduler_entries',
+    # 'test_get_scheduler_entry',
     # 'test_delete_scheduler_entry',
 ]
 
@@ -129,10 +131,13 @@ class SchedulerAPITestCase(BeehiveTestCase):
         data = u''
         uri = u'/v1.0/scheduler/entries'
         res = self.call(self.module, uri, u'GET', data=data, **self.users[u'admin'])
+        global schedule_id
+        schedule_id = res[u'schedules'][0][u'name']
 
-    def test_get_scheduler_entries(self):
+    def test_get_scheduler_entry(self):
+        global schedule_id
         data = u''
-        uri = u'/v1.0/scheduler/entries'
+        uri = u'/v1.0/scheduler/entries/%s' % schedule_id
         res = self.call(self.module, uri, u'GET', data=data, **self.users[u'admin'])
 
     def test_create_scheduler_entries(self):
@@ -158,7 +163,7 @@ class SchedulerAPITestCase(BeehiveTestCase):
         self.call(self.module, uri, u'POST', data={u'schedule':data}, **self.users[u'admin'])
 
     def test_delete_scheduler_entry(self):
-        uri = u'/v1.0/scheduler/entries/%s' % 'celery.backend_cleanup'
+        uri = u'/v1.0/scheduler/entries/%s' % u'celery.backend_cleanup'
         self.call(self.module, uri, u'DELETE', data=u'', **self.users[u'admin'])
 
 

@@ -22,6 +22,7 @@ from functools import wraps
 from celery import signature
 from beehive.common.data import trace
 
+
 class SchedulerController(ApiController):
     """Scheduler Module controller.
     """    
@@ -254,7 +255,8 @@ class TaskManager(ApiObject):
         self.verify_permisssions(u'use')
         
         try:
-            res = task_manager.control.ping(timeout=0.5)
+            from celery.app.control import Control
+            res = Control(task_manager).ping(timeout=0.5)
             self.logger.debug('Ping task manager workers: %s' % res)
             resp = {}
             for item in res:
