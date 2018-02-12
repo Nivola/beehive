@@ -1,5 +1,5 @@
 {
-    "env": "lab5",
+    "env": "test",
     "schema": "resource",
     "configs": {
         "resource": {
