@@ -15,6 +15,7 @@ Base = declarative_base()
 
 logger = logging.getLogger(__name__)
 
+
 class Catalog(Base, BaseEntity):
     __tablename__ = 'catalog'
     
@@ -24,6 +25,7 @@ class Catalog(Base, BaseEntity):
         BaseEntity.__init__(self, objid, name, desc, active)
 
         self.zone = zone
+
 
 class CatalogEndpoint(Base, BaseEntity):
     __tablename__ = 'catalog_endpoint'
@@ -48,6 +50,7 @@ class CatalogEndpoint(Base, BaseEntity):
                u' catalog=%s, active=%s, >' % (self.id, self.uuid, self.objid, 
                     self.name, self.service, self.catalog, self.active)
 
+
 class CatalogDbManager(AbstractDbManager):
     @staticmethod
     def create_table(db_uri):
@@ -55,6 +58,7 @@ class CatalogDbManager(AbstractDbManager):
         statements in raw SQL."""
         try:
             engine = create_engine(db_uri)
+            engine.execute("SET FOREIGN_KEY_CHECKS=1;")
             Base.metadata.create_all(engine)
             logger.info(u'Create tables on : %s' % (db_uri))
             del engine
@@ -67,6 +71,7 @@ class CatalogDbManager(AbstractDbManager):
         statements in raw SQL."""
         try:
             engine = create_engine(db_uri)
+            engine.execute("SET FOREIGN_KEY_CHECKS=0;")
             Base.metadata.drop_all(engine)
             logger.info(u'Remove tables from : %s' % (db_uri))
             del engine

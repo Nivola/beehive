@@ -23,6 +23,7 @@ Base = declarative_base()
 
 logger = logging.getLogger(__name__)
 
+
 class DbEvent(Base):
     __tablename__ = u'event'
 
@@ -64,6 +65,7 @@ class DbEvent(Base):
         return "<DbEvent event_id=%s, type=%s, objid=%s, data=%s)>" % (\
                     self.event_id, self.type, self.objid, self.data)
 
+
 class EventDbManager(AbstractDbManager):
     """
     """
@@ -75,6 +77,7 @@ class EventDbManager(AbstractDbManager):
         
         try:
             engine = create_engine(db_uri)
+            engine.execute("SET FOREIGN_KEY_CHECKS=1;")
             Base.metadata.create_all(engine)
             logger.info(u'Create tables on : %s' % (db_uri))
             del engine
@@ -89,6 +92,7 @@ class EventDbManager(AbstractDbManager):
         
         try:
             engine = create_engine(db_uri)
+            engine.execute("SET FOREIGN_KEY_CHECKS=0;")
             Base.metadata.drop_all(engine)
             logger.info(u'Remove tables from : %s' % (db_uri))
             del engine

@@ -50,6 +50,7 @@ role_template_policy = Table('role_template_policy', Base.metadata,
     Column('policy_id', Integer, ForeignKey('syspolicy.id'))
 )
 
+
 class RoleUser(Base):
     __tablename__ = u'roles_users'
     user_id = Column(Integer, ForeignKey(u'user.id'), primary_key=True)
@@ -75,7 +76,8 @@ class RoleUser(Base):
     def __repr__(self):
         return u"<RoleUser user=%s role=%s expiry=%s>" % (self.user_id,
                 self.role_id, self.expiry_date)
-        
+
+
 class RoleGroup(Base):
     __tablename__ = u'roles_groups'
     group_id = Column(Integer, ForeignKey(u'group.id'), primary_key=True)
@@ -102,6 +104,7 @@ class RoleGroup(Base):
         return u"<RoleGroup group=%s role=%s expiry=%s>" % (self.group_id,
                 self.role_id, self.expiry_date) 
 
+
 # Systems role templates
 class RoleTemplate(Base, BaseEntity):
     __tablename__ = u'role_template'
@@ -113,6 +116,7 @@ class RoleTemplate(Base, BaseEntity):
         BaseEntity.__init__(self, objid, name, desc, active)
         
         self.policy = policy 
+
 
 # Systems roles
 class Role(Base, BaseEntity):
@@ -128,6 +132,7 @@ class Role(Base, BaseEntity):
         BaseEntity.__init__(self, objid, name, desc, active)
         
         self.permission = permission
+
 
 # Systems roles
 class UserAttribute(Base):
@@ -155,6 +160,7 @@ class UserAttribute(Base):
     def __repr__(self):
         return "<UserAttribute id=%s user=%s name=%s value=%s>" % (
                     self.id, self.user_id, self.name, self.value)
+
 
 class User(Base, BaseEntity):
     """User
@@ -196,6 +202,7 @@ class User(Base, BaseEntity):
         #res = sha256_crypt.verify(password, self.password)
         return res
 
+
 class Group(Base, BaseEntity):
     __tablename__ = u'group'
 
@@ -218,6 +225,7 @@ class Group(Base, BaseEntity):
     #def __repr__(self):
     #    return u"<Group id='%s' name='%s' desc='%s'>" % (
     #                self.id, self.name, self.desc)
+
 
 # System object types
 class SysObjectType(Base):
@@ -245,6 +253,7 @@ class SysObjectType(Base):
         return u"<SysObjectType id=%s type=%s def=%s>" % (
                     self.id, self.objtype, self.objdef)
 
+
 # System objects
 class SysObject(Base, BaseEntity):
     __tablename__ = u'sysobject'
@@ -262,6 +271,7 @@ class SysObject(Base, BaseEntity):
         return u"<SysObject id=%s type=%s def=%s objid=%s>" % (
                     self.id, self.type.objtype, self.type.objdef, self.objid)
 
+
 # System object actions
 class SysObjectAction(Base):
     __tablename__ = u'sysobject_action'
@@ -275,6 +285,7 @@ class SysObjectAction(Base):
     
     def __repr__(self):
         return u"<SysObjectAction id=%s value=%s>" % (self.id, self.value)
+
 
 # System object permissions
 class SysObjectPermission(Base):
@@ -295,7 +306,8 @@ class SysObjectPermission(Base):
         return u"<SysObjectPermission id=%s type=%s def=%s objid=%s action=%s>" % (
                     self.id, self.obj.type.objtype, self.obj.type.objdef, 
                     self.obj.objid, self.action.value)
-        
+
+
 # System object policy
 class SysPolicy(Base):
     __tablename__ = u'syspolicy'
@@ -316,6 +328,7 @@ class SysPolicy(Base):
                     self.id, self.type.objtype, self.type.objdef, 
                     self.action.value)        
 
+
 class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
     """Authorization db manager                                                                                    
     """
@@ -331,6 +344,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         
         try:
             engine = create_engine(db_uri)
+            engine.execute("SET FOREIGN_KEY_CHECKS=1;")
             Base.metadata.create_all(engine)
             logger.info(u'Create tables on : %s' % (db_uri))
             del engine
@@ -345,6 +359,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         
         try:
             engine = create_engine(db_uri)
+            engine.execute("SET FOREIGN_KEY_CHECKS=0;")
             Base.metadata.drop_all(engine)
             logger.info(u'Remove tables from : %s' % (db_uri))
             del engine

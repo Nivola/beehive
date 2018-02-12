@@ -39,8 +39,8 @@ class ConfigProp(Base):
         self.modification_date = self.creation_date
 
     def __repr__(self):
-        return "ConfigProp(%s, %s, %s, %s, %s)" % (self.id, self.app, self.group, 
-                                                 self.name, self.value)
+        return "ConfigProp(%s, %s, %s, %s, %s)" % (self.id, self.app, self.group, self.name, self.value)
+
 
 class ConfigDbManager(AbstractDbManager):
     """Db Manager used to manage configuration tables
@@ -54,6 +54,7 @@ class ConfigDbManager(AbstractDbManager):
         statements in raw SQL."""
         try:
             engine = create_engine(db_uri)
+            engine.execute("SET FOREIGN_KEY_CHECKS=1;")
             Base.metadata.create_all(engine)
             logger.info(u'Create tables on : %s' % (db_uri))
             del engine
@@ -66,6 +67,7 @@ class ConfigDbManager(AbstractDbManager):
         statements in raw SQL."""
         try:
             engine = create_engine(db_uri)
+            engine.execute("SET FOREIGN_KEY_CHECKS=0;")
             Base.metadata.drop_all(engine)
             logger.info(u'Remove tables from : %s' % (db_uri))
             del engine
