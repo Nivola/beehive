@@ -1746,8 +1746,7 @@ class ApiObject(object):
     SYNC_OPERATION = u'CMD'
     ASYNC_OPERATION = u'JOB'
     
-    def __init__(self, controller, oid=None, objid=None, name=None, 
-                 desc=None, active=None, model=None):
+    def __init__(self, controller, oid=None, objid=None, name=None, desc=None, active=None, model=None):
         self.logger = logging.getLogger(self.__class__.__module__ + u'.' + self.__class__.__name__)
         
         self.controller = controller
@@ -1786,7 +1785,11 @@ class ApiObject(object):
     @property
     def manager(self):
         return self.controller.manager
-    
+
+    @property
+    def api_manager(self):
+        return self.controller.module.api_manager
+
     @property
     def api_client(self):
         return self.controller.module.api_manager.api_client

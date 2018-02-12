@@ -171,6 +171,7 @@ def start_task_manager(params):
                            expire=params[u'expire'], task_queue=params[u'broker_queue'], logger_file=logger_file)
 
     argv = [u'',
+            u'--hostname='+params[u'broker_queue']+u'@%h',
             u'--loglevel=%s' % logging.getLevelName(logger_level),
             #u'--pool=prefork',
             u'--pool=gevent',

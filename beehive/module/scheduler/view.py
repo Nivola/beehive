@@ -487,18 +487,21 @@ class SetTaskTimeLimit(TaskApiView):
             limit = get_value(data, 'value', 0)
             resp = task_manager.time_limit_task(task_name, limit)
         return resp'''
-    
+
+
 ## create
 class RunJobTestBodyParamRequestSchema(Schema):
-    x = fields.Integer(required=True, default=2)
-    y = fields.Integer(required=True, default=223)
+    x = fields.Integer(required=True, default=2, missing=2)
+    y = fields.Integer(required=True, default=223, missing=223)
     numbers = fields.List(fields.Integer(default=1), required=True)
     mul_numbers = fields.List(fields.Integer(default=1), required=True)
-    error = fields.Boolean(required=False, default=False)
-    suberror = fields.Boolean(required=False, default=False)
+    error = fields.Boolean(required=False, default=False, missing=False)
+    suberror = fields.Boolean(required=False, default=False, missing=False)
+
 
 class RunJobTestBodyRequestSchema(Schema):
     body = fields.Nested(RunJobTestBodyParamRequestSchema, context=u'body')
+
 
 class RunJobTest(TaskApiView):
     definitions = {
@@ -518,7 +521,8 @@ class RunJobTest(TaskApiView):
         task_manager = controller.get_task_manager()
         job = task_manager.run_jobtest(data)
         return {u'jobid':job.id}
-    
+
+
 class SchedulerAPI(ApiView):
     """
     """

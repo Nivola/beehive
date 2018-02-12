@@ -225,7 +225,12 @@ class TaskManager(ApiObject):
 
     def __init__(self, controller):
         ApiObject.__init__(self, controller, oid='', name='', desc='', active='')
-        self.control = task_manager.control.inspect()
+        hostname = self.celery_broker_queue + u'@' + self.api_manager.server_name
+        self.control = task_manager.control.inspect([hostname])
+        self.logger.warn(self.control)
+        from celery.app.control import Control
+        # self.control = Control(task_manager).inspect()
+
         self.objid = '*'
 
         try:
@@ -289,7 +294,7 @@ class TaskManager(ApiObject):
         
         self.verify_permisssions(u'use')
         try:
-            res = self.control.report()#.split('/n')
+            res = self.control.report()
             self.logger.debug('Get task manager report: %s' % res)
             return res
         except Exception as ex:
@@ -331,72 +336,6 @@ class TaskManager(ApiObject):
         except Exception as ex:
             self.logger.error(u'No registered tasks found')
             return []
-    
-    '''
-    @trace(op=u'view')
-    def get_active_tasks(self):
-        """
-        
-        :return: 
-        :rtype: dict        
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
-        """
-        try:
-            res = self.control.active()
-            self.logger.debug(u'Get active tasks: %s' % (res))
-            return res
-        except Exception as ex:
-            self.logger.error(u'No active tasks found')
-            return []
-
-    @trace(op=u'view')
-    def get_scheduled_tasks(self):
-        """
-        
-        :return: 
-        :rtype: dict        
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
-        """
-        try:
-            res = self.control.scheduled()
-            self.logger.debug(u'Get scheduled tasks: %s' % (res))
-            return res
-        except Exception as ex:
-            self.logger.error(u'No scheduled tasks found')
-            return []
-        
-    @trace(op=u'view')
-    def get_reserved_tasks(self):
-        """
-        
-        :return: 
-        :rtype: dict        
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
-        """
-        try:
-            res = self.control.reserved()
-            self.logger.debug(u'Get reserved tasks: %s' % (res))
-            return res
-        except Exception as ex:
-            self.logger.error(u'No reserved tasks found')
-            return []
-        
-    @trace(op=u'view')
-    def get_revoked_tasks(self):
-        """
-        
-        :return: 
-        :rtype: dict        
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
-        """
-        try:
-            res = self.control.revoked()
-            self.logger.debug(u'Get revoked tasks: %s' % (res))
-            return res
-        except Exception as ex:
-            self.logger.error(u'No revokes tasks found')
-            return []
-    '''
 
     @trace(op=u'tasks.view')
     def get_all_tasks(self, details=False):
@@ -787,7 +726,7 @@ class TaskManager(ApiObject):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=404)
 
-    @trace(op=u'tasks.delete')
+    '''@trace(op=u'tasks.delete')
     def purge_tasks(self):
         """Discard all waiting tasks.
         
@@ -801,7 +740,7 @@ class TaskManager(ApiObject):
             return res
         except Exception as ex:
             self.logger.error(ex)
-            raise ApiManagerError(ex, code=400)
+            raise ApiManagerError(ex, code=400)'''
     
     @trace(op=u'tasks.delete')
     def delete_task_instances(self):

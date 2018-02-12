@@ -34,22 +34,18 @@ tests = [
 class SchedulerAPITestCase(BeehiveTestCase):
     def setUp(self):
         BeehiveTestCase.setUp(self)
-        self.module = u'resource'
+        self.module = u'auth'
         
     #
     # task manager
     #
     def test_ping_task_manager(self):
-        global uid, seckey
-                
         data = u''
         uri = u'/v1.0/worker/ping'
         
         self.call(self.module, uri, u'GET', data=data, **self.users[u'admin'])
 
     def test_stat_task_manager(self):
-        global uid, seckey
-                
         data = u''
         uri = u'/v1.0/worker/stats'
         
@@ -57,8 +53,6 @@ class SchedulerAPITestCase(BeehiveTestCase):
         self.logger.info(self.pp.pformat(res))
 
     def test_report_task_manager(self):
-        global uid, seckey
-                
         data = u''
         uri = u'/v1.0/worker/report'
         
@@ -66,8 +60,6 @@ class SchedulerAPITestCase(BeehiveTestCase):
         self.logger.info(self.pp.pformat(res))
 
     def test_queues_task_manager(self):
-        global uid, seckey
-
         data = u''
         uri = u'/v1.0/worker/queues'
 
@@ -75,8 +67,6 @@ class SchedulerAPITestCase(BeehiveTestCase):
         self.logger.info(self.pp.pformat(res))
 
     def test_get_all_tasks(self):
-        global uid, seckey
-                
         data = u''
         uri = u'/v1.0/worker/tasks'
         
@@ -84,8 +74,6 @@ class SchedulerAPITestCase(BeehiveTestCase):
         self.logger.info(self.pp.pformat(res))
 
     def test_count_all_tasks(self):
-        global uid, seckey
-
         data = u''
         uri = u'/v1.0/worker/tasks/count'
 
@@ -93,61 +81,51 @@ class SchedulerAPITestCase(BeehiveTestCase):
         self.logger.info(self.pp.pformat(res))
 
     def test_get_task_definitions(self):
-        global uid, seckey
-
         data = u''
         uri = u'/v1.0/worker/tasks/definitions'
-
         res = self.call(self.module, uri, u'GET', data=data, **self.users[u'admin'])
         self.logger.info(self.pp.pformat(res))
 
     def test_get_task(self):
-        global uid, seckey
-                
         data = u''
-        task_id = u'6d21c46a-d1bc-4435-9d26-5d75881f6cb1'
-        uri = u'/v1.0/worker/task/%s' % task_id
-        
+        global task_id
+        uri = u'/v1.0/worker/tasks/%s' % task_id
         res = self.call(self.module, uri, u'GET', data=data, **self.users[u'admin'])
         self.logger.info(self.pp.pformat(res))
         
     def test_get_task_graph(self):
-        global uid, seckey, task_id
+        global task_id
         data = u''
-        task_id = '89c29e6f-82e6-4a0e-8041-da1230edb7e0'
-        uri = u'/v1.0/worker/task/%s/graph' % task_id
+        uri = u'/v1.0/worker/tasks/%s/graph' % task_id
         
         res = self.call(self.module, uri, u'GET', data=data, **self.users[u'admin'])
         self.logger.info(self.pp.pformat(res))
         
     def test_delete_all_tasks(self):
-        global uid, seckey
         data = u''
         uri = u'/v1.0/worker/tasks'
         
         self.call(self.module, uri, u'DELETE', data=data, **self.users[u'admin'])
         
     def test_delete_task(self):
-        global uid, seckey
-        oid = ''
+        global task_id
         data = u''
-        uri = u'/v1.0/worker/task/%s' % oid
+        uri = u'/v1.0/worker/tasks/%s' % task_id
         
         self.call(self.module, uri, u'DELETE', data=data, **self.users[u'admin'])
         
     def test_run_job_test(self):
-        global uid, seckey, task_id
-        data = json.dumps({u'x':2, u'y':234, u'numbers':[2, 78, 45, 90], u'mul_numbers':[]} )
-        uri = u'/v1.0/worker/task/jobtest'
+        global task_id
+        data = {u'x':2, u'y':234, u'numbers':[2, 78, 45, 90], u'mul_numbers':[]}
+        uri = u'/v1.0/worker/tasks/test'
         res = self.call(self.module, uri, u'POST', data=data, **self.users[u'admin'])
         self.wait_job(res[u'jobid'], delta=1, accepted_state=u'SUCCESS')
+        task_id = res[u'jobid']
 
     #
     # scheduler
     #
     def test_get_scheduler_entries(self):
-        global uid, seckey
-                
         data = u''
         uri = u'/v1.0/scheduler/entries'
         
@@ -155,8 +133,6 @@ class SchedulerAPITestCase(BeehiveTestCase):
         self.logger.debug(self.pp.pformat(res))
 
     def test_create_scheduler_entries(self):
-        global uid, seckey
-                
         data = json.dumps({'name':'celery.backend_cleanup',
                            'task': 'celery.backend_cleanup',
                            'schedule': {'type':'crontab',
@@ -220,8 +196,6 @@ class SchedulerAPITestCase(BeehiveTestCase):
         self.call(self.module, uri, u'POST', data=data, **self.users[u'admin'])
 
     def test_delete_scheduler_entry(self):
-        global uid, seckey
-                
         data = json.dumps({'name':'discover_openstack_01'})
         uri = u'/v1.0/scheduler/entry'
         

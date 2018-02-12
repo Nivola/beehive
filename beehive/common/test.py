@@ -62,6 +62,7 @@ class BeehiveTestCase(unittest.TestCase):
     logging.addLevelName(70, u'TEST')
     validatation_active = False
     validation_active = False
+    module = u'resource'
 
     @classmethod
     def setUpClass(cls):
@@ -383,7 +384,7 @@ class BeehiveTestCase(unittest.TestCase):
 
     def get_job_state(self, jobid):
         try:
-            res = self.call(u'resource', u'/v1.0/worker/tasks/{oid}', u'get', params={u'oid': jobid}, runlog=False,
+            res = self.call(self.module, u'/v1.0/worker/tasks/{oid}', u'get', params={u'oid': jobid}, runlog=False,
                             **self.users[u'admin'])
             job = res.get(u'task_instance')
             state = job.get(u'status')
