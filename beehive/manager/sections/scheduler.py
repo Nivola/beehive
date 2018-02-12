@@ -236,7 +236,7 @@ class ScheduleController(SchedulerControllerChild):
         """Get schedule by name
         """
         name = self.get_arg(name=u'name')        
-        uri = u'/v1.0/scheduler/entry/%s' % name
+        uri = u'/v1.0/scheduler/entries/%s' % name
         res = self._call(uri, u'GET')
         logger.debug(res)
         self.result(res, key=u'schedule', headers=self.sched_headers)        
@@ -247,7 +247,7 @@ class ScheduleController(SchedulerControllerChild):
         """
         data_file = self.get_arg(name=u'data file')
         data = self.load_config(data_file)
-        uri = u'/v1.0/scheduler/entry'
+        uri = u'/v1.0/scheduler/entries'
         res = self._call(uri, u'POST', data=data)
         self.result({u'msg':u'Create schedule %s' % data}, headers=[u'msg'])
 
@@ -257,7 +257,7 @@ class ScheduleController(SchedulerControllerChild):
         """
         name = self.get_arg(name=u'name')
         data = {u'name':name}
-        uri = u'/v1.0/scheduler/entry'
+        uri = u'/v1.0/scheduler/entries'
         res = self._call(uri, u'DELETE', data=data)
         self.result({u'msg':u'Delete schedule %s' % name}, headers=[u'msg'])        
         

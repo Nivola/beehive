@@ -530,9 +530,9 @@ class SchedulerAPI(ApiView):
     def register_api(module):
         rules = [
             (u'scheduler/entries', u'GET', GetSchedulerEntries, {}),
-            (u'scheduler/entry/<oid>', u'GET', GetSchedulerEntry, {}),
-            (u'scheduler/entry', u'POST', CreateSchedulerEntry, {}),
-            (u'scheduler/entry', u'DELETE', DeleteSchedulerEntry, {}),
+            (u'scheduler/entries/<oid>', u'GET', GetSchedulerEntry, {}),
+            (u'scheduler/entries', u'POST', CreateSchedulerEntry, {}),
+            (u'scheduler/entries', u'DELETE', DeleteSchedulerEntry, {}),
         ]
 
         ApiView.register_api(module, rules)

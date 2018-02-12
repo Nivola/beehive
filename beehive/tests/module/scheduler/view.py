@@ -128,9 +128,14 @@ class SchedulerAPITestCase(BeehiveTestCase):
     def test_get_scheduler_entries(self):
         data = u''
         uri = u'/v1.0/scheduler/entries'
-        
-        res = self.invoke('monitor', uri, u'GET', data=data, **self.users[u'admin'])
-        self.logger.debug(self.pp.pformat(res))
+
+        res = self.call(self.module, uri, u'GET', data=data, **self.users[u'admin'])
+
+    def test_get_scheduler_entries(self):
+        data = u''
+        uri = u'/v1.0/scheduler/entries'
+
+        res = self.call(self.module, uri, u'GET', data=data, **self.users[u'admin'])
 
     def test_create_scheduler_entries(self):
         data = json.dumps({'name':'celery.backend_cleanup',
@@ -147,58 +152,12 @@ class SchedulerAPITestCase(BeehiveTestCase):
                            'schedule': {'type':'timedelta',
                                         'minutes':1},
                            'options': {'expires': 60}})
-        
-        data = json.dumps({'name':'services_usage',
-                           'task': 'tasks.add_services_instant_usage',
-                           'schedule': {'type':'timedelta',
-                                        'minutes':30},
-                           'options': {'expires': 86400}})
-        
-        data = json.dumps({'name':'services_usage_day',
-                           'task': 'tasks.add_services_day_usage',
-                           'schedule': {'type':'crontab',
-                                        'minute':0,
-                                        'hour':0},
-                           'options': {'expires': 86400}})
-        
-        data = json.dumps({'name':'services_usage_week',
-                           'task': 'tasks.add_services_week_usage',
-                           'schedule': {'type':'crontab',
-                                        'minute':0,
-                                        'hour':0,
-                                        'day_of_week':1},
-                           'options': {'expires': 86400}})
-        
-        data = json.dumps({'name':'services_usage_month',
-                           'task': 'tasks.add_services_month_usage',
-                           'schedule': {'type':'crontab',
-                                        'minute':0,
-                                        'hour':0,
-                                        'day_of_month':1},
-                           'options': {'expires': 86400}})
-        
-        data = json.dumps({'name':'services_usage_year',
-                           'task': 'tasks.add_services_year_usage',
-                           'schedule': {'type':'crontab',
-                                        'minute':0,
-                                        'hour':0,
-                                        'month_of_year':1},
-                           'options': {'expires': 86400}})
-
-        data = json.dumps({'name':'celery.backend_cleanup',
-                           'task': 'celery.backend_cleanup',
-                           'schedule': {'type':'timedelta',
-                                        'minutes':1},
-                           'options': {'expires': 60}})
-
-        uri = u'/v1.0/scheduler/entry'
-        
+        uri = u'/v1.0/scheduler/entries'
         self.call(self.module, uri, u'POST', data=data, **self.users[u'admin'])
 
     def test_delete_scheduler_entry(self):
         data = json.dumps({'name':'discover_openstack_01'})
-        uri = u'/v1.0/scheduler/entry'
-        
+        uri = u'/v1.0/scheduler/entries'
         self.call(self.module, uri, u'DELETE', data=data, **self.users[u'admin'])
 
 
