@@ -85,24 +85,29 @@ class GetSchedulerEntry(TaskApiView):
         }
         return resp
 
+
 ## create
 class CreateSchedulerEntryParamRequestSchema(Schema):
     name = fields.String(required=True, default=u'discover')
     task = fields.String(required=True, default=u'tasks.discover_vsphere')
-    args = fields.Raw(required=True, allow_none=True)
+    args = fields.Raw(default=[], allow_none=True)
     kwargs = fields.Dict(default={}, allow_none=True)    
     options = fields.Dict(default={}, allow_none=True)
     schedule = fields.Dict(required=True, default={}, allow_none=True)
     relative = fields.Boolean(allow_none=True)
 
+
 class CreateSchedulerEntryRequestSchema(Schema):
     schedule = fields.Nested(CreateSchedulerEntryParamRequestSchema)
-    
+
+
 class CreateSchedulerEntryBodyRequestSchema(Schema):
     body = fields.Nested(CreateSchedulerEntryRequestSchema, context=u'body')
 
+
 class CreateSchedulerEntryResponseSchema(Schema):
     name = fields.String(required=True, defualt=u'sched')
+
 
 class CreateSchedulerEntry(TaskApiView):
     definitions = {
@@ -141,6 +146,7 @@ class CreateSchedulerEntry(TaskApiView):
                                              relative=relative)        
         return (resp, 202)
 
+
 ## delete
 class DeleteSchedulerEntry(TaskApiView):
     definitions = {}
@@ -151,14 +157,14 @@ class DeleteSchedulerEntry(TaskApiView):
         }
     }) 
     
-    def delete(self, controller, data, *args, **kwargs):
+    def delete(self, controller, data, oid, *args, **kwargs):
         """
         Delete schedule
         Delete scheduler schedule by name
         """
         scheduler = controller.get_scheduler()
-        name = get_value(data, u'name', None, exception=True)
-        resp = scheduler.remove_entry(name)        
+        # name = get_value(data, u'name', None, exception=True)
+        resp = scheduler.remove_entry(oid)
         return (resp, 204)
 
 
@@ -532,7 +538,7 @@ class SchedulerAPI(ApiView):
             (u'scheduler/entries', u'GET', GetSchedulerEntries, {}),
             (u'scheduler/entries/<oid>', u'GET', GetSchedulerEntry, {}),
             (u'scheduler/entries', u'POST', CreateSchedulerEntry, {}),
-            (u'scheduler/entries', u'DELETE', DeleteSchedulerEntry, {}),
+            (u'scheduler/entries/<oid>', u'DELETE', DeleteSchedulerEntry, {}),
         ]
 
         ApiView.register_api(module, rules)

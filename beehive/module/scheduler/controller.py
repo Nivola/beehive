@@ -68,7 +68,7 @@ class Scheduler(ApiObject):
             # create or get dictionary from redis
             self.redis_entries = Dict(key=self._prefix, redis=self._redis)
         except:
-            pass
+            self.logger.warn(u'', exc_info=1)
 
     @trace(op=u'schedule.insert')
     def create_update_entry(self, name, task, schedule, args=None, kwargs=None, 

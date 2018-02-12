@@ -121,9 +121,8 @@ tests_scheduler = [
     # 'test_delete_task',
     # 'test_run_job_test',
     # 'test_delete_all_tasks',
-
-    'test_get_scheduler_entries',
     'test_create_scheduler_entries',
+    'test_get_scheduler_entries',
     'test_delete_scheduler_entry',
 ]
 

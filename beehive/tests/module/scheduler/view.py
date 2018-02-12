@@ -24,9 +24,9 @@ tests = [
     # 'test_delete_task',
     # 'test_run_job_test',
     # 'test_delete_all_tasks',
-    
-    # 'test_get_scheduler_entries',
+
     # 'test_create_scheduler_entries',
+    # 'test_get_scheduler_entries',
     # 'test_delete_scheduler_entry',
 ]
 
@@ -138,27 +138,30 @@ class SchedulerAPITestCase(BeehiveTestCase):
         res = self.call(self.module, uri, u'GET', data=data, **self.users[u'admin'])
 
     def test_create_scheduler_entries(self):
-        data = json.dumps({'name':'celery.backend_cleanup',
-                           'task': 'celery.backend_cleanup',
-                           'schedule': {'type':'crontab',
-                                        'minute':2,
-                                        'hour':'*',
-                                        'day_of_week':'*',
-                                        'day_of_month':'*',
-                                        'month_of_year':'*'},
-                           'options': {'expires': 60}})
-        data = json.dumps({'name':'celery.backend_cleanup',
-                           'task': 'celery.backend_cleanup',
-                           'schedule': {'type':'timedelta',
-                                        'minutes':1},
-                           'options': {'expires': 60}})
+        data = {
+            'name':'celery.backend_cleanup',
+            'task': 'celery.backend_cleanup',
+            'schedule': {'type':'crontab',
+                        'minute':2,
+                        'hour':'*',
+                        'day_of_week':'*',
+                        'day_of_month':'*',
+                        'month_of_year':'*'},
+            'options': {'expires': 60}
+        }
+        data = {
+            'name':'celery.backend_cleanup',
+            'task': 'celery.backend_cleanup',
+            'schedule': {'type':'timedelta',
+                        'minutes':1},
+            'options': {'expires': 60}
+        }
         uri = u'/v1.0/scheduler/entries'
-        self.call(self.module, uri, u'POST', data=data, **self.users[u'admin'])
+        self.call(self.module, uri, u'POST', data={u'schedule':data}, **self.users[u'admin'])
 
     def test_delete_scheduler_entry(self):
-        data = json.dumps({'name':'discover_openstack_01'})
-        uri = u'/v1.0/scheduler/entries'
-        self.call(self.module, uri, u'DELETE', data=data, **self.users[u'admin'])
+        uri = u'/v1.0/scheduler/entries/%s' % 'celery.backend_cleanup'
+        self.call(self.module, uri, u'DELETE', data=u'', **self.users[u'admin'])
 
 
 if __name__ == u'__main__':
