@@ -21,6 +21,7 @@ from time import time
 from functools import wraps
 from celery import signature
 from beehive.common.data import trace
+from celery.app.control import Control
 
 
 class SchedulerController(ApiController):
@@ -227,9 +228,6 @@ class TaskManager(ApiObject):
         ApiObject.__init__(self, controller, oid='', name='', desc='', active='')
         hostname = self.celery_broker_queue + u'@' + self.api_manager.server_name
         self.control = task_manager.control.inspect([hostname])
-        self.logger.warn(self.control)
-        from celery.app.control import Control
-        # self.control = Control(task_manager).inspect()
 
         self.objid = '*'
 
@@ -255,7 +253,6 @@ class TaskManager(ApiObject):
         self.verify_permisssions(u'use')
         
         try:
-            from celery.app.control import Control
             res = Control(task_manager).ping(timeout=0.5)
             self.logger.debug('Ping task manager workers: %s' % res)
             resp = {}
