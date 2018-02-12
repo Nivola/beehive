@@ -128,13 +128,11 @@ class SchedulerAPITestCase(BeehiveTestCase):
     def test_get_scheduler_entries(self):
         data = u''
         uri = u'/v1.0/scheduler/entries'
-
         res = self.call(self.module, uri, u'GET', data=data, **self.users[u'admin'])
 
     def test_get_scheduler_entries(self):
         data = u''
         uri = u'/v1.0/scheduler/entries'
-
         res = self.call(self.module, uri, u'GET', data=data, **self.users[u'admin'])
 
     def test_create_scheduler_entries(self):

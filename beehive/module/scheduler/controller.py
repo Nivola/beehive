@@ -64,7 +64,6 @@ class Scheduler(ApiObject):
             self._redis = self.controller.redis_scheduler.conn
             self._pickler = pickle
             self.objid = '*'
-            self.logger.warn(self._redis.info())
             # create or get dictionary from redis
             self.redis_entries = Dict(key=self._prefix, redis=self._redis)
         except:
