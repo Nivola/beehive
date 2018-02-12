@@ -38,6 +38,7 @@ class ServerPing(SwaggerApiView):
         resp = controller.ping()
         return resp
 
+
 class ServerInfo(ApiView):
     def get(self, controller, data, *args, **kwargs):
         """
@@ -45,6 +46,7 @@ class ServerInfo(ApiView):
         """  
         resp = controller.info()
         return resp
+
 
 class ServerProcessTree(ApiView):
     def dispatch(self, controller, data, *args, **kwargs):
@@ -54,7 +56,8 @@ class ServerProcessTree(ApiView):
         """        
         resp = controller.processes()
         return resp
-    
+
+
 class ServerWorkers(ApiView):
     def get(self, controller, data, *args, **kwargs):
         """
@@ -62,6 +65,7 @@ class ServerWorkers(ApiView):
         """        
         resp = controller.workers()
         return resp
+
 
 class ServerConfigs(ApiView):
     def dispatch(self, controller, data, *args, **kwargs):
@@ -72,6 +76,7 @@ class ServerConfigs(ApiView):
         resp = controller.get_configs()
         return resp
 
+
 class ServerUwsgiConfigs(ApiView):
     def dispatch(self, controller, data, *args, **kwargs):
         """
@@ -80,7 +85,8 @@ class ServerUwsgiConfigs(ApiView):
         """        
         resp = controller.get_uwsgi_configs()
         return resp
-    
+
+
 class ServerReload(ApiView):
     def dispatch(self, controller, data, *args, **kwargs):
         """
@@ -197,29 +203,30 @@ class GetDatabaseTableRecordDesc(ApiView):
         res = controller.database_table_desc(table)
         return res'''
 
+
 class BaseAPI(ApiView):
     """
     """
     @staticmethod
     def register_api(module):
         rules = [
-            (u'server/ping', u'GET', ServerPing, {u'secure':False}),
-            (u'server', u'GET', ServerInfo, {u'secure':False}),
-            (u'server/processes', u'GET', ServerProcessTree, {}),
-            (u'server/workers', u'GET', ServerWorkers, {u'secure':False}),
-            (u'server/configs', u'GET', ServerConfigs, {}),
-            (u'server/uwsgi/configs', u'GET', ServerUwsgiConfigs, {}),          
-            (u'server/reload', u'PUT', ServerReload, {}),
+            (u'server/ping', u'GET', ServerPing, {u'secure': False}),
+            (u'server', u'GET', ServerInfo, {u'secure': False}),
+            # (u'server/processes', u'GET', ServerProcessTree, {}),
+            # (u'server/workers', u'GET', ServerWorkers, {u'secure':False}),
+            # (u'server/configs', u'GET', ServerConfigs, {}),
+            # (u'server/uwsgi/configs', u'GET', ServerUwsgiConfigs, {}),
+            # (u'server/reload', u'PUT', ServerReload, {}),
             
-            #(u'server/sessions', u'GET', ServerFlaskSessions, {}),
+            # (u'server/sessions', u'GET', ServerFlaskSessions, {}),
             
             
-            #(u'server/db/ping', u'GET', PingDatabase, {}),
-            #(u'server/db/tables', u'GET', ListDatabaseTables, {}),
-            #(u'server/db/table/<table>', u'GET', GetDatabaseTable, {}),
-            #(u'server/db/table/<table>/<row>/<offset>', u'GET', GetDatabaseTableRecord, {}),
-            #(u'server/db/table/<table>/count', u'GET', GetDatabaseTableRecordCount, {}),
-            #(u'server/db/table/<table>/desc', u'GET', GetDatabaseTableRecordDesc, {})
+            # (u'server/db/ping', u'GET', PingDatabase, {}),
+            # (u'server/db/tables', u'GET', ListDatabaseTables, {}),
+            # (u'server/db/table/<table>', u'GET', GetDatabaseTable, {}),
+            # (u'server/db/table/<table>/<row>/<offset>', u'GET', GetDatabaseTableRecord, {}),
+            # (u'server/db/table/<table>/count', u'GET', GetDatabaseTableRecordCount, {}),
+            # (u'server/db/table/<table>/desc', u'GET', GetDatabaseTableRecordDesc, {})
         ]
 
         ApiView.register_api(module, rules)

@@ -161,12 +161,14 @@ class DeleteSchedulerEntry(TaskApiView):
         resp = scheduler.remove_entry(name)        
         return (resp, 204)
 
+
 #
 # Task manager
 #
 ## ping
 class ManagerPingResponseSchema(Schema):
     workers_ping = fields.List(fields.Dict(), required=True)
+
 
 class ManagerPing(TaskApiView):
     definitions = {
@@ -187,10 +189,12 @@ class ManagerPing(TaskApiView):
         task_manager = controller.get_task_manager()
         resp = task_manager.ping()
         return {u'workers_ping':resp}
-    
+
+
 ## stats
 class ManagerStatsResponseSchema(Schema):
     workers_ping = fields.List(fields.Dict(), required=True)
+
 
 class ManagerStats(TaskApiView):
     definitions = {
@@ -211,7 +215,8 @@ class ManagerStats(TaskApiView):
         task_manager = controller.get_task_manager()
         resp = task_manager.stats()
         return {u'workers_stats':resp}
-    
+
+
 ## report
 class ManagerReportResponseSchema(Schema):
     workers_ping = fields.List(fields.Dict(), required=True)
@@ -511,22 +516,13 @@ class TaskAPI(ApiView):
             (u'worker/ping', u'GET', ManagerPing, {}),
             (u'worker/stats', u'GET', ManagerStats, {}),
             (u'worker/report', u'GET', ManagerReport, {}),
-            #(u'worker/tasks', u'GET', GetTasks, {}),
             (u'worker/tasks', u'GET', GetAllTasks, {}),
             (u'worker/tasks/count', u'GET', GetTasksCount, {}),
             (u'worker/tasks/definitions', u'GET', GetTasksDefinition, {}),
-            #(u'worker/tasks/active', u'GET', GetTasksActive, {}),
-            #(u'worker/tasks/scheduled', u'GET', GetTasksScheduled, {}),
-            #(u'worker/tasks/reserved', u'GET', GetTasksReserved, {}),
-            #(u'worker/tasks/revoked', u'GET', GetTasksRevoked, {}),
             (u'worker/tasks/<oid>', u'GET', QueryTask, {}),
-            #(u'worker/tasks/<oid>/status', u'GET', QueryTaskStatus, {}),
             (u'worker/tasks/<oid>/graph', u'GET', GetTaskGraph, {}),
             (u'worker/tasks', u'DELETE', PurgeAllTasks, {}),
-            #(u'worker/tasks/purge', u'DELETE', PurgeTasks, {}),
             (u'worker/tasks/<oid>', u'DELETE', DeleteTask, {}),
-            #(u'worker/tasks/<oid>/revoke', u'DELETE', RevokeTask, {}),
-            #(u'worker/tasks/time-limit', u'PUT', SetTaskTimeLimit, {}),
             (u'worker/tasks/test', u'POST', RunJobTest, {}),
         ]
 

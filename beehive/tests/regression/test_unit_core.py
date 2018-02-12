@@ -13,31 +13,11 @@ from beehive.tests.module.catalog.view import CatalogTestCase
 from beehive.tests.module.scheduler.view import SchedulerAPITestCase
 
 tests_base = [
-    # 'test_ping',
-    # 'test_info',
-
-    'test_login',
-    # 'test_processes',
-    # 'test_workers',
-    # 'test_configs'
-    'test_uwsgi_configs',
-    # 'test_reload',
-    # 'test_logout',
-
-    # 'test_database_ping',
-    # 'test_database_tables',
-    # 'test_database_table',
-    # 'test_database_table_paging',
-    # 'test_database_table_count',
-    # 'test_database_table_desc'
+    'test_ping',
+    'test_info',
 ]
 
 tests_auth = [
-    u'test_get_domains',
-    u'test_get_tokens',
-    u'test_get_token',
-    u'test_delete_token',
-
     u'test_add_role',
     u'test_add_role_twice',
     u'test_get_roles',
@@ -93,6 +73,11 @@ tests_auth = [
     u'test_get_perms',
     u'test_get_perms_by_type',
     u'test_get_perm',
+
+    u'test_get_domains',
+    u'test_get_tokens',
+    u'test_get_token',
+    u'test_delete_token',
 ]
 
 tests_catalog = [
@@ -123,27 +108,18 @@ tests_event = [
 ]
 
 tests_scheduler = [
-    # 'test_ping_task_manager',
-    # 'test_stat_task_manager',
-    # 'test_report_task_manager',
-    ##'test_get_all_tasks',
-    # 'test_get_all_tasks',
-    'test_get_task',
-    # 'test_get_task_graph',
-    # 'test_count_all_tasks',
-    # 'test_registered_tasks',
-    # 'test_active_tasks',
-    # 'test_scheduled_tasks',
-    # 'test_reserved_tasks',
-    # 'test_revoked_tasks',
-    ##'test_query_task',
-    ##'test_query_task_status',
-    ##'test_get_task_graph',
-    ##'test_query_all_tasks',
-    # 'test_delete_all_tasks',
-    # 'test_purge_tasks',
-    # 'test_revoke_task',
+    'test_ping_task_manager',
+    'test_stat_task_manager',
+    'test_report_task_manager',
+    'test_get_all_tasks',
+    'test_count_all_tasks',
+    'test_registered_tasks',
     # 'test_run_job_test',
+    # 'test_get_task',
+    # 'test_get_task_graph',
+    # 'test_delete_task',
+    # 'test_run_job_test',
+    # 'test_delete_all_tasks',
 
     # 'test_get_scheduler_entries',
     # 'test_create_scheduler_entries',
@@ -157,10 +133,10 @@ class CoreTestCase(BaseTestCase, AuthTestCase, EventTestCase, CatalogTestCase, S
 
 if __name__ == u'__main__':
     for tests in [
-        tests_base,
-        tests_auth,
-        tests_catalog,
-        tests_event,
+        # tests_base,
+        # tests_auth,
+        # tests_catalog,
+        # tests_event,
         tests_scheduler
     ]:
         runtest(CoreTestCase, tests)

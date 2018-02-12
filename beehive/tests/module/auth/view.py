@@ -11,11 +11,6 @@ from beecell.remote import BadRequestException, UnauthorizedException,\
 oid = None
 
 tests = [
-    u'test_get_domains',
-    u'test_get_tokens',
-    u'test_get_token',
-    u'test_delete_token',
-    
     u'test_add_role',
     u'test_add_role_twice',
     u'test_get_roles',
@@ -71,6 +66,11 @@ tests = [
     u'test_get_perms',
     u'test_get_perms_by_type',
     u'test_get_perm',
+
+    u'test_get_domains',
+    u'test_get_tokens',
+    u'test_get_token',
+    u'test_delete_token',
 ]
 
 
@@ -92,8 +92,7 @@ class AuthTestCase(BeehiveTestCase):
     #
     def test_get_tokens(self):
         global oid
-        res = self.call(u'auth', u'/v1.0/auth/tokens', u'get', 
-                        **self.users[u'admin'])
+        res = self.call(u'auth', u'/v1.0/auth/tokens', u'get', **self.users[u'admin'])
         oids = res[u'tokens']
         if len(oids) > 0:
             oid = oids[0][u'token']
@@ -106,9 +105,7 @@ class AuthTestCase(BeehiveTestCase):
         
     def test_delete_token(self):
         global oid
-        self.call(u'auth', u'/v1.0/auth/tokens/{oid}', u'delete', 
-                  params={u'oid':oid},
-                  **self.users[u'admin'])         
+        self.call(u'auth', u'/v1.0/auth/tokens/{oid}', u'delete', params={u'oid':oid}, **self.users[u'admin'])
 
     #
     # roles
@@ -133,17 +130,13 @@ class AuthTestCase(BeehiveTestCase):
                 u'desc':u'role_prova',
             }
         }        
-        self.call(u'auth', u'/v1.0/auth/roles', u'post', data=data,
-                  **self.users[u'admin'])        
+        self.call(u'auth', u'/v1.0/auth/roles', u'post', data=data, **self.users[u'admin'])
     
     def test_get_roles(self):
-        self.call(u'auth', u'/v1.0/auth/roles', u'get', 
-                  **self.users[u'admin'])     
+        self.call(u'auth', u'/v1.0/auth/roles', u'get', **self.users[u'admin'])
         
     def test_get_role(self):
-        self.call(u'auth', u'/v1.0/auth/roles/{oid}', u'get',
-                  params={u'oid':4}, 
-                  **self.users[u'admin'])
+        self.call(u'auth', u'/v1.0/auth/roles/{oid}', u'get', params={u'oid':u'role_prova'}, **self.users[u'admin'])
         
     def test_update_role(self):
         data = {
@@ -152,43 +145,40 @@ class AuthTestCase(BeehiveTestCase):
                 u'desc':u'role_prova1',
             }
         }
-        self.call(u'auth', u'/v1.0/auth/roles/{oid}', u'put', 
-                  params={u'oid':u'role_prova'}, data=data,
-                  **self.users[u'admin'])        
+        self.call(u'auth', u'/v1.0/auth/roles/{oid}', u'put', params={u'oid':u'role_prova'}, data=data,
+                  **self.users[u'admin'])
         
     def test_add_role_perm(self):
         data = {
             u'role':{
-                u'perms':{u'append':[{u'id':4}, 
-                                     {u'subsystem':u'auth', u'type':u'Role',
-                                      u'objid':u'*', u'action':u'view'}]}
+                u'perms':{
+                    u'append':[
+                        # {u'id':1},
+                        {u'subsystem':u'auth', u'type':u'Role', u'objid':u'*', u'action':u'view'}]}
             }
         }
-        self.call(u'auth', u'/v1.0/auth/roles/{oid}', u'put',
-                  params={u'oid':u'role_prova'}, data=data,
+        self.call(u'auth', u'/v1.0/auth/roles/{oid}', u'put', params={u'oid':u'role_prova'}, data=data,
                   **self.users[u'admin'])
         
     def test_get_perms_by_role(self):
         global oid
-        res = self.call(u'auth', u'/v1.0/auth/objects/perms', u'get',
-                        query={u'role':u'role_prova'},
+        res = self.call(u'auth', u'/v1.0/auth/objects/perms', u'get', query={u'role':u'role_prova'},
                         **self.users[u'admin'])        
         
     def test_remove_role_perm(self):
         data = {
             u'role':{
-                u'perms':{u'remove':[{u'id':4},
-                                     {u'subsystem':u'auth', u'type':u'Role',
-                                      u'objid':u'*', u'action':u'view'}]}
+                u'perms':{
+                    u'remove':[
+                        # {u'id':1},
+                        {u'subsystem':u'auth', u'type':u'Role', u'objid':u'*', u'action':u'view'}]}
             }
         }        
-        self.call(u'auth', u'/v1.0/auth/roles/{oid}', u'put',
-                  params={u'oid':u'role_prova'}, data=data,
+        self.call(u'auth', u'/v1.0/auth/roles/{oid}', u'put', params={u'oid':u'role_prova'}, data=data,
                   **self.users[u'admin'])     
         
     def test_delete_role(self):
-        self.call(u'auth', u'/v1.0/auth/roles/{oid}', u'delete', 
-                  params={u'oid':u'role_prova'},
+        self.call(u'auth', u'/v1.0/auth/roles/{oid}', u'delete', params={u'oid':u'role_prova'},
                   **self.users[u'admin'])  
 
     #
@@ -203,11 +193,10 @@ class AuthTestCase(BeehiveTestCase):
                 u'expirydate':u'2099-12-31',
                 u'password':u'user_prova',
                 u'base':True,
-                #u'system':True
+                # u'system':True
             }
         }        
-        self.call(u'auth', u'/v1.0/auth/users', u'post', data=data,
-                  **self.users[u'admin'])
+        self.call(u'auth', u'/v1.0/auth/users', u'post', data=data, **self.users[u'admin'])
     
     @assert_exception(ConflictException)
     def test_add_user_twice(self):
@@ -221,28 +210,20 @@ class AuthTestCase(BeehiveTestCase):
                 u'base':True
             }
         }       
-        self.call(u'auth', u'/v1.0/auth/users', u'post', data=data,
-                  **self.users[u'admin'])        
+        self.call(u'auth', u'/v1.0/auth/users', u'post', data=data, **self.users[u'admin'])
     
     def test_get_users(self):
-        self.call(u'auth', u'/v1.0/auth/users', u'get',
-                  query={u'page':0},
-                  **self.users[u'admin'])
+        self.call(u'auth', u'/v1.0/auth/users', u'get', query={u'page':0}, **self.users[u'admin'])
         
     def test_get_users_by_role(self):
-        self.call(u'auth', u'/v1.0/auth/users', u'get',
-                  query={u'role':u'Guest'},
-                  **self.users[u'admin'])        
+        self.call(u'auth', u'/v1.0/auth/users', u'get', query={u'role':u'Guest'}, **self.users[u'admin'])
         
     def test_get_user(self):
-        self.call(u'auth', u'/v1.0/auth/users/{oid}', u'get',
-                  params={u'oid':u'user_prova@local'}, 
+        self.call(u'auth', u'/v1.0/auth/users/{oid}', u'get', params={u'oid':u'user_prova@local'},
                   **self.users[u'admin'])
         
     def test_get_user_roles(self):
-        self.call(u'auth', u'/v1.0/auth/roles', u'get',
-                  query={u'user':u'user_prova@local'},
-                  **self.users[u'admin'])           
+        self.call(u'auth', u'/v1.0/auth/roles', u'get', query={u'user':u'user_prova@local'}, **self.users[u'admin'])
         
     def test_add_user_attributes(self):
         data = {
@@ -252,9 +233,8 @@ class AuthTestCase(BeehiveTestCase):
                 u'desc':u'attr_prova_desc'
             }
         }
-        self.call(u'auth', u'/v1.0/auth/users/{oid}/attributes', u'post',
-                  params={u'oid':u'user_prova@local'}, data=data,
-                  **self.users[u'admin'])
+        self.call(u'auth', u'/v1.0/auth/users/{oid}/attributes', u'post', params={u'oid':u'user_prova@local'},
+                  data=data, **self.users[u'admin'])
         
     def test_get_user_attributes(self):
         self.call(u'auth', u'/v1.0/auth/users/{oid}/attributes', u'get',
@@ -279,7 +259,7 @@ class AuthTestCase(BeehiveTestCase):
     def test_add_user_role(self):
         data = {
             u'user':{
-                u'roles':{u'append':[(u'4', u'2019-12-31')]}
+                u'roles':{u'append':[(u'Guest', u'2019-12-31')]}
             }
         }
         self.call(u'auth', u'/v1.0/auth/users/{oid}', u'put',
@@ -295,7 +275,7 @@ class AuthTestCase(BeehiveTestCase):
     def test_remove_user_role(self):
         data = {
             u'user':{
-                u'roles':{u'remove':[u'4']}
+                u'roles':{u'remove':[u'Guest']}
             }
         }        
         self.call(u'auth', u'/v1.0/auth/users/{oid}', u'put',
@@ -421,8 +401,7 @@ class AuthTestCase(BeehiveTestCase):
     #
     def test_get_actions(self):
         global oid
-        res = self.call(u'auth', u'/v1.0/auth/objects/actions', u'get', 
-                  **self.users[u'admin'])
+        res = self.call(u'auth', u'/v1.0/auth/objects/actions', u'get', **self.users[u'admin'])
 
     #
     # types
@@ -430,39 +409,34 @@ class AuthTestCase(BeehiveTestCase):
     def test_add_type(self):
         global oid
         data = {
-            u'object-types':[
+            u'object_types':[
                 {
                     u'subsystem':u'prova',
                     u'type':u'prova',
                 }
             ]
         }        
-        res = self.call(u'auth', u'/v1.0/auth/objects/types', u'post', data=data,
-                  **self.users[u'admin'])
+        res = self.call(u'auth', u'/v1.0/auth/objects/types', u'post', data=data, **self.users[u'admin'])
         oid = res[u'ids'][0]
-    
-    @assert_exception(ConflictException)
+
     def test_add_type_twice(self):
         data = {
-            u'object-types':[
+            u'object_types':[
                 {
                     u'subsystem':u'prova',
                     u'type':u'prova',
                 }
             ]
         }        
-        self.call(u'auth', u'/v1.0/auth/objects/types', u'post', data=data,
-                  **self.users[u'admin'])        
+        self.call(u'auth', u'/v1.0/auth/objects/types', u'post', data=data, **self.users[u'admin'])
     
     def test_get_types(self):
-        res = self.call(u'auth', u'/v1.0/auth/objects/types', u'get', 
-                  **self.users[u'admin'])
+        res = self.call(u'auth', u'/v1.0/auth/objects/types', u'get', **self.users[u'admin'])
 
     def test_delete_type(self):
         global oid
         self.call(u'auth', u'/v1.0/auth/objects/types/{oid}', u'delete', 
-                  params={u'oid':oid},
-                  **self.users[u'admin']) 
+                  params={u'oid':oid}, **self.users[u'admin'])
 
     #
     # objects

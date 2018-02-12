@@ -37,6 +37,7 @@ from flex.core import load
 from requests.auth import HTTPBasicAuth
 from celery.utils.log import ColorFormatter as CeleryColorFormatter
 from celery.utils.term import colored
+from gevent import sleep
 
 seckey = None
 token = None
@@ -193,9 +194,8 @@ class BeehiveTestCase(unittest.TestCase):
         headers = {u'Content-Type':u'application/json'}
         endpoint = self.endpoints[u'auth']
         uri = u'/v1.0/keyauth/token'
-        response = requests.request(u'post', endpoint + uri, 
-                                    data=json.dumps(data), headers=headers,
-                                    timeout=5, verify=False)
+        response = requests.request(u'post', endpoint + uri, data=json.dumps(data), headers=headers, timeout=5,
+                                    verify=False)
         res = response.json()
         token = res[u'access_token']
         seckey = res[u'seckey']
@@ -380,7 +380,32 @@ class BeehiveTestCase(unittest.TestCase):
         logger.debug(u'call elapsed: %s' % (time.time()-start))
         self.assertEqual(validate, True)
         return res
-    
+
+    def get_job_state(self, jobid):
+        try:
+            res = self.call(u'resource', u'/v1.0/worker/tasks/{oid}', u'get', params={u'oid': jobid}, runlog=False,
+                            **self.users[u'admin'])
+            job = res.get(u'task_instance')
+            state = job.get(u'status')
+            logger.debug(u'Get job %s state: %s' % (jobid, state))
+            if state == u'FAILURE':
+                for err in job.get(u'traceback', []):
+                    self.runlogger.error(err.rstrip())
+            return state
+        except (NotFoundException, Exception):
+            return u'EXPUNGED'
+
+    def wait_job(self, jobid, delta=1, accepted_state=u'SUCCESS'):
+        """Wait resource
+        """
+        self.runlogger.info(u'wait for:         %s' % jobid)
+        state = self.get_job_state(jobid)
+        while state not in [u'SUCCESS', u'FAILURE']:
+            self.runlogger.info(u'.')
+            sleep(delta)
+            state = self.get_job_state(jobid)
+        self.assertEqual(state, accepted_state)
+
     '''
     def invoke(self, api, path, method, data=u'', headers={}, filter=None,
                auth_method=u'keyauth', credentials=None):

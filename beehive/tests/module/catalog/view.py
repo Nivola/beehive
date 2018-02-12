@@ -66,8 +66,9 @@ class CatalogTestCase(BeehiveTestCase):
                   **self.users[u'admin'])        
     
     def test_get_catalogs(self):
-        self.call(u'auth', u'/v1.0/directory/catalogs', u'get', 
-                  **self.users[u'admin'])
+        res = self.call(u'auth', u'/v1.0/directory/catalogs', u'get', **self.users[u'admin'])
+        global oid
+        oid = res[u'catalogs'][-1][u'id']
         
     def test_get_catalogs_by_zone(self):
         self.call(u'auth', u'/v1.0/directory/catalogs', u'get',
@@ -75,13 +76,15 @@ class CatalogTestCase(BeehiveTestCase):
                   **self.users[u'admin'])   
         
     def test_get_catalog(self):
+        global oid
         self.call(u'auth', u'/v1.0/directory/catalogs/{oid}', u'get',
-                  params={u'oid':4}, 
+                  params={u'oid':oid},
                   **self.users[u'admin'])
         
     def test_get_catalog_perms(self):
+        global oid
         self.call(u'auth', u'/v1.0/directory/catalogs/{oid}/perms', u'get',
-                  params={u'oid':4}, 
+                  params={u'oid':oid},
                   **self.users[u'admin'])        
         
     def test_get_catalog_by_name(self):

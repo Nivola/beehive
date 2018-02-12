@@ -250,7 +250,7 @@ class TaskManager(ApiObject):
         self.verify_permisssions(u'use')
         
         try:
-            res = task_manager.control.ping(timeout=0.5)
+            res = self.control.ping(timeout=0.5)
             self.logger.debug('Ping task manager workers: %s' % res)
             resp = {}
             for item in res:
