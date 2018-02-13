@@ -3115,8 +3115,22 @@ class ApiView(FlaskView):
     def dispatch(self, controller, data, *args, **kwargs):
         """http inner function. Override to implement apis.
         """
-        raise NotImplementedError()    
-    
+        raise NotImplementedError()
+
+    def to_dict(self, querystring):
+        res = {}
+        for k, v in querystring.iteritems(multi=True):
+            self.logger.warn(k[-2:])
+            self.logger.warn(v)
+            if k[-2:] == u'.N':
+                try:
+                    res[k].append(v)
+                except:
+                    res[k] = [v]
+            else:
+                res[k] = v
+        return res
+
     def dispatch_request(self, module=None, secure=True, *args, **kwargs):
         """Base dispatch_request method. Extend this method in your child class.
         """
@@ -3140,7 +3154,9 @@ class ApiView(FlaskView):
             self.logger.info(u'Start new operation: %s' % operation.id)
             
             self.logger.info(u'Invoke api: %s [%s] - START' % (request.path, request.method))
-            query_string = request.values.to_dict()
+
+            query_string = self.to_dict(request.args)
+
             # get chunked input data
             if request.headers.get(u'Transfer-Encoding', u'') == u'chunked':
                 request_data = uwsgi_util.chunked_read(5)
@@ -3168,7 +3184,8 @@ class ApiView(FlaskView):
             # validate query/input data
             if self.parameters_schema is not None:
                 if request.method.lower() == u'get':
-                    parsed = self.parameters_schema().load(request.args.to_dict())
+                    # parsed = self.parameters_schema().load(request.args.to_dict())
+                    parsed = self.parameters_schema().load(query_string)
                 else:
                     parsed = self.parameters_schema().load(data)
                 if len(parsed.errors.keys()) > 0:

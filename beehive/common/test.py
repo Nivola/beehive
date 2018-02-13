@@ -279,11 +279,12 @@ class BeehiveTestCase(unittest.TestCase):
                 self.runlogger.info(u'request params:   %s' % params)
                 self.runlogger.info(u'request query:    %s' % query)
                 self.runlogger.info(u'request data:     %s' % data)            
-                self.runlogger.info(u'request headers:  %s' % headers)  
+                self.runlogger.info(u'request headers:  %s' % headers)
             
             # execute request
             response = requests.request(method, endpoint + uri, auth=cred, params=query, data=data, headers=headers,
                                         timeout=timeout, verify=False)
+            self.runlogger.info(u'request url    :  %s' % response.url)
             
             if runlog is True:
                 self.runlogger.info(u'response headers: %s' % response.headers)
