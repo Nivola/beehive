@@ -90,7 +90,7 @@ class GetSchedulerEntry(TaskApiView):
 class CreateSchedulerEntryParamRequestSchema(Schema):
     name = fields.String(required=True, default=u'discover')
     task = fields.String(required=True, default=u'tasks.discover_vsphere')
-    args = fields.Raw(default=[], allow_none=True)
+    args = fields.Raw(allow_none=True)
     kwargs = fields.Dict(default={}, allow_none=True)    
     options = fields.Dict(default={}, allow_none=True)
     schedule = fields.Dict(required=True, default={}, allow_none=True)
@@ -112,7 +112,7 @@ class CreateSchedulerEntryResponseSchema(Schema):
 class CreateSchedulerEntry(TaskApiView):
     definitions = {
         u'CreateSchedulerEntryResponseSchema': CreateSchedulerEntryResponseSchema,
-        u'CreateSchedulerEntryRequestSchema':CreateSchedulerEntryRequestSchema
+        u'CreateSchedulerEntryRequestSchema': CreateSchedulerEntryRequestSchema
     }
     parameters = SwaggerHelper().get_parameters(CreateSchedulerEntryBodyRequestSchema)
     parameters_schema = CreateSchedulerEntryRequestSchema
