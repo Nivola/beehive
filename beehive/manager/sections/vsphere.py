@@ -838,7 +838,7 @@ class VsphereControllerChild(ApiController):
         stacked_on = 'vsphere'
         stacked_type = 'nested'
         arguments = [
-            ( ['extra_arguments'], dict(action='store', nargs='*'))
+            (['extra_arguments'], dict(action='store', nargs='*'))
         ]
 
     def _ext_parse_args(self):
@@ -858,7 +858,7 @@ class VsphereControllerChild(ApiController):
         uri = self.uri + u'/' + oid
         res = self._call(uri, u'GET')
         logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
-        self.result(res, key=self._meta.aliases[0].rstrip(u's'), details=True)
+        self.result(res, key=self._meta.aliases[0][:-1], details=True)
     
     @expose(aliases=[u'add <file data>'], aliases_only=True)
     def add(self):

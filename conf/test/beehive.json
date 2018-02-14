@@ -1,11 +1,11 @@
 {
-    "env": "lab5",
+    "env": "test",
     "schema": "resource",
     "configs": {
         "resource": {
             "vsphere": {
                 "datacenter1": {
-                    "uuid": "db43d07d-506e-48dd-9390-1c8a668003e1"
+                    "uuid": "TST-SDDC"
                 },
                 "folder1": {
                     "name": "test-folder-01",
@@ -16,14 +16,14 @@
                     "parent": "test-folder-01"
                 },
                 "dvs1": {
-                    "uuid": "d9fd2f3e-cfbd-4dd0-8198-1d762003d4a8"
+                    "uuid": "DVS-LEGACY"
                 },
                 "dvpg1": {
                     "name": "test-dvpg-01",
                     "vlan": 565
                 },
                 "cluster1": {
-                    "uuid": "c71f1fcf-b3f1-4a5d-a632-df25f35355f2"
+                    "uuid": "LEGACYCompute"
                 },
                 "rpool1": {
                     "name": "test-rpool-01"
@@ -37,7 +37,7 @@
                 },
                 "nsx-sg1": {
                     "name": "test-sg-01",
-                    "member": "9a0e9eb6-6381-4a5e-8cbb-bbe6d576b988"
+                    "member": "test-ipset-01"
                 },
                 "nsx-section01": {
                     "name": "test-section-01"
