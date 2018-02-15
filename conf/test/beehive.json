@@ -1,5 +1,5 @@
 {
-    "env": "lab5",
+    "env": "test",
     "schema": "resource",
     "configs": {
         "resource": {
@@ -817,30 +817,26 @@
                 "type": "Openstack",
                 "name": "tst-opstk-ocata-01",
                 "desc": "tst-opstk-ocata-01",
-                "conn": {
-                    "api": {
-                        "uri": "http://10.102.184.83:5000/v3",
-                        "domain": "default",
-                        "user": "admin",
-                        "project": "admin",
-                        "pwd": "cs1topix",
-                        "region": "RegionOne"
-                    }
+                "api": {
+                    "uri": "http://10.102.184.83:5000/v3",
+                    "domain": "default",
+                    "user": "admin",
+                    "project": "admin",
+                    "pwd": "cs1topix",
+                    "region": "RegionOne"
                 }
             },
             "openstack2": {
                 "type": "Openstack",
                 "name": "tst-opstk-redhat-01",
                 "desc": "st-opstk-redhat-01",
-                "conn": {
-                    "api": {
-                        "uri": "http://10.102.184.200:5000/v3",
-                        "domain": "default",
-                        "user": "admin",
-                        "project": "admin",
-                        "pwd": "8fAwzAJAHQFMcJfrntpapzDpC",
-                        "region": "regionOne"
-                    }
+                "api": {
+                    "uri": "http://10.102.184.200:5000/v3",
+                    "domain": "default",
+                    "user": "admin",
+                    "project": "admin",
+                    "pwd": "8fAwzAJAHQFMcJfrntpapzDpC",
+                    "region": "regionOne"
                 }
             },
             "provider1": {
