@@ -634,7 +634,7 @@ class ApiManager(object):
                 try:
                     self.logger.info(u'Configure Camunda - CONFIGURE')            
                     from beedrones.camunda import WorkFlowEngine as CamundaEngine
-                    confs = configurator.get(app=self.app_name, group=u'bpmn', name=u'bpmn_endpoint')[0].value
+                    confs = configurator.get(app=self.app_name, group=u'bpmn', name=u'camunda.cluster')[0].value
                     self.logger.info(u'Configure Camunda - CONFIG app%s: %s' % (self.app_name, confs))
                     for conf in confs:
                         item = json.loads(conf.value)
@@ -2643,6 +2643,7 @@ class ApiInternalObject(ApiObject):
             self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=ex.code)         
 
+
 class ApiViewResponse(ApiObject):
     objtype = u'api'
     objdef = u'Response'
@@ -3120,8 +3121,6 @@ class ApiView(FlaskView):
     def to_dict(self, querystring):
         res = {}
         for k, v in querystring.iteritems(multi=True):
-            self.logger.warn(k[-2:])
-            self.logger.warn(v)
             if k[-2:] == u'.N':
                 try:
                     res[k].append(v)
@@ -3163,7 +3162,8 @@ class ApiView(FlaskView):
             else:
                 request_data = request.data
             
-            self.logger.debug(u'Api request headers:%s, data:%s, query:%s' % (headers, request_data, query_string))
+            self.logger.debug(u'Api request headers:%s, params: %s, data:%s, query:%s' %
+                              (headers, kwargs, request_data, query_string))
             self._get_response_mime_type()
             
             # open database session.
@@ -3185,8 +3185,10 @@ class ApiView(FlaskView):
             if self.parameters_schema is not None:
                 if request.method.lower() == u'get':
                     # parsed = self.parameters_schema().load(request.args.to_dict())
+                    query_string.update(kwargs)
                     parsed = self.parameters_schema().load(query_string)
                 else:
+                    data.update(kwargs)
                     parsed = self.parameters_schema().load(data)
                 if len(parsed.errors.keys()) > 0:
                     self.logger.error(parsed.errors)
