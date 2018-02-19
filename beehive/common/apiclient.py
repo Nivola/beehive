@@ -15,12 +15,13 @@ from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 from Crypto.Random import atfork
 import binascii
-from beecell.simple import truncate, id_gen
+from beecell.simple import truncate, id_gen, check_vault
 from socket import gethostname
 from itertools import repeat
 from multiprocessing import current_process
 from base64 import b64encode
 from beehive.common.jwtclient import JWTClient
+
 
 class BeehiveApiClientError(Exception):
     def __init__(self, value, code=400):
@@ -43,6 +44,7 @@ class BeehiveApiClient(object):
     :param user: api user
     :param pwd: api user password
     :param catalog_id: api catalog id
+    :param key: [optional] fernet key used to decrypt encrypted password
     
     Use:
     
@@ -50,19 +52,21 @@ class BeehiveApiClient(object):
     
     
     """
-    def __init__(self, auth_endpoints, authtype, user, pwd, catalog_id=None,
-                 client_config=None):
+    def __init__(self, auth_endpoints, authtype, user, pwd, catalog_id=None, client_config=None, key=None):
         self.logger = getLogger(self.__class__.__module__ + u'.' + self.__class__.__name__)
-        
-        #atfork()
+
+        # check password is encrypted
+        pwd = check_vault(pwd, key)
+
+        # atfork()
         self.pid = current_process().ident
         
         if len(auth_endpoints) > 0:
             self.main_endpoint = auth_endpoints[0]
         else:
             self.main_endpoint = None
-        self.endpoints = {u'auth':[]}
-        self.endpoint_weights = {u'auth':[]}
+        self.endpoints = {u'auth': []}
+        self.endpoint_weights = {u'auth': []}
         self.api_authtype = authtype # can be: simplehttp, oauth2, keyauth
         self.api_user = user
         self.api_user_pwd = pwd
@@ -84,8 +88,8 @@ class BeehiveApiClient(object):
         self.logger.debug(u'Get main auth endpoints: %s' % self.endpoints[u'auth'])
         
         # load catalog
-        #self.load_catalog()
-        
+        # self.load_catalog()
+
     def __parse_endpoint(self, endpoint_uri):
         """Parse endpoint http://10.102.160.240:6060
         

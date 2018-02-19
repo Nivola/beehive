@@ -66,7 +66,8 @@ class OpenstackPlatformControllerChild(BaseController):
         if project is None:
             project = conf.get(u'project')
         self.client = OpenstackManager(conf.get(u'uri'), default_region=conf.get(u'region'))
-        self.client.authorize(conf.get(u'user'), conf.get(u'pwd'), project=project, domain=conf.get(u'domain'))
+        self.client.authorize(conf.get(u'user'), conf.get(u'pwd'), project=project, domain=conf.get(u'domain'),
+                              key=self.key)
 
 
 class OpenstackPlatformSystemController(OpenstackPlatformControllerChild):

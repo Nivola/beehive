@@ -35,6 +35,7 @@ from pprint import pformat
 from re import match, sub
 from tabulate import tabulate
 from time import sleep
+from cryptography.fernet import Fernet
 
 logger = getLogger(__name__)
 
@@ -209,6 +210,8 @@ commands:
         self.env = getattr(self.app.pargs, u'env', None)
         self.envs = getattr(self.app.pargs, u'envs', None)
         self.verbosity = getattr(self.app.pargs, u'verbosity', None)
+        self.key = getattr(self.app.pargs, u'key', None)
+
         if self.format is None:
             self.format = self.app._meta.format
             setattr(self.app._parsed_args, u'format', self.format)
@@ -228,6 +231,14 @@ commands:
             raise Exception(u'Platform environment %s does not exist. Select from: %s' % (self.env, envs))
         if self.envs is not None:
             self.envs = self.envs.split(u',')
+
+        # fernet key
+        if self.key is None:
+            self.key = self.app.fernet
+
+    def check_secret_key(self):
+        if self.key is None:
+            raise Exception(u'Secret key is not defined')
 
     '''
     @check_error
@@ -585,13 +596,16 @@ commands:
                         t[1] = True
                     if t[1] == 'False' or t[1] == 'false':
                         t[1] = False
+                    if t[1].find(u'{') >= 0:
+                        t[1] = json.loads(t[1])
                     self.app.kvargs[t[0]] = t[1]
             else:
                 self.app.args.append(item)
 
         if keyvalue is True:
             kvargs = getattr(self.app, u'kvargs', {})
-            return kvargs.get(name, default)
+            item = kvargs.get(name, default)
+            return item
 
         arg = None
         try:
@@ -602,6 +616,14 @@ commands:
             elif name is not None:
                 raise Exception(u'Param %s is not defined' % name)
         return arg
+
+    def decrypt(self, data):
+        """Decrypt data with symmetric encryption
+        """
+        self.check_secret_key()
+        cipher_suite = Fernet(self.key)
+        cipher_text = cipher_suite.decrypt(data)
+        return cipher_text
 
 
 class ApiController(BaseController):
@@ -619,14 +641,15 @@ class ApiController(BaseController):
     
         if config[u'endpoint'] is None:
             raise Exception(u'Auth endpoint is not configured')
-        
+
         client_config = config.get(u'oauth2-client', None)
         self.client = BeehiveApiClient(config[u'endpoint'],
                                        config[u'authtype'],
                                        config[u'user'], 
                                        config[u'pwd'],
                                        config[u'catalog'],
-                                       client_config=client_config)
+                                       client_config=client_config,
+                                       key=self.key)
         
         # get token
         self.client.uid, self.client.seckey = self.get_token()

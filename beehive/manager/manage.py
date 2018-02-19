@@ -109,6 +109,8 @@ def config_cli(app):
     if app.loop is False:
         # add any arguments after setup(), and before run()
         app.args.add_argument('-v', '--version', action='version', version=BANNER)
+        app.args.add_argument('-k', '--key', action='store', dest='key',
+                              help='Secret key file to use for encryption/decryption')
         app.args.add_argument('-e', '--env', action='store', dest='env',
                               help='Execution environment. Select from: %s' % envs)
         app.args.add_argument('-E', '--envs', action='store', dest='envs',
@@ -206,12 +208,13 @@ class CliManager(CementCmd):
 
         configs_file = u'/etc/beehive/manage.conf'
         history_file = u'~/.beehive.manage'
+        fernet_key = u'/etc/beehive/manage.key'
         
         # authorization
         token_file = u'/tmp/.manage.token'
         seckey_file = u'/tmp/.manage.seckey'
         
-        #config_files = [u'/etc/beehive/manage.conf']
+        # config_files = [u'/etc/beehive/manage.conf']
         
         hooks = [
             ('pre_run', config_cli)
@@ -231,7 +234,7 @@ class CliManager(CementCmd):
     def setup_once(self):
         """App main setup execute only once
         """
-        #if self.has_setup is False:
+        # if self.has_setup is False:
         #    self.setup_logging()
         CementCmd.setup_once(self)            
 
@@ -249,8 +252,15 @@ class CliManager(CementCmd):
                 u'log': u'./',
                 u'endpoint': None
             }
-        self.config.merge({u'configs':configs})
+        self.config.merge({u'configs': configs})
         logger.info(u'Load configuration from %s' % self._meta.configs_file)
+
+        # fernet key
+        if os.path.exists(self._meta.fernet_key):
+            f = open(self._meta.fernet_key, 'r')
+            self.fernet = f.read().rstrip()
+            f.close()
+            logger.info(u'Load fernet key from %s' % self._meta.fernet_key)
 
     @staticmethod
     def setup_logging():

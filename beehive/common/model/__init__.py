@@ -446,8 +446,7 @@ class AbstractDbManager(object):
         self.logger.debug(u'Count %s: %s' % (entityclass.__name__, res))
         return res    
     
-    def query_entities(self, entityclass, session, oid=None, objid=None, 
-                       uuid=None, name=None, *args, **kvargs):
+    def query_entities(self, entityclass, session, oid=None, objid=None, uuid=None, name=None, *args, **kvargs):
         """Get model entities query
         
         :param entityclass: entity model class
@@ -459,7 +458,8 @@ class AbstractDbManager(object):
         :return: list of entityclass
         :raises ModelError: raise :class:`ModelError`      
         """
-        #session = self.get_session()
+        self.logger.debug(u'Query entities by oid:%s, objid:%s, uuid:%s, name:%s' % (oid, objid, uuid, name))
+        # session = self.get_session()
         if oid is not None:
             query = session.query(entityclass).filter_by(id=oid)
         elif objid is not None:  

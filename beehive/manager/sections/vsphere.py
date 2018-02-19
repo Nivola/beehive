@@ -58,7 +58,7 @@ class VspherePlatformControllerChild(BaseController):
             raise Exception(u'Valid label are: %s' % u', '.join(orchestrators.keys()))
         conf = orchestrators.get(label)
         
-        self.client = VsphereManager(conf.get(u'vcenter'), conf.get(u'nsx'))
+        self.client = VsphereManager(conf.get(u'vcenter'), conf.get(u'nsx'), key=self.key)
 
     def wait_task(self, task):
         while task.info.state not in [vim.TaskInfo.State.success, vim.TaskInfo.State.error]:
