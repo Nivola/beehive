@@ -5,10 +5,11 @@ Created on Oct 27, 2017
 '''
 import logging
 from cement.core.controller import expose
-from beehive.manager.util.controller import BaseController, ApiController
+from beehive.manager.util.controller import BaseController, ApiController, check_error
 from re import match
 
 logger = logging.getLogger(__name__)
+
 
 class Oauth2Controller(BaseController):
     class Meta:
@@ -20,10 +21,6 @@ class Oauth2Controller(BaseController):
 
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
-
-    @expose(help="Oauth2 Authorization management", hide=True)
-    def default(self):
-        self.app.args.print_help()
         
     #
     # sessions
@@ -68,7 +65,8 @@ class Oauth2Controller(BaseController):
         self.result(res, headers=[u'user.id', u'uid', u'user.name', u'timestamp',
                                   u'user.active'])
     '''
-        
+
+
 class Oauth2ControllerChild(ApiController):
     baseuri = u'/v1.0/keyauth'
     simplehttp_uri = u'/v1.0/simplehttp'
@@ -91,7 +89,8 @@ class Oauth2ControllerChild(ApiController):
     class Meta:
         stacked_on = 'oauth2'
         stacked_type = 'nested'   
-        
+
+
 class Oauth2SessionController(Oauth2ControllerChild):
     session_headers = [u'sid', u'ttl', u'oauth2_user', u'oauth2_credentials']
 
@@ -99,11 +98,9 @@ class Oauth2SessionController(Oauth2ControllerChild):
         label = 'user-sessions'
         description = "User Session management"
         
-    @expose(help="User Session management", hide=True)
-    def default(self):
-        self.app.args.print_help()
-        
+
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List all sessions
     field: valid, client, user 
@@ -116,6 +113,7 @@ class Oauth2SessionController(Oauth2ControllerChild):
                     headers=self.session_headers)
     
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get session by id
         """
@@ -127,6 +125,7 @@ class Oauth2SessionController(Oauth2ControllerChild):
                     details=True)
     
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete session by id
         """
@@ -138,6 +137,7 @@ class Oauth2SessionController(Oauth2ControllerChild):
         self.result(res, headers=[u'msg'])
         
     @expose(aliases=[u'deletes <id1,id2,..>'], aliases_only=True)
+    @check_error
     def deletes(self):
         """Delete sessions by list of id
         """
@@ -148,7 +148,8 @@ class Oauth2SessionController(Oauth2ControllerChild):
             logger.info(res)
         res = {u'msg':u'Delete user session %s' % value}
         self.result(res, headers=[u'msg'])        
-        
+
+
 class AuthorizationCodeController(Oauth2ControllerChild):
     authorization_code_headers = [u'id', u'code', u'expires_at', u'client', 
                                   u'user', u'scope', u'expired']
@@ -156,12 +157,10 @@ class AuthorizationCodeController(Oauth2ControllerChild):
     class Meta:
         label = 'authorization_codes'
         description = "AuthorizationCode management"
-        
-    @expose(help="AuthorizationCode management", hide=True)
-    def default(self):
-        self.app.args.print_help()
+
         
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List all authorization_codes
     field: valid, client, user 
@@ -174,6 +173,7 @@ class AuthorizationCodeController(Oauth2ControllerChild):
                     headers=self.authorization_code_headers)
     
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get authorization_code by id
         """
@@ -185,6 +185,7 @@ class AuthorizationCodeController(Oauth2ControllerChild):
                     details=True)
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete authorization_code by id
         """
@@ -194,7 +195,8 @@ class AuthorizationCodeController(Oauth2ControllerChild):
         logger.info(res)
         res = {u'msg':u'Delete authorization_code %s' % value}
         self.result(res, headers=[u'msg'])        
-        
+
+
 class ClientController(Oauth2ControllerChild):
     client_headers = [u'id', u'uuid', u'name', u'response_type', 
                       u'grant_type', u'scopes']
@@ -203,12 +205,9 @@ class ClientController(Oauth2ControllerChild):
         label = 'clients'
         description = "Client management"
         
-    @expose(help="Client management", hide=True)
-    def default(self):
-        self.app.args.print_help()
-        
     @expose(aliases=[u'add <name> <grant_type> <redirect_uri> <scopes> '\
                      u'<expiry_date>'], aliases_only=True)
+    @check_error
     def add(self):
         """Add client
     - scopes: comma separated list of scopes
@@ -243,6 +242,7 @@ class ClientController(Oauth2ControllerChild):
         self.result(res, headers=[u'msg'])
         
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List all clients       
         """
@@ -254,6 +254,7 @@ class ClientController(Oauth2ControllerChild):
                     headers=self.client_headers)
     
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get client by id
         """
@@ -265,6 +266,7 @@ class ClientController(Oauth2ControllerChild):
                     details=True)
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete client by id
         """
@@ -274,7 +276,8 @@ class ClientController(Oauth2ControllerChild):
         logger.info(res)
         res = {u'msg':u'Delete client %s' % value}
         self.result(res, headers=[u'msg'])        
-        
+
+
 class ScopeController(Oauth2ControllerChild):
     scope_headers = [u'id', u'uuid', u'name', u'active', u'date.creation']
 
@@ -282,11 +285,8 @@ class ScopeController(Oauth2ControllerChild):
         label = 'scopes'
         description = "Scope management"
         
-    @expose(help="Scope management", hide=True)
-    def default(self):
-        self.app.args.print_help()
-        
     @expose(aliases=[u'add <name>'], aliases_only=True)
+    @check_error
     def add(self):
         """Add scope
         """          
@@ -304,6 +304,7 @@ class ScopeController(Oauth2ControllerChild):
         self.result(res, headers=[u'msg'])        
         
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List all scopes       
         """
@@ -315,6 +316,7 @@ class ScopeController(Oauth2ControllerChild):
                     headers=self.scope_headers)
     
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get scope by id
         """
@@ -326,6 +328,7 @@ class ScopeController(Oauth2ControllerChild):
                     details=True)
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete scope by id
         """
@@ -335,7 +338,8 @@ class ScopeController(Oauth2ControllerChild):
         logger.info(res)
         res = {u'msg':u'Delete scope %s' % value}
         self.result(res, headers=[u'msg'])        
-        
+
+
 oauth2_controller_handlers = [
     Oauth2Controller,
     Oauth2SessionController,
@@ -343,4 +347,3 @@ oauth2_controller_handlers = [
     ScopeController,
     AuthorizationCodeController
 ]
-        

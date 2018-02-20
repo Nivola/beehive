@@ -12,6 +12,7 @@ from beecell.simple import truncate, str2bool
 
 logger = logging.getLogger(__name__)
 
+
 class SchedulerController(BaseController):
     class Meta:
         label = 'scheduler'
@@ -21,7 +22,8 @@ class SchedulerController(BaseController):
 
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
-        
+
+
 class SchedulerControllerChild(ApiController):
     cataloguri = u'/v1.0/schedulers'
     
@@ -39,15 +41,15 @@ class SchedulerControllerChild(ApiController):
             ( ['-s', '--subsystem'],
               dict(action='store', help='beehive subsystem like auth, resource, ..') ),
         ]
-    
-    @check_error
+
     def _ext_parse_args(self):
         ApiController._ext_parse_args(self)
         
         self.subsystem = self.app.pargs.subsystem
         if self.subsystem is None:
             raise Exception(u'Subsystem is not specified')
-        
+
+
 class WorkerController(SchedulerControllerChild):    
     class Meta:
         label = 'workers'
@@ -57,6 +59,7 @@ class WorkerController(SchedulerControllerChild):
     # task worker
     #
     @expose()
+    @check_error
     def ping(self):
         """Ping
         """
@@ -69,6 +72,7 @@ class WorkerController(SchedulerControllerChild):
         self.result(resp, headers=[u'worker', u'res'])
 
     @expose()
+    @check_error
     def stat(self):
         """Statistics
         """
@@ -82,6 +86,7 @@ class WorkerController(SchedulerControllerChild):
         self.result(res, details=True)
 
     @expose()
+    @check_error
     def report(self):
         """Report
         """
@@ -103,11 +108,8 @@ class TaskController(SchedulerControllerChild):
         label = 'tasks'
         description = "Task management"
         
-    @expose(help="Task management", hide=True)
-    def default(self):
-        self.app.args.print_help()
-        
-    @expose()    
+    @expose()
+    @check_error
     def definitions(self):
         """List all available tasks you can invoke
         """
@@ -121,6 +123,7 @@ class TaskController(SchedulerControllerChild):
         self.result(resp, headers=[u'worker', u'task'], maxsize=400)    
     
     @expose()
+    @check_error
     def list(self):
         """List all task instance
         """
@@ -131,6 +134,7 @@ class TaskController(SchedulerControllerChild):
                                                          u'stop_time', u'elapsed'], maxsize=200)
         
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get task instance by id
         """
@@ -145,6 +149,7 @@ class TaskController(SchedulerControllerChild):
                     maxsize=100)
     
     @expose(aliases=[u'trace <id>'], aliases_only=True)
+    @check_error
     def trace(self):
         """Get task instance execution trace by id
         """        
@@ -159,6 +164,7 @@ class TaskController(SchedulerControllerChild):
         self.result(resp, headers=[u'timestamp', u'msg'], maxsize=200)        
     
     @expose(aliases=[u'graph <id>'], aliases_only=True)
+    @check_error
     def graph(self):
         """Get task instance execution graph by id
         """        
@@ -175,6 +181,7 @@ class TaskController(SchedulerControllerChild):
         self.result(res, key=u'links', headers=[u'source', u'target'])
 
     @expose()
+    @check_error
     def deletes(self):
         """Delete all task instance
         """
@@ -185,6 +192,7 @@ class TaskController(SchedulerControllerChild):
         self.result(res, headers=[u'msg'])
         
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete task instance by id
         """             
@@ -197,6 +205,7 @@ class TaskController(SchedulerControllerChild):
         
     @expose(aliases=[u'test [error=true/false] [suberror=true/false]'], 
             aliases_only=True)
+    @check_error
     def test(self):
         """Run test job
         """
@@ -214,6 +223,7 @@ class TaskController(SchedulerControllerChild):
         logger.info(u'Run job test: %s' % res)
         self.result(res)
 
+
 class ScheduleController(SchedulerControllerChild):
     sched_headers = [u'name', u'task', u'schedule', u'args', u'kwargs', 
                      u'options', u'last_run_at', u'total_run_count']    
@@ -223,6 +233,7 @@ class ScheduleController(SchedulerControllerChild):
         description = "Schedule management"
         
     @expose()
+    @check_error
     def list(self):
         """List all schedules
         """
@@ -232,6 +243,7 @@ class ScheduleController(SchedulerControllerChild):
         self.result(res, key=u'schedules', headers=self.sched_headers)
     
     @expose(aliases=[u'get <name>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get schedule by name
         """
@@ -242,6 +254,7 @@ class ScheduleController(SchedulerControllerChild):
         self.result(res, key=u'schedule', headers=self.sched_headers)        
 
     @expose(aliases=[u'create <data file>'], aliases_only=True)
+    @check_error
     def create(self):
         """Create schedule reading data from a json file
         """
@@ -252,6 +265,7 @@ class ScheduleController(SchedulerControllerChild):
         self.result({u'msg':u'Create schedule %s' % data}, headers=[u'msg'])
 
     @expose(aliases=[u'delete <name>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete schedule by name
         """
@@ -260,7 +274,8 @@ class ScheduleController(SchedulerControllerChild):
         uri = u'/v1.0/scheduler/entries'
         res = self._call(uri, u'DELETE', data=data)
         self.result({u'msg':u'Delete schedule %s' % name}, headers=[u'msg'])        
-        
+
+
 scheduler_controller_handlers = [
     SchedulerController,
     WorkerController,

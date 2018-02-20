@@ -5,11 +5,12 @@ Created on Sep 27, 2017
 '''
 import logging
 from cement.core.controller import expose
-from beehive.manager.util.controller import BaseController, ApiController
+from beehive.manager.util.controller import BaseController, ApiController, check_error
 from re import match
 from beecell.simple import truncate
 
 logger = logging.getLogger(__name__)
+
 
 class DirectoryController(BaseController):
     class Meta:
@@ -22,10 +23,7 @@ class DirectoryController(BaseController):
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
 
-    @expose(help="Directory Service management", hide=True)
-    def default(self):
-        self.app.args.print_help()
-        
+
 class DirectoryControllerChild(ApiController):
     cataloguri = u'/v1.0/directory'
     subsystem = u'auth'
@@ -39,17 +37,15 @@ class DirectoryControllerChild(ApiController):
     class Meta:
         stacked_on = 'directory'
         stacked_type = 'nested'
-        
-class CatalogController(DirectoryControllerChild):    
+
+
+class CatalogController(DirectoryControllerChild):
     class Meta:
         label = 'catalogs'
         description = "Catalog management"
-        
-    @expose(help="Catalog management", hide=True)
-    def default(self):
-        self.app.args.print_help()
     
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List catalog 
         """
@@ -60,6 +56,7 @@ class CatalogController(DirectoryControllerChild):
         self.result(res, key=u'catalogs', headers=self.cat_headers)
     
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get catalog by id
         """
@@ -73,6 +70,7 @@ class CatalogController(DirectoryControllerChild):
         self.result(services, headers=[u'service', u'endpoints'])
     
     @expose(aliases=[u'add <name> <zone>'], aliases_only=True)
+    @check_error
     def add(self):
         """Add catalog <name>
         """
@@ -92,17 +90,15 @@ class CatalogController(DirectoryControllerChild):
         logger.info(u'Delete catalog: %s' % truncate(res))
         res = {u'msg':u'Delete catalog %s' % res}
         self.result(res, headers=[u'msg'])        
-        
+
+
 class EndpointController(DirectoryControllerChild):    
     class Meta:
         label = 'endpoints'
         description = "Endpoint management"
-        
-    @expose(help="Endpoint management", hide=True)
-    def default(self):
-        self.app.args.print_help()
-        
+
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List endpoints
         """
@@ -113,6 +109,7 @@ class EndpointController(DirectoryControllerChild):
         self.result(res, key=u'endpoints', headers=self.end_headers)
     
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get endpoint by id
         """
@@ -123,6 +120,7 @@ class EndpointController(DirectoryControllerChild):
         self.result(res, key=u'endpoint', headers=self.end_headers, details=True)
         
     @expose(aliases=[u'add <name> <catalog-id> <service> <uri>'], aliases_only=True)
+    @check_error
     def add(self):
         """Add catalog endpoint <name>
     - service : service name like auth, resource
@@ -135,9 +133,7 @@ class EndpointController(DirectoryControllerChild):
         # if endpoint exist update it else create new one
         try:
             res = self.client.get_endpoint(name)
-            res = self.client.update_endpoint(name, catalog_id=catalog, 
-                                              name=name, 
-                                              service=service, uri=uri)
+            res = self.client.update_endpoint(name, catalog_id=catalog, name=name, service=service, uri=uri)
         except Exception as ex:
             logger.error(ex, exc_info=1)
             res = self.client.create_endpoint(catalog, name, service, uri)
@@ -146,6 +142,7 @@ class EndpointController(DirectoryControllerChild):
         self.result(res, headers=[u'msg'])
         
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Get endpoint by id
         """
@@ -156,19 +153,19 @@ class EndpointController(DirectoryControllerChild):
         self.result(res, headers=[u'msg'])
         
     @expose(aliases=[u'ping <id>'], aliases_only=True)
+    @check_error
     def ping(self):
         """Get endpoint by id
         """
         endpoint_id = self.get_arg(name=u'id')        
-        endpoint = self.client.get_endpoint(endpoint_id).get(u'endpoint')\
-                                                        .get(u'endpoint')
+        endpoint = self.client.get_endpoint(endpoint_id).get(u'endpoint').get(u'endpoint')
         res = self.client.ping(endpoint=endpoint)
         
         logger.info(u'Ping endpoint %s: %s' % (endpoint, truncate(res)))
-        self.result({u'endpoint':endpoint, u'ping':res}, 
-                    headers=[u'endpoint', u'ping'])
+        self.result({u'endpoint':endpoint, u'ping':res}, headers=[u'endpoint', u'ping'])
         
     @expose(aliases=[u'pings <catalog-id>'], aliases_only=True)
+    @check_error
     def pings(self):
         """Get endpoints by catalog
         """
@@ -178,15 +175,13 @@ class EndpointController(DirectoryControllerChild):
         for v in catalog.get(u'services', {}):
             for v1 in v.get(u'endpoints', []):
                 res = self.client.ping(endpoint=v1)
-                services.append({u'service':v[u'service'], 
-                                 u'endpoint':v1, 
-                                 u'ping':res})
+                services.append({u'service':v[u'service'], u'endpoint':v1, u'ping':res})
                 logger.info(u'Ping endpoint %s: %s' % (v1, truncate(res)))
         self.result(services, headers=[u'service', u'endpoint', u'ping'])         
-          
+
+
 catalog_controller_handlers = [
     DirectoryController,
     CatalogController,
     EndpointController
 ]                   
-          

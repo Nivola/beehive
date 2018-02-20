@@ -182,6 +182,7 @@ def getdata_from_graphite(ip_address_graphite_f,pod_f,vm_f,metrics_f,function_f,
 
     print tab2.draw()
 
+
 #
 # graphite native platform
 #
@@ -196,6 +197,7 @@ class GraphitePlatformController(BaseController):
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
 
+
 class SecondController(BaseController):
     class Meta:
         label = 'metrics'
@@ -209,10 +211,12 @@ class SecondController(BaseController):
             ]
 
     @expose(help="metrics default command", hide=True)
+    @check_error
     def default(self):
         print "Inside SecondController.default()"
 
     @expose(help="this is a command under the second-controller namespace")
+    @check_error
     def vm(self):
         print "Inside SecondController.vm()"
 
@@ -237,6 +241,7 @@ class SecondController(BaseController):
         else:
             print("check arguments!")
 
+
 class ThirdController(BaseController):
     class Meta:
         label = 'highest'
@@ -250,10 +255,12 @@ class ThirdController(BaseController):
             ]
 
     @expose(help="domain default command", hide=True)
+    @check_error
     def default(self):
         print "Inside ThirdController.default()"
 
     @expose(help="this is a command under the second-controller namespace")
+    @check_error
     def vm(self):
         print "Inside ThirdController.vm()"
 
@@ -293,12 +300,14 @@ class FourthController(BaseController):
             ]
 
     @expose(help="a command only under the fourth-controller namespace")
+    @check_error
     def default(self):
         #print "Inside FourthController.default()"
         pass
 
 
     @expose(help="this is a command under the second-controller namespace")
+    @check_error
     def vm(self):
         #print "Inside FourthController.pod()"
 

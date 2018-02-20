@@ -89,6 +89,7 @@ class VspherePlatformDatacenterController(VspherePlatformControllerChild):
         self.entity_class = self.client.datacenter
         
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         objs = self.entity_class.list(**params)
@@ -117,6 +118,7 @@ class VspherePlatformClusterController(VspherePlatformControllerChild):
         self.entity_class = self.client.cluster
         
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         objs = self.entity_class.list(**params)
@@ -131,6 +133,7 @@ class VspherePlatformClusterController(VspherePlatformControllerChild):
         self.result(res, headers=self.headers)
         
     @expose(aliases=[u'host-list [field=value]'], aliases_only=True)
+    @check_error
     def host_list(self):
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         objs = self.entity_class.host.list(**params)
@@ -145,6 +148,7 @@ class VspherePlatformClusterController(VspherePlatformControllerChild):
         self.result(res, headers=self.headers)
         
     @expose(aliases=[u'respool-list [field=value]'], aliases_only=True)
+    @check_error
     def respool_list(self):
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         objs = self.entity_class.resource_pool.list(**params)
@@ -178,6 +182,7 @@ class VspherePlatformDatastoreController(VspherePlatformControllerChild):
         self.entity_class = self.client.datastore
         
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         objs = self.entity_class.list(**params)
@@ -214,6 +219,7 @@ class VspherePlatformFolderController(VspherePlatformControllerChild):
         self.entity_class = self.client.folder
         
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         objs = self.entity_class.list(**params)
@@ -244,6 +250,7 @@ class VspherePlatformVappController(VspherePlatformControllerChild):
         self.entity_class = self.client.vapp
         
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         objs = self.entity_class.list(**params)
@@ -288,6 +295,7 @@ class VspherePlatformNetworkDvsController(VspherePlatformNetworkChildController)
         description = "Vsphere Network Dvs management"
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         objs = self.entity_class.list_distributed_virtual_switches()
         res = []
@@ -298,6 +306,7 @@ class VspherePlatformNetworkDvsController(VspherePlatformNetworkChildController)
                                          u'overallStatus'])
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         oid = self.get_arg(name=u'id')
         res = self.entity_class.get_distributed_virtual_switch(oid)
@@ -314,6 +323,7 @@ class VspherePlatformNetworkDvpController(VspherePlatformNetworkChildController)
         description = "Vsphere Network Dvpg management"
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         objs = self.entity_class.list_networks()
         res = []
@@ -324,6 +334,7 @@ class VspherePlatformNetworkDvpController(VspherePlatformNetworkChildController)
                                          u'overallStatus'])
     
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         oid = self.get_arg(name=u'id')
         network = self.entity_class.get_network(oid)
@@ -332,6 +343,7 @@ class VspherePlatformNetworkDvpController(VspherePlatformNetworkChildController)
         self.result(res, details=True)
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         oid = self.get_arg(name=u'id')
         obj = self.entity_class.get_network(oid)
@@ -354,6 +366,7 @@ class VspherePlatformNetworkSecurityGroupController(VspherePlatformNetworkChildC
         self.entity_class = self.client.network.nsx.sg
         
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         objs = self.entity_class.list()
         res = []
@@ -363,6 +376,7 @@ class VspherePlatformNetworkSecurityGroupController(VspherePlatformNetworkChildC
         self.result(res, headers=[u'objectId', u'name'])
         
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         oid = self.get_arg(name=u'id')
         res = self.entity_class.get(oid)
@@ -372,6 +386,7 @@ class VspherePlatformNetworkSecurityGroupController(VspherePlatformNetworkChildC
         self.result(rules, headers=[u'objectId', u'name', u'objectTypeName'])
     
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         oid = self.get_arg(name=u'id')
         res = self.entity_class.delete(oid)
@@ -379,6 +394,7 @@ class VspherePlatformNetworkSecurityGroupController(VspherePlatformNetworkChildC
         self.result(res, headers=[u'msg'])    
     
     @expose(aliases=[u'delete-member <id>'], aliases_only=True)
+    @check_error
     def delete_member(self):
         oid = self.get_arg(name=u'id')
         member = self.get_arg(name=u'member')
@@ -425,6 +441,7 @@ class VspherePlatformNetworkDfwController(VspherePlatformNetworkChildController)
         self.result(data, headers=[u'type', u'name', u'value'])  
     
     @expose()
+    @check_error
     def sections(self):
         res = self.entity_class.get_config()
         
@@ -441,6 +458,7 @@ class VspherePlatformNetworkDfwController(VspherePlatformNetworkChildController)
         self.__print_sections(res, u'layer3RedirectSections')      
 
     @expose(aliases=[u'rules <section> [rule]'], aliases_only=True)
+    @check_error
     def rules(self):
         section = self.get_arg(name=u'section')
         rule = self.get_arg(default=None)
@@ -486,6 +504,7 @@ class VspherePlatformNetworkDfwController(VspherePlatformNetworkChildController)
                                                   u'protocolName']) 
 
     @expose(aliases=[u'section-delete <section>'], aliases_only=True)
+    @check_error
     def section_delete(self):
         section = self.get_arg(name=u'section')
         res = self.entity_class.delete_section(section)
@@ -494,6 +513,7 @@ class VspherePlatformNetworkDfwController(VspherePlatformNetworkChildController)
         self.result(res, headers=[u'msg'])
     
     @expose(aliases=[u'rule-delete <section> <rule>'], aliases_only=True)
+    @check_error
     def rule_delete(self, section, rule):
         section = self.get_arg(name=u'section')
         rule = self.get_arg(name=u'rule')
@@ -503,6 +523,7 @@ class VspherePlatformNetworkDfwController(VspherePlatformNetworkChildController)
         self.result(res, headers=[u'msg'])
     
     @expose()
+    @check_error
     def exclusions(self):
         res = self.entity_class.get_exclusion_list()
         res = res.get(u'excludeMember', [])
@@ -529,6 +550,7 @@ class VspherePlatformNetworkLgController(VspherePlatformNetworkChildController):
         self.entity_class = self.client.network.nsx.lg
         
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         objs = self.entity_class.list()
         res = []
@@ -538,6 +560,7 @@ class VspherePlatformNetworkLgController(VspherePlatformNetworkChildController):
         self.result(res, headers=[u'objectId', u'name'])
         
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         oid = self.get_arg(name=u'id')
         network = self.entity_class.get(oid)
@@ -559,6 +582,7 @@ class VspherePlatformNetworkIpsetController(VspherePlatformNetworkChildControlle
         self.entity_class = self.client.network.nsx.ipset
         
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         objs = self.entity_class.list()
         res = []
@@ -568,6 +592,7 @@ class VspherePlatformNetworkIpsetController(VspherePlatformNetworkChildControlle
         self.result(res, headers=[u'objectId', u'name', u'value'])
         
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         oid = self.get_arg(name=u'id')
         network = self.entity_class.get(oid)
@@ -576,6 +601,7 @@ class VspherePlatformNetworkIpsetController(VspherePlatformNetworkChildControlle
         self.result(res, details=True)
         
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         oid = self.get_arg(name=u'id')
         res = self.entity_class.delete(oid)
@@ -596,6 +622,7 @@ class VspherePlatformNetworkEdgeController(VspherePlatformNetworkChildController
         self.entity_class = self.client.network.nsx.edge
         
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         objs = self.entity_class.list()
         res = []
@@ -605,6 +632,7 @@ class VspherePlatformNetworkEdgeController(VspherePlatformNetworkChildController
         self.result(res, headers=[u'objectId', u'name'])
         
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         oid = self.get_arg(name=u'id')
         network = self.entity_class.get(oid)
@@ -626,6 +654,7 @@ class VspherePlatformNetworkDlrController(VspherePlatformNetworkChildController)
         self.entity_class = self.client.network.nsx.dlr
         
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         objs = self.entity_class.list()
         res = []
@@ -635,6 +664,7 @@ class VspherePlatformNetworkDlrController(VspherePlatformNetworkChildController)
         self.result(res, headers=[u'objectId', u'name', u'value'])
         
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         oid = self.get_arg(name=u'id')
         network = self.entity_class.get(oid)
@@ -659,6 +689,7 @@ class VspherePlatformServerController(VspherePlatformControllerChild):
         self.entity_class = self.client.server
     
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List servers
     - field can be: name, uuid, ipaddress, dnsname, morid, template
@@ -685,6 +716,7 @@ class VspherePlatformServerController(VspherePlatformControllerChild):
         self.result(res, headers=self.headers)
         
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         oid = self.get_arg(name=u'id')
         network = self.entity_class.get(oid)
@@ -699,6 +731,7 @@ class VspherePlatformServerController(VspherePlatformControllerChild):
         self.result(volumes, headers=[u'id', u'name', u'storage', u'size', u'type', u'bootable', u'format', u'mode'])
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         oid = self.get_arg(name=u'id')
         server = self.entity_class.get_by_morid(oid)
@@ -706,6 +739,7 @@ class VspherePlatformServerController(VspherePlatformControllerChild):
         self.wait_task(task)
 
     @expose(aliases=[u'console <id>'], aliases_only=True)
+    @check_error
     def console(self):
         oid = self.get_arg(name=u'id')
         server = self.entity_class.get_by_morid(oid)
@@ -713,6 +747,7 @@ class VspherePlatformServerController(VspherePlatformControllerChild):
         self.result(res, delta=60, details=True)
   
     @expose(aliases=[u'guest-info <id>'], aliases_only=True)
+    @check_error
     def guest_info(self):
         oid = self.get_arg(name=u'id')
         server = self.entity_class.get_by_morid(oid)
@@ -722,6 +757,7 @@ class VspherePlatformServerController(VspherePlatformControllerChild):
         self.result(res, details=True)
     
     @expose(aliases=[u'ssh-copy-id <id> <user> <pwd> <pub-key>'], aliases_only=True)
+    @check_error
     def ssh_copy_id(self, oid, pwd, ):
         oid = self.get_arg(name=u'id')
         user = self.get_arg(name=u'user')
@@ -734,6 +770,7 @@ class VspherePlatformServerController(VspherePlatformControllerChild):
         self.result(res)
     
     @expose(aliases=[u'ssh-change-pwd <id> <user> <pwd> <new-pwd>'], aliases_only=True)
+    @check_error
     def ssh_change_pwd(self, oid, pwd, newpwd):
         oid = self.get_arg(name=u'id')
         user = self.get_arg(name=u'user')
@@ -760,6 +797,7 @@ class VspherePlatformServerController(VspherePlatformControllerChild):
         self.result(res)
     
     @expose(aliases=[u'ssh <id> <user> <pwd> <cmd>'], aliases_only=True)
+    @check_error
     def ssh(self):
         oid = self.get_arg(name=u'id')
         user = self.get_arg(name=u'user')
@@ -782,6 +820,7 @@ class VspherePlatformServerController(VspherePlatformControllerChild):
     # action
     #
     @expose(aliases=[u'start <id>'], aliases_only=True)
+    @check_error
     def start(self):
         oid = self.get_arg(name=u'id')
         server = self.entity_class.get_by_morid(oid)
@@ -789,11 +828,13 @@ class VspherePlatformServerController(VspherePlatformControllerChild):
         self.wait_task(task)
     
     @expose(aliases=[u'stop <id>'], aliases_only=True)
+    @check_error
     def stop(self):
         oid = self.get_arg(name=u'id')
         server = self.entity_class.get_by_morid(oid)
         task = self.entity_class.stop(server)        
         self.wait_task(task)
+
 
 vsphere_platform_controller_handlers = [
     VspherePlatformController,
@@ -845,6 +886,7 @@ class VsphereControllerChild(ApiController):
         ApiController._ext_parse_args(self)
     
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
         uri = self.uri
@@ -853,6 +895,7 @@ class VsphereControllerChild(ApiController):
         self.result(res, headers=self.headers, key=self._meta.aliases[0], maxsize=100)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         oid = self.get_arg(name=u'id')
         uri = self.uri + u'/' + oid
@@ -861,6 +904,7 @@ class VsphereControllerChild(ApiController):
         self.result(res, key=self._meta.aliases[0][:-1], details=True)
     
     @expose(aliases=[u'add <file data>'], aliases_only=True)
+    @check_error
     def add(self):
         file_data = self.get_arg(name=u'data file')
         data = self.load_config(file_data)
@@ -870,6 +914,7 @@ class VsphereControllerChild(ApiController):
         self.result(res)
 
     @expose(aliases=[u'update <id> <file data>'], aliases_only=True)
+    @check_error
     def update(self):
         oid = self.get_arg(name=u'id')
         file_data = self.get_arg(name=u'data file')
@@ -880,6 +925,7 @@ class VsphereControllerChild(ApiController):
         self.result(res)
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         oid = self.get_arg(name=u'id')
         uri = self.uri + u'/' + oid
@@ -931,6 +977,7 @@ class VsphereClusterController(VsphereControllerChild):
         description = "Vsphere Cluster management"
 
     @expose(aliases=[u'host-list [field=value]'], aliases_only=True)
+    @check_error
     def host_list(self):
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
         uri = u'/v1.0/vsphere/hosts'
@@ -939,6 +986,7 @@ class VsphereClusterController(VsphereControllerChild):
         self.result(res, headers=self.headers, key=u'hosts')
 
     @expose(aliases=[u'respool-list [field=value]'], aliases_only=True)
+    @check_error
     def respool_list(self):
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
         uri = u'/v1.0/vsphere/resource_pools'
@@ -994,6 +1042,7 @@ class VsphereNetworkNsxController(VsphereNetworkChildController):
         description = "Vsphere Network Nsx Manager management"
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
         uri = self.uri
@@ -1002,6 +1051,7 @@ class VsphereNetworkNsxController(VsphereNetworkChildController):
         self.result(res.get(u'nsxs'), headers=self.headers)
         
     @expose(aliases=[u'transport-zones <id>'], aliases_only=True)
+    @check_error
     def transport_zones(self):
         # data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
         oid = self.get_arg(name=u'id')

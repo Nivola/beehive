@@ -11,6 +11,7 @@ from beecell.simple import truncate
 
 logger = logging.getLogger(__name__)
 
+
 class EventController(BaseController):
     class Meta:
         label = 'event'
@@ -22,10 +23,7 @@ class EventController(BaseController):
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
 
-    @expose(help="Event Service management", hide=True)
-    def default(self):
-        self.app.args.print_help()
-        
+
 class EventControllerChild(ApiController):
     cataloguri = u'/v1.0/events'
     subsystem = u'event'
@@ -39,16 +37,14 @@ class EventControllerChild(ApiController):
     class Meta:
         stacked_on = 'event'
         stacked_type = 'nested'
-        
+
+
 class EventInternalController(EventControllerChild):    
     class Meta:
         label = 'events'
         description = "Catalog management"
-        
-    @expose(help="Catalog management", hide=True)
-    def default(self):
-        self.app.args.print_help()        
-        
+
+
 event_controller_handlers = [
     EventController,
     EventInternalController

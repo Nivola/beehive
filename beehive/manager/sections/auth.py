@@ -5,10 +5,11 @@ Created on Sep 22, 2017
 '''
 import logging
 from cement.core.controller import expose
-from beehive.manager.util.controller import BaseController, ApiController
+from beehive.manager.util.controller import BaseController, ApiController, check_error
 from re import match
 
 logger = logging.getLogger(__name__)
+
 
 class AuthController(BaseController):
     class Meta:
@@ -20,6 +21,7 @@ class AuthController(BaseController):
 
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
+
 
 class AuthControllerChild(ApiController):
     baseuri = u'/v1.0/keyauth'
@@ -43,13 +45,15 @@ class AuthControllerChild(ApiController):
     class Meta:
         stacked_on = 'auth'
         stacked_type = 'nested'
-        
-class DomainController(AuthControllerChild):    
+
+
+class DomainController(AuthControllerChild):
     class Meta:
         label = 'domains'
         description = "Domain management"
         
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List all domains       
         """
@@ -57,13 +61,15 @@ class DomainController(AuthControllerChild):
         res = self._call(uri, u'GET')
         logger.info(u'Get domains: %s' % res)
         self.result(res, key=u'domains', headers=[u'type', u'name'])      
-        
-class TokenController(AuthControllerChild):    
+
+
+class TokenController(AuthControllerChild):
     class Meta:
         label = 'tokens'
         description = "Token management"
         
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List all tokens       
         """
@@ -74,6 +80,7 @@ class TokenController(AuthControllerChild):
         self.result(res, key=u'tokens', headers=self.token_headers)
     
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get token by id
         """
@@ -85,6 +92,7 @@ class TokenController(AuthControllerChild):
                     details=True)
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete token by id
         """
@@ -94,14 +102,15 @@ class TokenController(AuthControllerChild):
         logger.info(res)
         res = {u'msg':u'Delete token %s' % value}
         self.result(res, headers=[u'msg'])
-        
-class UserController(AuthControllerChild):    
+
+
+class UserController(AuthControllerChild):
     class Meta:
         label = 'users'
         description = "User management"
         
-    @expose(aliases=[u'add <name> <password> [<expirydate>=yyyy-mm-dd]'], 
-            aliases_only=True)
+    @expose(aliases=[u'add <name> <password> [<expirydate>=yyyy-mm-dd]'], aliases_only=True)
+    @check_error
     def add(self):
         """Add user <name>
         """
@@ -124,8 +133,8 @@ class UserController(AuthControllerChild):
         res = {u'msg':u'Add user %s' % res[u'uuid']}
         self.result(res, headers=[u'msg'])
 
-    @expose(aliases=[u'add-system <name> <password>'], 
-            aliases_only=True)
+    @expose(aliases=[u'add-system <name> <password>'], aliases_only=True)
+    @check_error
     def add_system(self):
         """Add system user <name>
         """        
@@ -146,6 +155,7 @@ class UserController(AuthControllerChild):
         self.result({u'msg':u'Add user: %s' % res[u'uuid']})
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List all users by field: page, size, order, field, role, group, expirydate
     - field can be: id, objid, uuid, name, description, creation_date, 
@@ -159,6 +169,7 @@ class UserController(AuthControllerChild):
         self.result(res, key=u'users', headers=self.user_headers)
     
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get user by value or id
         """
@@ -169,8 +180,9 @@ class UserController(AuthControllerChild):
         self.result(res, key=u'user', headers=self.user_headers, 
                     details=True)
     
-    @expose(aliases=[u'update <id> [name=<name>] [desc=<desc>] '\
-                     u'[password=<password>] [active=<active>]'], aliases_only=True)
+    @expose(aliases=[u'update <id> [name=<name>] [desc=<desc>] [password=<password>] [active=<active>]'],
+            aliases_only=True)
+    @check_error
     def update(self):
         """Update user with new value
         """
@@ -195,6 +207,7 @@ class UserController(AuthControllerChild):
         self.result(res, headers=[u'msg'])  
     
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete user
         """
@@ -206,6 +219,7 @@ class UserController(AuthControllerChild):
         self.result(res, headers=[u'msg'])
     
     @expose(aliases=[u'add-role <id> <role> <expirydate>'], aliases_only=True)
+    @check_error
     def add_role(self):
         """Add role to user
     - expirydate syntax: yyyy-mm-dd
@@ -227,6 +241,7 @@ class UserController(AuthControllerChild):
         self.result({u'msg':u'Add user role: %s' % res[u'role_append']})
 
     @expose(aliases=[u'delete-role <id> <role>'], aliases_only=True)
+    @check_error
     def delete_role(self):
         """Remove role from user
     - expirydate syntax: yyyy-mm-dd
@@ -247,6 +262,7 @@ class UserController(AuthControllerChild):
         self.result({u'msg':u'Add user role: %s' % res[u'role_remove']})  
     
     @expose(aliases=[u'attribs <id>'], aliases_only=True)
+    @check_error
     def attribs(self):
         value = self.get_arg(name=u'id')
         uri = u'%s/users/%s/attributes' % (self.authuri, value)
@@ -255,8 +271,8 @@ class UserController(AuthControllerChild):
         self.result(res, key=u'user_attributes', 
                     headers=[u'name', u'value', u'desc'])    
     
-    @expose(aliases=[u'add-attrib <id> <attrib> <value> <desc>'], 
-            aliases_only=True)
+    @expose(aliases=[u'add-attrib <id> <attrib> <value> <desc>'], aliases_only=True)
+    @check_error
     def add_attrib(self):
         oid = self.get_arg(name=u'id')
         attrib = self.get_arg(name=u'attrib')
@@ -275,6 +291,7 @@ class UserController(AuthControllerChild):
         self.result({u'msg':u'Add/update user attrib %s' % attrib})     
     
     @expose(aliases=[u'delete-attrib <id> <attrib>'], aliases_only=True)
+    @check_error
     def delete_attrib(self):
         oid = self.get_arg(name=u'id')
         attrib = self.get_arg(name=u'attrib')
@@ -282,14 +299,15 @@ class UserController(AuthControllerChild):
         res = self._call(uri, u'dELETE', data=u'')
         logger.info(u'Add user attribute: %s' % res)
         self.result({u'msg':u'Delete user attrib %s' % attrib})        
-        
-class RoleController(AuthControllerChild):    
+
+
+class RoleController(AuthControllerChild):
     class Meta:
         label = 'roles'
         description = "Role management"
         
-    @expose(aliases=[u'add <name> <desc>'], 
-            aliases_only=True)
+    @expose(aliases=[u'add <name> <desc>'], aliases_only=True)
+    @check_error
     def add(self):
         """Add role <name>
         """
@@ -308,6 +326,7 @@ class RoleController(AuthControllerChild):
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
     def list(self):
         """List all roles by field: page, size, order, field, role, group, expirydate
     - field can be: id, objid, uuid, name, description, creation_date, 
@@ -321,6 +340,7 @@ class RoleController(AuthControllerChild):
         self.result(res, key=u'roles', headers=self.role_headers)
     
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get role by value or id
         """
@@ -332,6 +352,7 @@ class RoleController(AuthControllerChild):
                     details=True)
     
     @expose(aliases=[u'update <id> [name=<name>] [desc=<desc>]'], aliases_only=True)
+    @check_error
     def update(self):
         """Update role with new name or desc
         """
@@ -350,6 +371,7 @@ class RoleController(AuthControllerChild):
         self.result(res, headers=[u'msg'])  
     
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete role
         """
@@ -361,6 +383,7 @@ class RoleController(AuthControllerChild):
         self.result(res, headers=[u'msg'])
     
     @expose(aliases=[u'add-perm <id> <permid>'], aliases_only=True)
+    @check_error
     def add_perm(self):
         roleid = self.get_arg(name=u'id')
         permid = self.get_arg(name=u'permid')
@@ -378,6 +401,7 @@ class RoleController(AuthControllerChild):
         self.result({u'msg':u'Add role perms: %s' % res[u'perm_append']})
     
     @expose(aliases=[u'delete-perm <id> <permid>'], aliases_only=True)
+    @check_error
     def delete_perm(self):
         roleid = self.get_arg(name=u'id')
         permid = self.get_arg(name=u'permid')        
@@ -393,14 +417,15 @@ class RoleController(AuthControllerChild):
         res = self._call(uri, u'PUT', data=data)
         logger.info(u'Update role perms: %s' % res)
         self.result({u'msg':u'Remove role perms: %s' % res[u'perm_remove']})        
-        
-class GroupController(AuthControllerChild):    
+
+
+class GroupController(AuthControllerChild):
     class Meta:
         label = 'groups'
         description = "Group management"
         
-    @expose(aliases=[u'add <name> <desc> [<expirydate>=yyyy-mm-dd]'], 
-            aliases_only=True)
+    @expose(aliases=[u'add <name> <desc> [<expirydate>=yyyy-mm-dd]'], aliases_only=True)
+    @check_error
     def add(self):
         """Add group <name>
         """
@@ -422,6 +447,7 @@ class GroupController(AuthControllerChild):
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'list [filter=..]'], aliases_only=True)
+    @check_error
     def list(self):
         """List all groups by filter: page, size, order, field, role, user
     - field can be: id, objid, uuid, name, description, creation_date, modification_date, expiry_date, active
@@ -434,6 +460,7 @@ class GroupController(AuthControllerChild):
         self.result(res, key=u'groups', headers=self.group_headers)
     
     @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get group by value or id
         """
@@ -444,8 +471,8 @@ class GroupController(AuthControllerChild):
         self.result(res, key=u'group', headers=self.group_headers, 
                     details=True)
     
-    @expose(aliases=[u'update <id> [name=<name>] [desc=<desc>]  [active=<active>]'], 
-            aliases_only=True)
+    @expose(aliases=[u'update <id> [name=<name>] [desc=<desc>]  [active=<active>]'], liases_only=True)
+    @check_error
     def update(self):
         """Update group with new value
         """
@@ -465,6 +492,7 @@ class GroupController(AuthControllerChild):
         self.result(res, headers=[u'msg'])  
     
     @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete group
         """
@@ -476,6 +504,7 @@ class GroupController(AuthControllerChild):
         self.result(res, headers=[u'msg'])
         
     @expose(aliases=[u'add-role <id> <role> <expirydate>'], aliases_only=True)
+    @check_error
     def add_role(self):
         """Add role to group
     - expirydate syntax: yyyy-mm-dd
@@ -497,6 +526,7 @@ class GroupController(AuthControllerChild):
         self.result({u'msg':u'Add group role: %s' % res[u'role_append']})
 
     @expose(aliases=[u'delete-role <id> <role>'], aliases_only=True)
+    @check_error
     def delete_role(self):
         """Remove role from group
     - expirydate syntax: yyyy-mm-dd
@@ -517,6 +547,7 @@ class GroupController(AuthControllerChild):
         self.result({u'msg':u'Add group role: %s' % res[u'role_remove']})  
         
     @expose(aliases=[u'add-user <id> <user>'], aliases_only=True)
+    @check_error
     def add_user(self):
         """Add user to group
         """
@@ -539,6 +570,7 @@ class GroupController(AuthControllerChild):
         self.result({u'msg':u'Add group user: %s' % res[u'user_append']})
 
     @expose(aliases=[u'delete-user <id> <user>'], aliases_only=True)
+    @check_error
     def delete_user(self):
         """Remove user from group
         """
@@ -558,8 +590,9 @@ class GroupController(AuthControllerChild):
         res = self._call(uri, u'PUT', data=data)
         logger.info(u'Update group users: %s' % res)
         self.result({u'msg':u'Add group user: %s' % res[u'user_remove']})          
-        
-class ObjectController(AuthControllerChild):    
+
+
+class ObjectController(AuthControllerChild):
     class Meta:
         label = 'objects'
         description = "Object management"
@@ -567,7 +600,8 @@ class ObjectController(AuthControllerChild):
     #
     # actions
     #
-    @expose
+    @expose()
+    @check_error
     def actions(self):
         """List object actions
         """
@@ -579,7 +613,8 @@ class ObjectController(AuthControllerChild):
     #
     # perms
     #
-    @expose(aliases=[u'perms [<filter=..>]'], aliases_only=True)    
+    @expose(aliases=[u'perms [<filter=..>]'], aliases_only=True)
+    @check_error
     def perms(self):
         """Get permissions. Filter by: page, size, order, field, subsystem, 
     type, objid. field can be: subsystem, type, id, action
@@ -590,8 +625,8 @@ class ObjectController(AuthControllerChild):
         logger.info(u'Get objects: %s' % res)
         self.result(res, key=u'perms', headers=self.perm_headers)
     
-    @expose(aliases=[u'perm <id>'], 
-            aliases_only=True)    
+    @expose(aliases=[u'perm <id>'], aliases_only=True)
+    @check_error
     def perm(self):
         """Get permission by id
         """
@@ -604,7 +639,8 @@ class ObjectController(AuthControllerChild):
     #
     # object types
     #
-    @expose(aliases=[u'types [<filter=..>]'], aliases_only=True)  
+    @expose(aliases=[u'types [<filter=..>]'], aliases_only=True)
+    @check_error
     def types(self):
         """Get object types. Filter by: page, size, order, field, subsystem, type
     field can be: subsystem, type, id
@@ -615,7 +651,8 @@ class ObjectController(AuthControllerChild):
         logger.info(u'Get objects: %s' % res)
         self.result(res, key=u'object_types', headers=self.type_headers)
 
-    @expose(aliases=[u'add-type <subsystem> <type>'], aliases_only=True)  
+    @expose(aliases=[u'add-type <subsystem> <type>'], aliases_only=True)
+    @check_error
     def add_type(self):
         subsystem = self.get_arg(name=u'subsystem')
         otype = self.get_arg(name=u'type')
@@ -632,7 +669,8 @@ class ObjectController(AuthControllerChild):
         logger.info(u'Add object: %s' % res)
         self.result({u'msg':u'Add object type: %s' % (res)})
     
-    @expose(aliases=[u'delete-type <id>'], aliases_only=True)  
+    @expose(aliases=[u'delete-type <id>'], aliases_only=True)
+    @check_error
     def delete_type(self):
         object_id = self.get_arg(name=u'id')
         uri = u'%s/objects/types/%s' % (self.authuri, object_id)
@@ -643,7 +681,8 @@ class ObjectController(AuthControllerChild):
     #
     # objects
     #
-    @expose(aliases=[u'list [<filter=..>]'], aliases_only=True) 
+    @expose(aliases=[u'list [<filter=..>]'], aliases_only=True)
+    @check_error
     def list(self):
         """Get objects. Filter by: page, size, order, field, subsystem, type, 
     objid. field can be: subsystem, type, id, objid
@@ -654,7 +693,8 @@ class ObjectController(AuthControllerChild):
         logger.info(u'Get objects: %s' % res)
         self.result(res, key=u'objects', headers=self.obj_headers, maxsize=200)
     
-    @expose(aliases=[u'get <id>'], aliases_only=True) 
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
     def get(self):
         """Get object
         """
@@ -664,8 +704,8 @@ class ObjectController(AuthControllerChild):
         logger.info(u'Get object: %s' % res)
         self.result(res, key=u'object', headers=self.obj_headers, details=True)
     
-    @expose(aliases=[u'add <subsystem> <type> "<objid>" "<desc>"'],
-                     aliases_only=True) 
+    @expose(aliases=[u'add <subsystem> <type> "<objid>" "<desc>"'], aliases_only=True)
+    @check_error
     def add(self):
         """Add object
         """
@@ -688,7 +728,8 @@ class ObjectController(AuthControllerChild):
         logger.info(u'Add object: %s' % res)
         self.result({u'msg':u'Add object: %s' % (res)})
     
-    @expose(aliases=[u'delete <id>'], aliases_only=True) 
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
     def delete(self):
         """Delete object
         """
@@ -698,7 +739,8 @@ class ObjectController(AuthControllerChild):
         logger.info(u'Delete object: %s' % res)
         self.result({u'msg':u'Delete object %s' % (object_id)})
         
-    @expose(aliases=[u'deletes <id1,id2,..>'], aliases_only=True) 
+    @expose(aliases=[u'deletes <id1,id2,..>'], aliases_only=True)
+    @check_error
     def deletes(self):
         """Delete objects
         """
@@ -709,7 +751,8 @@ class ObjectController(AuthControllerChild):
             res = self._call(uri, u'DELETE', data=u'')
             logger.info(u'Delete object: %s' % res)
         self.result({u'msg':u'Delete objects %s' % (object_ids)}) 
-        
+
+
 auth_controller_handlers = [
     AuthController,
     DomainController,
@@ -719,5 +762,3 @@ auth_controller_handlers = [
     GroupController,
     ObjectController
 ]                
-
-        
