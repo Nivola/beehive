@@ -148,6 +148,8 @@ class CliController(CementCmdBaseController):
 class CliManager(CementCmd):
     """Cli manager
     """
+    vault = None
+
     class Meta:
         label = "beehive"
         debug = False

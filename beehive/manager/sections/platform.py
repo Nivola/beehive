@@ -254,7 +254,11 @@ class NginxController(AnsibleController):
         """
         def func(server):
             try:
-                res = requests.get(u'http://%s' % server)
+                proxies = {
+                    u'http': None,
+                    u'https': None,
+                }
+                res = requests.get(u'http://%s' % server, proxies=proxies)
                 if res.status_code == 200:
                     res = True
                 else:
