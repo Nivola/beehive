@@ -111,6 +111,8 @@ def config_cli(app):
         app.args.add_argument('-v', '--version', action='version', version=BANNER)
         app.args.add_argument('-k', '--key', action='store', dest='key',
                               help='Secret key file to use for encryption/decryption')
+        app.args.add_argument('--vault', action='store', dest='vault',
+                              help='Ansible vault password to use for inventory decryption')
         app.args.add_argument('-e', '--env', action='store', dest='env',
                               help='Execution environment. Select from: %s' % envs)
         app.args.add_argument('-E', '--envs', action='store', dest='envs',
@@ -209,6 +211,7 @@ class CliManager(CementCmd):
         configs_file = u'/etc/beehive/manage.conf'
         history_file = u'~/.beehive.manage'
         fernet_key = u'/etc/beehive/manage.key'
+        ansible_vault = u'/etc/beehive/manage.ansible.vault'
         
         # authorization
         token_file = u'/tmp/.manage.token'
@@ -261,6 +264,13 @@ class CliManager(CementCmd):
             self.fernet = f.read().rstrip()
             f.close()
             logger.info(u'Load fernet key from %s' % self._meta.fernet_key)
+
+        # ansible vault
+        if os.path.exists(self._meta.ansible_vault):
+            f = open(self._meta.ansible_vault, 'r')
+            self.vault = f.read().rstrip()
+            f.close()
+            logger.info(u'Load ansible vault pwd from %s' % self._meta.ansible_vault)
 
     @staticmethod
     def setup_logging():

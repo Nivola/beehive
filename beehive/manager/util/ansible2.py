@@ -42,6 +42,7 @@ class Display(OrigDisplay):
 
 #display = Display()
 
+
 class Options(object):
     """Options class to replace Ansible OptParser
     """
@@ -98,6 +99,7 @@ class Options(object):
         self.module_path = module_path
         self.cwd = limit
 
+
 class ResultCallback(CallbackBase):
     """A sample callback plugin used for performing an action as results come in
 
@@ -142,7 +144,8 @@ class ResultCallback(CallbackBase):
             for item in result._result[u'stderr_lines']:
                 print(u'  %s' % item)
             print(u'')            
-    
+
+
 class CallbackModule(CallbackBase):
     """
     This callback module tells you how long your plays ran for.
@@ -169,16 +172,13 @@ class CallbackModule(CallbackBase):
     def v2_playbook_on_stats(self, stats):
         end_time = datetime.now()
         runtime = end_time - self.start_time
-        self._display.display("Playbook run took %s days, %s hours, %s minutes, %s seconds" % (self.days_hours_minutes_seconds(runtime)))    
+        self._display.display("Playbook run took %s days, %s hours, %s minutes, %s seconds" % (self.days_hours_minutes_seconds(runtime)))
 
-#from ansible import constants as C
-#print(C.__dict__)
-#C.DEFAULT_STDOUT_CALLBACK    
-    
+
 class Runner(object):
     """Ansible api v2 playbook runner
     """
-    def __init__(self, inventory=None, verbosity=2, module=u''):
+    def __init__(self, inventory=None, verbosity=2, module=u'', vault_password=None):
         self.options = Options()
         self.options.private_key_file = None
         self.options.verbosity = verbosity
@@ -193,7 +193,8 @@ class Runner(object):
         
         # Gets data from YAML/JSON files
         self.loader = DataLoader()
-        #self.loader.set_vault_password(os.environ['VAULT_PASS'])
+        if vault_password is not None:
+            self.loader.set_vault_password(vault_password)
         
         # All the variables from all the various places
         self.variable_manager = VariableManager()
@@ -215,9 +216,9 @@ class Runner(object):
             if group is not None:
                 hosts = hosts[group]
             return hosts
-        except:
-            logger.error(u'', exc_info=1)
-            raise Exception(u'Ansible inventory was not found')
+        except Exception as ex:
+            logger.error(ex, exc_info=1)
+            raise Exception(ex)
     
     def get_inventory_with_vars(self, group):
         """Get inventory, using most of above objects
@@ -238,13 +239,14 @@ class Runner(object):
         
         return hosts, None
     
-    def run_playbook(self, group, playbook, private_key_file, run_data, 
-                     become_pas, tags=[]):
+    def run_playbook(self, group, playbook, private_key_file, run_data, become_pas, tags=[], vault_password=None):
         """
         """
         
         # Gets data from YAML/JSON files
-        self.loader = DataLoader()        
+        self.loader = DataLoader()
+        if vault_password is not None:
+            self.loader.set_vault_password(vault_password)
         
         # All the variables from all the various places
         self.variable_manager = VariableManager()

@@ -211,6 +211,7 @@ commands:
         self.envs = getattr(self.app.pargs, u'envs', None)
         self.verbosity = getattr(self.app.pargs, u'verbosity', None)
         self.key = getattr(self.app.pargs, u'key', None)
+        self.vault = getattr(self.app.pargs, u'vault', None)
 
         if self.format is None:
             self.format = self.app._meta.format
@@ -235,6 +236,10 @@ commands:
         # fernet key
         if self.key is None:
             self.key = self.app.fernet
+
+        # ansible vault pwd
+        if self.vault is None:
+            self.vault = self.app.vault
 
     def check_secret_key(self):
         if self.key is None:

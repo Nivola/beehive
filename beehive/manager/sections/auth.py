@@ -471,7 +471,7 @@ class GroupController(AuthControllerChild):
         self.result(res, key=u'group', headers=self.group_headers, 
                     details=True)
     
-    @expose(aliases=[u'update <id> [name=<name>] [desc=<desc>]  [active=<active>]'], liases_only=True)
+    @expose(aliases=[u'update <id> [name=<name>] [desc=<desc>]  [active=<active>]'], aliases_only=True)
     @check_error
     def update(self):
         """Update group with new value

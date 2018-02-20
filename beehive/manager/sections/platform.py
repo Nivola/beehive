@@ -113,9 +113,9 @@ class AnsibleController(BaseController):
             * **group**: ansible group
         """
         try:
-            path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+            path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
             path_lib = u'%s/library/beehive/' % (self.ansible_path)
-            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
+            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
             res = runner.get_inventory(group)
             if isinstance(res, list):
                 res = {group: res}
@@ -136,14 +136,14 @@ class AnsibleController(BaseController):
         """run playbook on group and host
         """
         try:
-            path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+            path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
             path_lib = u'%s/library/beehive/' % self.ansible_path
-            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
+            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
             logger.debug(u'Create new ansible runner: %s' % runner)
             tags = run_data.pop(u'tags')
             if playbook is None:
                 playbook = self.playbook
-            runner.run_playbook(group, playbook, None, run_data, None, tags=tags)
+            runner.run_playbook(group, playbook, None, run_data, None, tags=tags, vault_password=self.vault)
             logger.debug(u'Run ansible playbook: %s' % playbook)
             runner = None
         except Exception as ex:
@@ -168,9 +168,9 @@ class AnsibleController(BaseController):
 
 
         try:
-            # path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+            # path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
             # path_lib = u'%s/library/beehive/' % self.ansible_path
-            # runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
+            # runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
             for runner in runners:
                 tasks = [
                     dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
@@ -187,9 +187,9 @@ class AnsibleController(BaseController):
 
         for env in envs:
             try:
-                path_inventory = u'%s/inventories/%s' % (self.ansible_path, env)
+                path_inventory = u'%s/inventory/%s' % (self.ansible_path, env)
                 path_lib = u'%s/library/beehive/' % self.ansible_path
-                runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
+                runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
                 runners.append(runner)
             except Exception as ex:
                 self.error(ex, exc_info=1)
@@ -297,9 +297,9 @@ class RedisController(AnsibleController):
         """Run command on redis instances
         """
         '''try:
-            path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+            path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
             path_lib = u'%s/library/beehive/' % (self.ansible_path)
-            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
+            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
             hosts, vars = runner.get_inventory_with_vars(u'redis')        
 
         except Exception as ex:
@@ -455,9 +455,9 @@ class RedisClutserController(RedisController):
         """Run command on redis instances
         """
         '''try:
-            path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+            path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
             path_lib = u'%s/library/beehive/' % (self.ansible_path)
-            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
+            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
             cluster_hosts, vars = runner.get_inventory_with_vars(u'redis-master')
         except Exception as ex:
             self.error(ex)
@@ -514,10 +514,10 @@ class RedisClutserController(RedisController):
         """Ping single redis instances in a cluster
         """
         '''try:
-            path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+            path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
             path_lib = u'%s/library/beehive/' % (self.ansible_path)
             runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
-                            module=path_lib)
+                            module=path_lib, vault_password=self.vault)
             cluster_hosts, vars = runner.get_inventory_with_vars(u'redis-cluster')
         except Exception as ex:
             self.error(ex)
@@ -545,10 +545,10 @@ class RedisClutserController(RedisController):
         """
         """
         '''try:
-            path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+            path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
             path_lib = u'%s/library/beehive/' % (self.ansible_path)
             runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
-                            module=path_lib)
+                            module=path_lib, vault_password=self.vault)
             cluster_hosts, vars = runner.get_inventory_with_vars(u'redis-master')
         except Exception as ex:
             self.error(ex)
@@ -588,15 +588,15 @@ class MysqlController(AnsibleController):
             hosts.extend(self.get_hosts(runner, [u'mysql', u'mysql-cluster']))
         vars = runner.variable_manager.get_vars(runner.loader, host=hosts[0])
 
-        '''path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+        '''path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
         path_lib = u'%s/library/beehive/' % (self.ansible_path)
-        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
+        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
         hosts, vars = runner.get_inventory_with_vars(u'mysql')
         hosts2, vars = runner.get_inventory_with_vars(u'mysql-cluster')
         hosts.extend(hosts2)
         # get root user
         vars = runner.variable_manager.get_vars(runner.loader, host=hosts[0])'''
-        root = {u'name': u'root', u'password': vars[u'mysql_remote_root_password']}
+        root = {u'name': u'root', u'password': vars[u'mysql'][u'root_remote_pwd']}
         return hosts, root        
     
     @expose(aliases=[u'ping [port]'], aliases_only=True)
@@ -816,9 +816,9 @@ class CamundaController(AnsibleController):
         description = "Camunda management"
     
     def __get_engine(self, port=8080):
-        path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+        path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
         path_lib = u'%s/library/beehive/' % (self.ansible_path)
-        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
+        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
         hosts, vars = runner.get_inventory_with_vars(u'camunda')
         
         clients = []
@@ -1247,9 +1247,9 @@ class OpenstackController(AnsibleController):
             '''inventory = u'openstack-%s' % instance
             if subset != u'':
                 inventory = u'%s-%s' % (inventory, subset)
-            path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+            path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
             path_lib = u'%s/library/beehive/' % self.ansible_path
-            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
+            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
             hosts, vars = runner.get_inventory_with_vars(inventory)'''
 
             resp = []
@@ -1541,9 +1541,9 @@ class NodeController(AnsibleController):
     def __get_hosts_and_vars(self, env):
         # get environemtn nodes
         try:
-            path_inventory = u'%s/inventories/%s' % (self.ansible_path, env)
+            path_inventory = u'%s/inventory/%s' % (self.ansible_path, env)
             path_lib = u'%s/library/beehive/' % (self.ansible_path)
-            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
+            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
             hosts, hvars = runner.get_inventory_with_vars(u'all')
             hvars = runner.variable_manager.get_vars(runner.loader)
             return hosts, hvars
@@ -1656,9 +1656,9 @@ class NodeController(AnsibleController):
         """
         group = self.get_arg(name=u'group')
         cmd  = self.get_arg(name=u'cmd')     
-        path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+        path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
         path_lib = u'%s/library/beehive/' % (self.ansible_path)
-        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
+        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
         tasks = [
             dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
         ]
@@ -1702,7 +1702,7 @@ class BeehiveController(AnsibleController):
     def __get_uwsgi_tree(self, group):
         """
         """
-        '''path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+        '''path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
         runner = Runner(inventory=path_inventory, verbosity=self.verbosity)
         hosts = runner.get_inventory(group=group)
         self.json = []
@@ -1721,7 +1721,7 @@ class BeehiveController(AnsibleController):
         """
         hosts = self.get_multi_hosts(system)
 
-        '''path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+        '''path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
         runner = Runner(inventory=path_inventory, verbosity=self.verbosity)
         hosts = runner.get_inventory(group=system)'''
 
@@ -1756,7 +1756,7 @@ class BeehiveController(AnsibleController):
         try:
             hosts = self.get_multi_hosts(system)
 
-            '''path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+            '''path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
             runner = Runner(inventory=path_inventory, verbosity=self.verbosity)
             hosts = runner.get_inventory(group=system)'''
 
@@ -1785,7 +1785,7 @@ class BeehiveController(AnsibleController):
         """
         hosts = self.get_multi_hosts(system)
 
-        '''path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+        '''path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
         runner = Runner(inventory=path_inventory, verbosity=self.verbosity)
         hosts = runner.get_inventory(group=system)'''
 
@@ -1939,9 +1939,9 @@ class BeehiveController(AnsibleController):
         """
         subsystem = self.get_arg()
         vassal = self.get_arg()
-        '''path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+        '''path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
         path_lib = u'%s/library/beehive/' % (self.ansible_path)
-        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib)
+        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
         hosts, vars = runner.get_inventory_with_vars(u'beehive')
         vars = runner.variable_manager.get_vars(runner.loader, host=hosts[0])'''
 
@@ -2005,10 +2005,10 @@ class BeehiveController(AnsibleController):
         vassal = self.get_arg(name=u'vassal')
         rows = self.get_arg(default=100)
         cmd  = u'tail -%s /var/log/beehive/beehive100/%s-%s.log' % (rows, subsystem, vassal)
-        path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+        path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
         path_lib = u'%s/library/beehive/' % (self.ansible_path)
         runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
-                        module=path_lib)
+                        module=path_lib, vault_password=self.vault)
         tasks = [
             dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
         ]
@@ -2028,10 +2028,10 @@ class BeehiveController(AnsibleController):
         rows = self.get_arg(default=100)
         cmd  = u'tail -%s /var/log/beehive/beehive100/%s-%s.uwsgi.log' % \
             (rows, subsystem, vassal)
-        path_inventory = u'%s/inventories/%s' % (self.ansible_path, self.env)
+        path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
         path_lib = u'%s/library/beehive/' % (self.ansible_path)
         runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
-                        module=path_lib)
+                        module=path_lib, vault_password=self.vault)
         tasks = [
             dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
         ]
