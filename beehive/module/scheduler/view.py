@@ -304,30 +304,29 @@ class GetTasksDefinition(TaskApiView):
         }
         return resp    
 
-## list
+
 class GetAllTasksParamsResponseSchema(Schema):
     status = fields.String(required=True, default=u'SUCCESS')
-    traceback = fields.List(fields.String(default=u'error'), 
-                            required=False, allow_none=True)
-    jobs = fields.List(fields.String(default=u'c518fa8b-1247-4f9f-9d73-785bcc24b8c7'), 
-                            required=False, allow_none=True)
+    traceback = fields.List(fields.String(default=u'error'), required=False, allow_none=True)
+    jobs = fields.List(fields.String(default=u'c518fa8b-1247-4f9f-9d73-785bcc24b8c7'), required=False, allow_none=True)
     name = fields.String(required=True, default=u'beehive.module.scheduler.tasks.jobtest')
     task_id = fields.String(required=True, default=u'c518fa8b-1247-4f9f-9d73-785bcc24b8c7')
     kwargs = fields.Dict(required=True, default={})
     start_time = fields.String(required=True, default=u'16-06-2017 14:58:50.352286')
     stop_time = fields.String(required=True, default=u'16-06-2017 14:58:50.399747')
-    args = fields.List(fields.String(default=u''), required=False)
+    args = fields.List(fields.Raw(), required=False)
     worker = fields.String(required=True, default=u'celery@tst-beehive-02')
     elapsed = fields.Float(required=True, default=0.0474607944)
     result = fields.Boolean(required=True, default=True)
     ttl = fields.Integer(required=True, default=83582)
     type = fields.String(required=True, default=u'JOB')
-    children = fields.List(fields.String(default=u'd069c405-d9db-45f3-967e-f052fbeb3c3e'), 
-                           required=False)
+    children = fields.List(fields.String(default=u'd069c405-d9db-45f3-967e-f052fbeb3c3e'), required=False)
+
 
 class GetAllTasksResponseSchema(Schema):
     task_instances = fields.Nested(GetAllTasksParamsResponseSchema, many=True, required=True, allow_none=True)
     count = fields.Integer(required=True, default=1)
+
 
 class GetAllTasks(TaskApiView):
     definitions = {
@@ -348,8 +347,8 @@ class GetAllTasks(TaskApiView):
         task_manager = controller.get_task_manager()
         res = task_manager.get_all_tasks(details=True)
         resp = {
-            u'task_instances':res,
-            u'count':len(res)
+            u'task_instances': res,
+            u'count': len(res)
         }        
         return resp
 
