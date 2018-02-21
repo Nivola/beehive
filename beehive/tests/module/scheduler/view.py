@@ -45,54 +45,54 @@ class SchedulerAPITestCase(BeehiveTestCase):
         data = u''
         uri = u'/v1.0/worker/ping'
         
-        self.call(self.module, uri, u'GET', data=data, **self.users[u'admin'])
+        self.call(self.module, uri, u'get', data=data, **self.users[u'admin'])
 
     def test_stat_task_manager(self):
         data = u''
         uri = u'/v1.0/worker/stats'
         
-        res = self.call(self.module, uri, u'GET', data=data, **self.users[u'admin'])
+        res = self.call(self.module, uri, u'get', data=data, **self.users[u'admin'])
         self.logger.info(self.pp.pformat(res))
 
     def test_report_task_manager(self):
         data = u''
         uri = u'/v1.0/worker/report'
         
-        res = self.call(self.module, uri, u'GET', data=data, **self.users[u'admin'])
+        res = self.call(self.module, uri, u'get', data=data, **self.users[u'admin'])
         self.logger.info(self.pp.pformat(res))
 
     def test_queues_task_manager(self):
         data = u''
         uri = u'/v1.0/worker/queues'
 
-        res = self.call(self.module, uri, u'GET', data=data, **self.users[u'admin'])
+        res = self.call(self.module, uri, u'get', data=data, **self.users[u'admin'])
         self.logger.info(self.pp.pformat(res))
 
     def test_get_all_tasks(self):
         data = u''
         uri = u'/v1.0/worker/tasks'
         
-        res = self.call(self.module, uri, u'GET', data=data, **self.users[u'admin'])
+        res = self.call(self.module, uri, u'get', data=data, **self.users[u'admin'])
         self.logger.info(self.pp.pformat(res))
 
     def test_count_all_tasks(self):
         data = u''
         uri = u'/v1.0/worker/tasks/count'
 
-        res = self.call(self.module, uri, u'GET', data=data, **self.users[u'admin'])
+        res = self.call(self.module, uri, u'get', data=data, **self.users[u'admin'])
         self.logger.info(self.pp.pformat(res))
 
     def test_get_task_definitions(self):
         data = u''
         uri = u'/v1.0/worker/tasks/definitions'
-        res = self.call(self.module, uri, u'GET', data=data, **self.users[u'admin'])
+        res = self.call(self.module, uri, u'get', data=data, **self.users[u'admin'])
         self.logger.info(self.pp.pformat(res))
 
     def test_get_task(self):
         data = u''
         global task_id
         uri = u'/v1.0/worker/tasks/%s' % task_id
-        res = self.call(self.module, uri, u'GET', data=data, **self.users[u'admin'])
+        res = self.call(self.module, uri, u'get', data=data, **self.users[u'admin'])
         self.logger.info(self.pp.pformat(res))
         
     def test_get_task_graph(self):
@@ -100,29 +100,28 @@ class SchedulerAPITestCase(BeehiveTestCase):
         data = u''
         uri = u'/v1.0/worker/tasks/%s/graph' % task_id
         
-        res = self.call(self.module, uri, u'GET', data=data, **self.users[u'admin'])
+        res = self.call(self.module, uri, u'get', data=data, **self.users[u'admin'])
         self.logger.info(self.pp.pformat(res))
         
     def test_delete_all_tasks(self):
         data = u''
         uri = u'/v1.0/worker/tasks'
         
-        self.call(self.module, uri, u'DELETE', data=data, **self.users[u'admin'])
+        self.call(self.module, uri, u'delete', data=data, **self.users[u'admin'])
         
     def test_delete_task(self):
         global task_id
         data = u''
         uri = u'/v1.0/worker/tasks/%s' % task_id
         
-        self.call(self.module, uri, u'DELETE', data=data, **self.users[u'admin'])
+        self.call(self.module, uri, u'delete', data=data, **self.users[u'admin'])
         
     def test_run_job_test(self):
         global task_id
         data = {u'x':2, u'y':234, u'numbers':[2, 78, 45, 90], u'mul_numbers':[]}
         uri = u'/v1.0/worker/tasks/test'
-        res = self.call(self.module, uri, u'POST', data=data, **self.users[u'admin'])
+        res = self.call(self.module, uri, u'post', data=data, **self.users[u'admin'])
         self.wait_job(res[u'jobid'], delta=1, accepted_state=u'SUCCESS')
-        task_id = res[u'jobid']
 
     #
     # scheduler
@@ -130,7 +129,7 @@ class SchedulerAPITestCase(BeehiveTestCase):
     def test_get_scheduler_entries(self):
         data = u''
         uri = u'/v1.0/scheduler/entries'
-        res = self.call(self.module, uri, u'GET', data=data, **self.users[u'admin'])
+        res = self.call(self.module, uri, u'get', data=data, **self.users[u'admin'])
         global schedule_id
         schedule_id = res[u'schedules'][0][u'name']
 
@@ -138,7 +137,7 @@ class SchedulerAPITestCase(BeehiveTestCase):
         global schedule_id
         data = u''
         uri = u'/v1.0/scheduler/entries/%s' % schedule_id
-        res = self.call(self.module, uri, u'GET', data=data, **self.users[u'admin'])
+        res = self.call(self.module, uri, u'get', data=data, **self.users[u'admin'])
 
     def test_create_scheduler_entries(self):
         data = {
@@ -160,11 +159,11 @@ class SchedulerAPITestCase(BeehiveTestCase):
             'options': {'expires': 60}
         }
         uri = u'/v1.0/scheduler/entries'
-        self.call(self.module, uri, u'POST', data={u'schedule':data}, **self.users[u'admin'])
+        self.call(self.module, uri, u'post', data={u'schedule':data}, **self.users[u'admin'])
 
     def test_delete_scheduler_entry(self):
         uri = u'/v1.0/scheduler/entries/%s' % u'celery.backend_cleanup'
-        self.call(self.module, uri, u'DELETE', data=u'', **self.users[u'admin'])
+        self.call(self.module, uri, u'delete', data=u'', **self.users[u'admin'])
 
 
 if __name__ == u'__main__':

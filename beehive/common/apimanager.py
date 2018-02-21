@@ -634,15 +634,14 @@ class ApiManager(object):
                 try:
                     self.logger.info(u'Configure Camunda - CONFIGURE')            
                     from beedrones.camunda import WorkFlowEngine as CamundaEngine
-                    confs = configurator.get(app=self.app_name, group=u'bpmn', name=u'camunda.cluster')[0].value
-                    self.logger.info(u'Configure Camunda - CONFIG app%s: %s' % (self.app_name, confs))
-                    for conf in confs:
-                        item = json.loads(conf.value)
+                    conf = configurator.get(app=self.app_name, group=u'bpmn', name=u'camunda.cluster')[0].value
+                    self.logger.info(u'Configure Camunda - CONFIG app %s: %s' % (self.app_name, conf))
+                    item = json.loads(conf)
 
                     self.camunda_engine = CamundaEngine(item[u'conn'], user=item[u'user'], passwd=item[u'passwd'])
                     self.logger.info(u'Configure Camunda  - CONFIGURED')            
                 except:
-                    self.logger.warning(u'Configure Camunda  - NOT CONFIGURED')
+                    self.logger.warning(u'Configure Camunda  - NOT CONFIGURED', exc_info=1)
                 ##### camunda configuration #####
 
                 ##### sendmail configuration #####
