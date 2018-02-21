@@ -502,7 +502,7 @@ class AbstractDbManager(object):
             self.logger.debug(u'Query entity %s by id' % entityclass.__name__)
             entity = self.query_entities(entityclass, session, oid=oid)            
         # get obj by name
-        elif match(u'[0-9a-zA-Z]+', oid):
+        elif match(u'[\-\w\d]+', oid):
             self.logger.debug(u'Query entity %s by name' % entityclass.__name__)
             entity = self.query_entities(entityclass, session, name=oid)
 
