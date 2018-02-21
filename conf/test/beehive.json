@@ -8,46 +8,46 @@
                     "uuid": "TST-SDDC"
                 },
                 "folder1": {
-                    "name": "test-folder-01",
+                    "name": "__test-folder-01",
                     "parent": null
                 },
                 "folder2": {
-                    "name": "test-folder-02",
-                    "parent": "test-folder-01"
+                    "name": "__test-folder-02",
+                    "parent": "__test-folder-01"
                 },
                 "dvs1": {
                     "uuid": "DVS-LEGACY"
                 },
                 "dvpg1": {
-                    "name": "test-dvpg-01",
+                    "name": "__test-dvpg-01",
                     "vlan": 565
                 },
                 "cluster1": {
                     "uuid": "LEGACYCompute"
                 },
                 "rpool1": {
-                    "name": "test-rpool-01"
+                    "name": "__test-rpool-01"
                 },
                 "ipset1": {
-                    "name": "test-ipset-01"
+                    "name": "__test-ipset-01"
                 },
                 "lg1": {
-                    "name": "test-lg-01",
+                    "name": "__test-lg-01",
                     "transport_zone": "vdnscope-1"
                 },
                 "nsx-sg1": {
-                    "name": "test-sg-01",
-                    "member": "test-ipset-01"
+                    "name": "__test-sg-01",
+                    "member": "__test-ipset-01"
                 },
                 "nsx-section01": {
-                    "name": "test-section-01"
+                    "name": "__test-section-01"
                 },
                 "nsx-section-default": {
                     "id": 1003
                 },
                 "nsx-rules": [
                     {
-                        "name": "test-rule-01",
+                        "name": "__test-rule-01",
                         "direction": "inout",
                         "appliedto": [
                             {
@@ -74,7 +74,7 @@
                         "action": "allow"
                     },
                     {
-                        "name": "test-rule-02",
+                        "name": "__test-rule-02",
                         "direction": "in",
                         "appliedto": [
                             {
@@ -101,7 +101,7 @@
                         "action": "allow"
                     },
                     {
-                        "name": "test-rule-03",
+                        "name": "__test-rule-03",
                         "direction": "out",
                         "appliedto": [
                             {
@@ -129,13 +129,13 @@
                     }
                 ],
                 "nsx-service01": {
-                    "name": "test-service-01",
+                    "name": "__test-service-01",
                     "proto": "TCP",
                     "ports": "4000-4001"
                 },
                 "vs-server1": {
-                    "name": "test-vs-server-01",
-                    "folder": "test-folder-01",
+                    "name": "__test-vs-server-01",
+                    "folder": "__test-folder-01",
                     "network": {
                         "fixed_ip": {
                             "hostname": "test-vs-server-01",
@@ -144,9 +144,9 @@
                             "dns": "10.102.184.2,10.102.184.3",
                             "dns_search": "tstsddc.csi.it"
                         },
-                        "uuid": "test-dvpg-01"
+                        "uuid": "__test-dvpg-01"
                     },
-                    "availability_zone": "test-rpool-01",
+                    "availability_zone": "__test-rpool-01",
                     "flavorRef": {
                         "core_x_socket": 1,
                         "cpu": 2,
@@ -164,7 +164,7 @@
                         "volume_size": 50
                     },
                     "security_groups": [
-                        "test-sg-01"
+                        "__test-sg-01"
                     ],
                     "pubkey": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it"
                 }
@@ -174,9 +174,9 @@
                     "uuid": "6bcc848a-894b-4046-93fa-799a3dbded05"
                 },
                 "ops-project1": {
-                    "container": "tst-opstk-ocata-01",
-                    "name": "test-ops-project-01",
-                    "desc": "test-ops-project-01",
+                    "container": "__tst-opstk-ocata-01",
+                    "name": "__test-ops-project-01",
+                    "desc": "__test-ops-project-01",
                     "parent": null,
                     "domain_id": "6bcc848a-894b-4046-93fa-799a3dbded05",
                     "enabled": true,
@@ -187,19 +187,19 @@
                     "role": "0a779390ed91465d8ec6688b7112991a"
                 },
                 "ops-project2": {
-                    "container": "tst-opstk-ocata-01",
-                    "name": "test-ops-project-02",
-                    "desc": "test-ops-project-02",
-                    "parent": "test-ops-project-01",
+                    "container": "__tst-opstk-ocata-01",
+                    "name": "__test-ops-project-02",
+                    "desc": "__test-ops-project-02",
+                    "parent": "__test-ops-project-01",
                     "domain_id": "6bcc848a-894b-4046-93fa-799a3dbded05",
                     "enabled": true,
                     "is_domain": false
                 },
                 "ops-network1": {
-                    "container": "tst-opstk-ocata-01",
-                    "name": "test-ops-network-01",
-                    "desc": "test-ops-network-01",
-                    "project": "test-ops-project-01",
+                    "container": "__tst-opstk-ocata-01",
+                    "name": "__test-ops-network-01",
+                    "desc": "__test-ops-network-01",
+                    "project": "__test-ops-project-01",
                     "physical_network": "datacentre",
                     "segmentation_id": 1565,
                     "network_type": "vlan",
@@ -207,9 +207,9 @@
                     "shared": false
                 },
                 "ops-subnet1": {
-                    "container": "tst-opstk-ocata-01",
-                    "name": "test-ops-subnet-01",
-                    "desc": "test-ops-subnet-01",
+                    "container": "__tst-opstk-ocata-01",
+                    "name": "__test-ops-subnet-01",
+                    "desc": "__test-ops-subnet-01",
                     "cidr": "10.202.185.0/24",
                     "allocation_pools": [
                         {
@@ -222,30 +222,30 @@
                     ],
                     "enable_dhcp": true,
                     "gateway_ip": "10.202.185.61",
-                    "network": "test-ops-network-01",
-                    "project": "test-ops-project-01"
+                    "network": "__test-ops-network-01",
+                    "project": "__test-ops-project-01"
                 },
                 "ops-port1": {
-                    "container": "tst-opstk-ocata-01",
-                    "name": "test-ops-port-01",
-                    "desc": "test-ops-port-01",
+                    "container": "__tst-opstk-ocata-01",
+                    "name": "__test-ops-port-01",
+                    "desc": "__test-ops-port-01",
                     "ip": "10.202.185.60",
-                    "network": "test-ops-network-01",
-                    "project": "test-ops-project-01",
+                    "network": "__test-ops-network-01",
+                    "project": "__test-ops-project-01",
                     "fixed_ips": [
                         {
                             "ip_address": "10.202.185.60",
-                            "subnet_id": "test-ops-subnet-01"
+                            "subnet_id": "__test-ops-subnet-01"
                         }
                     ],
                     "security_groups": [
                     ]
                 },
                 "ops-sg1": {
-                    "container": "tst-opstk-ocata-01",
-                    "name": "test-ops-sg-01",
-                    "desc": "test-ops-sg-01",
-                    "project": "test-ops-project-01",
+                    "container": "__tst-opstk-ocata-01",
+                    "name": "__test-ops-sg-01",
+                    "desc": "__test-ops-sg-01",
+                    "project": "__test-ops-project-01",
                     "rule1": {
                         "direction": "ingress",
                         "remote_ip_prefix": "158.102.160.0/24",
@@ -257,13 +257,13 @@
                     "rule2": {
                         "direction": "ingress",
                         "protocol": null,
-                        "remote_group_id": "test-ops-sg-01",
+                        "remote_group_id": "__test-ops-sg-01",
                         "ethertype": "IPV4"
                     },
                     "rule3": {
                         "direction": "egress",
                         "protocol": null,
-                        "remote_group_id": "test-ops-sg-01",
+                        "remote_group_id": "__test-ops-sg-01",
                         "ethertype": "IPV4"
                     },
                     "rule4": {
@@ -274,10 +274,10 @@
                     }
                 },
                 "ops-router1": {
-                    "container": "tst-opstk-ocata-01",
-                    "name": "test-ops-router-01",
-                    "desc": "test-ops-router-01",
-                    "project": "test-ops-project-01",
+                    "container": "__tst-opstk-ocata-01",
+                    "name": "__test-ops-router-01",
+                    "desc": "__test-ops-router-01",
+                    "project": "__test-ops-project-01",
                     "external_gateway_info": {
                         "external_fixed_ips": [
                             {
@@ -294,10 +294,10 @@
                     ]
                 },
                 "ops-server1": {
-                    "container": "tst-opstk-ocata-01",
-                    "name": "test-ops-server-01",
-                    "desc": "test-ops-server-01",
-                    "project": "test-ops-project-01",
+                    "container": "__tst-opstk-ocata-01",
+                    "name": "__test-ops-server-01",
+                    "desc": "__test-ops-server-01",
+                    "project": "__test-ops-project-01",
                     "networks": [
                         {
                             "hostname": "test-ops-server-01",
@@ -321,17 +321,17 @@
                         }
                     ],
                     "security_groups": [
-                        "test-ops-sg-01"
+                        "__test-ops-sg-01"
                     ],
                     "personality": [],
                     "metadata": {},
                     "pubkey": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDpN36RMjBNpQ9lTvbdMjbkU6OyytX78RXKiVNMBU07vBx6REwGWgytg+8rG1pqFAuo6U3lR1q25dpPDQtK8Dad68MPHFydfv0WAYOG6Y02j/pQKJDGPhbeSYS0XF4F/z4UxY6cXB8UdzkUSKtIg93YCTkzbQY6+APOY/K9q1b2ZxTEEBDQgWenZw4McmSbaS+AYwmigSJb5sFMexJRKZCdXESgQcSmUkQFiXRQNJMlgPZBnIcbGlu5UA9G5owLM6LT11bPQPrROqmhcSGoQtYq83RGNX5Kgwe00pqeo/G+SUtcQRp5JtWIE9bLeaXRIhZuInrbP0rmHyCQhBeZDCPr1mw2YDZV9Fbb08/qwbq1UYuUzRXxXroX1F7/mztyXQt7o4AjXWpeyBccR0nkAyZcanOvvJJvoIwLoDqbsZaqCldQJCvtb1WNX9ukce5ToW1y80Rcf1GZrrXRTs2cAbubUkxYQaLQQApVnGIJelR9BlvR7xsmfQ5Y5wodeLfEgqw2hNzJEeKKHs5xnpcgG9iXVvW1Tr0Gf+UsY0UIogZ6BCstfR59lPAt1IRaYVCvgHsHm4hmr0yMvUwGHroztrja50XHp9h0z/EWAt56nioOJcOTloAIpAI05z4Z985bYWgFk8j/1LkEDKH9buq5mHLwN69O7JPN8XaDxBq9xqSP9w== sergio.tonani@csi.it"
                 },
                 "ops-stack1": {
-                    "container": "tst-opstk-ocata-01",
-                    "name": "test-ops-stack-01",
-                    "desc": "test-ops-stack-01",
-                    "project": "test-ops-project-01",
+                    "container": "__tst-opstk-ocata-01",
+                    "name": "__test-ops-stack-01",
+                    "desc": "__test-ops-stack-01",
+                    "project": "__test-ops-project-01",
                     "template_uri": "https://10.102.184.26:1443/1362/beehive-resource/raw/devel/beehive_resource/tests/plugins/openstack/hot/test_template.yaml",
                     "environment": null,
                     "parameters": {
@@ -346,10 +346,10 @@
                     "owner": "admin"
                 },
                 "ops-share1": {
-                    "container": "tst-opstk-ocata-01",
-                    "name": "test-ops-share-01",
-                    "desc": "test-ops-share-01",
-                    "project": "test-ops-project-01",
+                    "container": "__tst-opstk-ocata-01",
+                    "name": "__test-ops-share-01",
+                    "desc": "__test-ops-share-01",
+                    "project": "__test-ops-project-01",
                     "share_proto": "NFS",
                     "size": 10,
                     "share_type": "netapp-nfs-565",
@@ -363,17 +363,17 @@
             },
             "provider":{
                 "prv-region1": {
-                    "container": "tst-provider-01",
-                    "name": "test-prv-region-01",
-                    "desc": "test-prv-region-01",
+                    "container": "__tst-provider-01",
+                    "name": "__test-prv-region-01",
+                    "desc": "__test-prv-region-01",
                     "geo_area": "pedmont",
                     "coords": "100,100"
                 },
                 "prv-site1": {
-                    "container": "tst-provider-01",
-                    "region": "test-prv-region-01",
-                    "name": "test-prv-site-01",
-                    "desc": "test-prv-site-01",
+                    "container": "__tst-provider-01",
+                    "region": "__test-prv-region-01",
+                    "name": "__test-prv-site-01",
+                    "desc": "__test-prv-site-01",
                     "geo_area": "pedmont",
                     "coords": "100,100",
                     "limits": {
@@ -386,7 +386,7 @@
                 },
                 "prv-site1-orchestrator1": {
                     "type": "vsphere",
-                    "id": "tst-vecenter-01",
+                    "id": "__tst-vecenter-01",
                     "tag": "default",
                     "config": {
                         "datacenter": "TST-SDDC",
@@ -396,7 +396,7 @@
                 },
                 "prv-site1-orchestrator2": {
                     "type": "openstack",
-                    "id": "tst-opstk-ocata-01",
+                    "id": "__tst-opstk-ocata-01",
                     "tag": "default",
                     "config": {
                         "domain": "6bcc848a-894b-4046-93fa-799a3dbded05",
@@ -406,10 +406,10 @@
                     }
                 },
                 "prv-site-network1": {
-                    "container": "tst-provider-01",
-                    "name": "test-prv-site-network-01",
-                    "desc": "test-prv-site-network-01",
-                    "site": "test-prv-site-01",
+                    "container": "__tst-provider-01",
+                    "name": "__test-prv-site-network-01",
+                    "desc": "__test-prv-site-network-01",
+                    "site": "__test-prv-site-01",
                     "external": false,
                     "vlan": 565,
                     "subnets": [
@@ -449,9 +449,9 @@
                     }
                 ],
                 "prv-compute-zone1": {
-                    "container": "tst-provider-01",
-                    "name": "test-prv-compute-zone-01",
-                    "desc": "test-prv-compute-zone-01",
+                    "container": "__tst-provider-01",
+                    "name": "__test-prv-compute-zone-01",
+                    "desc": "__test-prv-compute-zone-01",
                     "quota": {
                         "cpu": 10,
                         "ram": 1024,
@@ -461,7 +461,7 @@
                     }
                 },
                 "prv-compute-zone1-site1": {
-                    "id": "test-prv-site-01",
+                    "id": "__test-prv-site-01",
                     "orchestrator_tag": "default",
                     "quota": {
                         "cpu": 10,
@@ -472,34 +472,34 @@
                     }
                 },
                 "prv-compute-image1": {
-                    "container": "tst-provider-01",
-                    "name": "test-prv-compute-image-01",
-                    "desc": "test-prv-compute-image-01",
-                    "compute_zone": "test-prv-compute-zone-01",
+                    "container": "__tst-provider-01",
+                    "name": "__test-prv-compute-image-01",
+                    "desc": "__test-prv-compute-image-01",
+                    "compute_zone": "__test-prv-compute-zone-01",
                     "os": "centos",
                     "os_ver": "7.2",
                     "templates": [
                         {
                             "orchestrator_type": "vsphere",
-                            "availability_zone": "test-prv-site-01",
-                            "orchestrator": "tst-vecenter-01",
+                            "availability_zone": "__test-prv-site-01",
+                            "orchestrator": "__tst-vecenter-01",
                             "template_id": "tmpl-centos7",
                             "admin_pwd": "cs1$topix",
                             "guest_id": "centos64Guest"
                         },
                         {
                             "orchestrator_type": "openstack",
-                            "availability_zone": "test-prv-site-01",
-                            "orchestrator": "tst-opstk-ocata-01",
+                            "availability_zone": "__test-prv-site-01",
+                            "orchestrator": "__tst-opstk-ocata-01",
                             "template_id": "centos7-guestagent-timezone"
                         }
                     ]
                 },
                 "prv-compute-flavor1": {
-                    "container": "tst-provider-01",
-                    "name": "test-prv-compute-flavor-01",
-                    "desc": "test-prv-compute-flavor-01",
-                    "compute_zone": "test-prv-compute-zone-01",
+                    "container": "__tst-provider-01",
+                    "name": "__test-prv-compute-flavor-01",
+                    "desc": "__test-prv-compute-flavor-01",
+                    "compute_zone": "__test-prv-compute-zone-01",
                     "memory": 4096,
                     "disk": 50,
                     "disk_iops": 0,
@@ -508,8 +508,8 @@
                     "flavors": [
                         {
                             "orchestrator_type": "vsphere",
-                            "availability_zone": "test-prv-site-01",
-                            "orchestrator": "tst-vecenter-01",
+                            "availability_zone": "__test-prv-site-01",
+                            "orchestrator": "__tst-vecenter-01",
                             "datastores": [
                                 "DS_LEGACY_VSP_LUN_00",
                                 "DS_EX_OPSTK_VSP_LUN_00"
@@ -518,45 +518,45 @@
                         },
                         {
                             "orchestrator_type": "openstack",
-                            "availability_zone": "test-prv-site-01",
-                            "orchestrator": "tst-opstk-ocata-01",
+                            "availability_zone": "__test-prv-site-01",
+                            "orchestrator": "__tst-opstk-ocata-01",
                             "flavor_id": "4c63b225-353d-482e-9e07-e7b3571ec5fc"
                         }
                     ]
                 },
                 "prv-vpc1": {
-                    "container": "tst-provider-01",
-                    "name": "test-prv-vpc-01",
-                    "desc": "test-prv-vpc-01",
-                    "compute_zone": "test-prv-compute-zone-01",
+                    "container": "__tst-provider-01",
+                    "name": "__test-prv-vpc-01",
+                    "desc": "__test-prv-vpc-01",
+                    "compute_zone": "__test-prv-compute-zone-01",
                     "networks": [
-                        "test-prv-site-network-01"
+                        "__test-prv-site-network-01"
                     ]
                 },
                 "prv-security-group1": {
-                    "container": "tst-provider-01",
-                    "name": "test-prv-security-group-01",
-                    "desc": "test-prv-security-group-01",
-                    "vpc": "test-prv-vpc-01"
+                    "container": "__tst-provider-01",
+                    "name": "__test-prv-security-group-01",
+                    "desc": "__test-prv-security-group-01",
+                    "vpc": "__test-prv-vpc-01"
                 },
                 "prv-security-group2": {
-                    "container": "tst-provider-01",
-                    "name": "test-prv-security-group-02",
-                    "desc": "test-prv-security-group-02",
-                    "vpc": "test-prv-vpc-01"
+                    "container": "__tst-provider-01",
+                    "name": "__test-prv-security-group-02",
+                    "desc": "__test-prv-security-group-02",
+                    "vpc": "__test-prv-vpc-01"
                 },
                 "prv-rule1": {
-                    "container": "tst-provider-01",
-                    "name": "test-prv-rule-01",
-                    "desc": "test-prv-rule-01",
-                    "compute_zone": "test-prv-compute-zone-01",
+                    "container": "__tst-provider-01",
+                    "name": "__test-prv-rule-01",
+                    "desc": "__test-prv-rule-01",
+                    "compute_zone": "__test-prv-compute-zone-01",
                     "source": {
                         "type": "SecurityGroup",
-                        "value": "test-prv-security-group-01"
+                        "value": "__test-prv-security-group-01"
                     },
                     "destination": {
                         "type": "SecurityGroup",
-                        "value": "test-prv-security-group-01"
+                        "value": "__test-prv-security-group-01"
                     },
                     "service": {
                         "port": "*",
@@ -564,13 +564,13 @@
                     }
                 },
                 "prv-rule2": {
-                    "container": "tst-provider-01",
-                    "name": "test-prv-rule-02",
-                    "desc": "test-prv-rule-02",
-                    "compute_zone": "test-prv-compute-zone-01",
+                    "container": "__tst-provider-01",
+                    "name": "__test-prv-rule-02",
+                    "desc": "__test-prv-rule-02",
+                    "compute_zone": "__test-prv-compute-zone-01",
                     "source": {
                         "type": "SecurityGroup",
-                        "value": "test-prv-security-group-01"
+                        "value": "__test-prv-security-group-01"
                     },
                     "destination": {
                         "type": "Cidr",
@@ -582,17 +582,17 @@
                     }
                 },
                 "prv-rule3": {
-                    "container": "tst-provider-01",
-                    "name": "test-prv-rule-03",
-                    "desc": "test-prv-rule-03",
-                    "compute_zone": "test-prv-compute-zone-01",
+                    "container": "__tst-provider-01",
+                    "name": "__test-prv-rule-03",
+                    "desc": "__test-prv-rule-03",
+                    "compute_zone": "__test-prv-compute-zone-01",
                     "source": {
                         "type": "Cidr",
                         "value": "158.102.160.0/24"
                     },
                     "destination": {
                         "type": "SecurityGroup",
-                        "value": "test-prv-security-group-01"
+                        "value": "__test-prv-security-group-01"
                     },
                     "service": {
                         "port": "*",
@@ -600,17 +600,17 @@
                     }
                 },
                 "prv-rule1a": {
-                    "container": "tst-provider-01",
-                    "name": "test-prv-rule-01a",
-                    "desc": "test-prv-rule-01a",
-                    "compute_zone": "test-prv-compute-zone-01",
+                    "container": "__tst-provider-01",
+                    "name": "__test-prv-rule-01a",
+                    "desc": "__test-prv-rule-01a",
+                    "compute_zone": "__test-prv-compute-zone-01",
                     "source": {
                         "type": "SecurityGroup",
-                        "value": "test-prv-security-group-02"
+                        "value": "__test-prv-security-group-02"
                     },
                     "destination": {
                         "type": "SecurityGroup",
-                        "value": "test-prv-security-group-02"
+                        "value": "__test-prv-security-group-02"
                     },
                     "service": {
                         "port": "*",
@@ -618,13 +618,13 @@
                     }
                 },
                 "prv-rule2a": {
-                    "container": "tst-provider-01",
-                    "name": "test-prv-rule-02a",
-                    "desc": "test-prv-rule-02a",
-                    "compute_zone": "test-prv-compute-zone-01",
+                    "container": "__tst-provider-01",
+                    "name": "__test-prv-rule-02a",
+                    "desc": "__test-prv-rule-02a",
+                    "compute_zone": "__test-prv-compute-zone-01",
                     "source": {
                         "type": "SecurityGroup",
-                        "value": "test-prv-security-group-02"
+                        "value": "__test-prv-security-group-02"
                     },
                     "destination": {
                         "type": "Cidr",
@@ -636,17 +636,17 @@
                     }
                 },
                 "prv-rule3a": {
-                    "container": "tst-provider-01",
-                    "name": "test-prv-rule-03a",
-                    "desc": "test-prv-rule-03a",
-                    "compute_zone": "test-prv-compute-zone-01",
+                    "container": "__tst-provider-01",
+                    "name": "__test-prv-rule-03a",
+                    "desc": "__test-prv-rule-03a",
+                    "compute_zone": "__test-prv-compute-zone-01",
                     "source": {
                         "type": "Cidr",
                         "value": "158.102.160.0/24"
                     },
                     "destination": {
                         "type": "SecurityGroup",
-                        "value": "test-prv-security-group-02"
+                        "value": "__test-prv-security-group-02"
                     },
                     "service": {
                         "port": "*",
@@ -654,26 +654,26 @@
                     }
                 },
                 "prv-instance1": {
-                    "container": "tst-provider-01",
-                    "name": "test-prv-instance-01",
-                    "desc": "test-prv-instance-01",
-                    "compute_zone": "test-prv-compute-zone-01",
-                    "availability_zone": "test-prv-site-01",
+                    "container": "__tst-provider-01",
+                    "name": "__test-prv-instance-01",
+                    "desc": "__test-prv-instance-01",
+                    "compute_zone": "__test-prv-compute-zone-01",
+                    "availability_zone": "__test-prv-site-01",
                     "networks": [
                         {
                             "subnet": "10.102.185.0/24",
-                            "vpc": "test-prv-vpc-01"
+                            "vpc": "__test-prv-vpc-01"
                         }
                     ],
-                    "flavor": "test-prv-compute-flavor-01",
-                    "image": "test-prv-compute-image-01",
+                    "flavor": "__test-prv-compute-flavor-01",
+                    "image": "__test-prv-compute-image-01",
                     "storage": [
                         {
                             "volume_size": 20
                         }
                     ],
                     "security_groups": [
-                        "test-prv-security-group-02"
+                        "__test-prv-security-group-02"
                     ],
                     "admin_pass": "mypass",
                     "type": "openstack",
@@ -682,15 +682,15 @@
                     }
                 },
                 "prv-instance2": {
-                    "container": "tst-provider-01",
-                    "name": "test-prv-instance-02",
-                    "desc": "test-prv-instance-02",
-                    "compute_zone": "test-prv-compute-zone-01",
-                    "availability_zone": "test-prv-site-01",
+                    "container": "__tst-provider-01",
+                    "name": "__test-prv-instance-02",
+                    "desc": "__test-prv-instance-02",
+                    "compute_zone": "__test-prv-compute-zone-01",
+                    "availability_zone": "__test-prv-site-01",
                     "networks": [
                         {
                             "subnet": "10.102.185.0/24",
-                            "vpc": "test-prv-vpc-01",
+                            "vpc": "__test-prv-vpc-01",
                             "fixed_ip": {
                                 "ip": "10.102.185.169",
                                 "hostname": "test-prv-instance-02",
@@ -698,15 +698,15 @@
                             }
                         }
                     ],
-                    "flavor": "test-prv-compute-flavor-01",
-                    "image": "test-prv-compute-image-01",
+                    "flavor": "__test-prv-compute-flavor-01",
+                    "image": "__test-prv-compute-image-01",
                     "storage": [
                         {
                             "volume_size": 50
                         }
                     ],
                     "security_groups": [
-                        "test-prv-security-group-01"
+                        "__test-prv-security-group-01"
                     ],
                     "admin_pass": "mypass",
                     "type": "vsphere",
@@ -715,10 +715,10 @@
                     }
                 },
                 "prv-stack1": {
-                    "container": "tst-provider-01",
-                    "compute_zone": "test-prv-compute-zone-01",
-                    "name": "test-prv-stack-01",
-                    "desc": "test-prv-stack-01",
+                    "container": "__tst-provider-01",
+                    "compute_zone": "__test-prv-compute-zone-01",
+                    "name": "__test-prv-stack-01",
+                    "desc": "__test-prv-stack-01",
                     "parameters": {
                         "image_id": "centos7-guestagent-timezone",
                         "instance_type": "m1.medium",
@@ -730,7 +730,7 @@
                     "templates": [
                         {
                             "orchestrator_type": "openstack",
-                            "availability_zone": "test-prv-site-01",
+                            "availability_zone": "__test-prv-site-01",
                             "template_uri": "https://10.102.184.26:1443/1362/beehive-resource/raw/devel/stacks/test/test_template.yaml",
                             "environment": {},
                             "parameters": {
@@ -744,10 +744,10 @@
                     ]
                 },
                 "prv-stack2": {
-                    "container": "tst-provider-01",
-                    "compute_zone": "test-prv-compute-zone-01",
-                    "name": "test-prv-stack-02",
-                    "desc": "test-prv-stack-02",
+                    "container": "__tst-provider-01",
+                    "compute_zone": "__test-prv-compute-zone-01",
+                    "name": "__test-prv-stack-02",
+                    "desc": "__test-prv-stack-02",
                     "parameters": {
                         "instance_type": "m1.large",
                         "volume_size": "40",
@@ -756,7 +756,7 @@
                         "security_groups": "fb73dee1-17e9-4fc4-bde6-d3057209ac4c-sg",
                         "image_id": "centos7-guestagent-timezone",
                         "db_name": "dbtest",
-                        "db_appuser_name": "usertest",
+                        "db_appuser_name": "user__test",
                         "db_appuser_password": "N!v0la12vr",
                         "db_root_name": "root",
                         "db_root_password": "N!v0la12vr"
@@ -775,15 +775,15 @@
                     ]
                 },
                 "prv-mysql-stack1": {
-                    "container": "tst-provider-01",
-                    "compute_zone": "test-prv-compute-zone-01",
-                    "availability_zone": "test-prv-site-01",
-                    "name": "test-prv-mysql-stack-02",
-                    "desc": "test-prv-mysql-stack-02",
-                    "vpc": "test-prv-vpc-01",
-                    "flavor": "test-prv-compute-flavor-01",
-                    "image": "test-prv-compute-image-01",
-                    "security_group": "test-prv-security-group-01",
+                    "container": "__tst-provider-01",
+                    "compute_zone": "__test-prv-compute-zone-01",
+                    "availability_zone": "__test-prv-site-01",
+                    "name": "__test-prv-mysql-stack-02",
+                    "desc": "__test-prv-mysql-stack-02",
+                    "vpc": "__test-prv-vpc-01",
+                    "flavor": "__test-prv-compute-flavor-01",
+                    "image": "__test-prv-compute-image-01",
+                    "security_group": "__test-prv-security-group-01",
                     "db_name": "dbtest",
                     "db_appuser_name": "usertest",
                     "db_appuser_password": "N!v0la12vr",
@@ -795,7 +795,7 @@
         },
         "container": {
             "vsphere1": {
-                "name": "tst-vecenter-01",
+                "name": "__tst-vecenter-01",
                 "vcenter": {
                     "host": "tst-vcenter.tstsddc.csi.it",
                     "port": 443,
@@ -815,8 +815,8 @@
             },
             "openstack1": {
                 "type": "Openstack",
-                "name": "tst-opstk-ocata-01",
-                "desc": "tst-opstk-ocata-01",
+                "name": "__tst-opstk-ocata-01",
+                "desc": "__tst-opstk-ocata-01",
                 "api": {
                     "uri": "http://10.102.184.83:5000/v3",
                     "domain": "default",
@@ -826,21 +826,8 @@
                     "region": "RegionOne"
                 }
             },
-            "openstack2": {
-                "type": "Openstack",
-                "name": "tst-opstk-redhat-01",
-                "desc": "st-opstk-redhat-01",
-                "api": {
-                    "uri": "http://10.102.184.200:5000/v3",
-                    "domain": "default",
-                    "user": "admin",
-                    "project": "admin",
-                    "pwd": "8fAwzAJAHQFMcJfrntpapzDpC",
-                    "region": "regionOne"
-                }
-            },
             "provider1": {
-                "name": "tst-provider-01"
+                "name": "__tst-provider-01"
             }
         }
     },
@@ -1206,7 +1193,7 @@
                      "orchestrators":[
                         {
                             "type":"vsphere",
-                            "id":"tst-vecenter-01",
+                            "id":"__tst-vecenter-01",
                             "tag":"default",
                             "config":{
                                 "datacenter":"TST-SDDC",
@@ -1284,7 +1271,7 @@
                         {
                             "orchestrator_type":"vsphere",
                             "availability_zone":"test-prv-site-01",
-                            "orchestrator":"tst-vecenter-01",
+                            "orchestrator":"__tst-vecenter-01",
                             "template_id":"tmpl-centos7",
                             "admin_pwd":"testlab"
                         },
@@ -1308,7 +1295,7 @@
                         {
                             "orchestrator_type":"vsphere",
                             "availability_zone":"test-prv-site-01",
-                            "orchestrator":"tst-vecenter-01",
+                            "orchestrator":"__tst-vecenter-01",
                             "datastores":["DS_LEGACY_VSP_LUN_00", "DS_EX_OPSTK_VSP_LUN_00"],
                             "version":"vmx-11"
                         },
@@ -1371,7 +1358,7 @@
         "container":{
             "config":{
                 "vsphere1":{
-                    "name":"tst-vecenter-01",
+                    "name":"__tst-vecenter-01",
                     "vcenter":{
                         "host":"tst-vcenter.tstsddc.csi.it",
                         "port":443,
@@ -1390,7 +1377,7 @@
                     }
                 },
                 "openstack1":{
-                    "name":"tst-opstk-ocata-01",
+                    "name":"__tst-opstk-ocata-01",
                     "api":{
                         "uri":"http://10.102.184.83:5000/v3",
                         "domain":"default",
@@ -1412,7 +1399,7 @@
                     }
                 },
                 "provider1":{
-                    "name":"tst-provider-01"
+                    "name":"__tst-provider-01"
                 }
             }
         }
@@ -1665,7 +1652,7 @@
                      "orchestrators":[
                         {
                             "type":"vsphere",
-                            "id":"tst-vecenter-01",
+                            "id":"__tst-vecenter-01",
                             "tag":"default",
                             "config":{
                                 "datacenter":"TST-SDDC",
@@ -1743,7 +1730,7 @@
                         {
                             "orchestrator_type":"vsphere",
                             "availability_zone":"test-prv-site-01",
-                            "orchestrator":"tst-vecenter-01",
+                            "orchestrator":"__tst-vecenter-01",
                             "template_id":"tmpl-centos7",
                             "admin_pwd":"testlab"
                         },
@@ -1767,7 +1754,7 @@
                         {
                             "orchestrator_type":"vsphere",
                             "availability_zone":"test-prv-site-01",
-                            "orchestrator":"tst-vecenter-01",
+                            "orchestrator":"__tst-vecenter-01",
                             "datastores":["DS_LEGACY_VSP_LUN_00", "DS_EX_OPSTK_VSP_LUN_00"],
                             "version":"vmx-11"
                         },
@@ -1830,7 +1817,7 @@
         "container":{
             "config":{
                 "vsphere1":{
-                    "name":"tst-vecenter-01",
+                    "name":"__tst-vecenter-01",
                     "vcenter":{
                         "host":"tst-vcenter.tstsddc.csi.it",
                         "port":443,
@@ -1849,7 +1836,7 @@
                     }
                 },
                 "openstack1":{
-                    "name":"tst-opstk-ocata-01",
+                    "name":"__tst-opstk-ocata-01",
                     "api":{
                         "uri":"http://10.102.184.83:5000/v3",
                         "domain":"default",
@@ -1871,7 +1858,7 @@
                     }
                 },
                 "provider1":{
-                    "name":"tst-provider-01"
+                    "name":"__tst-provider-01"
                 }
             }
         }
@@ -2123,7 +2110,7 @@
                      "orchestrators":[
                         {
                             "type":"vsphere",
-                            "id":"tst-vecenter-01",
+                            "id":"__tst-vecenter-01",
                             "tag":"default",
                             "config":{
                                 "datacenter":"TST-SDDC",
@@ -2201,7 +2188,7 @@
                         {
                             "orchestrator_type":"vsphere",
                             "availability_zone":"test-prv-site-01",
-                            "orchestrator":"tst-vecenter-01",
+                            "orchestrator":"__tst-vecenter-01",
                             "template_id":"tmpl-centos7",
                             "admin_pwd":"testlab"
                         },
@@ -2225,7 +2212,7 @@
                         {
                             "orchestrator_type":"vsphere",
                             "availability_zone":"test-prv-site-01",
-                            "orchestrator":"tst-vecenter-01",
+                            "orchestrator":"__tst-vecenter-01",
                             "datastores":["DS_LEGACY_VSP_LUN_00", "DS_EX_OPSTK_VSP_LUN_00"],
                             "version":"vmx-11"
                         },
@@ -2288,7 +2275,7 @@
         "container":{
             "config":{
                 "vsphere1":{
-                    "name":"tst-vecenter-01",
+                    "name":"__tst-vecenter-01",
                     "vcenter":{
                         "host":"tst-vcenter.tstsddc.csi.it",
                         "port":443,
@@ -2307,7 +2294,7 @@
                     }
                 },
                 "openstack1":{
-                    "name":"tst-opstk-ocata-01",
+                    "name":"__tst-opstk-ocata-01",
                     "api":{
                         "uri":"http://10.102.184.83:5000/v3",
                         "domain":"default",
@@ -2329,7 +2316,7 @@
                     }
                 },
                 "provider1":{
-                    "name":"tst-provider-01"
+                    "name":"__tst-provider-01"
                 }
             }
         }
@@ -2580,7 +2567,7 @@
                      "orchestrators":[
                         {
                             "type":"vsphere",
-                            "id":"tst-vecenter-01",
+                            "id":"__tst-vecenter-01",
                             "tag":"default",
                             "config":{
                                 "datacenter":"TST-SDDC",
@@ -2658,7 +2645,7 @@
                         {
                             "orchestrator_type":"vsphere",
                             "availability_zone":"test-prv-site-01",
-                            "orchestrator":"tst-vecenter-01",
+                            "orchestrator":"__tst-vecenter-01",
                             "template_id":"tmpl-centos7",
                             "admin_pwd":"testlab"
                         },
@@ -2682,7 +2669,7 @@
                         {
                             "orchestrator_type":"vsphere",
                             "availability_zone":"test-prv-site-01",
-                            "orchestrator":"tst-vecenter-01",
+                            "orchestrator":"__tst-vecenter-01",
                             "datastores":["DS_LEGACY_VSP_LUN_00", "DS_EX_OPSTK_VSP_LUN_00"],
                             "version":"vmx-11"
                         },
@@ -2745,7 +2732,7 @@
         "container":{
             "config":{
                 "vsphere1":{
-                    "name":"tst-vecenter-01",
+                    "name":"__tst-vecenter-01",
                     "vcenter":{
                         "host":"tst-vcenter.tstsddc.csi.it",
                         "port":443,
@@ -2764,7 +2751,7 @@
                     }
                 },
                 "openstack1":{
-                    "name":"tst-opstk-ocata-01",
+                    "name":"__tst-opstk-ocata-01",
                     "api":{
                         "uri":"http://10.102.184.83:5000/v3",
                         "domain":"default",
@@ -2786,7 +2773,7 @@
                     }
                 },
                 "provider1":{
-                    "name":"tst-provider-01"
+                    "name":"__tst-provider-01"
                 }
             }
         }
