@@ -56,7 +56,8 @@ class BeehiveApiClient(object):
         self.logger = getLogger(self.__class__.__module__ + u'.' + self.__class__.__name__)
 
         # check password is encrypted
-        pwd = check_vault(pwd, key)
+        if pwd is not None:
+            pwd = check_vault(pwd, key)
 
         # atfork()
         self.pid = current_process().ident
