@@ -461,6 +461,16 @@ class ApiManager(object):
             plugin_pkgs = self.params[u'api_plugin']
             if type(plugin_pkgs) is str:
                 plugin_pkgs = [plugin_pkgs]
+            
+            if len(plugin_pkgs) > 0:
+                plpkg = []
+                for x in plugin_pkgs:
+                    for p in x.replace(u' ', u'').split():
+                        plpkg.append(p)
+                plugin_pkgs = plpkg
+                
+            plugin_pkgs
+                       
             for plugin_pkg in plugin_pkgs:
                 name, class_name = plugin_pkg.split(u',')
                 # import plugin class
