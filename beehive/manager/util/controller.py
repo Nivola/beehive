@@ -144,8 +144,6 @@ class BaseController(CementCmdBaseController):
 
         self.text = []
         self.pp = PrettyPrinter(width=200)
-        self.app._meta.token_file = self.app._meta.token_file
-        self.app._meta.seckey_file = self.app._meta.seckey_file
         
         # get configs
         self.configs = self.app.config.get_section_dict(u'configs')
@@ -240,6 +238,9 @@ commands:
         # ansible vault pwd
         if self.vault is None:
             self.vault = self.app.vault
+
+        self.app._meta.token_file = self.app._meta.token_file + u'.' + self.env
+        self.app._meta.seckey_file = self.app._meta.seckey_file + u'.' + self.env
 
     def check_secret_key(self):
         if self.key is None:
