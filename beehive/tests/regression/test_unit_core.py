@@ -108,28 +108,28 @@ tests_event = [
 ]
 
 tests_scheduler = [
-    'test_ping_task_manager',
-    'test_stat_task_manager',
-    'test_report_task_manager',
-    'test_queues_task_manager',
-    'test_get_all_tasks',
-    'test_count_all_tasks',
-    'test_get_task_definitions',
+    # 'test_ping_task_manager',
+    # 'test_stat_task_manager',
+    # 'test_report_task_manager',
+    # 'test_queues_task_manager',
+    # 'test_get_all_tasks',
+    # 'test_count_all_tasks',
+    # 'test_get_task_definitions',
+    # 'test_run_job_test',
+    # 'test_get_task',
+    # 'test_get_task_graph',
+    # 'test_delete_task',
     'test_run_job_test',
-    'test_get_task',
-    'test_get_task_graph',
-    'test_delete_task',
-    'test_run_job_test',
-    'test_delete_all_tasks',
-    'test_create_scheduler_entries',
-    'test_get_scheduler_entries',
-    'test_get_scheduler_entry',
-    'test_delete_scheduler_entry',
+    # 'test_delete_all_tasks',
+    # 'test_create_scheduler_entries',
+    # 'test_get_scheduler_entries',
+    # 'test_get_scheduler_entry',
+    # 'test_delete_scheduler_entry',
 ]
 
 
 class CoreTestCase(BaseTestCase, AuthTestCase, EventTestCase, CatalogTestCase, SchedulerAPITestCase):
-    pass
+    validation_active = True
 
 
 if __name__ == u'__main__':
@@ -137,7 +137,7 @@ if __name__ == u'__main__':
         # tests_base,
         # tests_auth,
         # tests_catalog,
-        tests_event,
+        # tests_event,
         tests_scheduler
     ]:
         runtest(CoreTestCase, tests)
