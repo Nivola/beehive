@@ -318,7 +318,7 @@ class GetAllTasksParamsResponseSchema(Schema):
     # args = fields.List(required=False)
     worker = fields.String(required=True, default=u'celery@tst-beehive-02')
     elapsed = fields.Float(required=True, default=0.0474607944)
-    result = fields.Boolean(required=True, default=True)
+    # result = fields.Boolean(required=True, default=True)
     ttl = fields.Integer(required=True, default=83582)
     type = fields.String(required=True, default=u'JOB')
     children = fields.List(fields.Dict(), required=False)
