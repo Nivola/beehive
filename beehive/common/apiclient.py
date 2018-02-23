@@ -254,7 +254,7 @@ class BeehiveApiClient(object):
             # format curl string
             curl_url = [u'curl -k -v -S -X %s' % method.upper()]
             if data is not None and data != u'':
-                curl_url.append(u"-d '%s'" % data)
+                curl_url.append(u"-d '%s'" % send_data)
                 curl_url.append(u'-H "Content-Type: application/json"')
             if headers is not None:
                 for header in headers.items():
