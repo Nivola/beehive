@@ -306,7 +306,6 @@ class CliManager(CementCmd):
         """
         # set alternative log file
         log_file = os.environ.get(u'BEEHIVE_LOG', None)
-        print log_file
         if log_file is None:
             log_file = CliManager.Meta.logging_file
 

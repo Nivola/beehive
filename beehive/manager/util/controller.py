@@ -598,11 +598,11 @@ commands:
                 if len(t) == 2:
                     if t[1] == 'null':
                         t[1] = None
-                    if t[1] == 'True' or t[1] == 'true':
+                    elif t[1] == 'True' or t[1] == 'true':
                         t[1] = True
-                    if t[1] == 'False' or t[1] == 'false':
+                    elif t[1] == 'False' or t[1] == 'false':
                         t[1] = False
-                    if t[1].find(u'{') >= 0:
+                    elif t[1].find(u'{') >= 0:
                         t[1] = json.loads(t[1])
                     self.app.kvargs[t[0]] = t[1]
             else:

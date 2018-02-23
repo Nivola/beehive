@@ -1088,8 +1088,6 @@ class CamundaProcessController (CamundaController):
             u'status' , 
             ])
 
-    
-
 
 class VsphereController(AnsibleController):
     class Meta:
@@ -1133,7 +1131,7 @@ class VsphereController(AnsibleController):
     def __get_client(self, conf):
         """
         """
-        client = VsphereManager(conf.get(u'vcenter'), conf.get(u'nsx'))
+        client = VsphereManager(conf.get(u'vcenter'), conf.get(u'nsx'), key=self.key)
         # client.authorize(conf.get(u'user'), conf.get(u'pwd'), project=conf.get(u'project'), domain=conf.get(u'domain'))
         return client
 
@@ -1231,7 +1229,8 @@ class OpenstackController(AnsibleController):
         """
         """
         client = OpenstackManager(conf.get(u'uri'), default_region=conf.get(u'region'))
-        client.authorize(conf.get(u'user'), conf.get(u'pwd'), project=conf.get(u'project'), domain=conf.get(u'domain'))
+        client.authorize(conf.get(u'user'), conf.get(u'pwd'), project=conf.get(u'project'), domain=conf.get(u'domain'),
+                         key=self.key)
         return client
     
     def run_cmd(self, func, configs):
