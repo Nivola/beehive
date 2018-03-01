@@ -42,7 +42,18 @@ class ServiceTypeController(ServiceControllerChild):
     class Meta:
         label = 'types'
         description = "Service type management"
- 
+
+    @expose()
+    @check_error
+    def plugin_types(self):
+        """List all plugin_types
+        """
+        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = u'%s/servicetypes/plugintypes' % self.baseuri
+        res = self._call(uri, u'GET', data=data)
+        logger.info(res)
+        self.result(res, key=u'plugintypes', headers=[u'id', u'name', u'objclass'], maxsize=200)
+
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     @check_error
     def list(self):
