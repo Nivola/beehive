@@ -63,8 +63,7 @@ class BaseEntity(AuditData):
         filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field( u'name', kvargs))
         filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field( u'desc', kvargs))
         filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field( u'active', kvargs))
-        
-        
+
         #expired
         if u'filter_expired' in kvargs and kvargs.get(u'filter_expired') is not None: 
             if kvargs.get(u'filter_expired') is True:
@@ -270,9 +269,9 @@ class PaginatedQueryGenerator(object):
                                                         param=param,
                                                         opLogical=opLogical,
                                                         opComparison=opComparison)
-        else: return u''
-  
-    
+        else:
+            return u''
+
     def add_filter(self, sqlfilter):
         """Append filter to query
         
@@ -491,7 +490,10 @@ class AbstractDbManager(object):
         :raises QueryError: raise :class:`QueryError`           
         """
         session = self.get_session()
-        
+
+        if oid is None:
+            raise ModelError(u'%s not found' % entityclass)
+
         # get obj by uuid
         if match(u'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-'\
                  u'[0-9a-f]{4}-[0-9a-f]{12}', str(oid)):
@@ -700,10 +702,10 @@ class AbstractDbManager(object):
             tagrecord = PermTag(tag, explain=explain)
             session.add(tagrecord)
             session.flush()
-            self.logger.debug(u'Add tag %s' % (tagrecord))
+            self.logger.debug(u'Add permtag %s' % (tagrecord))
         except:
             # permtag already exists. Get reference
-            self.logger.warn(u'Tag %s already exists' % (tagrecord))
+            self.logger.warn(u'Permtag %s already exists' % (tagrecord))
             session.rollback()
             tagrecord = session.query(PermTag).filter_by(value=tag).first()
 
@@ -711,9 +713,9 @@ class AbstractDbManager(object):
         try:
             record = PermTagEntity(tagrecord.id, entity, type)
             session.add(record)
-            self.logger.debug(u'Add tag %s entity %s association' % (tag, entity))
+            self.logger.debug(u'Add permtag %s entity %s association' % (tag, entity))
         except:
-            self.logger.debug(u'Tag %s entity %s association already exists' % (tag, entity))
+            self.logger.debug(u'Permtag %s entity %s association already exists' % (tag, entity))
         
         return record
     

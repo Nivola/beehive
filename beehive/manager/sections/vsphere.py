@@ -744,7 +744,7 @@ class VspherePlatformServerController(VspherePlatformControllerChild):
         oid = self.get_arg(name=u'id')
         server = self.entity_class.get_by_morid(oid)
         res = self.entity_class.remote_console(server)
-        self.result(res, delta=60, details=True)
+        self.result(res, details=True)
   
     @expose(aliases=[u'guest-info <id>'], aliases_only=True)
     @check_error

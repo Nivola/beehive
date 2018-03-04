@@ -1383,7 +1383,7 @@ class ApiController(object):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         res = []
-        objs =  []
+        objs = []
         
         if authorize is True:
             # verify permissions
@@ -1413,8 +1413,7 @@ class ApiController(object):
         except QueryError as ex:         
             self.logger.warn(ex)
             return [], 0
-        
-        
+
     def get_entities(self, entity_class, get_entities, authorize=True,
             *args, **kvargs):
         """Get entities less pagination

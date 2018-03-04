@@ -747,14 +747,40 @@ class OpenstackPlatformServerController(OpenstackPlatformControllerChild):
         logger.info(res)
         self.result(res, details=True)
 
-    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @expose(aliases=[u'stop <id>'], aliases_only=True)
+    @check_error
+    def stop(self):
+        oid = self.get_arg(name=u'id')
+        obj = self.entity_class.stop(oid)
+        res = obj
+        logger.info(res)
+        self.result(res, details=True)
+
+    @expose(aliases=[u'delete <id>  [force=..]'], aliases_only=True)
     @check_error
     def delete(self):
+        """Delete server
+    - force: if true force deletion
+        """
         oid = self.get_arg(name=u'id')
-        res = self.entity_class.delete(oid)
+        force = self.get_arg(name=u'force', keyvalue=True, default=False)
+        res = self.entity_class.delete(oid, force=force)
         res = {u'msg': u'Delete %s %s' % (self.entity_class, oid)}
         logger.info(res)
         self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'state <id> <state>'], aliases_only=True)
+    @check_error
+    def state(self):
+        """Reset server state
+
+        """
+        oid = self.get_arg(name=u'id')
+        state = self.get_arg(name=u'state')
+        obj = self.entity_class.reset_state(oid, state=state)
+        res = obj
+        logger.info(res)
+        self.result({u'msg': u'Reset state of server %s to %s' % (oid, state)}, headers=[u'msg'])
 
 
 class OpenstackPlatformVolumeController(OpenstackPlatformControllerChild):
@@ -855,6 +881,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
     @check_error
     def get(self):
         """Get heat stack by id
+    - id : stack id
         """        
         # name = self.get_arg(name=u'name')
         oid = self.get_arg(name=u'id')
@@ -862,7 +889,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         res = self.entity_class.stack.get(stack_name=stack[u'stack_name'], oid=oid)
         logger.info(res)
         parameters = [{u'parameter': item, u'value': val} for item, val in res.pop(u'parameters').items()]
-        outputs = res.pop(u'outputs')
+        outputs = res.pop(u'outputs', [])
         self.result(res, details=True, maxsize=800)
         self.app.print_output(u'parameters:')
         self.result(parameters, headers=[u'parameter', u'value'], maxsize=800)
