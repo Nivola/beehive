@@ -540,6 +540,11 @@ class ServiceCatalogController(ServiceControllerChild):
 
 
 class ServiceInstanceController(ServiceControllerChild):
+    fields = [u'id', u'uuid', u'name', u'version', u'account_id', u'service_definition_id', u'status', u'active',
+              u'resource_uuid', u'date.creation']
+    headers = [u'id', u'uuid', u'name', u'version', u'account', u'definition', u'status', u'active', u'resource',
+               u'creation']
+
     class Meta:
         label = 'instances'
         description = "Service instance management"
@@ -556,11 +561,7 @@ class ServiceInstanceController(ServiceControllerChild):
         uri = u'%s/serviceinsts' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        fields = [u'id', u'uuid', u'name', u'version', u'account_id', u'service_definition_id', u'status', u'active',
-                  u'resource_uuid', u'date.creation']
-        headers = [u'id', u'uuid', u'name', u'version', u'account', u'definition', u'status', u'active', u'resource',
-                   u'creation']
-        self.result(res, key=u'serviceinsts', headers=headers, fields=fields)
+        self.result(res, key=u'serviceinsts', headers=self.headers, fields=self.fields)
  
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -657,7 +658,58 @@ class ServiceInstanceController(ServiceControllerChild):
         logger.info(res)
         res = {u'msg': u'Delete service instance %s' % value}
         self.result(res, headers=[u'msg'])
- 
+
+    @expose(aliases=[u'add-tag <id> <tag>'], aliases_only=True)
+    @check_error
+    def add_tag(self):
+        """Add service instance tag
+        """
+        value = self.get_arg(name=u'id')
+        tag = self.get_arg(name=u'tag')
+        data = {
+            u'service': {
+                u'tags': {
+                    u'cmd': u'add',
+                    u'values': [tag]
+                }
+            }
+        }
+        uri = u'%s/serviceinsts/%s' % (self.baseuri, value)
+        res = self._call(uri, u'PUT', data=data)
+        res = {u'msg': u'Add service %s tag %s' % (value, value)}
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'delete-tag <id> <tag>'], aliases_only=True)
+    @check_error
+    def delete_tag(self):
+        """Delete service instance tag
+        """
+        value = self.get_arg(name=u'id')
+        tag = self.get_arg(name=u'tag')
+        data = {
+            u'service': {
+                u'tags': {
+                    u'cmd': u'delete',
+                    u'values': [tag]
+                }
+            }
+        }
+        uri = u'%s/serviceinsts/%s' % (self.baseuri, value)
+        res = self._call(uri, u'PUT', data=data)
+        res = {u'msg': u'Delete service %s tag %s' % (value, value)}
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'linked <id>'], aliases_only=True)
+    @check_error
+    def linked(self):
+        """Get linked service instances
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'%s/serviceinsts/%s/linked' % (self.baseuri, value)
+        res = self._call(uri, u'GET')
+        logger.info(res)
+        self.result(res, key=u'serviceinsts', headers=self.headers, fields=self.fields)
+
 
 class ServiceInstanceConfigController(ApiController):
     baseuri = u'/v1.0/nws'
@@ -856,8 +908,271 @@ class ServiceAggregateCostController(ServiceControllerChild):
     class Meta:
         label = 'instances.aggregatecosts'
         description = "Service instance aggregate cost management"
-       
- 
+
+
+class ServiceLinkController(ServiceControllerChild):
+    fields = [u'id', u'name', u'active', u'details.type', u'details.start_service.id', u'details.end_service.id',
+              u'details.attributes', u'date.creation', u'date.modified']
+    headers = [u'id', u'name', u'type', u'start', u'end', u'attributes', u'creation', u'modified']
+
+    class Meta:
+        label = 'instance-links'
+        aliases = ['links']
+        aliases_only = True
+        description = "Link management"
+
+    @expose(aliases=[u'add <account> <name> <type> <start> <end>'], aliases_only=True)
+    @check_error
+    def add(self):
+        """Add link <name> of type <type> from service <start> to service <end>
+        """
+        account = self.get_arg(name=u'account')
+        name = self.get_arg(name=u'name')
+        type = self.get_arg(name=u'type')
+        start_service = self.get_arg(name=u'start')
+        end_service = self.get_arg(name=u'end')
+        data = {
+            u'link': {
+                u'account': account,
+                u'type': type,
+                u'name': name,
+                u'attributes': {},
+                u'start_service': start_service,
+                u'end_service': end_service,
+            }
+        }
+        uri = u'%s/links' % self.baseuri
+        res = self._call(uri, u'POST', data=data)
+        logger.info(res)
+        res = {u'msg': u'Add link %s' % res[u'uuid']}
+        self.result(res, headers=[u'msg'])
+
+    @expose()
+    @check_error
+    def count(self):
+        """Count all link
+        """
+        uri = u'%s/links/count' % self.baseuri
+        res = self._call(uri, u'GET')
+        logger.info(res)
+        res = {u'msg': u'Links count %s' % res[u'count']}
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
+    def list(self, *args):
+        """List all links by field: type, service, tags
+        """
+        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = u'%s/links' % self.baseuri
+        res = self._call(uri, u'GET', data=data)
+        logger.info(res)
+        self.result(res, key=u'links', headers=self.headers, fields=self.fields)
+
+    @expose(aliases=[u'get <value>'], aliases_only=True)
+    @check_error
+    def get(self):
+        """Get link by value or id
+        """
+        value = self.get_arg(name=u'value')
+        uri = u'%s/links/%s' % (self.baseuri, value)
+        res = self._call(uri, u'GET')
+        logger.info(res)
+        self.result(res, key=u'link', headers=self.link_headers, details=True)
+
+    @expose(aliases=[u'perms <value>'], aliases_only=True)
+    @check_error
+    def perms(self):
+        """Get link permissions
+        """
+        value = self.get_arg(name=u'value')
+        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = u'%s/links/%s/perms' % (self.baseuri, value)
+        res = self._call(uri, u'GET', data=data)
+        logger.info(res)
+        self.result(res, key=u'perms', headers=self.perm_headers)
+
+    @expose(aliases=[u'update <value> [name=..] [type=..] [start=..] [end=..]'], aliases_only=True)
+    @check_error
+    def update(self):
+        """Update link with some optional fields
+        """
+        value = self.get_arg(name=u'value')
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        data = {
+            u'link': {
+                u'type': params.get(u'type', None),
+                u'name': params.get(u'name', None),
+                u'attributes': None,
+                u'start_service': params.get(u'start', None),
+                u'end_service': params.get(u'end', None),
+            }
+        }
+        uri = u'%s/links/%s' % (self.baseuri, value)
+        res = self._call(uri, u'PUT', data=data)
+        logger.info(res)
+        res = {u'msg': u'Update link %s' % value}
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'delete <value>'], aliases_only=True)
+    @check_error
+    def delete(self):
+        """Delete link
+        """
+        value = self.get_arg(name=u'value')
+        uri = u'%s/links/%s' % (self.baseuri, value)
+        res = self._call(uri, u'DELETE')
+        logger.info(res)
+        res = {u'msg': u'Delete link %s' % value}
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'add-tag <id> <tag>'], aliases_only=True)
+    @check_error
+    def add_tag(self):
+        """Add service link tag
+        """
+        value = self.get_arg(name=u'id')
+        tag = self.get_arg(name=u'tag')
+        data = {
+            u'service': {
+                u'tags': {
+                    u'cmd': u'add',
+                    u'values': [tag]
+                }
+            }
+        }
+        uri = u'%s/links/%s' % (self.baseuri, value)
+        res = self._call(uri, u'PUT', data=data)
+        res = {u'msg': u'Add service link %s tag %s' % (value, value)}
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'delete-tag <id> <tag>'], aliases_only=True)
+    @check_error
+    def delete_tag(self):
+        """Delete service link tag
+        """
+        value = self.get_arg(name=u'id')
+        tag = self.get_arg(name=u'tag')
+        data = {
+            u'service': {
+                u'tags': {
+                    u'cmd': u'delete',
+                    u'values': [tag]
+                }
+            }
+        }
+        uri = u'%s/links/%s' % (self.baseuri, value)
+        res = self._call(uri, u'PUT', data=data)
+        res = {u'msg': u'Delete service link %s tag %s' % (value, value)}
+        self.result(res, headers=[u'msg'])
+
+
+class ServiceTagController(ServiceControllerChild):
+    tag_headers = [u'id', u'name', u'date.creation', u'date.modified', u'services', u'links']
+
+    class Meta:
+        label = 'instance-tags'
+        aliases = ['tags']
+        aliases_only = True
+        description = "Tag management"
+
+    @expose(aliases=[u'add <value>'], aliases_only=True)
+    @check_error
+    def add(self):
+        """Add tag <value>
+        """
+        value = self.get_arg(name=u'value')
+        data = {
+            u'tag': {
+                u'value': value
+            }
+        }
+        uri = u'%s/tags' % self.baseuri
+        res = self._call(uri, u'POST', data=data)
+        logger.info(res)
+        res = {u'msg': u'Add tag %s' % res[u'uuid']}
+        self.result(res, headers=[u'msg'])
+
+    @expose()
+    @check_error
+    def count(self):
+        """Count all tag
+        """
+        uri = u'%s/tags/count' % self.baseuri
+        res = self._call(uri, u'GET')
+        logger.info(res)
+        res = {u'msg': u'Tags count %s' % res[u'count']}
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
+    def list(self, *args):
+        """List all tags by field: value, container, service, link
+        """
+        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = u'%s/tags' % self.baseuri
+        res = self._call(uri, u'GET', data=data)
+        logger.info(res)
+        self.result(res, key=u'tags', headers=self.tag_headers)
+
+    @expose(aliases=[u'get <value>'], aliases_only=True)
+    @check_error
+    def get(self):
+        """Get tag by value or id
+        """
+        value = self.get_arg(name=u'value')
+        uri = u'%s/tags/%s' % (self.baseuri, value)
+        res = self._call(uri, u'GET')
+        logger.info(res)
+        self.result(res, key=u'tag', headers=self.tag_headers,
+                    details=True)
+        # if self.format == u'table':
+        #    self.result(res[u'tag'], key=u'services', headers=
+        #                [u'id', u'uuid', u'definition', u'name'])
+
+    @expose(aliases=[u'perms <value>'], aliases_only=True)
+    @check_error
+    def perms(self):
+        """Get tag permissions
+        """
+        value = self.get_arg(name=u'value')
+        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = u'%s/tags/%s/perms' % (self.baseuri, value)
+        res = self._call(uri, u'GET', data=data)
+        logger.info(res)
+        self.result(res, key=u'perms', headers=self.perm_headers)
+
+    @expose(aliases=[u'update <value> <new_value>'], aliases_only=True)
+    @check_error
+    def update(self):
+        """Update tag with new value
+        """
+        value = self.get_arg(name=u'value')
+        new_value = self.get_arg(name=u'new value')
+        data = {
+            u'tag': {
+                u'value': new_value
+            }
+        }
+        uri = u'%s/tags/%s' % (self.baseuri, value)
+        res = self._call(uri, u'PUT', data=data)
+        logger.info(res)
+        res = {u'msg': u'Update tag %s' % value}
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'delete <value>'], aliases_only=True)
+    @check_error
+    def delete(self):
+        """Delete tag
+        """
+        value = self.get_arg(name=u'value')
+        uri = u'%s/tags/%s' % (self.baseuri, value)
+        res = self._call(uri, u'DELETE')
+        logger.info(res)
+        res = {u'msg': u'Delete tag %s' % value}
+        self.result(res, headers=[u'msg'])
+
+
 service_controller_handlers = [
     ServiceController,
     ServiceTypeController,
@@ -874,4 +1189,6 @@ service_controller_handlers = [
     # ServiceInstanteCostController,
     # ServiceAggregateCostController,
     ServiceCatalogController,
+    ServiceLinkController,
+    ServiceTagController
 ]        

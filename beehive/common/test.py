@@ -362,6 +362,7 @@ class BeehiveTestCase(unittest.TestCase):
                 elif resp_content_type.find(u'application/xml') >= 0:
                     # res = xmltodict.parse(response.text, dict_constructor=dict)
                     res = response.text
+                    logger.debug(res)
                 elif resp_content_type.find(u'text/xml') >= 0:
                     # res = xmltodict.parse(response.text, dict_constructor=dict)
                     res = response.text

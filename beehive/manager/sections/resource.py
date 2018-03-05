@@ -815,14 +815,8 @@ class LinkController(ResourceControllerChild):
     class Meta:
         label = 'links'
         description = "Link management"
-        
-    @expose(help="Link management", hide=True)
-    @check_error
-    def default(self):
-        self.app.args.print_help()
-        
-    @expose(aliases=[u'add <name> <type> <start> <end>'], 
-            aliases_only=True)
+
+    @expose(aliases=[u'add <name> <type> <start> <end>'], aliases_only=True)
     @check_error
     def add(self):
         """Add link <name> of type <type> from resource <start> to resource <end>
@@ -932,12 +926,7 @@ class TagController(ResourceControllerChild):
     class Meta:
         label = 'tags'
         description = "Tag management"
-        
-    @expose(help="Tag management", hide=True)
-    @check_error
-    def default(self):
-        self.app.args.print_help()
-    
+
     @expose(aliases=[u'add <value>'], aliases_only=True)
     @check_error
     def add(self):
@@ -945,8 +934,8 @@ class TagController(ResourceControllerChild):
         """
         value = self.get_arg(name=u'value')
         data = {
-            u'resourcetag':{
-                u'value':value
+            u'resourcetag': {
+                u'value': value
             }
         }
         uri = u'%s/resourcetags' % self.baseuri        
