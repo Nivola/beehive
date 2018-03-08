@@ -1873,7 +1873,7 @@ class ApiObject(object):
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
         res = {
-            u'__meta__':{
+            u'__meta__': {
                 u'objid': self.objid,
                 u'type': self.objtype,
                 u'definition': self.objdef,

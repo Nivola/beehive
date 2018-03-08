@@ -380,6 +380,10 @@ commands:
     
     def format_text(self, data, space=u'  '):
         """
+
+        :param data:
+        :param space:
+        :return:
         """
         if isinstance(data, dict):
             for k, v in data.items():
