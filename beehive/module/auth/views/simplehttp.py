@@ -8,9 +8,7 @@ from beecell.simple import get_value, str2bool, get_remote_ip
 from beehive.common.apimanager import ApiView, ApiManagerError
 from beehive.common.data import operation
 
-#
-# login, logout
-#
+
 class ListDomains(ApiView):
     def dispatch(self, controller, data, *args, **kwargs):
         auth_providers = controller.module.authentication_manager.auth_providers
@@ -20,6 +18,7 @@ class ListDomains(ApiView):
         resp = {u'domains':res,
                 u'count':len(res)}
         return resp
+
 
 class Login(ApiView):
     """
@@ -47,7 +46,8 @@ class Login(ApiView):
         operation.perms = innerperms     
         resp = controller.simple_http_login(name, domain, password, login_ip)    
         return resp
-    
+
+
 class SimpleHttpAuthApi(ApiView):
     """Simple http authentication API
     """
@@ -55,10 +55,12 @@ class SimpleHttpAuthApi(ApiView):
     def register_api(module):
         base = u'simplehttp'
         rules = [
-            (u'%s/login/domains' % base, u'GET', ListDomains, {u'secure':False}),
-            (u'%s/login' % base, u'POST', Login, {u'secure':False})
+            (u'%s/login/domains' % base, u'GET', ListDomains, {u'secure': False}),
+            (u'%s/login' % base, u'POST', Login, {u'secure': False})
+
+            # new routes
+            (u'%s/simplehttp/login/domains' % module.base_path, u'GET', ListDomains, {u'secure': False}),
+            (u'%s/simplehttp/login' % module.base_path, u'POST', Login, {u'secure': False})
         ]
         
         ApiView.register_api(module, rules)    
-    
-    

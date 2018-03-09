@@ -1597,7 +1597,47 @@ class AuthorizationAPI(ApiView):
             (u'%s/objects/perms' % base, u'GET', ListObjectPerms, {}),
             (u'%s/objects/perms/<oid>' % base, u'GET', GetObjectPerms, {}),
             (u'%s/objects/actions' % base, u'GET', ListObjectActions, {}),
+
+            # new routes
+            (u'%s/domains' % module.base_path, u'GET', ListDomains, {u'secure': False}),
+
+            (u'%s/tokens' % module.base_path, u'GET', ListTokens, {}),
+            (u'%s/tokens/<oid>' % module.base_path, u'GET', GetToken, {}),
+            # (u'%s/tokens/<oid>/refresh' % module.base_path, u'PUT', TokenRefresh, {}),
+            (u'%s/tokens/<oid>' % module.base_path, u'DELETE', DeleteToken, {}),
+            # (u'%s/tokens/<oid>/exist' % module.base_path, u'GET', LoginExists, {}),
+
+            (u'%s/users' % module.base_path, u'GET', ListUsers, {}),
+            (u'%s/users/<oid>' % module.base_path, u'GET', GetUser, {}),
+            (u'%s/users/<oid>/attributes' % module.base_path, u'GET', GetUserAtributes, {}),
+            (u'%s/users' % module.base_path, u'POST', CreateUser, {}),
+            (u'%s/users/<oid>' % module.base_path, u'PUT', UpdateUser, {}),
+            (u'%s/users/<oid>/attributes' % module.base_path, u'POST', CreateUserAttribute, {}),
+            (u'%s/users/<oid>/attributes/<aid>' % module.base_path, u'DELETE', DeleteUserAttribute, {}),
+            (u'%s/users/<oid>' % module.base_path, u'DELETE', DeleteUser, {}),
+
+            (u'%s/roles' % module.base_path, u'GET', ListRoles, {}),
+            (u'%s/roles/<oid>' % module.base_path, u'GET', GetRole, {}),
+            (u'%s/roles' % module.base_path, u'POST', CreateRole, {}),
+            (u'%s/roles/<oid>' % module.base_path, u'PUT', UpdateRole, {}),
+            (u'%s/roles/<oid>' % module.base_path, u'DELETE', DeleteRole, {}),
+
+            (u'%s/groups' % module.base_path, u'GET', ListGroups, {}),
+            (u'%s/groups/<oid>' % module.base_path, u'GET', GetGroup, {}),
+            (u'%s/groups' % module.base_path, u'POST', CreateGroup, {}),
+            (u'%s/groups/<oid>' % module.base_path, u'PUT', UpdateGroup, {}),
+            (u'%s/groups/<oid>' % module.base_path, u'DELETE', DeleteGroup, {}),
+
+            (u'%s/objects' % module.base_path, u'GET', ListObjects, {}),
+            (u'%s/objects/<oid>' % module.base_path, u'GET', GetObject, {}),
+            (u'%s/objects' % module.base_path, u'POST', CreateObject, {}),
+            (u'%s/objects/<oid>' % module.base_path, u'DELETE', DeleteObject, {}),
+            (u'%s/objects/types' % module.base_path, u'GET', ListObjectTypes, {}),
+            (u'%s/objects/types' % module.base_path, u'POST', CreateObjectType, {}),
+            (u'%s/objects/types/<oid>' % module.base_path, u'DELETE', DeleteObjectType, {}),
+            (u'%s/objects/perms' % module.base_path, u'GET', ListObjectPerms, {}),
+            (u'%s/objects/perms/<oid>' % module.base_path, u'GET', GetObjectPerms, {}),
+            (u'%s/objects/actions' % module.base_path, u'GET', ListObjectActions, {}),
         ]
 
         ApiView.register_api(module, rules)
-        
