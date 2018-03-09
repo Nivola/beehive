@@ -145,6 +145,7 @@ class ApiManager(object):
         
         # modules
         self.modules = {}
+        self.main_module = None
         
         # redis
         self.redis_manager = None
@@ -324,7 +325,7 @@ class ApiManager(object):
                 ]
         """
         try:
-            res =  []
+            res = []
             for key in self.redis_manager.keys(self.prefix+'*'):
                 identity = self.redis_manager.get(key)
                 data = pickle.loads(identity)
@@ -335,11 +336,9 @@ class ApiManager(object):
         except Exception as ex:
             self.logger.error('No identities found: %s' % ex)
             raise ApiManagerError('No identities found')
-        
-        #User(self).event('user.identity.get', {}, (True))
+
         self.logger.debug('Get identities from redis: %s' % (res))
         return res
-
 
     def verify_simple_http_credentials(self, user, pwd, user_ip):
         """Verify simple ahttp credentials.
@@ -451,10 +450,18 @@ class ApiManager(object):
             module_classes = [module_classes]
         
         for item in module_classes:
+            # check if module is primary
+            main = False
+            if item.find(u',') > 0:
+                item, main = item.split(u',')
+                main = str2bool(main)
             # import module class
             module_class = import_class(item)
             # instance module class
             module = module_class(self)
+            # set main module
+            if main is True:
+                self.main_module = module
             self.logger.info(u'Register module: %s' % item)
         
         if u'api_plugin' in self.params:
@@ -469,8 +476,7 @@ class ApiManager(object):
                         plpkg.append(p)
                 plugin_pkgs = plpkg
                 
-            plugin_pkgs
-                       
+            # plugin_pkgs
             for plugin_pkg in plugin_pkgs:
                 name, class_name = plugin_pkg.split(u',')
                 # import plugin class
