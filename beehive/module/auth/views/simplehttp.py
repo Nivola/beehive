@@ -56,7 +56,7 @@ class SimpleHttpAuthApi(ApiView):
         base = u'simplehttp'
         rules = [
             (u'%s/login/domains' % base, u'GET', ListDomains, {u'secure': False}),
-            (u'%s/login' % base, u'POST', Login, {u'secure': False})
+            (u'%s/login' % base, u'POST', Login, {u'secure': False}),
 
             # new routes
             (u'%s/simplehttp/login/domains' % module.base_path, u'GET', ListDomains, {u'secure': False}),
