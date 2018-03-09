@@ -243,27 +243,71 @@ class NginxController(AnsibleController):
                 res = func(str(host))
                 resp.append({u'host': str(host), u'response': res})
                 logger.info(u'Exec %s on ngninx server %s : %s' % (func.__name__, str(host), resp))
-            self.result(resp, headers=[u'host', u'response'])
+            self.result(resp, headers=[u'host', u'response'], maxsize=200)
         except Exception as ex:
             self.error(ex)
 
-    @expose()
+    @expose(aliases=[u'ping [port=]'], aliases_only=True)
     @check_error
     def ping(self):
-        """Ping redis instances
+        """Ping nginx instances
         """
+        port = self.get_arg(name=u'port', default=443, keyvalue=True)
+
         def func(server):
             try:
                 proxies = {
                     u'http': None,
                     u'https': None,
                 }
-                res = requests.get(u'http://%s' % server, proxies=proxies)
+                res = requests.get(u'https://%s:%s' % (server, port), proxies=proxies, verify=False)
+                logger.debug(u'uri: https://%s:%s' % (server, port))
                 if res.status_code == 200:
                     res = True
                 else:
                     res = False
             except:
+                logger.warn(u'', exc_info=1)
+                res = False
+
+            return res
+
+        self.run_cmd(func)
+
+    @expose(aliases=[u'status [port=]'], aliases_only=True)
+    @check_error
+    def status(self):
+        """nginx instances status
+        """
+        port = self.get_arg(name=u'port', default=443, keyvalue=True)
+
+        def func(server):
+            try:
+                proxies = {
+                    u'http': None,
+                    u'https': None,
+                }
+                res = requests.get(u'https://%s:%s/nginx_status' % (server, port), proxies=proxies, verify=False)
+                logger.debug(u'uri: https://%s:%s' % (server, port))
+                if res.status_code == 200:
+                    data = res.content.split(u'\n')
+                    for item in range(0,len(data)):
+                        data[item] = data[item].split(u' ')
+                    res = {
+                        u'conns': {
+                            u'active': int(data[0][2]),
+                            u'accepts': int(data[2][1]),
+                            u'handled': int(data[2][2]),
+                            u'requests': int(data[2][3]),
+                            u'reading': int(data[3][1]),
+                            u'writing': int(data[3][3]),
+                            u'waiting': int(data[3][5]),
+                        }
+                    }
+                else:
+                    print res
+            except:
+                logger.warn(u'', exc_info=1)
                 res = False
 
             return res
@@ -272,21 +316,21 @@ class NginxController(AnsibleController):
 
     @expose()
     @check_error
-    def status(self):
+    def engine_status(self):
         """Status of nginx instances
         """
         self.ansible_task(u'nginx', u'systemctl status nginx')
 
     @expose()
     @check_error
-    def start(self):
+    def engine_start(self):
         """Start nginx instances
         """
         self.ansible_task(u'nginx', u'systemctl start nginx')
 
     @expose()
     @check_error
-    def stop(self):
+    def engine_stop(self):
         """Start nginx instances
         """
         self.ansible_task(u'nginx', u'systemctl stop nginx')
@@ -316,7 +360,8 @@ class RedisController(AnsibleController):
             resp = []
             for host in hosts:
                 for db in dbs:
-                    uri = u'%s;%s;%s' % (host, 6379, db)
+                    uri = u'redis://%s:%s/%s' % (host, 6379, db)
+                    logger.warn(uri)
                     server = RedisManager(uri)
                     res = func(server)
                     
