@@ -157,6 +157,11 @@ class EventAPI(ApiView):
             (u'events/<oid>', u'GET', GetEvent, {}),            
             (u'events/types', u'GET', GetEventTypes, {}),
             (u'events/entities', u'GET', GetEventEntityDefinition, {}),
+
+            (u'%s/events' % module.base_path, u'GET', ListEvents, {}),
+            (u'%s/events/<oid>' % module.base_path, u'GET', GetEvent, {}),
+            (u'%s/events/types' % module.base_path, u'GET', GetEventTypes, {}),
+            (u'%s/events/entities' % module.base_path, u'GET', GetEventEntityDefinition, {}),
         ]
 
         ApiView.register_api(module, rules)

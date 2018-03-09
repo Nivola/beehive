@@ -3,11 +3,13 @@ from .views import AuthorizationAPI, SimpleHttpAuthApi, KeyAuthApi
 from beehive.common.apimanager import ApiModule
 from beehive.common.controller.authorization import AuthenticationManager
 
+
 class AuthModule(ApiModule):
     """Beehive Authorization Module
     """
     def __init__(self, api_manger):
         self.name = u'AuthModule'
+        self.base_path = u'nas'
         
         ApiModule.__init__(self, api_manger, self.name)
          

@@ -67,7 +67,7 @@ class CatalogController(DirectoryControllerChild):
         services = res.get(u'catalog').pop(u'services')
         self.result(res, key=u'catalog', headers=self.cat_headers, details=True)
         self.app.print_output(u'services:')        
-        self.result(services, headers=[u'service', u'endpoints'])
+        self.result(services, headers=[u'service', u'endpoints'], maxsize=200)
     
     @expose(aliases=[u'add <name> <zone>'], aliases_only=True)
     @check_error

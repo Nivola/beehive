@@ -6,6 +6,7 @@ Created on Jan 12, 2017
 import ujson as json
 import json as sjson
 import httplib
+import ssl
 from urllib import urlencode
 from time import time
 from logging import getLogger
@@ -265,6 +266,10 @@ class BeehiveApiClient(object):
             if proto == u'http':
                 conn = httplib.HTTPConnection(host, port, timeout=timeout)
             else:
+                try:
+                    ssl._create_default_https_context = ssl._create_unverified_context
+                except:
+                    pass
                 conn = httplib.HTTPSConnection(host, port, timeout=timeout)
 
             # get response
