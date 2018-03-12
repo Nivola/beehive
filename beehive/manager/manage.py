@@ -13,6 +13,9 @@ from beehive.common.log import ColorFormatter
 from beehive.manager.util.logger import LoggingLogHandler
 
 from ansible.utils.display import Display as OrigDisplay
+from beehive.manager.sections.business.vpcaas import vpcaas_controller_handlers
+from beehive.manager.sections.business.staas import staas_controller_handlers
+
 
 
 class Display(OrigDisplay):
@@ -37,6 +40,7 @@ from beehive.manager.sections.event import event_controller_handlers
 from beehive.manager.sections.scheduler import scheduler_controller_handlers
 from beehive.manager.sections.business.service import service_controller_handlers
 from beehive.manager.sections.business.authority import authority_controller_handlers
+from beehive.manager.sections.business.dbaas import dbaas_controller_handlers
 from beehive.manager.sections.business import business_controller_handlers
 from beehive.manager.sections.vsphere import vsphere_controller_handlers,\
     vsphere_platform_controller_handlers
@@ -203,6 +207,11 @@ class CliManager(CementCmd):
         handlers.extend(business_controller_handlers)
         handlers.extend(service_controller_handlers)
         handlers.extend(authority_controller_handlers)
+        
+        handlers.extend(dbaas_controller_handlers)
+        handlers.extend(vpcaas_controller_handlers)
+        handlers.extend(staas_controller_handlers)
+                
         handlers.extend(vsphere_controller_handlers)
         handlers.extend(vsphere_platform_controller_handlers)
         handlers.extend(openstack_controller_handlers)
