@@ -63,6 +63,7 @@ class BeehiveTestCase(unittest.TestCase):
     validatation_active = False
     validation_active = False
     module = u'resource'
+    module_prefix = u'nrs'
 
     @classmethod
     def setUpClass(cls):
@@ -194,7 +195,7 @@ class BeehiveTestCase(unittest.TestCase):
         data = {u'user': user, u'password': pwd}
         headers = {u'Content-Type':u'application/json'}
         endpoint = self.endpoints[u'auth']
-        uri = u'/v1.0/keyauth/token'
+        uri = u'/v1.0/nas/keyauth/token'
         response = requests.request(u'post', endpoint + uri, data=json.dumps(data), headers=headers, timeout=5,
                                     verify=False)
         res = response.json()
@@ -386,8 +387,8 @@ class BeehiveTestCase(unittest.TestCase):
 
     def get_job_state(self, jobid):
         try:
-            res = self.call(self.module, u'/v1.0/worker/tasks/{oid}', u'get', params={u'oid': jobid}, runlog=False,
-                            **self.users[u'admin'])
+            res = self.call(self.module, u'/v1.0/%s/worker/tasks/{oid}' % self.module_prefix, u'get', 
+                            params={u'oid': jobid}, runlog=False, **self.users[u'admin'])
             job = res.get(u'task_instance')
             state = job.get(u'status')
             logger.debug(u'Get job %s state: %s' % (jobid, state))

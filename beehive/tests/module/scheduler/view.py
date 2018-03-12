@@ -37,6 +37,7 @@ class SchedulerAPITestCase(BeehiveTestCase):
     def setUp(self):
         BeehiveTestCase.setUp(self)
         self.module = u'auth'
+        self.module_prefix = u'nas'
         
     #
     # task manager
