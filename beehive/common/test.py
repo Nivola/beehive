@@ -62,8 +62,8 @@ class BeehiveTestCase(unittest.TestCase):
     logging.addLevelName(70, u'TEST')
     validatation_active = False
     validation_active = False
-    module = u'resource'
-    module_prefix = u'nrs'
+    # module = u'resource'
+    # module_prefix = u'nrs'
 
     @classmethod
     def setUpClass(cls):
@@ -92,6 +92,8 @@ class BeehiveTestCase(unittest.TestCase):
         current_schema = config.get(u'schema')
         cfg = config.get(env)
         self.test_config = config.get(u'configs', {})
+        for key in self.test_config.get(u'resource').keys():
+            self.test_config.get(u'resource').get(key).update(cfg.get(u'configs').get(u'resource').get(key, {}))
         
         # endpoints
         self.endpoints = cfg.get(u'endpoints')
@@ -359,11 +361,17 @@ class BeehiveTestCase(unittest.TestCase):
             elif re.match(u'20[0-9]+', str(response.status_code)):
                 if resp_content_type.find(u'application/json') >= 0:
                     res = response.json()
-                    logger.debug(self.pp.pformat(res))
+                    if runlog is True:
+                        logger.debug(self.pp.pformat(res))
+                    else:
+                        logger.debug(truncate(res))
                 elif resp_content_type.find(u'application/xml') >= 0:
                     # res = xmltodict.parse(response.text, dict_constructor=dict)
                     res = response.text
-                    logger.debug(res)
+                    if runlog is True:
+                        logger.debug(res)
+                    else:
+                        logger.debug(truncate(res))
                 elif resp_content_type.find(u'text/xml') >= 0:
                     # res = xmltodict.parse(response.text, dict_constructor=dict)
                     res = response.text
@@ -402,6 +410,7 @@ class BeehiveTestCase(unittest.TestCase):
     def wait_job(self, jobid, delta=1, accepted_state=u'SUCCESS'):
         """Wait resource
         """
+        logger.info(u'wait for:         %s' % jobid)
         self.runlogger.info(u'wait for:         %s' % jobid)
         state = self.get_job_state(jobid)
         while state not in [u'SUCCESS', u'FAILURE']:

@@ -1326,7 +1326,7 @@ class ApiController(object):
         :return: encrypted data
         """
         cipher_suite = Fernet(self.api_manager.app_fernet_key)
-        cipher_data = cipher_suite.encrypt(data)
+        cipher_data = cipher_suite.encrypt(str(data))
         self.logger.debug(u'Encrypt data')
         return u'$BEEHIVE_VAULT;AES128 | %s' % cipher_data
 
@@ -1336,10 +1336,13 @@ class ApiController(object):
         :param data: data to decrypt
         :return: decrypted data
         """
-        data = data.replace(u'$BEEHIVE_VAULT;AES128 | ', u'')
-        cipher_suite = Fernet(self.api_manager.app_fernet_key)
-        cipher_data = cipher_suite.decrypt(data)
-        self.logger.debug(u'Decrypt data')
+        if data.find(u'$BEEHIVE_VAULT;AES128 | ') == 0:
+            data = data.replace(u'$BEEHIVE_VAULT;AES128 | ', u'')
+            cipher_suite = Fernet(self.api_manager.app_fernet_key)
+            cipher_data = cipher_suite.decrypt(str(data))
+            self.logger.debug(u'Decrypt data')
+        else:
+            cipher_data = data
         return cipher_data
 
     #
