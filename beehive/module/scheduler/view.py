@@ -537,10 +537,10 @@ class SchedulerAPI(ApiView):
     @staticmethod
     def register_api(module):
         rules = [
-            (u'/scheduler/entries', u'GET', GetSchedulerEntries, {}),
-            (u'/scheduler/entries/<oid>', u'GET', GetSchedulerEntry, {}),
-            (u'/scheduler/entries', u'POST', CreateSchedulerEntry, {}),
-            (u'/scheduler/entries/<oid>', u'DELETE', DeleteSchedulerEntry, {}),
+            # (u'/scheduler/entries', u'GET', GetSchedulerEntries, {}),
+            # (u'/scheduler/entries/<oid>', u'GET', GetSchedulerEntry, {}),
+            # (u'/scheduler/entries', u'POST', CreateSchedulerEntry, {}),
+            # (u'/scheduler/entries/<oid>', u'DELETE', DeleteSchedulerEntry, {}),
 
             (u'%s/scheduler/entries' % module.base_path, u'GET', GetSchedulerEntries, {}),
             (u'%s/scheduler/entries/<oid>' % module.base_path, u'GET', GetSchedulerEntry, {}),
@@ -557,18 +557,18 @@ class TaskAPI(ApiView):
     @staticmethod
     def register_api(module):
         rules = [
-            (u'worker/ping', u'GET', ManagerPing, {}),
-            (u'worker/stats', u'GET', ManagerStats, {}),
-            (u'worker/report', u'GET', ManagerReport, {}),
-            (u'worker/queues', u'GET', ManagerActiveQueues, {}),
-            (u'worker/tasks', u'GET', GetAllTasks, {}),
-            (u'worker/tasks/count', u'GET', GetTasksCount, {}),
-            (u'worker/tasks/definitions', u'GET', GetTasksDefinition, {}),
-            (u'worker/tasks/<oid>', u'GET', QueryTask, {}),
-            (u'worker/tasks/<oid>/graph', u'GET', GetTaskGraph, {}),
-            (u'worker/tasks', u'DELETE', PurgeAllTasks, {}),
-            (u'worker/tasks/<oid>', u'DELETE', DeleteTask, {}),
-            (u'worker/tasks/test', u'POST', RunJobTest, {}),
+            # (u'worker/ping', u'GET', ManagerPing, {}),
+            # (u'worker/stats', u'GET', ManagerStats, {}),
+            # (u'worker/report', u'GET', ManagerReport, {}),
+            # (u'worker/queues', u'GET', ManagerActiveQueues, {}),
+            # (u'worker/tasks', u'GET', GetAllTasks, {}),
+            # (u'worker/tasks/count', u'GET', GetTasksCount, {}),
+            # (u'worker/tasks/definitions', u'GET', GetTasksDefinition, {}),
+            # (u'worker/tasks/<oid>', u'GET', QueryTask, {}),
+            # (u'worker/tasks/<oid>/graph', u'GET', GetTaskGraph, {}),
+            # (u'worker/tasks', u'DELETE', PurgeAllTasks, {}),
+            # (u'worker/tasks/<oid>', u'DELETE', DeleteTask, {}),
+            # (u'worker/tasks/test', u'POST', RunJobTest, {}),
 
             (u'%s/worker/ping' % module.base_path, u'GET', ManagerPing, {}),
             (u'%s/worker/stats' % module.base_path, u'GET', ManagerStats, {}),

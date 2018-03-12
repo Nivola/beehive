@@ -684,7 +684,7 @@ class ApiController(BaseController):
         return res
     
     def __query_task_status(self, task_id):
-        uri = u'/v1.0/worker/tasks/%s' % task_id
+        uri = u'%s/worker/tasks/%s' % (self.baseuri, task_id)
         res = self._call(uri, u'GET').get(u'task_instance')
         return res
     

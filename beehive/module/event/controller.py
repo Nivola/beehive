@@ -46,11 +46,10 @@ class EventController(ApiController):
         return entity
     
     @trace(entity=u'GenericEvent', op=u'view')
-    def get_events(self, page=0, size=10, order=u'DESC', field=u'id', 
-                   *args, **kvargs):
+    def get_events(self, page=0, size=10, order=u'DESC', field=u'id', *args, **kvargs):
         """Get events with pagination
 
-        :param type: list of event type [optional]
+        :param type: event type [optional]
         :param objid: objid [optional]
         :param objtype: objtype [optional]
         :param objdef: objdef [optional]
@@ -69,14 +68,12 @@ class EventController(ApiController):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # verify permissions
-        self.check_authorization(GenericEvent.objtype, GenericEvent.objdef, 
-                                 u'*', u'view')
+        self.check_authorization(GenericEvent.objtype, GenericEvent.objdef, u'*', u'view')
         
         res = []
         
         # verify permissions
         objs = self.can(u'use')
-        self.logger.warn(objs)
 
         # create permission tags
         tags = []
@@ -86,9 +83,8 @@ class EventController(ApiController):
         self.logger.debug(u'Permission tags to apply: %s' % tags)
                 
         try:
-            entities, total = self.event_manager.get_events(
-                tags=tags, page=page, size=size, order=order, field=field, 
-                *args, **kvargs)
+            entities, total = self.event_manager.get_events(tags=tags, page=page, size=size, order=order, field=field,
+                                                            *args, **kvargs)
             
             for entity in entities:
                 obj = BaseEvent(entity)

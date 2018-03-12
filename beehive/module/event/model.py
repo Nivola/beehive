@@ -161,11 +161,10 @@ class EventDbManager(AbstractDbManager):
         return entity
 
     @query
-    def get_events(self, tags=[], page=0, size=10, order=u'DESC', field=u'id', 
-                   *args, **kvargs):
+    def get_events(self, tags=[], page=0, size=10, order=u'DESC', field=u'id', *args, **kvargs):
         """Get events with some permission tags
         
-        :param type: list of event type [optional]
+        :param type: event type [optional]
         :param objid: objid [optional]
         :param objtype: objtype [optional]
         :param objdef: objdef [optional]
@@ -187,7 +186,7 @@ class EventDbManager(AbstractDbManager):
         query = PaginatedQueryGenerator(DbEvent, self.get_session())
 
         # set filters
-        query.add_relative_filter(u'AND t3.type in :etype', u'type', kvargs)
+        query.add_relative_filter(u'AND t3.type = :type', u'type', kvargs)
         query.add_relative_filter(u'AND t3.objid like :objid', u'objid', kvargs)
         query.add_relative_filter(u'AND t3.objtype like :objtype', u'objtype', kvargs)
         query.add_relative_filter(u'AND t3.objdef like :objdef', u'objdef', kvargs)
