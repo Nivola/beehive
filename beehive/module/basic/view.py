@@ -218,8 +218,6 @@ class BaseAPI(ApiView):
             # (u'server/uwsgi/configs', u'GET', ServerUwsgiConfigs, {}),
             # (u'server/reload', u'PUT', ServerReload, {}),
             
-            # (u'server/sessions', u'GET', ServerFlaskSessions, {}),
-            
             
             # (u'server/db/ping', u'GET', PingDatabase, {}),
             # (u'server/db/tables', u'GET', ListDatabaseTables, {}),
@@ -227,6 +225,8 @@ class BaseAPI(ApiView):
             # (u'server/db/table/<table>/<row>/<offset>', u'GET', GetDatabaseTableRecord, {}),
             # (u'server/db/table/<table>/count', u'GET', GetDatabaseTableRecordCount, {}),
             # (u'server/db/table/<table>/desc', u'GET', GetDatabaseTableRecordDesc, {})
+
+
         ]
 
         ApiView.register_api(module, rules)

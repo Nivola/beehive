@@ -34,8 +34,7 @@ if __name__ == u'__main__':
     config = ConfigParser.RawConfigParser(dict_type=MultiOrderedDict)
     config.read(config_file)
 
-    params = {i[0]:i[1] for i in config.items(u'uwsgi')}
-    #params['task_module'] = params['task_module'].split('\n')
+    params = {i[0]: i[1] for i in config.items(u'uwsgi')}
     params[u'api_module'] = params[u'api_module'].split(u'\n')
     if u'api_plugin' in params:
         params[u'api_plugin'] = params[u'api_plugin'].split(u'\n')
@@ -48,4 +47,3 @@ if __name__ == u'__main__':
     from beehive.module.catalog.consumer import start_catalog_consumer
 
     start_catalog_consumer(params)
-    

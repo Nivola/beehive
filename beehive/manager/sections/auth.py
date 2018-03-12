@@ -1,12 +1,13 @@
-'''
+"""
 Created on Sep 22, 2017
 
 @author: darkbk
-'''
+"""
 import logging
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController, check_error
 from re import match
+from beehive.manager.sections.scheduler import WorkerController, ScheduleController, TaskController
 
 logger = logging.getLogger(__name__)
 
@@ -24,28 +25,48 @@ class AuthController(BaseController):
 
 
 class AuthControllerChild(ApiController):
-    baseuri = u'/v1.0/keyauth'
-    simplehttp_uri = u'/v1.0/simplehttp'
-    authuri = u'/v1.0/auth'
+    # baseuri = u'/v1.0/nas/keyauth'
+    # simplehttp_uri = u'/v1.0/nas/simplehttp'
+    baseuri = u'/v1.0/nas'
     subsystem = u'auth'
     
     obj_headers = [u'id', u'objid', u'subsystem', u'type', u'desc']
     type_headers = [u'id', u'subsystem', u'type']
     act_headers = [u'id', u'value']
-    perm_headers = [u'id', u'oid', u'objid', u'subsystem', u'type', 
-                         u'aid', u'action']
-    user_headers = [u'id', u'uuid', u'name', u'active', 
-                         u'date.creation', u'date.modified', u'date.expiry']
-    role_headers = [u'id', u'uuid', u'name', u'active', 
-                         u'date.creation', u'date.modified', u'date.expiry']
-    group_headers = [u'id', u'uuid', u'name', u'active', 
-                          u'date.creation', u'date.modified', u'date.expiry']    
+    perm_headers = [u'id', u'oid', u'objid', u'subsystem', u'type', u'aid', u'action']
+    user_headers = [u'id', u'uuid', u'name', u'active', u'date.creation', u'date.modified', u'date.expiry']
+    role_headers = [u'id', u'uuid', u'name', u'active', u'date.creation', u'date.modified', u'date.expiry']
+    group_headers = [u'id', u'uuid', u'name', u'active', u'date.creation', u'date.modified', u'date.expiry']
     token_headers = [u'token', u'type', u'user', u'ip', u'ttl', u'timestamp']
     
     class Meta:
         stacked_on = 'auth'
         stacked_type = 'nested'
 
+
+class AuthWorkerController(AuthControllerChild, WorkerController):
+    class Meta:
+        label = 'auth.workers'
+        aliases = ['workers']
+        aliases_only = True
+        description = "Worker management"
+
+
+class AuthTaskController(AuthControllerChild, TaskController):
+    class Meta:
+        label = 'auth.tasks'
+        aliases = ['tasks']
+        aliases_only = True
+        description = "Task management"
+
+
+class AuthScheduleController(AuthControllerChild, ScheduleController):
+    class Meta:
+        label = 'auth.schedules'
+        aliases = ['schedules']
+        aliases_only = True
+        description = "Schedule management"
+        
 
 class DomainController(AuthControllerChild):
     class Meta:
@@ -57,7 +78,7 @@ class DomainController(AuthControllerChild):
     def list(self):
         """List all domains       
         """
-        uri = u'%s/domains' % (self.authuri)
+        uri = u'%s/domains' % (self.baseuri)
         res = self._call(uri, u'GET')
         logger.info(u'Get domains: %s' % res)
         self.result(res, key=u'domains', headers=[u'type', u'name'])      
@@ -74,7 +95,7 @@ class TokenController(AuthControllerChild):
         """List all tokens       
         """
         #data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        uri = u'%s/tokens' % self.authuri        
+        uri = u'%s/tokens' % self.baseuri        
         res = self._call(uri, u'GET')
         logger.info(res)
         self.result(res, key=u'tokens', headers=self.token_headers)
@@ -85,7 +106,7 @@ class TokenController(AuthControllerChild):
         """Get token by id
         """
         value = self.get_arg(name=u'id')
-        uri = u'%s/tokens/%s' % (self.authuri, value)        
+        uri = u'%s/tokens/%s' % (self.baseuri, value)        
         res = self._call(uri, u'GET')
         logger.info(res)
         self.result(res, key=u'token', headers=self.token_headers, 
@@ -97,7 +118,7 @@ class TokenController(AuthControllerChild):
         """Delete token by id
         """
         value = self.get_arg(name=u'id')
-        uri = u'%s/tokens/%s' % (self.authuri, value)
+        uri = u'%s/tokens/%s' % (self.baseuri, value)
         res = self._call(uri, u'DELETE')
         logger.info(res)
         res = {u'msg':u'Delete token %s' % value}
@@ -127,7 +148,7 @@ class UserController(AuthControllerChild):
                 u'expirydate':params.get(u'expiry_date', None)
             }
         }
-        uri = u'%s/users' % self.authuri        
+        uri = u'%s/users' % self.baseuri        
         res = self._call(uri, u'POST', data=data)
         logger.info(res)
         res = {u'msg':u'Add user %s' % res[u'uuid']}
@@ -149,7 +170,7 @@ class UserController(AuthControllerChild):
                 u'system':True
             }
         }
-        uri = u'%s/users' % (self.authuri)
+        uri = u'%s/users' % (self.baseuri)
         res = self._call(uri, u'POST', data=data)
         logger.info(u'Add user: %s' % res)
         self.result({u'msg':u'Add user: %s' % res[u'uuid']})
@@ -163,7 +184,7 @@ class UserController(AuthControllerChild):
     - expirydate syntax: yyyy-mm-dd        
         """
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        uri = u'%s/users' % self.authuri        
+        uri = u'%s/users' % self.baseuri        
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
         self.result(res, key=u'users', headers=self.user_headers)
@@ -174,7 +195,7 @@ class UserController(AuthControllerChild):
         """Get user by value or id
         """
         value = self.get_arg(name=u'id')
-        uri = u'%s/users/%s' % (self.authuri, value)        
+        uri = u'%s/users/%s' % (self.baseuri, value)        
         res = self._call(uri, u'GET')
         logger.info(res)
         self.result(res, key=u'user', headers=self.user_headers, 
@@ -200,7 +221,7 @@ class UserController(AuthControllerChild):
                 u'expirydate':params.get(u'expiry_date', None)
             }
         }
-        uri = u'%s/users/%s' % (self.authuri, value)        
+        uri = u'%s/users/%s' % (self.baseuri, value)        
         res = self._call(uri, u'PUT', data=data)
         logger.info(res)
         res = {u'msg':u'Update user %s' % value}
@@ -212,7 +233,7 @@ class UserController(AuthControllerChild):
         """Delete user
         """
         value = self.get_arg(name=u'id')
-        uri = u'%s/users/%s' % (self.authuri, value)
+        uri = u'%s/users/%s' % (self.baseuri, value)
         res = self._call(uri, u'DELETE')
         logger.info(res)
         res = {u'msg':u'Delete user %s' % value}
@@ -235,7 +256,7 @@ class UserController(AuthControllerChild):
                 },
             }
         }
-        uri = u'%s/users/%s' % (self.authuri, oid)
+        uri = u'%s/users/%s' % (self.baseuri, oid)
         res = self._call(uri, u'PUT', data=data)
         logger.info(u'Update user roles: %s' % res)
         self.result({u'msg':u'Add user role: %s' % res[u'role_append']})
@@ -256,7 +277,7 @@ class UserController(AuthControllerChild):
                 },
             }
         }
-        uri = u'%s/users/%s' % (self.authuri, oid)
+        uri = u'%s/users/%s' % (self.baseuri, oid)
         res = self._call(uri, u'PUT', data=data)
         logger.info(u'Update user roles: %s' % res)
         self.result({u'msg':u'Add user role: %s' % res[u'role_remove']})  
@@ -265,7 +286,7 @@ class UserController(AuthControllerChild):
     @check_error
     def attribs(self):
         value = self.get_arg(name=u'id')
-        uri = u'%s/users/%s/attributes' % (self.authuri, value)
+        uri = u'%s/users/%s/attributes' % (self.baseuri, value)
         res = self._call(uri, u'GET')
         logger.info(u'Get user attributes: %s' % res)
         self.result(res, key=u'user_attributes', 
@@ -285,7 +306,7 @@ class UserController(AuthControllerChild):
                 u'desc':desc
             }
         }
-        uri = u'%s/users/%s/attributes' % (self.authuri, oid)
+        uri = u'%s/users/%s/attributes' % (self.baseuri, oid)
         res = self._call(uri, u'POST', data=data)
         logger.info(u'Add user attribute: %s' % res)
         self.result({u'msg':u'Add/update user attrib %s' % attrib})     
@@ -295,7 +316,7 @@ class UserController(AuthControllerChild):
     def delete_attrib(self):
         oid = self.get_arg(name=u'id')
         attrib = self.get_arg(name=u'attrib')
-        uri = u'%s/users/%s/attributes/%s' % (self.authuri, oid, attrib)
+        uri = u'%s/users/%s/attributes/%s' % (self.baseuri, oid, attrib)
         res = self._call(uri, u'dELETE', data=u'')
         logger.info(u'Add user attribute: %s' % res)
         self.result({u'msg':u'Delete user attrib %s' % attrib})        
@@ -319,7 +340,7 @@ class RoleController(AuthControllerChild):
                 u'desc':desc
             }
         }
-        uri = u'%s/roles' % self.authuri        
+        uri = u'%s/roles' % self.baseuri        
         res = self._call(uri, u'POST', data=data)
         logger.info(res)
         res = {u'msg':u'Add role %s' % res[u'uuid']}
@@ -334,7 +355,7 @@ class RoleController(AuthControllerChild):
     - expirydate syntax: yyyy-mm-dd        
         """
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        uri = u'%s/roles' % self.authuri        
+        uri = u'%s/roles' % self.baseuri        
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
         self.result(res, key=u'roles', headers=self.role_headers)
@@ -345,7 +366,7 @@ class RoleController(AuthControllerChild):
         """Get role by value or id
         """
         value = self.get_arg(name=u'id')
-        uri = u'%s/roles/%s' % (self.authuri, value)        
+        uri = u'%s/roles/%s' % (self.baseuri, value)        
         res = self._call(uri, u'GET')
         logger.info(res)
         self.result(res, key=u'role', headers=self.role_headers, 
@@ -364,7 +385,7 @@ class RoleController(AuthControllerChild):
                 u'desc':params.get(u'desc', None)
             }
         }
-        uri = u'%s/roles/%s' % (self.authuri, value)        
+        uri = u'%s/roles/%s' % (self.baseuri, value)        
         res = self._call(uri, u'PUT', data=data)
         logger.info(res)
         res = {u'msg':u'Update role %s' % value}
@@ -376,7 +397,7 @@ class RoleController(AuthControllerChild):
         """Delete role
         """
         value = self.get_arg(name=u'id')
-        uri = u'%s/roles/%s' % (self.authuri, value)        
+        uri = u'%s/roles/%s' % (self.baseuri, value)        
         res = self._call(uri, u'DELETE')
         logger.info(res)
         res = {u'msg':u'Delete role %s' % value}
@@ -395,7 +416,7 @@ class RoleController(AuthControllerChild):
                 }
             }
         }
-        uri = u'%s/roles/%s' % (self.authuri, roleid)
+        uri = u'%s/roles/%s' % (self.baseuri, roleid)
         res = self._call(uri, u'PUT', data=data)
         logger.info(u'Update role perms: %s' % res)
         self.result({u'msg':u'Add role perms: %s' % res[u'perm_append']})
@@ -413,7 +434,7 @@ class RoleController(AuthControllerChild):
                 }
             }
         }
-        uri = u'%s/roles/%s' % (self.authuri, roleid)
+        uri = u'%s/roles/%s' % (self.baseuri, roleid)
         res = self._call(uri, u'PUT', data=data)
         logger.info(u'Update role perms: %s' % res)
         self.result({u'msg':u'Remove role perms: %s' % res[u'perm_remove']})        
@@ -440,7 +461,7 @@ class GroupController(AuthControllerChild):
                 u'expirydate':expiry_date
             }
         }
-        uri = u'%s/groups' % self.authuri        
+        uri = u'%s/groups' % self.baseuri        
         res = self._call(uri, u'POST', data=data)
         logger.info(res)
         res = {u'msg':u'Add group %s' % res[u'uuid']}
@@ -454,7 +475,7 @@ class GroupController(AuthControllerChild):
     - expirydate syntax: yyyy-mm-dd        
         """
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        uri = u'%s/groups' % self.authuri        
+        uri = u'%s/groups' % self.baseuri        
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
         self.result(res, key=u'groups', headers=self.group_headers)
@@ -465,7 +486,7 @@ class GroupController(AuthControllerChild):
         """Get group by value or id
         """
         value = self.get_arg(name=u'id')
-        uri = u'%s/groups/%s' % (self.authuri, value)        
+        uri = u'%s/groups/%s' % (self.baseuri, value)        
         res = self._call(uri, u'GET')
         logger.info(res)
         self.result(res, key=u'group', headers=self.group_headers, 
@@ -485,7 +506,7 @@ class GroupController(AuthControllerChild):
                 u'active':params.get(u'active', None),
             }
         }
-        uri = u'%s/groups/%s' % (self.authuri, value)        
+        uri = u'%s/groups/%s' % (self.baseuri, value)        
         res = self._call(uri, u'PUT', data=data)
         logger.info(res)
         res = {u'msg':u'Update group %s' % value}
@@ -497,7 +518,7 @@ class GroupController(AuthControllerChild):
         """Delete group
         """
         value = self.get_arg(name=u'id')
-        uri = u'%s/groups/%s' % (self.authuri, value)        
+        uri = u'%s/groups/%s' % (self.baseuri, value)        
         res = self._call(uri, u'DELETE')
         logger.info(res)
         res = {u'msg':u'Delete group %s' % value}
@@ -520,7 +541,7 @@ class GroupController(AuthControllerChild):
                 },
             }
         }
-        uri = u'%s/groups/%s' % (self.authuri, oid)
+        uri = u'%s/groups/%s' % (self.baseuri, oid)
         res = self._call(uri, u'PUT', data=data)
         logger.info(u'Update group roles: %s' % res)
         self.result({u'msg':u'Add group role: %s' % res[u'role_append']})
@@ -541,7 +562,7 @@ class GroupController(AuthControllerChild):
                 },
             }
         }
-        uri = u'%s/groups/%s' % (self.authuri, oid)
+        uri = u'%s/groups/%s' % (self.baseuri, oid)
         res = self._call(uri, u'PUT', data=data)
         logger.info(u'Update group roles: %s' % res)
         self.result({u'msg':u'Add group role: %s' % res[u'role_remove']})  
@@ -564,7 +585,7 @@ class GroupController(AuthControllerChild):
                 },
             }
         }
-        uri = u'%s/groups/%s' % (self.authuri, oid)
+        uri = u'%s/groups/%s' % (self.baseuri, oid)
         res = self._call(uri, u'PUT', data=data)
         logger.info(u'Update group users: %s' % res)
         self.result({u'msg':u'Add group user: %s' % res[u'user_append']})
@@ -586,7 +607,7 @@ class GroupController(AuthControllerChild):
                 },
             }
         }
-        uri = u'%s/groups/%s' % (self.authuri, oid)
+        uri = u'%s/groups/%s' % (self.baseuri, oid)
         res = self._call(uri, u'PUT', data=data)
         logger.info(u'Update group users: %s' % res)
         self.result({u'msg':u'Add group user: %s' % res[u'user_remove']})          
@@ -605,7 +626,7 @@ class ObjectController(AuthControllerChild):
     def actions(self):
         """List object actions
         """
-        uri = u'%s/objects/actions' % (self.authuri)
+        uri = u'%s/objects/actions' % (self.baseuri)
         res = self._call(uri, u'GET', data=u'')
         logger.info(u'Get object: %s' % res)
         self.result(res, key=u'object_actions', headers=self.act_headers)     
@@ -620,7 +641,7 @@ class ObjectController(AuthControllerChild):
     type, objid. field can be: subsystem, type, id, action
         """
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        uri = u'%s/objects/perms' % (self.authuri)
+        uri = u'%s/objects/perms' % (self.baseuri)
         res = self._call(uri, u'GET', data=data)
         logger.info(u'Get objects: %s' % res)
         self.result(res, key=u'perms', headers=self.perm_headers)
@@ -631,7 +652,7 @@ class ObjectController(AuthControllerChild):
         """Get permission by id
         """
         perm_id = self.get_arg(name=u'id')
-        uri = u'%s/objects/perms/%s' % (self.authuri, perm_id)
+        uri = u'%s/objects/perms/%s' % (self.baseuri, perm_id)
         res = self._call(uri, u'GET', data=u'')
         logger.info(u'Get object perm: %s' % res)
         self.result(res, key=u'perm', headers=self.perm_headers, details=True)    
@@ -646,7 +667,7 @@ class ObjectController(AuthControllerChild):
     field can be: subsystem, type, id
         """        
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        uri = u'%s/objects/types' % (self.authuri)
+        uri = u'%s/objects/types' % (self.baseuri)
         res = self._call(uri, u'GET', data=data)
         logger.info(u'Get objects: %s' % res)
         self.result(res, key=u'object_types', headers=self.type_headers)
@@ -664,7 +685,7 @@ class ObjectController(AuthControllerChild):
                 }
             ]
         }
-        uri = u'%s/objects/types' % (self.authuri)
+        uri = u'%s/objects/types' % (self.baseuri)
         res = self._call(uri, u'POST', data=data)
         logger.info(u'Add object: %s' % res)
         self.result({u'msg':u'Add object type: %s' % (res)})
@@ -673,7 +694,7 @@ class ObjectController(AuthControllerChild):
     @check_error
     def delete_type(self):
         object_id = self.get_arg(name=u'id')
-        uri = u'%s/objects/types/%s' % (self.authuri, object_id)
+        uri = u'%s/objects/types/%s' % (self.baseuri, object_id)
         res = self._call(uri, u'DELETE', data=u'')
         logger.info(u'Delete object: %s' % res)
         self.result({u'msg':u'Delete object type %s' % (object_id)})   
@@ -688,7 +709,7 @@ class ObjectController(AuthControllerChild):
     objid. field can be: subsystem, type, id, objid
         """                
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        uri = u'%s/objects' % (self.authuri)
+        uri = u'%s/objects' % (self.baseuri)
         res = self._call(uri, u'GET', data=data)
         logger.info(u'Get objects: %s' % res)
         self.result(res, key=u'objects', headers=self.obj_headers, maxsize=200)
@@ -699,7 +720,7 @@ class ObjectController(AuthControllerChild):
         """Get object
         """
         object_id = self.get_arg(name=u'id')
-        uri = u'%s/objects/%s' % (self.authuri, object_id)
+        uri = u'%s/objects/%s' % (self.baseuri, object_id)
         res = self._call(uri, u'GET', data=u'')
         logger.info(u'Get object: %s' % res)
         self.result(res, key=u'object', headers=self.obj_headers, details=True)
@@ -723,7 +744,7 @@ class ObjectController(AuthControllerChild):
                 }
             ]
         }
-        uri = u'%s/objects' % (self.authuri)
+        uri = u'%s/objects' % (self.baseuri)
         res = self._call(uri, u'POST', data=data)
         logger.info(u'Add object: %s' % res)
         self.result({u'msg':u'Add object: %s' % (res)})
@@ -734,7 +755,7 @@ class ObjectController(AuthControllerChild):
         """Delete object
         """
         object_id = self.get_arg(name=u'id')
-        uri = u'%s/objects/%s' % (self.authuri, object_id)
+        uri = u'%s/objects/%s' % (self.baseuri, object_id)
         res = self._call(uri, u'DELETE', data=u'')
         logger.info(u'Delete object: %s' % res)
         self.result({u'msg':u'Delete object %s' % (object_id)})
@@ -747,7 +768,7 @@ class ObjectController(AuthControllerChild):
         object_ids = self.get_arg(name=u'ids').split(u',')
         
         for object_id in object_ids:
-            uri = u'%s/objects/%s' % (self.authuri, object_id)
+            uri = u'%s/objects/%s' % (self.baseuri, object_id)
             res = self._call(uri, u'DELETE', data=u'')
             logger.info(u'Delete object: %s' % res)
         self.result({u'msg':u'Delete objects %s' % (object_ids)}) 
@@ -760,5 +781,8 @@ auth_controller_handlers = [
     UserController,
     RoleController,
     GroupController,
-    ObjectController
+    ObjectController,
+    AuthWorkerController,
+    AuthScheduleController,
+    AuthTaskController
 ]                

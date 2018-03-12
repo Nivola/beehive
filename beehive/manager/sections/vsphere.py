@@ -935,7 +935,7 @@ class VsphereControllerChild(ApiController):
 
 
 class VsphereDatacenterController(VsphereControllerChild):
-    uri = u'/v1.0/vsphere/datacenters'
+    uri = u'/v1.0/nrs/vsphere/datacenters'
     headers = [u'id', u'uuid', u'parent', u'name', u'state', u'ext_id']
 
     class Meta:
@@ -946,7 +946,7 @@ class VsphereDatacenterController(VsphereControllerChild):
 
 
 class VsphereFolderController(VsphereControllerChild):
-    uri = u'/v1.0/vsphere/folders'
+    uri = u'/v1.0/nrs/vsphere/folders'
     
     class Meta:
         label = 'vsphere.beehive.folders'
@@ -956,7 +956,7 @@ class VsphereFolderController(VsphereControllerChild):
 
 
 class VsphereDatastoreController(VsphereControllerChild):
-    uri = u'/v1.0/vsphere/datastores'
+    uri = u'/v1.0/nrs/vsphere/datastores'
     headers = [u'id', u'uuid', u'parent.name', u'container.name', u'name', u'state', u'details.accessible',
                u'details.maintenanceMode', u'details.freespace', u'details.type']
 
@@ -968,7 +968,7 @@ class VsphereDatastoreController(VsphereControllerChild):
 
 
 class VsphereClusterController(VsphereControllerChild):
-    uri = u'/v1.0/vsphere/clusters'
+    uri = u'/v1.0/nrs/vsphere/clusters'
 
     class Meta:
         label = 'vsphere.beehive.clusters'
@@ -980,7 +980,7 @@ class VsphereClusterController(VsphereControllerChild):
     @check_error
     def host_list(self):
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        uri = u'/v1.0/vsphere/hosts'
+        uri = u'/v1.0/nrs/vsphere/hosts'
         res = self._call(uri, u'GET', data=data)
         logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
         self.result(res, headers=self.headers, key=u'hosts')
@@ -989,7 +989,7 @@ class VsphereClusterController(VsphereControllerChild):
     @check_error
     def respool_list(self):
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        uri = u'/v1.0/vsphere/resource_pools'
+        uri = u'/v1.0/nrs/vsphere/resource_pools'
         res = self._call(uri, u'GET', data=data)
         logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
         self.result(res, headers=self.headers, key=u'resource_pools')
@@ -1013,7 +1013,7 @@ class VsphereNetworkChildController(VsphereControllerChild):
 
 
 class VsphereNetworkDvsController(VsphereNetworkChildController):
-    uri = u'/v1.0/vsphere/network/dvss'
+    uri = u'/v1.0/nrs/vsphere/network/dvss'
 
     class Meta:
         label = 'vsphere.beehive.networks.dvs'
@@ -1023,7 +1023,7 @@ class VsphereNetworkDvsController(VsphereNetworkChildController):
 
 
 class VsphereNetworkDvpgController(VsphereNetworkChildController):
-    uri = u'/v1.0/vsphere/network/dvpgs'
+    uri = u'/v1.0/nrs/vsphere/network/dvpgs'
 
     class Meta:
         label = 'vsphere.beehive.networks.dvpg'
@@ -1033,7 +1033,7 @@ class VsphereNetworkDvpgController(VsphereNetworkChildController):
 
 
 class VsphereNetworkNsxController(VsphereNetworkChildController):
-    uri = u'/v1.0/vsphere/network/nsxs'
+    uri = u'/v1.0/nrs/vsphere/network/nsxs'
     
     class Meta:
         label = 'vsphere.beehive.networks.nsx'
@@ -1072,7 +1072,7 @@ class VsphereSecurityGroupController(VsphereControllerChild):
 
 
 class VsphereServerController(VsphereControllerChild):
-    uri = u'/v1.0/vsphere/servers'
+    uri = u'/v1.0/nrs/vsphere/servers'
     headers = [u'id', u'parent.name', u'container.name', u'name', u'state', u'details.state', u'details.ip_address',
                u'details.hostname', u'details.cpu', u'details.ram', u'details.template']
 

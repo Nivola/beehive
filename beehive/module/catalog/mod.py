@@ -16,6 +16,7 @@ class CatalogModule(ApiModule):
     """
     def __init__(self, api_manger):
         self.name = u'CatalogModule'
+        self.base_path = u'ncs'
         
         ApiModule.__init__(self, api_manger, self.name)
         

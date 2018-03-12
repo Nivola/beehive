@@ -1915,7 +1915,7 @@ class OpenstackController(BaseController):
 
 
 class OpenstackControllerChild(ResourceEntityController):
-    uri = u'/v1.0/openstacks'
+    uri = u'/v1.0/nrs/openstack'
     subsystem = u'resource'
     headers = [u'id', u'uuid', u'ext_id', u'name', u'parent.name', u'container.name', u'state']
     
@@ -1979,7 +1979,7 @@ class OpenstackControllerChild(ResourceEntityController):
 
 
 class OpenstackDomainController(OpenstackControllerChild):
-    uri = u'/v1.0/openstack/domains'
+    uri = u'/v1.0/nrs/openstack/domains'
     
     class Meta:
         label = 'openstack.beehive.domains'
@@ -1989,7 +1989,7 @@ class OpenstackDomainController(OpenstackControllerChild):
 
 
 class OpenstackProjectController(OpenstackControllerChild):
-    uri = u'/v1.0/openstack/projects'
+    uri = u'/v1.0/nrs/openstack/projects'
     headers = [u'id', u'uuid', u'name', u'parent.name', u'container.name',
                u'ext_id', u'details.level']
     
@@ -2001,7 +2001,7 @@ class OpenstackProjectController(OpenstackControllerChild):
 
 
 class OpenstackNetworkController(OpenstackControllerChild):
-    uri = u'/v1.0/openstack/networks'
+    uri = u'/v1.0/nrs/openstack/networks'
     headers = [u'id', u'parent.name', u'container.name', u'name', u'details.segmentation_id', u'details.external',
                u'details.shared', u'details.provider_network_type']
     
@@ -2013,7 +2013,7 @@ class OpenstackNetworkController(OpenstackControllerChild):
 
 
 class OpenstackSubnetController(OpenstackControllerChild):
-    uri = u'/v1.0/openstack/subnets'
+    uri = u'/v1.0/nrs/openstack/subnets'
     headers = [u'id', u'parent', u'container', u'name', u'cidr', u'allocation_pools', u'gateway_ip']
     
     class Meta:
@@ -2049,7 +2049,7 @@ class OpenstackSubnetController(OpenstackControllerChild):
 
 
 class OpenstackPortController(OpenstackControllerChild):
-    uri = u'/v1.0/openstack/ports'
+    uri = u'/v1.0/nrs/openstack/ports'
     headers = [u'id',  u'container.name', u'parent.name', u'name', u'details.device_owner', u'details.mac_address',
                u'details.fixed_ips.0.ip_address']
     
@@ -2076,7 +2076,7 @@ class OpenstackFloatingIpController(OpenstackControllerChild):
 
 
 class OpenstackRouterController(OpenstackControllerChild):
-    uri = u'/v1.0/openstack/routers'
+    uri = u'/v1.0/nrs/openstack/routers'
     headers = [u'id', u'container.name', u'parent.name', u'name', u'state', u'details.enable_snat',
                u'details.external_network.name', u'details.external_ips.0.ip_address']
     
@@ -2116,7 +2116,7 @@ class OpenstackRouterController(OpenstackControllerChild):
 
 
 class OpenstackSecurityGroupController(OpenstackControllerChild):
-    uri = u'/v1.0/openstack/security_groups'
+    uri = u'/v1.0/nrs/openstack/security_groups'
     headers = [u'id', u'container.name', u'parent.name', u'name', u'state', u'ext_id']
     
     class Meta:
@@ -2143,7 +2143,7 @@ class OpenstackSecurityGroupController(OpenstackControllerChild):
 
 
 class OpenstackImageController(OpenstackControllerChild):
-    uri = u'/v1.0/openstack/images'
+    uri = u'/v1.0/nrs/openstack/images'
     headers = [u'id', u'container.name', u'name',
                u'details.size', u'details.minDisk', u'details.minRam', 
                u'details.progress', u'details.status', u'details.metadata'] 
@@ -2156,7 +2156,7 @@ class OpenstackImageController(OpenstackControllerChild):
 
 
 class OpenstackFlavorController(OpenstackControllerChild):
-    uri = u'/v1.0/openstack/flavors'
+    uri = u'/v1.0/nrs/openstack/flavors'
     headers = [u'id', u'uuid', u'ext_id', u'container.name', u'parent.name', u'name', u'state',
                u'details.vcpus', u'details.ram', u'details.disk']
     
@@ -2168,7 +2168,7 @@ class OpenstackFlavorController(OpenstackControllerChild):
 
 
 class OpenstackServerController(OpenstackControllerChild):
-    uri = u'/v1.0/openstack/servers'
+    uri = u'/v1.0/nrs/openstack/servers'
     headers = [u'id', u'parent.name', u'container.name', u'name', u'state', u'details.state', u'details.ip_address',
                u'details.hostname', u'details.cpu', u'details.memory', u'details.disk']
     
@@ -2330,7 +2330,7 @@ class OpenstackServerController(OpenstackControllerChild):
 
 
 class OpenstackVolumeController(OpenstackControllerChild):
-    uri = u'/v1.0/openstack/volumes'
+    uri = u'/v1.0/nrs/openstack/volumes'
     headers = [u'id', u'container.name', u'parent.name', u'name']
     
     class Meta:
@@ -2341,7 +2341,7 @@ class OpenstackVolumeController(OpenstackControllerChild):
 
 
 class OpenstackHeatStackController(OpenstackControllerChild):
-    uri = u'/v1.0/openstack/stacks'
+    uri = u'/v1.0/nrs/openstack/stacks'
     headers = [u'id', u'container.name', u'parent.name', u'name', u'state', u'ext_id']
     
     class Meta:
@@ -2431,7 +2431,7 @@ class OpenstackHeatStackController(OpenstackControllerChild):
 
 
 class OpenstackHeatStackTemplateController(OpenstackControllerChild):
-    uri = u'/v1.0/openstack/stack-templates'
+    uri = u'/v1.0/nrs/openstack/stack-templates'
     headers = [u'id', u'container.name', u'parent.name', u'name', u'state', u'ext_id']
 
     class Meta:
@@ -2458,7 +2458,7 @@ class OpenstackHeatStackTemplateController(OpenstackControllerChild):
         """
         orchestrator = self.get_arg(name=u'orchestrator')
         template = self.get_arg(name=u'template')
-        uri = u'/v1.0/openstack/stack-template-functions'
+        uri = u'/v1.0/nrs/openstack/stack-template-functions'
         res = self._call(uri, u'GET', data=u'container=%s&template=%s' % (orchestrator, template))\
                   .get(u'template_functions', {})
         logger.info(u'Get template functions: %s' % truncate(res))
@@ -2477,7 +2477,7 @@ class OpenstackHeatStackTemplateController(OpenstackControllerChild):
                 u'template_uri': template
             }
         }
-        uri = u'/v1.0/openstack/stack-template-validate'
+        uri = u'/v1.0/nrs/openstack/stack-template-validate'
         res = self._call(uri, u'POST', data=data)
         logger.info(u'Validate template: %s' % truncate(res))
         if res:
@@ -2486,7 +2486,7 @@ class OpenstackHeatStackTemplateController(OpenstackControllerChild):
 
 
 class OpenstackManilaShareController(OpenstackControllerChild):
-    uri = u'/v1.0/openstack/shares'
+    uri = u'/v1.0/nrs/openstack/shares'
     headers = [u'id', u'container.name', u'parent.name', u'name', u'state', u'details.share_type',
                u'details.share_proto', u'details.size']
 

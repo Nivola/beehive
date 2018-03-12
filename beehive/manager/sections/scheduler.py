@@ -1,8 +1,8 @@
-'''
+"""
 Created on Sep 27, 2017
 
 @author: darkbk
-'''
+"""
 import logging
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController,\
@@ -13,9 +13,10 @@ from beecell.simple import truncate, str2bool
 logger = logging.getLogger(__name__)
 
 
+'''
 class SchedulerController(BaseController):
     class Meta:
-        label = 'scheduler'
+        label = 'sched'
         stacked_on = 'base'
         stacked_type = 'nested'
         description = "Scheduler management"
@@ -25,50 +26,46 @@ class SchedulerController(BaseController):
 
 
 class SchedulerControllerChild(ApiController):
-    cataloguri = u'/v1.0/schedulers'
-    
-    cat_headers = [u'id', u'uuid', u'name', u'zone', u'active', 
-                   u'date.creation', u'date.modified']
-    end_headers = [u'id', u'uuid', u'name', u'catalog.name', 
-                   u'service', u'active', 
-                   u'date.creation', u'date.modified']
-    
+    uri_prefix = {
+        u'auth': u'nas',
+        u'event': u'nes',
+        u'dir': u'ncs',
+        u'resource': u'nrs',
+        u'service': u'nws'
+    }
+
     class Meta:
-        stacked_on = 'scheduler'
+        stacked_on = 'sched'
         stacked_type = 'nested'
         arguments = [
-            ( ['extra_arguments'], dict(action='store', nargs='*')),            
-            ( ['-s', '--subsystem'],
-              dict(action='store', help='beehive subsystem like auth, resource, ..') ),
+            (['extra_arguments'], dict(action='store', nargs='*')),
+            (['-s', '--subsystem'], dict(action='store', help='beehive subsystem like auth, resource, ..')),
         ]
 
     def _ext_parse_args(self):
         ApiController._ext_parse_args(self)
         
         self.subsystem = self.app.pargs.subsystem
+        self.prefix = self.uri_prefix.get(self.app.pargs.subsystem, u'')
         if self.subsystem is None:
-            raise Exception(u'Subsystem is not specified')
+            raise Exception(u'Subsystem is not specified')'''
 
 
-class WorkerController(SchedulerControllerChild):    
-    class Meta:
-        label = 'workers'
-        description = "Worker management"
-        
-    #
-    # task worker
-    #
+class WorkerController(object):
+    # class Meta:
+    #     label = 'workers'
+    #     description = "Worker management"
     @expose()
     @check_error
     def ping(self):
         """Ping
         """
-        uri = u'/v1.0/worker/ping'
+        uri = u'%s/worker/ping' % self.baseuri
         res = self._call(uri, u'GET').get(u'workers_ping', {})
         logger.info(res)
         resp = []
-        for k,v in res.items():
-            resp.append({u'worker':k, u'res':v})
+        for k, v in res.items():
+            resp.append({u'worker': k, u'res': v})
         self.result(resp, headers=[u'worker', u'res'])
 
     @expose()
@@ -76,7 +73,7 @@ class WorkerController(SchedulerControllerChild):
     def stat(self):
         """Statistics
         """
-        uri = u'/v1.0/worker/stats'
+        uri = u'%s/worker/stats' % self.baseuri
         res = self._call(uri, u'GET').get(u'workers_stats', {})
         logger.info(res)
         resp = []
@@ -90,7 +87,7 @@ class WorkerController(SchedulerControllerChild):
     def report(self):
         """Report
         """
-        uri = u'/v1.0/worker/report'
+        uri = u'%s/worker/report' % self.baseuri
         res = self._call(uri, u'GET').get(u'workers_report', {})
         logger.info(res)
         resp = []
@@ -103,17 +100,17 @@ class WorkerController(SchedulerControllerChild):
         self.result(resp, headers=[u'worker', u'report'], maxsize=300)
 
 
-class TaskController(SchedulerControllerChild):    
-    class Meta:
-        label = 'tasks'
-        description = "Task management"
+class TaskController(object):
+    # class Meta:
+    #     label = 'tasks'
+    #     description = "Task management"
         
     @expose()
     @check_error
     def definitions(self):
         """List all available tasks you can invoke
         """
-        uri = u'/v1.0/worker/tasks/definitions'
+        uri = u'%s/worker/tasks/definitions' % self.baseuri
         res = self._call(uri, u'GET')
         logger.info(res)
         resp = []
@@ -127,7 +124,7 @@ class TaskController(SchedulerControllerChild):
     def list(self):
         """List all task instance
         """
-        uri = u'/v1.0/worker/tasks'
+        uri = u'%s/worker/tasks' % self.baseuri
         res = self._call(uri, u'GET')
         logger.info(res)
         self.result(res, key=u'task_instances', headers=[u'task_id', u'type', u'status', u'name', u'start_time',
@@ -139,7 +136,7 @@ class TaskController(SchedulerControllerChild):
         """Get task instance by id
         """
         task_id = self.get_arg(name=u'id')
-        uri = u'/v1.0/worker/tasks/%s' % task_id
+        uri = u'%s/worker/tasks/%s' % (self.baseuri, task_id)
         res = self._call(uri, u'GET').get(u'task_instance')
         logger.info(res)
         resp = []
@@ -154,7 +151,7 @@ class TaskController(SchedulerControllerChild):
         """Get task instance execution trace by id
         """        
         task_id = self.get_arg(name=u'id')
-        uri = u'/v1.0/worker/tasks/%s' % task_id
+        uri = u'%s/worker/tasks/%s' % (self.baseuri, task_id)
         res = self._call(uri, u'GET').get(u'task_instance').get(u'trace')
         logger.info(res)
         resp = []
@@ -169,14 +166,13 @@ class TaskController(SchedulerControllerChild):
         """Get task instance execution graph by id
         """        
         task_id = self.get_arg(name=u'id')
-        uri = u'/v1.0/worker/tasks/%s/graph' % task_id
+        uri = u'%s/worker/tasks%s/graph' % (self.baseuri, task_id)
         res = self._call(uri, u'GET').get(u'task_instance_graph')
         logger.info(res)
         print(u'Nodes:')
-        self.result(res, key=u'nodes', headers=[u'details.task_id', 
-                    u'details.type', u'details.status', u'label', 
-                    u'details.start_time', u'details.stop_time', 
-                    u'details.elapsed'])
+        headers = [u'details.task_id', u'details.type', u'details.status', u'label', u'details.start_time',
+                   u'details.stop_time', u'details.elapsed']
+        self.result(res, key=u'nodes', headers=headers)
         print(u'Links:')
         self.result(res, key=u'links', headers=[u'source', u'target'])
 
@@ -185,7 +181,7 @@ class TaskController(SchedulerControllerChild):
     def deletes(self):
         """Delete all task instance
         """
-        uri = u'/v1.0/worker/tasks'
+        uri = u'%s/worker/tasks' % self.baseuri
         res = self._call(uri, u'DELETE')
         logger.info(u'Delete all task')
         res = {u'msg':u'Delete all task'}
@@ -197,14 +193,13 @@ class TaskController(SchedulerControllerChild):
         """Delete task instance by id
         """             
         task_id = self.get_arg(name=u'id')
-        uri = u'/v1.0/worker/tasks/%s' % task_id
+        uri = u'%s/worker/tasks/%s' % (self.baseuri, task_id)
         res = self._call(uri, u'DELETE')
         logger.info(u'Delete task %s' % task_id)
         res = {u'msg':u'Delete task %s' % task_id}
         self.result(res, headers=[u'msg'])
         
-    @expose(aliases=[u'test [error=true/false] [suberror=true/false]'], 
-            aliases_only=True)
+    @expose(aliases=[u'test [error=true/false] [suberror=true/false]'], aliases_only=True)
     @check_error
     def test(self):
         """Run test job
@@ -218,26 +213,25 @@ class TaskController(SchedulerControllerChild):
             u'error':str2bool(params.get(u'error', False)),
             u'suberror':str2bool(params.get(u'suberror', False))
         }
-        uri = u'/v1.0/worker/tasks/test'
+        uri = u'%s/worker/tasks/test' % self.baseuri
         res = self._call(uri, u'POST', data=data)
         logger.info(u'Run job test: %s' % res)
         self.result(res)
 
 
-class ScheduleController(SchedulerControllerChild):
-    sched_headers = [u'name', u'task', u'schedule', u'args', u'kwargs', 
-                     u'options', u'last_run_at', u'total_run_count']    
+class ScheduleController(object):
+    sched_headers = [u'name', u'task', u'schedule', u'args', u'kwargs', u'options', u'last_run_at', u'total_run_count']
        
-    class Meta:
-        label = 'schedules'
-        description = "Schedule management"
+    # class Meta:
+    #     label = 'schedules'
+    #     description = "Schedule management"
         
     @expose()
     @check_error
     def list(self):
         """List all schedules
         """
-        uri = u'/v1.0/scheduler/entries'
+        uri = u'%s/scheduler/entries' % self.baseuri
         res = self._call(uri, u'GET')
         logger.debug(res)
         self.result(res, key=u'schedules', headers=self.sched_headers)
@@ -248,7 +242,7 @@ class ScheduleController(SchedulerControllerChild):
         """Get schedule by name
         """
         name = self.get_arg(name=u'name')        
-        uri = u'/v1.0/scheduler/entries/%s' % name
+        uri = u'%s/scheduler/entries/%s' % (self.baseuri, name)
         res = self._call(uri, u'GET')
         logger.debug(res)
         self.result(res, key=u'schedule', headers=self.sched_headers)        
@@ -260,9 +254,9 @@ class ScheduleController(SchedulerControllerChild):
         """
         data_file = self.get_arg(name=u'data file')
         data = self.load_config(data_file)
-        uri = u'/v1.0/scheduler/entries'
+        uri = u'%s/scheduler/entries' % self.baseuri
         res = self._call(uri, u'POST', data=data)
-        self.result({u'msg':u'Create schedule %s' % data}, headers=[u'msg'])
+        self.result({u'msg': u'Create schedule %s' % data}, headers=[u'msg'])
 
     @expose(aliases=[u'delete <name>'], aliases_only=True)
     @check_error
@@ -271,14 +265,14 @@ class ScheduleController(SchedulerControllerChild):
         """
         name = self.get_arg(name=u'name')
         data = {u'name':name}
-        uri = u'/v1.0/scheduler/entries'
+        uri = u'%s/scheduler/entries' % self.baseuri
         res = self._call(uri, u'DELETE', data=data)
-        self.result({u'msg':u'Delete schedule %s' % name}, headers=[u'msg'])        
+        self.result({u'msg': u'Delete schedule %s' % name}, headers=[u'msg'])
 
 
-scheduler_controller_handlers = [
-    SchedulerController,
-    WorkerController,
-    TaskController,
-    ScheduleController
-]        
+# scheduler_controller_handlers = [
+#     SchedulerController,
+#     WorkerController,
+#     TaskController,
+#     ScheduleController
+# ]

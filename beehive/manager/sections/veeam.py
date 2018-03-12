@@ -62,8 +62,9 @@ class VeeamPlatformControllerChild(BaseController):
                  'pwd':'cs1$topix', 'verified':False}
         '''
 
-        conn = {'uri': conf.get(u'uri'), 'user':conf.get(u'user'),'pwd':conf.get(u'pwd'),'verified':conf.get(u'verified')}
-        self.util = VeeamManager(conn)
+        conn = {'uri': conf.get(u'uri'), 'user':conf.get(u'user'),'pwd':conf.get(u'pwd'), 'verified':conf.get(u'verified')}
+        #print (self.key)
+        self.util = VeeamManager(conn, self.key)
         self.uri = conf.get(u'uri')
 
 class VeeamPlatformJobController(VeeamPlatformControllerChild):
@@ -149,9 +150,73 @@ class VeeamPlatformJobController(VeeamPlatformControllerChild):
 
         #self.app.print_output(u'Href = '+href)
         res = self.util.jobs.get_job_props(href)
-        # TO DO: gestire l'errore con status diverso da OK
-        self.result(res['data']['Job'], headers=[u'Job Name',u'Description',u'JobType',u'Platform',u'ScheduleConfigured',u'ScheduleEnabled'],
-                    fields=[ u'@Name',u'Description',u'JobType',u'Platform',u'ScheduleConfigured',u'ScheduleEnabled'])
+
+        if not res[u'status']== u'ERROR':
+            # There are no errors in the response
+            self.result(res['data']['Job'],
+                        headers=[u'Job Name', u'Description', u'JobType', u'Platform', u'ScheduleConfigured',
+                                 u'ScheduleEnabled'],
+                        fields=[u'@Name', u'Description', u'JobType', u'Platform', u'ScheduleConfigured',
+                                u'ScheduleEnabled'])
+        else:
+            # There are errors into the response
+            # {u'status': u'ERROR', u'status_code': 400, u'data': 'Bad Request'}
+            self.result(res, headers=[u'status', u'status code', u'error messages'],
+                        fields=[u'status', u'status_code', u'data'])
+
+
+
+    @expose(aliases=[u'start <UID>'], aliases_only=True)
+    @check_error
+    def start(self):
+        """This command will start the backup job identified by UID
+        """
+        uid = self.get_arg(name=u'UID')
+
+        urn, veeam, job, obj32 = uid.split(':')
+        href= self.uri + '/api/jobs/'+obj32
+        res = self.util.jobs.start_job(href)
+
+        '''
+        print (res['data'].keys())
+        print (res['data']['Task'])
+        print (res['data']['Task'].keys())
+         [u'@Href', u'@Type', u'@xmlns', u'@xmlns:xsd', u'@xmlns:xsi', u'Links', u'TaskId', u'State', u'Operation']
+         '''
+        if not res[u'status']== u'ERROR':
+            # There are no errors in the response
+            self.result(res['data']['Task'],
+                        headers=[u'taskId', u'Operation', u'State'],
+                        fields=[u'TaskId', u'Operation', u'State'])
+        else:
+            # There are errors into the response
+            # {u'status': u'ERROR', u'status_code': 400, u'data': 'Bad Request'}
+            self.result(res, headers=[u'status', u'status code', u'error messages'],
+                        fields=[u'status', u'status_code', u'data'])
+
+    @expose(aliases=[u'stop <UID>'], aliases_only=True)
+    @check_error
+    def stop(self):
+        """This command will stop the backup job identified by UID
+        """
+        uid = self.get_arg(name=u'UID')
+
+        urn, veeam, job, obj32 = uid.split(':')
+        href= self.uri + '/api/jobs/'+obj32
+        print (href)
+        res = self.util.jobs.stop_job(href)
+
+        if not res[u'status']== u'ERROR':
+            # There are no errors in the response
+            self.result(res['data']['Task'],
+                        headers=[u'taskId', u'Operation', u'State'],
+                        fields=[u'TaskId', u'Operation', u'State'])
+        else:
+            # There are errors into the response
+            # {u'status': u'ERROR', u'status_code': 400, u'data': 'Bad Request'}
+            self.result(res, headers=[u'status', u'status code', u'error messages'],
+                        fields=[u'status', u'status_code', u'data'])
+
 
 
     @expose()
@@ -162,7 +227,8 @@ class VeeamPlatformJobController(VeeamPlatformControllerChild):
 
         res = self.util.jobs.get_backups_status()
         #print(res)
-        self.result(res['data'], headers=[u'Job Name',u'Result',u'State',u'CreationTimeUTC',u'EndTimeUTC',u'elapsed'],
+        self.result(res['data'],
+                    headers=[u'Job Name',u'Result',u'State',u'CreationTimeUTC',u'EndTimeUTC',u'elapsed'],
                     fields=[ u'JobName',u'Result',u'State',u'CreationTimeUTC',u'EndTimeUTC',u'ElapsedTime'])
 
 

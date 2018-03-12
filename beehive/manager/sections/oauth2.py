@@ -205,8 +205,7 @@ class ClientController(Oauth2ControllerChild):
         label = 'clients'
         description = "Client management"
         
-    @expose(aliases=[u'add <name> <grant_type> <redirect_uri> <scopes> '\
-                     u'<expiry_date>'], aliases_only=True)
+    @expose(aliases=[u'add <name> <grant_type> <redirect_uri> <scopes> <expiry_date>'], aliases_only=True)
     @check_error
     def add(self):
         """Add client
@@ -218,21 +217,21 @@ class ClientController(Oauth2ControllerChild):
        - password 
        - client_credentials
        - urn:ietf:params:oauth:grant-type:jwt-bearer
-        """          
-        grant_type = self.get_arg(name=u'grant_type')
+        """
         name = self.get_arg(name=u'name')
+        grant_type = self.get_arg(name=u'grant_type')
         redirect_uri = self.get_arg(name=u'redirect_uri')
-        scopes = self.load_config(name=u'scopes')
-        expiry_date = self.load_config(name=u'expiry_date')
+        scopes = self.get_arg(name=u'scopes')
+        expiry_date = self.get_arg(name=u'expiry_date')
         data = {
-            u'client':{
-                u'name':name, 
-                u'grant_type':grant_type, 
-                u'redirect_uri':redirect_uri, 
-                u'desc':u'Client %s' % name, 
-                u'response_type':u'code',
-                u'scopes':scopes,
-                u'expiry_date':expiry_date
+            u'client': {
+                u'name': name,
+                u'grant_type': grant_type,
+                u'redirect_uri': redirect_uri,
+                u'desc': u'Client %s' % name,
+                u'response_type': u'code',
+                u'scopes': scopes,
+                u'expiry_date': expiry_date
             }
         } 
         uri = u'%s/clients' % self.authuri

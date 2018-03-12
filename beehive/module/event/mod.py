@@ -7,11 +7,13 @@ from beehive.common.apimanager import ApiModule
 from beehive.module.event.view import EventAPI
 from beehive.module.event.controller import EventController
 
+
 class EventModule(ApiModule):
     """Event Beehive Module
     """
     def __init__(self, api_manger):
         self.name = u'EventModule'
+        self.base_path = u'nes'
         
         ApiModule.__init__(self, api_manger, self.name)
         

@@ -152,7 +152,8 @@ class CatalogController(BaseAuthController):
                                                  *args, **kvargs)
 
         return res, total 
-        
+
+
 class Catalog(AuthObject):
     module = u'CatalogModule'
     objtype = u'directory'
@@ -204,8 +205,7 @@ class Catalog(AuthObject):
         return info
 
     @trace(op=u'endpoints.insert')
-    def add_endpoint(self, name=None, desc=None, service=None, uri=None, 
-                     active=True):
+    def add_endpoint(self, name=None, desc=None, service=None, uri=None, active=True):
         """Add endpoint.
         
         :param name: endpoint name

@@ -50,7 +50,7 @@ class CatalogTestCase(BeehiveTestCase):
                 u'zone':u'internal'
             }
         }        
-        self.call(u'auth', u'/v1.0/directory/catalogs', u'post', data=data,
+        self.call(u'auth', u'/v1.0/ncs//catalogs', u'post', data=data,
                   **self.users[u'admin'])
     
     @assert_exception(ConflictException)
@@ -62,33 +62,33 @@ class CatalogTestCase(BeehiveTestCase):
                 u'zone':u'internal'  
             }
         }        
-        self.call(u'auth', u'/v1.0/directory/catalogs', u'post', data=data,
+        self.call(u'auth', u'/v1.0/ncs//catalogs', u'post', data=data,
                   **self.users[u'admin'])        
     
     def test_get_catalogs(self):
-        res = self.call(u'auth', u'/v1.0/directory/catalogs', u'get', **self.users[u'admin'])
+        res = self.call(u'auth', u'/v1.0/ncs//catalogs', u'get', **self.users[u'admin'])
         global oid
         oid = res[u'catalogs'][-1][u'id']
         
     def test_get_catalogs_by_zone(self):
-        self.call(u'auth', u'/v1.0/directory/catalogs', u'get',
+        self.call(u'auth', u'/v1.0/ncs//catalogs', u'get',
                   query={u'zone':u'internal'},
                   **self.users[u'admin'])   
         
     def test_get_catalog(self):
         global oid
-        self.call(u'auth', u'/v1.0/directory/catalogs/{oid}', u'get',
+        self.call(u'auth', u'/v1.0/ncs//catalogs/{oid}', u'get',
                   params={u'oid':oid},
                   **self.users[u'admin'])
         
     def test_get_catalog_perms(self):
         global oid
-        self.call(u'auth', u'/v1.0/directory/catalogs/{oid}/perms', u'get',
+        self.call(u'auth', u'/v1.0/ncs//catalogs/{oid}/perms', u'get',
                   params={u'oid':oid},
                   **self.users[u'admin'])        
         
     def test_get_catalog_by_name(self):
-        self.call(u'auth', u'/v1.0/directory/catalogs/{oid}', u'get',
+        self.call(u'auth', u'/v1.0/ncs//catalogs/{oid}', u'get',
                   params={u'oid':u'beehive-internal'},
                   **self.users[u'admin'])
         
@@ -100,12 +100,12 @@ class CatalogTestCase(BeehiveTestCase):
                 u'zone':u'internal1'  
             }
         }
-        self.call(u'auth', u'/v1.0/directory/catalogs/{oid}', u'put', 
+        self.call(u'auth', u'/v1.0/ncs//catalogs/{oid}', u'put', 
                   params={u'oid':u'beehive'}, data=data,
                   **self.users[u'admin'])        
 
     def test_delete_catalog(self):
-        self.call(u'auth', u'/v1.0/directory/catalogs/{oid}', u'delete', 
+        self.call(u'auth', u'/v1.0/ncs//catalogs/{oid}', u'delete', 
                   params={u'oid':u'beehive'},
                   **self.users[u'admin'])
 
@@ -123,7 +123,7 @@ class CatalogTestCase(BeehiveTestCase):
                 u'active':True
             }
         }        
-        self.call(u'auth', u'/v1.0/directory/endpoints', u'post', data=data,
+        self.call(u'auth', u'/v1.0/ncs//endpoints', u'post', data=data,
                   **self.users[u'admin'])
 
     @assert_exception(ConflictException)
@@ -138,20 +138,20 @@ class CatalogTestCase(BeehiveTestCase):
                 u'active':True
             }
         }        
-        self.call(u'auth', u'/v1.0/directory/endpoints', u'post', data=data,
+        self.call(u'auth', u'/v1.0/ncs//endpoints', u'post', data=data,
                   **self.users[u'admin'])        
     
     def test_get_endpoints(self):
-        self.call(u'auth', u'/v1.0/directory/endpoints', u'get', 
+        self.call(u'auth', u'/v1.0/ncs//endpoints', u'get', 
                   **self.users[u'admin'])
         
     def test_filter_endpoints(self):
-        self.call(u'auth', u'/v1.0/directory/endpoints', u'get',
+        self.call(u'auth', u'/v1.0/ncs//endpoints', u'get',
                   query={u'service':u'auth', u'catalog':u'beehive'},
                   **self.users[u'admin'])        
         
     def test_get_endpoint(self):
-        self.call(u'auth', u'/v1.0/directory/endpoints/{oid}', u'get',
+        self.call(u'auth', u'/v1.0/ncs//endpoints/{oid}', u'get',
                   params={u'oid':u'endpoint-prova'}, 
                   **self.users[u'admin'])
         
@@ -165,12 +165,12 @@ class CatalogTestCase(BeehiveTestCase):
                 u'active':True
             }
         }
-        self.call(u'auth', u'/v1.0/directory/endpoints/{oid}', u'put', 
+        self.call(u'auth', u'/v1.0/ncs//endpoints/{oid}', u'put', 
                   params={u'oid':u'endpoint-prova'}, data=data,
                   **self.users[u'admin'])        
     
     def test_delete_endpoint(self):
-        self.call(u'auth', u'/v1.0/directory/endpoints/{oid}', u'delete', 
+        self.call(u'auth', u'/v1.0/ncs//endpoints/{oid}', u'delete', 
                   params={u'oid':u'endpoint-prova'},
                   **self.users[u'admin'])
         
