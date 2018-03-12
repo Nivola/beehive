@@ -1,8 +1,8 @@
-'''
+"""
 Created on Aug 13, 2014
 
 @author: darkbk
-'''
+"""
 from re import match
 from flask import request
 from beecell.simple import get_value
@@ -33,6 +33,7 @@ class ListEventsRequestSchema(PaginatedRequestQuerySchema):
     dateto = fields.String(default=u'{}', context=u'query')
     source = fields.String(default=u'{}', context=u'query')
     dest = fields.String(default=u'{}', context=u'query')
+    data = fields.String(default=u'{}', context=u'query')
 
 
 class EventsParamsResponseSchema(Schema):
@@ -153,10 +154,15 @@ class EventAPI(ApiView):
     @staticmethod
     def register_api(module):
         rules = [
-            (u'events', u'GET', ListEvents, {}),
-            (u'events/<oid>', u'GET', GetEvent, {}),            
-            (u'events/types', u'GET', GetEventTypes, {}),
-            (u'events/entities', u'GET', GetEventEntityDefinition, {}),
+            # (u'events', u'GET', ListEvents, {}),
+            # (u'events/<oid>', u'GET', GetEvent, {}),
+            # (u'events/types', u'GET', GetEventTypes, {}),
+            # (u'events/entities', u'GET', GetEventEntityDefinition, {}),
+
+            (u'%s/events' % module.base_path, u'GET', ListEvents, {}),
+            (u'%s/events/<oid>' % module.base_path, u'GET', GetEvent, {}),
+            (u'%s/events/types' % module.base_path, u'GET', GetEventTypes, {}),
+            (u'%s/events/entities' % module.base_path, u'GET', GetEventEntityDefinition, {}),
         ]
 
         ApiView.register_api(module, rules)

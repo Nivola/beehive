@@ -407,6 +407,23 @@ class CatalogAPI(ApiView):
             (u'%s/endpoints' % base, u'POST', CreateEndpoint, {}),
             (u'%s/endpoints/<oid>' % base, u'PUT', UpdateEndpoint, {}),
             (u'%s/endpoints/<oid>' % base, u'DELETE', DeleteEndpoint, {}),
+
+            # new routes
+            (u'%s/catalogs' % module.base_path, u'GET', ListCatalogs, {}),
+            (u'%s/catalogs/<oid>' % module.base_path, u'GET', GetCatalog, {}),
+            # ('%s/catalog/<oid>/<zone>' % module.base_path, 'GET', FilterCatalog, {}),
+            (u'%s/catalogs/<oid>/perms' % module.base_path, u'GET', GetCatalogPerms, {}),
+            (u'%s/catalogs' % module.base_path, u'POST', CreateCatalog, {}),
+            (u'%s/catalogs/<oid>' % module.base_path, u'PUT', UpdateCatalog, {}),
+            (u'%s/catalogs/<oid>' % module.base_path, u'DELETE', DeleteCatalog, {}),
+            # ('%s/catalogs/<oid>/services' % module.base_path, 'GET', GetCatalogServices, {}),
+
+            (u'%s/endpoints' % module.base_path, u'GET', ListEndpoints, {}),
+            (u'%s/endpoints/<oid>' % module.base_path, u'GET', GetEndpoint, {}),
+            (u'%s/endpoints/<oid>/perms' % module.base_path, u'GET', GetEndpointPerms, {}),
+            (u'%s/endpoints' % module.base_path, u'POST', CreateEndpoint, {}),
+            (u'%s/endpoints/<oid>' % module.base_path, u'PUT', UpdateEndpoint, {}),
+            (u'%s/endpoints/<oid>' % module.base_path, u'DELETE', DeleteEndpoint, {}),
         ]
 
         ApiView.register_api(module, rules)

@@ -34,7 +34,7 @@ from beehive.manager.sections.resource import resource_controller_handlers
 from beehive.manager.sections.auth import auth_controller_handlers
 from beehive.manager.sections.catalog import catalog_controller_handlers
 from beehive.manager.sections.event import event_controller_handlers
-from beehive.manager.sections.scheduler import scheduler_controller_handlers
+# from beehive.manager.sections.scheduler import scheduler_controller_handlers
 from beehive.manager.sections.business.service import service_controller_handlers
 from beehive.manager.sections.business.authority import authority_controller_handlers
 from beehive.manager.sections.business import business_controller_handlers
@@ -147,6 +147,8 @@ class CliController(CementCmdBaseController):
 
 class CliManager(CementCmd):
     """Cli manager
+
+    set BEEHIVE_LOG to use alternative log file
     """
     vault = None
 
@@ -159,7 +161,7 @@ class CliManager(CementCmd):
         logging_format = u'%(asctime)s - %(levelname)s - %(name)s.%(funcName)s:%(lineno)d - %(message)s'
         logging_file = u'/var/log/beehive/manage.log'
         logging_max_files = 4
-        logging_max_size = 512000
+        logging_max_size = 4096000
         logging_loggers = [
             u'beecell',
             u'py.warnings',
@@ -197,7 +199,7 @@ class CliManager(CementCmd):
         handlers.extend(oauth2_controller_handlers)
         handlers.extend(catalog_controller_handlers)
         handlers.extend(event_controller_handlers)
-        handlers.extend(scheduler_controller_handlers)
+        # handlers.extend(scheduler_controller_handlers)
         handlers.extend(business_controller_handlers)
         handlers.extend(service_controller_handlers)
         handlers.extend(authority_controller_handlers)
@@ -219,8 +221,6 @@ class CliManager(CementCmd):
         token_file = u'/tmp/.manage.token'
         seckey_file = u'/tmp/.manage.seckey'
         
-        # config_files = [u'/etc/beehive/manage.conf']
-        
         hooks = [
             ('pre_run', config_cli)
         ]
@@ -228,7 +228,33 @@ class CliManager(CementCmd):
         color = True
         format = u'text'
         verbosity = 0
-        
+
+    def configure(self):
+        """Configure app
+        """
+        # create .beehive dir in home directory if it does not exists
+        homedir = os.path.expanduser(u'~')
+        directory = u'%s/.beehive' % homedir
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+            os.chmod(directory, 0700)
+
+        # load config file from home
+        if os.path.isfile(u'%s/manage.conf' % directory) is True:
+            self._meta.configs_file = u'%s/manage.conf' % directory
+
+        # load fernet key from home
+        if os.path.isfile(u'%s/manage.key' % directory) is True:
+            self._meta.fernet_key = u'%s/manage.key' % directory
+
+        # load ansible vault from home
+        if os.path.isfile(u'%s/manage.ansible.vault' % directory) is True:
+            self._meta.ansible_vault = u'%s/manage.ansible.vault' % directory
+
+        # authorization
+        self._meta.token_file = u'%s/.manage.token' % directory
+        self._meta.seckey_file = u'%s/.manage.seckey' % directory
+
     def setup(self):
         """App main setup
         """
@@ -278,22 +304,28 @@ class CliManager(CementCmd):
     def setup_logging():
         """Setup loggers
         """
+        # set alternative log file
+        log_file = os.environ.get(u'BEEHIVE_LOG', None)
+        if log_file is None:
+            log_file = CliManager.Meta.logging_file
+
         loggers = [logging.getLogger(item) for item in CliManager.Meta.logging_loggers]
         loggers.append(logger)
-        #loggers.append(self.log)
-        LoggerHelper.rotatingfile_handler(loggers, CliManager.Meta.logging_level, 
-                                          CliManager.Meta.logging_file, 
+        # loggers.append(self.log)
+        LoggerHelper.rotatingfile_handler(loggers, CliManager.Meta.logging_level,
+                                          log_file,
                                           CliManager.Meta.logging_max_size, 
                                           CliManager.Meta.logging_max_files, 
                                           CliManager.Meta.logging_format,
                                           formatter=ColorFormatter)
         logger.info(u'========================================================')
-        logger.info(u'Setup loggers')
+        logger.info(u'Setup loggers over file: %s' % log_file)
 
 
 if __name__ == u'__main__':    
     CliManager.setup_logging()
     app = CliManager('beehive')
+    app.configure()
     app.run()
     
     # close the application

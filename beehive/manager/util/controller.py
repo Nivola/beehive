@@ -144,8 +144,6 @@ class BaseController(CementCmdBaseController):
 
         self.text = []
         self.pp = PrettyPrinter(width=200)
-        self.app._meta.token_file = self.app._meta.token_file
-        self.app._meta.seckey_file = self.app._meta.seckey_file
         
         # get configs
         self.configs = self.app.config.get_section_dict(u'configs')
@@ -240,6 +238,9 @@ commands:
         # ansible vault pwd
         if self.vault is None:
             self.vault = self.app.vault
+
+        self.app._meta.token_file = self.app._meta.token_file + u'.' + self.env
+        self.app._meta.seckey_file = self.app._meta.seckey_file + u'.' + self.env
 
     def check_secret_key(self):
         if self.key is None:
@@ -379,6 +380,10 @@ commands:
     
     def format_text(self, data, space=u'  '):
         """
+
+        :param data:
+        :param space:
+        :return:
         """
         if isinstance(data, dict):
             for k, v in data.items():
@@ -597,11 +602,11 @@ commands:
                 if len(t) == 2:
                     if t[1] == 'null':
                         t[1] = None
-                    if t[1] == 'True' or t[1] == 'true':
+                    elif t[1] == 'True' or t[1] == 'true':
                         t[1] = True
-                    if t[1] == 'False' or t[1] == 'false':
+                    elif t[1] == 'False' or t[1] == 'false':
                         t[1] = False
-                    if t[1].find(u'{') >= 0:
+                    elif t[1].find(u'{') >= 0:
                         t[1] = json.loads(t[1])
                     self.app.kvargs[t[0]] = t[1]
             else:
@@ -679,7 +684,7 @@ class ApiController(BaseController):
         return res
     
     def __query_task_status(self, task_id):
-        uri = u'/v1.0/worker/tasks/%s' % task_id
+        uri = u'%s/worker/tasks/%s' % (self.baseuri, task_id)
         res = self._call(uri, u'GET').get(u'task_instance')
         return res
     

@@ -226,15 +226,16 @@ class TaskManager(ApiObject):
 
     def __init__(self, controller):
         ApiObject.__init__(self, controller, oid='', name='', desc='', active='')
-        hostname = self.celery_broker_queue + u'@' + self.api_manager.server_name
-        self.control = task_manager.control.inspect([hostname])
 
         self.objid = '*'
 
         try:
+            hostname = self.celery_broker_queue + u'@' + self.api_manager.server_name
+            self.control = task_manager.control.inspect([hostname])
             self.prefix = task_manager.conf.CELERY_REDIS_RESULT_KEY_PREFIX
             self.prefix_base = u'celery-task-meta'
         except:
+            self.control = None
             self.prefix = u''
             self.prefix_base = u''
 

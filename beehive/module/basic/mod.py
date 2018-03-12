@@ -2,6 +2,7 @@ from .view import BaseAPI
 from .controller import BasicController
 from beehive.common.apimanager import ApiModule
 
+
 class BasicModule(ApiModule):
     """Beehive Basic Module
     """

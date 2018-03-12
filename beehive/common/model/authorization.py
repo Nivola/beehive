@@ -52,6 +52,7 @@ role_template_policy = Table('role_template_policy', Base.metadata,
 
 class RoleUser(Base):
     __tablename__ = u'roles_users'
+    id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey(u'user.id'), primary_key=True)
     role_id = Column(Integer, ForeignKey(u'role.id'), primary_key=True)
     expiry_date = Column(DateTime())
@@ -79,6 +80,7 @@ class RoleUser(Base):
 
 class RoleGroup(Base):
     __tablename__ = u'roles_groups'
+    id = Column(Integer, primary_key=True)
     group_id = Column(Integer, ForeignKey(u'group.id'), primary_key=True)
     role_id = Column(Integer, ForeignKey(u'role.id'), primary_key=True)
     expiry_date = Column(DateTime())
@@ -654,6 +656,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         """
         session = self.get_session()
         res = []
+        items = []
         for obj in objs:
             # verify if object already exists
             sysobj = session.query(SysObject).\
@@ -665,19 +668,19 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             
             # add object
             sysobj = SysObject(obj[0], obj[1], desc=obj[2])
-            session.add(sysobj)
-            session.flush()
+            # session.add(sysobj)
+            items.append(sysobj)
+            # session.flush()
             self.logger.debug(u'Add system object: %s' % sysobj)
             
             # add permissions
             for action in actions: 
                 perm = SysObjectPermission(sysobj, action)
-                session.add(perm)
+                # session.add(perm)
+                items.append(perm)
             self.logger.debug(u'Add system object %s permissions' % sysobj.id)
-            
-            res.append(sysobj)
-        
-        return res
+        session.add_all(items)
+        return items
 
     @transaction
     def update_object(self, new_objid, oid=None, objid=None, objtype=None):

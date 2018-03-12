@@ -48,6 +48,7 @@ from re import escape
 from marshmallow.validate import OneOf, Range
 from copy import deepcopy
 from flask_session.sessions import RedisSessionInterface
+from cryptography.fernet import Fernet
 
 logger = logging.getLogger(__name__)
 
@@ -128,6 +129,7 @@ class ApiManager(object):
         self.app_id = self.params[u'api_id']
         self.app_desc = self.params[u'api_id']
         self.app_subsytem = self.params[u'api_subsystem']
+        self.app_fernet_key = self.params[u'api_fernet_key']
         self.app_endpoint_id = u'%s-%s' % (self.params[u'api_id'], hostname)
         try:
             self.app_uri = u'http://%s%s' % (hostname, self.params[u'http-socket'])
@@ -145,6 +147,7 @@ class ApiManager(object):
         
         # modules
         self.modules = {}
+        self.main_module = None
         
         # redis
         self.redis_manager = None
@@ -324,7 +327,7 @@ class ApiManager(object):
                 ]
         """
         try:
-            res =  []
+            res = []
             for key in self.redis_manager.keys(self.prefix+'*'):
                 identity = self.redis_manager.get(key)
                 data = pickle.loads(identity)
@@ -335,11 +338,9 @@ class ApiManager(object):
         except Exception as ex:
             self.logger.error('No identities found: %s' % ex)
             raise ApiManagerError('No identities found')
-        
-        #User(self).event('user.identity.get', {}, (True))
+
         self.logger.debug('Get identities from redis: %s' % (res))
         return res
-
 
     def verify_simple_http_credentials(self, user, pwd, user_ip):
         """Verify simple ahttp credentials.
@@ -451,10 +452,18 @@ class ApiManager(object):
             module_classes = [module_classes]
         
         for item in module_classes:
+            # check if module is primary
+            main = False
+            if item.find(u',') > 0:
+                item, main = item.split(u',')
+                main = str2bool(main)
             # import module class
             module_class = import_class(item)
             # instance module class
             module = module_class(self)
+            # set main module
+            if main is True:
+                self.main_module = module
             self.logger.info(u'Register module: %s' % item)
         
         if u'api_plugin' in self.params:
@@ -469,8 +478,7 @@ class ApiManager(object):
                         plpkg.append(p)
                 plugin_pkgs = plpkg
                 
-            plugin_pkgs
-                       
+            # plugin_pkgs
             for plugin_pkg in plugin_pkgs:
                 name, class_name = plugin_pkg.split(u',')
                 # import plugin class
@@ -611,7 +619,7 @@ class ApiManager(object):
     
                     self.logger.info(u'Configure scheduler reference - CONFIGURED')
                 except:
-                    self.logger.warning(u'Configure scheduler reference - NOT CONFIGURED')            
+                    self.logger.warning(u'Configure scheduler reference - NOT CONFIGURED', exc_info=1)
                 ##### scheduler reference configuration #####
                 
                 ##### security configuration #####
@@ -1157,7 +1165,6 @@ class ApiController(object):
         """
         return self.module.api_manager.verify_simple_http_credentials(user, pwd, user_ip)
 
-
     def can(self, action, objtype=None, definition=None):
         """Verify if  user can execute an action over a certain object type.
         Specify at least name or perms.
@@ -1205,32 +1212,30 @@ class ApiController(object):
                     if (perm_objtype == objtype and
                         perm_definition == definition and
                         perm_action in [u'*', action]):
-                        #defs.append(perm_definition)
+                        # defs.append(perm_definition)
                         objids.append(perm_objid)
                     
                     # loop between object objids, compact objids and verify match
                     if len(objids) > 0:
                         res[definition] = objids
                 elif objtype is not None:      
-                    if (perm_objtype == objtype and
-                        perm_action in [u'*', action]):
+                    if perm_objtype == objtype and perm_action in [u'*', action]:
                         if perm_definition in res:
                             res[perm_definition].append(perm_objid)
                         else:
                             res[perm_definition] = [perm_objid]
                 else:
-                    if (perm_action in [u'*', action]):
+                    if perm_action in [u'*', action]:
                         if perm_definition in res:
                             res[perm_definition].append(perm_objid)
                         else:
                             res[perm_definition] = [perm_objid]                    
-                    
 
             for objdef, objids in res.iteritems():
                 # loop between object objids, compact objids and verify match
                 if len(objids) > 0:
                     res[objdef] = extract(res[objdef])
-                    #self.logger.debug('%s:%s can %s objects {%s, %s, %s}' % 
+                    # self.logger.debug('%s:%s can %s objects {%s, %s, %s}' %
                     #    (user[0], user[1], action, objtype, objdef, res[objdef]))
             
             if len(res.keys()) > 0:
@@ -1244,7 +1249,6 @@ class ApiController(object):
             self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=401)
 
-    #@watch
     def has_needs(self, needs, perms):
         """Verify if permissions overlap needs.
         
@@ -1259,7 +1263,6 @@ class ApiController(object):
         self.logger.warn('Perms %s do not overlap needs %s' % (perms, needs))
         return False
 
-    #@watch
     def get_needs(self, args):
         """"""
         # first item *.*.*.....
@@ -1312,7 +1315,33 @@ class ApiController(object):
     def get_superadmin_permissions(self):
         """ """
         raise NotImplementedError()'''
-    
+
+    #
+    # encryption method
+    #
+    def encrypt_data(self, data):
+        """Encrypt data using a fernet key and a symmetric algorithm
+
+        :param data: data to encrypt
+        :return: encrypted data
+        """
+        cipher_suite = Fernet(self.api_manager.app_fernet_key)
+        cipher_data = cipher_suite.encrypt(data)
+        self.logger.debug(u'Encrypt data')
+        return u'$BEEHIVE_VAULT;AES128 | %s' % cipher_data
+
+    def decrypt_data(self, data):
+        """Decrypt data using a fernet key and a symmetric algorithm
+
+        :param data: data to decrypt
+        :return: decrypted data
+        """
+        data = data.replace(u'$BEEHIVE_VAULT;AES128 | ', u'')
+        cipher_suite = Fernet(self.api_manager.app_fernet_key)
+        cipher_data = cipher_suite.decrypt(data)
+        self.logger.debug(u'Decrypt data')
+        return cipher_data
+
     #
     # helper model get method
     #
@@ -1383,7 +1412,7 @@ class ApiController(object):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         res = []
-        objs =  []
+        objs = []
         
         if authorize is True:
             # verify permissions
@@ -1413,10 +1442,8 @@ class ApiController(object):
         except QueryError as ex:         
             self.logger.warn(ex)
             return [], 0
-        
-        
-    def get_entities(self, entity_class, get_entities, authorize=True,
-            *args, **kvargs):
+
+    def get_entities(self, entity_class, get_entities, authorize=True, *args, **kvargs):
         """Get entities less pagination
 
         :param entity_class: ApiObject Extension class
@@ -1446,13 +1473,13 @@ class ApiController(object):
                 
         try:
             entities = get_entities(tags=tags, *args, **kvargs)
+
             for entity in entities:
                 obj = entity_class(self, oid=entity.id, objid=entity.objid, 
                                name=entity.name, active=entity.active, 
                                desc=entity.desc, model=entity)
                 res.append(obj)
-            self.logger.debug(u'Get %s : %s' % 
-                              (entity_class.__name__, truncate(res)))
+            self.logger.debug(u'Get %s : %s' % (entity_class.__name__, truncate(res)))
             return res
         except QueryError as ex:         
             self.logger.warn(ex)
@@ -1515,216 +1542,6 @@ class ApiController(object):
         except QueryError as ex:         
             self.logger.warn(ex)
             return [], 0'''
-
-'''
-class ApiEvent(object):
-    """Generic event.
-    
-    :param controller: ApiController instance
-    :param oid: unique id
-    :param objid: object id
-    :param data: event data. Ex {'opid':opid, 'op':op, 'params':params, 'response':response}
-    :param creation: event creation data
-    :param source: event source
-    :param creation: creation date
-    :param dest: event dest 
-    """
-    objtype = u'event'
-    objdef = u''
-    objdesc = u''
-    
-    def __init__(self, controller, oid=None, objid=None, data=None, 
-                       source=None, dest=None, creation=None, action=None):
-        self.logger = logging.getLogger(self.__class__.__module__+ \
-                                        u'.'+self.__class__.__name__)
-        
-        self.controller = controller
-        self.oid = oid
-        self.objid = str2uni(objid)
-        self.data = data
-        self.source = source
-        self.dest = dest
-        self.action = action
-    
-    def __repr__(self):
-        return "<ApiEvent id='%s' objid='%s'>" % (self.oid, self.objid)
-    
-    @property
-    def dbmanager(self):
-        return self.controller.dbmanager    
-    
-    @property
-    def api_client(self):
-        return self.controller.module.api_manager.api_client 
-    
-    #@property
-    #def job_manager(self):
-    #    return self.controller.module.job_manager    
-    
-    @staticmethod
-    def get_type(self):
-        """ """        
-        return (self.type, self.definition, self.__class__)    
-    
-    @staticmethod
-    def _get_value(objtype, args):
-        data = ['*' for i in objtype.split('.')]
-        pos = 0
-        for arg in args:
-            data[pos] = arg
-            pos += 1
-        return '//'.join(data)
-
-    def info(self):
-        """Get event infos.
-        
-        :return: Dictionary with info.
-        :rtype: dict        
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
-        """  
-        creation = str2uni(self.creation.strftime(u'%d-%m-%Y %H:%M:%S'))
-        return {u'id':self.oid, u'objid':self.objid, u'data':self.data, 
-                u'source':self.source, u'dest':self.dest, 
-                u'creation':creation}
-
-    def publish(self, objtype, event_type):
-        """Publish event to event consumer.
-        
-        :param event_type: type of event
-        """
-        if self.source is None:
-            self.source = {u'user':operation.user[0],
-                           u'ip':operation.user[1],
-                           u'identity':operation.user[2]}
-            
-        if self.dest is None:
-            self.dest = {u'ip':self.controller.module.api_manager.server_name,
-                         u'port':self.controller.module.api_manager.http_socket,
-                         u'objid':self.objid, 
-                         u'objtype':objtype,
-                         u'objdef':self.objdef,
-                         u'action':self.action}      
-        
-        try:
-            client = self.controller.module.api_manager.event_producer
-            client.send(event_type, self.data, self.source, self.dest)
-        except Exception as ex:
-            self.logger.warning(u'Event can not be published. Event producer '\
-                                u'is not configured - %s' % ex)
-
-    def init_object(self):
-        """Call only once during db initialization"""
-        # add object type
-        self.api_client.add_object_types(self.objtype, self.objdef)
-        
-        # add object and permissions
-        objs = self._get_value(self.objdef, [])
-        self.api_client.add_object(self.objtype, self.objdef, objs, 
-                                   self.objdesc+u' events')
-        
-        self.logger.debug(u'Register api object: %s' % objs)
-
-    def register_object(self, args, desc=u'', objid=None):
-        """Register object types, objects and permissions related to module.
-        
-        :param args:
-        """
-        # add object and permissions
-        objs = self._get_value(self.objdef, args)
-        #self.rpc_client.add_object(self.objtype, self.objdef, objs)
-        self.api_client.add_object(self.objtype, self.objdef, objs, 
-                                   u'%s events' % desc)
-        
-        self.logger.debug(u'Register api object: %s:%s %s' % 
-                          (self.objtype, self.objdef, objs))
-
-    def deregister_object(self, args, objid=None):
-        """Deregister object types, objects and permissions related to module.
-        
-        :param args: 
-        """
-        # remove object and permissions
-        objid = self._get_value(self.objdef, args)
-        #self.rpc_client.remove_object(self.objtype, self.objdef, objid)
-        self.api_client.remove_object(self.objtype, self.objdef, objid)
-        
-        self.logger.debug(u'Deregister api object: %s:%s %s' % 
-                          (self.objtype, self.objdef, objid))
-    
-    def get_session(self):
-        """open db session"""
-        return self.controller.get_session()
-        
-    def release_session(self, dbsession):
-        """release db session"""
-        return self.controller.release_session(dbsession)
-
-class ApiInternalEvent(ApiEvent):
-    def __init__(self, *args, **kvargs):
-        ApiEvent.__init__(self, *args, **kvargs)
-        self.auth_db_manager = AuthDbManager()
-    
-    def init_object(self):
-        """Call only once during db initialization"""
-        try:
-            # call only once during db initialization
-            # add object type
-            obj_types = [(self.objtype, self.objdef)]
-            self.auth_db_manager.add_object_types(obj_types)
-            
-            # add object and permissions
-            obj_type = self.auth_db_manager.get_object_type(
-                objtype=self.objtype, objdef=self.objdef)[0][0]
-            objs = [(obj_type, self._get_value(self.objdef, []), 
-                     self.objdesc+u' events')]
-            actions = self.auth_db_manager.get_object_action()
-            self.auth_db_manager.add_object(objs, actions)
-            
-            self.logger.debug(u'Register api object: %s' % objs)
-        except (QueryError, TransactionError) as ex:
-            self.logger.error(ex, exc_info=True)
-            raise ApiManagerError(ex)
-
-    def register_object(self, args, desc=u'', objid=None):
-        """Register object types, objects and permissions related to module.
-        
-        :param args:
-        """
-        try:
-            # add object and permissions
-            obj_type = self.auth_db_manager.get_object_type(
-                objtype=self.objtype, objdef=self.objdef)[0][0]
-            objs = [(obj_type, self._get_value(self.objdef, args), 
-                     u'%s events' % desc)]
-            actions = self.auth_db_manager.get_object_action()
-            self.auth_db_manager.add_object(objs, actions)
-            
-            self.logger.debug(u'Register api object: %s:%s %s' % 
-                              (self.objtype, self.objdef, objs))
-        except (QueryError, TransactionError) as ex:
-            self.logger.error(ex, exc_info=True)
-            raise ApiManagerError(ex)
-
-    def deregister_object(self, args, objid=None):
-        """Deregister object types, objects and permissions related to module.
-        
-        :param args: 
-        """
-        try:
-            # remove object and permissions
-            obj_type = self.auth_db_manager.get_object_type(
-                objtype=self.objtype, objdef=self.objdef)[0][0]
-            objid = self._get_value(self.objdef, args)
-            self.auth_db_manager.remove_object(objid=objid, objtype=obj_type)
-            self.logger.debug(u'Deregister api object: %s:%s %s' % 
-                              (self.objtype, self.objdef, objid))
-        except (QueryError, TransactionError) as ex:
-            self.logger.error(ex, exc_info=True)
-            raise ApiManagerError(ex)
-
-def make_event_class(name, event_class, **kwattrs):
-    return type(str(name), (event_class,), dict(**kwattrs))
-'''
 
 
 class ApiObject(object):
@@ -1837,6 +1654,25 @@ class ApiObject(object):
         return '//'.join(data)
 
     #
+    # encryption method
+    #
+    def encrypt_data(self, data):
+        """Encrypt data using a fernet key and a symmetric algorithm
+
+        :param data: data to encrypt
+        :return: encrypted data
+        """
+        return self.controller.encrypt_data(data)
+
+    def decrypt_data(self, data):
+        """Decrypt data using a fernet key and a symmetric algorithm
+
+        :param data: data to decrypt
+        :return: decrypted data
+        """
+        return self.controller.decrypt_data(data)
+
+    #
     # info
     #
     def small_info(self):
@@ -1868,7 +1704,7 @@ class ApiObject(object):
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
         res = {
-            u'__meta__':{
+            u'__meta__': {
                 u'objid': self.objid,
                 u'type': self.objtype,
                 u'definition': self.objdef,
@@ -2652,8 +2488,6 @@ class ApiViewResponse(ApiObject):
     objdef = u'Response'
     objdesc = u'Api Response'
     
-    #event_ref_class = ApiInternalEvent
-    
     def __init__(self, *args, **kvargs):
         ApiObject.__init__(self, *args, **kvargs)
         self.auth_db_manager = AuthDbManager()    
@@ -2761,10 +2595,9 @@ class ApiViewResponse(ApiObject):
         # send event
         try:
             client = self.controller.module.api_manager.event_producer
-            client.send(self.SYNC_OPERATION, data, source, dest)
+            client.send(self.API_OPERATION, data, source, dest)
         except Exception as ex:
-            self.logger.warning(u'Event can not be published. Event producer '\
-                                u'is not configured - %s' % ex)            
+            self.logger.warning(u'Event can not be published. Event producer is not configured - %s' % ex)
 
 
 class ApiView(FlaskView):

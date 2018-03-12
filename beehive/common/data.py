@@ -7,6 +7,8 @@ from time import time
 from functools import wraps
 import logging
 from uuid import uuid4
+
+import pymysql
 from sqlalchemy.exc import IntegrityError, DBAPIError, ArgumentError
 from beecell.simple import id_gen, truncate
 from beecell.simple import import_class

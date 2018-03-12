@@ -103,7 +103,7 @@ class ProviderControllerChild(ResourceEntityController):
 
 
 class ProviderRegionController(ProviderControllerChild):
-    uri = u'/v1.0/provider/regions'
+    uri = u'/v1.0/nrs/provider/regions'
 
     class Meta:
         label = 'provider.beehive.regions'
@@ -113,7 +113,7 @@ class ProviderRegionController(ProviderControllerChild):
 
 
 class ProviderSiteController(ProviderControllerChild):
-    uri = u'/v1.0/provider/sites'
+    uri = u'/v1.0/nrs/provider/sites'
 
     class Meta:
         label = 'provider.beehive.sites'
@@ -159,7 +159,7 @@ class ProviderSiteController(ProviderControllerChild):
 
 
 class ProviderSiteNetworkController(ProviderControllerChild):
-    uri = u'/v1.0/provider/site_networks'
+    uri = u'/v1.0/nrs/provider/site_networks'
 
     class Meta:
         label = 'provider.beehive.site_networks'
@@ -187,7 +187,7 @@ class ProviderSiteNetworkController(ProviderControllerChild):
 
 
 class ProviderComputeZoneController(ProviderControllerChild):
-    uri = u'/v1.0/provider/compute_zones'
+    uri = u'/v1.0/nrs/provider/compute_zones'
 
     class Meta:
         label = 'provider.beehive.compute_zones'
@@ -254,7 +254,7 @@ class ProviderComputeZoneController(ProviderControllerChild):
 
 
 class ProviderComputeFlavorController(ProviderControllerChild):
-    uri = u'/v1.0/provider/flavors'
+    uri = u'/v1.0/nrs/provider/flavors'
 
     class Meta:
         label = 'provider.beehive.flavors'
@@ -280,7 +280,7 @@ class ProviderComputeFlavorController(ProviderControllerChild):
 
 
 class ProviderComputeImageController(ProviderControllerChild):
-    uri = u'/v1.0/provider/images'
+    uri = u'/v1.0/nrs/provider/images'
     headers = [u'id', u'uuid', u'name', u'parent', u'state', u'creation', u'modified']
     fields = [u'id', u'uuid', u'name', u'parent.name', u'state', u'date.creation', u'date.modified']
 
@@ -332,7 +332,7 @@ class ProviderComputeImageController(ProviderControllerChild):
 
 
 class ProviderComputeVpcController(ProviderControllerChild):
-    uri = u'/v1.0/provider/vpcs'
+    uri = u'/v1.0/nrs/provider/vpcs'
 
     class Meta:
         label = 'provider.beehive.vpcs'
@@ -363,7 +363,7 @@ class ProviderComputeVpcController(ProviderControllerChild):
 
 
 class ProviderComputeSecurityGroupController(ProviderControllerChild):
-    uri = u'/v1.0/provider/security_groups'
+    uri = u'/v1.0/nrs/provider/security_groups'
 
     class Meta:
         label = 'provider.beehive.security_groups'
@@ -382,7 +382,7 @@ class ProviderComputeSecurityGroupController(ProviderControllerChild):
 
 
 class ProviderComputeComputeRuleController(ProviderControllerChild):
-    uri = u'/v1.0/provider/rules'
+    uri = u'/v1.0/nrs/provider/rules'
 
     class Meta:
         label = 'provider.beehive.rules'
@@ -427,7 +427,7 @@ class ProviderComputeComputeRuleController(ProviderControllerChild):
 
 
 class ProviderComputeComputeInstanceController(ProviderControllerChild):
-    uri = u'/v1.0/provider/instances'
+    uri = u'/v1.0/nrs/provider/instances'
     fields = [u'id', u'name', u'parent.name', u'availability_zone.name', u'attributes.type', u'state',
               u'date.creation', u'image_desc', u'vpcs.0.name', u'flavor.vcpus', u'flavor.memory', u'flavor.disk',
               u'vpcs.0.fixed_ip.ip']
@@ -492,7 +492,7 @@ class ProviderComputeComputeInstanceController(ProviderControllerChild):
 
 
 class ProviderComputeComputeStackController(ProviderControllerChild):
-    uri = u'/v1.0/provider/stacks'
+    uri = u'/v1.0/nrs/provider/stacks'
     headers = [u'id', u'uuid', u'name', u'parent', u'state', u'creation']
     headers = [u'id', u'uuid', u'name', u'parent.name', u'state', u'date.creation', u'date.modified']
 

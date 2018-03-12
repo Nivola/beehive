@@ -318,7 +318,7 @@ class GetAllTasksParamsResponseSchema(Schema):
     # args = fields.List(required=False)
     worker = fields.String(required=True, default=u'celery@tst-beehive-02')
     elapsed = fields.Float(required=True, default=0.0474607944)
-    result = fields.Boolean(required=True, default=True)
+    # result = fields.Boolean(required=True, default=True)
     ttl = fields.Integer(required=True, default=83582)
     type = fields.String(required=True, default=u'JOB')
     children = fields.List(fields.Dict(), required=False)
@@ -537,10 +537,15 @@ class SchedulerAPI(ApiView):
     @staticmethod
     def register_api(module):
         rules = [
-            (u'scheduler/entries', u'GET', GetSchedulerEntries, {}),
-            (u'scheduler/entries/<oid>', u'GET', GetSchedulerEntry, {}),
-            (u'scheduler/entries', u'POST', CreateSchedulerEntry, {}),
-            (u'scheduler/entries/<oid>', u'DELETE', DeleteSchedulerEntry, {}),
+            # (u'/scheduler/entries', u'GET', GetSchedulerEntries, {}),
+            # (u'/scheduler/entries/<oid>', u'GET', GetSchedulerEntry, {}),
+            # (u'/scheduler/entries', u'POST', CreateSchedulerEntry, {}),
+            # (u'/scheduler/entries/<oid>', u'DELETE', DeleteSchedulerEntry, {}),
+
+            (u'%s/scheduler/entries' % module.base_path, u'GET', GetSchedulerEntries, {}),
+            (u'%s/scheduler/entries/<oid>' % module.base_path, u'GET', GetSchedulerEntry, {}),
+            (u'%s/scheduler/entries' % module.base_path, u'POST', CreateSchedulerEntry, {}),
+            (u'%s/scheduler/entries/<oid>' % module.base_path, u'DELETE', DeleteSchedulerEntry, {}),
         ]
 
         ApiView.register_api(module, rules)
@@ -552,18 +557,31 @@ class TaskAPI(ApiView):
     @staticmethod
     def register_api(module):
         rules = [
-            (u'worker/ping', u'GET', ManagerPing, {}),
-            (u'worker/stats', u'GET', ManagerStats, {}),
-            (u'worker/report', u'GET', ManagerReport, {}),
-            (u'worker/queues', u'GET', ManagerActiveQueues, {}),
-            (u'worker/tasks', u'GET', GetAllTasks, {}),
-            (u'worker/tasks/count', u'GET', GetTasksCount, {}),
-            (u'worker/tasks/definitions', u'GET', GetTasksDefinition, {}),
-            (u'worker/tasks/<oid>', u'GET', QueryTask, {}),
-            (u'worker/tasks/<oid>/graph', u'GET', GetTaskGraph, {}),
-            (u'worker/tasks', u'DELETE', PurgeAllTasks, {}),
-            (u'worker/tasks/<oid>', u'DELETE', DeleteTask, {}),
-            (u'worker/tasks/test', u'POST', RunJobTest, {}),
+            # (u'worker/ping', u'GET', ManagerPing, {}),
+            # (u'worker/stats', u'GET', ManagerStats, {}),
+            # (u'worker/report', u'GET', ManagerReport, {}),
+            # (u'worker/queues', u'GET', ManagerActiveQueues, {}),
+            # (u'worker/tasks', u'GET', GetAllTasks, {}),
+            # (u'worker/tasks/count', u'GET', GetTasksCount, {}),
+            # (u'worker/tasks/definitions', u'GET', GetTasksDefinition, {}),
+            # (u'worker/tasks/<oid>', u'GET', QueryTask, {}),
+            # (u'worker/tasks/<oid>/graph', u'GET', GetTaskGraph, {}),
+            # (u'worker/tasks', u'DELETE', PurgeAllTasks, {}),
+            # (u'worker/tasks/<oid>', u'DELETE', DeleteTask, {}),
+            # (u'worker/tasks/test', u'POST', RunJobTest, {}),
+
+            (u'%s/worker/ping' % module.base_path, u'GET', ManagerPing, {}),
+            (u'%s/worker/stats' % module.base_path, u'GET', ManagerStats, {}),
+            (u'%s/worker/report' % module.base_path, u'GET', ManagerReport, {}),
+            (u'%s/worker/queues' % module.base_path, u'GET', ManagerActiveQueues, {}),
+            (u'%s/worker/tasks' % module.base_path, u'GET', GetAllTasks, {}),
+            (u'%s/worker/tasks/count' % module.base_path, u'GET', GetTasksCount, {}),
+            (u'%s/worker/tasks/definitions' % module.base_path, u'GET', GetTasksDefinition, {}),
+            (u'%s/worker/tasks/<oid>' % module.base_path, u'GET', QueryTask, {}),
+            (u'%s/worker/tasks/<oid>/graph' % module.base_path, u'GET', GetTaskGraph, {}),
+            (u'%s/worker/tasks' % module.base_path, u'DELETE', PurgeAllTasks, {}),
+            (u'%s/worker/tasks/<oid>' % module.base_path, u'DELETE', DeleteTask, {}),
+            (u'%s/worker/tasks/test' % module.base_path, u'POST', RunJobTest, {}),
         ]
 
         ApiView.register_api(module, rules)

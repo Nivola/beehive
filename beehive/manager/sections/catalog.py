@@ -1,20 +1,21 @@
-'''
+"""
 Created on Sep 27, 2017
 
 @author: darkbk
-'''
+"""
 import logging
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController, check_error
 from re import match
 from beecell.simple import truncate
+from beehive.manager.sections.scheduler import WorkerController, ScheduleController, TaskController
 
 logger = logging.getLogger(__name__)
 
 
 class DirectoryController(BaseController):
     class Meta:
-        label = 'directory'
+        label = 'dir'
         stacked_on = 'base'
         stacked_type = 'nested'
         description = "Directory Service management"
@@ -25,7 +26,8 @@ class DirectoryController(BaseController):
 
 
 class DirectoryControllerChild(ApiController):
-    cataloguri = u'/v1.0/directory'
+    baseuri = u'/v1.0/nas'
+    caturi = u'/v1.0/ncs'
     subsystem = u'auth'
     
     cat_headers = [u'id', u'uuid', u'name', u'zone', u'active', 
@@ -35,9 +37,33 @@ class DirectoryControllerChild(ApiController):
                    u'date.creation', u'date.modified']
     
     class Meta:
-        stacked_on = 'directory'
+        stacked_on = 'dir'
         stacked_type = 'nested'
 
+
+class CatalogWorkerController(DirectoryControllerChild, WorkerController):
+    class Meta:
+        label = 'catalog.workers'
+        aliases = ['workers']
+        aliases_only = True
+        description = "Worker management"
+
+
+class CatalogTaskController(DirectoryControllerChild, TaskController):
+    class Meta:
+        label = 'catalog.tasks'
+        aliases = ['tasks']
+        aliases_only = True
+        description = "Task management"
+
+
+class CatalogScheduleController(DirectoryControllerChild, ScheduleController):
+    class Meta:
+        label = 'catalog.schedules'
+        aliases = ['schedules']
+        aliases_only = True
+        description = "Schedule management"
+        
 
 class CatalogController(DirectoryControllerChild):
     class Meta:
@@ -50,7 +76,7 @@ class CatalogController(DirectoryControllerChild):
         """List catalog 
         """
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        uri = u'%s/catalogs' % (self.cataloguri)
+        uri = u'%s/catalogs' % (self.caturi)
         res = self._call(uri, u'GET', data=data)
         logger.info(u'Get catalogs: %s' % res)  
         self.result(res, key=u'catalogs', headers=self.cat_headers)
@@ -61,13 +87,13 @@ class CatalogController(DirectoryControllerChild):
         """Get catalog by id
         """
         catalog_id = self.get_arg(name=u'id')
-        uri = u'%s/catalogs/%s' % (self.cataloguri, catalog_id)
+        uri = u'%s/catalogs/%s' % (self.caturi, catalog_id)
         res = self._call(uri, u'GET')
         logger.info(u'Get catalog: %s' % res)
         services = res.get(u'catalog').pop(u'services')
         self.result(res, key=u'catalog', headers=self.cat_headers, details=True)
         self.app.print_output(u'services:')        
-        self.result(services, headers=[u'service', u'endpoints'])
+        self.result(services, headers=[u'service', u'endpoints'], maxsize=200)
     
     @expose(aliases=[u'add <name> <zone>'], aliases_only=True)
     @check_error
@@ -103,7 +129,7 @@ class EndpointController(DirectoryControllerChild):
         """List endpoints
         """
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        uri = u'%s/endpoints' % (self.cataloguri)
+        uri = u'%s/endpoints' % (self.caturi)
         res = self._call(uri, u'GET', data=data)
         logger.info(u'Get endpoints: %s' % res)  
         self.result(res, key=u'endpoints', headers=self.end_headers)
@@ -114,7 +140,7 @@ class EndpointController(DirectoryControllerChild):
         """Get endpoint by id
         """
         endpoint_id = self.get_arg(name=u'id')
-        uri = u'%s/endpoints/%s' % (self.cataloguri, endpoint_id)
+        uri = u'%s/endpoints/%s' % (self.caturi, endpoint_id)
         res = self._call(uri, u'GET')
         logger.info(u'Get endpoint: %s' % res)
         self.result(res, key=u'endpoint', headers=self.end_headers, details=True)
@@ -183,5 +209,8 @@ class EndpointController(DirectoryControllerChild):
 catalog_controller_handlers = [
     DirectoryController,
     CatalogController,
-    EndpointController
+    EndpointController,
+    CatalogWorkerController,
+    CatalogScheduleController,
+    CatalogTaskController
 ]                   

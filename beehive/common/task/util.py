@@ -1,13 +1,14 @@
-'''
+"""
 Created on May 16, 2017
 
 @author: darkbk
-'''
+"""
 from celery.utils.log import get_task_logger
 from beehive.common.task.manager import task_manager
 from beehive.common.task.job import JobTask, job_task
 
 logger = get_task_logger(__name__)
+
 
 #
 # multi purpose tasks
@@ -32,6 +33,7 @@ def join_task(self, options):
     self.update_job(status=u'PROGRESS')
     return None
 
+
 @task_manager.task(bind=True, base=JobTask)
 @job_task()
 def start_task(self, options):
@@ -51,6 +53,7 @@ def start_task(self, options):
     # update job status
     self.update_job(status=u'PROGRESS')
     return None
+
 
 @task_manager.task(bind=True, base=JobTask)
 @job_task()

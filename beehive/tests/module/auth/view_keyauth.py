@@ -32,35 +32,35 @@ class AuthObjectTestCase(BeehiveTestCase):
                 u'password':self.users[u'admin'][u'pwd'],
                 u'login-ip':self.users[u'admin'][u'ip'],
                 u'porva':None}
-        self.call(u'auth', u'/v1.0/keyauth/token', u'post', data=data)
+        self.call(u'auth', u'/v1.0/nas/keyauth/token', u'post', data=data)
     
     @assert_exception(BadRequestException)
     def test_create_token_wrong_user_syntax(self):
         data = {u'user':u'pippo', 
                 u'password':u'mypass'}
-        self.call(u'auth', u'/v1.0/keyauth/token', u'post', data=data)
+        self.call(u'auth', u'/v1.0/nas/keyauth/token', u'post', data=data)
         
     @assert_exception(NotFoundException)
     def test_create_token_wrong_user(self):
         data = {u'user':u'pippo@local', 
                 u'password':u'mypass'}
-        self.call(u'auth', u'/v1.0/keyauth/token', u'post', data=data)
+        self.call(u'auth', u'/v1.0/nas/keyauth/token', u'post', data=data)
         
     @assert_exception(UnauthorizedException)
     def test_create_token_wrong_pwd(self):
         data = {u'user':self.users[u'admin'][u'user'], 
                 u'password':u'mypass'}
-        self.call(u'auth', u'/v1.0/keyauth/token', u'post', data=data) 
+        self.call(u'auth', u'/v1.0/nas/keyauth/token', u'post', data=data) 
 
     @assert_exception(BadRequestException)
     def test_create_token_no_user(self):
         data = {u'password':self.users[u'admin'][u'pwd']}
-        self.call(u'auth', u'/v1.0/keyauth/token', u'post', data=data)
+        self.call(u'auth', u'/v1.0/nas/keyauth/token', u'post', data=data)
     
     @assert_exception(BadRequestException)
     def test_create_token_no_pwd(self):
         data = {u'user':self.users[u'admin'][u'user']}
-        self.call(u'auth', u'/v1.0/keyauth/token', u'post', data=data)
+        self.call(u'auth', u'/v1.0/nas/keyauth/token', u'post', data=data)
 
 
 if __name__ == u'__main__':

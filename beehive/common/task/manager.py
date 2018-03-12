@@ -222,10 +222,8 @@ def start_scheduler(params):
     from beehive.module.scheduler.redis_scheduler import RedisScheduler
 
     beat = task_scheduler.Beat(loglevel=logging.getLevelName(logger_level), 
-                               logfile='%s/%s.scheduler.log' % (log_path, 
-                                                                params['api_id']),
-                               pidfile='%s/%s.scheduler.pid' % (run_path, 
-                                                                params['api_id']),
+                               logfile='%s/%s.scheduler.log' % (log_path, params['api_id']),
+                               pidfile='%s/%s.scheduler.pid' % (run_path, params['api_id']),
                                scheduler_cls=RedisScheduler)
 
     

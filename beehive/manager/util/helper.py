@@ -1,25 +1,28 @@
-'''
+"""
 Created on May 11, 2017
 
 @author: darkbk
-'''
+"""
 import logging
 import ujson as json
 import datetime
+
 from beehive.common.apimanager import ApiManager
 from beehive.common.data import operation
 from beecell.simple import import_class, id_gen, random_password, get_value
 from beehive.module.auth.controller import Objects, Role, User
 from beehive.common.apiclient import BeehiveApiClient, BeehiveApiClientError
-from beehive.module.catalog.controller import Catalog
+from beehive.module.catalog.controller import Catalog, CatalogEndpoint
 from beehive.common.model.config import ConfigDbManager
 from beecell.db.manager import RedisManager
 from beecell.db import QueryError
+
 
 try:
     import json
 except ImportError:
     import simplejson as json
+
 
 class BeehiveHelper(object):
     """Beehive subsystem manager helper.
@@ -29,7 +32,8 @@ class BeehiveHelper(object):
         Objects,
         Role,
         User,
-        Catalog
+        Catalog,
+        CatalogEndpoint
     ]
     
     def __init__(self):
@@ -73,10 +77,10 @@ class BeehiveHelper(object):
         manager = None
         try:
             # create api manager
-            params = {u'api_id':u'server-01',
-                      u'api_name':config[u'api_system'],
-                      u'api_subsystem':config[u'api_subsystem'],
-                      u'database_uri':config[u'db_uri'],
+            params = {u'api_id': u'server-01',
+                      u'api_name': config[u'api_system'],
+                      u'api_subsystem': config[u'api_subsystem'],
+                      u'database_uri': config[u'db_uri'],
                       u'api_module':[u'beehive.module.process.mod.ConfigModule'],
                       u'api_plugin':[]}
             manager = ApiManager(params)    
@@ -144,13 +148,13 @@ class BeehiveHelper(object):
     
         try:
             # create api manager
-            params = {u'api_id':u'server-01',
-                      u'api_name':config[u'api_system'],
-                      u'api_subsystem':config[u'api_subsystem'],
-                      u'database_uri':config[u'db_uri'],
-                      u'redis_identity_uri':config[u'redis_identity_uri'],
-                      u'api_module':config[u'api_modules'],
-                      u'api_plugin':config[u'api_plugins']}
+            params = {u'api_id': u'server-01',
+                      u'api_name': config[u'api_system'],
+                      u'api_subsystem': config[u'api_subsystem'],
+                      u'database_uri': config[u'db_uri'],
+                      u'redis_identity_uri': config[u'redis_identity_uri'],
+                      u'api_module': config[u'api_modules'],
+                      u'api_plugin': config[u'api_plugins']}
             manager = ApiManager(params)
             manager.configure()
             manager.register_modules()
@@ -283,31 +287,42 @@ class BeehiveHelper(object):
         """
         msgs = []
         
-        catalog = config[u'catalog']
+        catalogs = config[u'catalogs']
         
-        # for catalog in catalogs:
-        # check if catalog already exist
-        try:
-            controller.get_catalog(catalog[u'name'])
-            self.logger.warn(u'Catalog %s already exist' % 
-                             (catalog[u'name']))
-            msgs.append(u'Catalog %s already exist' % 
-                             (catalog[u'name']))
-            # res = cats[0][u'oid']
-        except:
-            # create new catalog
-            res = controller.add_catalog(catalog[u'name'], 
-                                         catalog[u'desc'], 
-                                         catalog[u'zone'])
-            self.logger.info(u'Add catalog name:%s zone:%s : %s' % 
-                             (catalog[u'name'], catalog[u'zone'], res))
-            msgs.append(u'Add catalog name:%s zone:%s : %s' % 
-                        (catalog[u'name'], catalog[u'zone'], res))
-        
-            # set catalog in config
-            config_db_manager.add(config[u'api_system'], u'api', 
-                                  u'catalog', catalog[u'name'])
-        
+        for catalog in catalogs:
+            # check if catalog already exist
+            try:
+                controller.get_catalog(catalog[u'name'])
+                self.logger.warn(u'Catalog %s already exist' % (catalog[u'name']))
+                msgs.append(u'Catalog %s already exist' % (catalog[u'name']))
+                # res = cats[0][u'oid']
+            except:
+                # create new catalog
+                cat = controller.add_catalog(catalog[u'name'], catalog[u'desc'], catalog[u'zone'])
+                self.logger.info(u'Add catalog name:%s zone:%s : %s' % (catalog[u'name'], catalog[u'zone'], cat))
+                msgs.append(u'Add catalog name:%s zone:%s : %s' % (catalog[u'name'], catalog[u'zone'], cat))
+
+                # set catalog in config if internal
+                if catalog[u'zone'] == u'internal':
+                    config_db_manager.add(config[u'api_system'], u'api', u'catalog', catalog[u'name'])
+
+            # add endpoint
+            for endpoint in catalog.get(u'endpoints', []):
+                # check if endpoint already exist
+                try:
+                    controller.get_endpoint(endpoint[u'name'])
+                    self.logger.warn(u'Endpoint %s already exist' % (endpoint[u'name']))
+                    msgs.append(u'Endpoint %s already exist' % (endpoint[u'name']))
+                    # res = cats[0][u'oid']
+                except:
+                    # create new endpoint
+                    cat = controller.get_catalog(catalog[u'name'])
+                    res = cat.add_endpoint(name=endpoint[u'name'], desc=endpoint[u'desc'], service=endpoint[u'service'],
+                                           uri=endpoint[u'uri'], active=True)
+                    self.logger.info(u'Add endpoint name:%s service:%s : %s' % (endpoint[u'name'],
+                                                                                endpoint[u'service'], res))
+                    msgs.append(u'Add endpoint name:%s service:%s : %s' % (endpoint[u'name'], endpoint[u'service'], res))
+
         return msgs
     
     def __setup_kombu_queue(self, config):
@@ -366,9 +381,9 @@ class BeehiveHelper(object):
             
             if update is False:
                 # create super user
-                user = {u'name':u'%s_admin@local' % config[u'api_subsystem'],
-                        u'pwd':random_password(20),
-                        u'desc':u'%s internal user' % subsystem}
+                user = {u'name': u'%s_admin@local' % config[u'api_subsystem'],
+                        u'pwd': random_password(20),
+                        u'desc': u'%s internal user' % subsystem}
                 try:
                     client.add_system_user(user[u'name'], 
                                            password=user[u'pwd'], 
@@ -381,18 +396,18 @@ class BeehiveHelper(object):
                         raise
             
                 # append system user config
-                config[u'config'].append({u'group':u'api',
-                                          u'name':u'user', 
-                                          u'value':{u'name':user[u'name'],
-                                                    u'pwd':user[u'pwd']}})
+                config[u'config'].append({u'group': u'api',
+                                          u'name': u'user', 
+                                          u'value': {u'name': user[u'name'],
+                                                     u'pwd': user[u'pwd']}})
                 # append catalog config
-                config[u'config'].append({u'group':u'api', 
-                                          u'name':u'catalog', 
-                                          u'value':api_config[u'catalog']})
+                config[u'config'].append({u'group': u'api', 
+                                          u'name': u'catalog', 
+                                          u'value': api_config[u'catalog']})
                 # append auth endpoints config
-                config[u'config'].append({u'group':u'api', 
-                                          u'name':u'endpoints', 
-                                          u'value':json.dumps(api_config[u'endpoint'])})
+                config[u'config'].append({u'group': u'api', 
+                                          u'name': u'endpoints', 
+                                          u'value': json.dumps(api_config[u'endpoint'])})
     
             res.extend(self.__configure(config, update=update))
             res.extend(self.__init_subsystem(config, update=update))

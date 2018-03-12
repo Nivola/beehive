@@ -285,7 +285,8 @@ class Job(AbstractJob):
         The return value of this handler is ignored.
         """
         self.update_job(status=u'FAILURE', current_time=time())    
-        
+
+
 class JobTask(AbstractJob):
     abstract = True
     inner_type = u'JOBTASK'       
@@ -296,16 +297,12 @@ class JobTask(AbstractJob):
     def api_admin_request(self, module, path, method, data=u'', 
                           other_headers=None):
         if isinstance(data, dict): data = json.dumps(data)
-        return self.app.api_manager.api_client.admin_request(module, path, 
-                                                             method, data,
-                                                             other_headers)
+        return self.app.api_manager.api_client.admin_request(module, path, method, data, other_headers)
 
     def api_user_request(self, module, path, method, data=u'',
                          other_headers=None):
         if isinstance(data, dict): data = json.dumps(data)
-        return self.app.api_manager.api_client.user_request(module, path, 
-                                                            method, data,
-                                                            other_headers)
+        return self.app.api_manager.api_client.user_request(module, path, method, data, other_headers)
 
     def _query_job(self, module, job_id, attempt):
         """Query remote job status.
@@ -315,8 +312,15 @@ class JobTask(AbstractJob):
         :return: job status. Possible value are: PENDING, PROGRESS, SUCCESS,
                  FAILURE
         """
+        prefix = {
+            u'auth': u'nas',
+            u'service': u'nws',
+            u'resource': u'nrs',
+            u'event': u'nes'
+        }
+
         try:
-            uri = u'/v1.0/worker/tasks/%s' % job_id
+            uri = u'/v1.0/%s/worker/tasks/%s' % (prefix[module], job_id)
             res = self.api_admin_request(module, uri, u'GET', u'').get(u'task_instance', {})
             logger.debug(u'Query job %s: %s' % (job_id, res[u'status']))
         except ApiManagerError as ex:
@@ -532,7 +536,6 @@ class JobTask(AbstractJob):
 
 
 def job(entity_class=None, name=None, module=None, delta=2):
-    #, op=None, act=u'use'):
     """Decorator used for workflow main task.
     
     Example::
@@ -552,8 +555,6 @@ def job(entity_class=None, name=None, module=None, delta=2):
     def wrapper(fn):
         @wraps(fn)
         def decorated_view(task, objid, *args, **kwargs):
-            #task = args[0]
-
             # setup correct user
             try:
                 user = get_value(kwargs, u'user', u'task_manager')
@@ -584,14 +585,6 @@ def job(entity_class=None, name=None, module=None, delta=2):
             task_local.delta = delta
             task_local.user = operation.user
             
-            '''
-            if task_local.op is None:
-                if op is None:
-                    task_local.op = u'%s.%s' % (entity_class.objdef, act)
-                else:
-                    task_local.op = u'%s.%s.%s' % (entity_class.objdef, op, act)
-            '''          
-            
             # record PENDING task and set start-time
             status = u'STARTED'
             start_time = time()
@@ -604,15 +597,12 @@ def job(entity_class=None, name=None, module=None, delta=2):
             
             # send event
             task.send_job_event(status, 0, ex=None, msg=None)
-            
-            #task.update_job(params, u'PROGRESS', time())
                    
             res = fn(task, objid, *args, **kwargs)
-            #res = fn(*args)
-            #task.update(u'STARTED')
             return res
         return decorated_view
     return wrapper
+
 
 def job_task(module=u''):
     """Decorator used for workflow child task.
@@ -628,8 +618,6 @@ def job_task(module=u''):
     def wrapper(fn):
         @wraps(fn)
         def decorated_view(task, params, *args, **kwargs):
-            #task = args[0]
-            #params = args[1]
             entity_class = import_class(params[0])
             
             if entity_class.module is not None:
@@ -652,9 +640,7 @@ def job_task(module=u''):
             operation.session = None
             operation.transaction = None
 
-            task.update(u'STARTED', start_time=time(), 
-                        msg=u'Start %s:%s' % (task.name, task.request.id))
-            #task.update(u'PROGRESS')
+            task.update(u'STARTED', start_time=time(), msg=u'Start %s:%s' % (task.name, task.request.id))
             res = fn(task, params, *args, **kwargs)
             return res
         return decorated_view

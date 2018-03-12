@@ -24,6 +24,7 @@ from cement.core.controller import expose
 from time import sleep
 from beecell.remote import NotFoundException
 from time import time
+from beehive.manager.sections.scheduler import WorkerController, ScheduleController, TaskController
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ class ResourceController(BaseController):
 
 
 class ResourceControllerChild(ApiController):
-    baseuri = u'/v1.0'
+    baseuri = u'/v1.0/nrs'
     subsystem = u'resource'
     res_headers = [u'id', u'__meta__.definition', u'name', u'container.name', u'parent.name', u'state',
                    u'date.creation', u'ext_id']
@@ -59,17 +60,41 @@ class ResourceControllerChild(ApiController):
     
     class Meta:
         stacked_on = 'resource'
-        stacked_type = 'nested'        
+        stacked_type = 'nested'
 
 
-class ContainerController(ResourceControllerChild):
+class ResourceWorkerController(ResourceControllerChild, WorkerController):
+    class Meta:
+        label = 'resource.workers'
+        aliases = ['workers']
+        aliases_only = True
+        description = "Worker management"
+
+
+class ResourceTaskController(ResourceControllerChild, TaskController):
+    class Meta:
+        label = 'resource.tasks'
+        aliases = ['tasks']
+        aliases_only = True
+        description = "Task management"
+
+
+class ResourceScheduleController(ResourceControllerChild, ScheduleController):
+    class Meta:
+        label = 'resource.schedules'
+        aliases = ['schedules']
+        aliases_only = True
+        description = "Schedule management"
+
+
+class ContainerController(ResourceControllerChild, WorkerController):
     class Meta:
         label = 'containers'
         description = "Container management"
 
     def get_job_state(self, jobid):
         try:
-            res = self._call(u'/v1.0/worker/tasks/%s' % jobid, u'GET')
+            res = self._call(u'%s/worker/tasks/%s' % (self.baseuri, jobid), u'GET')
             state = res.get(u'task_instance').get(u'status')
             logger.debug(u'Get job %s state: %s' % (jobid, state))
             if state == u'FAILURE':
@@ -96,7 +121,7 @@ class ContainerController(ResourceControllerChild):
         """List containers by: tags
         """
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        uri = u'%s/resourcecontainers' % self.baseuri
+        uri = u'%s/containers' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(u'Get resource containers: %s' % truncate(res))
         self.result(res, key=u'resourcecontainers', headers=self.cont_headers)
@@ -106,7 +131,7 @@ class ContainerController(ResourceControllerChild):
     def types(self):
         """List container types
         """        
-        uri = u'%s/resourcecontainers/types' % self.baseuri
+        uri = u'%s/containers/types' % self.baseuri
         res = self._call(uri, u'GET')
         logger.info(u'Get resource resourcecontainer types: %s' % truncate(res))
         self.result(res, key=u'resourcecontainertypes', headers=[u'category', u'type'])
@@ -117,14 +142,14 @@ class ContainerController(ResourceControllerChild):
         """Get container by id, uuid or name
         """
         value = self.get_arg(name=u'id')
-        uri = u'%s/resourcecontainers/%s' % (self.baseuri, value)
+        uri = u'%s/containers/%s' % (self.baseuri, value)
         res = self._call(uri, u'GET')
         logger.info(u'Get resource resourcecontainer: %s' % truncate(res))
         self.result(res, key=u'resourcecontainer', headers=self.cont_headers, details=True)
     
     '''
     def get_resource_container_rescount(self, value):
-        uri = u'%s/resourcecontainers/%s/count' % (self.baseuri, value)
+        uri = u'%s/containers/%s/count' % (self.baseuri, value)
         res = self._call(uri, u'GET')
         logger.info(u'Get resource resourcecontainer resource count: %s' % truncate(res))
         self.result(res)'''
@@ -137,14 +162,14 @@ class ContainerController(ResourceControllerChild):
         value = self.get_arg(name=u'id')
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
         print data
-        uri = u'%s/resourcecontainers/%s/perms' % (self.baseuri, value)
+        uri = u'%s/containers/%s/perms' % (self.baseuri, value)
         res = self._call(uri, u'GET', data=data)
         logger.info(u'Get resource resourcecontainer perms: %s' % truncate(res))
         self.result(res, key=u'perms', headers=self.perm_headers)
         
     '''
     def get_resource_container_roles(self, value):
-        uri = u'%s/resourcecontainers/%s/roles' % (self.baseuri, value)
+        uri = u'%s/containers/%s/roles' % (self.baseuri, value)
         res = self._call(uri, u'GET')
         logger.info(u'Get resource resourcecontainer roles: %s' % truncate(res))
         self.result(res)'''
@@ -155,7 +180,7 @@ class ContainerController(ResourceControllerChild):
         """Ping container by id, uuid or name
         """        
         contid = self.get_arg(name=u'id')
-        uri = u'%s/resourcecontainers/%s/ping' % (self.baseuri, contid)  
+        uri = u'%s/containers/%s/ping' % (self.baseuri, contid)
         res = self._call(uri, u'GET')      
         logger.info(u'Ping resourcecontainer %s: %s' % (contid, res))
         self.result({u'resourcecontainer':contid, u'ping':res[u'ping']}, 
@@ -167,11 +192,11 @@ class ContainerController(ResourceControllerChild):
         """Ping all containers
         """
         resp = []
-        uri = u'%s/resourcecontainers' % self.baseuri
+        uri = u'%s/containers' % self.baseuri
         res = self._call(uri, u'GET')        
         for rc in res[u'resourcecontainers']:
             start = time()
-            uri = u'%s/resourcecontainers/%s/ping' % (self.baseuri, rc[u'id'])  
+            uri = u'%s/containers/%s/ping' % (self.baseuri, rc[u'id'])
             res = self._call(uri, u'GET')      
             logger.info(u'Ping resourcecontainer %s: %s' % (rc[u'id'], res))
             elapsed = time()-start
@@ -185,24 +210,16 @@ class ContainerController(ResourceControllerChild):
         self.result(resp, headers=[u'uuid', u'name', u'category', u'type', 
                                    u'ping', u'elapsed'])         
     
-    @expose(aliases=[u'add <type> <name> <json conn file>'], aliases_only=True)
+    @expose(aliases=[u'add <json config file>'], aliases_only=True)
     @check_error
     def add(self):
         """Add container
-        """          
-        ctype = self.get_arg(name=u'type')
-        name = self.get_arg(name=u'name')
-        conn = self.get_arg(name=u'connection file')
-        conn = self.load_config(conn)
+        """
+        conf = self.load_config(self.get_arg(name=u'config file'))
         data = {
-            u'resourcecontainer':{
-                u'type':ctype, 
-                u'name':name,
-                u'desc':u'Container %s' % name,
-                u'conn':conn
-            }
+            u'resourcecontainer': conf
         }
-        uri = u'%s/resourcecontainers' % (self.baseuri)
+        uri = u'%s/containers' % (self.baseuri)
         res = self._call(uri, u'POST', data=data)
         logger.info(u'Add resource resourcecontainer: %s' % res)
         res = {u'msg':u'Add resourcecontainer %s' % res}
@@ -214,7 +231,7 @@ class ContainerController(ResourceControllerChild):
         """Delete container by id, uuid or name
         """
         oid = self.get_arg(name=u'id')
-        uri = u'%s/resourcecontainers/%s' % (self.baseuri, oid)
+        uri = u'%s/containers/%s' % (self.baseuri, oid)
         self._call(uri, u'DELETE')
         logger.info(u'Delete resource resourcecontainer: %s' % oid)
         res = {u'msg':u'Delete resource container %s' % oid}
@@ -235,7 +252,7 @@ class ContainerController(ResourceControllerChild):
                 }
             }
         }
-        uri = u'%s/resourcecontainers/%s' % (self.baseuri, contid)        
+        uri = u'%s/containers/%s' % (self.baseuri, contid)
         res = self._call(uri, u'PUT', data=data)
         res = {u'msg':u'Add tag to resource container %s' % contid}
         self.result(res, headers=[u'msg'])
@@ -255,7 +272,7 @@ class ContainerController(ResourceControllerChild):
                 }
             }
         }
-        uri = u'%s/resourcecontainers/%s' % (self.baseuri, contid)        
+        uri = u'%s/containers/%s' % (self.baseuri, contid)
         res = self._call(uri, u'PUT', data=data)
         res = {u'msg':u'Remove tag from resource container %s' % contid}
         self.result(res, headers=[u'msg'])
@@ -266,7 +283,7 @@ class ContainerController(ResourceControllerChild):
         """discover container <class> resources
         """
         contid = self.get_arg(name=u'id')
-        uri = u'%s/resourcecontainers/%s/discover/types' % (self.baseuri, contid)        
+        uri = u'%s/containers/%s/discover/types' % (self.baseuri, contid)
         res = self._call(uri, u'GET', data=u'').get(u'discover_types')
         self.result(res, headers=[u'resource class'], fields=[0], maxsize=200)
     
@@ -277,7 +294,7 @@ class ContainerController(ResourceControllerChild):
         """
         contid = self.get_arg(name=u'id')
         resclass = self.get_arg(default=None)
-        uri = u'%s/resourcecontainers/%s/discover' % (self.baseuri, contid)        
+        uri = u'%s/containers/%s/discover' % (self.baseuri, contid)
         res = self._call(uri, u'GET', data=u'type=%s' % resclass).get(u'discover_resources')
         headers = [u'id', u'name', u'parent', u'type']
         
@@ -296,12 +313,12 @@ class ContainerController(ResourceControllerChild):
         contid = self.get_arg(name=u'id')
 
         # get types
-        uri = u'%s/resourcecontainers/%s/discover/types' % (self.baseuri, contid)
+        uri = u'%s/containers/%s/discover/types' % (self.baseuri, contid)
         types = self._call(uri, u'GET', data=u'').get(u'discover_types')
 
         res = {u'new': [], u'died': [], u'changed': []}
         for type in types:
-            uri = u'%s/resourcecontainers/%s/discover' % (self.baseuri, contid)
+            uri = u'%s/containers/%s/discover' % (self.baseuri, contid)
             parres = self._call(uri, u'GET', data=u'type=%s' % type).get(u'discover_resources')
             res[u'new'].extend(parres[u'new'])
             res[u'died'].extend(parres[u'died'])
@@ -331,7 +348,7 @@ class ContainerController(ResourceControllerChild):
                 u'changed': True
             }
         }
-        uri = u'%s/resourcecontainers/%s/discover' % (self.baseuri, contid)        
+        uri = u'%s/containers/%s/discover' % (self.baseuri, contid)
         res = self._call(uri, u'PUT', data=data)
         self.result(res)
         jobid = res[u'jobid']
@@ -345,7 +362,7 @@ class ContainerController(ResourceControllerChild):
         contid = self.get_arg(name=u'id')
 
         # get types
-        uri = u'%s/resourcecontainers/%s/discover/types' % (self.baseuri, contid)
+        uri = u'%s/containers/%s/discover/types' % (self.baseuri, contid)
         types = self._call(uri, u'GET', data=u'').get(u'discover_types')
 
         for type in types:
@@ -358,7 +375,7 @@ class ContainerController(ResourceControllerChild):
                     u'changed': True
                 }
             }
-            uri = u'%s/resourcecontainers/%s/discover' % (self.baseuri, contid)
+            uri = u'%s/containers/%s/discover' % (self.baseuri, contid)
             res = self._call(uri, u'PUT', data=data)
             self.result(res)
             jobid = res[u'jobid']
@@ -371,20 +388,20 @@ class ContainerController(ResourceControllerChild):
     def get_resource_container_resources_scheduler(self):
         global contid
         data = ''
-        uri = u'%s/resourcecontainer/%s/discover/scheduler' % (self.baseuri, contid)        
+        uri = u'%s/container/%s/discover/scheduler' % (self.baseuri, contid)        
         self.invoke(u'resource', uri, u'GET', data=data)    
     
     @expose(aliases=[u'ping <id>'], aliases_only=True)
     def create_resource_container_resources_scheduler(self):
         global contid
         data = json.dumps({u'minutes':5})
-        uri = u'%s/resourcecontainer/%s/discover/scheduler' % (self.baseuri, contid)        
+        uri = u'%s/container/%s/discover/scheduler' % (self.baseuri, contid)        
         self.invoke(u'resource', uri, u'POST', data=data)
     
     @expose(aliases=[u'ping <id>'], aliases_only=True)
     def remove_resource_container_resources_scheduler(self):
         global contid
-        uri = u'%s/resourcecontainer/%s/discover/scheduler' % (self.baseuri, contid)        
+        uri = u'%s/container/%s/discover/scheduler' % (self.baseuri, contid)        
         self.invoke(u'resource', uri, u'DELETE', data='')'''
 
 
@@ -423,7 +440,7 @@ class ResourceEntityController(ResourceControllerChild):
 
     def get_resource_state(self, uuid):
         try:
-            res = self._call(u'/v1.0/resources/%s' % uuid, u'GET')
+            res = self._call(u'%s/entities/%s' % (self.baseuri, uuid), u'GET')
             state = res.get(u'resource').get(u'state')
             logger.debug(u'Get resource %s state: %s' % (uuid, state))
             return state
@@ -432,7 +449,7 @@ class ResourceEntityController(ResourceControllerChild):
         
     def get_job_state(self, jobid):
         try:
-            res = self._call(u'/v1.0/worker/tasks/%s' % jobid, u'GET')
+            res = self._call(u'%s/worker/tasks/%s' % (self.baseuri, jobid), u'GET')
             state = res.get(u'task_instance').get(u'status')
             logger.debug(u'Get job %s state: %s' % (jobid, state))
             if state == u'FAILURE':
@@ -535,7 +552,7 @@ class ResourceEntityController(ResourceControllerChild):
                 u'tags': params.get(u'tags', None)
             }
         }
-        uri = u'%s/resources' % (self.baseuri)
+        uri = u'%s/entities' % (self.baseuri)
         res = self._call(uri, u'POST', data=data)
         jobid = res.get(u'jobid', None)
         if jobid is not None:
@@ -556,7 +573,7 @@ class ResourceEntityController(ResourceControllerChild):
         data = {
             u'resource': params
         }
-        uri = u'%s/resources/%s' % (self.baseuri, oid)
+        uri = u'%s/entities/%s' % (self.baseuri, oid)
         res = self._call(uri, u'PUT', data=data)
         jobid = res.get(u'jobid', None)
         if jobid is not None:
@@ -575,7 +592,7 @@ class ResourceEntityController(ResourceControllerChild):
         data = {
             u'resource': {u'ext_id': u''}
         }
-        uri = u'%s/resources/%s' % (self.baseuri, oid)
+        uri = u'%s/entities/%s' % (self.baseuri, oid)
         res = self._call(uri, u'PUT', data=data)
         jobid = res.get(u'jobid', None)
         if jobid is not None:
@@ -589,7 +606,7 @@ class ResourceEntityController(ResourceControllerChild):
     def count(self):
         """Count all resource
         """        
-        uri = u'%s/resources/count' % self.baseuri        
+        uri = u'%s/entities/count' % self.baseuri
         res = self._call(uri, u'GET')
         logger.info(res)
         res = {u'msg':u'Resources count %s' % res[u'count']}
@@ -602,7 +619,7 @@ class ResourceEntityController(ResourceControllerChild):
     container, attribute, parent, state
         """
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        uri = u'%s/resources' % self.baseuri        
+        uri = u'%s/entities' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
         self.result(res, key=u'resources', headers=self.res_headers)
@@ -613,7 +630,7 @@ class ResourceEntityController(ResourceControllerChild):
         """List all resource types by field: type, subsystem
         """        
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        uri = u'%s/resources/types' % self.baseuri
+        uri = u'%s/entities/types' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(u'Get resource types: %s' % truncate(res))
         self.result(res, key=u'resourcetypes', headers=[u'id', u'type', u'resclass'], maxsize=400)
@@ -624,7 +641,7 @@ class ResourceEntityController(ResourceControllerChild):
         """Get resource by value or id
         """
         value = self.get_arg(name=u'id')
-        uri = u'%s/resources/%s' % (self.baseuri, value)        
+        uri = u'%s/entities/%s' % (self.baseuri, value)
         res = self._call(uri, u'GET')
         logger.info(res)
         self.result(res, key=u'resource', headers=self.res_headers, details=True)
@@ -636,7 +653,7 @@ class ResourceEntityController(ResourceControllerChild):
         """
         value = self.get_arg(name=u'id')
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        uri = u'%s/resources/%s/perms' % (self.baseuri, value)        
+        uri = u'%s/entities/%s/perms' % (self.baseuri, value)
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
         self.result(res, key=u'perms', headers=self.perm_headers)
@@ -650,7 +667,7 @@ class ResourceEntityController(ResourceControllerChild):
         """
         value = self.get_arg(name=u'id')
         # params = self.get_query_params(**self.app.kvargs)
-        uri = u'%s/resources/%s/tree' % (self.baseuri, value)
+        uri = u'%s/entities/%s/tree' % (self.baseuri, value)
         res = self._call(uri, u'GET', data=urlencode(self.app.kvargs))
         logger.info(u'Get resource tree: %s' % res)
         # if self.format == u'text':
@@ -686,7 +703,7 @@ class ResourceEntityController(ResourceControllerChild):
     - id : resource id
         """
         oid = self.get_arg(name=u'id')
-        uri = u'%s/resources/%s/jobs' % (self.baseuri, oid)
+        uri = u'%s/entities/%s/jobs' % (self.baseuri, oid)
         res = self._call(uri, u'GET', data=u'')
         logger.info(u'Get resource jobs: %s' % truncate(res))
         self.result(res, key=u'resourcejobs', headers=[u'job', u'name', u'timestamp'], maxsize=400)
@@ -728,7 +745,7 @@ class ResourceEntityController(ResourceControllerChild):
         """Delete resource
         """
         value = self.get_arg(name=u'id')
-        uri = u'%s/resources/%s' % (self.baseuri, value)        
+        uri = u'%s/entities/%s' % (self.baseuri, value)
         res = self._call(uri, u'DELETE')
         logger.info(res)
         jobid = res.get(u'jobid', None)
@@ -745,7 +762,7 @@ class ResourceEntityController(ResourceControllerChild):
         resp = []
         values = self.get_arg(name=u'id list')
         for value in values.split(u','):
-            uri = u'%s/resources/%s' % (self.baseuri, value)        
+            uri = u'%s/entities/%s' % (self.baseuri, value)
             res = self._call(uri, u'DELETE')
             logger.info(res)
             jobid = res.get(u'jobid', None)
@@ -770,7 +787,7 @@ class ResourceEntityController(ResourceControllerChild):
                 }
             }
         }
-        uri = u'%s/resources/%s' % (self.baseuri, value)        
+        uri = u'%s/entities/%s' % (self.baseuri, value)
         res = self._call(uri, u'PUT', data=data)
         res = {u'msg':u'Add resource %s tag %s' % (value, value)}
         self.result(res, headers=[u'msg'])
@@ -790,7 +807,7 @@ class ResourceEntityController(ResourceControllerChild):
                 }
             }
         }
-        uri = u'%s/resources/%s' % (self.baseuri, value)        
+        uri = u'%s/entities/%s' % (self.baseuri, value)
         res = self._call(uri, u'PUT', data=data)
         res = {u'msg':u'Delete resource %s tag %s' % (value, value)}
         self.result(res, headers=[u'msg'])
@@ -801,7 +818,7 @@ class ResourceEntityController(ResourceControllerChild):
         """Get linked resources
         """
         value = self.get_arg(name=u'id')
-        uri = u'%s/resources/%s/linked' % (self.baseuri, value)        
+        uri = u'%s/entities/%s/linked' % (self.baseuri, value)
         res = self._call(uri, u'GET')
         logger.info(res)
         self.result(res, key=u'resources', headers=self.res_headers)
@@ -815,14 +832,8 @@ class LinkController(ResourceControllerChild):
     class Meta:
         label = 'links'
         description = "Link management"
-        
-    @expose(help="Link management", hide=True)
-    @check_error
-    def default(self):
-        self.app.args.print_help()
-        
-    @expose(aliases=[u'add <name> <type> <start> <end>'], 
-            aliases_only=True)
+
+    @expose(aliases=[u'add <name> <type> <start> <end>'], aliases_only=True)
     @check_error
     def add(self):
         """Add link <name> of type <type> from resource <start> to resource <end>
@@ -840,7 +851,7 @@ class LinkController(ResourceControllerChild):
                 u'end_resource': end_resource,
             }
         }
-        uri = u'%s/resourcelinks' % self.baseuri        
+        uri = u'%s/links' % self.baseuri
         res = self._call(uri, u'POST', data=data)
         logger.info(res)
         res = {u'msg':u'Add link %s' % res[u'uuid']}
@@ -851,7 +862,7 @@ class LinkController(ResourceControllerChild):
     def count(self):
         """Count all link
         """        
-        uri = u'%s/resourcelinks/count' % self.baseuri        
+        uri = u'%s/links/count' % self.baseuri
         res = self._call(uri, u'GET')
         logger.info(res)
         res = {u'msg':u'Links count %s' % res[u'count']}
@@ -863,7 +874,7 @@ class LinkController(ResourceControllerChild):
         """List all links by field: type, resource, tags
         """
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        uri = u'%s/resourcelinks' % self.baseuri        
+        uri = u'%s/links' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
         self.result(res, key=u'resourcelinks', headers=self.headers, fields=self.fields)
@@ -874,7 +885,7 @@ class LinkController(ResourceControllerChild):
         """Get link by value or id
         """
         value = self.get_arg(name=u'value')
-        uri = u'%s/resourcelinks/%s' % (self.baseuri, value)        
+        uri = u'%s/links/%s' % (self.baseuri, value)
         res = self._call(uri, u'GET')
         logger.info(res)
         self.result(res, key=u'resourcelink', headers=self.link_headers, 
@@ -887,7 +898,7 @@ class LinkController(ResourceControllerChild):
         """
         value = self.get_arg(name=u'value')
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        uri = u'%s/resourcelinks/%s/perms' % (self.baseuri, value)        
+        uri = u'%s/links/%s/perms' % (self.baseuri, value)
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
         self.result(res, key=u'perms', headers=self.perm_headers)
@@ -909,7 +920,7 @@ class LinkController(ResourceControllerChild):
                 u'end_resource':params.get(u'end', None), 
             }
         }
-        uri = u'%s/resourcelinks/%s' % (self.baseuri, value)        
+        uri = u'%s/links/%s' % (self.baseuri, value)
         res = self._call(uri, u'PUT', data=data)
         logger.info(res)
         res = {u'msg':u'Update link %s' % value}
@@ -921,7 +932,7 @@ class LinkController(ResourceControllerChild):
         """Delete link
         """
         value = self.get_arg(name=u'value')
-        uri = u'%s/resourcelinks/%s' % (self.baseuri, value)        
+        uri = u'%s/links/%s' % (self.baseuri, value)
         res = self._call(uri, u'DELETE')
         logger.info(res)
         res = {u'msg':u'Delete link %s' % value}
@@ -932,12 +943,7 @@ class TagController(ResourceControllerChild):
     class Meta:
         label = 'tags'
         description = "Tag management"
-        
-    @expose(help="Tag management", hide=True)
-    @check_error
-    def default(self):
-        self.app.args.print_help()
-    
+
     @expose(aliases=[u'add <value>'], aliases_only=True)
     @check_error
     def add(self):
@@ -945,11 +951,11 @@ class TagController(ResourceControllerChild):
         """
         value = self.get_arg(name=u'value')
         data = {
-            u'resourcetag':{
-                u'value':value
+            u'resourcetag': {
+                u'value': value
             }
         }
-        uri = u'%s/resourcetags' % self.baseuri        
+        uri = u'%s/tags' % self.baseuri
         res = self._call(uri, u'POST', data=data)
         logger.info(res)
         res = {u'msg':u'Add tag %s' % res[u'uuid']}
@@ -960,7 +966,7 @@ class TagController(ResourceControllerChild):
     def count(self):
         """Count all tag
         """        
-        uri = u'%s/resourcetags/count' % self.baseuri        
+        uri = u'%s/tags/count' % self.baseuri
         res = self._call(uri, u'GET')
         logger.info(res)
         res = {u'msg':u'Tags count %s' % res[u'count']}
@@ -972,7 +978,7 @@ class TagController(ResourceControllerChild):
         """List all tags by field: value, container, resource, link
         """
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        uri = u'%s/resourcetags' % self.baseuri        
+        uri = u'%s/tags' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
         self.result(res, key=u'resourcetags', headers=self.tag_headers)
@@ -983,7 +989,7 @@ class TagController(ResourceControllerChild):
         """Get tag by value or id
         """
         value = self.get_arg(name=u'value')
-        uri = u'%s/resourcetags/%s' % (self.baseuri, value)        
+        uri = u'%s/tags/%s' % (self.baseuri, value)
         res = self._call(uri, u'GET')
         logger.info(res)
         self.result(res, key=u'resourcetag', headers=self.tag_headers, 
@@ -999,7 +1005,7 @@ class TagController(ResourceControllerChild):
         """
         value = self.get_arg(name=u'value')
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        uri = u'%s/resourcetags/%s/perms' % (self.baseuri, value)        
+        uri = u'%s/tags/%s/perms' % (self.baseuri, value)
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
         self.result(res, key=u'perms', headers=self.perm_headers)
@@ -1016,7 +1022,7 @@ class TagController(ResourceControllerChild):
                 u'value':new_value
             }
         }
-        uri = u'%s/resourcetags/%s' % (self.baseuri, value)        
+        uri = u'%s/tags/%s' % (self.baseuri, value)
         res = self._call(uri, u'PUT', data=data)
         logger.info(res)
         res = {u'msg':u'Update tag %s' % value}
@@ -1028,7 +1034,7 @@ class TagController(ResourceControllerChild):
         """Delete tag
         """
         value = self.get_arg(name=u'value')
-        uri = u'%s/resourcetags/%s' % (self.baseuri, value)        
+        uri = u'%s/tags/%s' % (self.baseuri, value)
         res = self._call(uri, u'DELETE')
         logger.info(res)
         res = {u'msg':u'Delete tag %s' % value}
@@ -1040,5 +1046,8 @@ resource_controller_handlers = [
     ContainerController,
     ResourceEntityController,
     LinkController,
-    TagController
+    TagController,
+    ResourceWorkerController,
+    ResourceScheduleController,
+    ResourceTaskController
 ]        

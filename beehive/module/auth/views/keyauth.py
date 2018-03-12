@@ -117,7 +117,8 @@ class CreateToken(ApiView):
         res = controller.create_keyauth_token(**data)
         resp = res       
         return resp
-    
+
+
 class KeyAuthApi(ApiView):
     """Asymmetric key authentication API
     """
@@ -125,7 +126,10 @@ class KeyAuthApi(ApiView):
     def register_api(module):
         base = u'keyauth'
         rules = [
-            (u'%s/token' % base, u'POST', CreateToken, {u'secure':False}),
+            (u'%s/token' % base, u'POST', CreateToken, {u'secure': False}),
+
+            # new routes
+            (u'%s/keyauth/token' % module.base_path, u'POST', CreateToken, {u'secure': False}),
         ]
         
         ApiView.register_api(module, rules)

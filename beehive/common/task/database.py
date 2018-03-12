@@ -6,6 +6,7 @@ Created on May 12, 2017
 from beehive.common.task import BaseTask
 from beehive.common.data import operation
 
+
 class DatabaseTask(BaseTask):
     abstract = True
 

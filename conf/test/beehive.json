@@ -789,7 +789,9 @@
                     "db_appuser_password": "N!v0la12vr",
                     "db_root_name": "root",
                     "db_root_password": "N!v0la12vr",
-                    "key_name": "opstkcsi"
+                    "key_name": "opstkcsi",
+                    "engine": "mysql",
+                    "engine": "5.7"
                 }
             }
         },
