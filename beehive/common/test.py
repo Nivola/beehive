@@ -93,8 +93,10 @@ class BeehiveTestCase(unittest.TestCase):
         cfg = config.get(env)
         self.test_config = config.get(u'configs', {})
         for key in self.test_config.get(u'resource').keys():
-            self.test_config.get(u'resource').get(key).update(cfg.get(u'configs').get(u'resource').get(key, {}))
-        
+            if u'configs' in cfg.keys() and u'resource' in cfg.get(u'configs').keys():
+                self.test_config.get(u'resource').get(key).update(cfg.get(u'configs').get(u'resource').get(key, {}))
+        self.test_config.get(u'container').update(cfg.get(u'configs').get(u'container'))
+
         # endpoints
         self.endpoints = cfg.get(u'endpoints')
             
