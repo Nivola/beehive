@@ -2831,7 +2831,7 @@ class ApiView(FlaskView):
         
         error = {
             u'code': code,
-            u'message': str(msg),
+            u'message': u'%s' %msg,
             u'description': u'%s - %s' % (exception, msg)
         }
         self.logger.error(u'Api response: %s' % error)
