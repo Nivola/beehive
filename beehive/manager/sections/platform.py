@@ -1521,10 +1521,23 @@ class NodeController(AnsibleController):
         label = 'node'
         description = "Nodes management"
     
+    def ip_pod_fun(self,pod):
+        #range podvc: da 216.141 al 216.159, podto1: dal 152.130 al 152.148, podt2: dal 184.130 al 184.148
+        ip_radice='10.138.'
+        ip_pod = list()
+        if pod == "podvc":  
+            for i in range(141,160): ip_pod.append(ip_radice+'216.'+str(i))
+        if pod == "podto1": 
+            for i in range(130,149): ip_pod.append(ip_radice+'152.'+str(i))
+        if pod == "podto2": 
+            for i in range(130,149): ip_pod.append(ip_radice+'184.'+str(i))
+        return(ip_pod)
+    
     @expose(aliases=[u'power <pod>'], aliases_only=True)
     @check_error
     def power(self):
         """Get task instance by id
+    da usarsi prima di powervolt    
         """
         pod = self.get_arg(name=u'pod')
 
@@ -1535,56 +1548,163 @@ class NodeController(AnsibleController):
         from pysnmp.entity.rfc3413.oneliner import cmdgen
         from pysnmp.proto.rfc1902 import Integer, IpAddress, OctetString
         
-        #pod = sys.argv[1]
         conta_errori = 0
-        ip_radice='10.102.74.'
-        #range podvc: da 11 al 29, podto1: dal 41 al 59, podt2: dal 71 al 89
-        
+                
         community='n1volacommunity'
-        #value=(1,3,6,1,4,1,674,10892,5,2,4,0)
         value_ps1_status=(1,3,6,1,4,1,674,10892,5,4,600,12,1,5,1,1) # OID che indica se l'alimentatore PS1 ha uno status OK --> ok=3
         value_ps2_status=(1,3,6,1,4,1,674,10892,5,4,600,12,1,5,1,2) # OID che indica se l'alimentatore PS2 ha uno status OK --> ok=3
-        value_ps1_fault=(1,3,6,1,4,1,674,10892,5,4,600,12,1,11,1,1) # OID che indica se l'alimentatore PS1 e' connesso alla tensione 220 --> ok=1
-        value_ps2_fault=(1,3,6,1,4,1,674,10892,5,4,600,12,1,11,1,2) # OID che indica se l'alimentatore PS2 e' connesso alla tensione 220 --> ok=1
+        value_ps1=(1,3,6,1,4,1,674,10892,5,4,600,12,1,4,1,1) # OID che indica il Voltaggio ricevuto da PS1, se l'host e' on
+        value_ps2=(1,3,6,1,4,1,674,10892,5,4,600,12,1,4,1,2) # OID che indica il Voltaggio ricevuto da PS2, se l'host e' on
+        
+        generator = cmdgen.CommandGenerator()
+        comm_data = cmdgen.CommunityData('server', community, 1) # 1 means version SNMP v2c
+
+        ip_pod = self.ip_pod_fun(pod)
+
+        servers = []
+        for ip in ip_pod:
+            transport = cmdgen.UdpTransportTarget((ip, 161))
+            real_fun = getattr(generator, 'getCmd')
+            ali = 1
+            for value in [value_ps1_status, value_ps2_status]:
+                res = (errorIndication, errorStatus, errorIndex, varBinds)\
+                    = real_fun(comm_data, transport, value)
+                if not errorIndication is None  or errorStatus is True:
+                   print "Errore sul server " + ip + ": %s %s %s %s" % res
+                else:
+                   a = str(varBinds[0])
+                   resp_snmp = a.split('= ')[1]
+        #       print resp_snmp
+        #       print "%s" % varBinds
+                   if resp_snmp == "3":
+        #               print "server " + ip + " alimentatore n." + str(ali) + " ok: " + resp_snmp
+                       if resp_snmp == u'3':
+                          resp_snmp = u'OK'
+                       servers.append({u'host':ip, u'alimentazione':resp_snmp, u'num':str(ali)})
+                   else:
+                       print "ERRORE --> server " + ip + 'alimentatore n.: ' + str(ali) + " - problemi di alimentazione: " + resp_snmp 
+                       conta_errori = conta_errori + 1
+                ali = 2
+        #    time.sleep(1)
+        print "Numero errori rilevati: %s " % conta_errori 
+        self.result(servers, headers=[u'host', u'alimentazione', u'num'])
+        print "beehive platform node powervolt <pod>  -  per avere indicazioni sui volt in input"
+
+
+    @expose(aliases=[u'powervolt <pod>'], aliases_only=True)
+    @check_error
+    def powervolt(self):
+        """Get task instance by id
+        """
+        pod = self.get_arg(name=u'pod')
+
+        # il presente script interroga via snmp i server dei diversi pod e raccoglie la tensione su ogni alimentatore 
+        import os, sys, socket, random, time
+        from struct import pack, unpack
+        from datetime import datetime as dt
+        from pysnmp.entity.rfc3413.oneliner import cmdgen
+        from pysnmp.proto.rfc1902 import Integer, IpAddress, OctetString
+        
+        conta_errori = 0
+        community='n1volacommunity'
+        #value=(1,3,6,1,4,1,674,10892,5,2,4,0)
+        value_ps1_volt=(1,3,6,1,4,1,674,10892,5,4,600,12,1,16,1,1) # OID che indica il valore dei volt in input sull'alimentatore PS1 
+        value_ps2_volt=(1,3,6,1,4,1,674,10892,5,4,600,12,1,16,1,2) # OID che indica il valore dei volt in input sull'alimentatore PS2
         value_ps1=(1,3,6,1,4,1,674,10892,5,4,600,12,1,4,1,1) # OID che indica il Voltaggio ricevuto da PS1, se l'host e' on
         value_ps2=(1,3,6,1,4,1,674,10892,5,4,600,12,1,4,1,2) # OID che indica il Voltaggio ricevuto da PS2, se l'host e' on
         
         generator = cmdgen.CommandGenerator()
         comm_data = cmdgen.CommunityData('server', community, 1) # 1 means version SNMP v2c
         
-        ip_pod = list()
-        if pod == "podvc":  
-            for i in range(11,30): ip_pod.append(ip_radice+str(i))
-        if pod == "podto1": 
-            for i in range(41,60): ip_pod.append(ip_radice+str(i))
-        if pod == "podto2": 
-            for i in range(71,90): ip_pod.append(ip_radice+str(i))
+        ip_pod = self.ip_pod_fun(pod)
         
         servers = []
         for ip in ip_pod:
             transport = cmdgen.UdpTransportTarget((ip, 161))
             real_fun = getattr(generator, 'getCmd')
-            for value in [value_ps1_status, value_ps2_status]:
+            ali = 1
+            for value in [value_ps1_volt, value_ps2_volt]:
                 res = (errorIndication, errorStatus, errorIndex, varBinds)\
                     = real_fun(comm_data, transport, value)
-            if not errorIndication is None  or errorStatus is True:
-                print "Errore sul server " + ip + ": %s %s %s %s" % res
-            else:
-                a = str(varBinds[0])
-                resp_snmp = a.split('= ')[1]
-        #       print resp_snmp
-        #       print "%s" % varBinds
-                if resp_snmp == "3":
-                    print "server " + ip + " alimentazione ok: " + resp_snmp
-                    if resp_snmp == u'3':
-                        resp_snmp = u'OK'
-                    servers.append({u'host':ip, u'alimentazione':resp_snmp})
+                if not errorIndication is None  or errorStatus is True:
+                   print "Errore sul server " + ip + ": %s %s %s %s" % res
                 else:
-                    print "ERRORE --> server " + ip + " - problemi di alimentazione: " + resp_snmp
-                    conta_errori = conta_errori + 1
+                   a = str(varBinds[0])
+                   resp_snmp = a.split('= ')[1]
+        #           print resp_snmp
+        #        print "%s" % varBinds
+        #           if resp_snmp == "1":
+        #            print "server " + ip + " alimentatore n." + str(ali) + "volt: " + resp_snmp
+                   servers.append({u'host':ip, u'volt':resp_snmp, u'num':str(ali)})
+                   if resp_snmp == u'No Such Instance currently exists at this OID':
+                       print "ERRORE --> server " + ip + ' alimentatore n.: ' + str(ali) + " - problemi di alimentazione: volt a 0" 
+                       conta_errori = conta_errori + 1
+                ali = 2
+        #    time.sleep(1)
+        # print "Numero errori rilevati: %s " % conta_errori 
+        self.result(servers, headers=[u'host', u'volt', u'num'])
+
+
+    @expose(aliases=[u'memory <pod>'], aliases_only=True)
+    @check_error
+    def memory(self):
+        """Get task instance by id
+        """
+        pod = self.get_arg(name=u'pod')
+
+        # il presente script interroga via snmp i server dei diversi pod e raccoglie la tensione su ogni alimentatore 
+        import os, sys, socket, random, time
+        from struct import pack, unpack
+        from datetime import datetime as dt
+        from pysnmp.entity.rfc3413.oneliner import cmdgen
+        from pysnmp.proto.rfc1902 import Integer, IpAddress, OctetString
+        print "l'operazione potrebbe durare qualche minuto ..."
+
+        conta_errori = 0
+        community='n1volacommunity'
+        value_memory=(1,3,6,1,4,1,674,10892,5,4,200,10,1,27,1) # OID che indica lo stato della RAM 3--> OK 
+        value_memory_detail=(1,3,6,1,4,1,674,10892,5,4,200,10,1,28,1) # OID che lo stato di ogni banco di ram 3--> OK         
+        
+        generator = cmdgen.CommandGenerator()
+        comm_data = cmdgen.CommunityData('server', community, 1) # 1 means version SNMP v2c
+        
+        ip_pod = self.ip_pod_fun(pod)
+        
+        servers = []
+        for ip in ip_pod:
+            transport = cmdgen.UdpTransportTarget((ip, 161),timeout=10,retries=0)
+            real_fun = getattr(generator, 'getCmd')
+            value = value_memory
+            res = (errorIndication, errorStatus, errorIndex, varBinds)\
+                    = real_fun(comm_data, transport, value)
+            if not errorIndication is None  or errorStatus is True:
+                   print "Errore sul server " + ip + ": %s %s %s %s" % res
+            else:
+                   a = str(varBinds[0])
+                   resp_snmp = a.split('= ')[1]
+                   servers.append({u'host':ip, u'stato':resp_snmp})
+        #           print ip, resp_snmp
+        #        print "%s" % varBinds
+                   if resp_snmp != "3":
+        #            print "server " + ip + " alimentatore n." + str(ali) + "volt: " + resp_snmp
+        #           if resp_snmp == u'No Such Instance currently exists at this OID':
+                       print "ERRORE --> server " + ip + " problemi di memoria: " + resp_snmp
+                       
+                       value = value_memory_detail
+                       res = (errorIndication, errorStatus, errorIndex, varBinds)\
+                               = real_fun(comm_data, transport, value)
+                       if not errorIndication is None  or errorStatus is True:
+                            print "Errore sul server " + ip + ": %s %s %s %s" % res
+                       else:
+                            a = str(varBinds[0])
+                            resp_snmp = a.split('= ')[1]
+                            print "dettaglio errore di memoria: " + resp_snmp + "\n"
+        #                       
+                       conta_errori = conta_errori + 1
         #    time.sleep(1)
         print "Numero errori rilevati: %s " % conta_errori 
-        self.result(servers, headers=[u'host', u'alimentazione'])
+        self.result(servers, headers=[u'host', u'stato'])
+
 
     def __get_hosts_and_vars(self, env):
         # get environemtn nodes
