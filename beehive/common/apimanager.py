@@ -129,7 +129,7 @@ class ApiManager(object):
         self.app_id = self.params[u'api_id']
         self.app_desc = self.params[u'api_id']
         self.app_subsytem = self.params[u'api_subsystem']
-        self.app_fernet_key = self.params[u'api_fernet_key']
+        self.app_fernet_key = self.params.get(u'api_fernet_key', None)
         self.app_endpoint_id = u'%s-%s' % (self.params[u'api_id'], hostname)
         try:
             self.app_uri = u'http://%s%s' % (hostname, self.params[u'http-socket'])
