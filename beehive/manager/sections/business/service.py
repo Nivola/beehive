@@ -3,6 +3,7 @@ Created on Sep 27, 2017
  
 @author: darkbk
 '''
+import os
 import logging
 import urllib
 
@@ -194,6 +195,68 @@ class ServiceTypeProcessController(ApiController):
         res = self._call(uri, u'GET', data=u'service_type_id=%s' % value).get(u'serviceprocesses', [])
         logger.info(res)
         self.result(res, headers=[u'id', u'uuid', u'name', u'method_key', u'process_key', u'active', u'date.creation'])
+    
+
+    @expose(aliases=[u'set', u'set type=<id> method=<met> [name=<name>] [desc=<description>]  [process=<key>] [template=@<templatefile>|<template>] '], aliases_only=True)
+    @check_error
+    def setval(self):
+        # , st_uuid, template, name, ):
+        typeid = self.get_arg(name=u'type', keyvalue=True)
+        method = self.get_arg(name=u'method', keyvalue=True)
+
+        if method is None:
+            raise Exception(u'Param method is not defined' )
+        if typeid is None or method is None:
+            raise Exception(u'Param typeid is not defined' )
+        
+        uri = u'%s/serviceprocesses' % self.baseuri
+        res = self._call(uri, u'GET', data=u'service_type_id=%s&method_key=%s' % (typeid, method ) ).get(u'serviceprocesses', [])
+        
+        if len(res) >= 1:
+            prev=res[0] 
+            name = self.get_arg(name=u'name', keyvalue=True, default=prev['method_key'])
+            desc = self.get_arg(name=u'desc', keyvalue=True, default=prev['desc'])
+            process = self.get_arg(name=u'process', keyvalue=True, default=prev['process_key'])
+            template = self.get_arg(name=u'template', keyvalue=True, default=prev['template'] )
+        else:
+            prev=None
+            name = self.get_arg(name=u'name', keyvalue=True, default='proc')
+            desc = self.get_arg(name=u'desc', keyvalue=True, default='description-%s'%(name))
+            process = self.get_arg(name=u'process', keyvalue=True, default='invalid_key')
+            template = self.get_arg(name=u'template', keyvalue=True, default="{}")
+        
+        if template[0] == '@':
+            filename=template[1:]
+            if os.path.isfile(filename):
+                f = open(filename, 'r')
+                template = f.read()
+                f.close()
+            else:
+               raise Exception(u'Jinja template %s is not a file' % filename)
+
+        data = {
+            u'serviceprocess':{
+                u'name':name, 
+                u'desc':desc,
+                u'service_type_id':typeid,
+                u'method_key':method,
+                u'process_key': process,
+                u'template':template
+            }
+        }
+        if prev == None:
+            uri = u'%s/serviceprocesses' % self.baseuri
+            res = self._call(uri, u'POST', data= data)
+            logger.info(res)
+            self.result(res)
+        else:
+            uri = u'%s/serviceprocesses/%s' % (self.baseuri, prev['uuid'])
+            res = self._call(uri, u'PUT', data= data)
+            logger.info(res)
+            self.result(res)
+            
+
+
 
 
 class ServiceDefinitionController(ServiceControllerChild):
