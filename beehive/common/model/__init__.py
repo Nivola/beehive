@@ -21,8 +21,12 @@ class AuditData(object):
     """
         Column of common audit
     """
-    def __init__(self):
-        self.creation_date = datetime.today()
+    def __init__(self, creation_date=None):
+        if creation_date is not None:
+            self.creation_date = creation_date
+        else: 
+            self.creation_date = datetime.today()
+            
         self.modification_date = self.creation_date
         self.expiry_date =  None
 
@@ -353,11 +357,12 @@ class PaginatedQueryGenerator(object):
         if tags is None or len(tags) == 0:
             tags = [u'']    
         
-        # count all records
-        stmp = self.base_stmp(count=True)
-        total = self.session.query(u'count').\
-                from_statement(stmp).\
-                params(tags=tags, **kvargs).first()[0]
+        if (self.size > 0):
+            # count all records
+            stmp = self.base_stmp(count=True)
+            total = self.session.query(u'count').\
+                    from_statement(stmp).\
+                    params(tags=tags, **kvargs).first()[0]
         
         # make query
         stmp = self.base_stmp()
@@ -373,15 +378,18 @@ class PaginatedQueryGenerator(object):
         self.logger.warn(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
         #self.logger.warn(u'kvargs: %s' % kvargs)
         #self.logger.warn(u'tags: %s' % tags)
-        query = query.all()
+        res = query.all()
+        
+        if (self.size == 0):
+            total = len(res)
         
         self.logger.debug(u'Get %ss (total:%s): %s' % 
-                          (self.entity.__tablename__, total, truncate(query)))
-        return query, total
+                          (self.entity.__tablename__, total, truncate(res)))
+        return res, total
 
 
 class AbstractDbManager(object):
-    """Abstarct db manager
+    """Abstract db manager
     """
     def __init__(self, session=None):
         self.logger = logging.getLogger(self.__class__.__module__+ \
@@ -484,7 +492,7 @@ class AbstractDbManager(object):
         return query
     
     @query
-    def get_entity(self, entityclass, oid, *args, **kvargs):
+    def get_entity(self, entityclass, oid, for_update, *args, **kvargs):
         """Parse oid and get entity entity by name or by model id or by uuid
         
         :param entityclass: entity model class
@@ -509,9 +517,14 @@ class AbstractDbManager(object):
         # get obj by name
         elif match(u'[\-\w\d]+', oid):
             self.logger.debug(u'Query entity %s by name' % entityclass.__name__)
-            entity = self.query_entities(entityclass, session, name=oid, *args, **kvargs)
-
-        return entity.first()
+            entity = self.query_entities(entityclass, session, name=oid)
+        
+        res = None
+        if for_update:
+            res = entity.with_for_update().first() 
+        else:
+            res = entity.first()
+        return res
     
     @query
     def get_entities(self, entityclass, filters, *args, **kvargs):

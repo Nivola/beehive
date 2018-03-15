@@ -1348,7 +1348,7 @@ class ApiController(object):
     #
     # helper model get method
     #
-    def get_entity(self, entity_class, model_class, oid, authorize=True):
+    def get_entity(self, entity_class, model_class, oid, authorize=True, for_update=False):
         """Get single entity by oid (id, uuid, name) if exists
         
         **Parameters:**
@@ -1369,7 +1369,7 @@ class ApiController(object):
         **Raise:** :class:`ApiManagerError`     
         """
         try:
-            entity = self.manager.get_entity(model_class, oid)
+            entity = self.manager.get_entity(model_class, oid, for_update)
         except QueryError as ex:         
             self.logger.error(ex, exc_info=1)
             entity_name = entity_class.__name__
@@ -1461,27 +1461,22 @@ class ApiController(object):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         res = []
+        objs =  []
         
+        if authorize is True:
+            # verify permissions
+            objs = self.can(u'view', entity_class.objtype, definition=entity_class.objdef)
+            objs = objs.get(entity_class.objdef.lower())
         
-        #TODO da capire se usare le permission tags
-        # objs =  []
-        #
-        # if authorize is True:
-        #     # verify permissions
-        #     objs = self.can(u'view', entity_class.objtype,
-        #                     definition=entity_class.objdef)
-        #     objs = objs.get(entity_class.objdef.lower())
-        #
-        #
-        #
-        # # create permission tags
-        # tags = []
-        # for p in objs:
-        #     tags.append(self.manager.hash_from_permission(entity_class.objdef, p))
-        # self.logger.debug(u'Permission tags to apply: %s' % tags)
+        # create permission tags
+        tags = []
+        for p in objs:
+            tags.append(self.manager.hash_from_permission(entity_class.objdef, p))
+        self.logger.debug(u'Permission tags to apply: %s' % tags)
                 
         try:
-            entities = get_entities(*args, **kvargs)
+            entities = get_entities(tags=tags, *args, **kvargs)
+
             for entity in entities:
                 obj = entity_class(self, oid=entity.id, objid=entity.objid, 
                                name=entity.name, active=entity.active, 
@@ -2836,7 +2831,7 @@ class ApiView(FlaskView):
         
         error = {
             u'code': code,
-            u'message': str(msg),
+            u'message': u'%s' %msg,
             u'description': u'%s - %s' % (exception, msg)
         }
         self.logger.error(u'Api response: %s' % error)
