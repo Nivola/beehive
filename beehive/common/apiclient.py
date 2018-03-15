@@ -244,6 +244,8 @@ class BeehiveApiClient(object):
             
             # append request-id to headers
             headers[u'request-id'] = id_gen()
+            # append user agent
+            headers[u'User-Agent'] = u'beehive/1.0'
 
             if data.lower().find(u'password') < 0:
                 send_data = data

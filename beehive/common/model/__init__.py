@@ -454,8 +454,9 @@ class AbstractDbManager(object):
         :param str objid: entity authorization id. [optional]
         :param str uuid: entity uuid. [optional]
         :param str name: entity name. [optional]
+        :param dict kvargs: additional filters [optional]
         :return: list of entityclass
-        :raises ModelError: raise :class:`ModelError`      
+        :raises ModelError: raise :class:`ModelError`
         """
         self.logger.debug(u'Query entities by oid:%s, objid:%s, uuid:%s, name:%s' % (oid, objid, uuid, name))
         # session = self.get_session()
@@ -466,9 +467,11 @@ class AbstractDbManager(object):
         elif uuid is not None:  
             query = session.query(entityclass).filter_by(uuid=uuid)
         elif name is not None:
-            query = session.query(entityclass).filter_by(name=name)            
+            query = session.query(entityclass).filter_by(name=name)
         else:
             query = session.query(entityclass)
+
+        query = query.filter_by(**kvargs)
         
         entity = query.first()
         
@@ -481,11 +484,12 @@ class AbstractDbManager(object):
         return query
     
     @query
-    def get_entity(self, entityclass, oid):
+    def get_entity(self, entityclass, oid, *args, **kvargs):
         """Parse oid and get entity entity by name or by model id or by uuid
         
         :param entityclass: entity model class
-        :param oid: entity model id or name or uuid        
+        :param oid: entity model id or name or uuid
+        :param dict kvargs: additional filters [optional]
         :return: list of entityclass
         :raises QueryError: raise :class:`QueryError`           
         """
@@ -495,18 +499,17 @@ class AbstractDbManager(object):
             raise ModelError(u'%s not found' % entityclass)
 
         # get obj by uuid
-        if match(u'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-'\
-                 u'[0-9a-f]{4}-[0-9a-f]{12}', str(oid)):
+        if match(u'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', str(oid)):
             self.logger.debug(u'Query entity %s by uuid' % entityclass.__name__)
-            entity = self.query_entities(entityclass, session, uuid=oid)
+            entity = self.query_entities(entityclass, session, uuid=oid, *args, **kvargs)
         # get obj by id
         elif match(u'^\d+$', str(oid)):
             self.logger.debug(u'Query entity %s by id' % entityclass.__name__)
-            entity = self.query_entities(entityclass, session, oid=oid)            
+            entity = self.query_entities(entityclass, session, oid=oid, *args, **kvargs)
         # get obj by name
         elif match(u'[\-\w\d]+', oid):
             self.logger.debug(u'Query entity %s by name' % entityclass.__name__)
-            entity = self.query_entities(entityclass, session, name=oid)
+            entity = self.query_entities(entityclass, session, name=oid, *args, **kvargs)
 
         return entity.first()
     

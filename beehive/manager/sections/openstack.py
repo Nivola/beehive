@@ -352,7 +352,7 @@ class OpenstackPlatformNetworkController(OpenstackPlatformControllerChild):
 
 
 class OpenstackPlatformSubnetController(OpenstackPlatformControllerChild):
-    headers = [u'id', u'tenant_id', u'name', u'network_id', u'cidr', u'enable_dhcp']
+    headers = [u'id', u'tenant_id', u'name', u'network_id', u'cidr', u'enable_dhcp', u'service_types']
     
     class Meta:
         label = 'openstack.platform.subnets'
@@ -2510,8 +2510,9 @@ class OpenstackManilaShareController(OpenstackControllerChild):
         """Get openstack share types
         """
         container_id = self.get_arg(name=u'container_id')
-        uri = self.uri + u'/types?container=%s' % container_id
-        res = self._call(uri, u'get', data=u'').get(u'share_types', [])
+        data = u'container=%s' % container_id
+        uri = self.uri + u'/types'
+        res = self._call(uri, u'GET', data=data).get(u'share_types', [])
         logger.info(u'Get container %s share types: %s' % (container_id, truncate(res)))
         self.result(res, headers=[u'id', u'name', u'snapshot_support', u'backend'], fields=[u'id', u'name',
                     u'extra_specs.snapshot_support', u'extra_specs.share_backend_name'], maxsize=60)
@@ -2523,7 +2524,7 @@ class OpenstackManilaShareController(OpenstackControllerChild):
         """
         oid = self.get_arg(name=u'id')
         uri = self.uri + u'/%s/grant' % oid
-        res = self._call(uri, u'get', data=u'').get(u'share_grant', [])
+        res = self._call(uri, u'GET', data=u'').get(u'share_grant', [])
         logger.info(u'Get share %s grants: %s' % (oid, truncate(res)))
         self.result(res, headers=[u'id', u'state', u'access_level', u'access_type', u'access_to'], maxsize=80)
 
