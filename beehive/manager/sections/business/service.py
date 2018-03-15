@@ -214,7 +214,6 @@ class ServiceTypeProcessController(ApiController):
             if typeid is None:
                 raise Exception(u'Could not found a type whose oid is %s' % ( typeoid ) )
 
-        print( "  typeid = %s" % (typeid))
         uri = u'%s/serviceprocesses' % self.baseuri
         res = self._call(uri, u'GET', data=u'service_type_id=%s&method_key=%s' % (typeid, method ) ).get(u'serviceprocesses', [])
         
@@ -224,14 +223,12 @@ class ServiceTypeProcessController(ApiController):
             desc = self.get_arg(name=u'desc', keyvalue=True, default=prev['desc'])
             process = self.get_arg(name=u'process', keyvalue=True, default=prev['process_key'])
             template = self.get_arg(name=u'template', keyvalue=True, default=prev['template'] )
-            print( "found previus  id = %s" % ( prev['id'] ))
         else:
             prev=None
             name = self.get_arg(name=u'name', keyvalue=True, default='proc')
             desc = self.get_arg(name=u'desc', keyvalue=True, default='description-%s'%(name))
             process = self.get_arg(name=u'process', keyvalue=True, default='invalid_key')
             template = self.get_arg(name=u'template', keyvalue=True, default="{}")
-            print( "Not found previus" )
         
         if template[0] == '@':
             filename=template[1:]
@@ -262,7 +259,6 @@ class ServiceTypeProcessController(ApiController):
             res = self._call(uri, u'PUT', data= data)
             logger.info(res)
             self.result(res)
-            
 
 
 class ServiceDefinitionController(ServiceControllerChild):
