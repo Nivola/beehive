@@ -1574,7 +1574,7 @@ class NodeController(AnsibleController):
     @expose(aliases=[u'power <pod>'], aliases_only=True)
     @check_error
     def power(self):
-        """Get task instance by id
+        """Legge lo stato degli alimentatori di tutto un pod
     da usarsi prima di powervolt    
         """
         pod = self.get_arg(name=u'pod')
@@ -1628,7 +1628,7 @@ class NodeController(AnsibleController):
     @expose(aliases=[u'powervolt <pod>'], aliases_only=True)
     @check_error
     def powervolt(self):
-        """Get task instance by id
+        """Legge lo stato della tensione in ingresso per ogni singolo alimentatore
     Da usarsi dopo power per avere indicazioni sui volt in ingresso
         """
         pod = self.get_arg(name=u'pod')
@@ -1673,7 +1673,7 @@ class NodeController(AnsibleController):
     @expose(aliases=[u'memory <pod>'], aliases_only=True)
     @check_error
     def memory(self):
-        """Get task instance by id
+        """Legge lo stato della memoria RAM installata sui server di un pod
     restituisce una stringa di codici per ogni banco di memoria installato:  03 --> ok
         """
         pod = self.get_arg(name=u'pod')
@@ -1726,7 +1726,7 @@ class NodeController(AnsibleController):
     @expose(aliases=[u'fans <pod>'], aliases_only=True)
     @check_error
     def fans(self):
-        """Get task instance by id
+        """Legge lo stato delle ventole dei server presensti in un pod
     verifica il funzionamento delle 14 ventole dei server del pod: 03 --> ok
         """
         pod = self.get_arg(name=u'pod')
@@ -1771,8 +1771,7 @@ class NodeController(AnsibleController):
     @expose(aliases=[u'disks <pod>'], aliases_only=True)
     @check_error
     def disks(self):
-        """Get task instance by id
-    verifica il funzionamento dei dischi fisici dei server del pod: 03 --> ok
+        """Verifica il funzionamento dei dischi fisici dei server del pod: 03 --> ok
         """
         pod = self.get_arg(name=u'pod')
         # il presente script interroga via snmp i server dei diversi pod e raccoglie lo stato delle 14 ventole  
@@ -1817,8 +1816,7 @@ class NodeController(AnsibleController):
     @expose(aliases=[u'nics <pod>'], aliases_only=True)
     @check_error
     def nics(self):
-        """Get task instance by id
-    verifica il funzionamento delle schede di rete dei server del pod: 03 --> ok
+        """Verifica il funzionamento delle schede di rete dei server del pod: 03 --> ok
         """
         pod = self.get_arg(name=u'pod')
 
@@ -1865,8 +1863,7 @@ class NodeController(AnsibleController):
     @expose(aliases=[u'nicsconnect <pod>'], aliases_only=True)
     @check_error
     def nicsconnect(self):
-        """Get task instance by id
-    verifica che il numero di nics connesse sia correto rispetto al desiderata
+        """Verifica che il numero di nics connesse sia correto rispetto al desiderata
     mgmt: 4
     vsphere: 3
     oradb: 3
