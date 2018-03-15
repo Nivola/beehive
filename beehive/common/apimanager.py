@@ -1348,7 +1348,7 @@ class ApiController(object):
     #
     # helper model get method
     #
-    def get_entity(self, entity_class, model_class, oid, authorize=True):
+    def get_entity(self, entity_class, model_class, oid, authorize=True, for_update=False):
         """Get single entity by oid (id, uuid, name) if exists
         
         **Parameters:**
@@ -1369,7 +1369,7 @@ class ApiController(object):
         **Raise:** :class:`ApiManagerError`     
         """
         try:
-            entity = self.manager.get_entity(model_class, oid)
+            entity = self.manager.get_entity(model_class, oid, for_update)
         except QueryError as ex:         
             self.logger.error(ex, exc_info=1)
             entity_name = entity_class.__name__

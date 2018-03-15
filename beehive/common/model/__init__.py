@@ -489,7 +489,7 @@ class AbstractDbManager(object):
         return query
     
     @query
-    def get_entity(self, entityclass, oid):
+    def get_entity(self, entityclass, oid, for_update):
         """Parse oid and get entity entity by name or by model id or by uuid
         
         :param entityclass: entity model class
@@ -515,8 +515,13 @@ class AbstractDbManager(object):
         elif match(u'[\-\w\d]+', oid):
             self.logger.debug(u'Query entity %s by name' % entityclass.__name__)
             entity = self.query_entities(entityclass, session, name=oid)
-
-        return entity.first()
+        
+        res = None
+        if for_update:
+            res = entity.with_for_update().first() 
+        else:
+            res = entity.first()
+        return res 
     
     @query
     def get_entities(self, entityclass, filters, *args, **kvargs):
