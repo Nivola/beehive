@@ -7,6 +7,7 @@ import os
 import ujson as json
 import gevent
 import sh
+import copy
 from time import time
 from datetime import datetime
 from httplib import HTTPConnection
@@ -23,6 +24,12 @@ import traceback
 from beedrones.camunda.engine import WorkFlowEngine
 from beedrones.openstack.client import OpenstackManager
 from beedrones.vsphere.client import VsphereManager
+
+from struct import pack, unpack
+from datetime import datetime as dt
+from pysnmp.entity.rfc3413.oneliner import cmdgen
+from pysnmp.proto.rfc1902 import Integer, IpAddress, OctetString
+
 
 logger = getLogger(__name__)
 
@@ -1522,47 +1529,74 @@ class NodeController(AnsibleController):
         description = "Nodes management"
     
     def ip_pod_fun(self,pod):
-        #range podvc: da 216.141 al 216.159, podto1: dal 152.130 al 152.148, podt2: dal 184.130 al 184.148
+        # range podvc: da 216.141 al 216.159, podto1: dal 152.130 al 152.148, podt2: dal 184.130 al 184.148
+        # da 1 a 3: mgmt
+        # da 4 a 6: vsphere
+        # da 7 a 8: oradb
+        # da 9 a 11: osctrl
+        # da 12 a 19: kvm
+
         ip_radice='10.138.'
         ip_pod = list()
-        if pod == "podvc":  
-            for i in range(141,160): ip_pod.append(ip_radice+'216.'+str(i))
-        if pod == "podto1": 
+        name_pod = list()
+        n_nic=list()
+        n_nic_up=list()
+        if pod == "podvc":   
+            for i in range(141,160): ip_pod.append(ip_radice+'216.'+str(i))         
+        if pod == "podto1":  
             for i in range(130,149): ip_pod.append(ip_radice+'152.'+str(i))
-        if pod == "podto2": 
+        if pod == "podto2":  
             for i in range(130,149): ip_pod.append(ip_radice+'184.'+str(i))
-        return(ip_pod)
+        for i in range(1,20):
+            if i in (1,2,3):
+                name_pod.append(pod+"-mgmt0"+str(i)+'-idrac')
+                n_nic.append(6)
+                n_nic_up.append(4)
+            else: n_nic.append(5)
+            if i in (4,5,6):   
+                name_pod.append(pod+"-vsphere0"+str(i-3)+'-idrac')
+                n_nic.append(6)
+                n_nic_up.append(3)
+            if i in (7,8):     
+                name_pod.append(pod+"-oradb0"+str(i-6)+'-idrac')
+                n_nic.append(6)
+                n_nic_up.append(3)
+            if i in (9,10,11): 
+                name_pod.append(pod+"-osctrl0"+str(i-8)+'-idrac')
+                n_nic.append(8)
+                n_nic_up.append(5)
+            if i in (12,13,14,15,16,17,18,19): 
+                name_pod.append(pod+"-kvm0"+str(i-11)+'-idrac')
+                n_nic.append(8)
+                n_nic_up.append(5)
+        return([ip_pod,name_pod,n_nic,n_nic_up])
     
     @expose(aliases=[u'power <pod>'], aliases_only=True)
     @check_error
     def power(self):
-        """Get task instance by id
+        """Legge lo stato degli alimentatori di tutto un pod
     da usarsi prima di powervolt    
         """
         pod = self.get_arg(name=u'pod')
 
         # il presente script interroga via snmp i server dei diversi pod e verifica che non ci siano problemi di alimentazione
-        import os, sys, socket, random, time
-        from struct import pack, unpack
-        from datetime import datetime as dt
-        from pysnmp.entity.rfc3413.oneliner import cmdgen
-        from pysnmp.proto.rfc1902 import Integer, IpAddress, OctetString
         
         conta_errori = 0
                 
         community='n1volacommunity'
         value_ps1_status=(1,3,6,1,4,1,674,10892,5,4,600,12,1,5,1,1) # OID che indica se l'alimentatore PS1 ha uno status OK --> ok=3
         value_ps2_status=(1,3,6,1,4,1,674,10892,5,4,600,12,1,5,1,2) # OID che indica se l'alimentatore PS2 ha uno status OK --> ok=3
-        value_ps1=(1,3,6,1,4,1,674,10892,5,4,600,12,1,4,1,1) # OID che indica il Voltaggio ricevuto da PS1, se l'host e' on
-        value_ps2=(1,3,6,1,4,1,674,10892,5,4,600,12,1,4,1,2) # OID che indica il Voltaggio ricevuto da PS2, se l'host e' on
         
         generator = cmdgen.CommandGenerator()
         comm_data = cmdgen.CommunityData('server', community, 1) # 1 means version SNMP v2c
 
-        ip_pod = self.ip_pod_fun(pod)
-
+        l_pod = self.ip_pod_fun(pod)
+        ip_pod=l_pod[0]
+        name_pod=l_pod[1]
         servers = []
+        ind = -1
         for ip in ip_pod:
+            ind = ind + 1
             transport = cmdgen.UdpTransportTarget((ip, 161))
             real_fun = getattr(generator, 'getCmd')
             ali = 1
@@ -1580,9 +1614,9 @@ class NodeController(AnsibleController):
         #               print "server " + ip + " alimentatore n." + str(ali) + " ok: " + resp_snmp
                        if resp_snmp == u'3':
                           resp_snmp = u'OK'
-                       servers.append({u'host':ip, u'alimentazione':resp_snmp, u'num':str(ali)})
+                       servers.append({u'host':name_pod[ind], u'alimentazione':resp_snmp, u'num':str(ali)})
                    else:
-                       print "ERRORE --> server " + ip + 'alimentatore n.: ' + str(ali) + " - problemi di alimentazione: " + resp_snmp 
+                       print "ERRORE --> server " + name_pod(ind) + 'alimentatore n.: ' + str(ali) + " - problemi di alimentazione: " + resp_snmp 
                        conta_errori = conta_errori + 1
                 ali = 2
         #    time.sleep(1)
@@ -1594,32 +1628,28 @@ class NodeController(AnsibleController):
     @expose(aliases=[u'powervolt <pod>'], aliases_only=True)
     @check_error
     def powervolt(self):
-        """Get task instance by id
+        """Legge lo stato della tensione in ingresso per ogni singolo alimentatore
+    Da usarsi dopo power per avere indicazioni sui volt in ingresso
         """
         pod = self.get_arg(name=u'pod')
 
         # il presente script interroga via snmp i server dei diversi pod e raccoglie la tensione su ogni alimentatore 
-        import os, sys, socket, random, time
-        from struct import pack, unpack
-        from datetime import datetime as dt
-        from pysnmp.entity.rfc3413.oneliner import cmdgen
-        from pysnmp.proto.rfc1902 import Integer, IpAddress, OctetString
-        
         conta_errori = 0
         community='n1volacommunity'
         #value=(1,3,6,1,4,1,674,10892,5,2,4,0)
         value_ps1_volt=(1,3,6,1,4,1,674,10892,5,4,600,12,1,16,1,1) # OID che indica il valore dei volt in input sull'alimentatore PS1 
         value_ps2_volt=(1,3,6,1,4,1,674,10892,5,4,600,12,1,16,1,2) # OID che indica il valore dei volt in input sull'alimentatore PS2
-        value_ps1=(1,3,6,1,4,1,674,10892,5,4,600,12,1,4,1,1) # OID che indica il Voltaggio ricevuto da PS1, se l'host e' on
-        value_ps2=(1,3,6,1,4,1,674,10892,5,4,600,12,1,4,1,2) # OID che indica il Voltaggio ricevuto da PS2, se l'host e' on
         
         generator = cmdgen.CommandGenerator()
         comm_data = cmdgen.CommunityData('server', community, 1) # 1 means version SNMP v2c
         
-        ip_pod = self.ip_pod_fun(pod)
-        
+        l_pod = self.ip_pod_fun(pod)
+        ip_pod=l_pod[0]
+        name_pod=l_pod[1]
         servers = []
+        ind = -1
         for ip in ip_pod:
+            ind = ind + 1
             transport = cmdgen.UdpTransportTarget((ip, 161))
             real_fun = getattr(generator, 'getCmd')
             ali = 1
@@ -1627,69 +1657,58 @@ class NodeController(AnsibleController):
                 res = (errorIndication, errorStatus, errorIndex, varBinds)\
                     = real_fun(comm_data, transport, value)
                 if not errorIndication is None  or errorStatus is True:
-                   print "Errore sul server " + ip + ": %s %s %s %s" % res
+                   print "Errore sul server " + name_pod[ind] + ": %s %s %s %s" % res
                 else:
                    a = str(varBinds[0])
                    resp_snmp = a.split('= ')[1]
-        #           print resp_snmp
-        #        print "%s" % varBinds
-        #           if resp_snmp == "1":
-        #            print "server " + ip + " alimentatore n." + str(ali) + "volt: " + resp_snmp
-                   servers.append({u'host':ip, u'volt':resp_snmp, u'num':str(ali)})
+                   servers.append({u'host':name_pod[ind], u'volt':resp_snmp, u'num':str(ali)})
                    if resp_snmp == u'No Such Instance currently exists at this OID':
-                       print "ERRORE --> server " + ip + ' alimentatore n.: ' + str(ali) + " - problemi di alimentazione: volt a 0" 
+                       print "ERRORE --> server " + name_pod[ind] + ' alimentatore n.: ' + str(ali) + " - problemi di alimentazione: volt a 0" 
                        conta_errori = conta_errori + 1
                 ali = 2
-        #    time.sleep(1)
-        # print "Numero errori rilevati: %s " % conta_errori 
+
         self.result(servers, headers=[u'host', u'volt', u'num'])
 
 
     @expose(aliases=[u'memory <pod>'], aliases_only=True)
     @check_error
     def memory(self):
-        """Get task instance by id
+        """Legge lo stato della memoria RAM installata sui server di un pod
+    restituisce una stringa di codici per ogni banco di memoria installato:  03 --> ok
         """
         pod = self.get_arg(name=u'pod')
 
         # il presente script interroga via snmp i server dei diversi pod e raccoglie la tensione su ogni alimentatore 
-        import os, sys, socket, random, time
-        from struct import pack, unpack
-        from datetime import datetime as dt
-        from pysnmp.entity.rfc3413.oneliner import cmdgen
-        from pysnmp.proto.rfc1902 import Integer, IpAddress, OctetString
         print "l'operazione potrebbe durare qualche minuto ..."
 
         conta_errori = 0
         community='n1volacommunity'
-        value_memory=(1,3,6,1,4,1,674,10892,5,4,200,10,1,27,1) # OID che indica lo stato della RAM 3--> OK 
+        value_memory=[1,3,6,1,4,1,674,10892,5,4,200,10,1,27,1] # OID che indica lo stato della RAM 3--> OK 
         value_memory_detail=(1,3,6,1,4,1,674,10892,5,4,200,10,1,28,1) # OID che lo stato di ogni banco di ram 3--> OK         
         
         generator = cmdgen.CommandGenerator()
         comm_data = cmdgen.CommunityData('server', community, 1) # 1 means version SNMP v2c
         
-        ip_pod = self.ip_pod_fun(pod)
-        
+        l_pod = self.ip_pod_fun(pod)
+        ip_pod=l_pod[0]
+        name_pod=l_pod[1]
         servers = []
+        ind = -1
         for ip in ip_pod:
+            ind = ind + 1
             transport = cmdgen.UdpTransportTarget((ip, 161),timeout=10,retries=0)
             real_fun = getattr(generator, 'getCmd')
             value = value_memory
             res = (errorIndication, errorStatus, errorIndex, varBinds)\
                     = real_fun(comm_data, transport, value)
             if not errorIndication is None  or errorStatus is True:
-                   print "Errore sul server " + ip + ": %s %s %s %s" % res
+                   print "Errore sul server " + name_pod[ind] + ": %s %s %s %s" % res
             else:
                    a = str(varBinds[0])
                    resp_snmp = a.split('= ')[1]
-                   servers.append({u'host':ip, u'stato':resp_snmp})
-        #           print ip, resp_snmp
-        #        print "%s" % varBinds
+                   servers.append({u'host':name_pod[ind], u'stato':resp_snmp})
                    if resp_snmp != "3":
-        #            print "server " + ip + " alimentatore n." + str(ali) + "volt: " + resp_snmp
-        #           if resp_snmp == u'No Such Instance currently exists at this OID':
-                       print "ERRORE --> server " + ip + " problemi di memoria: " + resp_snmp
-                       
+                       print "ERRORE --> server " + name_pod[ind] + " problemi di memoria: " + resp_snmp
                        value = value_memory_detail
                        res = (errorIndication, errorStatus, errorIndex, varBinds)\
                                = real_fun(comm_data, transport, value)
@@ -1699,11 +1718,203 @@ class NodeController(AnsibleController):
                             a = str(varBinds[0])
                             resp_snmp = a.split('= ')[1]
                             print "dettaglio errore di memoria: " + resp_snmp + "\n"
-        #                       
                        conta_errori = conta_errori + 1
         #    time.sleep(1)
         print "Numero errori rilevati: %s " % conta_errori 
         self.result(servers, headers=[u'host', u'stato'])
+
+    @expose(aliases=[u'fans <pod>'], aliases_only=True)
+    @check_error
+    def fans(self):
+        """Legge lo stato delle ventole dei server presensti in un pod
+    verifica il funzionamento delle 14 ventole dei server del pod: 03 --> ok
+        """
+        pod = self.get_arg(name=u'pod')
+
+        # il presente script interroga via snmp i server dei diversi pod e raccoglie lo stato delle 14 ventole  
+        print "l'operazione potrebbe durare qualche minuto ..."
+
+        conta_errori = 0
+        community='n1volacommunity'
+        value_memory_template=[1,3,6,1,4,1,674,10892,5,4,700,12,1,5,1] # OID che indica lo stato di ogni singola ventola (sono 14) 3--> OK 
+        
+        generator = cmdgen.CommandGenerator()
+        comm_data = cmdgen.CommunityData('server', community, 1) # 1 means version SNMP v2c
+
+        l_pod = self.ip_pod_fun(pod)
+        ip_pod=l_pod[0]
+        name_pod=l_pod[1]
+        servers = []
+        ind = -1
+        for ip in ip_pod:
+            ind = ind + 1
+            transport = cmdgen.UdpTransportTarget((ip, 161),timeout=10,retries=0)
+            real_fun = getattr(generator, 'getCmd')
+            for f in range(1,15):
+               value = copy.deepcopy(value_memory_template)
+               value.append(f)
+               res = (errorIndication, errorStatus, errorIndex, varBinds)\
+                  = real_fun(comm_data, transport, value)
+               if not errorIndication is None  or errorStatus is True:
+                   print "Errore sul server " + name_pod[ind] + ": %s %s %s %s" % res
+               else:
+                   a = str(varBinds[0])
+                   resp_snmp = a.split('= ')[1]
+                   servers.append({u'host':name_pod[ind], u'ventola':f, u'stato':resp_snmp})
+                   if resp_snmp != "3":
+                       print "ERRORE --> server " + name_pod[ind] + " problemi su una fun: " + resp_snmp
+                       conta_errori = conta_errori + 1
+        #    time.sleep(1)
+        print "Numero errori rilevati: %s " % conta_errori 
+        self.result(servers, headers=[u'host', u'ventola', u'stato'])
+
+    @expose(aliases=[u'disks <pod>'], aliases_only=True)
+    @check_error
+    def disks(self):
+        """Verifica il funzionamento dei dischi fisici dei server del pod: 03 --> ok
+        """
+        pod = self.get_arg(name=u'pod')
+        # il presente script interroga via snmp i server dei diversi pod e raccoglie lo stato delle 14 ventole  
+        print "l'operazione potrebbe durare qualche minuto ..."
+
+        conta_errori = 0
+        community='n1volacommunity'
+        value_memory_template=[1,3,6,1,4,1,674,10892,5,5,1,20,130,4,1,4] # OID che indica lo stato di ogni singola ventola (sono 14) 3--> OK 
+        
+        generator = cmdgen.CommandGenerator()
+        comm_data = cmdgen.CommunityData('server', community, 1) # 1 means version SNMP v2c
+        
+        l_pod = self.ip_pod_fun(pod)
+        ip_pod=l_pod[0]
+        name_pod=l_pod[1]
+        servers = []
+        ind = -1
+        for ip in ip_pod:
+            ind = ind + 1
+            transport = cmdgen.UdpTransportTarget((ip, 161),timeout=10,retries=0)
+            real_fun = getattr(generator, 'getCmd')
+            for f in range(1,10):
+               value = copy.deepcopy(value_memory_template)
+               value.append(f)
+               res = (errorIndication, errorStatus, errorIndex, varBinds)\
+                  = real_fun(comm_data, transport, value)
+               if not errorIndication is None  or errorStatus is True:
+                   print "Errore sul server " + name_pod[ind] + ": %s %s %s %s" % res
+               else:
+                   a = str(varBinds[0])
+                   resp_snmp = a.split('= ')[1]
+                   if resp_snmp == "No Such Instance currently exists at this OID":
+                       break
+                   servers.append({u'host':name_pod[ind], u'disk':f, u'stato':resp_snmp})
+                   if resp_snmp != "3":
+                       print "ERRORE --> server " + name_pod[ind] + " problemi su un disco: " + resp_snmp
+                       conta_errori = conta_errori + 1
+        #    time.sleep(1)
+        print "Numero errori rilevati: %s " % conta_errori 
+        self.result(servers, headers=[u'host', u'disk', u'stato'])
+
+    @expose(aliases=[u'nics <pod>'], aliases_only=True)
+    @check_error
+    def nics(self):
+        """Verifica il funzionamento delle schede di rete dei server del pod: 03 --> ok
+        """
+        pod = self.get_arg(name=u'pod')
+
+        # il presente script interroga via snmp i server dei diversi pod e raccoglie lo stato delle schede di rete  
+        print "l'operazione potrebbe durare qualche minuto ..."
+
+        conta_errori = 0
+        community='n1volacommunity'
+        value_memory_template=[1,3,6,1,4,1,674,10892,5,4,1100,90,1,3,1] # OID che indica lo stato di ogni singola ventola (sono 14) 3--> OK 
+        
+        generator = cmdgen.CommandGenerator()
+        comm_data = cmdgen.CommunityData('server', community, 1) # 1 means version SNMP v2c
+        
+        l_pod = self.ip_pod_fun(pod)
+        ip_pod=l_pod[0]
+        name_pod=l_pod[1]
+        servers = []
+        ind = -1
+        for ip in ip_pod:
+            ind = ind + 1
+            transport = cmdgen.UdpTransportTarget((ip, 161),timeout=10,retries=0)
+            real_fun = getattr(generator, 'getCmd')
+            for f in range(1,10):
+               value = copy.deepcopy(value_memory_template)
+               value.append(f)
+               res = (errorIndication, errorStatus, errorIndex, varBinds)\
+                  = real_fun(comm_data, transport, value)
+               if not errorIndication is None  or errorStatus is True:
+                   print "Errore sul server " + name_pod[ind] + ": %s %s %s %s" % res
+               else:
+                   a = str(varBinds[0])
+                   resp_snmp = a.split('= ')[1]
+                   if resp_snmp == "No Such Instance currently exists at this OID":
+                       break
+                   servers.append({u'host':name_pod[ind], u'nics':f, u'stato':resp_snmp})
+                   if resp_snmp != "3":
+                       print "ERRORE --> server " + name_pod[ind] + " problemi su un disco: " + resp_snmp
+                       conta_errori = conta_errori + 1
+
+        #    time.sleep(1)
+        print "Numero errori rilevati: %s " % conta_errori 
+        self.result(servers, headers=[u'host', u'nics', u'stato'])
+
+    @expose(aliases=[u'nicsconnect <pod>'], aliases_only=True)
+    @check_error
+    def nicsconnect(self):
+        """Verifica che il numero di nics connesse sia correto rispetto al desiderata
+    mgmt: 4
+    vsphere: 3
+    oradb: 3
+    osctrl: 5
+    kvm: 5
+        """
+        pod = self.get_arg(name=u'pod')
+
+        # il presente script interroga via snmp i server dei diversi pod e raccoglie lo stato delle schede di rete  
+        print "l'operazione potrebbe durare qualche minuto ..."
+
+        conta_errori = 0
+        community='n1volacommunity'
+        value_memory_template=[1,3,6,1,4,1,674,10892,5,4,1100,90,1,4,1] # OID che indica lo stato di ogni singola ventola (sono 14) 3--> OK 
+        
+        generator = cmdgen.CommandGenerator()
+        comm_data = cmdgen.CommunityData('server', community, 1) # 1 means version SNMP v2c
+        
+        l_pod = self.ip_pod_fun(pod)
+        ip_pod=l_pod[0]
+        name_pod=l_pod[1]
+        n_nic = l_pod[2]
+        servers = []
+        ind = -1
+        for ip in ip_pod:
+            ind = ind + 1
+            transport = cmdgen.UdpTransportTarget((ip, 161),timeout=10,retries=0)
+            real_fun = getattr(generator, 'getCmd')
+            conta_up=0
+            for f in range(1,10):
+               value = copy.deepcopy(value_memory_template)
+               value.append(f)
+               res = (errorIndication, errorStatus, errorIndex, varBinds)\
+                  = real_fun(comm_data, transport, value)
+               if not errorIndication is None  or errorStatus is True:
+                   print "Errore sul server " + ip + ": %s %s %s %s" % res
+               else:
+                   a = str(varBinds[0])
+                   resp_snmp = a.split('= ')[1]
+                   if resp_snmp == "No Such Instance currently exists at this OID":
+                       break
+                   if resp_snmp == "1":
+                       conta_up = conta_up + 1
+            if conta_up != l_pod[3][ind]:
+                print "ERRORE --> server " + name_pod[ind] + " il numero di porta up non corrisponde al desiderata"
+                conta_errori = conta_errori + 1
+            servers.append({u'host':name_pod[ind], u'nics':l_pod[3][ind], u'nicsup':conta_up})
+        #   print conta_up, l_pod[3][ind]
+        #    time.sleep(1)
+        print "Numero errori rilevati: %s " % conta_errori 
+        self.result(servers, headers=[u'host', u'nics', u'nicsup'])
 
 
     def __get_hosts_and_vars(self, env):
