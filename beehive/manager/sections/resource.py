@@ -55,12 +55,43 @@ class ResourceControllerChild(ApiController):
     res_headers = [u'id', u'__meta__.definition', u'name', u'container.name', u'parent.name', u'state',
                    u'date.creation', u'ext_id']
     cont_headers = [u'id', u'category', u'__meta__.definition', u'name', u'active', u'state', u'date.creation',
-                    u'date.modified']
+                    u'date.modified', u'resources']
     tag_headers = [u'id', u'name', u'date.creation', u'date.modified', u'resources', u'containers', u'links']
     
     class Meta:
         stacked_on = 'resource'
         stacked_type = 'nested'
+
+    @expose(aliases=[u'job <id>'], aliases_only=True)
+    @check_error
+    def job(self):
+        """Get resource job
+    - id : job id
+        """
+        task_id = self.get_arg(name=u'id')
+        uri = u'%s/worker/tasks/%s' % (self.baseuri, task_id)
+        res = self._call(uri, u'GET').get(u'task_instance')
+        logger.info(res)
+        resp = []
+        resp.append(res)
+        resp.extend(res.get(u'children'))
+        self.result(resp, headers=[u'task_id', u'type', u'status', u'name', u'start_time', u'stop_time', u'elapsed'],
+                    maxsize=100)
+
+    @expose(aliases=[u'jobtrace <id>'], aliases_only=True)
+    @check_error
+    def jobtrace(self):
+        """Get resource job trace
+    - id : job id
+        """
+        task_id = self.get_arg(name=u'id')
+        uri = u'%s/worker/tasks/%s' % (self.baseuri, task_id)
+        res = self._call(uri, u'GET').get(u'task_instance').get(u'trace')
+        logger.info(res)
+        resp = []
+        for i in res:
+            resp.append({u'timestamp': i[0], u'task': i[1], u'task id': i[2], u'msg': truncate(i[3], 150)})
+        self.result(resp, headers=[u'timestamp', u'msg'], maxsize=200)
 
 
 class ResourceWorkerController(ResourceControllerChild, WorkerController):
@@ -236,6 +267,18 @@ class ContainerController(ResourceControllerChild, WorkerController):
         logger.info(u'Delete resource resourcecontainer: %s' % oid)
         res = {u'msg':u'Delete resource container %s' % oid}
         self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'jobs <id>'], aliases_only=True)
+    @check_error
+    def jobs(self, *args):
+        """List all container jobs
+    - id : resource id
+        """
+        oid = self.get_arg(name=u'id')
+        uri = u'%s/containers/%s/jobs' % (self.baseuri, oid)
+        res = self._call(uri, u'GET', data=u'')
+        logger.info(u'Get container jobs: %s' % truncate(res))
+        self.result(res, key=u'containerjobs', headers=[u'job', u'name', u'timestamp'], maxsize=400)
 
     @expose(aliases=[u'add-tag <id> <tag>'], aliases_only=True)
     @check_error
@@ -707,37 +750,6 @@ class ResourceEntityController(ResourceControllerChild):
         res = self._call(uri, u'GET', data=u'')
         logger.info(u'Get resource jobs: %s' % truncate(res))
         self.result(res, key=u'resourcejobs', headers=[u'job', u'name', u'timestamp'], maxsize=400)
-
-    @expose(aliases=[u'job <id>'], aliases_only=True)
-    @check_error
-    def job(self):
-        """Get resource job
-    - id : job id
-        """
-        task_id = self.get_arg(name=u'id')
-        uri = u'/v1.0/worker/tasks/%s' % task_id
-        res = self._call(uri, u'GET').get(u'task_instance')
-        logger.info(res)
-        resp = []
-        resp.append(res)
-        resp.extend(res.get(u'children'))
-        self.result(resp, headers=[u'task_id', u'type', u'status', u'name', u'start_time', u'stop_time', u'elapsed'],
-                    maxsize=100)
-
-    @expose(aliases=[u'jobtrace <id>'], aliases_only=True)
-    @check_error
-    def jobtrace(self):
-        """Get resource job trace
-    - id : job id
-        """
-        task_id = self.get_arg(name=u'id')
-        uri = u'/v1.0/worker/tasks/%s' % task_id
-        res = self._call(uri, u'GET').get(u'task_instance').get(u'trace')
-        logger.info(res)
-        resp = []
-        for i in res:
-            resp.append({u'timestamp': i[0], u'task': i[1], u'task id': i[2], u'msg': truncate(i[3], 150)})
-        self.result(resp, headers=[u'timestamp', u'msg'], maxsize=200)
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
     @check_error

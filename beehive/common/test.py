@@ -93,18 +93,20 @@ class BeehiveTestCase(unittest.TestCase):
         cfg = config.get(env)
         self.test_config = config.get(u'configs', {})
         for key in self.test_config.get(u'resource').keys():
-#             self.test_config.get(u'resource').get(key).update(cfg.get(u'configs').get(u'resource').get(key, {}))
             if u'configs' in cfg.keys() and u'resource' in cfg.get(u'configs').keys():
                 self.test_config.get(u'resource').get(key).update(cfg.get(u'configs').get(u'resource').get(key, {}))
-        
+        if u'configs' in cfg.keys() and u'container' in cfg.get(u'configs').keys():
+            self.test_config.get(u'container').update(cfg.get(u'configs').get(u'container'))
+
         # endpoints
         self.endpoints = cfg.get(u'endpoints')
             
         # redis connection
-        self.redis_uri = cfg.get(u'redis').get(u'uri')
-        if self.redis_uri is not None and self.redis_uri != u'':
-            rhost, rport, db = self.redis_uri.split(u';')
-            self.redis = redis.StrictRedis(host=rhost, port=int(rport), db=int(db))
+        if cfg.get(u'redis') is not None:
+            self.redis_uri = cfg.get(u'redis').get(u'uri')
+            if self.redis_uri is not None and self.redis_uri != u'':
+                rhost, rport, db = self.redis_uri.split(u';')
+                self.redis = redis.StrictRedis(host=rhost, port=int(rport), db=int(db))
         
         # celery broker
         self.broker = cfg.get(u'broker')
