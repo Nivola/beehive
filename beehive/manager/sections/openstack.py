@@ -55,8 +55,9 @@ class OpenstackPlatformControllerChild(BaseController):
         orchestrators = self.configs[u'environments'][self.env][u'orchestrators'].get(u'openstack')
         label = self.app.pargs.orchestrator
         if label is None:
-            raise Exception(u'Openstack platform label must be specified. '
-                            u'Valid label are: %s' % u', '.join(orchestrators.keys()))
+            label = orchestrators.keys()[0]
+            # raise Exception(u'Openstack platform label must be specified. Valid label are: %s' %
+            #                 u', '.join(orchestrators.keys()))
 
         if label not in orchestrators:
             raise Exception(u'Valid label are: %s' % u', '.join(orchestrators.keys()))
