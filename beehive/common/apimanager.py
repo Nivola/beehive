@@ -3299,15 +3299,7 @@ class ApiClient(BeehiveApiClient):
         except BeehiveApiClientError as ex:
             self.logger.error('Send admin request to %s using uid %s: %s' % (path, self.uid, ex.value))
             raise ApiManagerError(ex.value, code=ex.code)
-        
-#         if res['status'] == 'error':
-#             self.logger.error('Send admin request to %s using uid %s: %s' % 
-#                               (path, self.uid, res['msg']))
-#             raise ApiManagerError(res['msg'], code=res['code'])
-#         else:
-#             self.logger.info('Send admin request to %s using uid %s: %s' % 
-#                              (path, self.uid, truncate(res)))
-#             return res['response']
+
         return res
 
     def user_request(self, module, path, method, data=u'', other_headers=None):
@@ -3319,18 +3311,14 @@ class ApiClient(BeehiveApiClient):
             # get user logged uid and password
             uid = operation.user[2]
             seckey = operation.user[3]
-            res = self.send_request(module, path, method, data, uid, 
-                                    seckey, other_headers)
+            res = self.send_request(module, path, method, data, uid, seckey, other_headers)
         except BeehiveApiClientError as ex:
-            self.logger.error('Send user request to %s using uid %s: %s' % 
-                              (path, self.uid, ex.value))
+            self.logger.error('Send user request to %s using uid %s: %s' % (path, self.uid, ex.value))
             raise
         
         if res['status'] == 'error':
-            self.logger.error('Send user request to %s using uid %s: %s' % 
-                              (path, self.uid, res['msg']))
+            self.logger.error('Send user request to %s using uid %s: %s' % (path, self.uid, res['msg']))
             raise ApiManagerError(res['msg'], code=res['code'])
         else:
-            self.logger.info('Send user request to %s using uid %s: %s' % 
-                             (path, self.uid, truncate(res)))            
+            self.logger.info('Send user request to %s using uid %s: %s' % (path, self.uid, truncate(res)))
             return res['response']    

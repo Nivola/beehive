@@ -492,7 +492,7 @@ class AbstractDbManager(object):
         return query
     
     @query
-    def get_entity(self, entityclass, oid, for_update, *args, **kvargs):
+    def get_entity(self, entityclass, oid, for_update=False, *args, **kvargs):
         """Parse oid and get entity entity by name or by model id or by uuid
         
         :param entityclass: entity model class
