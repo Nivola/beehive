@@ -642,7 +642,21 @@ class ApiController(BaseController):
     
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
+    
+    @check_error    
+    def split_arg (self, key, splitWith=u','):
         
+        splitList = []
+        
+        values = self.get_arg(name=key, default=None, keyvalue=True)     
+        if values is not None:
+            for value in values.split(splitWith):
+                splitList.append(value) 
+        return splitList
+#                 splitList.append(key+u'='+value) 
+#         return '&'.join(splitList)
+
+       
     @check_error
     def _parse_args(self):
         BaseController._parse_args(self)

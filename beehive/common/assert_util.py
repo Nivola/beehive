@@ -38,7 +38,7 @@ class AssertUtil(object):
     @staticmethod
     def fail(msg=None):
         """Fail immediately, with the given message."""
-        raise ApiManagerWarning(msg)
+        raise ApiManagerError(msg)
     
     @staticmethod
     def assertIsNone(obj, msg=None):

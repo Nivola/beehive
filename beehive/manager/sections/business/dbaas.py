@@ -28,28 +28,10 @@ class DBaaServiceControllerChild(ApiController):
     baseuri = u'/v1.0/nws'
     subsystem = u'service'
 
-    def split_arg (self, key, splitWith=u','):
-        
-        splitList = []
-        
-        values = self.get_arg(name=key, default=None, keyvalue=True)     
-        if values is not None:
-            for value in values.split(splitWith):
-                splitList.append(value)
-                
-        return splitList
- 
     class Meta:
         stacked_on = 'dbaas'
         stacked_type = 'nested'
         
-# class DBServiceContainerController(DBaaServiceControllerChild): 
-#     
-#     class Meta:
-#         label = 'container '
-#         description = "Database container management"    
-           
-
 class DBServiceInstanceController(DBaaServiceControllerChild):
     class Meta:
         label = 'dbinstances'
@@ -58,35 +40,32 @@ class DBServiceInstanceController(DBaaServiceControllerChild):
     @expose(aliases=[u'describes [field=<id1, id2>]'], aliases_only=True)
     @check_error
     def describes(self):
-        """List all database instances by field: db_instance_id_N, owner_id
+        """List all database instances by field: owner-id.N, db-instance-id.N
         """
 
         dataSearch = {}
-        dataSearch[u'owner-id.N'] = self.split_arg(u'owner_id_N') 
-        dataSearch[u'db-instance-id.N'] = self.split_arg(u'db_instance_id_N')  
-        logger.info(u'$$$$$$$ describes dataSearch=%s' % dataSearch)
-                    
+        dataSearch[u'owner-id.N'] = self.split_arg(u'owner-id.N') 
+        dataSearch[u'db-instance-id.N'] = self.split_arg(u'db-instance-id.N')
+        logger.warning(u'$$$$$ %s' % dataSearch) 
         uri = u'%s/databaseservices/instance/describedbinstances' % self.baseuri
-        res = self._call(uri, u'GET', data=dataSearch).get(u'DBInstances').get(u'DBInstance')       
-        for item in res:
-            logger.info(u'$$$$$$$ describes response item=%s' % item) 
-            self.result(item,
-                    headers=[u'DBInstanceIdentifier', u'DBInstanceStatus', u'DBName', u'DbInstance', u'Port', u'Engine', u'EngineVersion', u'Endpoint'],
-                    filters=[u'DBInstanceIdentifier', u'DBInstanceStatus', u'DBName', u'DbInstance', u'Port', u'Engine', u'EngineVersion', u'Endpoint'],                   
+        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch,doseq=True)).get(u'DescribeDBInstancesResponse').get(u'DescribeDBInstancesResult').get(u'DBInstances',[])       
+        logger.warning(u'$$$$$ %s' % res)
+        self.result(res,
+                    headers=[u'DBInstanceIdentifier', u'DBInstanceStatus', 
+                             u'DBName', u'DbInstance', u'Port', u'Engine', 
+                             u'EngineVersion', u'Endpoint'],                  
                     maxsize=40)
         
   
-    @expose(aliases=[u'create <AccountId> <DBInstanceIdentifier> <DBInstanceClass> <DBSubnetGroupName> [Engine] [EngineVersion] [Port]'\
-                     u'[DBName=..] [MasterUsername=..] [MasterUserPassword=..]'\
-                     u'[AvailabilityZone=..] [VpcSecurityGroupIds=..]'],
+    @expose(aliases=[u'create <AccountId> <DBInstanceIdentifier> <DBInstanceClass> <DBSubnetGroupName> <Engine> <EngineVersion>'\
+                     u'[Port][DBName=..] [MasterUsername=..] [MasterUserPassword=..]'\
+                     u'[CharacterSetName] [AvailabilityZone=..] [VpcSecurityGroupIds=..]'],
             aliases_only=True)
     @check_error
     def create(self):
-        """create db instance <DBInstanceIdentifier> <DBInstanceClass> <AccountId> <Engine> <EngineVersion>
-            - field: can be Port, DBName, MasterUsername, MasterUserPassword, DBSubnetGroupName, AvailabilityZone, VpcSecurityGroupIds 
+        """create db instance <AccountId> <DBInstanceIdentifier> <DBInstanceClass> <DBSubnetGroupName> <Engine> <EngineVersion>
+            - field: can be Port, DBName, MasterUsername, MasterUserPassword, AvailabilityZone, VpcSecurityGroupIds 
         """
-                
-        params = self.get_query_params(*self.app.pargs.extra_arguments)
         data = {
             u'dbinstance': {
                 u'AccountId' : self.get_arg(name=u'AccountId'),
@@ -94,13 +73,14 @@ class DBServiceInstanceController(DBaaServiceControllerChild):
                 u'DBInstanceClass' : self.get_arg(name=u'DBInstanceClass'),
                 u'DBSubnetGroupName' : self.get_arg(name=u'DBSubnetGroupName'),   
                 u'Engine' : self.get_arg(name=u'Engine'),
-                u'EngineVersion' : self.get_arg(name=u'EngineVersion'),               
-                u'DBName' : params.get(u'DBName', u'mydbname'),
+                u'EngineVersion' : self.get_arg(name=u'EngineVersion'),
                 
-                u'AvailabilityZone' : params.get(u'AvailabilityZone', None),           
-                u'MasterUsername' : params.get(u'MasterUsername', u'root'),
-                u'MasterUserPassword' : params.get(u'MasterUserPassword', u'cs1$topix'),
-                u'Port' : self.get_arg(name=u'Port'),
+                u'CharacterSetName':  self.get_arg(name=u'CharacterSetName', default=u'', keyvalue=True),              
+                u'DBName' : self.get_arg(name=u'DBName', default=u'mydbname', keyvalue=True),
+                u'AvailabilityZone' : self.get_arg(name=u'AvailabilityZone', default=None, keyvalue=True),           
+                u'MasterUsername' : self.get_arg(name=u'MasterUsername', default=u'root', keyvalue=True),
+                u'MasterUserPassword' : self.get_arg(name=u'MasterUserPassword', default=u'cs1$topix', keyvalue=True),
+                u'Port' : self.get_arg(name=u'Port', keyvalue=True),
                 u'VpcSecurityGroupIds' : { u'VpcSecurityGroupId': self.split_arg(u'VpcSecurityGroupIds') }  ,
 #                 u'SchemaName' : u'schema name to use for a db instance postgres',
 #                 u'ExtensionName_N' : [u'value1', u'value2'],
