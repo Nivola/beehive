@@ -72,14 +72,14 @@ class VMServiceController(VPCaaServiceControllerChild):
         dataSearch[u'instance-id.N'] = self.split_arg(u'instance-id.N')       
 
         uri = u'%s/computeservices/instance/describeinstances' % self.baseuri
-        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch,doseq=True)).get(u'DescribeInstancesResponse').get(u'reservationSet')
+        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch,doseq=True)).get(u'DescribeInstancesResponse').get(u'reservationSet')[0].get(u'instancesSet')
         self.result(res,
             headers=[u'instanceId',u'instanceType',u'instanceState', u'launchTime',u'hypervisor',  
-                        u'availabilityZone',u'privateIpAddress',u'imageId',u'vpcId',u'subnetId', 
-                        u'hypervisor',u'cidrBlockAssociationSet.0.cidrBlock'],
+                        u'availabilityZone',u'privateIp',u'imageId',u'vpcId',u'subnetId', 
+                        u'cidrBlock'],
             fields=[u'instanceId',u'instanceType',u'instanceState.name',u'launchTime',u'hypervisor',
                         u'placement.availabilityZone',u'privateIpAddress',u'imageId', u'vpcId', 
-                        u'subnetId',u'hypervisor',u'cidrBlockAssociationSet.0.cidrBlock'],
+                        u'subnetId',u'cidrBlockAssociationSet.0.cidrBlock'],
             maxsize=40)
 
 
