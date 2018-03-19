@@ -362,7 +362,7 @@ class BeehiveApiClient(object):
         proto = endpoint[u'proto']
         host = endpoint[u'host']
         port = endpoint[u'port']
-        if method ==u'GET':
+        if method.upper()==u'GET':
             path = u'%s?%s' % (path, data)
         elif isinstance(data, dict) or isinstance(data, list):
             data = json.dumps(data)
