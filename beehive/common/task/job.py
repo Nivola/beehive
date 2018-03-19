@@ -75,14 +75,18 @@ class AbstractJob(BaseTask):
     #
     # shared area
     #
-    def get_shared_data(self):
+    def get_shared_data(self, job=None):
         """ """
-        data = BaseTask.get_shared_data(self, task_local.opid)
+        if job is None:
+            job = task_local.opid
+        data = BaseTask.get_shared_data(self, job)
         return data
     
-    def set_shared_data(self, data):
+    def set_shared_data(self, data, job=None):
         """ """
-        data = BaseTask.set_shared_data(self, task_local.opid, data)
+        if job is None:
+            job = task_local.opid
+        data = BaseTask.set_shared_data(self, job, data)
         return data
     
     def remove_shared_area(self):

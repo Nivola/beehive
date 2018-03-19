@@ -13,6 +13,9 @@ from beehive.common.log import ColorFormatter
 from beehive.manager.util.logger import LoggingLogHandler
 
 from ansible.utils.display import Display as OrigDisplay
+from beehive.manager.sections.business.vpcaas import vpcaas_controller_handlers
+from beehive.manager.sections.business.staas import staas_controller_handlers
+from beecell.simple import dynamic_import
 
 
 class Display(OrigDisplay):
@@ -37,6 +40,7 @@ from beehive.manager.sections.event import event_controller_handlers
 # from beehive.manager.sections.scheduler import scheduler_controller_handlers
 from beehive.manager.sections.business.service import service_controller_handlers
 from beehive.manager.sections.business.authority import authority_controller_handlers
+from beehive.manager.sections.business.dbaas import dbaas_controller_handlers
 from beehive.manager.sections.business import business_controller_handlers
 from beehive.manager.sections.vsphere import vsphere_controller_handlers,\
     vsphere_platform_controller_handlers
@@ -61,16 +65,15 @@ def minimal_logger(namespace, debug=False):
     return logging.getLogger(namespace)
 cement.utils.misc.minimal_logger = minimal_logger'''
 
-#import cement.core.controller
-#cement.core.controller.LOG = logging.getLogger(u'cement.core.controller')
-
+# import cement.core.controller
+# cement.core.controller.LOG = logging.getLogger(u'cement.core.controller')
 
 
 VERSION = '0.1.0'
 
 BANNER = """
 Beehive Cli v%s
-Copyright (c) 2017 Sergio Tonani
+Copyright (c) 2017 CSI Piemonte
 """ % VERSION
 
 '''
@@ -99,6 +102,33 @@ class CliMinimalLogger(cement.utils.misc.MinimalLogger):
 
 cement.utils.misc.MinimalLogger = CliMinimalLogger'''
 
+default_handlers = [
+    env_controller_handlers,
+    platform_controller_handlers,
+    resource_controller_handlers,
+    auth_controller_handlers,
+    oauth2_controller_handlers,
+    catalog_controller_handlers,
+    event_controller_handlers,
+    # scheduler_controller_handlers,
+    business_controller_handlers,
+    service_controller_handlers,
+    authority_controller_handlers,
+
+    dbaas_controller_handlers,
+    vpcaas_controller_handlers,
+    staas_controller_handlers,
+
+    vsphere_controller_handlers,
+    vsphere_platform_controller_handlers,
+    openstack_controller_handlers,
+    openstack_platform_controller_handlers,
+    provider_controller_handlers,
+    graphite_controller_handlers,
+    example_controller_handlers,
+    veeam_controller_handlers
+]
+
 
 def config_cli(app):
     # get configs
@@ -122,7 +152,7 @@ def config_cli(app):
         app.args.add_argument('--color', action='store', dest='color',
                               help='response colered. Can be true or false. [default=true]')
         app.args.add_argument('--verbosity', action='store', dest='verbosity', help='ansible verbosity')
-    #else:
+    # else:
     #    app.args.add_argument('version', action='version', version=BANNER)
 
 
@@ -132,8 +162,7 @@ class CliController(CementCmdBaseController):
     class Meta:
         label = u'base'
         description = "Beehive manager."
-        arguments = [
-        ]
+        arguments = []
 
     def _setup(self, base_app):
         CementCmdBaseController._setup(self, base_app)
@@ -187,30 +216,9 @@ class CliManager(CementCmd):
         config_handler = 'json'
         base_controller = "base"
         handlers = [
-            #LoggingLogHandler,
+            # LoggingLogHandler,
             CliController,
         ]
-        
-        logger.info(u'Setup handler')
-        handlers.extend(env_controller_handlers)
-        handlers.extend(platform_controller_handlers)
-        handlers.extend(resource_controller_handlers)
-        handlers.extend(auth_controller_handlers)
-        handlers.extend(oauth2_controller_handlers)
-        handlers.extend(catalog_controller_handlers)
-        handlers.extend(event_controller_handlers)
-        # handlers.extend(scheduler_controller_handlers)
-        handlers.extend(business_controller_handlers)
-        handlers.extend(service_controller_handlers)
-        handlers.extend(authority_controller_handlers)
-        handlers.extend(vsphere_controller_handlers)
-        handlers.extend(vsphere_platform_controller_handlers)
-        handlers.extend(openstack_controller_handlers)
-        handlers.extend(openstack_platform_controller_handlers)
-        handlers.extend(provider_controller_handlers)
-        handlers.extend(graphite_controller_handlers)
-        handlers.extend(example_controller_handlers)
-        handlers.extend(veeam_controller_handlers)
 
         configs_file = u'/etc/beehive/manage.conf'
         history_file = u'~/.beehive.manage'
@@ -255,6 +263,24 @@ class CliManager(CementCmd):
         self._meta.token_file = u'%s/.manage.token' % directory
         self._meta.seckey_file = u'%s/.manage.seckey' % directory
 
+    def setup_handler(self):
+        """Setup handler
+        """
+        logger.info(u'Setup handler')
+        configs = self.config.get_section_dict(u'configs')
+        handlers = configs.get(u'handlers', [])
+        # handlers = None
+        if handlers is None or len(handlers) == 0:
+            app_hanlders = default_handlers
+        else:
+            app_hanlders = []
+            for handler in handlers:
+                app_hanlders.append(globals()[handler])
+
+        for ctrl_handlers in app_hanlders:
+            for handler in ctrl_handlers:
+                self.handler.register(handler)
+
     def setup(self):
         """App main setup
         """
@@ -267,6 +293,7 @@ class CliManager(CementCmd):
         """
         # if self.has_setup is False:
         #    self.setup_logging()
+        self.setup_handler()
         CementCmd.setup_once(self)            
 
     def load_configs(self):
