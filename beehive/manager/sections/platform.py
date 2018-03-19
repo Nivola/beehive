@@ -1855,8 +1855,50 @@ class NodeController(AnsibleController):
                    if resp_snmp != "3":
                        print "ERRORE --> server " + name_pod[ind] + " problemi su un disco: " + resp_snmp
                        conta_errori = conta_errori + 1
+        print "Numero errori rilevati: %s " % conta_errori 
+        self.result(servers, headers=[u'host', u'nics', u'stato'])
 
-        #    time.sleep(1)
+
+    @expose(aliases=[u'globalstatus <pod>'], aliases_only=True)
+    @check_error
+    def globalstatus(self):
+        """Verifica lo stato globale del sistema dei server del pod: 03 --> ok
+        """
+        pod = self.get_arg(name=u'pod')
+        print "l'operazione potrebbe durare qualche minuto ..."
+
+        conta_errori = 0
+        community='n1volacommunity'
+        value=[1,3,6,1,4,1,674,10892,5,4,200,10,1,4,1] # OID che indica lo stato di ogni singola ventola (sono 14) 3--> OK 
+        
+        generator = cmdgen.CommandGenerator()
+        comm_data = cmdgen.CommunityData('server', community, 1) # 1 means version SNMP v2c
+        
+        l_pod = self.ip_pod_fun(pod)
+        ip_pod=l_pod[0]
+        name_pod=l_pod[1]
+        servers = []
+        ind = -1
+        for ip in ip_pod:
+            ind = ind + 1
+            transport = cmdgen.UdpTransportTarget((ip, 161),timeout=10,retries=0)
+            real_fun = getattr(generator, 'getCmd')
+        #    for f in range(1,10):
+        #       value = copy.deepcopy(value_memory_template)
+        #       value.append(f)
+            res = (errorIndication, errorStatus, errorIndex, varBinds)\
+                  = real_fun(comm_data, transport, value)
+            if not errorIndication is None  or errorStatus is True:
+                   print "Errore sul server " + name_pod[ind] + ": %s %s %s %s" % res
+            else:
+                   a = str(varBinds[0])
+                   resp_snmp = a.split('= ')[1]
+        #           if resp_snmp == "No Such Instance currently exists at this OID":
+        #               break
+                   servers.append({u'host':name_pod[ind], u'stato':resp_snmp})
+                   if resp_snmp != "3":
+                       print "ERRORE --> server " + name_pod[ind] + " problemi generici sul sistema: " + resp_snmp
+                       conta_errori = conta_errori + 1
         print "Numero errori rilevati: %s " % conta_errori 
         self.result(servers, headers=[u'host', u'nics', u'stato'])
 
