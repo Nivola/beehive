@@ -180,8 +180,8 @@ class ProviderSiteNetworkController(ProviderControllerChild):
             subnets = configs.pop(u'subnets', [])
             # self.result(data, details=True)
             self.app.print_output(u'subnets:')
-            self.result(subnets, headers=[u'cidr', u'gateway', u'enable_dhcp', u'dns_nameservers', u'allocation_pools'],
-                        maxsize=200)
+            self.result(subnets, headers=[u'cidr', u'gateway', u'allocable', u'enable_dhcp', u'dns_nameservers',
+                                          u'allocation_pools'], maxsize=200)
 
         self.get_resource(oid, format_result=format_result)
 
@@ -346,20 +346,18 @@ class ProviderComputeVpcController(ProviderControllerChild):
         """Get provider item
         """
         oid = self.get_arg(name=u'id')
-        res = self.get_resource(oid)
-        self.result(res, details=True)
-        '''attributes = res.get(u'attributes', [])
-        quotas = attributes.pop(u'quota', [])
-        availability_zones = res.pop(u'availability_zones', [])
-        self.result(res, details=True)
-        for i in availability_zones:
-            i[u'type'] = u'availability_zones'
-        self.result(availability_zones, headers=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'created',
-                                                 u'modified', u'expiry'],
-                    fields=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'date.creation', u'date.modified',
-                            u'date.expiry'], maxsize=200)
-        self.app.print_output(u'quotas:')
-        self.result(quotas, details=True)'''
+
+        def format_result(data):
+            attributes = data.get(u'attributes', [])
+            networks = data.pop(u'networks', [])
+            for i in networks:
+                i[u'subnets'] = []
+                for subnet in i[u'attributes'][u'configs'][u'subnets']:
+                    i[u'subnets'].append(subnet[u'cidr'])
+            self.result(networks, headers=[u'id', u'name', u'reuse', u'state', u'subnets'],
+                        fields=[u'id', u'name', u'reuse', u'state', u'subnets'], maxsize=200)
+
+        self.get_resource(oid, format_result=format_result)
 
 
 class ProviderComputeSecurityGroupController(ProviderControllerChild):

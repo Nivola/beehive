@@ -197,18 +197,23 @@ class ServiceTypeProcessController(ApiController):
         self.result(res, headers=[u'id', u'uuid', u'name', u'method_key', u'process_key', u'active', u'date.creation'])
     
 
-    @expose(aliases=[u'set', u'set type=<id> method=<met> [name=<name>] [desc=<description>]  [process=<key>] [template=@<templatefile>|<template>] '], aliases_only=True)
+    @expose(aliases=[u'set', u'set typeoid=<id|uuid|name> method=<met> [name=<name>] [desc=<description>]  [process=<key>] [template=@<templatefile>|<template>] '], aliases_only=True)
     @check_error
     def setval(self):
         # , st_uuid, template, name, ):
-        typeid = self.get_arg(name=u'type', keyvalue=True)
+        typeid = None 
+        typeoid = self.get_arg(name=u'typeoid', keyvalue=True)
         method = self.get_arg(name=u'method', keyvalue=True)
-
+        # http://{{nws}}/v1.0/nws/servicetypes?name=limits.6d0216b6db7c1cad41d6
         if method is None:
             raise Exception(u'Param method is not defined' )
-        if typeid is None or method is None:
-            raise Exception(u'Param typeid is not defined' )
-        
+        if typeoid is not None:
+            uri = u'%s/servicetypes/%s' % (self.baseuri, typeoid)
+            res = self._call(uri, u'GET' ).get(u'servicetype', {})
+            typeid=res.get("id",typeid) 
+            if typeid is None:
+                raise Exception(u'Could not found a type whose oid is %s' % ( typeoid ) )
+
         uri = u'%s/serviceprocesses' % self.baseuri
         res = self._call(uri, u'GET', data=u'service_type_id=%s&method_key=%s' % (typeid, method ) ).get(u'serviceprocesses', [])
         
@@ -238,7 +243,7 @@ class ServiceTypeProcessController(ApiController):
             u'serviceprocess':{
                 u'name':name, 
                 u'desc':desc,
-                u'service_type_id':typeid,
+                u'service_type_id':str(typeid),
                 u'method_key':method,
                 u'process_key': process,
                 u'template':template
@@ -254,9 +259,6 @@ class ServiceTypeProcessController(ApiController):
             res = self._call(uri, u'PUT', data= data)
             logger.info(res)
             self.result(res)
-            
-
-
 
 
 class ServiceDefinitionController(ServiceControllerChild):

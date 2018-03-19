@@ -244,6 +244,8 @@ class BeehiveApiClient(object):
             
             # append request-id to headers
             headers[u'request-id'] = id_gen()
+            # append user agent
+            headers[u'User-Agent'] = u'beehive/1.0'
 
             if data.lower().find(u'password') < 0:
                 send_data = data
@@ -315,7 +317,7 @@ class BeehiveApiClient(object):
             elapsed = time() - start
             self.logger.info(u'Response: HOST=%s, STATUS=%s, CONTENT-TYPE=%s, RES=%s, '\
                              u'ELAPSED=%s' % (response.getheader(u'remote-server', u''), response.status,
-                                              content_type, truncate(res), elapsed))
+                                              content_type, res, elapsed))
         elif response.status in [204]:
             elapsed = time() - start
             self.logger.info(u'Response: HOST=%s, STATUS=%s, CONTENT-TYPE=%s, RES=%s, '\
