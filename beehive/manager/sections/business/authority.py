@@ -533,6 +533,72 @@ class AccountController(AuthorityControllerChild):
                    u'creation']
         self.result(res, key=u'serviceinsts', headers=headers, fields=fields)
 
+    @expose(aliases=[u'add-admin-role <account_id> <catalog_id>'], aliases_only=True)
+    @check_error
+    def add_admin_role(self):
+        """Add account admin role
+        """
+        account_id = self.get_arg(name=u'account_id')
+        catalog_id = self.get_arg(name=u'catalog_id')
+
+        # get account
+        uri = u'%s/accounts/%s' % (self.baseuri, account_id)
+        account = self._call(uri, u'GET').get(u'account')
+        account_objid = account[u'__meta__'][u'objid']
+
+        # get catalog
+        uri = u'%s/srvcatalogs/%s' % (self.baseuri, catalog_id)
+        catalog = self._call(uri, u'GET').get(u'catalog')
+        catalog_objid = catalog[u'__meta__'][u'objid']
+
+        # add role
+        data = {
+            u'role': {
+                u'name': u'AdminRoleAccount-%s' % account_id,
+                u'desc': u'AdminRoleAccount-%s' % account_id
+            }
+        }
+        uri = u'/v1.0/nas/roles'
+        role = self._call(uri, u'POST', data=data)
+        logger.info(u'Add role: %s' % role)
+
+        # add role permissions
+        roleid = role[u'uuid']
+        data = {
+            u'role': {
+                u'perms': {
+                    u'append': [
+                        {u'subsystem': u'service', u'type': u'Organization.Division.Account',
+                         u'objid': account_objid, u'action': u'*'},
+                        {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceInstance',
+                         u'objid': account_objid + u'//*', u'action': u'*'},
+                        {u'subsystem': u'service',
+                         u'type': u'Organization.Division.Account.ServiceInstance.ServiceDefinitionConfig',
+                         u'objid': account_objid + u'//*//*', u'action': u'*'},
+                        {u'subsystem': u'service',
+                         u'type': u'Organization.Division.Account.ServiceInstance.ServiceLinkInst',
+                         u'objid': account_objid + u'//*//*', u'action': u'*'},
+                        {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceLink',
+                         u'objid': account_objid + u'//*', u'action': u'*'},
+                        {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceLink',
+                         u'objid': u'*//*//*//*', u'action': u'view'},
+                        {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceTag',
+                         u'objid': account_objid + u'//*', u'action': u'*'},
+                        {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceTag',
+                         u'objid': u'*//*//*//*', u'action': u'view'},
+                        {u'subsystem': u'service', u'type': u'ServiceCatalog',
+                         u'objid': catalog_objid, u'action': u'*'},
+                    ],
+                    u'remove': []
+                }
+            }
+        }
+        uri = u'/v1.0/nas/roles/%s' % role[u'uuid']
+        res = self._call(uri, u'PUT', data=data)
+
+        res = {u'msg': u'Add role %s' % role[u'uuid']}
+        self.result(res, headers=[u'msg'])
+
 
 class SubwalletController(AuthorityControllerChild):
     class Meta:

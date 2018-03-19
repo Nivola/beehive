@@ -401,12 +401,12 @@ class UpdateUserParamRoleRequestSchema(Schema):
 
 class UpdateUserParamRequestSchema(BaseUpdateRequestSchema):
     roles = fields.Nested(UpdateUserParamRoleRequestSchema, allow_none=True)
-    password = fields.String(validate=Length(min=10, max=20), error=u'Password must be at least 8 characters')
+    password = fields.String(validate=Length(min=6, max=20), error=u'Password must be at least 8 characters')
     
-    @validates(u'name')
-    def validate_user(self, value):
-        if not match(u'[a-zA-z0-9]+@[a-zA-z0-9]+', value):
-            raise ValidationError(u'User name syntax must be <name>@<domain>')     
+    # @validates(u'name')
+    # def validate_user(self, value):
+    #     if not match(u'[a-zA-z0-9]+@[a-zA-z0-9]+', value):
+    #         raise ValidationError(u'User name syntax must be <name>@<domain>')
 
 
 class UpdateUserRequestSchema(Schema):

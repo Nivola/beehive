@@ -4,6 +4,8 @@ Created on Sep 27, 2017
 @author: darkbk
 """
 import logging
+import urllib
+
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController, check_error
 from re import match
@@ -115,7 +117,19 @@ class CatalogController(DirectoryControllerChild):
         res = self.client.delete_catalog(catalog_id)
         logger.info(u'Delete catalog: %s' % truncate(res))
         res = {u'msg':u'Delete catalog %s' % res}
-        self.result(res, headers=[u'msg'])        
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'perms <id>'], aliases_only=True)
+    @check_error
+    def perms(self):
+        """Get catalog permissions by id, uuid or name
+        """
+        value = self.get_arg(name=u'id')
+        data = urllib.urlencode(self.app.kvargs)
+        uri = u'%s/catalogs/%s/perms' % (self.caturi, value)
+        res = self._call(uri, u'GET', data=data)
+        logger.info(u'Get catalog perms: %s' % truncate(res))
+        self.result(res, key=u'perms', headers=self.perm_headers)
 
 
 class EndpointController(DirectoryControllerChild):    

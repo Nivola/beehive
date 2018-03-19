@@ -208,17 +208,17 @@ class UserController(AuthControllerChild):
         """Update user with new value
         """
         value = self.get_arg(name=u'id')
-        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        params = self.app.kvargs
         name = params.get(u'name', None)
         if name is not None and not match(u'[a-zA-z0-9]+@[a-zA-z0-9]+', name):
             raise Exception(u'Name is not correct. Name syntax is <name>@<domain>')
         data = {
-            u'user':{
-                u'name':name,
-                u'desc':params.get(u'desc', None),
-                u'active':params.get(u'active', None),
-                u'password':params.get(u'password', None),
-                u'expirydate':params.get(u'expiry_date', None)
+            u'user': {
+                u'name': name,
+                u'desc': params.get(u'desc', None),
+                u'active': params.get(u'active', None),
+                u'password': params.get(u'password', None),
+                u'expirydate': params.get(u'expiry_date', None)
             }
         }
         uri = u'%s/users/%s' % (self.baseuri, value)        
@@ -369,8 +369,7 @@ class RoleController(AuthControllerChild):
         uri = u'%s/roles/%s' % (self.baseuri, value)        
         res = self._call(uri, u'GET')
         logger.info(res)
-        self.result(res, key=u'role', headers=self.role_headers, 
-                    details=True)
+        self.result(res, key=u'role', headers=self.role_headers, details=True)
     
     @expose(aliases=[u'update <id> [name=<name>] [desc=<desc>]'], aliases_only=True)
     @check_error
@@ -409,17 +408,17 @@ class RoleController(AuthControllerChild):
         roleid = self.get_arg(name=u'id')
         permid = self.get_arg(name=u'permid')
         data = {
-            u'role':{
-                u'perms':{
-                    u'append':[{u'id':permid}],
-                    u'remove':[]
+            u'role': {
+                u'perms': {
+                    u'append': [{u'id':permid}],
+                    u'remove': []
                 }
             }
         }
         uri = u'%s/roles/%s' % (self.baseuri, roleid)
         res = self._call(uri, u'PUT', data=data)
         logger.info(u'Update role perms: %s' % res)
-        self.result({u'msg':u'Add role perms: %s' % res[u'perm_append']})
+        self.result({u'msg': u'Add role perms: %s' % res[u'perm_append']})
     
     @expose(aliases=[u'delete-perm <id> <permid>'], aliases_only=True)
     @check_error
@@ -670,7 +669,7 @@ class ObjectController(AuthControllerChild):
         uri = u'%s/objects/types' % (self.baseuri)
         res = self._call(uri, u'GET', data=data)
         logger.info(u'Get objects: %s' % res)
-        self.result(res, key=u'object_types', headers=self.type_headers)
+        self.result(res, key=u'object_types', headers=self.type_headers, maxsize=200)
 
     @expose(aliases=[u'add-type <subsystem> <type>'], aliases_only=True)
     @check_error
