@@ -317,7 +317,7 @@ class BeehiveApiClient(object):
             elapsed = time() - start
             self.logger.info(u'Response: HOST=%s, STATUS=%s, CONTENT-TYPE=%s, RES=%s, '\
                              u'ELAPSED=%s' % (response.getheader(u'remote-server', u''), response.status,
-                                              content_type, res, elapsed))
+                                              content_type, truncate(res), elapsed))
         elif response.status in [204]:
             elapsed = time() - start
             self.logger.info(u'Response: HOST=%s, STATUS=%s, CONTENT-TYPE=%s, RES=%s, '\
