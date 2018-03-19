@@ -685,10 +685,11 @@ class ApiController(BaseController):
             # set token
             self.save_token(self.client.uid, self.client.seckey)
 
-    def _call(self, uri, method, data=u'', headers=None):
+    def _call(self, uri, method, data=u'', headers=None, timeout=30):
         try:
             # make request
-            res = self.client.invoke(self.subsystem, uri, method, data=data, other_headers=headers, parse=True)
+            res = self.client.invoke(self.subsystem, uri, method, data=data, other_headers=headers, parse=True,
+                                     timeout=timeout)
         except BeehiveApiClientError as ex:
             raise
         finally:

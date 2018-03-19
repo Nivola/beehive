@@ -335,7 +335,7 @@ class BeehiveApiClient(object):
 
         return res
     
-    def send_request(self, subsystem, path, method, data=u'', uid=None, seckey=None, other_headers=None):
+    def send_request(self, subsystem, path, method, data=u'', uid=None, seckey=None, other_headers=None, timeout=30):
         """
         
         :raise BeehiveApiClientError:
@@ -366,11 +366,11 @@ class BeehiveApiClient(object):
             path = u'%s?%s' % (path, data)
         elif isinstance(data, dict) or isinstance(data, list):
             data = json.dumps(data)
-        res = self.http_client(proto, host, path, method, port=port, data=data, headers=headers)
+        res = self.http_client(proto, host, path, method, port=port, data=data, headers=headers, timeout=timeout)
         return res
 
     @watch    
-    def invoke(self, subsystem, path, method, data=u'', other_headers=None, parse=False):
+    def invoke(self, subsystem, path, method, data=u'', other_headers=None, parse=False, timeout=30):
         """Make api request using subsystem internal admin user credentials.
         
         :param parse: if True check if data is dict and transform in json else accept data as passed
@@ -383,7 +383,8 @@ class BeehiveApiClient(object):
         try:
             if parse is True and isinstance(data, dict) or isinstance(data, list):
                 data = json.dumps(data)
-            res = self.send_request(subsystem, path, method, data, self.uid, self.seckey, other_headers)
+            res = self.send_request(subsystem, path, method, data, self.uid, self.seckey, other_headers,
+                                    timeout=timeout)
         except BeehiveApiClientError as ex:
             self.logger.error(u'Send request to %s using uid %s: %s, %s' % (path, self.uid, ex.value, ex.code))
             # Request is not authorized
@@ -392,7 +393,8 @@ class BeehiveApiClient(object):
                 self.uid = None
                 self.seckey = None
                 self.create_token()
-                res = self.send_request(subsystem, path, method, data, self.uid, self.seckey, other_headers)
+                res = self.send_request(subsystem, path, method, data, self.uid, self.seckey, other_headers,
+                                        timeout=timeout)
             else:
                 raise
         

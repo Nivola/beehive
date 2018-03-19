@@ -78,15 +78,11 @@ class OrganizationController(AuthorityControllerChild):
         logger.info(u'Get organization perms: %s' % truncate(res))
         self.result(res, key=u'perms', headers=self.perm_headers)
  
-    @expose(aliases=[u'add <name> <org_type> [desc=..] '\
-                     u'[ext_anag_id=..] [attributes=..] [hasvat=..]'\
-                     u'[partner=..] [referent=..] [email=..]'\
-                     u'[legalemail=..] [postaladdress=..]'],
-            aliases_only=True)
+    @expose(aliases=[u'add <name> <org_type> [field=value]'], aliases_only=True)
     @check_error
     def add(self):
         """Add organization <name> <org_type>
-            - field: can be desc, ext_anag_id, attributes, hasvat, partner, referent, email, legaemail, postaladdress 
+    - field: can be desc, ext_anag_id, attributes, hasvat, partner, referent, email, legaemail, postaladdress
         """
         name = self.get_arg(name=u'name')
         org_type = self.get_arg(name=u'org_type')        
@@ -101,8 +97,8 @@ class OrganizationController(AuthorityControllerChild):
                 u'ext_anag_id':params.get(u'ext_anag_id',None),
                 u'attributes':params.get(u'attributes',None),
                 # u'attribute': params.get(u'attribute', {}),
-                u'hasvat':params.get(u'hasvat',None),
-                u'partner':params.get(u'partner',None),
+                u'hasvat':params.get(u'hasvat', False),
+                u'partner':params.get(u'partner', False),
                 u'referent':params.get(u'referent', None),
                 u'email':params.get(u'email', None),
                 u'legalemail':params.get(u'legalemail', None),
@@ -191,15 +187,11 @@ class DivisionController(AuthorityControllerChild):
         logger.info(u'Get division perms: %s' % truncate(res))
         self.result(res, key=u'perms', headers=self.perm_headers)
  
-    @expose(aliases=[u'add <name> <org_type> [desc=..] '\
-                     u'[ext_anag_id=..] [attributes=..] [hasvat=..]'\
-                     u'[partner=..] [referent=..] [email=..]'\
-                     u'[legalemail=..] [postaladdress=..]'],
-            aliases_only=True)
+    @expose(aliases=[u'add <name> <organization> [field=value]'], aliases_only=True)
     @check_error
     def add(self):
         """Add division <name> <organization_id>
-            - field: can be desc, contact, email, postaladdress 
+    - field: can be desc, contact, email, postaladdress
         """
         name = self.get_arg(name=u'name')
         organization_id = self.get_arg(name=u'organization_id')        
@@ -372,12 +364,11 @@ class AccountController(AuthorityControllerChild):
         logger.info(u'Get account perms: %s' % truncate(res))
         self.result(res, key=u'perms', headers=self.perm_headers)
   
-    @expose(aliases=[u'add <name> <division_id> [desc=..] [note=..] [contact=..] [email=..] [email_support=..] '
-                     u'[email_support_link=..]'], aliases_only=True)
+    @expose(aliases=[u'add <name> <division_id> [field=value]'], aliases_only=True)
     @check_error
     def add(self):
         """Add account <name> <division_id>
-    - field: can be desc, contact, email, postaladdress
+    - field: can be desc, contact, email, email_support, email_support_link, note
         """
         name = self.get_arg(name=u'name')
         division_id = self.get_arg(name=u'division_id')
@@ -460,6 +451,67 @@ class AccountController(AuthorityControllerChild):
         self.result(res, headers=[u'id', u'uuid', u'name', u'amount', u'evaluation_date', u'active', u'date.creation'],
                     maxsize=40)
 
+    @expose(aliases=[u'add-service <account_id> <type>'], aliases_only=True)
+    @check_error
+    def add_service(self):
+        """Add container service instance
+    - type : can be ComputeService, DatabaseService
+        """
+        account_id = self.get_arg(name=u'account_id')
+        plugintype = self.get_arg(name=u'type')
+
+        uri_internal = {
+            u'ComputeService': u'computeservices',
+            u'DatabaseService': u'databaseservices',
+        }
+
+        # check service already exists
+        data = urllib.urlencode({u'plugintype': plugintype, u'account_id': account_id})
+        uri = u'%s/serviceinsts' % self.baseuri
+        service_inst = self._call(uri, u'GET', data=data).get(u'serviceinsts', [])
+
+        if len(service_inst) > 0:
+            logger.info(u'Service instance container %s already exists' % plugintype)
+            res = {u'msg': u'Service instance container %s already exists' % plugintype}
+            self.result(res, headers=[u'msg'])
+            return
+
+        # get service def
+        data = urllib.urlencode({u'plugintype': plugintype})
+        uri = u'%s/servicedefs' % self.baseuri
+        service_def = self._call(uri, u'GET', data=data).get(u'servicedefs', [])[0]
+        service_definition_id = service_def.get(u'uuid')
+        name = u'%s-%s' % (plugintype, account_id)
+
+        # create instance
+        data = {
+            u'serviceinst': {
+                u'name': name,
+                u'desc': u'Account %s %s' % (account_id, plugintype),
+                u'account_id': account_id,
+                u'service_def_id': service_definition_id,
+                u'params_resource': u'',
+                u'version': u'1.0'
+            }
+        }
+        uri = u'%s/%s' % (self.baseuri, uri_internal.get(plugintype))
+        res = self._call(uri, u'POST', data=data, timeout=600)
+        logger.info(u'Add service instance container: %s' % plugintype)
+        res = {u'msg': u'Add service instance %s' % res}
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'delete-service <service_id>'], aliases_only=True)
+    @check_error
+    def delete_service(self):
+        """Delete service instance
+        """
+        value = self.get_arg(name=u'service_id')
+        uri = u'%s/serviceinsts/%s' % (self.baseuri, value)
+        res = self._call(uri, u'DELETE')
+        logger.info(res)
+        res = {u'msg': u'Delete service instance %s' % value}
+        self.result(res, headers=[u'msg'])
+
     @expose(aliases=[u'services <id> [field=value]'], aliases_only=True)
     @check_error
     def services(self):
@@ -470,6 +522,7 @@ class AccountController(AuthorityControllerChild):
              filter_expiry_date_start, filter_expiry_date_stop
         """
         self.app.kvargs[u'account_id'] = self.get_arg(name=u'id')
+        self.app.kvargs[u'flag_container'] = True
         data = urllib.urlencode(self.app.kvargs)
         uri = u'%s/serviceinsts' % self.baseuri
         res = self._call(uri, u'GET', data=data)
