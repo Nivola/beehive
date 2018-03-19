@@ -130,28 +130,32 @@ class UserController(AuthControllerChild):
         label = 'users'
         description = "User management"
         
-    @expose(aliases=[u'add <name> <password> [<expirydate>=yyyy-mm-dd]'], aliases_only=True)
+    @expose(aliases=[u'add <name> [password=..] [storetype=..] [expirydate=yyyy-mm-dd]'], aliases_only=True)
     @check_error
     def add(self):
         """Add user <name>
+    - storetype: can be DBUSER, LDAPUSER
         """
         name = self.get_arg(name=u'name')
-        pwd = self.get_arg(name=u'pwd')
-        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        pwd = self.get_arg(name=u'password', default=None, keyvalue=True)
+        storetype = self.get_arg(name=u'storetype', default=u'DBUSER', keyvalue=True)
+        expirydate = self.get_arg(name=u'expirydate', default=None, keyvalue=True)
         data = {
-            u'user':{ 
-                u'name':name,
-                u'active':True,
-                u'password':pwd, 
-                u'desc':u'User %s' % name, 
-                u'base':True,
-                u'expirydate':params.get(u'expiry_date', None)
+            u'user': {
+                u'name': name,
+                u'active': True,
+                u'desc': u'User %s' % name,
+                u'base': True,
+                u'storetype': storetype,
+                u'expiry_date': expirydate
             }
         }
-        uri = u'%s/users' % self.baseuri        
+        if pwd is not None:
+            data[u'user'][u'password'] = pwd
+        uri = u'%s/users' % self.baseuri
         res = self._call(uri, u'POST', data=data)
         logger.info(res)
-        res = {u'msg':u'Add user %s' % res[u'uuid']}
+        res = {u'msg': u'Add user %s' % res[u'uuid']}
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'add-system <name> <password>'], aliases_only=True)

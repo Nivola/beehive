@@ -18,16 +18,17 @@ from marshmallow.exceptions import ValidationError
 from beecell.swagger import SwaggerHelper
 from flasgger.marshmallow_apispec import SwaggerView
 
+
 class BaseCreateRequestSchema(Schema):
-    name = fields.String(required=True,
-                error_messages={u'required': u'name is required.'})
-    desc = fields.String(required=True, 
-                error_messages={u'required': u'desc is required.'})
-    
+    name = fields.String(required=True, error_messages={u'required': u'name is required.'})
+    desc = fields.String(required=True, error_messages={u'required': u'desc is required.'})
+
+
 class BaseUpdateRequestSchema(Schema):
     name = fields.String(allow_none=True)
     desc = fields.String(allow_none=True)    
-    
+
+
 class BaseCreateExtendedParamRequestSchema(Schema):
     active = fields.Boolean(missing=True, allow_none=True)
     expiry_date = fields.String(load_from=u'expirydate', missing=None, 
@@ -43,6 +44,7 @@ class BaseCreateExtendedParamRequestSchema(Schema):
             expiry_date = datetime(int(y), int(m), int(d))
             data[u'expiry_date'] = expiry_date
         return data
+
 
 class BaseUpdateMultiRequestSchema(Schema):
     append = fields.List(fields.String())
