@@ -68,8 +68,9 @@ class ServiceTypeController(ServiceControllerChild):
         uri = u'%s/servicetypes' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        self.result(res, key=u'servicetypes', headers=[u'id', u'uuid', u'name', u'version', u'status',
-                    u'flag_container', u'objclass', u'active', u'date.creation'])
+        headers = [u'id', u'uuid', u'name', u'version', u'plugintype', u'status', u'flag_container', u'objclass',
+                   u'active', u'date.creation']
+        self.result(res, key=u'servicetypes', headers=headers)
  
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -591,12 +592,15 @@ class ServiceCatalogController(ServiceControllerChild):
     @check_error
     def defs(self):
         """List all service service definitions linked to service catalog
+        """
+        """
     - field = plugintype, flag_container
         - plugintype=.. filter by plugin type
         - flag_container=true select only container type
         """
         value = self.get_arg(name=u'id')
-        data = urllib.urlencode(self.app.kvargs)
+        # data = urllib.urlencode(self.app.kvargs)
+        data = urllib.urlencode({u'flag_container': True})
         uri = u'%s/srvcatalogs/%s/defs' % (self.baseuri, value)
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
