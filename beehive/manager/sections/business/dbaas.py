@@ -49,12 +49,10 @@ class DBServiceInstanceController(DBaaServiceControllerChild):
         uri = u'%s/databaseservices/instance/describedbinstances' % self.baseuri
         res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch,doseq=True)).get(u'DescribeDBInstancesResponse').get(u'DescribeDBInstancesResult').get(u'DBInstances',[])       
         self.result(res,
-                    headers=[u'DBInstanceIdentifier', u'DBInstanceStatus', 
-                             u'DBName', u'DbInstance', u'Port', u'Engine', 
-                             u'EngineVersion', u'Endpoint'],                  
+                    headers=[u'DBInstanceIdentifier', u'DBInstanceStatus', u'Engine', u'EngineVersion', u'MultiAZ',
+                             u'AvailabilityZone', u'DBSubnetGroup.VpcId', u'Endpoint.Address', u'Endpoint.Port'],
                     maxsize=40)
-        
-  
+
     @expose(aliases=[u'create <AccountId> <DBInstanceIdentifier> <DBInstanceClass> <DBSubnetGroupName> <Engine> <EngineVersion>'\
                      u'[Port][DBName=..] [MasterUsername=..] [MasterUserPassword=..]'\
                      u'[CharacterSetName] [AvailabilityZone=..] [VpcSecurityGroupIds=..]'],

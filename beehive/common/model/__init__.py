@@ -33,7 +33,8 @@ class AuditData(object):
     creation_date = Column(DateTime())
     modification_date = Column(DateTime())
     expiry_date = Column(DateTime())
-             
+
+
 class BaseEntity(AuditData):
     """
         
@@ -769,9 +770,7 @@ class AbstractDbManager(object):
                     self.logger.debug(u'Delete tag %s' % tag)
 
         return True
-    
-    
-    
+
     @transaction
     def add(self, entity):
         

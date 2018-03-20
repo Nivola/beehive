@@ -18,16 +18,17 @@ from marshmallow.exceptions import ValidationError
 from beecell.swagger import SwaggerHelper
 from flasgger.marshmallow_apispec import SwaggerView
 
+
 class BaseCreateRequestSchema(Schema):
-    name = fields.String(required=True,
-                error_messages={u'required': u'name is required.'})
-    desc = fields.String(required=True, 
-                error_messages={u'required': u'desc is required.'})
-    
+    name = fields.String(required=True, error_messages={u'required': u'name is required.'})
+    desc = fields.String(required=True, error_messages={u'required': u'desc is required.'})
+
+
 class BaseUpdateRequestSchema(Schema):
     name = fields.String(allow_none=True)
     desc = fields.String(allow_none=True)    
-    
+
+
 class BaseCreateExtendedParamRequestSchema(Schema):
     active = fields.Boolean(missing=True, allow_none=True)
     expiry_date = fields.String(load_from=u'expirydate', missing=None, 
@@ -43,6 +44,7 @@ class BaseCreateExtendedParamRequestSchema(Schema):
             expiry_date = datetime(int(y), int(m), int(d))
             data[u'expiry_date'] = expiry_date
         return data
+
 
 class BaseUpdateMultiRequestSchema(Schema):
     append = fields.List(fields.String())
@@ -401,12 +403,12 @@ class UpdateUserParamRoleRequestSchema(Schema):
 
 class UpdateUserParamRequestSchema(BaseUpdateRequestSchema):
     roles = fields.Nested(UpdateUserParamRoleRequestSchema, allow_none=True)
-    password = fields.String(validate=Length(min=10, max=20), error=u'Password must be at least 8 characters')
+    password = fields.String(validate=Length(min=6, max=20), error=u'Password must be at least 8 characters')
     
-    @validates(u'name')
-    def validate_user(self, value):
-        if not match(u'[a-zA-z0-9]+@[a-zA-z0-9]+', value):
-            raise ValidationError(u'User name syntax must be <name>@<domain>')     
+    # @validates(u'name')
+    # def validate_user(self, value):
+    #     if not match(u'[a-zA-z0-9]+@[a-zA-z0-9]+', value):
+    #         raise ValidationError(u'User name syntax must be <name>@<domain>')
 
 
 class UpdateUserRequestSchema(Schema):

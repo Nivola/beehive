@@ -130,28 +130,32 @@ class UserController(AuthControllerChild):
         label = 'users'
         description = "User management"
         
-    @expose(aliases=[u'add <name> <password> [<expirydate>=yyyy-mm-dd]'], aliases_only=True)
+    @expose(aliases=[u'add <name> [password=..] [storetype=..] [expirydate=yyyy-mm-dd]'], aliases_only=True)
     @check_error
     def add(self):
         """Add user <name>
+    - storetype: can be DBUSER, LDAPUSER
         """
         name = self.get_arg(name=u'name')
-        pwd = self.get_arg(name=u'pwd')
-        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        pwd = self.get_arg(name=u'password', default=None, keyvalue=True)
+        storetype = self.get_arg(name=u'storetype', default=u'DBUSER', keyvalue=True)
+        expirydate = self.get_arg(name=u'expirydate', default=None, keyvalue=True)
         data = {
-            u'user':{ 
-                u'name':name,
-                u'active':True,
-                u'password':pwd, 
-                u'desc':u'User %s' % name, 
-                u'base':True,
-                u'expirydate':params.get(u'expiry_date', None)
+            u'user': {
+                u'name': name,
+                u'active': True,
+                u'desc': u'User %s' % name,
+                u'base': True,
+                u'storetype': storetype,
+                u'expiry_date': expirydate
             }
         }
-        uri = u'%s/users' % self.baseuri        
+        if pwd is not None:
+            data[u'user'][u'password'] = pwd
+        uri = u'%s/users' % self.baseuri
         res = self._call(uri, u'POST', data=data)
         logger.info(res)
-        res = {u'msg':u'Add user %s' % res[u'uuid']}
+        res = {u'msg': u'Add user %s' % res[u'uuid']}
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'add-system <name> <password>'], aliases_only=True)
@@ -208,17 +212,17 @@ class UserController(AuthControllerChild):
         """Update user with new value
         """
         value = self.get_arg(name=u'id')
-        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        params = self.app.kvargs
         name = params.get(u'name', None)
         if name is not None and not match(u'[a-zA-z0-9]+@[a-zA-z0-9]+', name):
             raise Exception(u'Name is not correct. Name syntax is <name>@<domain>')
         data = {
-            u'user':{
-                u'name':name,
-                u'desc':params.get(u'desc', None),
-                u'active':params.get(u'active', None),
-                u'password':params.get(u'password', None),
-                u'expirydate':params.get(u'expiry_date', None)
+            u'user': {
+                u'name': name,
+                u'desc': params.get(u'desc', None),
+                u'active': params.get(u'active', None),
+                u'password': params.get(u'password', None),
+                u'expirydate': params.get(u'expiry_date', None)
             }
         }
         uri = u'%s/users/%s' % (self.baseuri, value)        
@@ -369,8 +373,7 @@ class RoleController(AuthControllerChild):
         uri = u'%s/roles/%s' % (self.baseuri, value)        
         res = self._call(uri, u'GET')
         logger.info(res)
-        self.result(res, key=u'role', headers=self.role_headers, 
-                    details=True)
+        self.result(res, key=u'role', headers=self.role_headers, details=True)
     
     @expose(aliases=[u'update <id> [name=<name>] [desc=<desc>]'], aliases_only=True)
     @check_error
@@ -409,17 +412,17 @@ class RoleController(AuthControllerChild):
         roleid = self.get_arg(name=u'id')
         permid = self.get_arg(name=u'permid')
         data = {
-            u'role':{
-                u'perms':{
-                    u'append':[{u'id':permid}],
-                    u'remove':[]
+            u'role': {
+                u'perms': {
+                    u'append': [{u'id':permid}],
+                    u'remove': []
                 }
             }
         }
         uri = u'%s/roles/%s' % (self.baseuri, roleid)
         res = self._call(uri, u'PUT', data=data)
         logger.info(u'Update role perms: %s' % res)
-        self.result({u'msg':u'Add role perms: %s' % res[u'perm_append']})
+        self.result({u'msg': u'Add role perms: %s' % res[u'perm_append']})
     
     @expose(aliases=[u'delete-perm <id> <permid>'], aliases_only=True)
     @check_error
@@ -670,7 +673,7 @@ class ObjectController(AuthControllerChild):
         uri = u'%s/objects/types' % (self.baseuri)
         res = self._call(uri, u'GET', data=data)
         logger.info(u'Get objects: %s' % res)
-        self.result(res, key=u'object_types', headers=self.type_headers)
+        self.result(res, key=u'object_types', headers=self.type_headers, maxsize=200)
 
     @expose(aliases=[u'add-type <subsystem> <type>'], aliases_only=True)
     @check_error

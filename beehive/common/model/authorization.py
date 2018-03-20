@@ -115,8 +115,8 @@ class RoleTemplate(Base, BaseEntity):
 
     def __init__(self, objid, name, policy, desc=u'', active=True):
         BaseEntity.__init__(self, objid, name, desc, active)
-        
-        self.policy = policy 
+
+        self.policy = policy
 
 
 # Systems roles
@@ -194,13 +194,13 @@ class User(Base, BaseEntity):
         
         if password is not None:
             # generate new salt, and hash a password 
-            #self.password = sha256_crypt.encrypt(password)
+            # self.password = sha256_crypt.encrypt(password)
             self.password = bcrypt.hashpw(str(password), bcrypt.gensalt(14))
 
     def _check_password(self, password):
         # verifying the password
         res = bcrypt.checkpw(str(password), str(self.password))
-        #res = sha256_crypt.verify(password, self.password)
+        # res = sha256_crypt.verify(password, self.password)
         return res
 
 
@@ -210,8 +210,7 @@ class Group(Base, BaseEntity):
     member = relationship(u'User', secondary=group_user,
                           backref=backref(u'group', lazy=u'dynamic'))
     role = relationship(u'RoleGroup', back_populates=u'group')  
-    
-    #init member value to an empty list when creating a group
+
     def __init__(self, objid, name, member=[], role=[], desc=None, active=True, 
                  expiry_date=None):
         BaseEntity.__init__(self, objid, name, desc, active)
@@ -222,10 +221,6 @@ class Group(Base, BaseEntity):
         if expiry_date is None:
             expiry_date = datetime.datetime.today()+datetime.timedelta(days=365)
         self.expiry_date = expiry_date      
-    
-    #def __repr__(self):
-    #    return u"<Group id='%s' name='%s' desc='%s'>" % (
-    #                self.id, self.name, self.desc)
 
 
 # System object types
@@ -291,7 +286,7 @@ class SysObjectAction(Base):
 # System object permissions
 class SysObjectPermission(Base):
     __tablename__ = u'sysobject_permission'
-    __table_args__ = {u'mysql_engine':u'InnoDB'}    
+    __table_args__ = {u'mysql_engine': u'InnoDB'}
     
     id = Column(Integer, primary_key=True)
     obj_id = Column(Integer(), ForeignKey(u'sysobject.id'))
@@ -312,15 +307,16 @@ class SysObjectPermission(Base):
 # System object policy
 class SysPolicy(Base):
     __tablename__ = u'syspolicy'
-    __table_args__ = {u'mysql_engine':u'InnoDB'}    
+    __table_args__ = {u'mysql_engine': u'InnoDB'}
     
     id = Column(Integer, primary_key=True)
+    objid_tmpl = Column(String(400))
     type_id = Column(Integer(), ForeignKey(u'sysobject_type.id'))
     type = relationship(u"SysObjectType", backref=u"sysobject_type") 
     action_id = Column(Integer(), ForeignKey(u'sysobject_action.id'))
     action = relationship(u'SysObjectAction')
 
-    def __init__(self, type, action):
+    def __init__(self, objid_tmpl, type, action):
         self.type = type
         self.action = action
         
@@ -386,8 +382,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
     # System Object Type manipulation methods
     #
     @query
-    def get_object_type(self, oid=None, objtype=None, objdef=None,
-                        page=0, size=10, order=u'DESC', field=u'id'):
+    def get_object_type(self, oid=None, objtype=None, objdef=None, page=0, size=10, order=u'DESC', field=u'id'):
         """Get system object type.
         
         :param oid: id of the system object type [optional]
@@ -994,7 +989,146 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             total = 0                 
                      
         self.logger.debug(u'Get object permissions: %s' % truncate(res))
-        return res, total    
+        return res, total
+
+    #
+    # RoleTemplateTemplate manipulation methods
+    #
+    def get_role_templates(self, *args, **kvargs):
+        """Get role_templates
+
+        :param tags: list of permission tags
+        :param name: name like [optional]
+        :param active: active [optional]
+        :param creation_date: creation_date [optional]
+        :param modification_date: modification_date [optional]
+        :param expiry_date: expiry_date [optional]
+        :param page: users list page to show [default=0]
+        :param size: number of users to show in list per page [default=0]
+        :param order: sort order [default=DESC]
+        :param field: sort field [default=id]
+        :return: list of :class:`RoleTemplate`
+        :raises QueryError: raise :class:`QueryError`
+        """
+        filters = []
+        res, total = self.get_paginated_entities(RoleTemplate, filters=filters,
+                                                 *args, **kvargs)
+
+        return res, total
+
+    @query
+    def get_permission_role_templates(self, tags=None, perm=None, page=0, size=10,
+                                      order=u'DESC', field=u'id', *args, **kvargs):
+        """Get role_templates related to a permission.
+
+        :param perm: permission id
+        :param page: role_templates list page to show [default=0]
+        :param size: number of role_templates to show in list per page [default=0]
+        :param order: sort order [default=DESC]
+        :param field: sort field [default=id]
+        :return: List of RoleTemplate instances
+        :rtype: list of :class:`RoleTemplate`
+        :raises QueryError: raise :class:`QueryError`
+        """
+        session = self.get_session()
+        query = PaginatedQueryGenerator(RoleTemplate, session)
+        query.add_filter(u'AND role_template_permission.permission_id=:perm_id')
+        query.set_pagination(page=page, size=size, order=order, field=field)
+        res = query.run(tags, permn_id=perm, *args, **kvargs)
+        return res
+
+    @transaction
+    def add_role_template(self, objid, name, desc, policies):
+        """Add a role_template.
+
+        :param objid: role_template objid
+        :param name: role_template name
+        :param policies: list of policies {u'objid_tmpl':.., u'type':.., u'action':..}
+            Ex. [{u'objid_tmpl':u'%account_objid', u'type':u'service:Org.Div.Account', u'action':u'*'},..]
+        :param desc: role_template desc
+        :return: True if operation is successful, False otherwise
+        :rtype: bool
+        :raises TransactionError: raise :class:`TransactionError`
+        """
+        session = self.get_session()
+
+        rt_policies = []
+        for policy in policies:
+            # get object type
+            objtype, objdef = policy.get(u'type').split(u':')
+            policy_type = session.query(SysObjectType).filter_by(objtype=objtype).filter_by(objdef=objdef).first()
+            if policy_type is None:
+                raise ModelError(u'Type %s not found' % policy.get(u'type'))
+            # get action
+            objtype, objdef = policy.get(u'type').split(u':')
+            policy_act = session.query(SysObjectAction).filter_by(objtype=objtype).filter_by(objdef=objdef).first()
+            if policy_act is None:
+                raise ModelError(u'Type %s not found' % policy.get(u'type'))
+            # TODO: add control to objid
+            rt_policies.append(SysPolicy(policy.get(u'objid_tmpl'), policy_type, policy_act))
+
+        record = RoleTemplate(objid, name, rt_policies, desc=desc, active=True)
+        session.add(record)
+
+        self.logger.debug(u'Add role_template %s' % name)
+        return record
+
+    @transaction
+    def remove_role_template(self, *args, **kvargs):
+        """Remove role_template.
+
+        :param int oid: entity id. [optional]
+        :raises TransactionError: raise :class:`TransactionError`
+        """
+        # remove policies
+
+        res = self.remove_entity(RoleTemplate, *args, **kvargs)
+        return res
+
+    @transaction
+    def append_role_template_permissions(self, role_template, perms):
+        """Append permission to role_template
+
+        :param role_template: RoleTemplate instance
+        :param perms: list of permissions
+        :return: True if operation is successful, False otherwise
+        :rtype: bool
+        :raises TransactionError: raise :class:`TransactionError`
+        """
+        session = self.get_session()
+        append_perms = []
+        for perm in perms:
+            # append permission to role_template if it doesn't already exists
+            if role_template not in perm.role_template:
+                role_template.permission.append(perm)
+                append_perms.append(perm.id)
+            else:
+                self.logger.warn(u'Permission %s already exists in role_template %s' % (
+                    perm, role_template))
+
+        self.logger.debug(u'Append to role_template %s permissions: %s' % (role_template, perms))
+        return append_perms
+
+    @transaction
+    def remove_role_template_permission(self, role_template, perms):
+        """Remove permission from role_template
+
+        :param role_template: RoleTemplate instance
+        :param perms: list of permissions
+        :return: True if operation is successful, False otherwise
+        :rtype: bool
+        :raises TransactionError: raise :class:`TransactionError`
+        """
+        session = self.get_session()
+        remove_perms = []
+        for perm in perms:
+            # remove permission from role_template
+            # if len(perm.role_template.all()) > 0:
+            role_template.permission.remove(perm)
+            remove_perms.append(perm.id)
+
+        self.logger.debug('Remove from role_template %s permissions: %s' % (role_template, perms))
+        return remove_perms
 
     #
     # Role manipulation methods
@@ -1159,73 +1293,6 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         """
         res = self.remove_entity(Role, *args, **kvargs)
         return res
-
-    '''
-    @transaction
-    def update_role(self, oid=None, objid=None, name=None, new_name=None, 
-                    new_desc=None):
-        """Update a role.
-        
-        :param oid: role id [optional] 
-        :param objid: role objid [optional] 
-        :param name: role name [optional] 
-        :param new_name: new role name [optional] 
-        :param new_desc: new role desc [optional]
-        :return: True if operation is successful, False otherwise
-        :rtype: bool
-        :raises TransactionError: raise :class:`TransactionError`
-        """
-        session = self.get_session()
-        
-        if oid is not None:
-            role = session.query(Role).filter_by(id=oid)
-        elif objid is not None:
-            role = session.query(Role).filter_by(objid=objid)
-        elif name is not None:
-            role = session.query(Role).filter_by(name=name)      
-        
-        if role.first() is None:
-            self.logger.error("Role %s|%s|%s does not exist" % 
-                              (oid, objid, name))
-            raise ModelError("Role %s|%s|%s does not exist" % 
-                                  (oid, objid, name))
-        
-        data = {}
-        if new_name is not None: 
-            data['name'] = new_name
-        if new_desc  is not None:
-            data['desc'] = new_desc
-        if new_name is not None or new_description is not None:
-            data['modification_date'] = datetime.datetime.today()
-            role.update(data)
-        
-        self.logger.debug('Update role %s with data %s' % (name, data))
-        return True
-    
-    @transaction
-    def remove_role(self, role_id=None, name=None):
-        """Remove a role. Specify at least role id or role name.
-        
-        :param role_id: id of the role [optional]
-        :param name: name of role [optional]
-        :return: True if operation is successful, False otherwise
-        :rtype: bool
-        :raises TransactionError: raise :class:`TransactionError`
-        """
-        session = self.get_session()
-        if role_id is not None:  
-            role = session.query(Role).filter_by(id=role_id).first()
-        elif name is not None:
-            role = session.query(Role).filter_by(name=name).first()
-        
-        # delete object type
-        if role is not None:
-            session.delete(role)
-            self.logger.debug('Remove role : %s' % (role))
-            return True
-        else:
-            self.logger.error("No role found")
-            raise ModelError('No role found')'''
 
     @transaction
     def append_role_permissions(self, role, perms):
