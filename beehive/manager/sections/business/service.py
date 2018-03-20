@@ -713,14 +713,18 @@ class ServiceInstanceController(ServiceControllerChild):
         res = {u'msg': u'Update service instance %s with data %s' % (oid, params)}
         self.result(res, headers=[u'msg'])
  
-    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @expose(aliases=[u'delete <id> [recursive]'], aliases_only=True)
     @check_error
     def delete(self):
         """Delete service instance
+        - field: can be recursive
         """
         value = self.get_arg(name=u'id')
+        data = {
+            u'recursive' : self.get_arg(name=u'recursive', default=False, keyvalue=True)
+        }
         uri = u'%s/serviceinsts/%s' % (self.baseuri, value)
-        res = self._call(uri, u'DELETE')
+        res = self._call(uri, u'DELETE', data=data)
         logger.info(res)
         res = {u'msg': u'Delete service instance %s' % value}
         self.result(res, headers=[u'msg'])
