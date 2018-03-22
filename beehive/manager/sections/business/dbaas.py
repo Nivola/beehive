@@ -46,10 +46,8 @@ class DBServiceInstanceController(DBaaServiceControllerChild):
         dataSearch = {}
         dataSearch[u'owner-id.N'] = self.split_arg(u'owner-id.N') 
         dataSearch[u'db-instance-id.N'] = self.split_arg(u'db-instance-id.N')
-        logger.warning(u'$$$$$ %s' % dataSearch) 
         uri = u'%s/databaseservices/instance/describedbinstances' % self.baseuri
         res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch,doseq=True)).get(u'DescribeDBInstancesResponse').get(u'DescribeDBInstancesResult').get(u'DBInstances',[])       
-        logger.warning(u'$$$$$ %s' % res)
         self.result(res,
                     headers=[u'DBInstanceIdentifier', u'DBInstanceStatus', u'Engine', u'EngineVersion', u'MultiAZ',
                              u'AvailabilityZone', u'DBSubnetGroup.VpcId', u'Endpoint.Address', u'Endpoint.Port'],
@@ -83,8 +81,7 @@ class DBServiceInstanceController(DBaaServiceControllerChild):
 #                 u'SchemaName' : u'schema name to use for a db instance postgres',
 #                 u'ExtensionName_N' : [u'value1', u'value2'],
                 }
-        }
-        logger.info(u'$$$$$$$ dbinstance data=%s' % data)         
+        }   
         uri = u'%s/databaseservices/instance/createdbinstance' % (self.baseuri)
         res = self._call(uri, u'POST', data=data)
         logger.info(u'Add database instance: %s' % truncate(res))
