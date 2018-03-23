@@ -212,26 +212,47 @@ class SGroupServiceController(VPCaaServiceControllerChild):
         fields = [u'groupId', u'groupName', u'state', u'sgOwnerAlias', u'vpcName', u'egress_rules', u'ingress_rules']
         self.result(res, headers=headers, fields=fields, maxsize=40)
 
+    def __format_rule(self, rules):
+        for rule in rules:
+            if rule[u'ipProtocol'] == u'-1':
+                rule[u'ipProtocol'] = u'*'
+            if rule.get(u'fromPort', None) is None or rule[u'fromPort'] == u'-1':
+                rule[u'fromPort'] = u'*'
+            if rule.get(u'toPort', None) is None or rule[u'toPort'] == u'-1':
+                rule[u'toPort'] = u'*'
+            if len(rule.get(u'groups', None)) > 0:
+                group = rule[u'groups'][0]
+                rule[u'groups'] = u'%s:%s' % (group[u'userName'], group[u'groupName'])
+            else:
+                rule[u'groups'] = u''
+            if len(rule.get(u'ipRanges', None)) > 0:
+                cidr = rule[u'ipRanges'][0]
+                rule[u'ipRanges'] = u'%s' % cidr[u'cidrIp']
+            else:
+                rule[u'ipRanges'] = u''
+        return rules
+
     @expose(aliases=[u'describe <id>'], aliases_only=True)
     @check_error
     def describe(self):
         """Get service group with rules
         """
-        dataSearch = {}
-        dataSearch[u'GroupId_N'] = [self.get_arg(u'id')]
-        print urllib.urlencode(dataSearch, doseq=True)
-
+        dataSearch = {u'GroupId_N': [self.get_arg(u'id')]}
         uri = u'%s/computeservices/securitygroup/describesecuritygroups' % self.baseuri
         res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True)) \
-            .get(u'DescribeSecurityGroupsResponse').get(u'securityGroupInfo', [])
-        for item in res:
-            item[u'egress_rules'] = len(item[u'ipPermissionsEgress'])
-            item[u'ingress_rules'] = len(item[u'ipPermissions'])
-        headers = [u'id', u'name', u'state', u'account', u'vpc', u'egress_rules', u'ingress_rules']
-        fields = [u'groupId', u'groupName', u'state', u'sgOwnerAlias', u'vpcName', u'egress_rules', u'ingress_rules']
-        self.result(res, headers=headers, fields=fields, maxsize=40)
-      
-       
+            .get(u'DescribeSecurityGroupsResponse').get(u'securityGroupInfo', [])[0]
+        egress_rules = self.__format_rule(res.pop(u'ipPermissionsEgress'))
+        ingress_rules = self.__format_rule(res.pop(u'ipPermissions'))
+        fields = [u'groups', u'ipRanges', u'ipProtocol', u'fromPort', u'toPort']
+        self.result(res, details=True, maxsize=40)
+        self.app.print_output(u'Egress rules: ')
+        self.result(egress_rules, headers=[u'toSecuritygroup', u'toCidr', u'protocol', u'fromPort', u'toPort'],
+                    fields=fields, maxsize=60)
+        self.app.print_output(u'Ingress rules: ')
+        self.result(ingress_rules, headers=[u'fromSecuritygroup', u'fromCidr', u'protocol', u'fromPort', u'toPort'],
+                    fields=fields, maxsize=60)
+
+
 vpcaas_controller_handlers = [
     VPCaaServiceController,    
     VMServiceController,
