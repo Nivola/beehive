@@ -2960,7 +2960,7 @@ class ApiView(FlaskView):
     def to_dict(self, querystring):
         res = {}
         for k, v in querystring.iteritems(multi=True):
-            if k[-2:] == u'.N':
+            if k[-2:] == u'_N':
                 try:
                     res[k].append(v)
                 except:

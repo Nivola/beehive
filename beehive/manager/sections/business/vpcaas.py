@@ -15,7 +15,8 @@ from urllib import urlencode
 
  
 logger = logging.getLogger(__name__)
- 
+
+
 class VPCaaServiceController(BaseController):
     class Meta:
         label = 'vpcaas'
@@ -208,6 +209,25 @@ class SGroupServiceController(VPCaaServiceControllerChild):
             item[u'egress_rules'] = len(item[u'ipPermissionsEgress'])
             item[u'ingress_rules'] = len(item[u'ipPermissions'])
         headers = [u'id', u'name', u'state',  u'account', u'vpc', u'egress_rules', u'ingress_rules']
+        fields = [u'groupId', u'groupName', u'state', u'sgOwnerAlias', u'vpcName', u'egress_rules', u'ingress_rules']
+        self.result(res, headers=headers, fields=fields, maxsize=40)
+
+    @expose(aliases=[u'describe <id>'], aliases_only=True)
+    @check_error
+    def describe(self):
+        """Get service group with rules
+        """
+        dataSearch = {}
+        dataSearch[u'GroupId_N'] = [self.get_arg(u'id')]
+        print urllib.urlencode(dataSearch, doseq=True)
+
+        uri = u'%s/computeservices/securitygroup/describesecuritygroups' % self.baseuri
+        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True)) \
+            .get(u'DescribeSecurityGroupsResponse').get(u'securityGroupInfo', [])
+        for item in res:
+            item[u'egress_rules'] = len(item[u'ipPermissionsEgress'])
+            item[u'ingress_rules'] = len(item[u'ipPermissions'])
+        headers = [u'id', u'name', u'state', u'account', u'vpc', u'egress_rules', u'ingress_rules']
         fields = [u'groupId', u'groupName', u'state', u'sgOwnerAlias', u'vpcName', u'egress_rules', u'ingress_rules']
         self.result(res, headers=headers, fields=fields, maxsize=40)
       
