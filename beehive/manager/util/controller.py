@@ -519,7 +519,7 @@ commands:
         for arg in args:
             t = arg.split(u'=')
             if len(t) != 2:
-                raise Exception(u'Param syntax must be key=valve')
+                raise Exception(u'Param syntax must be key=value')
             val[t[0]] = t[1]
         return urlencode(val)
 
