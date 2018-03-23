@@ -75,14 +75,26 @@ class VMServiceController(VPCaaServiceControllerChild):
         dataSearch[u'instance-id.N'] = self.split_arg(u'instance-id.N')       
 
         uri = u'%s/computeservices/instance/describeinstances' % self.baseuri
-        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch,doseq=True)).get(u'DescribeInstancesResponse').get(u'reservationSet')[0].get(u'instancesSet')
-        self.result(res,
-            headers=[u'instanceId',u'instanceType',u'instanceState', u'launchTime',u'hypervisor',  
-                        u'availabilityZone',u'privateIp',u'imageId',u'vpcId',u'subnetId'],
-            fields=[u'instanceId',u'instanceType',u'instanceState.name',u'launchTime',u'hypervisor',
-                        u'placement.availabilityZone',u'privateIpAddress',u'imageId', u'vpcId',
-                        u'subnetId'],
-            maxsize=40)
+        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True)).get(u'DescribeInstancesResponse')\
+            .get(u'reservationSet')[0].get(u'instancesSet')
+        headers = [u'id', u'name', u'type', u'state', u'launchTime', u'account', u'availabilityZone',
+                   u'privateIp', u'image', u'subnet']
+        fields = [u'instanceId', u'name', u'instanceType', u'instanceState.name', u'launchTime',
+                  u'OwnerAlias', u'placement.availabilityZone', u'privateIpAddress', u'imageName',
+                  u'subnetName']
+        self.result(res, headers=headers, fields=fields, maxsize=40)
+
+    @expose(aliases=[u'describe <id>'], aliases_only=True)
+    @check_error
+    def describe(self):
+        """Get virtual machine
+        """
+        dataSearch = {u'instance-id.N': [self.get_arg(u'id')]}
+        uri = u'%s/computeservices/instance/describeinstances' % self.baseuri
+        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True)) \
+            .get(u'DescribeInstancesResponse') \
+            .get(u'reservationSet')[0].get(u'instancesSet')[0]
+        self.result(res, details=True, maxsize=40)
 
     @expose(aliases=[u'runinstance <name> <account> <subnet> <type> <image> <security group>'],
             aliases_only=True)
@@ -237,7 +249,7 @@ class SGroupServiceController(VPCaaServiceControllerChild):
     def describe(self):
         """Get service group with rules
         """
-        dataSearch = {u'GroupId_N': [self.get_arg(u'id')]}
+        dataSearch = {u'GroupId.N': [self.get_arg(u'id')]}
         uri = u'%s/computeservices/securitygroup/describesecuritygroups' % self.baseuri
         res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True)) \
             .get(u'DescribeSecurityGroupsResponse').get(u'securityGroupInfo', [])[0]
