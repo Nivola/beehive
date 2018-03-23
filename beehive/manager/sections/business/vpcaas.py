@@ -51,11 +51,11 @@ class ImageServiceController(VPCaaServiceControllerChild):
         dataSearch[u'owner-id.N'] = self.split_arg(u'owner-id.N') 
         dataSearch[u'image-id.N'] = self.split_arg(u'image-id.N')   
         uri = u'%s/computeservices/image/describeimages' % self.baseuri
-        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True)).get(u'DescribeImagesResponse').get(u'imagesSet',[])
-        self.result(res, 
-                    headers=[u'imageId', u'name', u'imageState', u'imageType', u'platform'],
-                    fields=[u'imageId', u'name', u'imageState', u'imageType', u'platform'],
-                    maxsize=40)
+        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True)).get(u'DescribeImagesResponse')\
+            .get(u'imagesSet', [])
+        headers = [u'id', u'name', u'state', u'type', u'account', u'platform']
+        fields = [u'imageId', u'name', u'imageState', u'imageType', u'imageOwnerAlias', u'platform']
+        self.result(res, headers=headers, fields=fields, maxsize=40)
 
 
 class VMServiceController(VPCaaServiceControllerChild):
@@ -158,10 +158,9 @@ class VpcServiceController(VPCaaServiceControllerChild):
         for item in res:
             item[u'cidr'] = [u'%s' % (i[u'cidrBlock']) for i in item[u'cidrBlockAssociationSet']]
             item[u'cidr'] = u', '.join(item[u'cidr'])
-        self.result(res,
-                    headers=[u'vpcId', u'state', u'cidr'],
-                    fields=[u'vpcId', u'state', u'cidr'],
-                    maxsize=200)
+        headers = [u'id', u'name', u'state',  u'account', u'cidr']
+        fields = [u'vpcId', u'name', u'state', u'vpcOwnerAlias', u'cidr']
+        self.result(res, headers=headers, fields=fields, maxsize=40)
 
 
 class SubnetServiceController(VPCaaServiceControllerChild):
@@ -174,18 +173,17 @@ class SubnetServiceController(VPCaaServiceControllerChild):
     def describes(self):
         """List all subnets by field: owner-id.N, subnet-id.N, vpc-id.N
         """
-        
         dataSearch = {}
         dataSearch[u'owner-id.N'] = self.split_arg(u'owner-id.N') 
         dataSearch[u'subnet-id.N'] = self.split_arg(u'subnet-id.N') 
         dataSearch[u'vpc-id.N'] = self.split_arg(u'vpc-id.N')       
 
         uri = u'%s/computeservices/subnet/describesubnets' % self.baseuri
-        res = self._call(uri, u'GET', data=urlencode(dataSearch, doseq=True)).get(u'DescribeSubnetsResponse').get(u'subnetSet')       
-        self.result(res,
-            headers=[u'subnetId',u'state',u'availabilityZone',u'cidrBlock',u'vpcId',u'mapPublicIpOnLaunch',u'assignIpv6AddressOnCreation',u'defaultForAz'],
-            fields=[ u'subnetId',u'state',u'availabilityZone',u'cidrBlock',u'vpcId',u'mapPublicIpOnLaunch',u'assignIpv6AddressOnCreation',u'defaultForAz'],
-            maxsize=40)
+        res = self._call(uri, u'GET', data=urlencode(dataSearch, doseq=True)).get(u'DescribeSubnetsResponse')\
+            .get(u'subnetSet')
+        headers = [u'id', u'name', u'state',  u'account', u'availabilityZone', u'vpc', u'cidr']
+        fields = [u'subnetId', u'name', u'state', u'subnetOwnerAlias', u'availabilityZone', u'vpcName', u'cidrBlock']
+        self.result(res, headers=headers, fields=fields, maxsize=40)
 
  
 class SGroupServiceController(VPCaaServiceControllerChild):
@@ -198,19 +196,20 @@ class SGroupServiceController(VPCaaServiceControllerChild):
     def describes(self):
         """List all service groups by field: owner-id.N, subnet-id.N, vpc-id.N
         """
-        
         dataSearch = {}
         dataSearch[u'owner-id.N'] = self.split_arg(u'owner-id.N') 
         dataSearch[u'subnet-id.N'] = self.split_arg(u'subnet-id.N') 
         dataSearch[u'vpc-id.N'] = self.split_arg(u'vpc-id.N')       
                  
         uri = u'%s/computeservices/securitygroup/describesecuritygroups' % self.baseuri
-        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch,doseq=True)).get(u'DescribeSecurityGroupsResponse').get(u'securityGroupInfo', [])
-        self.result(res, 
-                    headers=[u'groupId',u'groupName',u'vpcId',u'ipPermissions.cidr', u'ipPermissionsEgress.cidr' ],
-                    fields=[ u'groupId',u'groupName',u'vpcId',u'ipPermissions.0.ipRanges.0.cidrIp', u'ipPermissionsEgress.0.ipRanges.0.cidrIp'],
-                    maxsize=40)        
-
+        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch,doseq=True))\
+            .get(u'DescribeSecurityGroupsResponse').get(u'securityGroupInfo', [])
+        for item in res:
+            item[u'egress_rules'] = len(item[u'ipPermissionsEgress'])
+            item[u'ingress_rules'] = len(item[u'ipPermissions'])
+        headers = [u'id', u'name', u'state',  u'account', u'vpc', u'egress_rules', u'ingress_rules']
+        fields = [u'groupId', u'groupName', u'state', u'sgOwnerAlias', u'vpcName', u'egress_rules', u'ingress_rules']
+        self.result(res, headers=headers, fields=fields, maxsize=40)
       
        
 vpcaas_controller_handlers = [

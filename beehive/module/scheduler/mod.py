@@ -25,8 +25,11 @@ class SchedulerModule(ApiModule):
         self.controller = SchedulerController(self)
 
         # get related module
-        self.related = api_manger.main_module
-        self.base_path = self.related.base_path
+        try:
+            self.related = api_manger.main_module
+            self.base_path = self.related.base_path
+        except:
+            pass
 
     def get_controller(self):
         return self.controller

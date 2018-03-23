@@ -4,6 +4,8 @@ Created on Dec 11, 2017
 @author: darkbk
 """
 import logging
+import urllib
+
 import sh
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController, check_error
@@ -38,6 +40,14 @@ class ProviderControllerChild(ResourceEntityController):
         arguments = [
             (['extra_arguments'], dict(action='store', nargs='*'))
         ]
+
+    def get_container(self):
+        """Get container provider"""
+        data = urllib.urlencode({u'container_type': u'Provider'})
+        uri = u'%s/containers' % self.baseuri
+        res = self._call(uri, u'GET', data=data)[u'resourcecontainers'][0][u'id']
+        logger.info(u'Get resource container: %s' % truncate(res))
+        return str(res)
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     @check_error
@@ -378,6 +388,27 @@ class ProviderComputeSecurityGroupController(ProviderControllerChild):
         res = self.get_resource(oid)
         self.result(res, details=True)
 
+    @expose(aliases=[u'add <name> <vpc>'], aliases_only=True)
+    @check_error
+    def add(self):
+        """Add security group
+        """
+        name = self.get_arg(name=u'name')
+        data = {
+            u'security_group': {
+                u'container': self.get_container(),
+                u'name': name,
+                u'desc': name,
+                u'vpc': self.get_arg(name=u'vpc')
+            }
+        }
+        uri = self.uri
+        res = self._call(uri, u'POST', data=data)
+        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))
+        self.wait_job(res[u'jobid'])
+        res = {u'msg': u'Add %s %s' % (self._meta.aliases[0], res[u'uuid'])}
+        self.result(res, headers=[u'msg'])
+
 
 class ProviderComputeComputeRuleController(ProviderControllerChild):
     uri = u'/v1.0/nrs/provider/rules'
@@ -394,34 +425,77 @@ class ProviderComputeComputeRuleController(ProviderControllerChild):
         """Get provider item
         """
         oid = self.get_arg(name=u'id')
-        res = self.get_resource(oid)
-        attributes = res.get(u'attributes', [])
-        configs = attributes.pop(u'configs', [])
-        source = configs.pop(u'source', [])
-        dest = configs.pop(u'destination', [])
-        service = configs.pop(u'service', [])
-        rules = res.pop(u'rules', [])
-        self.result(res, details=True)
-        fromto = []
-        if not isinstance(source, list):
-            source = [source]
-        for i in source:
-            i[u'fromto'] = u'source'
-        fromto.extend(source)
-        if not isinstance(dest, list):
-            dest = [dest]
-        for i in dest:
-            i[u'fromto'] = u'destination'
-        fromto.extend(dest)
-        self.app.print_output(u'rules:')
-        self.result(rules, headers=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'created',
-                                    u'modified', u'expiry'],
-                    fields=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'date.creation', u'date.modified',
-                            u'date.expiry'], maxsize=200)
-        self.app.print_output(u'Source / Destination:')
-        self.result(fromto, headers=[u'fromto', u'type', u'value'], maxsize=200)
-        self.app.print_output(u'service:')
-        self.result(service, headers=[u'protocol', u'port'], maxsize=200)
+
+        def format_result(data):
+            attributes = data.get(u'attributes', [])
+            configs = attributes.pop(u'configs', [])
+            source = configs.pop(u'source', [])
+            dest = configs.pop(u'destination', [])
+            service = configs.pop(u'service', [])
+            rules = data.pop(u'rules', [])
+            fromto = []
+            if not isinstance(source, list):
+                source = [source]
+            for i in source:
+                i[u'fromto'] = u'source'
+            fromto.extend(source)
+            if not isinstance(dest, list):
+                dest = [dest]
+            for i in dest:
+                i[u'fromto'] = u'destination'
+            fromto.extend(dest)
+            self.app.print_output(u'Source / Destination:')
+            self.result(fromto, headers=[u'fromto', u'type', u'value'], maxsize=200)
+            self.app.print_output(u'service:')
+            self.result(service, headers=[u'protocol', u'port'], maxsize=200)
+
+        self.get_resource(oid, format_result=format_result)
+
+    @expose(aliases=[u'add <name> <compute_zone> <source> <dest> [proto=..] [port:..]'], aliases_only=True)
+    @check_error
+    def add(self):
+        """Add rule
+    - proto: ca be  6 [tcp], 17 [udp], 1,<subprotocol> [icmp], * [all]. If use icmp specify also subprotocol (ex. 8
+      for echo request). [default=*]
+    - port: can be an integer between 0 and 65535 or a range with start and end in the same interval. Range format
+      is <start>-<end>. Use * for all ports. [default=*]
+    - source: rule source. Syntax <type>:<value>.
+    - dest: rule destination. Syntax <type>:<value>.
+    Source and destination type can be SecurityGroup, Cidr.
+    Source and destination value can be security group id or uuid, cidr like 10.102.167.0/24.
+        """
+        name = self.get_arg(name=u'name')
+        zone = self.get_arg(name=u'compute_zone')
+        source = self.get_arg(name=u'source').split(u':')
+        dest = self.get_arg(name=u'dest').split(u':')
+        port = self.get_arg(name=u'port', default=u'*', keyvalue=True)
+        proto = self.get_arg(name=u'proto', default=u'*', keyvalue=True)
+        data = {
+            u'rule': {
+                u'container': self.get_container(),
+                u'name': name,
+                u'desc': name,
+                u'compute_zone': zone,
+                u'source': {
+                    u'type': source[0],
+                    u'value': source[1]
+                },
+                u'destination': {
+                    u'type': dest[0],
+                    u'value': dest[1]
+                },
+                u'service': {
+                    u'port': port,
+                    u'protocol': proto
+                }
+            }
+        }
+        uri = self.uri
+        res = self._call(uri, u'POST', data=data)
+        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))
+        self.wait_job(res[u'jobid'])
+        res = {u'msg': u'Add %s %s' % (self._meta.aliases[0], res[u'uuid'])}
+        self.result(res, headers=[u'msg'])
 
 
 class ProviderComputeComputeInstanceController(ProviderControllerChild):
@@ -458,20 +532,22 @@ class ProviderComputeComputeInstanceController(ProviderControllerChild):
         """Get provider instance
         """
         oid = self.get_arg(name=u'id')
-        res = self.get_resource(oid)
-        flavor = res.pop(u'flavor')
-        image = res.pop(u'image')
-        vpcs = res.pop(u'vpcs')
-        sgs = res.pop(u'security_groups')
-        self.result(res, details=True)
-        self.output(u'Flavor:')
-        self.result(flavor, headers=[u'vcpus', u'memory', u'disk', u'disk_iops', u'bandwidth'])
-        self.output(u'Image:')
-        self.result(image, headers=[u'os', u'os_ver'])
-        self.output(u'Security groups:')
-        self.result(sgs, headers=[u'uuid', u'name'])
-        self.output(u'Networks:')
-        self.result(vpcs, headers=[u'uuid', u'name', u'cidr', u'gateway', u'fixed_ip.ip'])
+
+        def format_result(data):
+            flavor = data.pop(u'flavor')
+            image = data.pop(u'image')
+            vpcs = data.pop(u'vpcs')
+            sgs = data.pop(u'security_groups')
+            self.output(u'Flavor:')
+            self.result(flavor, headers=[u'vcpus', u'memory', u'disk', u'disk_iops', u'bandwidth'])
+            self.output(u'Image:')
+            self.result(image, headers=[u'os', u'os_ver'])
+            self.output(u'Security groups:')
+            self.result(sgs, headers=[u'uuid', u'name'])
+            self.output(u'Networks:')
+            self.result(vpcs, headers=[u'uuid', u'name', u'cidr', u'gateway', u'fixed_ip.ip'])
+
+        self.get_resource(oid, format_result=format_result)
 
     @expose(aliases=[u'ssh <id> <user> [sshkey=..]'], aliases_only=True)
     @check_error

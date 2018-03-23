@@ -30,7 +30,7 @@ class BeehiveApp(Flask):
     """
     def __init__(self, *args, **kwargs):
         """ """
-        #self._config = kwargs.pop('config')
+        # self._config = kwargs.pop('config')
         
         super(BeehiveApp, self).__init__(*args, **kwargs)
 
@@ -41,7 +41,8 @@ class BeehiveApp(Flask):
         self.secret_key = urandom(48)         
         
         self.http_socket = uwsgi_util.opt[u'http-socket']
-        self.server_name = gethostname()
+        self.server_name = uwsgi_util.opt[u'api_host']
+        self.server_fqdn = uwsgi_util.opt[u'api_fqdn']
         
         self.app_name = uwsgi_util.opt[u'api_name']
         self.app_id = uwsgi_util.opt[u'api_id']
