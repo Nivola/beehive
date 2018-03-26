@@ -242,7 +242,7 @@ class BeehiveTestCase(unittest.TestCase):
         return validate
     
     def call(self, subsystem, path, method, params=None, headers=None, user=None, pwd=None, auth=None, data=None,
-             query=None, runlog=True, timeout=10, *args, **kvargs):
+             query=None, runlog=True, timeout=10, oauth2_token=None, *args, **kvargs):
         global token, seckey
         
         start = time.time()
@@ -266,8 +266,10 @@ class BeehiveTestCase(unittest.TestCase):
             schema = self.get_schema(subsystem, endpoint)
             if u'Content-Type' not in headers:
                 headers[u'Content-Type'] = u'application/json'            
-    
-            if user is not None and auth == u'simplehttp':
+
+            if auth == u'oauth2' and oauth2_token is not None:
+                headers.update({u'Authorization': u'Bearer %s' % oauth2_token})
+            elif user is not None and auth == u'simplehttp':
                 cred = HTTPBasicAuth(user, pwd)
                 logger.debug(u'Make simple http authentication: %s' % time.time()-start)
             elif user is not None and auth == u'keyauth':

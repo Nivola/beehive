@@ -119,20 +119,18 @@ class VMServiceController(VPCaaServiceControllerChild):
         res = {u'msg': u'Add virtual machine %s' % res}
         self.result(res, headers=[u'msg'])
 
-    @expose(aliases=[u'terminate <id> [force=true/false]'], aliases_only=True)
+    @expose(aliases=[u'terminate <id> [recursive=false]'], aliases_only=True)
     @check_error
     def terminate(self):
-        """Delete a virtual machine
+        """Delete service instance
+    - field: can be recursive
         """
         value = self.get_arg(name=u'id')
-        force = self.get_arg(name=u'force', default=False, keyvalue=True)
+        data = {
+            u'recursive': self.get_arg(name=u'recursive', default=False, keyvalue=True)
+        }
         uri = u'%s/serviceinsts/%s' % (self.baseuri, value)
-        # workaround to delete resource
-        # res = self._call(uri, u'GET')
-
-
-
-        res = self._call(uri, u'DELETE')
+        res = self._call(uri, u'DELETE', data=data)
         logger.info(res)
         res = {u'msg': u'Delete virtual machine %s' % value}
         self.result(res, headers=[u'msg'])

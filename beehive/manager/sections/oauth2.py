@@ -97,7 +97,6 @@ class Oauth2SessionController(Oauth2ControllerChild):
     class Meta:
         label = 'user-sessions'
         description = "User Session management"
-        
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     @check_error
@@ -105,7 +104,7 @@ class Oauth2SessionController(Oauth2ControllerChild):
         """List all sessions
     field: valid, client, user 
         """
-        #data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        # data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
         uri = u'%s/user_sessions' % self.authuri        
         res = self._call(uri, u'GET')
         logger.info(res)
@@ -158,7 +157,6 @@ class AuthorizationCodeController(Oauth2ControllerChild):
         label = 'authorization_codes'
         description = "AuthorizationCode management"
 
-        
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     @check_error
     def list(self):
@@ -291,15 +289,15 @@ class ScopeController(Oauth2ControllerChild):
         """          
         name = self.get_arg(name=u'name')
         data = {
-            u'scope':{
-                u'name':name, 
-                u'desc':u'Scope %s' % name
+            u'scope': {
+                u'name': name,
+                u'desc': u'Scope %s' % name
             }  
         } 
         uri = u'%s/scopes' % self.authuri
         res = self._call(uri, u'POST', data=data)
         logger.info(u'Add scope: %s' % res)
-        res = {u'msg':u'Add scope %s' % res}
+        res = {u'msg': u'Add scope %s' % res}
         self.result(res, headers=[u'msg'])        
         
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
