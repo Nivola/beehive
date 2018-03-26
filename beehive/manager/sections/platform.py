@@ -5,10 +5,12 @@ Created on Sep 22, 2017
 """
 import os
 import ujson as json
+import urllib
+
 import gevent
 import sh
 import copy
-from time import time
+from time import time, sleep
 from datetime import datetime
 from httplib import HTTPConnection
 import requests
@@ -2250,6 +2252,30 @@ class BeehiveController(AnsibleController):
     #
     # commands
     #
+    def get_job_state(self, jobid):
+        try:
+            res = self._call(u'/v1.0/nrs/worker/tasks/%s' % jobid, u'GET')
+            state = res.get(u'task_instance').get(u'status')
+            logger.debug(u'Get job %s state: %s' % (jobid, state))
+            if state == u'FAILURE':
+                # print(res)
+                self.app.print_error(res[u'task_instance'][u'traceback'][-1])
+                self.app.error = False
+            return state
+        except (Exception):
+            return u'EXPUNGED'
+
+    def wait_job(self, jobid, delta=1):
+        """Wait resource
+        """
+        logger.debug(u'wait for job: %s' % jobid)
+        state = self.get_job_state(jobid)
+        while state not in [u'SUCCESS', u'FAILURE']:
+            logger.info(u'.')
+            print(u'.')
+            sleep(delta)
+            state = self.get_job_state(jobid)
+
     @expose(aliases=[u'post-install <config>'], aliases_only=True)
     @check_error
     def post_install(self):
@@ -2294,16 +2320,24 @@ class BeehiveController(AnsibleController):
         # resource tags
         if apply.get(u'resource-tags', False) is True:
             for obj in configs.get(u'resource').get(u'tags'):
-                res = self._call(u'/v1.0/nrs/tags', u'POST', data={u'resourcetag': {u'value': obj}})
-                logger.info(u'Add tag: %s' % res)
-                self.output(u'Add tag: %s' % obj)
+                try:
+                    res = self._call(u'/v1.0/nrs/tags', u'POST', data={u'resourcetag': {u'value': obj}})
+                    logger.info(u'Add tag: %s' % res)
+                    self.output(u'Add tag: %s' % obj)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
 
         # resource containers
         if apply.get(u'resource-containers', False) is True:
             for obj in configs.get(u'resource').get(u'containers'):
-                res = self._call(u'/v1.0/nrs/containers', u'POST', data={u'resourcecontainer': obj})
-                logger.info(u'Add container: %s' % res)
-                self.output(u'Add container: %s' % obj)
+                try:
+                    res = self._call(u'/v1.0/nrs/containers', u'POST', data={u'resourcecontainer': obj})
+                    logger.info(u'Add container: %s' % res)
+                    self.output(u'Add container: %s' % obj)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
 
         # resource containers sync
         if apply.get(u'resource-containers-sync', False) is True:
@@ -2311,35 +2345,62 @@ class BeehiveController(AnsibleController):
                 name = obj.get(u'name')
                 cont_type = obj.get(u'type')
                 for type in configs.get(u'resource').get(u'container_type').get(cont_type, []):
-                    res = self._call(u'/v1.0/nrs/containers/%s/discover' % name, u'POST',
+                    res = self._call(u'/v1.0/nrs/containers/%s/discover' % name, u'PUT',
                                      data={u'synchronize': {
                                           u'types': type, u'new': True, u'died': False, u'changed': False}})
-                    logger.info(u'Sync container %s type %: %s' % (name, type))
-                    self.output(u'Sync container %s type %: %s' % (name, type))
+                    self.wait_job(res[u'jobid'], delta=1)
+                    logger.info(u'Sync container %s type %s' % (name, type))
+                    self.output(u'Sync container %s type %s' % (name, type))
 
         # resource entities
         if apply.get(u'resource-entities', False) is True:
-            entitie_types = [u'region', u'site', u'site_network', u'image', u'flavor']
+            entitie_types = [u'region', u'site', u'site_network', u'compute_zone', u'image', u'flavor']
             for entitie_type in entitie_types:
-                for obj in configs.get(u'resource').get(entitie_type+u's'):
-                    res = self._call(u'/v1.0/nrs/provider/'+entitie_type+u's', u'POST', data={entitie_type: obj})
-                    logger.info(u'Add %s: %s' % (entitie_type, res))
-                    self.output(u'Add %s: %s' % (entitie_type, obj))
+                resources = configs.get(u'resource').get(u'entities')
+                for obj in resources.get(entitie_type+u's'):
+                    try:
+                        res = self._call(u'/v1.0/nrs/provider/'+entitie_type+u's', u'POST', data={entitie_type: obj})
+                        if u'jobid' in res:
+                            self.wait_job(res[u'jobid'], delta=1)
+                        logger.info(u'Add %s: %s' % (entitie_type, res))
+                        self.output(u'Add %s: %s' % (entitie_type, obj))
+                    except Exception as ex:
+                        self.error(ex)
+                        self.app.error = False
 
-            for obj in configs.get(u'resource').get(u'compute_zones'):
-                sites = obj.pop(u'sites')
-                quota = obj.get(u'quota')
-                res = self._call(u'/v1.0/nrs/provider/compute_zones', u'POST', data={u'compute_zone': obj})
-                logger.info(u'Add compute_zone: %s' % res)
-                self.output(u'Add compute_zone: %s' % obj)
+                    if entitie_type == u'site':
+                        for orc in resources.get(u'site_orchestrators').get(obj[u'name']):
+                            try:
+                                if orc[u'type'] == u'openstack':
+                                    # get domain
+                                    data = urllib.urlencode({u'container': orc[u'id'], u'name': u'Default'})
+                                    domain = self._call(u'/v1.0/nrs/openstack/domains', u'GET', data=data)
+                                    orc[u'config'][u'domain'] = domain[u'domains'][0][u'id']
+                                res = self._call(u'/v1.0/nrs/provider/sites/%s/orchestrators' % obj[u'name'], u'POST',
+                                                 data={u'orchestrator': orc})
+                                self.wait_job(res[u'jobid'], delta=1)
+                                logger.info(u'Add site %s orchestrator: %s' % (obj.get(u'name'), res))
+                                self.output(u'Add site %s orchestrator: %s' % (obj.get(u'name'), orc))
+                            except Exception as ex:
+                                self.error(ex)
+                                self.app.error = False
 
-                for site in sites:
-                    res = self._call(u'/v1.0/nrs/provider/compute_zones/%s/sites', u'POST',
-                                     data={u'site': {u'id': site,
-                                                     u'orchestrator_tag': u'default',
-                                                     u'quota': quota}})
-                    logger.info(u'Add compute_zone site: %s' % res)
-                    self.output(u'Add compute_zone site: %s' % site)
+                    if entitie_type == u'compute_zone':
+                        name = obj.get(u'name')
+                        quota = obj.get(u'quota')
+                        sites = obj.get(u'sites')
+                        for site in sites:
+                            try:
+                                res = self._call(u'/v1.0/nrs/provider/compute_zones/%s/sites' % name, u'POST',
+                                                 data={u'site': {u'id': site,
+                                                                 u'orchestrator_tag': u'default',
+                                                                 u'quota': quota}})
+                                self.wait_job(res[u'jobid'], delta=1)
+                                logger.info(u'Add compute_zone site: %s' % res)
+                                self.output(u'Add compute_zone site: %s' % site)
+                            except Exception as ex:
+                                self.error(ex)
+                                self.app.error = False
 
         self.subsystem = u'service'
 
@@ -2353,33 +2414,42 @@ class BeehiveController(AnsibleController):
         # create service defs
         if apply.get(u'service-defs', False) is True:
             for obj in configs.get(u'service').get(u'defs'):
-                configs = obj.pop(u'configs')
-                res = self._call(u'/v1.0/nws/servicedefs', u'POST', data={u'servicedef': obj})
-                logger.info(u'Add service def: %s' % res)
-                self.output(u'Add service def: %s' % obj)
+                try:
+                    configs = obj.pop(u'configs')
+                    res = self._call(u'/v1.0/nws/servicedefs', u'POST', data={u'servicedef': obj})
+                    logger.info(u'Add service def: %s' % res)
+                    self.output(u'Add service def: %s' % obj)
 
-                data = {
-                    u'name': u'%s-config' % obj.get(u'name'),
-                    u'desc': u'%s-config' % obj.get(u'name'),
-                    u'service_definition_id': res[u'uuid'],
-                    u'params': configs,
-                    u'params_type': u'JSON',
-                    u'version': obj.get(u'version')
-                }
-                res = self._call(u'/v1.0/nws/servicecfgs', u'POST', data={u'servicecfg': data})
-                logger.info(u'Add service def config: %s' % res)
-                self.output(u'Add service def config: %s' % configs)
+                    data = {
+                        u'name': u'%s-config' % obj.get(u'name'),
+                        u'desc': u'%s-config' % obj.get(u'name'),
+                        u'service_definition_id': res[u'uuid'],
+                        u'params': configs,
+                        u'params_type': u'JSON',
+                        u'version': obj.get(u'version')
+                    }
+                    res = self._call(u'/v1.0/nws/servicecfgs', u'POST', data={u'servicecfg': data})
+                    logger.info(u'Add service def config: %s' % res)
+                    self.output(u'Add service def config: %s' % configs)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
 
         # create service catalogs
         if apply.get(u'service-catalogs', False) is True:
             for obj in configs.get(u'service').get(u'catalogs'):
-                name = obj.get(u'name')
-                defs = obj.get(u'defs')
-                res = self._call(u'/v1.0/nws/srvcatalogs', u'POST', data={u'catalog': {u'name': name, u'desc': name}})
-                logger.info(u'Add service catalog: %s' % res)
-                self.output(u'Add service catalog: %s' % obj)
-                res = self._call(u'/v1.0/nws/srvcatalogs/%s/defs' % name, u'POST',
-                                 data={u'definitions': {u'oids': defs.aplit(u',')}})
+                try:
+                    name = obj.get(u'name')
+                    defs = obj.get(u'defs')
+                    res = self._call(u'/v1.0/nws/srvcatalogs', u'POST', data={u'catalog': {u'name': name, u'desc': name}})
+                    logger.info(u'Add service catalog: %s' % res)
+                    self.output(u'Add service catalog: %s' % obj)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
+
+                res = self._call(u'/v1.0/nws/srvcatalogs/%s/defs' % res[u'uuid'], u'PUT',
+                                 data={u'definitions': {u'oids': defs}})
                 logger.info(u'Add service catalog defs: %s' % res)
                 self.output(u'Add service catalog defs: %s' % defs)
 

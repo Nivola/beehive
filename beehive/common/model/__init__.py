@@ -479,15 +479,17 @@ class AbstractDbManager(object):
             query = session.query(entityclass)
 
         query = query.filter_by(**kvargs)
-        
+
+        self.logger.debug2(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
+        self.logger.debug2(u'kvargs: %s' % kvargs)
+
         entity = query.first()
         
         if entity is None:
             msg = u'No %s found' % entityclass.__name__
             self.logger.error(msg)
             raise ModelError(msg, code=404)
-                 
-        # self.logger.debug(u'Get %s: %s' % (entityclass.__name__, truncate(entity)))
+
         return query
     
     @query
@@ -516,8 +518,8 @@ class AbstractDbManager(object):
         # get obj by name
         elif match(u'[\-\w\d]+', oid):
             self.logger.debug(u'Query entity %s by name' % entityclass.__name__)
-            entity = self.query_entities(entityclass, session, name=oid)
-        
+            entity = self.query_entities(entityclass, session, name=oid, **kvargs)
+
         res = None
         if for_update:
             res = entity.with_for_update().first() 

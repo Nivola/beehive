@@ -16,6 +16,8 @@ from re import match
 from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA256
 from Crypto.Signature import PKCS1_v1_5
+from datetime import datetime
+
 from flask import request, Response, session
 # from flask.views import MethodView as FlaskMethodView
 # from flask.views import View as FlaskView
@@ -1651,13 +1653,19 @@ class ApiObject(object):
     
     @staticmethod
     def _get_value(objtype, args):
-        #logging.getLogger('gibbon.cloudapi.process').debug(objtype)
+        # logging.getLogger('gibbon.cloudapi.process').debug(objtype)
         data = ['*' for i in objtype.split('.')]
         pos = 0
         for arg in args:
             data[pos] = arg
             pos += 1
         return '//'.join(data)
+
+    def convert_timestamp(self, timestamp):
+        """
+        """
+        timestamp = datetime.fromtimestamp(timestamp)
+        return str2uni(timestamp.strftime(u'%d-%m-%Y %H:%M:%S.%f'))
 
     #
     # encryption method
