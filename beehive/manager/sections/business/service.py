@@ -14,6 +14,7 @@ from beecell.simple import truncate
 from beecell.remote import NotFoundException
 from time import sleep
 import json
+from urllib import urlencode
  
 logger = logging.getLogger(__name__)
  
@@ -1307,7 +1308,101 @@ class ServiceTagController(ServiceControllerChild):
         res = {u'msg': u'Delete tag %s' % value}
         self.result(res, headers=[u'msg'])
 
+class ServiceMetricsController(ServiceControllerChild):
+    class Meta:
+        label = 'service.metrics'
+        aliases = ['metrics']
+        aliases_only = True
+        description = "Service metric management"
+    
+    @expose(aliases=[u'types [field=value]'], aliases_only=True)
+    @check_error
+    def types(self):
+        """List all service metric type by field:
+        name, group_name, metric_type, measure_unit
+        """
+        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = u'%s/services/metricstypes' % self.baseuri
+        res = self._call(uri, u'GET', data=data)
+        logger.info(res)
+        self.result(res, key=u'metric_types', headers=[u'id', u'name', u'group_name', u'metric_type', u'measure_unit'])
+    
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
+    def list(self):
+        """List all service metric by field:
+            day, id, value, metric_num, platform, u'instance', u'metric_type',  u'job_id'
+        """
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        # = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        header_field = {
+            u'id':u'id', 
+            u'date': u'creation_date',
+            u'num': u'metric_num',
+            u'type': u'metric_type',
+            u'value': u'value',
+            u'platform': u'platform',
+            u'instance': u'service_instance_id',
+            u'job_id': u'job_id'
+        }
+        data = {}
+        for k in header_field:
+            par = params.get(k, None)
+            if par is not None:
+                data[header_field[k]]=par
+                
+        uri = u'%s/services/metrics' % self.baseuri
+        res = self._call(uri, u'GET', data=urlencode(data))
+        logger.info(res)
+        self.result(res, key=u'metrics', 
+                    headers=[u'id', u'date', u'num', u'type', u'value', u'platform', u'instance',  u'job_id'],
+                    fields=[u'id', u'date.creation', u'metric_num', u'metric_type', u'value', u'platform', u'service_instance_id',  u'job_id'])
 
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
+    def get(self):
+        """Get service catalog by value id or uuid
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'%s/services/metrics/%s' % (self.baseuri, value)
+        res = self._call(uri, u'GET')
+        logger.info(res)
+        self.result(res, key=u'metric', 
+                    headers=[u'id', u'day', u'num', u'type', u'value', u'platform', u'instance',  u'job_id'],
+                    fields=[u'id', u'date.creation', u'metric_num', u'metric_type', u'value', u'platform', u'service_instance_id',  u'job_id'])
+
+
+#     @expose(aliases=[u'perms <id>'], aliases_only=True)
+#     @check_error
+#     def perms(self):
+#         """Get service catalog permissions by value id or uuid
+#         """
+#         value = self.get_arg(name=u'id')
+#         data = urllib.urlencode(self.app.kvargs)
+#         uri = u'%s/services/metrics/%s/perms' % (self.baseuri, value)
+#         res = self._call(uri, u'GET', data=data)
+#         logger.info(u'Get service catalog perms: %s' % truncate(res))
+#         self.result(res, key=u'perms', headers=self.perm_headers)
+# 
+#     @expose(aliases=[u'update <oid> [field=value]'], aliases_only=True)
+#     @check_error
+#     def update(self):
+#         """Update service catalog
+#         - oid: id or uuid of the catalog
+#         - field: can be name, version, desc, active
+#         """
+#         oid = self.get_arg(name=u'oid')
+#         params = self.get_query_params(*self.app.pargs.extra_arguments)
+#         data = {
+#             u'catalog': params
+#         }
+#         uri = u'%s/services/metrics/%s' % (self.baseuri, oid)
+#         self._call(uri, u'PUT', data=data)
+#         logger.info(u'Update service catalog %s with data %s' % (oid, params))
+#         res = {u'msg': u'Update service catalog %s with data %s' % (oid, params)}
+#         self.result(res, headers=[u'msg'])
+
+   
 service_controller_handlers = [
     ServiceController,
     ServiceTypeController,
@@ -1325,5 +1420,6 @@ service_controller_handlers = [
     # ServiceAggregateCostController,
     ServiceCatalogController,
     ServiceLinkController,
-    ServiceTagController
+    ServiceTagController,
+    ServiceMetricsController
 ]        
