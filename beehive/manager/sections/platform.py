@@ -105,6 +105,7 @@ class AnsibleController(ApiController):
         self.site_playbook = u'%s/site.yml' % (self.ansible_path)
         self.beehive_playbook = u'%s/beehive.yml' % (self.ansible_path)
         self.beehive_doc_playbook = u'%s/beehive-doc.yml' % (self.ansible_path)
+        self.console_playbook = u'%s/console.yml' % (self.ansible_path)
         self.local_package_path = self.configs[u'local_package_path']
     
     def _ext_parse_args(self):
@@ -2110,6 +2111,50 @@ class NodeController(AnsibleController):
         runner.run_task(group, tasks=tasks, frmt=u'text')
 
 
+class BeehiveConsoleController(AnsibleController):
+    class Meta:
+        label = 'console'
+        description = "Beehive Console management"
+
+    @expose(aliases=[u'add-user <type> <username> <config>'], aliases_only=True)
+    @check_error
+    def add_user(self):
+        """Create new user in beehive console
+    - type: admin, user
+        """
+        type = self.get_arg(name=u'type')
+        username = self.get_arg(name=u'username')
+        config = self.get_arg(name=u'config')
+        run_data = {
+            u'tags': [u'useradd'],
+            u'username': username,
+            u'config': config,
+        }
+        self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
+
+    @expose(aliases=[u'deld-user <username>'], aliases_only=True)
+    @check_error
+    def del_user(self):
+        """Delete user from beehive console
+        """
+        username = self.get_arg(name=u'username')
+        run_data = {
+            u'tags': [u'userdel'],
+            u'username': username
+        }
+        self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
+
+    @expose()
+    @check_error
+    def sync(self):
+        """Sync python package on beehive console
+        """
+        run_data = {
+            u'tags': [u'sync']
+        }
+        self.ansible_playbook(u'console', run_data, playbook=self.console_playbook)
+
+
 class BeehiveController(AnsibleController):
     class Meta:
         label = 'beehive'
@@ -2727,4 +2772,5 @@ platform_controller_handlers = [
     OpenstackController,
     NodeController,
     BeehiveController,
+    BeehiveConsoleController,
 ]

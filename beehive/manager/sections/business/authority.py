@@ -649,6 +649,7 @@ class AccountController(AuthorityControllerChild):
         catalog_objid = catalog[u'__meta__'][u'objid']
 
         # add role
+        self.subsystem = u'auth'
         data = {
             u'role': {
                 u'name': u'AdminRoleAccount-%s' % account_id,
@@ -693,6 +694,8 @@ class AccountController(AuthorityControllerChild):
             }
             uri = u'/v1.0/nas/roles/%s' % role[u'uuid']
             res = self._call(uri, u'PUT', data=data)
+
+        self.subsystem = u'service'
 
         res = {u'msg': u'Add role %s' % role[u'uuid']}
         self.result(res, headers=[u'msg'])
