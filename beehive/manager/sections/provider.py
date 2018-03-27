@@ -167,6 +167,24 @@ class ProviderSiteController(ProviderControllerChild):
         res = {u'msg': u'Add orchestrator to site %s: %s' % (oid, truncate(res))}
         self.result(res, headers=[u'msg'])
 
+    @expose(aliases=[u'del-orchestrator <id> <orchestrator>'], aliases_only=True)
+    @check_error
+    def del_orchestrator(self):
+        """Delete orchestrator
+    - orchestrator: orchestrator id
+        """
+        oid = self.get_arg(name=u'id')
+        orchestrator = self.get_arg(name=u'orchestrator')
+        data = {u'orchestrator': {u'id': orchestrator}}
+        uri = self.uri + u'/%s/orchestrators' % oid
+        res = self._call(uri, u'DELETE', data=data)
+        jobid = res.get(u'jobid', None)
+        if jobid is not None:
+            self.wait_job(jobid)
+        logger.info(u'Delete orchestrator from site %s: %s' % (oid, truncate(res)))
+        res = {u'msg': u'Delete orchestrator from site %s: %s' % (oid, truncate(res))}
+        self.result(res, headers=[u'msg'])
+
 
 class ProviderSiteNetworkController(ProviderControllerChild):
     uri = u'/v1.0/nrs/provider/site_networks'
@@ -198,6 +216,9 @@ class ProviderSiteNetworkController(ProviderControllerChild):
 
 class ProviderComputeZoneController(ProviderControllerChild):
     uri = u'/v1.0/nrs/provider/compute_zones'
+    headers = [u'id', u'uuid', u'name', u'parent', u'state', u'availability_zones', u'creation', u'modified']
+    fields = [u'id', u'uuid', u'name', u'parent.name', u'state', u'availability_zones', u'date.creation',
+              u'date.modified']
 
     class Meta:
         label = 'provider.beehive.compute_zones'

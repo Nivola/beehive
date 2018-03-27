@@ -15,7 +15,8 @@ from urllib import urlencode
 
  
 logger = logging.getLogger(__name__)
- 
+
+
 class VPCaaServiceController(BaseController):
     class Meta:
         label = 'vpcaas'
@@ -74,14 +75,26 @@ class VMServiceController(VPCaaServiceControllerChild):
         dataSearch[u'instance-id.N'] = self.split_arg(u'instance-id.N')       
 
         uri = u'%s/computeservices/instance/describeinstances' % self.baseuri
-        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch,doseq=True)).get(u'DescribeInstancesResponse').get(u'reservationSet')[0].get(u'instancesSet')
-        self.result(res,
-            headers=[u'instanceId',u'instanceType',u'instanceState', u'launchTime',u'hypervisor',  
-                        u'availabilityZone',u'privateIp',u'imageId',u'vpcId',u'subnetId'],
-            fields=[u'instanceId',u'instanceType',u'instanceState.name',u'launchTime',u'hypervisor',
-                        u'placement.availabilityZone',u'privateIpAddress',u'imageId', u'vpcId',
-                        u'subnetId'],
-            maxsize=40)
+        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True)).get(u'DescribeInstancesResponse')\
+            .get(u'reservationSet')[0].get(u'instancesSet')
+        headers = [u'id', u'name', u'type', u'state', u'launchTime', u'account', u'availabilityZone',
+                   u'privateIp', u'image', u'subnet']
+        fields = [u'instanceId', u'name', u'instanceType', u'instanceState.name', u'launchTime',
+                  u'OwnerAlias', u'placement.availabilityZone', u'privateIpAddress', u'imageName',
+                  u'subnetName']
+        self.result(res, headers=headers, fields=fields, maxsize=40)
+
+    @expose(aliases=[u'describe <id>'], aliases_only=True)
+    @check_error
+    def describe(self):
+        """Get virtual machine
+        """
+        dataSearch = {u'instance-id.N': [self.get_arg(u'id')]}
+        uri = u'%s/computeservices/instance/describeinstances' % self.baseuri
+        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True)) \
+            .get(u'DescribeInstancesResponse') \
+            .get(u'reservationSet')[0].get(u'instancesSet')[0]
+        self.result(res, details=True, maxsize=40)
 
     @expose(aliases=[u'runinstance <name> <account> <subnet> <type> <image> <security group>'],
             aliases_only=True)
@@ -106,20 +119,18 @@ class VMServiceController(VPCaaServiceControllerChild):
         res = {u'msg': u'Add virtual machine %s' % res}
         self.result(res, headers=[u'msg'])
 
-    @expose(aliases=[u'terminate <id> [force=true/false]'], aliases_only=True)
+    @expose(aliases=[u'terminate <id> [recursive=false]'], aliases_only=True)
     @check_error
     def terminate(self):
-        """Delete a virtual machine
+        """Delete service instance
+    - field: can be recursive
         """
         value = self.get_arg(name=u'id')
-        force = self.get_arg(name=u'force', default=False, keyvalue=True)
+        data = {
+            u'recursive': self.get_arg(name=u'recursive', default=False, keyvalue=True)
+        }
         uri = u'%s/serviceinsts/%s' % (self.baseuri, value)
-        # workaround to delete resource
-        # res = self._call(uri, u'GET')
-
-
-
-        res = self._call(uri, u'DELETE')
+        res = self._call(uri, u'DELETE', data=data)
         logger.info(res)
         res = {u'msg': u'Delete virtual machine %s' % value}
         self.result(res, headers=[u'msg'])
@@ -210,8 +221,48 @@ class SGroupServiceController(VPCaaServiceControllerChild):
         headers = [u'id', u'name', u'state',  u'account', u'vpc', u'egress_rules', u'ingress_rules']
         fields = [u'groupId', u'groupName', u'state', u'sgOwnerAlias', u'vpcName', u'egress_rules', u'ingress_rules']
         self.result(res, headers=headers, fields=fields, maxsize=40)
-      
-       
+
+    def __format_rule(self, rules):
+        for rule in rules:
+            if rule[u'ipProtocol'] == u'-1':
+                rule[u'ipProtocol'] = u'*'
+            if rule.get(u'fromPort', None) is None or rule[u'fromPort'] == u'-1':
+                rule[u'fromPort'] = u'*'
+            if rule.get(u'toPort', None) is None or rule[u'toPort'] == u'-1':
+                rule[u'toPort'] = u'*'
+            if len(rule.get(u'groups', None)) > 0:
+                group = rule[u'groups'][0]
+                rule[u'groups'] = u'%s:%s' % (group[u'userName'], group[u'groupName'])
+            else:
+                rule[u'groups'] = u''
+            if len(rule.get(u'ipRanges', None)) > 0:
+                cidr = rule[u'ipRanges'][0]
+                rule[u'ipRanges'] = u'%s' % cidr[u'cidrIp']
+            else:
+                rule[u'ipRanges'] = u''
+        return rules
+
+    @expose(aliases=[u'describe <id>'], aliases_only=True)
+    @check_error
+    def describe(self):
+        """Get service group with rules
+        """
+        dataSearch = {u'GroupId.N': [self.get_arg(u'id')]}
+        uri = u'%s/computeservices/securitygroup/describesecuritygroups' % self.baseuri
+        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True)) \
+            .get(u'DescribeSecurityGroupsResponse').get(u'securityGroupInfo', [])[0]
+        egress_rules = self.__format_rule(res.pop(u'ipPermissionsEgress'))
+        ingress_rules = self.__format_rule(res.pop(u'ipPermissions'))
+        fields = [u'groups', u'ipRanges', u'ipProtocol', u'fromPort', u'toPort']
+        self.result(res, details=True, maxsize=40)
+        self.app.print_output(u'Egress rules: ')
+        self.result(egress_rules, headers=[u'toSecuritygroup', u'toCidr', u'protocol', u'fromPort', u'toPort'],
+                    fields=fields, maxsize=60)
+        self.app.print_output(u'Ingress rules: ')
+        self.result(ingress_rules, headers=[u'fromSecuritygroup', u'fromCidr', u'protocol', u'fromPort', u'toPort'],
+                    fields=fields, maxsize=60)
+
+
 vpcaas_controller_handlers = [
     VPCaaServiceController,    
     VMServiceController,

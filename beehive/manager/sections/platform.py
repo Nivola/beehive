@@ -5,16 +5,18 @@ Created on Sep 22, 2017
 """
 import os
 import ujson as json
+import urllib
+
 import gevent
 import sh
 import copy
-from time import time
+from time import time, sleep
 from datetime import datetime
 from httplib import HTTPConnection
 import requests
 from copy import deepcopy
 from beecell.simple import str2uni
-from beehive.manager.util.controller import BaseController, check_error
+from beehive.manager.util.controller import BaseController, ApiController, check_error
 from beecell.db.manager import RedisManager, MysqlManager
 from cement.core.controller import expose
 from geventhttpclient import HTTPClient
@@ -86,7 +88,7 @@ class PlatformController(BaseController):
         print(res)
 
 
-class AnsibleController(BaseController):
+class AnsibleController(ApiController):
     class Meta:
         stacked_on = 'platform'
         stacked_type = 'nested'  
@@ -98,11 +100,11 @@ class AnsibleController(BaseController):
         self.subsystem = u'resource'
         self.ansible_path = self.configs[u'ansible_path']
         # self.verbosity = self.app.pargs.verbosity
-        self.main_playbook= u'%s/site.yml' % (self.ansible_path)
-        self.create_playbook= u'%s/server.yml' % (self.ansible_path)
-        self.site_playbook= u'%s/site.yml' % (self.ansible_path)
-        self.beehive_playbook= u'%s/beehive.yml' % (self.ansible_path)
-        self.beehive_doc_playbook= u'%s/beehive-doc.yml' % (self.ansible_path)
+        self.main_playbook = u'%s/site.yml' % (self.ansible_path)
+        self.create_playbook = u'%s/server.yml' % (self.ansible_path)
+        self.site_playbook = u'%s/site.yml' % (self.ansible_path)
+        self.beehive_playbook = u'%s/beehive.yml' % (self.ansible_path)
+        self.beehive_doc_playbook = u'%s/beehive-doc.yml' % (self.ansible_path)
         self.local_package_path = self.configs[u'local_package_path']
     
     def _ext_parse_args(self):
@@ -211,6 +213,7 @@ class AnsibleController(BaseController):
         for group in groups:
             hosts, vars = runner.get_inventory_with_vars(group)
             all_hosts.extend(hosts)
+
         logger.debug(u'Get hosts from ansible groups %s: %s' % (groups, all_hosts))
         return all_hosts
 
@@ -641,19 +644,12 @@ class MysqlController(AnsibleController):
         runners = self.get_runners()
         hosts = []
         for runner in runners:
-            hosts.extend(self.get_hosts(runner, [u'mysql', u'mysql-cluster']))
+            hosts = self.get_hosts(runner, [u'mysql-cluster'])
+            if len(hosts) == 0:
+                hosts.extend(self.get_hosts(runner, [u'mysql']))
         vars = runner.variable_manager.get_vars(runner.loader, host=hosts[0])
-
-        '''path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
-        path_lib = u'%s/library/beehive/' % (self.ansible_path)
-        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
-        hosts, vars = runner.get_inventory_with_vars(u'mysql')
-        hosts2, vars = runner.get_inventory_with_vars(u'mysql-cluster')
-        hosts.extend(hosts2)
-        # get root user
-        vars = runner.variable_manager.get_vars(runner.loader, host=hosts[0])'''
         root = {u'name': u'root', u'password': vars[u'mysql'][u'root_remote_pwd']}
-        return hosts, root        
+        return [str(h) for h in hosts], root
     
     @expose(aliases=[u'ping [port]'], aliases_only=True)
     @check_error
@@ -673,7 +669,34 @@ class MysqlController(AnsibleController):
             logger.info(u'Ping mysql : %s' % (res))
         
         self.result(resp, headers=[u'host', u'response'])
-        
+
+    @expose(aliases=[u'cluster-status [port=] [check_host=]'], aliases_only=True)
+    @check_error
+    def cluster_status(self):
+        """Get mysql cluster status
+    - port: instance port [default=3306]
+        """
+        port = self.get_arg(name=u'port', default=3306, keyvalue=True)
+        check_host = self.get_arg(name=u'check_host', default=None, keyvalue=True)
+        hosts, root = self.__get_hosts()
+        if check_host is not None:
+            hosts = [check_host]
+
+        resp = []
+        db = u'sys'
+        for host in hosts:
+            try:
+                server = self.__get_engine(host, port, root, db)
+                status = server.get_cluster_status().values()
+                logger.info(u'Get mysql cluster status : %s' % status)
+                for item in status:
+                    item.update({u'check_host': host})
+                    resp.append(item)
+            except Exception as ex:
+                self.error(ex)
+
+        self.result(resp, headers=[u'check_host', u'MEMBER_HOST', u'MEMBER_PORT', u'MEMBER_STATE'])
+
     @expose(aliases=[u'schemas [port]'], aliases_only=True)
     @check_error
     def schemas(self):
@@ -921,7 +944,8 @@ class CamundaController(AnsibleController):
         logger.debug(u'Ping camunda: %s' % resp)
         self.result(resp, headers=[u'host', u'response'])           
 
-class CamundaDeployController (CamundaController):
+
+class CamundaDeployController(CamundaController):
     class Meta:
         stacked_on = 'camunda'
         label = 'deploy'
@@ -952,7 +976,6 @@ class CamundaDeployController (CamundaController):
             resp.append({u'host':client.connection.get(u'host'), u'response':res})
         logger.debug(u'camunda deploy: %s' % resp)
         self.result(resp, headers=[u'host', u'response'])           
-
 
     @expose(aliases=[u'list'], aliases_only=True)
     @check_error
@@ -1012,7 +1035,8 @@ class CamundaDeployController (CamundaController):
             u'status' , 
             ])
 
-class CamundaProcessController (CamundaController):
+
+class CamundaProcessController(CamundaController):
     class Meta:
         stacked_on = 'camunda'
         label = 'process'
@@ -1137,7 +1161,7 @@ class CamundaProcessController (CamundaController):
 
         self.result(resp, headers=[ 
             u'host', 
-            u'status' , 
+            u'status',
             ])
 
 
@@ -2224,10 +2248,214 @@ class BeehiveController(AnsibleController):
                                                 .replace(u'/etc/uwsgi/vassals/', u'')))
                     for k,v in inst.items():
                         self.text.append(u'  - %-15s : %s' % (k,v))
-    
+
     #
     # commands
     #
+    def get_job_state(self, jobid):
+        try:
+            res = self._call(u'/v1.0/nrs/worker/tasks/%s' % jobid, u'GET')
+            state = res.get(u'task_instance').get(u'status')
+            logger.debug(u'Get job %s state: %s' % (jobid, state))
+            if state == u'FAILURE':
+                # print(res)
+                self.app.print_error(res[u'task_instance'][u'traceback'][-1])
+                self.app.error = False
+            return state
+        except (Exception):
+            return u'EXPUNGED'
+
+    def wait_job(self, jobid, delta=1):
+        """Wait resource
+        """
+        logger.debug(u'wait for job: %s' % jobid)
+        state = self.get_job_state(jobid)
+        while state not in [u'SUCCESS', u'FAILURE']:
+            logger.info(u'.')
+            print(u'.')
+            sleep(delta)
+            state = self.get_job_state(jobid)
+
+    @expose(aliases=[u'post-install <config>'], aliases_only=True)
+    @check_error
+    def post_install(self):
+        """
+        """
+        # get configs
+        all_configs = self.load_config(self.get_arg(name=u'config'))
+        apply = all_configs.get(u'apply')
+        configs = all_configs.get(u'configs')
+
+        self.subsystem = u'auth'
+
+        # oauth2 scopes
+        if apply.get(u'oauth2', False) is True:
+            for scope in configs.get(u'oauth2').get(u'scopes'):
+                res = self._call(u'/v1.0/oauth2/scopes', u'POST', data={u'scope': scope})
+                logger.info(u'Add scope: %s' % res)
+                self.output(u'Add scope: %s' % scope)
+
+        # auth roles, users and groups
+        if apply.get(u'auth', False) is True:
+            for obj in configs.get(u'auth').get(u'roles'):
+                res = self._call(u'/v1.0/nas/roles', u'POST', data={u'role': {u'name': obj, u'desc': obj}})
+                logger.info(u'Add role: %s' % res)
+                self.output(u'Add roles: %s' % obj)
+            # TODO: users
+            # TODO: groups
+
+        # auth and catalog objects and schedule
+        if apply.get(u'auth-schedule', False) is True:
+            for schedule in configs.get(u'auth').get(u'schedules'):
+                res = self._call(u'/v1.0/nas/scheduler/entries', u'POST', data={u'schedule': schedule})
+                logger.info(u'Add schedule: %s' % res)
+                self.output(u'Add schedule: %s' % scope)
+
+        # camunda
+        # - metatabelle decisioni
+        # - processi
+
+        self.subsystem = u'resource'
+
+        # resource tags
+        if apply.get(u'resource-tags', False) is True:
+            for obj in configs.get(u'resource').get(u'tags'):
+                try:
+                    res = self._call(u'/v1.0/nrs/tags', u'POST', data={u'resourcetag': {u'value': obj}})
+                    logger.info(u'Add tag: %s' % res)
+                    self.output(u'Add tag: %s' % obj)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
+
+        # resource containers
+        if apply.get(u'resource-containers', False) is True:
+            for obj in configs.get(u'resource').get(u'containers'):
+                try:
+                    res = self._call(u'/v1.0/nrs/containers', u'POST', data={u'resourcecontainer': obj})
+                    logger.info(u'Add container: %s' % res)
+                    self.output(u'Add container: %s' % obj)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
+
+        # resource containers sync
+        if apply.get(u'resource-containers-sync', False) is True:
+            for obj in configs.get(u'resource').get(u'containers'):
+                name = obj.get(u'name')
+                cont_type = obj.get(u'type')
+                for type in configs.get(u'resource').get(u'container_type').get(cont_type, []):
+                    res = self._call(u'/v1.0/nrs/containers/%s/discover' % name, u'PUT',
+                                     data={u'synchronize': {
+                                          u'types': type, u'new': True, u'died': False, u'changed': False}})
+                    self.wait_job(res[u'jobid'], delta=1)
+                    logger.info(u'Sync container %s type %s' % (name, type))
+                    self.output(u'Sync container %s type %s' % (name, type))
+
+        # resource entities
+        if apply.get(u'resource-entities', False) is True:
+            entitie_types = [u'region', u'site', u'site_network', u'compute_zone', u'image', u'flavor']
+            for entitie_type in entitie_types:
+                resources = configs.get(u'resource').get(u'entities')
+                for obj in resources.get(entitie_type+u's'):
+                    try:
+                        res = self._call(u'/v1.0/nrs/provider/'+entitie_type+u's', u'POST', data={entitie_type: obj})
+                        if u'jobid' in res:
+                            self.wait_job(res[u'jobid'], delta=1)
+                        logger.info(u'Add %s: %s' % (entitie_type, res))
+                        self.output(u'Add %s: %s' % (entitie_type, obj))
+                    except Exception as ex:
+                        self.error(ex)
+                        self.app.error = False
+
+                    if entitie_type == u'site':
+                        for orc in resources.get(u'site_orchestrators').get(obj[u'name']):
+                            try:
+                                if orc[u'type'] == u'openstack':
+                                    # get domain
+                                    data = urllib.urlencode({u'container': orc[u'id'], u'name': u'Default'})
+                                    domain = self._call(u'/v1.0/nrs/openstack/domains', u'GET', data=data)
+                                    orc[u'config'][u'domain'] = domain[u'domains'][0][u'id']
+                                res = self._call(u'/v1.0/nrs/provider/sites/%s/orchestrators' % obj[u'name'], u'POST',
+                                                 data={u'orchestrator': orc})
+                                self.wait_job(res[u'jobid'], delta=1)
+                                logger.info(u'Add site %s orchestrator: %s' % (obj.get(u'name'), res))
+                                self.output(u'Add site %s orchestrator: %s' % (obj.get(u'name'), orc))
+                            except Exception as ex:
+                                self.error(ex)
+                                self.app.error = False
+
+                    if entitie_type == u'compute_zone':
+                        name = obj.get(u'name')
+                        quota = obj.get(u'quota')
+                        sites = obj.get(u'sites')
+                        for site in sites:
+                            try:
+                                res = self._call(u'/v1.0/nrs/provider/compute_zones/%s/sites' % name, u'POST',
+                                                 data={u'site': {u'id': site,
+                                                                 u'orchestrator_tag': u'default',
+                                                                 u'quota': quota}})
+                                self.wait_job(res[u'jobid'], delta=1)
+                                logger.info(u'Add compute_zone site: %s' % res)
+                                self.output(u'Add compute_zone site: %s' % site)
+                            except Exception as ex:
+                                self.error(ex)
+                                self.app.error = False
+
+        self.subsystem = u'service'
+
+        # create service types
+        if apply.get(u'service-types', False) is True:
+            for obj in configs.get(u'service').get(u'types'):
+                res = self._call(u'/v1.0/nws/servicetypes', u'POST', data={u'servicetype': obj})
+                logger.info(u'Add service type: %s' % res)
+                self.output(u'Add service type: %s' % obj)
+
+        # create service defs
+        if apply.get(u'service-defs', False) is True:
+            for obj in configs.get(u'service').get(u'defs'):
+                try:
+                    configs = obj.pop(u'configs')
+                    res = self._call(u'/v1.0/nws/servicedefs', u'POST', data={u'servicedef': obj})
+                    logger.info(u'Add service def: %s' % res)
+                    self.output(u'Add service def: %s' % obj)
+
+                    data = {
+                        u'name': u'%s-config' % obj.get(u'name'),
+                        u'desc': u'%s-config' % obj.get(u'name'),
+                        u'service_definition_id': res[u'uuid'],
+                        u'params': configs,
+                        u'params_type': u'JSON',
+                        u'version': obj.get(u'version')
+                    }
+                    res = self._call(u'/v1.0/nws/servicecfgs', u'POST', data={u'servicecfg': data})
+                    logger.info(u'Add service def config: %s' % res)
+                    self.output(u'Add service def config: %s' % configs)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
+
+        # create service catalogs
+        if apply.get(u'service-catalogs', False) is True:
+            for obj in configs.get(u'service').get(u'catalogs'):
+                try:
+                    name = obj.get(u'name')
+                    defs = obj.get(u'defs')
+                    res = self._call(u'/v1.0/nws/srvcatalogs', u'POST', data={u'catalog': {u'name': name, u'desc': name}})
+                    logger.info(u'Add service catalog: %s' % res)
+                    self.output(u'Add service catalog: %s' % obj)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
+
+                res = self._call(u'/v1.0/nws/srvcatalogs/%s/defs' % res[u'uuid'], u'PUT',
+                                 data={u'definitions': {u'oids': defs}})
+                logger.info(u'Add service catalog defs: %s' % res)
+                self.output(u'Add service catalog defs: %s' % defs)
+
+        # create main org structure
+        # org, div, account common
+
     @expose()
     @check_error
     def sync(self):

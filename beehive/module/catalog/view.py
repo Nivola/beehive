@@ -392,21 +392,21 @@ class CatalogAPI(ApiView):
     def register_api(module):
         base = u'directory'
         rules = [
-            (u'%s/catalogs' % base, u'GET', ListCatalogs, {}),
-            (u'%s/catalogs/<oid>' % base, u'GET', GetCatalog, {}),
-            #('%s/catalog/<oid>/<zone>' % base, 'GET', FilterCatalog, {}),
-            (u'%s/catalogs/<oid>/perms' % base, u'GET', GetCatalogPerms, {}),
-            (u'%s/catalogs' % base, u'POST', CreateCatalog, {}),
-            (u'%s/catalogs/<oid>' % base, u'PUT', UpdateCatalog, {}),
-            (u'%s/catalogs/<oid>' % base, u'DELETE', DeleteCatalog, {}),
-            #('%s/catalogs/<oid>/services' % base, 'GET', GetCatalogServices, {}),
-
-            (u'%s/endpoints' % base, u'GET', ListEndpoints, {}),
-            (u'%s/endpoints/<oid>' % base, u'GET', GetEndpoint, {}),
-            (u'%s/endpoints/<oid>/perms' % base, u'GET', GetEndpointPerms, {}),
-            (u'%s/endpoints' % base, u'POST', CreateEndpoint, {}),
-            (u'%s/endpoints/<oid>' % base, u'PUT', UpdateEndpoint, {}),
-            (u'%s/endpoints/<oid>' % base, u'DELETE', DeleteEndpoint, {}),
+            # (u'%s/catalogs' % base, u'GET', ListCatalogs, {}),
+            # (u'%s/catalogs/<oid>' % base, u'GET', GetCatalog, {}),
+            # #('%s/catalog/<oid>/<zone>' % base, 'GET', FilterCatalog, {}),
+            # (u'%s/catalogs/<oid>/perms' % base, u'GET', GetCatalogPerms, {}),
+            # (u'%s/catalogs' % base, u'POST', CreateCatalog, {}),
+            # (u'%s/catalogs/<oid>' % base, u'PUT', UpdateCatalog, {}),
+            # (u'%s/catalogs/<oid>' % base, u'DELETE', DeleteCatalog, {}),
+            # #('%s/catalogs/<oid>/services' % base, 'GET', GetCatalogServices, {}),
+            #
+            # (u'%s/endpoints' % base, u'GET', ListEndpoints, {}),
+            # (u'%s/endpoints/<oid>' % base, u'GET', GetEndpoint, {}),
+            # (u'%s/endpoints/<oid>/perms' % base, u'GET', GetEndpointPerms, {}),
+            # (u'%s/endpoints' % base, u'POST', CreateEndpoint, {}),
+            # (u'%s/endpoints/<oid>' % base, u'PUT', UpdateEndpoint, {}),
+            # (u'%s/endpoints/<oid>' % base, u'DELETE', DeleteEndpoint, {}),
 
             # new routes
             (u'%s/catalogs' % module.base_path, u'GET', ListCatalogs, {}),

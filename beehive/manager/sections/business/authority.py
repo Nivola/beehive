@@ -143,6 +143,103 @@ class OrganizationController(AuthorityControllerChild):
         self.result(res, headers=[u'msg'])
 
 
+class PriceListController(AuthorityControllerChild):
+    class Meta:
+        label = 'prices'
+        description = "PriceLists management"
+
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
+    def list(self):
+        """List all pricelists by field: organization_id, name, objid,
+        contact, email, postaladdress, active
+        filter_expired,filter_creation_date_start,filter_creation_date_stop,
+        filter_modification_date_start, filter_modification_date_stop,
+        filter_expiry_date_start,filter_expiry_date_stop
+        """
+        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = u'%s/pricelists' % self.baseuri
+        res = self._call(uri, u'GET', data=data)
+        logger.info(res)
+        self.result(res, key=u'price_list', headers=[u'id', u'uuid', u'name', u'version', u'flag_default'], maxsize=40)
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
+    def get(self):
+        """Get division by value or id
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'%s/pricelists/%s' % (self.baseuri, value)
+        res = self._call(uri, u'GET')
+        logger.info(res)
+        self.result(res, key=u'price_list', details=True)
+
+    @expose(aliases=[u'perms <id>'], aliases_only=True)
+    @check_error
+    def perms(self):
+        """Get division permissions by id, uuid or name
+        """
+        value = self.get_arg(name=u'id')
+        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = u'%s/pricelists/%s/perms' % (self.baseuri, value)
+        res = self._call(uri, u'GET', data=data)
+        logger.info(u'Get pricelist perms: %s' % truncate(res))
+        self.result(res, key=u'perms', headers=self.perm_headers)
+
+    @expose(aliases=[u'add <name> [field=value]'], aliases_only=True)
+    @check_error
+    def add(self):
+        """Add pricelist.
+    - field : can be desc, version, is_default
+        """
+        name = self.get_arg(name=u'name')
+        desc = self.get_arg(name=u'desc', default=name, keyvalue=True)
+        version = self.get_arg(name=u'version', default=u'v1.0', keyvalue=True)
+        flag_default = self.get_arg(name=u'is_default', default=False, keyvalue=True)
+        data = {
+            u'price_list': {
+                u'name': name,
+                u'desc': desc,
+                u'version': version,
+                u'flag_default': flag_default
+            }
+        }
+        uri = u'%s/pricelists' % (self.baseuri)
+        res = self._call(uri, u'POST', data=data)
+        logger.info(u'Add pricelist: %s' % truncate(res))
+        res = {u'msg': u'Add pricelist %s' % res}
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'update <id> [field=value]'], aliases_only=True)
+    @check_error
+    def update(self):
+        """Update pricelist
+            - id: id or uuid of the pricelist
+        """
+        oid = self.get_arg(name=u'id')
+        params = self.app.kvargs
+        data = {
+            u'division': params
+        }
+        uri = u'%s/pricelists/%s' % (self.baseuri, oid)
+        self._call(uri, u'PUT', data=data)
+        logger.info(u'Update pricelist %s with data %s' % (oid, params))
+        res = {u'msg': u'Update pricelist %s with data %s' % (oid, params)}
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
+    def delete(self):
+        """Delete division
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'%s/pricelists/%s' % (self.baseuri, value)
+        res = self._call(uri, u'DELETE')
+        logger.info(res)
+        res = {u'msg': u'Delete pricelist %s' % value}
+        self.result(res, headers=[u'msg'])
+
+
 class DivisionController(AuthorityControllerChild):
     class Meta:
         label = 'divs'
@@ -564,37 +661,38 @@ class AccountController(AuthorityControllerChild):
 
         # add role permissions
         roleid = role[u'uuid']
-        data = {
-            u'role': {
-                u'perms': {
-                    u'append': [
-                        {u'subsystem': u'service', u'type': u'Organization.Division.Account',
-                         u'objid': account_objid, u'action': u'*'},
-                        {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceInstance',
-                         u'objid': account_objid + u'//*', u'action': u'*'},
-                        {u'subsystem': u'service',
-                         u'type': u'Organization.Division.Account.ServiceInstance.ServiceDefinitionConfig',
-                         u'objid': account_objid + u'//*//*', u'action': u'*'},
-                        {u'subsystem': u'service',
-                         u'type': u'Organization.Division.Account.ServiceInstance.ServiceLinkInst',
-                         u'objid': account_objid + u'//*//*', u'action': u'*'},
-                        {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceLink',
-                         u'objid': account_objid + u'//*', u'action': u'*'},
-                        {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceLink',
-                         u'objid': u'*//*//*//*', u'action': u'view'},
-                        {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceTag',
-                         u'objid': account_objid + u'//*', u'action': u'*'},
-                        {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceTag',
-                         u'objid': u'*//*//*//*', u'action': u'view'},
-                        {u'subsystem': u'service', u'type': u'ServiceCatalog',
-                         u'objid': catalog_objid, u'action': u'*'},
-                    ],
-                    u'remove': []
+        perms = [
+            {u'subsystem': u'service', u'type': u'Organization.Division.Account',
+             u'objid': account_objid, u'action': u'*'},
+            {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceInstance',
+             u'objid': account_objid + u'//*', u'action': u'*'},
+            {u'subsystem': u'service',
+             u'type': u'Organization.Division.Account.ServiceInstance.ServiceLinkInst',
+             u'objid': account_objid + u'//*//*', u'action': u'*'},
+            {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceLink',
+             u'objid': account_objid + u'//*', u'action': u'*'},
+            {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceLink',
+             u'objid': u'*//*//*//*', u'action': u'view'},
+            {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceTag',
+             u'objid': account_objid + u'//*', u'action': u'*'},
+            {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceTag',
+             u'objid': u'*//*//*//*', u'action': u'view'},
+            {u'subsystem': u'service', u'type': u'ServiceCatalog',
+             u'objid': catalog_objid, u'action': u'*'},
+        ]
+        for perm in perms:
+            data = {
+                u'role': {
+                    u'perms': {
+                        u'append': [
+                            perm
+                        ],
+                        u'remove': []
+                    }
                 }
             }
-        }
-        uri = u'/v1.0/nas/roles/%s' % role[u'uuid']
-        res = self._call(uri, u'PUT', data=data)
+            uri = u'/v1.0/nas/roles/%s' % role[u'uuid']
+            res = self._call(uri, u'PUT', data=data)
 
         res = {u'msg': u'Add role %s' % role[u'uuid']}
         self.result(res, headers=[u'msg'])
@@ -1008,6 +1106,7 @@ class ConsumeController(AuthorityControllerChild):
 authority_controller_handlers = [
     AuthorityController,
     OrganizationController,
+    PriceListController,
     DivisionController,
     AccountController,
     SubwalletController,

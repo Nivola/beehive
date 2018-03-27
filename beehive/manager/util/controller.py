@@ -644,7 +644,7 @@ class ApiController(BaseController):
         BaseController._setup(self, base_app)
     
     @check_error    
-    def split_arg (self, key, splitWith=u','):
+    def split_arg(self, key, splitWith=u','):
         
         splitList = []
         
@@ -653,10 +653,7 @@ class ApiController(BaseController):
             for value in values.split(splitWith):
                 splitList.append(value) 
         return splitList
-#                 splitList.append(key+u'='+value) 
-#         return '&'.join(splitList)
 
-       
     @check_error
     def _parse_args(self):
         BaseController._parse_args(self)

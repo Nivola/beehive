@@ -339,9 +339,9 @@ class RoleController(AuthControllerChild):
         name = self.get_arg(name=u'name')
         desc = self.get_arg(name=u'desc')
         data = {
-            u'role':{
-                u'name':name,
-                u'desc':desc
+            u'role': {
+                u'name': name,
+                u'desc': desc
             }
         }
         uri = u'%s/roles' % self.baseuri        
@@ -647,7 +647,7 @@ class ObjectController(AuthControllerChild):
         uri = u'%s/objects/perms' % (self.baseuri)
         res = self._call(uri, u'GET', data=data)
         logger.info(u'Get objects: %s' % res)
-        self.result(res, key=u'perms', headers=self.perm_headers)
+        self.result(res, key=u'perms', headers=self.perm_headers, maxsize=200)
     
     @expose(aliases=[u'perm <id>'], aliases_only=True)
     @check_error

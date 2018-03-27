@@ -5,6 +5,7 @@ Created on Sep 25, 2017
 """
 import ujson as json
 import logging
+import urllib
 from urllib import urlencode
 
 from beecell.db.manager import RedisManager, MysqlManager
@@ -268,17 +269,22 @@ class ContainerController(ResourceControllerChild, WorkerController):
         res = {u'msg':u'Delete resource container %s' % oid}
         self.result(res, headers=[u'msg'])
 
-    @expose(aliases=[u'jobs <id>'], aliases_only=True)
+    @expose(aliases=[u'jobs <id> [status=]'], aliases_only=True)
     @check_error
     def jobs(self, *args):
         """List all container jobs
     - id : resource id
         """
         oid = self.get_arg(name=u'id')
+        status = self.get_arg(name=u'status', default=None, keyvalue=True)
+        data = u''
+        if status is not None:
+            data = urllib.urlencode({u'jobstatus': status})
         uri = u'%s/containers/%s/jobs' % (self.baseuri, oid)
-        res = self._call(uri, u'GET', data=u'')
+        res = self._call(uri, u'GET', data=data)
         logger.info(u'Get container jobs: %s' % truncate(res))
-        self.result(res, key=u'containerjobs', headers=[u'job', u'name', u'timestamp'], maxsize=400)
+        self.result(res, key=u'containerjobs', headers=[u'job', u'name', u'status', u'worker', u'children',
+                                                        u'timestamp', u'elapsed'], maxsize=400)
 
     @expose(aliases=[u'add-tag <id> <tag>'], aliases_only=True)
     @check_error

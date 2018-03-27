@@ -93,28 +93,30 @@ class ServiceTypeController(ServiceControllerChild):
         logger.info(u'Get servicetype perms: %s' % truncate(res))
         self.result(res, key=u'perms', headers=self.perm_headers)         
     
-    @expose(aliases=[u'add <name> <version> [flag_container=..] [objclass=..] [active=..] [status=..]'],
+    @expose(aliases=[u'add <name> <objclass> [field=..]'],
             aliases_only=True)
     @check_error
     def add(self):
-        """Add service type <name> <version>
-         - field: can be desc, objclass, flag_container, status, active 
+        """Add service type <name> <objclass>
+    - field: can be version, container, status
         """
         name = self.get_arg(name=u'name')
-        version = self.get_arg(name=u'version')
-        params = self.get_query_params(*self.app.pargs.extra_arguments)
-        data ={
+        objclass = self.get_arg(name=u'objclass')
+        version = self.get_arg(name=u'version', default=u'v1.0', keyvalue=True)
+        flag_container = self.get_arg(name=u'container', default=False, keyvalue=True)
+        status = self.get_arg(name=u'status', default=u'ACTIVE', keyvalue=True)
+        data = {
             u'servicetype': {
                 u'name': name,
                 u'version': version,
-                u'desc': params.get(u'desc', None),
-                u'objclass': params.get(u'objclass', u''),
-                u'flag_container': params.get(u'flag_container', None),
-                u'status': params.get(u'status', u'DRAFT'),
-                u'active': params.get(u'active', False),
+                u'desc': name,
+                u'objclass': objclass,
+                u'flag_container': flag_container,
+                u'status': status,
+                u'template_cfg': u'{{}}'
             }
         }
-        uri = u'%s/servicetypes' % (self.baseuri)
+        uri = u'%s/servicetypes' % self.baseuri
         res = self._call(uri, u'POST', data=data)
         logger.info(u'Add service type: %s' % truncate(res))
         res = {u'msg': u'Add service type %s' % res}
@@ -194,9 +196,9 @@ class ServiceTypeProcessController(ApiController):
         res = self._call(uri, u'GET', data=u'service_type_id=%s' % value).get(u'serviceprocesses', [])
         logger.info(res)
         self.result(res, headers=[u'id', u'uuid', u'name', u'method_key', u'process_key', u'active', u'date.creation'])
-    
 
-    @expose(aliases=[u'set', u'set typeoid=<id|uuid|name> method=<met> [name=<name>] [desc=<description>]  [process=<key>] [template=@<templatefile>|<template>] '], aliases_only=True)
+    @expose(aliases=[u'set', u'set typeoid=<id|uuid|name> method=<met> [name=<name>] [desc=<description>] '
+                             u'[process=<key>] [template=@<templatefile>|<template>] '], aliases_only=True)
     @check_error
     def setval(self):
         # , st_uuid, template, name, ):
@@ -317,7 +319,7 @@ class ServiceDefinitionController(ServiceControllerChild):
         logger.info(u'Get servicedefinition perms: %s' % truncate(res))
         self.result(res, key=u'perms', headers=self.perm_headers)    
   
-    @expose(aliases=[u'add <service_type_id> <name> [field=value]'], aliases_only=True)
+    @expose(aliases=[u'add <service_type> <name> [field=value]'], aliases_only=True)
     @check_error
     def add(self):
         """Add service definition
@@ -325,27 +327,53 @@ class ServiceDefinitionController(ServiceControllerChild):
     - name: name of the service definition
     - field: Identify optional params. Can be: desc, parent_id, priority, status, version, active
         """
-        service_type_id = self.get_arg(name=u'service_type_id')
+        service_type_id = self.get_arg(name=u'service_type')
         name = self.get_arg(name=u'name')
+        params = self.get_arg(name=u'params')
+        version = self.get_arg(name=u'version', default=u'v1.0', keyvalue=True)
+        desc = self.get_arg(name=u'desc', default=name, keyvalue=True)
+        status = self.get_arg(name=u'status', default=u'ACTIVE', keyvalue=True)
+        parent_id = self.get_arg(name=u'parent', default=None, keyvalue=True)
+        priority = self.get_arg(name=u'priority', default=0, keyvalue=True)
 
-        params = self.get_query_params(*self.app.pargs.extra_arguments)
-        data ={
-            u'servicedef':{
+        print self.app.kvargs
+        # read params from file
+        if params.find(u'@') >= 0:
+            params = self.load_config(params.replace(u'@', u''))
+        else:
+            params = json.loads(params)
+
+        data = {
+            u'servicedef': {
                 u'name': name,
-                u'version': params.get(u'version', u'1.0'),
-                u'desc': params.get(u'desc', None),
-                u'status': params.get(u'status', u'DRAFT'),
-                u'active': params.get(u'active', False),
+                u'version': version,
+                u'desc': desc,
+                u'status': status,
                 u'service_type_id': service_type_id,
-                u'parent_id': params.get(u'parent_id', None),
-                u'priority': params.get(u'priority', None),
+                u'parent_id': parent_id,
+                u'priority': priority,
             }
         }
-        uri = u'%s/servicedefs' % (self.baseuri)
+        uri = u'%s/servicedefs' % self.baseuri
         res = self._call(uri, u'POST', data=data)
-        logger.info(u'Add servicedefinition: %s' % truncate(res))
-        res = {u'msg': u'Add servicedefinition %s' % res}
-        self.result(res, headers=[u'msg'])
+        logger.info(u'Add service definition: %s' % truncate(res))
+        resp = {u'msg': u'Add service definition %s' % res[u'uuid']}
+
+        data = {
+            u'servicecfg': {
+                u'name': u'%s-config' % name,
+                u'desc': u'%s-config' % name,
+                u'service_definition_id': res[u'uuid'],
+                u'params': params,
+                u'params_type': u'JSON',
+                u'version': version
+            }
+        }
+        uri = u'%s/servicecfgs' % self.baseuri
+        res = self._call(uri, u'POST', data=data)
+        logger.info(u'Add service definition config: %s' % truncate(res))
+
+        self.result(resp, headers=[u'msg'])
  
     @expose(aliases=[u'update <oid> [field=value]'], aliases_only=True)
     @check_error
@@ -379,6 +407,17 @@ class ServiceDefinitionController(ServiceControllerChild):
         logger.info(res)
         res = {u'msg': u'Delete servicedefinition %s' % value}
         self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'config <id>'], aliases_only=True)
+    @check_error
+    def config(self):
+        """List service definition configuration
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'%s/servicecfgs' % self.baseuri
+        res = self._call(uri, u'GET', data=u'service_definition_id=%s' % value).get(u'servicecfgs', [{}])[0]
+        logger.info(res)
+        self.result(res, details=True)
  
 
 class ServiceDefinitionCostController(ApiController):
@@ -392,105 +431,105 @@ class ServiceDefinitionCostController(ApiController):
         description = "Service type unitary cost management [TODO]"
 
 
-class ServiceDefinitionConfigController(ApiController):
-    baseuri = u'/v1.0/nws'
-    subsystem = u'service'
-
-    class Meta:
-        label = 'configs'
-        stacked_on = 'defs'
-        stacked_type = 'nested'
-        description = "Service definition config management"
-
-    @expose(aliases=[u'list <id>'], aliases_only=True)
-    @check_error
-    def list(self):
-        """List all service definition configuration by field:
-        name, id, uuid, objid, version, status,
-        service_definition_id, params, params_type,
-        filter_creation_date_stop, filter_modification_date_start,
-        filter_modification_date_stop, filter_expiry_date_start,
-        filter_expiry_date_stop
-        """
-        value = self.get_arg(name=u'id')
+# class ServiceDefinitionConfigController(ApiController):
+#     baseuri = u'/v1.0/nws'
+#     subsystem = u'service'
+#
+#     class Meta:
+#         label = 'configs'
+#         stacked_on = 'defs'
+#         stacked_type = 'nested'
+#         description = "Service definition config management"
+#
+#     @expose(aliases=[u'list <id>'], aliases_only=True)
+#     @check_error
+#     def list(self):
+#         """List all service definition configuration by field:
+#         name, id, uuid, objid, version, status,
+#         service_definition_id, params, params_type,
+#         filter_creation_date_stop, filter_modification_date_start,
+#         filter_modification_date_stop, filter_expiry_date_start,
+#         filter_expiry_date_stop
+#         """
+#         value = self.get_arg(name=u'id')
 #         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        uri = u'%s/servicecfgs' % self.baseuri
-        res = self._call(uri, u'GET', data=u'service_definition_id=%s' % value)
-        logger.info(res)
-        headers = [u'id', u'uuid', u'name', u'version', u'params_type', u'params', u'active', u'date.creation']
-        self.result(res, key=u'servicecfgs', headers=headers)
- 
-    @expose(aliases=[u'get <id>'], aliases_only=True)
-    @check_error
-    def get(self):
-        """Get  service definition configuration  by value id or uuid
-        """
-        value = self.get_arg(name=u'id')
-        uri = u'%s/servicecfgs/%s' % (self.baseuri, value)
-        res = self._call(uri, u'GET')
-        logger.info(res)
-        self.result(res, key=u'servicecfg', details=True)
-
-    @expose(aliases=[u'add <service_definition_id> <name> [desc=..] [params=..] [params_type=..] [status=..] '
-                     u'[version=..] [active=..]'], aliases_only=True)
-    @check_error
-    def add(self):
-        """Add service definition configuration <service_definition_id> <name> <params>
-         - service_definition_id: id or uuid of the service definition
-         - field: can be desc, params, params_type, status, version, active
-        """
-        service_definition_id = self.get_arg(name=u'service_definition_id')
-        name = self.get_arg(name=u'name')
-
-        params = self.get_query_params(*self.app.pargs.extra_arguments)
-        data ={
-            u'servicecfg':{
-                u'name':name, 
-                u'version': params.get(u'version', u'1.0'),
-                u'desc': params.get(u'desc', None),
-                u'status': params.get(u'status', u'DRAFT'),
-                u'active': params.get(u'active', False),
-                u'service_definition_id' : service_definition_id,
-                u'params':params.get(u'params', u'{}'),
-                u'params_type':params.get(u'params', u'json')
-
-            }
-        }     
-        uri = u'%s/servicecfgs' % (self.baseuri)
-        res = self._call(uri, u'POST', data=data)
-        logger.info(u'Add service definition cfg: %s' % truncate(res))
-        res = {u'msg': u'Add service definition cfg %s' % res}
-        self.result(res, headers=[u'msg'])
- 
-    @expose(aliases=[u'update <oid> [field=value]'], aliases_only=True)
-    @check_error
-    def update(self):
-        """Update service definition configuration
-        - oid: id or uuid of the servicedef
-        - field: can be name, version, desc, params, params_type, status, active
-        """
-        oid = self.get_arg(name=u'oid')
-        params = self.get_query_params(*self.app.pargs.extra_arguments)
-        data = {
-            u'servicecfg': params
-        }
-        uri = u'%s/servicecfgs/%s' % (self.baseuri, oid)
-        self._call(uri, u'PUT', data=data)
-        logger.info(u'Update service definition cfgs %s with data %s' % (oid, params))
-        res = {u'msg': u'Update service definition cfgs %s with data %s' % (oid, params)}
-        self.result(res, headers=[u'msg'])
- 
-    @expose(aliases=[u'delete <id>'], aliases_only=True)
-    @check_error
-    def delete(self):
-        """Delete service definition configuration
-        """
-        value = self.get_arg(name=u'id')
-        uri = u'%s/servicecfgs/%s' % (self.baseuri, value)
-        res = self._call(uri, u'DELETE')
-        logger.info(res)
-        res = {u'msg': u'Delete service definition cfgs %s' % value}
-        self.result(res, headers=[u'msg'])
+#         uri = u'%s/servicecfgs' % self.baseuri
+#         res = self._call(uri, u'GET', data=u'service_definition_id=%s' % value)
+#         logger.info(res)
+#         headers = [u'id', u'uuid', u'name', u'version', u'params_type', u'params', u'active', u'date.creation']
+#         self.result(res, key=u'servicecfgs', headers=headers)
+#
+#     @expose(aliases=[u'get <id>'], aliases_only=True)
+#     @check_error
+#     def get(self):
+#         """Get  service definition configuration  by value id or uuid
+#         """
+#         value = self.get_arg(name=u'id')
+#         uri = u'%s/servicecfgs/%s' % (self.baseuri, value)
+#         res = self._call(uri, u'GET')
+#         logger.info(res)
+#         self.result(res, key=u'servicecfg', details=True)
+#
+#     @expose(aliases=[u'add <service_definition_id> <name> [desc=..] [params=..] [params_type=..] [status=..] '
+#                      u'[version=..] [active=..]'], aliases_only=True)
+#     @check_error
+#     def add(self):
+#         """Add service definition configuration <service_definition_id> <name> <params>
+#          - service_definition_id: id or uuid of the service definition
+#          - field: can be desc, params, params_type, status, version, active
+#         """
+#         service_definition_id = self.get_arg(name=u'service_definition_id')
+#         name = self.get_arg(name=u'name')
+#
+#         params = self.get_query_params(*self.app.pargs.extra_arguments)
+#         data ={
+#             u'servicecfg':{
+#                 u'name':name,
+#                 u'version': params.get(u'version', u'1.0'),
+#                 u'desc': params.get(u'desc', None),
+#                 u'status': params.get(u'status', u'DRAFT'),
+#                 u'active': params.get(u'active', False),
+#                 u'service_definition_id' : service_definition_id,
+#                 u'params':params.get(u'params', u'{}'),
+#                 u'params_type':params.get(u'params', u'json')
+#
+#             }
+#         }
+#         uri = u'%s/servicecfgs' % (self.baseuri)
+#         res = self._call(uri, u'POST', data=data)
+#         logger.info(u'Add service definition cfg: %s' % truncate(res))
+#         res = {u'msg': u'Add service definition cfg %s' % res}
+#         self.result(res, headers=[u'msg'])
+#
+#     @expose(aliases=[u'update <oid> [field=value]'], aliases_only=True)
+#     @check_error
+#     def update(self):
+#         """Update service definition configuration
+#         - oid: id or uuid of the servicedef
+#         - field: can be name, version, desc, params, params_type, status, active
+#         """
+#         oid = self.get_arg(name=u'oid')
+#         params = self.get_query_params(*self.app.pargs.extra_arguments)
+#         data = {
+#             u'servicecfg': params
+#         }
+#         uri = u'%s/servicecfgs/%s' % (self.baseuri, oid)
+#         self._call(uri, u'PUT', data=data)
+#         logger.info(u'Update service definition cfgs %s with data %s' % (oid, params))
+#         res = {u'msg': u'Update service definition cfgs %s with data %s' % (oid, params)}
+#         self.result(res, headers=[u'msg'])
+#
+#     @expose(aliases=[u'delete <id>'], aliases_only=True)
+#     @check_error
+#     def delete(self):
+#         """Delete service definition configuration
+#         """
+#         value = self.get_arg(name=u'id')
+#         uri = u'%s/servicecfgs/%s' % (self.baseuri, value)
+#         res = self._call(uri, u'DELETE')
+#         logger.info(res)
+#         res = {u'msg': u'Delete service definition cfgs %s' % value}
+#         self.result(res, headers=[u'msg'])
 
 
 class ServiceCatalogController(ServiceControllerChild):
@@ -538,7 +577,7 @@ class ServiceCatalogController(ServiceControllerChild):
         logger.info(u'Get service catalog perms: %s' % truncate(res))
         self.result(res, key=u'perms', headers=self.perm_headers)
 
-    @expose(aliases=[u'add <name>  [desc=..]'], aliases_only=True)
+    @expose(aliases=[u'add <name> [desc=..]'], aliases_only=True)
     @check_error
     def add(self):
         """Add service catalogo <name>
@@ -592,7 +631,7 @@ class ServiceCatalogController(ServiceControllerChild):
     @expose(aliases=[u'defs <id> [field=value]'], aliases_only=True)
     @check_error
     def defs(self):
-        """List all service service definitions linked to service catalog
+        """List all service definitions linked to service catalog
         """
         """
     - field = plugintype, flag_container
@@ -600,13 +639,32 @@ class ServiceCatalogController(ServiceControllerChild):
         - flag_container=true select only container type
         """
         value = self.get_arg(name=u'id')
-        # data = urllib.urlencode(self.app.kvargs)
-        data = urllib.urlencode({u'flag_container': True})
+        data = urllib.urlencode(self.app.kvargs)
+        # data = urllib.urlencode({u'flag_container': True})
         uri = u'%s/srvcatalogs/%s/defs' % (self.baseuri, value)
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
         self.result(res, key=u'servicedefs', headers=[u'id', u'uuid', u'name', u'version', u'status',
                     u'service_type_id', u'active', u'date.creation'])
+
+    @expose(aliases=[u'def-add <id> <def_ids>'], aliases_only=True)
+    @check_error
+    def def_add(self):
+        """Add service definition to a service catalog
+    - def_ids: comma separated service definition ids
+        """
+        value = self.get_arg(name=u'id')
+        definitions = self.get_arg(name=u'definitions')
+        data = {
+            u'definitions': {
+                u'oids': definitions.split(u',')
+            }
+        }
+        uri = u'%s/srvcatalogs/%s/defs' % (self.baseuri, value)
+        res = self._call(uri, u'PUT', data=data)
+        msg = u'Add service definitions %s to catalog %s' % (definitions, value)
+        logger.info(msg)
+        self.result({u'msg': msg}, headers=[u'msg'])
 
 
 class ServiceInstanceController(ServiceControllerChild):
@@ -1348,7 +1406,7 @@ service_controller_handlers = [
     ServiceCostParamController,
     ServiceTypeProcessController,
     ServiceDefinitionController,
-    ServiceDefinitionConfigController,
+    # ServiceDefinitionConfigController,
     ServiceDefinitionCostController,
     # ServiceLinkDefinitionController,
     ServiceInstanceController,

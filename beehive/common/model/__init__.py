@@ -17,6 +17,7 @@ Base = declarative_base()
 
 logger = logging.getLogger(__name__)
 
+
 class AuditData(object):
     """
         Column of common audit
@@ -28,7 +29,7 @@ class AuditData(object):
             self.creation_date = datetime.today()
             
         self.modification_date = self.creation_date
-        self.expiry_date =  None
+        self.expiry_date = None
 
     creation_date = Column(DateTime())
     modification_date = Column(DateTime())
@@ -39,7 +40,7 @@ class BaseEntity(AuditData):
     """
         
     """
-    __table_args__ = {u'mysql_engine':u'InnoDB'}    
+    __table_args__ = {u'mysql_engine': u'InnoDB'}
 
     id = Column(Integer, primary_key=True)
     uuid = Column(String(50), unique=True)
@@ -253,7 +254,8 @@ class PaginatedQueryGenerator(object):
         
         if field in kvargs and kvargs.get(field) is not None: 
             return PaginatedQueryGenerator.create_sqlfilter(field, opLogical=op)
-        else: return u''
+        else:
+            return u''
     
     @staticmethod
     def create_sqlfilter(param, column=None, opLogical=u' AND', opComparison=u'='):
@@ -270,10 +272,9 @@ class PaginatedQueryGenerator(object):
             column = param
  
         if column is not None: 
-            return u' {opLogical} t3.{column}{opComparison}:{param}'.format(column=column,
-                                                        param=param,
-                                                        opLogical=opLogical,
-                                                        opComparison=opComparison)
+            return u' {opLogical} t3.{column}{opComparison}:{param}'.format(column=column, param=param,
+                                                                            opLogical=opLogical,
+                                                                            opComparison=opComparison)
         else:
             return u''
 
@@ -302,7 +303,7 @@ class PaginatedQueryGenerator(object):
             fields = u'count(t3.id) as count'
         
         sql = [u'SELECT {fields}', u'FROM {table} t3']
-        if self.with_perm_tag:
+        if self.with_perm_tag is True:
             sql.extend([
                 u', perm_tag t1, perm_tag_entity t2 '
             ])
@@ -315,7 +316,7 @@ class PaginatedQueryGenerator(object):
                 u'WHERE 1=1'
             ])
         # set base where
-        if self.with_perm_tag:
+        if self.with_perm_tag is True:
             sql.extend([
                 u'AND t3.id=t2.entity AND t2.tag=t1.id',
                 u'AND t1.value IN :tags '
@@ -331,7 +332,7 @@ class PaginatedQueryGenerator(object):
                 u'GROUP BY {field}',
                 u'ORDER BY {field} {order}'
             ])
-            if (self.size > 0):
+            if self.size > 0:
                 sql.append(u'LIMIT {start},{size}')
             else:
                 sql.append(u'LIMIT 1000')  # num rows - test
@@ -344,48 +345,45 @@ class PaginatedQueryGenerator(object):
         # table is defined by entity
         else:
             table = u'`%s`' % self.entity.__tablename__
-        stmp = stmp.format(table=table, fields=fields,
-            field=self.field, order=self.order, start=self.start, 
-            size=self.size)
+        stmp = stmp.format(table=table, fields=fields, field=self.field, order=self.order, start=self.start,
+                           size=self.size)
         return stmp
-        #return text(stmp)
     
     def run(self, tags, *args, **kvargs):
         """Make query
         
         :param list tags: list of permission tags
         """
+        if self.with_perm_tag is True:
+            self.logger.debug2(u'Authorization with permission tags ENABLED')
+        else:
+            self.logger.debug2(u'Authorization with permission tags DISABLED')
+
         if tags is None or len(tags) == 0:
-            tags = [u'']    
-        
-        if (self.size > 0):
+            tags = [u'']
+
+        # make query
+        if self.size > 0:
             # count all records
             stmp = self.base_stmp(count=True)
-            total = self.session.query(u'count').\
-                    from_statement(stmp).\
-                    params(tags=tags, **kvargs).first()[0]
-        
-        # make query
+            total = self.session.query(u'count').from_statement(stmp).params(tags=tags, **kvargs).first()[0]
+
         stmp = self.base_stmp()
 
         # set query entities
         entities = [self.entity]
         entities.extend(self.other_entities)
 
-        #query = self.session.query(*entities).\
-        query = self.session.query(*entities).\
-                from_statement(stmp).\
-                params(tags=tags, **kvargs)
-        self.logger.warn(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
-        #self.logger.warn(u'kvargs: %s' % kvargs)
-        #self.logger.warn(u'tags: %s' % tags)
+        query = self.session.query(*entities).from_statement(stmp).params(tags=tags, **kvargs)
+        self.logger.debug2(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
+        self.logger.debug2(u'kvargs: %s' % kvargs)
+        self.logger.debug2(u'tags: %s' % tags)
         res = query.all()
         
-        if (self.size == 0):
+        if self.size == 0:
             total = len(res)
         
-        self.logger.debug(u'Get %ss (total:%s): %s' % 
-                          (self.entity.__tablename__, total, truncate(res)))
+        self.logger.debug(u'Get %ss (total:%s): %s' % (self.entity.__tablename__, total, truncate(res)))
         return res, total
 
 
@@ -481,15 +479,17 @@ class AbstractDbManager(object):
             query = session.query(entityclass)
 
         query = query.filter_by(**kvargs)
-        
+
+        self.logger.debug2(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
+        self.logger.debug2(u'kvargs: %s' % kvargs)
+
         entity = query.first()
         
         if entity is None:
             msg = u'No %s found' % entityclass.__name__
             self.logger.error(msg)
             raise ModelError(msg, code=404)
-                 
-        # self.logger.debug(u'Get %s: %s' % (entityclass.__name__, truncate(entity)))
+
         return query
     
     @query
@@ -518,8 +518,8 @@ class AbstractDbManager(object):
         # get obj by name
         elif match(u'[\-\w\d]+', oid):
             self.logger.debug(u'Query entity %s by name' % entityclass.__name__)
-            entity = self.query_entities(entityclass, session, name=oid)
-        
+            entity = self.query_entities(entityclass, session, name=oid, **kvargs)
+
         res = None
         if for_update:
             res = entity.with_for_update().first() 
@@ -553,11 +553,11 @@ class AbstractDbManager(object):
         return res
     
     @query
-    def get_paginated_entities(self, entity, tags=[], page=0, size=10, 
-            order=u'DESC', field=u'id', filters=[], tables=[], select_fields=[],
-            custom_select=None, with_perm_tag=True, *args, **kvargs):
+    def get_paginated_entities(self, entity, tags=[], page=0, size=10, order=u'DESC', field=u'id', filters=[],
+                               tables=[], select_fields=[], custom_select=None, with_perm_tag=True, *args, **kvargs):
         """Get entities associated with some permission tags
-        
+
+        :param with_perm_tag: if False disable control of permission tags [default=True]
         :param tables: sql tables to add (table_name, alias) [optional]
         :param filters: sql filters to apply [optional]
         :param select_fields: list of fields to add to select [optional]
@@ -578,8 +578,7 @@ class AbstractDbManager(object):
         """
         session = self.get_session()
         
-        query = PaginatedQueryGenerator(entity, session, with_perm_tag=with_perm_tag,
-                                        custom_select=custom_select)
+        query = PaginatedQueryGenerator(entity, session, with_perm_tag=with_perm_tag, custom_select=custom_select)
         # set tables
         for table, alias in tables:
             query.add_table(table, alias)
@@ -773,7 +772,11 @@ class AbstractDbManager(object):
 
     @transaction
     def add(self, entity):
-        
+        """
+
+        :param entity:
+        :return:
+        """
         if entity is None:
             raise QueryError("Error: can't not add None entity")
         
