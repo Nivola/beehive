@@ -661,37 +661,38 @@ class AccountController(AuthorityControllerChild):
 
         # add role permissions
         roleid = role[u'uuid']
-        data = {
-            u'role': {
-                u'perms': {
-                    u'append': [
-                        {u'subsystem': u'service', u'type': u'Organization.Division.Account',
-                         u'objid': account_objid, u'action': u'*'},
-                        {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceInstance',
-                         u'objid': account_objid + u'//*', u'action': u'*'},
-                        {u'subsystem': u'service',
-                         u'type': u'Organization.Division.Account.ServiceInstance.ServiceDefinitionConfig',
-                         u'objid': account_objid + u'//*//*', u'action': u'*'},
-                        {u'subsystem': u'service',
-                         u'type': u'Organization.Division.Account.ServiceInstance.ServiceLinkInst',
-                         u'objid': account_objid + u'//*//*', u'action': u'*'},
-                        {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceLink',
-                         u'objid': account_objid + u'//*', u'action': u'*'},
-                        {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceLink',
-                         u'objid': u'*//*//*//*', u'action': u'view'},
-                        {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceTag',
-                         u'objid': account_objid + u'//*', u'action': u'*'},
-                        {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceTag',
-                         u'objid': u'*//*//*//*', u'action': u'view'},
-                        {u'subsystem': u'service', u'type': u'ServiceCatalog',
-                         u'objid': catalog_objid, u'action': u'*'},
-                    ],
-                    u'remove': []
+        perms = [
+            {u'subsystem': u'service', u'type': u'Organization.Division.Account',
+             u'objid': account_objid, u'action': u'*'},
+            {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceInstance',
+             u'objid': account_objid + u'//*', u'action': u'*'},
+            {u'subsystem': u'service',
+             u'type': u'Organization.Division.Account.ServiceInstance.ServiceLinkInst',
+             u'objid': account_objid + u'//*//*', u'action': u'*'},
+            {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceLink',
+             u'objid': account_objid + u'//*', u'action': u'*'},
+            {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceLink',
+             u'objid': u'*//*//*//*', u'action': u'view'},
+            {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceTag',
+             u'objid': account_objid + u'//*', u'action': u'*'},
+            {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceTag',
+             u'objid': u'*//*//*//*', u'action': u'view'},
+            {u'subsystem': u'service', u'type': u'ServiceCatalog',
+             u'objid': catalog_objid, u'action': u'*'},
+        ]
+        for perm in perms:
+            data = {
+                u'role': {
+                    u'perms': {
+                        u'append': [
+                            perm
+                        ],
+                        u'remove': []
+                    }
                 }
             }
-        }
-        uri = u'/v1.0/nas/roles/%s' % role[u'uuid']
-        res = self._call(uri, u'PUT', data=data)
+            uri = u'/v1.0/nas/roles/%s' % role[u'uuid']
+            res = self._call(uri, u'PUT', data=data)
 
         res = {u'msg': u'Add role %s' % role[u'uuid']}
         self.result(res, headers=[u'msg'])
