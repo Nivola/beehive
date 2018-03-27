@@ -9,10 +9,7 @@ import urllib
 
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController, check_error
-from re import match
 from beecell.simple import truncate
-from beecell.remote import NotFoundException
-from time import sleep
 import json
 from urllib import urlencode
  
@@ -239,7 +236,7 @@ class ServiceTypeProcessController(ApiController):
                 template = f.read()
                 f.close()
             else:
-               raise Exception(u'Jinja template %s is not a file' % filename)
+                raise Exception(u'Jinja template %s is not a file' % filename)
 
         data = {
             u'serviceprocess':{
@@ -416,7 +413,7 @@ class ServiceDefinitionConfigController(ApiController):
         filter_expiry_date_stop
         """
         value = self.get_arg(name=u'id')
-        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+#         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
         uri = u'%s/servicecfgs' % self.baseuri
         res = self._call(uri, u'GET', data=u'service_definition_id=%s' % value)
         logger.info(res)
@@ -1281,7 +1278,7 @@ class ServiceMetricsController(ServiceControllerChild):
             u'id':u'id', 
             u'date': u'creation_date',
             u'num': u'metric_num',
-            u'type': u'metric_type',
+            u'type': u'metric_type_id',
             u'value': u'value',
             u'platform': u'platform',
             u'instance': u'service_instance_id',
