@@ -648,16 +648,31 @@ class AccountController(AuthorityControllerChild):
         catalog = self._call(uri, u'GET').get(u'catalog')
         catalog_objid = catalog[u'__meta__'][u'objid']
 
+        # get catalog defs
+        uri = u'%s/srvcatalogs/%s/defs' % (self.baseuri, catalog_id)
+        defs = self._call(uri, u'GET').get(u'servicedefs')
+        defs_objid = []
+        for definition in defs:
+            defs_objid.append(definition[u'__meta__'][u'objid'])
+
+        print defs_objid
+
         # add role
-        data = {
-            u'role': {
-                u'name': u'AdminRoleAccount-%s' % account_id,
-                u'desc': u'AdminRoleAccount-%s' % account_id
+        try:
+            self.subsystem = u'auth'
+            data = {
+                u'role': {
+                    u'name': u'AdminRoleAccount-%s' % account_id,
+                    u'desc': u'AdminRoleAccount-%s' % account_id
+                }
             }
-        }
-        uri = u'/v1.0/nas/roles'
-        role = self._call(uri, u'POST', data=data)
-        logger.info(u'Add role: %s' % role)
+            uri = u'/v1.0/nas/roles'
+            role = self._call(uri, u'POST', data=data)
+            logger.info(u'Add role: %s' % role)
+        except Exception as ex:
+            uri = u'/v1.0/nas/roles/AdminRoleAccount-%s' % account_id
+            role = self._call(uri, u'GET', data=u'').get(u'role')
+            logger.info(u'Add role: %s' % role)
 
         # add role permissions
         roleid = role[u'uuid']
@@ -680,6 +695,12 @@ class AccountController(AuthorityControllerChild):
             {u'subsystem': u'service', u'type': u'ServiceCatalog',
              u'objid': catalog_objid, u'action': u'*'},
         ]
+        for def_objid in defs_objid:
+            perms.append({u'subsystem': u'service',
+                          u'type': u'ServiceType.ServiceDefinition',
+                          u'objid': def_objid,
+                          u'action': u'view'})
+
         for perm in perms:
             data = {
                 u'role': {
@@ -693,6 +714,8 @@ class AccountController(AuthorityControllerChild):
             }
             uri = u'/v1.0/nas/roles/%s' % role[u'uuid']
             res = self._call(uri, u'PUT', data=data)
+
+        self.subsystem = u'service'
 
         res = {u'msg': u'Add role %s' % role[u'uuid']}
         self.result(res, headers=[u'msg'])

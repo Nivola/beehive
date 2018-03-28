@@ -201,7 +201,66 @@ class SGroupServiceController(VPCaaServiceControllerChild):
     class Meta:
         label = 'securitygroups'
         description = "Security groups service management" 
-        
+
+    @expose(aliases=[u'create <account> <definition> <name>'], aliases_only=True)
+    @check_error
+    def create_by_id(self):
+        """Create service groups
+        """
+        account = self.get_arg(u'account')
+        definition = self.get_arg(u'definition')
+        name = self.get_arg(u'name')
+        data = {
+            u'serviceinst': {
+                u'name': name,
+                u'desc': name,
+                u'account_id': account,
+                u'service_def_id': definition,
+                u'status': u'ACTIVE',
+                u'bpmn_process_id': None,
+                u'active': True,
+                u'version': u'1.0'
+            }
+        }
+        sg = self._call(u'/v1.0/nws/serviceinsts', u'post', data=data)
+
+    @expose(aliases=[u'create <account> <definition> <name>'], aliases_only=True)
+    @check_error
+    def create(self):
+        """Create service groups
+        """
+        account = self.get_arg(u'account')
+        definition = self.get_arg(u'definition')
+        name = self.get_arg(u'name')
+        data = {
+            u'serviceinst': {
+                u'name': name,
+                u'desc': name,
+                u'account_id': account,
+                u'service_def_id': definition,
+                u'status': u'ACTIVE',
+                u'bpmn_process_id': None,
+                u'active': True,
+                u'version': u'1.0'
+            }
+        }
+        sg = self._call(u'/v1.0/nws/serviceinsts', u'post', data=data)
+
+        # create config
+        data = {
+            u'instancecfg': {
+                u'name': u'%s-conf' % name,
+                u'desc': u'%s-conf' % name,
+                u'service_instance_id': sg.get(u'uuid'),
+                u'json_cfg': {
+                },
+            }
+        }
+        sg_config = self._call(u'/v1.0/nws/instancecfgs', u'post', data=data)
+
+        res = {u'msg': u'Create security group %s' % name}
+        self.result(res, headers={u'msg'}, maxsize=100)
+
     @expose(aliases=[u'describes [field=<id1, id2>]'], aliases_only=True)
     @check_error
     def describes(self):
