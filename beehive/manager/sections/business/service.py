@@ -396,14 +396,14 @@ class ServiceDefinitionController(ServiceControllerChild):
         res = {u'msg': u'Update servicedefinition %s with data %s' % (oid, params)}
         self.result(res, headers=[u'msg'])
  
-    @expose(aliases=[u'delete <id> [recursive]'], aliases_only=True)
+    @expose(aliases=[u'delete <id> [recursive=..]'], aliases_only=True)
     @check_error
     def delete(self):
         """Delete service definition
         """
         value = self.get_arg(name=u'id')
         data = {
-            u'recursive' : self.get_arg(name=u'recursive', default=False, keyvalue=True)
+            u'recursive': self.get_arg(name=u'recursive', default=True, keyvalue=True)
         }
         uri = u'%s/servicedefs/%s' % (self.baseuri, value)
         res = self._call(uri, u'DELETE', data=data)

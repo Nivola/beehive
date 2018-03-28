@@ -533,7 +533,7 @@ class TaskManager(ApiObject):
             val = json.loads(data[0])
             ttl = data[1]
             
-            tasktype = val[u'type']
+            tasktype = val.get(u'type', u'JOB')
             
             # add time to live
             val[u'ttl'] = ttl
@@ -541,9 +541,9 @@ class TaskManager(ApiObject):
             # JOB
             if tasktype == u'JOB':
                 # add elapsed
-                val[u'elapsed'] = val[u'stop_time'] - val[u'start_time']
-                val[u'stop_time'] = self.__convert_timestamp(val[u'stop_time'])
-                val[u'start_time'] = self.__convert_timestamp(val[u'start_time'])           
+                val[u'elapsed'] = val.get(u'stop_time', 0) - val.get(u'start_time', 0)
+                val[u'stop_time'] = self.__convert_timestamp(val.get(u'stop_time', 0))
+                val[u'start_time'] = self.__convert_timestamp(val.get(u'start_time', 0))
                 try:
                     # get job childs
                     childrens = val.pop(u'children')
