@@ -435,9 +435,9 @@ class TaskManager(ApiObject):
         val[u'ttl'] = ttl
         
         # add elapsed
-        val[u'elapsed'] = val[u'stop_time'] - val[u'start_time']
-        val[u'stop_time'] = self.__convert_timestamp(val[u'stop_time'])
-        val[u'start_time'] = self.__convert_timestamp(val[u'start_time'])
+        val[u'elapsed'] = val.get(u'stop_time', 0) - val.get(u'start_time', 0)
+        val[u'stop_time'] = self.__convert_timestamp(val.get(u'stop_time', 0))
+        val[u'start_time'] = self.__convert_timestamp(val.get(u'start_time', 0))
         
         return val
 
@@ -547,7 +547,7 @@ class TaskManager(ApiObject):
                 try:
                     # get job childs
                     childrens = val.pop(u'children')
-                    if childrens > 0:
+                    if len(childrens) > 0:
                         first_child_id = childrens[0]
                         first_child = self._get_task_info(first_child_id)
                         first_child[u'inner_type'] = u'start'

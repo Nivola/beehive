@@ -384,7 +384,7 @@ class RedisController(AnsibleController):
                             resp.append({u'host': str(host), u'db': db, u'response': v})
                     else:
                         resp.append({u'host': str(host), u'db': db, u'response': res})
-            self.result(resp, headers=[u'host', u'db', u'response'])
+            self.result(resp, headers=[u'host', u'db', u'response'], maxsize=200)
         except Exception as ex:
             self.error(ex)         
         
@@ -564,7 +564,7 @@ class RedisClutserController(RedisController):
                 headers = [u'keys']                
 
             logger.info(u'Cmd redis : %s' % (resp))
-            self.result(resp, headers=headers, key_separator=u',', maxsize=25)            
+            self.result(resp, headers=headers, key_separator=u',', maxsize=100)
         except Exception as ex:
             self.error(ex)            
         

@@ -58,6 +58,23 @@ class ImageServiceController(VPCaaServiceControllerChild):
         fields = [u'imageId', u'name', u'imageState', u'imageType', u'imageOwnerAlias', u'platform']
         self.result(res, headers=headers, fields=fields, maxsize=40)
 
+    @expose(aliases=[u'create <name> <account> <type>'], aliases_only=True)
+    @check_error
+    def create(self):
+        """Create an image
+        """
+        data = {
+            u'ImageName': self.get_arg(name=u'name'),
+            u'owner_id': self.get_arg(name=u'account'),
+            u'ImageType': self.get_arg(name=u'type')
+        }
+        uri = u'%s/computeservices/image/createimage' % self.baseuri
+        res = self._call(uri, u'POST', data={u'image': data}, timeout=600)
+        logger.info(u'Add image: %s' % truncate(res))
+        res = res.get(u'CreateImageResponse').get(u'imageSet')[0].get(u'imageId')
+        res = {u'msg': u'Add image %s' % res}
+        self.result(res, headers=[u'msg'])
+
 
 class VMServiceController(VPCaaServiceControllerChild):
     class Meta:
@@ -172,6 +189,23 @@ class VpcServiceController(VPCaaServiceControllerChild):
         headers = [u'id', u'name', u'state',  u'account', u'cidr']
         fields = [u'vpcId', u'name', u'state', u'vpcOwnerAlias', u'cidr']
         self.result(res, headers=headers, fields=fields, maxsize=40)
+
+    @expose(aliases=[u'create <name> <account> <type>'], aliases_only=True)
+    @check_error
+    def create(self):
+        """Create a vpc
+        """
+        data = {
+            u'VpcName': self.get_arg(name=u'name'),
+            u'owner_id': self.get_arg(name=u'account'),
+            u'VpcType': self.get_arg(name=u'type')
+        }
+        uri = u'%s/computeservices/vpc/createvpc' % self.baseuri
+        res = self._call(uri, u'POST', data={u'vpc': data}, timeout=600)
+        logger.info(u'Add vpc: %s' % truncate(res))
+        res = res.get(u'CreateVpcResponse').get(u'vpcSet')[0].get(u'vpcId')
+        res = {u'msg': u'Add vpc %s' % res}
+        self.result(res, headers=[u'msg'])
 
 
 class SubnetServiceController(VPCaaServiceControllerChild):
