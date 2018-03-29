@@ -217,7 +217,7 @@ class BeehiveApiClient(object):
             self.logger.error("Identity %s doen't exist or is expired" % uid)
             raise BeehiveApiClientError("Identity %s doen't exist or is expired" % uid, code=1014)'''
 
-    def http_client(self, proto, host, path, method, data=u'', headers={}, port=80, timeout=30):
+    def http_client(self, proto, host, path, method, data=u'', headers={}, port=80, timeout=30, print_curl=False):
         """Http client. Usage:
         
             res = http_client2('https', 'host1', '/api', 'POST', port=443, data='', headers={})
@@ -236,6 +236,7 @@ class BeehiveApiClient(object):
                         {'@number': 12524, '@type': 'issue', '@action': 'show'}
                        
         :param timeout: Request timeout. [default=30s]
+        :param print_curl: if True print curl request call
         :raise BeehiveApiClientError:
         """
         try:
@@ -244,6 +245,7 @@ class BeehiveApiClient(object):
             
             # append request-id to headers
             headers[u'request-id'] = id_gen()
+            reqid = headers[u'request-id']
             # append user agent
             headers[u'User-Agent'] = u'beehive/1.0'
 
@@ -251,19 +253,20 @@ class BeehiveApiClient(object):
                 send_data = data
             else:
                 send_data = u'xxxxxxx'
-            self.logger.info(u'Call: METHOD=%s, URI=%s://%s:%s%s, '\
-                             u'HEADERS=%s, DATA=%s' % (method, proto, host, port, path, headers, send_data))
+            self.logger.debug(u'API Request: %s - Call: METHOD=%s, URI=%s://%s:%s%s, '
+                              u'HEADERS=%s, DATA=%s' % (reqid, method, proto, host, port, path, headers, send_data))
 
             # format curl string
-            curl_url = [u'curl -k -v -S -X %s' % method.upper()]
-            if data is not None and data != u'':
-                curl_url.append(u"-d '%s'" % send_data)
-                curl_url.append(u'-H "Content-Type: application/json"')
-            if headers is not None:
-                for header in headers.items():
-                    curl_url.append(u'-H "%s: %s"' % header)
-            curl_url.append(u'%s://%s:%s%s' % (proto, host, port, path))
-            self.logger.debug(u' '.join(curl_url))
+            if print_curl is True:
+                curl_url = [u'curl -k -v -S -X %s' % method.upper()]
+                if data is not None and data != u'':
+                    curl_url.append(u"-d '%s'" % send_data)
+                    curl_url.append(u'-H "Content-Type: application/json"')
+                if headers is not None:
+                    for header in headers.items():
+                        curl_url.append(u'-H "%s: %s"' % header)
+                curl_url.append(u'%s://%s:%s%s' % (proto, host, port, path))
+                self.logger.debug(u' '.join(curl_url))
             
             if proto == u'http':
                 conn = httplib.HTTPConnection(host, port, timeout=timeout)
@@ -307,22 +310,22 @@ class BeehiveApiClient(object):
         except Exception as ex:
             elapsed = time() - start
             self.logger.error(ex, exc_info=True)
-            self.logger.info(u'Response: HOST=%s, STATUS=%s, CONTENT-TYPE=%s, RES=%s, '\
-                             u'ELAPSED=%s' % (response.getheader(u'remote-server', u''), response.status,
-                                              content_type, truncate(res), elapsed))
+            self.logger.error(u'API Request: %s - Response: HOST=%s, STATUS=%s, CONTENT-TYPE=%s, RES=%s, '
+                              u'ELAPSED=%s' % (reqid, response.getheader(u'remote-server', u''), response.status,
+                                               content_type, truncate(res), elapsed))
             
             raise BeehiveApiClientError(ex, code=400)
 
         if response.status in [200, 201, 202]:
             elapsed = time() - start
-            self.logger.info(u'Response: HOST=%s, STATUS=%s, CONTENT-TYPE=%s, RES=%s, '\
-                             u'ELAPSED=%s' % (response.getheader(u'remote-server', u''), response.status,
-                                              content_type, truncate(res), elapsed))
+            self.logger.debug(u'API Request: %s - Response: HOST=%s, STATUS=%s, CONTENT-TYPE=%s, RES=%s, '
+                              u'ELAPSED=%s' % (reqid, response.getheader(u'remote-server', u''), response.status,
+                                               content_type, truncate(res), elapsed))
         elif response.status in [204]:
             elapsed = time() - start
-            self.logger.info(u'Response: HOST=%s, STATUS=%s, CONTENT-TYPE=%s, RES=%s, '\
-                             u'ELAPSED=%s' % (response.getheader(u'remote-server', u''), response.status,
-                                              content_type, truncate(res), elapsed))
+            self.logger.debug(u'API Request: %s - Response: HOST=%s, STATUS=%s, CONTENT-TYPE=%s, RES=%s, '
+                              u'ELAPSED=%s' % (reqid, response.getheader(u'remote-server', u''), response.status,
+                                               content_type, truncate(res), elapsed))
         else:
             err = res
             code = 400
@@ -340,9 +343,6 @@ class BeehiveApiClient(object):
         
         :raise BeehiveApiClientError:
         """
-        # get identity
-        #identity = self.api_manager.get_identity(uid)
-        #seckey = identity['seckey']
         # create sign
         headers = {u'Accept': u'application/json'}
         if self.api_authtype == u'keyauth' and uid is not None:
@@ -377,9 +377,6 @@ class BeehiveApiClient(object):
         :parma debug: if True return curl syntax with result
         :raise BeehiveApiClientError:
         """
-        #if self.uid is None or self.exist(self.uid) is False:
-        #    self.create_token()
-        
         try:
             if parse is True and isinstance(data, dict) or isinstance(data, list):
                 data = json.dumps(data)

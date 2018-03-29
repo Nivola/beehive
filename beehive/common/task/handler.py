@@ -155,7 +155,7 @@ class TaskResult(object):
         
         # store task
         TaskResult.store(task_id, name=task.name, hostname=task.request.hostname, args=vargs, kwargs=kwargs,
-                         status=u'PENDING', retval=None, start_time=None, stop_time=None, childs=None, traceback=None,
+                         status=u'PENDING', retval=None, start_time=0, stop_time=0, childs=[], traceback=None,
                          inner_type=task.inner_type, msg=None, jobs=None)
     
     @staticmethod

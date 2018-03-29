@@ -784,10 +784,10 @@ class ServiceInstanceController(ServiceControllerChild):
         """
         value = self.get_arg(name=u'id')
         data = {
-            u'recursive' : self.get_arg(name=u'recursive', default=False, keyvalue=True)
+            u'recursive': self.get_arg(name=u'recursive', default=True, keyvalue=True)
         }
         uri = u'%s/serviceinsts/%s' % (self.baseuri, value)
-        res = self._call(uri, u'DELETE', data=data)
+        res = self._call(uri, u'DELETE', data=data, timeout=180)
         logger.info(res)
         res = {u'msg': u'Delete service instance %s' % value}
         self.result(res, headers=[u'msg'])

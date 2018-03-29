@@ -1606,9 +1606,8 @@ class ApiObject(object):
         #    self.event_ref_class, objdef=self.objdef, objdesc=self.objdesc)
     
     def __repr__(self):
-        return u'<%s id=%s objid=%s name=%s>' % (
-                        self.__class__.__module__+'.'+self.__class__.__name__, 
-                        self.oid, self.objid, self.name)
+        return u'<%s id=%s objid=%s name=%s>' % (self.__class__.__module__+'.'+self.__class__.__name__, self.oid,
+                                                 self.objid, self.name)
  
     @property
     def manager(self):
@@ -2829,7 +2828,7 @@ class ApiView(FlaskView):
         
     # response methods
     def get_warning(self, exception, code, msg, module=None):
-        self.get_error(exception, code, msg, module=module)
+        return self.get_error(exception, code, msg, module=module)
 
     # response methods
     def get_error(self, exception, code, msg, module=None):
