@@ -6,6 +6,7 @@ from beehive.common.data import operation
 
 logger = get_task_logger(__name__)
 
+
 class BaseTask(Task):
     abstract = True
     inner_type = 'TASK'

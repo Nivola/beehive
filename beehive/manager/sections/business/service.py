@@ -672,9 +672,9 @@ class ServiceCatalogController(ServiceControllerChild):
 
 class ServiceInstanceController(ServiceControllerChild):
     fields = [u'id', u'uuid', u'name', u'version', u'account_id', u'service_definition_id', u'status', u'active',
-              u'resource_uuid', u'date.creation']
+              u'resource_uuid', u'is_container', u'parent.name', u'date.creation']
     headers = [u'id', u'uuid', u'name', u'version', u'account', u'definition', u'status', u'active', u'resource',
-               u'creation']
+               u'is_container', u'parent', u'creation']
 
     class Meta:
         label = 'instances'

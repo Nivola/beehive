@@ -757,13 +757,16 @@ class ResourceEntityController(ResourceControllerChild):
         logger.info(u'Get resource jobs: %s' % truncate(res))
         self.result(res, key=u'resourcejobs', headers=[u'job', u'name', u'timestamp'], maxsize=400)
 
-    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @expose(aliases=[u'delete <id> [force=..]'], aliases_only=True)
     @check_error
     def delete(self):
         """Delete resource
         """
         value = self.get_arg(name=u'id')
+        force = self.get_arg(name=u'force', keyvalue=True, default=False)
         uri = u'%s/entities/%s' % (self.baseuri, value)
+        if force is True:
+            uri += u'?force=true'
         res = self._call(uri, u'DELETE')
         logger.info(res)
         jobid = res.get(u'jobid', None)

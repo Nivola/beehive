@@ -1,8 +1,8 @@
-'''
+"""
 Created on May 16, 2017
 
 @author: darkbk
-'''
+"""
 import ujson as json
 from beehive.common.task.manager import task_manager
 from beecell.simple import str2uni, truncate
@@ -10,8 +10,7 @@ from datetime import datetime
 from time import time
 from celery.utils.log import get_task_logger
 from celery.result import AsyncResult, GroupResult
-from celery.signals import task_prerun, task_postrun, task_failure, \
-                           task_retry, task_revoked
+from celery.signals import task_prerun, task_postrun, task_failure, before_task_publish, task_retry, task_revoked
 from traceback import format_tb
 from celery.utils import static
 
@@ -144,7 +143,18 @@ class TaskResult(object):
             logout(u'============= %s - %s - FAILURE =============' % (inner_type, task_id))'''
 
         return None
-    
+
+    @staticmethod
+    def task_pending(args):
+        # store task
+        task_name = args[0]
+        task_id = args[1]
+
+        # store task
+        TaskResult.store(task_id, name=task_name, hostname=None, args=None, kwargs=None,
+                         status=u'PENDING', retval=None, start_time=0, stop_time=0, childs=[], traceback=None,
+                         inner_type=None, msg=None, jobs=None)
+
     @staticmethod
     def task_prerun(**args):
         # store task
@@ -247,6 +257,11 @@ class TaskResult(object):
                          start_time=None, stop_time=stop_time, childs=None, traceback=trace, inner_type=None, msg=err,
                          jobs=None)
 
+
+# @before_task_publish.connect
+# def before_task_publish(**args):
+#     logger.warn(u'--------------------------')
+#     logger.warn(args)
 
 @task_prerun.connect
 def task_prerun(**args):

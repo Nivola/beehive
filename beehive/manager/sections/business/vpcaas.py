@@ -230,7 +230,25 @@ class SubnetServiceController(VPCaaServiceControllerChild):
         fields = [u'subnetId', u'name', u'state', u'subnetOwnerAlias', u'availabilityZone', u'vpcName', u'cidrBlock']
         self.result(res, headers=headers, fields=fields, maxsize=40)
 
- 
+    @expose(aliases=[u'create <name> <vpc> <availability_zone> <cidr>'], aliases_only=True)
+    @check_error
+    def create(self):
+        """Create a subnet
+        """
+        data = {
+            u'SubnetName': self.get_arg(name=u'name'),
+            u'VpcId': self.get_arg(name=u'vpc'),
+            u'AvailabilityZone': self.get_arg(name=u'availability_zone'),
+            u'CidrBlock': self.get_arg(name=u'cidr')
+        }
+        uri = u'%s/computeservices/subnet/createsubnet' % self.baseuri
+        res = self._call(uri, u'POST', data={u'subnet': data}, timeout=600)
+        logger.info(u'Add subnet: %s' % truncate(res))
+        res = res.get(u'CreateSubnetResponse').get(u'subnetSet')[0].get(u'subnetId')
+        res = {u'msg': u'Add subnet %s' % res}
+        self.result(res, headers=[u'msg'])
+
+
 class SGroupServiceController(VPCaaServiceControllerChild):
     class Meta:
         label = 'securitygroups'
@@ -258,42 +276,24 @@ class SGroupServiceController(VPCaaServiceControllerChild):
         }
         sg = self._call(u'/v1.0/nws/serviceinsts', u'post', data=data)
 
-    @expose(aliases=[u'create <account> <definition> <name>'], aliases_only=True)
+    @expose(aliases=[u'create <name> <vpc> [type=..]'], aliases_only=True)
     @check_error
     def create(self):
-        """Create service groups
+        """Create a subnet
         """
-        account = self.get_arg(u'account')
-        definition = self.get_arg(u'definition')
-        name = self.get_arg(u'name')
         data = {
-            u'serviceinst': {
-                u'name': name,
-                u'desc': name,
-                u'account_id': account,
-                u'service_def_id': definition,
-                u'status': u'ACTIVE',
-                u'bpmn_process_id': None,
-                u'active': True,
-                u'version': u'1.0'
-            }
+            u'GroupName': self.get_arg(name=u'name'),
+            u'VpcId': self.get_arg(name=u'vpc')
         }
-        sg = self._call(u'/v1.0/nws/serviceinsts', u'post', data=data)
-
-        # create config
-        data = {
-            u'instancecfg': {
-                u'name': u'%s-conf' % name,
-                u'desc': u'%s-conf' % name,
-                u'service_instance_id': sg.get(u'uuid'),
-                u'json_cfg': {
-                },
-            }
-        }
-        sg_config = self._call(u'/v1.0/nws/instancecfgs', u'post', data=data)
-
-        res = {u'msg': u'Create security group %s' % name}
-        self.result(res, headers={u'msg'}, maxsize=100)
+        sg_type = self.get_arg(name=u'type', keyvalue=True, default=None)
+        if sg_type is not None:
+            data[u'groupType'] = sg_type
+        uri = u'%s/computeservices/securitygroup/createsecuritygroup2' % self.baseuri
+        res = self._call(uri, u'POST', data={u'security_group': data}, timeout=600)
+        logger.info(u'Add securitygroup: %s' % truncate(res))
+        res = res.get(u'CreateSecurityGroupResponse').get(u'instancesSet')[0].get(u'groupId')
+        res = {u'msg': u'Add securitygroup %s' % res}
+        self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'describes [field=<id1, id2>]'], aliases_only=True)
     @check_error

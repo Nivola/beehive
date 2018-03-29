@@ -625,9 +625,9 @@ class AccountController(AuthorityControllerChild):
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
         fields = [u'id', u'uuid', u'name', u'version', u'service_definition_id', u'status', u'active',
-                  u'resource_uuid', u'date.creation']
+                  u'resource_uuid', u'is_container', u'parent.name', u'date.creation']
         headers = [u'id', u'uuid', u'name', u'version', u'definition', u'status', u'active', u'resource',
-                   u'creation']
+                   u'is_container', u'parent', u'creation']
         self.result(res, key=u'serviceinsts', headers=headers, fields=fields)
 
     @expose(aliases=[u'add-admin-role <account_id> <catalog_id>'], aliases_only=True)

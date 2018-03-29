@@ -20,6 +20,7 @@ from functools import wraps
 
 logger = get_task_logger(__name__)
 
+
 class JobError(Exception):
     def __init__(self, value, code=0):
         self.code = code
@@ -31,7 +32,8 @@ class JobError(Exception):
 
     def __str__(self):
         return "JobError: %s" % self.value
-    
+
+
 class JobInvokeApiError(Exception):
     def __init__(self, value, code=0):
         self.code = code
@@ -44,14 +46,15 @@ class JobInvokeApiError(Exception):
     def __str__(self):
         return "JobInvokeApiError: %s" % self.value    
 
+
 class AbstractJob(BaseTask):
     abstract = True
     ops = []
 
     @property
     def controller(self):
-        return task_local.controller    
-    
+        return task_local.controller
+
     #
     # permissions assignment
     #
