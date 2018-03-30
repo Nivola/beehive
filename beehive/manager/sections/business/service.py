@@ -1336,7 +1336,7 @@ class ServiceMetricsController(ServiceControllerChild):
             u'id':u'id', 
             u'date': u'creation_date',
             u'num': u'metric_num',
-            u'type': u'metric_type_id',
+            u'type': u'metric_type',
             u'value': u'value',
             u'platform': u'platform',
             u'instance': u'service_instance_id',
