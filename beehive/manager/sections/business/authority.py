@@ -548,10 +548,10 @@ class AccountController(AuthorityControllerChild):
         self.result(res, headers=[u'id', u'uuid', u'name', u'amount', u'evaluation_date', u'active', u'date.creation'],
                     maxsize=40)
 
-    @expose(aliases=[u'add-service <account_id> <type>'], aliases_only=True)
+    @expose(aliases=[u'add-core-service <account_id> <type>'], aliases_only=True)
     @check_error
-    def add_service(self):
-        """Add container service instance
+    def add_core_service(self):
+        """Add container core service instance
     - type : can be ComputeService, DatabaseService
         """
         account_id = self.get_arg(name=u'account_id')
@@ -596,6 +596,114 @@ class AccountController(AuthorityControllerChild):
         logger.info(u'Add service instance container: %s' % plugintype)
         res = {u'msg': u'Add service instance %s' % res}
         self.result(res, headers=[u'msg'])
+
+    def service_instance_exist(self, type, name):
+        """Check service with this name exists"""
+        uri = u'%s/serviceinsts' % self.baseuri
+        res = self._call(uri, u'GET', data=u'name=%s' % name)
+        logger.info(u'Get account by name: %s' % res)
+        count = res.get(u'count')
+        if count > 0:
+            self.output(u'Service %s %s already exists' % (type, name))
+            return True
+
+        return False
+
+    def get_service_def(self, oid):
+        """"""
+        check = self.is_name(oid)
+        if check is True:
+            uri = u'%s/servicedefs' % self.baseuri
+            res = self._call(uri, u'GET', data=u'name=%s' % oid)
+            logger.info(u'Get account by name: %s' % res)
+            count = res.get(u'count')
+            if count > 1:
+                raise Exception(u'There are some template with name %s. Select one using uuid' % oid)
+
+            return res.get(u'servicedefs')[0][u'uuid']
+
+    def add_default_compute_service(self, account, data):
+        """Add default compute service child instances
+
+        :param account: account id
+        :param data: dict with service data
+        :return:
+
+        :data:
+
+            {
+                u'images': [
+                    {u'def': u'Centos7.2'},
+                    {u'def': u'Centos6.9'},
+                ],
+                u'vpcs': [
+                    {
+                        u'def': u'VpcBE-2.0',
+                        u'subnets': [
+                            {
+                                u'name': u'SubnetBE-torino01',
+                                u'zone': u'SiteTorino01',
+                                u'cidr': u'10.138.128.0/21'
+                            },
+                            {
+                                u'name': u'SubnetBE-vercelli01',
+                                u'zone': u'SiteTorino01',
+                                u'cidr': u'10.138.192.0/21'
+                            },
+                        ],
+                        u'sgs': [
+                            {u'name': u'SecurityGroupBE'},
+                            {u'name': u'SecurityGroupWEB', u'template': u'SecurityGroupWEB'},
+                        ]
+                    },
+                    {
+                        u'def': u'VpcWEB-2.0',
+                        u'subnets': [],
+                        u'sgs': []
+                    }
+                ]
+            }
+        """
+        # create images
+        #if self.service_instance_exist(u'image', )
+        data = {
+            u'ImageName': self.get_arg(name=u'name'),
+            u'owner_id': self.get_arg(name=u'account'),
+            u'ImageType': self.get_arg(name=u'type')
+        }
+        uri = u'%s/computeservices/image/createimage' % self.baseuri
+        res = self._call(uri, u'POST', data={u'image': data}, timeout=600)
+        logger.info(u'Add image: %s' % truncate(res))
+        res = res.get(u'CreateImageResponse').get(u'imageSet')[0].get(u'imageId')
+
+        # create vpcs
+        data = {
+            u'VpcName': self.get_arg(name=u'name'),
+            u'owner_id': self.get_arg(name=u'account'),
+            u'VpcType': self.get_arg(name=u'type')
+        }
+        uri = u'%s/computeservices/vpc/createvpc' % self.baseuri
+        res = self._call(uri, u'POST', data={u'vpc': data}, timeout=600)
+
+        # create vpc subnets
+        data = {
+            u'SubnetName': self.get_arg(name=u'name'),
+            u'VpcId': self.get_arg(name=u'vpc'),
+            u'AvailabilityZone': self.get_arg(name=u'availability_zone'),
+            u'CidrBlock': self.get_arg(name=u'cidr')
+        }
+        uri = u'%s/computeservices/subnet/createsubnet' % self.baseuri
+        res = self._call(uri, u'POST', data={u'subnet': data}, timeout=600)
+
+        # create vpc security groups
+        data = {
+            u'GroupName': self.get_arg(name=u'name'),
+            u'VpcId': self.get_arg(name=u'vpc')
+        }
+        sg_type = self.get_arg(name=u'template', keyvalue=True, default=None)
+        if sg_type is not None:
+            data[u'GroupType'] = sg_type
+        uri = u'%s/computeservices/securitygroup/createsecuritygroup2' % self.baseuri
 
     @expose(aliases=[u'delete-service <service_id>'], aliases_only=True)
     @check_error

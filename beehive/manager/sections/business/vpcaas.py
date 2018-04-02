@@ -27,8 +27,8 @@ class VPCaaServiceController(BaseController):
  
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
- 
- 
+
+
 class VPCaaServiceControllerChild(ApiController):
     baseuri = u'/v1.0/nws'
     subsystem = u'service'
@@ -36,6 +36,64 @@ class VPCaaServiceControllerChild(ApiController):
     class Meta:
         stacked_on = 'vpcaas'
         stacked_type = 'nested'
+
+    def is_name(self, oid):
+        """Check if id is uuid, id or literal name.
+
+        :param oid:
+        :return: True if it is a literal name
+        """
+        # get obj by uuid
+        if match(u'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', str(oid)):
+            logger.debug(u'This is an uuid')
+            return False
+        # get obj by id
+        elif match(u'^\d+$', str(oid)):
+            logger.debug(u'This is an id')
+            return False
+        # get obj by name
+        elif match(u'[\-\w\d]+', oid):
+            logger.debug(u'This is a name')
+            return True
+
+    def get_account(self, oid):
+        """"""
+        check = self.is_name(oid)
+        if check is True:
+            uri = u'%s/accounts' % self.baseuri
+            res = self._call(uri, u'GET', data=u'name=%s' % oid)
+            logger.info(u'Get account by name: %s' % res)
+            count = res.get(u'count')
+            if count > 1:
+                raise Exception(u'There are some account with name %s. Select one using uuid' % oid)
+
+            return res.get(u'accounts')[0][u'uuid']
+
+    def get_service_def(self, oid):
+        """"""
+        check = self.is_name(oid)
+        if check is True:
+            uri = u'%s/servicedefs' % self.baseuri
+            res = self._call(uri, u'GET', data=u'name=%s' % oid)
+            logger.info(u'Get account by name: %s' % res)
+            count = res.get(u'count')
+            if count > 1:
+                raise Exception(u'There are some template with name %s. Select one using uuid' % oid)
+
+            return res.get(u'servicedefs')[0][u'uuid']
+
+    def get_service_instance(self, oid):
+        """"""
+        check = self.is_name(oid)
+        if check is True:
+            uri = u'%s/serviceinsts' % self.baseuri
+            res = self._call(uri, u'GET', data=u'name=%s' % oid)
+            logger.info(u'Get account by name: %s' % res)
+            count = res.get(u'count')
+            if count > 1:
+                raise Exception(u'There are some service with name %s. Select one using uuid' % oid)
+
+            return res.get(u'serviceinsts')[0][u'uuid']
 
 
 class ImageServiceController(VPCaaServiceControllerChild):
@@ -113,22 +171,34 @@ class VMServiceController(VPCaaServiceControllerChild):
             .get(u'reservationSet')[0].get(u'instancesSet')[0]
         self.result(res, details=True, maxsize=40)
 
-    @expose(aliases=[u'runinstance <name> <account> <subnet> <type> <image> <security group>'],
+    @expose(aliases=[u'runinstance <name> <account> <type> <subnet> <image> <security group> [sshkey=..]'],
             aliases_only=True)
     @check_error
     def runinstance(self):
         """Create a virtual machine
+    - sshkey: use this optional parameter to set sshkey. Pass reference to a file
         """
+        name = self.get_arg(name=u'name')
+        account = self.get_account(self.get_arg(name=u'account'))
+        itype = self.get_service_def(self.get_arg(name=u'type'))
+        subnet = self.get_service_instance(self.get_arg(name=u'subnet'))
+        image = self.get_service_instance(self.get_arg(name=u'image'))
+        sg = self.get_service_instance(self.get_arg(name=u'security group'))
+        sshkey = self.get_arg(name=u'sshkey', default=None, keyvalue=True)
+
         data = {
-            u'Name': self.get_arg(name=u'name'),
-            u'owner_id': self.get_arg(name=u'account'),
+            u'Name': name,
+            u'owner_id': account,
             u'AdditionalInfo': u'',
-            u'SubnetId': self.get_arg(name=u'subnet'),
-            u'InstanceType': self.get_arg(name=u'type'),
+            u'SubnetId': subnet,
+            u'InstanceType': itype,
             u'AdminPassword': u'myPwd$1',
-            u'ImageId': self.get_arg(name=u'image'),
-            u'SecurityGroupId_N': [self.get_arg(name=u'security group')],
+            u'ImageId': image,
+            u'SecurityGroupId_N': [sg],
         }
+        if sshkey is not None:
+            data[u'KeyValue'] = self.load_file(sshkey)
+
         uri = u'%s/computeservices/instance/runinstances' % self.baseuri
         res = self._call(uri, u'POST', data={u'instance': data}, timeout=600)
         logger.info(u'Add virtual machine instance: %s' % truncate(res))
@@ -136,7 +206,7 @@ class VMServiceController(VPCaaServiceControllerChild):
         res = {u'msg': u'Add virtual machine %s' % res}
         self.result(res, headers=[u'msg'])
 
-    @expose(aliases=[u'terminate <id> [recursive=false]'], aliases_only=True)
+    @expose(aliases=[u'terminate <id>'], aliases_only=True)
     @check_error
     def terminate(self):
         """Delete service instance
@@ -144,9 +214,9 @@ class VMServiceController(VPCaaServiceControllerChild):
         """
         value = self.get_arg(name=u'id')
         data = {
-            u'recursive': self.get_arg(name=u'recursive', default=False, keyvalue=True)
+            u'InstanceId_N': [value]
         }
-        uri = u'%s/serviceinsts/%s' % (self.baseuri, value)
+        uri = u'%s/computeservices/instance/terminateinstances' % self.baseuri
         res = self._call(uri, u'DELETE', data=data)
         logger.info(res)
         res = {u'msg': u'Delete virtual machine %s' % value}
@@ -276,18 +346,18 @@ class SGroupServiceController(VPCaaServiceControllerChild):
         }
         sg = self._call(u'/v1.0/nws/serviceinsts', u'post', data=data)
 
-    @expose(aliases=[u'create <name> <vpc> [type=..]'], aliases_only=True)
+    @expose(aliases=[u'create <name> <vpc> [template=..]'], aliases_only=True)
     @check_error
     def create(self):
-        """Create a subnet
+        """Create a service group
         """
         data = {
             u'GroupName': self.get_arg(name=u'name'),
             u'VpcId': self.get_arg(name=u'vpc')
         }
-        sg_type = self.get_arg(name=u'type', keyvalue=True, default=None)
+        sg_type = self.get_arg(name=u'template', keyvalue=True, default=None)
         if sg_type is not None:
-            data[u'groupType'] = sg_type
+            data[u'GroupType'] = sg_type
         uri = u'%s/computeservices/securitygroup/createsecuritygroup2' % self.baseuri
         res = self._call(uri, u'POST', data={u'security_group': data}, timeout=600)
         logger.info(u'Add securitygroup: %s' % truncate(res))
@@ -354,6 +424,21 @@ class SGroupServiceController(VPCaaServiceControllerChild):
         self.app.print_output(u'Ingress rules: ')
         self.result(ingress_rules, headers=[u'fromSecuritygroup', u'fromCidr', u'protocol', u'fromPort', u'toPort'],
                     fields=fields, maxsize=60)
+
+    @expose(aliases=[u'delete <uuid>'], aliases_only=True)
+    @check_error
+    def delete(self):
+        """Delete a service group
+        """
+        data = {
+            u'GroupName': self.get_arg(name=u'uuid')
+        }
+        uri = u'%s/computeservices/securitygroup/deletesecuritygroup2' % self.baseuri
+        res = self._call(uri, u'DELETE', data={u'security_group': data}, timeout=600)
+        logger.info(u'Add securitygroup: %s' % truncate(res))
+        res = res.get(u'DeleteSecurityGroupResponse').get(u'return')
+        res = {u'msg': u'Delete securitygroup %s' % res}
+        self.result(res, headers=[u'msg'])
 
 
 vpcaas_controller_handlers = [

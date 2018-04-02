@@ -33,7 +33,6 @@ class TaskPool(GeventTaskPool):
     def on_apply(self, target, args=None, kwargs=None, callback=None, accept_callback=None, timeout=None,
                  timeout_callback=None, **_):
 
-        logger.warn(u'----------------------')
-        TaskResult.task_pending(args)
+        # TaskResult.task_pending(args)
         return GeventTaskPool.on_apply(self, target, args, kwargs, callback, accept_callback, timeout,
                                        timeout_callback, **_)

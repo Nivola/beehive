@@ -1,15 +1,16 @@
-'''
+"""
 Created on Nov 3, 2015
 
 @author: darkbk
-'''
-from celery import signature
+"""
+from gevent import sleep
+from beehive.common.task.canvas import signature
 from celery.utils.log import get_task_logger
 from beehive.common.data import operation
 from beehive.common.task.job import JobTask, job_task, job, Job
 from beehive.common.task.manager import task_manager
 from beehive.module.scheduler.controller import TaskManager
-from beehive.common.task.util import end_task
+from beehive.common.task.util import end_task, start_task
 
 logger = get_task_logger(__name__)
 
@@ -18,7 +19,7 @@ logger = get_task_logger(__name__)
 #
 @task_manager.task(bind=True, base=Job)
 @job(entity_class=TaskManager, name=u'test2.insert', delta=1)
-def jobtest2(self, objid, params):
+def jobtest_inner(self, objid, params):
     """Test job
     
     :param objid: objid. Ex. 110//2222//334//*
@@ -29,7 +30,8 @@ def jobtest2(self, objid, params):
     
     Job.create([
         end_task,
-        jobtest_task4
+        jobtest_task4,
+        start_task
     ], ops).delay()
     return True
 
@@ -56,13 +58,16 @@ def jobtest(self, objid, params):
         g1.append(test_raise.signature((ops, i), immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE))
     
     g1.append(test_invoke_job.signature((ops, i), immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE))
+    g1.append(test_invoke_job.signature((ops, i), immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE))
+    g1.append(test_invoke_job.signature((ops, i), immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE))
 
     j = Job.create([
         end_task,
         jobtest_task2,
         jobtest_task1,
         g1,
-        jobtest_task0
+        jobtest_task0,
+        start_task
     ], ops)
     j.delay()
     return True
@@ -127,6 +132,7 @@ def jobtest_task2(self, options):
     data = self.get_shared_data()
     data[u'res'] = data[u'res'] + 10
     self.set_shared_data(data)
+    sleep(5)
     self.update(u'PROGRESS', msg=u'%s' % data)
     return True
 
@@ -146,10 +152,10 @@ def test_invoke_job(self, options, i):
         u'server': operation.user[1],
         u'identity': operation.user[2]
     }
-    # job = jobtest2.apply_async(data, **user)
+    # job = jobtest_inner.apply_async(data, **user)
 
     params.update(user)
-    task = signature(u'beehive.module.scheduler.tasks.jobtest2', (u'*', params), app=task_manager,
+    task = signature(u'beehive.module.scheduler.tasks.jobtest_inner', (u'*', params), app=task_manager,
                      queue=task_manager.conf.TASK_DEFAULT_QUEUE)
     job = task.apply_async()
 
@@ -207,5 +213,10 @@ def jobtest_task4(self, options):
     if params[u'suberror'] is True:
         logger.error(u'Test error')
         raise Exception(u'Test error')
+
+    res = 0
+    for n in xrange(10000):
+        res += n
+
     logger.warn(u'hello')
-    return True
+    return res
