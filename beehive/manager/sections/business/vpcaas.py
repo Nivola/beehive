@@ -136,6 +136,42 @@ class VMServiceController(VPCaaServiceControllerChild):
         res = {u'msg': u'Add virtual machine %s' % res}
         self.result(res, headers=[u'msg'])
 
+
+    @expose(aliases=[u'start [field=<id1, id2>] '], aliases_only=True)
+    @check_error
+    def start(self):
+        """Start service instance by field
+    - field: owner-id.N, instance-id.N
+        """
+        dataSearch = {}
+        dataSearch[u'owner-id.N'] = self.split_arg(u'owner-id.N') 
+        dataSearch[u'instance-id.N'] = self.split_arg(u'instance-id.N')       
+        
+        uri = u'%s/computeservices/instance/startinstances' % self.baseuri
+        res = self._call(uri, u'GET', data=urlencode(dataSearch, doseq=True)).get(u'StartInstancesResponse')\
+            .get(u'instancesSet', [])
+        headers = [u'id', u'name', u'state',  u'currentState', u'previousState']
+        fields = [u'id', u'name', u'state',  u'currentState', u'previousState']
+        self.result(res, headers=headers, fields=fields, maxsize=40)
+
+    @expose(aliases=[u'stop [field=<id1, id2>] force=true|false '], aliases_only=True)
+    @check_error
+    def stop(self):
+        """Stop service instance by field
+    - field: list of owner-id.N, instance-id.N
+    - field: force is set to true forces the instances to stop (default is false) 
+        """
+        dataSearch = {}
+        dataSearch[u'instance-id.N'] = self.split_arg(u'instance-id.N')
+        dataSearch[u'Force'] = self.get_arg(default=False, name=u'Force', keyvalue=True)   
+        
+        uri = u'%s/computeservices/instance/stopinstances' % self.baseuri
+        res = self._call(uri, u'GET', data=urlencode(dataSearch, doseq=True)).get(u'StopInstancesResponse')\
+            .get(u'instancesSet', [])
+        headers = [u'id', u'name', u'state',  u'currentState', u'previousState']
+        fields = [u'id', u'name', u'state',  u'currentState', u'previousState']
+        self.result(res, headers=headers, fields=fields, maxsize=40)
+
     @expose(aliases=[u'terminate <id> [recursive=false]'], aliases_only=True)
     @check_error
     def terminate(self):
