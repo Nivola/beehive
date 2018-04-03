@@ -9,10 +9,7 @@ import urllib
 
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController, check_error
-from re import match
 from beecell.simple import truncate
-from beecell.remote import NotFoundException
-from time import sleep
 import json
 from urllib import urlencode
  
@@ -241,7 +238,7 @@ class ServiceTypeProcessController(ApiController):
                 template = f.read()
                 f.close()
             else:
-               raise Exception(u'Jinja template %s is not a file' % filename)
+                raise Exception(u'Jinja template %s is not a file' % filename)
 
         data = {
             u'serviceprocess':{

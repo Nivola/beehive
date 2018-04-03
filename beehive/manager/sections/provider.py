@@ -9,7 +9,7 @@ import urllib
 import sh
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController, check_error
-from beecell.simple import truncate, getkey
+from beecell.simple import truncate, getkey, flatten_dict
 from beehive.manager.sections.resource import ResourceEntityController
 from beecell.paramiko_shell.shell import ParamikoShell
 
@@ -282,7 +282,21 @@ class ProviderComputeZoneController(ProviderControllerChild):
             self.result(quotas, details=True)
 
         self.get_resource(oid, format_result=format_result)
+        
+    @expose(aliases=[u'metric <id>'], aliases_only=True)
+    @check_error
+    def metric(self):
+        """Get provider item
+        """
+        oid = self.get_arg(name=u'id')
 
+        uri = self.uri + u'/' + oid + u'/metrics'
+        res = self._call(uri, u'GET')
+        
+        self.result(res.get(u'compute_zone'), headers=[u'id', u'service_id',  u'platform_id', u'date', u'key', u'value'],
+                    fields=[u'id', u'service_uuid', u'platform_id', u'extraction_date', u'metrics.key', u'metrics.value'])
+        # TODO print di key e value delle metriche
+        
 
 class ProviderComputeFlavorController(ProviderControllerChild):
     uri = u'/v1.0/nrs/provider/flavors'

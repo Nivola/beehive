@@ -414,7 +414,7 @@ commands:
         :param details: if True and format tabular print a vertical table where first column is the key and second
             column is the value
         :param maxsize: max field value length [default=50, 200 with details=True]
-        :param key_separator: key separator used when parsing key [defualt=.]
+        :param key_separator: key separator used when parsing key [default=.]
         :param format: format used when print [default=text]
         :param table_style: table style used when format is tabular [defualt=simple]
         :return:
