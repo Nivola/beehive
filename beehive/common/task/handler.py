@@ -42,7 +42,7 @@ class TaskResult(object):
     
     @staticmethod
     def store(task_id, name=None, hostname=None, args=None, kwargs=None, status=None, retval=None, start_time=None,
-              stop_time=None, childs=None, traceback=None, inner_type=None, msg=None, jobs=None):
+              stop_time=None, childs=None, traceback=None, inner_type=None, msg=None, jobs=None, counter=None):
         """Store task result in redis
         """
         _redis = task_manager.api_manager.redis_taskmanager.conn
@@ -68,6 +68,7 @@ class TaskResult(object):
         set_data(u'children', childs)
         set_data(u'jobs', jobs)
         set_data(u'traceback', traceback)
+        set_data(u'counter', counter)
         
         def update_data():
             # create pipe
@@ -75,10 +76,14 @@ class TaskResult(object):
 
             # get data from redis
             val = _redis.get(_prefix + task_id)
+
             if val is not None:
                 result = json.loads(val)
                 if result.get(u'status') != u'FAILURE':
+                    val_counter = int(data.get(u'counter', 0)) + 1
                     result.update(data)
+                    result[u'counter'] = val_counter
+
                 else:
                     result.update({u'stop_time': stop_time})
             else:
@@ -92,10 +97,11 @@ class TaskResult(object):
                     u'status': status,
                     u'result': retval,
                     u'traceback': traceback,
-                    u'start_time': start_time,
+                    u'start_time': time(),
                     u'stop_time': stop_time,
                     u'children': childs,
                     u'jobs': jobs,
+                    u'counter': 0,
                     u'trace': []}
             
             # update task trace
@@ -109,51 +115,27 @@ class TaskResult(object):
             # save data in redis
             _redis.setex(_prefix + task_id, _expire, val)
             # pipe.execute()
-        
-        # redis transaction
-        # _redis.transaction(update_data, _prefix + task_id)
 
-        update_data()
-        
-        '''# save celery legacy data to redis
-        if status == u'FAILURE':
-            result = {u'exc_message':u'', u'exc_type':u'Exception'}
-        else:
-            result = True
-        val = {
-            u'status':status, 
-            u'traceback':u'', 
-            u'result':result, 
-            u'task_id':task_id, 
-            u'children': []
-        }
-        #_redis.setex(_legacy_prefix + task_id, _expire, json.dumps(val))'''
+            return val
+
+        val = update_data()
         
         logout = logger.debug
         if inner_type == u'JOB':
             logout = logger.info
             
-        # logout(u'Save %s %s result: %s' % (inner_type, task_id, truncate(data)))
+        logout(u'Save %s %s result: %s' % (inner_type, task_id, truncate(val)))
 
-        '''if status == u'STARTED':
-            logout(u'============= %s - %s - STARTED =============' % (inner_type, task_id))
-        elif status == u'SUCCESS':
-            logout(u'============= %s - %s - SUCCESS =============' % (inner_type, task_id))
-        elif status == u'FAILURE':
-            logout(u'============= %s - %s - FAILURE =============' % (inner_type, task_id))'''
-
-        return None
+        return data
 
     @staticmethod
-    def task_pending(args):
+    def task_pending(task_id):
         # store task
-        task_name = args[0]
-        task_id = args[1]
-
-        # store task
-        TaskResult.store(task_id, name=task_name, hostname=None, args=None, kwargs=None,
-                         status=u'PENDING', retval=None, start_time=0, stop_time=0, childs=[], traceback=None,
-                         inner_type=None, msg=None, jobs=None)
+        start_time = time()
+        task = TaskResult.store(task_id, name=None, hostname=None, args=None, kwargs=None, status=u'PENDING',
+                                retval=None, stop_time=0, childs=[], traceback=None,
+                                inner_type=None, msg=None, jobs=None, counter=0)
+        return task
 
     @staticmethod
     def task_prerun(**args):
@@ -165,8 +147,8 @@ class TaskResult(object):
         
         # store task
         TaskResult.store(task_id, name=task.name, hostname=task.request.hostname, args=vargs, kwargs=kwargs,
-                         status=u'PENDING', retval=None, start_time=0, stop_time=0, childs=[], traceback=None,
-                         inner_type=task.inner_type, msg=None, jobs=None)
+                         status=u'STARTING', retval=None, childs=[], traceback=None, inner_type=task.inner_type,
+                         msg=None, jobs=None)
     
     @staticmethod
     def task_postrun(**args):
@@ -211,7 +193,7 @@ class TaskResult(object):
     
         # reset status for JOB task to PROGRESS when status is SUCCESS
         # status SUCCESS will be set when the last child task end
-        #if task.inner_type == u'JOB' and task_local.opid == task_id and \
+        # if task.inner_type == u'JOB' and task_local.opid == task_id and \
         #   status == u'SUCCESS':
         if task.inner_type == u'JOB' and status == u'SUCCESS':
             status = u'PROGRESS'

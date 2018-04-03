@@ -74,6 +74,7 @@ def configure_task_manager(broker_url, result_backend, tasks=[], expire=60*60*24
         CELERY_RESULT_BACKEND=result_backend,
         CELERY_REDIS_RESULT_KEY_PREFIX=u'%s.celery-task-meta2-' % task_queue,
         CELERY_REDIS_RESULT_EXPIRES=expire,
+        CELERY_TASK_IGNORE_RESULT=True,
         CELERY_TASK_RESULT_EXPIRES=600,
         CELERY_TASK_SERIALIZER=u'json',
         CELERY_ACCEPT_CONTENT=[u'json'],  # Ignore other content
@@ -84,13 +85,18 @@ def configure_task_manager(broker_url, result_backend, tasks=[], expire=60*60*24
         CELERY_DISABLE_RATE_LIMITS=True,
         CELERY_TRACK_STARTED=True,
         CELERY_CHORD_PROPAGATES=True,
-        CELERYD_TASK_TIME_LIMIT=7200,
-        CELERYD_TASK_SOFT_TIME_LIMIT=7200,
-        #CELERY_SEND_TASK_SENT_EVENT=True,
-        #CELERY_SEND_EVENTS=True,
+        CELERYD_TASK_TIME_LIMIT=1200,
+        CELERYD_TASK_SOFT_TIME_LIMIT=1200,
+        CELERYD_CONCURRENCY=100,
+        CELERYD_POOL=u'beehive.common.task.task_pool:TaskPool',
+        # CELERYD_REDIRECT_STDOUTS_LEVEL=u'DEBUG',
+        # CELERY_SEND_TASK_SENT_EVENT=True,
+        #  CELERY_SEND_EVENTS=True,
         #CELERY_EVENT_SERIALIZER='json',
-        #CELERYD_LOG_FORMAT=u'[%(asctime)s: %(levelname)s/%(processName)s] %(name)s:%(funcName)s:%(lineno)d - %(message)s',
-        CELERYD_TASK_LOG_FORMAT=u'[%(asctime)s: %(levelname)s/%(processName)s] [%(task_name)s:%(task_id)s] %(name)s:%(funcName)s:%(lineno)d - %(message)s'
+        CELERYD_TASK_LOG_FORMAT=u'[%(asctime)s: %(levelname)s/%(processName)s] [%(task_name)s:%(task_id)s] '
+                                u'%(name)s:%(funcName)s:%(lineno)d - %(message)s',
+        WORKER_MAX_TASKS_PER_CHILD=100,
+        WORKER_DISABLE_RATE_LIMITS=True
     )
 
     return task_manager
@@ -114,7 +120,7 @@ def configure_task_scheduler(broker_url, schedule_backend, tasks=[]):
         CELERY_TIMEZONE=u'Europe/Rome',
         CELERY_ENABLE_UTC=True,
         #CELERY_IMPORTS=tasks,
-        CELERYBEAT_SCHEDULE = {
+        CELERYBEAT_SCHEDULE={
             u'test-every-600-seconds': {
                 u'task': u'tasks.test',
                 u'schedule': timedelta(seconds=600),
@@ -155,10 +161,10 @@ def start_task_manager(params):
     LoggerHelper.rotatingfile_handler(loggers, logger_level, u'%s/%s.db.log' % (log_path, logname))
     
     # performance logging
-    # loggers = [
-    #    logging.getLogger('beecell.perf')]
-    # LoggerHelper.rotatingfile_handler(loggers, logger_level, u'%s/%s.watch' % (log_path, params[u'api_id']),
-    #                                  frmt='%(asctime)s - %(message)s')
+    loggers = [
+       logging.getLogger(u'beecell.perf')]
+    LoggerHelper.rotatingfile_handler(loggers, logger_level, u'%s/%s.watch' % (log_path, params[u'api_id']),
+                                     frmt=u'%(asctime)s - %(message)s')
 
     api_manager = ApiManager(params, hostname=gethostname())
     api_manager.configure()
@@ -173,17 +179,18 @@ def start_task_manager(params):
     argv = [u'',
             u'--hostname='+params[u'broker_queue']+u'@%h',
             u'--loglevel=%s' % logging.getLevelName(logger_level),
+            u'--purge',
+            u'--logfile=%s' % logger_file,
+            u'--pidfile=%s/%s.task.pid' % (run_path, logname),
             # u'--pool=prefork',
             # u'--pool=gevent',
-            u'--pool=beehive.common.task.task_pool:TaskPool',
-            u'--purge',
+            # u'--pool=beehive.common.task.task_pool:TaskPool',
             # '--time-limit=600',
             # '--soft-time-limit=300',
-            u'--concurrency=100',
-            u'--maxtasksperchild=100',
+            # u'--concurrency=1000',
+            # u'--maxtasksperchild=1000',
             # u'--autoscale=100,10',
-            u'--logfile=%s' % logger_file,
-            u'--pidfile=%s/%s.task.pid' % (run_path, logname)]
+            ]
     
     def terminate(*args):
         task_manager.stop()

@@ -51,6 +51,8 @@ def start_task(self, options):
             (class_name, objid, job, job id, start time, time before new query)
     """    
     # update job status
+    # self.logger.warn(u'START TASK - %s:%s' % (self.name, self.request.id))
+    self.update(u'STARTED', msg=u'START TASK')
     self.update_job(status=u'PROGRESS')
     return None
 
@@ -73,5 +75,7 @@ def end_task(self, options):
     """    
     # update job status
     params = self.get_shared_data()
+    # self.logger.warn(u'STOP TASK - %s:%s' % (self.name, self.request.id))
+    self.update(u'SUCCESS', msg=u'END TASK')
     self.update_job(params=params, status=u'SUCCESS')
     return None

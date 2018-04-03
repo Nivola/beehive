@@ -19,9 +19,9 @@ from beehive.module.scheduler.redis_scheduler import RedisScheduleEntry
 from beehive.common.task.manager import task_scheduler, task_manager
 from time import time
 from functools import wraps
-from celery import signature
 from beehive.common.data import trace
 from celery.app.control import Control
+from beehive.common.task.canvas import signature
 
 
 class SchedulerController(ApiController):
@@ -906,5 +906,8 @@ class TaskManager(ApiObject):
         task = signature(u'beehive.module.scheduler.tasks.jobtest', (self.objid, params), app=task_manager,
                          queue=self.celery_broker_queue)
         job = task.apply_async()
+        self.logger.debug(u'Run job test: %s' % job)
+        self.logger.debug(u'Run job test: %s' % signature)
+        self.logger.debug(u'Run job test: %s' % task)
 
         return job
