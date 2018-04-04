@@ -80,10 +80,9 @@ class TaskResult(object):
             if val is not None:
                 result = json.loads(val)
                 if result.get(u'status') != u'FAILURE':
-                    val_counter = int(data.get(u'counter', 0)) + 1
+                    # val_counter = int(data.get(u'counter', 0)) + 1
                     result.update(data)
-                    result[u'counter'] = val_counter
-
+                    #result[u'counter'] = val_counter
                 else:
                     result.update({u'stop_time': stop_time})
             else:

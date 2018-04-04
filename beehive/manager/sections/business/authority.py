@@ -10,6 +10,7 @@ from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController, check_error
 from re import match
 from beecell.simple import truncate
+from beehive.manager.sections.business import ConnectionHelper
 
 logger = logging.getLogger(__name__)
 
@@ -422,6 +423,29 @@ class AccountController(AuthorityControllerChild):
         label = 'accounts'
         description = "Accounts management"
 
+        default_data = [
+            {u'name': u'Centos7.2', u'template': u'Centos7.2sync', u'type': u'image'},
+            {u'name': u'Centos6.9', u'template': u'Centos6.9Sync', u'type': u'image'},
+            {u'name': u'VpcBE', u'template': u'VpcBESync', u'type': u'vpc'},
+            {u'name': u'SubnetBE-torino01', u'vpc': u'VpcBE', u'zone': u'SiteTorino01',
+             u'cidr': u'10.138.128.0/21', u'type': u'subnet'},
+            {u'name': u'SubnetBE-vercelli01', u'vpc': u'VpcBE', u'zone': u'SiteVercelli01', u'cidr': u'10.138.192.0/21',
+             u'type': u'subnet'},
+            {u'name': u'SecurityGroupBE', u'vpc': u'VpcBE', u'type': u'sg'},
+            {u'name': u'VpcWEB', u'template': u'VpcWEBSync', u'type': u'vpc'},
+            {u'name': u'SubnetWEB-torino01', u'vpc': u'VpcWEB', u'zone': u'SiteTorino01', u'cidr': u'10.138.136.0/21',
+             u'type': u'subnet'},
+            {u'name': u'SubnetWEB-vercelli01', u'vpc': u'VpcWEB', u'zone': u'SiteVercelli01',
+             u'cidr': u'10.138.200.0/21', u'type': u'subnet'},
+            {u'name': u'SecurityGroupWEB', u'vpc': u'VpcWEB', u'template': u'SecurityGroupWEBSync', u'type': u'sg'},
+        ]
+        default_methods = {
+            u'image': ConnectionHelper.create_image,
+            u'vpc': ConnectionHelper.create_vpc,
+            u'sg': ConnectionHelper.create_sg,
+            u'subnet': ConnectionHelper.create_subnet,
+        }
+
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     @check_error
     def list(self):
@@ -435,7 +459,7 @@ class AccountController(AuthorityControllerChild):
         uri = u'%s/accounts' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        self.result(res, key=u'accounts', headers=[u'id', u'uuid', u'name', u'division_id', u'contact', u'email',
+        self.result(res, key=u'accounts', headers=[u'id', u'uuid', u'name', u'division_name', u'contact', u'email',
                     u'email_support', u'email_support_link', u'active', u'date.creation'], maxsize=40)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
@@ -563,7 +587,7 @@ class AccountController(AuthorityControllerChild):
         }
 
         # check service already exists
-        data = urllib.urlencode({u'plugintype': plugintype, u'account_id': account_id})
+        data = urllib.urlencode({u'plugintype': plugintype, u'account_id': account_id, u'flag_container': True})
         uri = u'%s/serviceinsts' % self.baseuri
         service_inst = self._call(uri, u'GET', data=data).get(u'serviceinsts', [])
 
@@ -597,113 +621,23 @@ class AccountController(AuthorityControllerChild):
         res = {u'msg': u'Add service instance %s' % res}
         self.result(res, headers=[u'msg'])
 
-    def service_instance_exist(self, type, name):
-        """Check service with this name exists"""
-        uri = u'%s/serviceinsts' % self.baseuri
-        res = self._call(uri, u'GET', data=u'name=%s' % name)
-        logger.info(u'Get account by name: %s' % res)
-        count = res.get(u'count')
-        if count > 0:
-            self.output(u'Service %s %s already exists' % (type, name))
-            return True
-
-        return False
-
-    def get_service_def(self, oid):
-        """"""
-        check = self.is_name(oid)
-        if check is True:
-            uri = u'%s/servicedefs' % self.baseuri
-            res = self._call(uri, u'GET', data=u'name=%s' % oid)
-            logger.info(u'Get account by name: %s' % res)
-            count = res.get(u'count')
-            if count > 1:
-                raise Exception(u'There are some template with name %s. Select one using uuid' % oid)
-
-            return res.get(u'servicedefs')[0][u'uuid']
-
-    def add_default_compute_service(self, account, data):
+    @expose(aliases=[u'add-default-services <account_id>'], aliases_only=True)
+    @check_error
+    def add_default_services(self):
         """Add default compute service child instances
 
         :param account: account id
         :param data: dict with service data
         :return:
-
-        :data:
-
-            {
-                u'images': [
-                    {u'def': u'Centos7.2'},
-                    {u'def': u'Centos6.9'},
-                ],
-                u'vpcs': [
-                    {
-                        u'def': u'VpcBE-2.0',
-                        u'subnets': [
-                            {
-                                u'name': u'SubnetBE-torino01',
-                                u'zone': u'SiteTorino01',
-                                u'cidr': u'10.138.128.0/21'
-                            },
-                            {
-                                u'name': u'SubnetBE-vercelli01',
-                                u'zone': u'SiteTorino01',
-                                u'cidr': u'10.138.192.0/21'
-                            },
-                        ],
-                        u'sgs': [
-                            {u'name': u'SecurityGroupBE'},
-                            {u'name': u'SecurityGroupWEB', u'template': u'SecurityGroupWEB'},
-                        ]
-                    },
-                    {
-                        u'def': u'VpcWEB-2.0',
-                        u'subnets': [],
-                        u'sgs': []
-                    }
-                ]
-            }
         """
-        # create images
-        #if self.service_instance_exist(u'image', )
-        data = {
-            u'ImageName': self.get_arg(name=u'name'),
-            u'owner_id': self.get_arg(name=u'account'),
-            u'ImageType': self.get_arg(name=u'type')
-        }
-        uri = u'%s/computeservices/image/createimage' % self.baseuri
-        res = self._call(uri, u'POST', data={u'image': data}, timeout=600)
-        logger.info(u'Add image: %s' % truncate(res))
-        res = res.get(u'CreateImageResponse').get(u'imageSet')[0].get(u'imageId')
+        account_id = self.get_arg(name=u'account_id')
 
-        # create vpcs
-        data = {
-            u'VpcName': self.get_arg(name=u'name'),
-            u'owner_id': self.get_arg(name=u'account'),
-            u'VpcType': self.get_arg(name=u'type')
-        }
-        uri = u'%s/computeservices/vpc/createvpc' % self.baseuri
-        res = self._call(uri, u'POST', data={u'vpc': data}, timeout=600)
-
-        # create vpc subnets
-        data = {
-            u'SubnetName': self.get_arg(name=u'name'),
-            u'VpcId': self.get_arg(name=u'vpc'),
-            u'AvailabilityZone': self.get_arg(name=u'availability_zone'),
-            u'CidrBlock': self.get_arg(name=u'cidr')
-        }
-        uri = u'%s/computeservices/subnet/createsubnet' % self.baseuri
-        res = self._call(uri, u'POST', data={u'subnet': data}, timeout=600)
-
-        # create vpc security groups
-        data = {
-            u'GroupName': self.get_arg(name=u'name'),
-            u'VpcId': self.get_arg(name=u'vpc')
-        }
-        sg_type = self.get_arg(name=u'template', keyvalue=True, default=None)
-        if sg_type is not None:
-            data[u'GroupType'] = sg_type
-        uri = u'%s/computeservices/securitygroup/createsecuritygroup2' % self.baseuri
+        for item in self._meta.default_data:
+            item[u'account'] = account_id
+            type = item.pop(u'type')
+            if not ConnectionHelper.service_instance_exist(self, type, u'%s-%s' % (item[u'name'], account_id)):
+                func = self._meta.default_methods.get(type)
+                func(self, **item)
 
     @expose(aliases=[u'delete-service <service_id>'], aliases_only=True)
     @check_error

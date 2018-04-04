@@ -226,8 +226,9 @@ class AbstractJob(BaseTask):
 
         # store job data
         msg = None
+        counter = int(job[u'counter']) + 1
         TaskResult.store(task_local.opid, status=status, retval=retval, inner_type=u'JOB', traceback=traceback,
-                         stop_time=current_time, msg=msg)
+                         stop_time=current_time, msg=msg, counter=counter)
         if status == u'FAILURE':
             logger.error(u'JOB %s status change to %s' % (task_local.opid, status))
         else:         

@@ -12,8 +12,8 @@ from beehive.manager.util.controller import BaseController, ApiController, check
 from re import match
 from beecell.simple import truncate, id_gen
 from urllib import urlencode
+from beehive.manager.sections.business import SpecializedServiceControllerChild
 
- 
 logger = logging.getLogger(__name__)
 
 
@@ -29,71 +29,13 @@ class VPCaaServiceController(BaseController):
         BaseController._setup(self, base_app)
 
 
-class VPCaaServiceControllerChild(ApiController):
+class VPCaaServiceControllerChild(SpecializedServiceControllerChild):
     baseuri = u'/v1.0/nws'
     subsystem = u'service'
  
     class Meta:
         stacked_on = 'vpcaas'
         stacked_type = 'nested'
-
-    def is_name(self, oid):
-        """Check if id is uuid, id or literal name.
-
-        :param oid:
-        :return: True if it is a literal name
-        """
-        # get obj by uuid
-        if match(u'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', str(oid)):
-            logger.debug(u'This is an uuid')
-            return False
-        # get obj by id
-        elif match(u'^\d+$', str(oid)):
-            logger.debug(u'This is an id')
-            return False
-        # get obj by name
-        elif match(u'[\-\w\d]+', oid):
-            logger.debug(u'This is a name')
-            return True
-
-    def get_account(self, oid):
-        """"""
-        check = self.is_name(oid)
-        if check is True:
-            uri = u'%s/accounts' % self.baseuri
-            res = self._call(uri, u'GET', data=u'name=%s' % oid)
-            logger.info(u'Get account by name: %s' % res)
-            count = res.get(u'count')
-            if count > 1:
-                raise Exception(u'There are some account with name %s. Select one using uuid' % oid)
-
-            return res.get(u'accounts')[0][u'uuid']
-
-    def get_service_def(self, oid):
-        """"""
-        check = self.is_name(oid)
-        if check is True:
-            uri = u'%s/servicedefs' % self.baseuri
-            res = self._call(uri, u'GET', data=u'name=%s' % oid)
-            logger.info(u'Get account by name: %s' % res)
-            count = res.get(u'count')
-            if count > 1:
-                raise Exception(u'There are some template with name %s. Select one using uuid' % oid)
-
-            return res.get(u'servicedefs')[0][u'uuid']
-
-    def get_service_instance(self, oid):
-        """"""
-        check = self.is_name(oid)
-        if check is True:
-            uri = u'%s/serviceinsts' % self.baseuri
-            res = self._call(uri, u'GET', data=u'name=%s' % oid)
-            logger.info(u'Get account by name: %s' % res)
-            count = res.get(u'count')
-            if count > 1:
-                raise Exception(u'There are some service with name %s. Select one using uuid' % oid)
-
-            return res.get(u'serviceinsts')[0][u'uuid']
 
 
 class ImageServiceController(VPCaaServiceControllerChild):
@@ -273,7 +215,7 @@ class VpcServiceController(VPCaaServiceControllerChild):
         uri = u'%s/computeservices/vpc/createvpc' % self.baseuri
         res = self._call(uri, u'POST', data={u'vpc': data}, timeout=600)
         logger.info(u'Add vpc: %s' % truncate(res))
-        res = res.get(u'CreateVpcResponse').get(u'vpcSet')[0].get(u'vpcId')
+        res = res.get(u'CreateVpcResponse').get(u'instancesSet')[0].get(u'vpcId')
         res = {u'msg': u'Add vpc %s' % res}
         self.result(res, headers=[u'msg'])
 
@@ -314,7 +256,7 @@ class SubnetServiceController(VPCaaServiceControllerChild):
         uri = u'%s/computeservices/subnet/createsubnet' % self.baseuri
         res = self._call(uri, u'POST', data={u'subnet': data}, timeout=600)
         logger.info(u'Add subnet: %s' % truncate(res))
-        res = res.get(u'CreateSubnetResponse').get(u'subnetSet')[0].get(u'subnetId')
+        res = res.get(u'CreateSubnetResponse').get(u'instancesSet')[0].get(u'subnetId')
         res = {u'msg': u'Add subnet %s' % res}
         self.result(res, headers=[u'msg'])
 
@@ -376,7 +318,7 @@ class SGroupServiceController(VPCaaServiceControllerChild):
         dataSearch[u'vpc-id.N'] = self.split_arg(u'vpc-id.N')       
                  
         uri = u'%s/computeservices/securitygroup/describesecuritygroups' % self.baseuri
-        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch,doseq=True))\
+        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True))\
             .get(u'DescribeSecurityGroupsResponse').get(u'securityGroupInfo', [])
         for item in res:
             item[u'egress_rules'] = len(item[u'ipPermissionsEgress'])
@@ -438,6 +380,53 @@ class SGroupServiceController(VPCaaServiceControllerChild):
         logger.info(u'Add securitygroup: %s' % truncate(res))
         res = res.get(u'DeleteSecurityGroupResponse').get(u'return')
         res = {u'msg': u'Delete securitygroup %s' % res}
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'add-rule <name> <compute_zone> <source> <dest> [proto=..] [port:..]'], aliases_only=True)
+    @check_error
+    def add_rule(self):
+        """Add rule
+        TODO:
+    - proto: ca be  6 [tcp], 17 [udp], 1,<subprotocol> [icmp], * [all]. If use icmp specify also subprotocol (ex. 8
+      for echo request). [default=*]
+    - port: can be an integer between 0 and 65535 or a range with start and end in the same interval. Range format
+      is <start>-<end>. Use * for all ports. [default=*]
+    - source: rule source. Syntax <type>:<value>.
+    - dest: rule destination. Syntax <type>:<value>.
+    Source and destination type can be SecurityGroup, Cidr.
+    Source and destination value can be security group id or uuid, cidr like 10.102.167.0/24.
+        """
+        name = self.get_arg(name=u'name')
+        zone = self.get_arg(name=u'compute_zone')
+        source = self.get_arg(name=u'source').split(u':')
+        dest = self.get_arg(name=u'dest').split(u':')
+        port = self.get_arg(name=u'port', default=u'*', keyvalue=True)
+        proto = self.get_arg(name=u'proto', default=u'*', keyvalue=True)
+        data = {
+            u'rule': {
+                u'container': self.get_container(),
+                u'name': name,
+                u'desc': name,
+                u'compute_zone': zone,
+                u'source': {
+                    u'type': source[0],
+                    u'value': source[1]
+                },
+                u'destination': {
+                    u'type': dest[0],
+                    u'value': dest[1]
+                },
+                u'service': {
+                    u'port': port,
+                    u'protocol': proto
+                }
+            }
+        }
+        uri = self.uri
+        res = self._call(uri, u'POST', data=data)
+        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))
+        self.wait_job(res[u'jobid'])
+        res = {u'msg': u'Add %s %s' % (self._meta.aliases[0], res[u'uuid'])}
         self.result(res, headers=[u'msg'])
 
 

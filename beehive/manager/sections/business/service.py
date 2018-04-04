@@ -417,7 +417,10 @@ class ServiceDefinitionController(ServiceControllerChild):
         uri = u'%s/servicecfgs' % self.baseuri
         res = self._call(uri, u'GET', data=u'service_definition_id=%s' % value).get(u'servicecfgs', [{}])[0]
         logger.info(res)
+        params = res.pop(u'params', [])
         self.result(res, details=True)
+        self.output(u'Params:')
+        self.result(params, details=True)
  
 
 class ServiceDefinitionCostController(ApiController):

@@ -285,7 +285,9 @@ class BeehiveApiClient(object):
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
             raise BeehiveApiClientError(u'Service Unavailable', code=503)
-        
+
+        response = None
+        res = {}
         try:            
             response = conn.getresponse()
             content_type = response.getheader(u'content-type')            
@@ -314,9 +316,13 @@ class BeehiveApiClient(object):
             elapsed = time() - start
             self.logger.error(ex, exc_info=True)
             if silent is False:
-                self.logger.error(u'API Request: %s - Response: HOST=%s, STATUS=%s, CONTENT-TYPE=%s, RES=%s, '
-                                  u'ELAPSED=%s' % (reqid, response.getheader(u'remote-server', u''), response.status,
-                                                   content_type, truncate(res), elapsed))
+                if response is not None:
+                    self.logger.error(u'API Request: %s - Response: HOST=%s, STATUS=%s, CONTENT-TYPE=%s, RES=%s, '
+                                      u'ELAPSED=%s' % (reqid, response.getheader(u'remote-server', u''),
+                                                       response.status, content_type, truncate(res), elapsed))
+                else:
+                    self.logger.error(u'API Request: %s - Response: HOST=%s, STATUS=%s, CONTENT-TYPE=%s, RES=%s, '
+                                      u'ELAPSED=%s' % (reqid, None, u'Timeout', content_type, truncate(res), elapsed))
             
             raise BeehiveApiClientError(ex, code=400)
 
