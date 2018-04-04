@@ -125,11 +125,11 @@ class BeehiveApp(Flask):
                    logging.getLogger(u'beehive_service'),
                    logging.getLogger(u'beehive_resource')]
         # LoggerHelper.DEBUG2
-        LoggerHelper.rotatingfile_handler(loggers, LoggerHelper.DEBUG2, file_name)
+        LoggerHelper.rotatingfile_handler(loggers, LoggerHelper.DEBUG, file_name)
         
         # transaction and db logging
         file_name = u'%s/%s.db.log' % (self.log_path, logname)
-        loggers = [logging.getLogger(u'beehive.util.data'),
+        loggers = [logging.getLogger(u'beehive.common.data'),
                    logging.getLogger(u'sqlalchemy.engine'),
                    logging.getLogger(u'sqlalchemy.pool')]
         LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, file_name)

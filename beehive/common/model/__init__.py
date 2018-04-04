@@ -465,7 +465,6 @@ class AbstractDbManager(object):
         :return: list of entityclass
         :raises ModelError: raise :class:`ModelError`
         """
-        self.logger.debug(u'Query entities by oid:%s, objid:%s, uuid:%s, name:%s' % (oid, objid, uuid, name))
         # session = self.get_session()
         if oid is not None:
             query = session.query(entityclass).filter_by(id=oid)
@@ -509,15 +508,15 @@ class AbstractDbManager(object):
 
         # get obj by uuid
         if match(u'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', str(oid)):
-            self.logger.debug(u'Query entity %s by uuid' % entityclass.__name__)
+            self.logger.debug(u'Query entity %s by uuid: %s' % (entityclass.__name__, oid))
             entity = self.query_entities(entityclass, session, uuid=oid, *args, **kvargs)
         # get obj by id
         elif match(u'^\d+$', str(oid)):
-            self.logger.debug(u'Query entity %s by id' % entityclass.__name__)
+            self.logger.debug(u'Query entity %s by id: %s' % (entityclass.__name__, oid))
             entity = self.query_entities(entityclass, session, oid=oid, *args, **kvargs)
         # get obj by name
         elif match(u'[\-\w\d]+', oid):
-            self.logger.debug(u'Query entity %s by name' % entityclass.__name__)
+            self.logger.debug(u'Query entity %s by name: %s' % (entityclass.__name__, oid))
             entity = self.query_entities(entityclass, session, name=oid, **kvargs)
 
         res = None
@@ -525,6 +524,8 @@ class AbstractDbManager(object):
             res = entity.with_for_update().first() 
         else:
             res = entity.first()
+
+        self.logger.debug(u'Found entity %s: %s' % (entityclass.__name__, res))
         return res
     
     @query

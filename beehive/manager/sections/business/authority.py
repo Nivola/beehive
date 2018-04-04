@@ -10,6 +10,7 @@ from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController, check_error
 from re import match
 from beecell.simple import truncate
+from beehive.manager.sections.business import ConnectionHelper
 
 logger = logging.getLogger(__name__)
 
@@ -422,6 +423,29 @@ class AccountController(AuthorityControllerChild):
         label = 'accounts'
         description = "Accounts management"
 
+        default_data = [
+            {u'name': u'Centos7.2', u'template': u'Centos7.2sync', u'type': u'image'},
+            {u'name': u'Centos6.9', u'template': u'Centos6.9Sync', u'type': u'image'},
+            {u'name': u'VpcBE', u'template': u'VpcBESync', u'type': u'vpc'},
+            {u'name': u'SubnetBE-torino01', u'vpc': u'VpcBE', u'zone': u'SiteTorino01',
+             u'cidr': u'10.138.128.0/21', u'type': u'subnet'},
+            {u'name': u'SubnetBE-vercelli01', u'vpc': u'VpcBE', u'zone': u'SiteVercelli01', u'cidr': u'10.138.192.0/21',
+             u'type': u'subnet'},
+            {u'name': u'SecurityGroupBE', u'vpc': u'VpcBE', u'type': u'sg'},
+            {u'name': u'VpcWEB', u'template': u'VpcWEBSync', u'type': u'vpc'},
+            {u'name': u'SubnetWEB-torino01', u'vpc': u'VpcWEB', u'zone': u'SiteTorino01', u'cidr': u'10.138.136.0/21',
+             u'type': u'subnet'},
+            {u'name': u'SubnetWEB-vercelli01', u'vpc': u'VpcWEB', u'zone': u'SiteVercelli01',
+             u'cidr': u'10.138.200.0/21', u'type': u'subnet'},
+            {u'name': u'SecurityGroupWEB', u'vpc': u'VpcWEB', u'template': u'SecurityGroupWEBSync', u'type': u'sg'},
+        ]
+        default_methods = {
+            u'image': ConnectionHelper.create_image,
+            u'vpc': ConnectionHelper.create_vpc,
+            u'sg': ConnectionHelper.create_sg,
+            u'subnet': ConnectionHelper.create_subnet,
+        }
+
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     @check_error
     def list(self):
@@ -435,7 +459,7 @@ class AccountController(AuthorityControllerChild):
         uri = u'%s/accounts' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        self.result(res, key=u'accounts', headers=[u'id', u'uuid', u'name', u'division_id', u'contact', u'email',
+        self.result(res, key=u'accounts', headers=[u'id', u'uuid', u'name', u'division_name', u'contact', u'email',
                     u'email_support', u'email_support_link', u'active', u'date.creation'], maxsize=40)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
@@ -548,10 +572,10 @@ class AccountController(AuthorityControllerChild):
         self.result(res, headers=[u'id', u'uuid', u'name', u'amount', u'evaluation_date', u'active', u'date.creation'],
                     maxsize=40)
 
-    @expose(aliases=[u'add-service <account_id> <type>'], aliases_only=True)
+    @expose(aliases=[u'add-core-service <account_id> <type>'], aliases_only=True)
     @check_error
-    def add_service(self):
-        """Add container service instance
+    def add_core_service(self):
+        """Add container core service instance
     - type : can be ComputeService, DatabaseService
         """
         account_id = self.get_arg(name=u'account_id')
@@ -563,7 +587,7 @@ class AccountController(AuthorityControllerChild):
         }
 
         # check service already exists
-        data = urllib.urlencode({u'plugintype': plugintype, u'account_id': account_id})
+        data = urllib.urlencode({u'plugintype': plugintype, u'account_id': account_id, u'flag_container': True})
         uri = u'%s/serviceinsts' % self.baseuri
         service_inst = self._call(uri, u'GET', data=data).get(u'serviceinsts', [])
 
@@ -597,6 +621,24 @@ class AccountController(AuthorityControllerChild):
         res = {u'msg': u'Add service instance %s' % res}
         self.result(res, headers=[u'msg'])
 
+    @expose(aliases=[u'add-default-services <account_id>'], aliases_only=True)
+    @check_error
+    def add_default_services(self):
+        """Add default compute service child instances
+
+        :param account: account id
+        :param data: dict with service data
+        :return:
+        """
+        account_id = self.get_arg(name=u'account_id')
+
+        for item in self._meta.default_data:
+            item[u'account'] = account_id
+            type = item.pop(u'type')
+            if not ConnectionHelper.service_instance_exist(self, type, u'%s-%s' % (item[u'name'], account_id)):
+                func = self._meta.default_methods.get(type)
+                func(self, **item)
+
     @expose(aliases=[u'delete-service <service_id>'], aliases_only=True)
     @check_error
     def delete_service(self):
@@ -625,9 +667,9 @@ class AccountController(AuthorityControllerChild):
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
         fields = [u'id', u'uuid', u'name', u'version', u'service_definition_id', u'status', u'active',
-                  u'resource_uuid', u'date.creation']
+                  u'resource_uuid', u'is_container', u'parent.name', u'date.creation']
         headers = [u'id', u'uuid', u'name', u'version', u'definition', u'status', u'active', u'resource',
-                   u'creation']
+                   u'is_container', u'parent', u'creation']
         self.result(res, key=u'serviceinsts', headers=headers, fields=fields)
 
     @expose(aliases=[u'add-admin-role <account_id> <catalog_id>'], aliases_only=True)

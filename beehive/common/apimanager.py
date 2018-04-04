@@ -608,10 +608,12 @@ class ApiManager(object):
                     broker_url = self.params[u'broker_url']
                     result_backend = self.params[u'result_backend']
                     internal_result_backend = self.params[u'redis_celery_uri']
-                    configure_task_manager(broker_url, result_backend, task_queue=self.params[u'broker_queue'])
+                    task_manager = configure_task_manager(broker_url, result_backend,
+                                                          task_queue=self.params[u'broker_queue'])
+                    task_manager.api_manager = self
                     self.celery_broker_queue = self.params[u'broker_queue']
                     self.redis_taskmanager = RedisManager(internal_result_backend)
-                    
+
                     # scheduler
                     broker_url = self.params[u'broker_url']
                     schedule_backend = self.params[u'result_backend']
@@ -2846,9 +2848,7 @@ class ApiView(FlaskView):
         }
         self.logger.error(u'Api response: %s' % error)
         
-        if self.response_mime is None or \
-           self.response_mime == u'*/*' or \
-           self.response_mime == u'':
+        if self.response_mime is None or self.response_mime == u'*/*' or self.response_mime == u'':
             self.response_mime = u'application/json'
             
         if code in [400, 401, 403, 404, 405, 406, 408, 409, 415, 500]:
@@ -3293,10 +3293,17 @@ class ApiClient(BeehiveApiClient):
     def __init__(self, auth_endpoints, user, pwd, catalog_id=None, authtype=u'keyauth'):
         BeehiveApiClient.__init__(self, auth_endpoints, authtype, user, pwd, catalog_id)
     
-    def admin_request(self, subsystem, path, method, data=u'', other_headers=None):
+    def admin_request(self, subsystem, path, method, data=u'', other_headers=None, silent=False):
         """Make api request using module internal admin user credentials.
-        
-        **Raise:** :class:`ApiManagerError`
+
+        :param subsystem:
+        :param path:
+        :param method:
+        :param data:
+        :param other_headers:
+        :param silent:
+        :return:
+        :raise: :class:`ApiManagerError`
         """
         try:
             if self.exist(self.uid) is False:
@@ -3305,14 +3312,14 @@ class ApiClient(BeehiveApiClient):
             raise ApiManagerError(ex.value, code=ex.code)
         
         try:
-            res = self.send_request(subsystem, path, method, data, self.uid, self.seckey, other_headers)
+            res = self.send_request(subsystem, path, method, data, self.uid, self.seckey, other_headers, silent=silent)
         except BeehiveApiClientError as ex:
             self.logger.error('Send admin request to %s using uid %s: %s' % (path, self.uid, ex.value))
             raise ApiManagerError(ex.value, code=ex.code)
 
         return res
 
-    def user_request(self, module, path, method, data=u'', other_headers=None):
+    def user_request(self, module, path, method, data=u'', other_headers=None, silent=False):
         """Make api request using module current user credentials.
         
         **Raise:** :class:`ApiManagerError`
@@ -3321,7 +3328,7 @@ class ApiClient(BeehiveApiClient):
             # get user logged uid and password
             uid = operation.user[2]
             seckey = operation.user[3]
-            res = self.send_request(module, path, method, data, uid, seckey, other_headers)
+            res = self.send_request(module, path, method, data, uid, seckey, other_headers, silent=silent)
         except BeehiveApiClientError as ex:
             self.logger.error('Send user request to %s using uid %s: %s' % (path, self.uid, ex.value))
             raise
