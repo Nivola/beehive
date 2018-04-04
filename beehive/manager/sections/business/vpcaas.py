@@ -12,8 +12,8 @@ from beehive.manager.util.controller import BaseController, ApiController, check
 from re import match
 from beecell.simple import truncate, id_gen
 from urllib import urlencode
+from beehive.manager.sections.business import SpecializedServiceControllerChild
 
- 
 logger = logging.getLogger(__name__)
 
 
@@ -27,9 +27,9 @@ class VPCaaServiceController(BaseController):
  
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
- 
- 
-class VPCaaServiceControllerChild(ApiController):
+
+
+class VPCaaServiceControllerChild(SpecializedServiceControllerChild):
     baseuri = u'/v1.0/nws'
     subsystem = u'service'
  
@@ -113,22 +113,34 @@ class VMServiceController(VPCaaServiceControllerChild):
             .get(u'reservationSet')[0].get(u'instancesSet')[0]
         self.result(res, details=True, maxsize=40)
 
-    @expose(aliases=[u'runinstance <name> <account> <subnet> <type> <image> <security group>'],
+    @expose(aliases=[u'runinstance <name> <account> <type> <subnet> <image> <security group> [sshkey=..]'],
             aliases_only=True)
     @check_error
     def runinstance(self):
         """Create a virtual machine
+    - sshkey: use this optional parameter to set sshkey. Pass reference to a file
         """
+        name = self.get_arg(name=u'name')
+        account = self.get_account(self.get_arg(name=u'account'))
+        itype = self.get_service_def(self.get_arg(name=u'type'))
+        subnet = self.get_service_instance(self.get_arg(name=u'subnet'))
+        image = self.get_service_instance(self.get_arg(name=u'image'))
+        sg = self.get_service_instance(self.get_arg(name=u'security group'))
+        sshkey = self.get_arg(name=u'sshkey', default=None, keyvalue=True)
+
         data = {
-            u'Name': self.get_arg(name=u'name'),
-            u'owner_id': self.get_arg(name=u'account'),
+            u'Name': name,
+            u'owner_id': account,
             u'AdditionalInfo': u'',
-            u'SubnetId': self.get_arg(name=u'subnet'),
-            u'InstanceType': self.get_arg(name=u'type'),
+            u'SubnetId': subnet,
+            u'InstanceType': itype,
             u'AdminPassword': u'myPwd$1',
-            u'ImageId': self.get_arg(name=u'image'),
-            u'SecurityGroupId_N': [self.get_arg(name=u'security group')],
+            u'ImageId': image,
+            u'SecurityGroupId_N': [sg],
         }
+        if sshkey is not None:
+            data[u'KeyValue'] = self.load_file(sshkey)
+
         uri = u'%s/computeservices/instance/runinstances' % self.baseuri
         res = self._call(uri, u'POST', data={u'instance': data}, timeout=600)
         logger.info(u'Add virtual machine instance: %s' % truncate(res))
@@ -136,7 +148,42 @@ class VMServiceController(VPCaaServiceControllerChild):
         res = {u'msg': u'Add virtual machine %s' % res}
         self.result(res, headers=[u'msg'])
 
-    @expose(aliases=[u'terminate <id> [recursive=false]'], aliases_only=True)
+    @expose(aliases=[u'start [field=<id1, id2>] '], aliases_only=True)
+    @check_error
+    def start(self):
+        """Start service instance by field
+    - field: owner-id.N, instance-id.N
+        """
+        dataSearch = {}
+        dataSearch[u'owner-id.N'] = self.split_arg(u'owner-id.N') 
+        dataSearch[u'instance-id.N'] = self.split_arg(u'instance-id.N')       
+        
+        uri = u'%s/computeservices/instance/startinstances' % self.baseuri
+        res = self._call(uri, u'GET', data=urlencode(dataSearch, doseq=True)).get(u'StartInstancesResponse')\
+            .get(u'instancesSet', [])
+        headers = [u'id', u'name', u'state',  u'currentState', u'previousState']
+        fields = [u'id', u'name', u'state',  u'currentState', u'previousState']
+        self.result(res, headers=headers, fields=fields, maxsize=40)
+
+    @expose(aliases=[u'stop [field=<id1, id2>] force=true|false '], aliases_only=True)
+    @check_error
+    def stop(self):
+        """Stop service instance by field
+    - field: list of owner-id.N, instance-id.N
+    - field: force is set to true forces the instances to stop (default is false) 
+        """
+        dataSearch = {}
+        dataSearch[u'instance-id.N'] = self.split_arg(u'instance-id.N')
+        dataSearch[u'Force'] = self.get_arg(default=False, name=u'Force', keyvalue=True)   
+        
+        uri = u'%s/computeservices/instance/stopinstances' % self.baseuri
+        res = self._call(uri, u'GET', data=urlencode(dataSearch, doseq=True)).get(u'StopInstancesResponse')\
+            .get(u'instancesSet', [])
+        headers = [u'id', u'name', u'state',  u'currentState', u'previousState']
+        fields = [u'id', u'name', u'state',  u'currentState', u'previousState']
+        self.result(res, headers=headers, fields=fields, maxsize=40)
+
+    @expose(aliases=[u'terminate <id>'], aliases_only=True)
     @check_error
     def terminate(self):
         """Delete service instance
@@ -144,9 +191,9 @@ class VMServiceController(VPCaaServiceControllerChild):
         """
         value = self.get_arg(name=u'id')
         data = {
-            u'recursive': self.get_arg(name=u'recursive', default=False, keyvalue=True)
+            u'InstanceId_N': [value]
         }
-        uri = u'%s/serviceinsts/%s' % (self.baseuri, value)
+        uri = u'%s/computeservices/instance/terminateinstances' % self.baseuri
         res = self._call(uri, u'DELETE', data=data)
         logger.info(res)
         res = {u'msg': u'Delete virtual machine %s' % value}
@@ -203,7 +250,7 @@ class VpcServiceController(VPCaaServiceControllerChild):
         uri = u'%s/computeservices/vpc/createvpc' % self.baseuri
         res = self._call(uri, u'POST', data={u'vpc': data}, timeout=600)
         logger.info(u'Add vpc: %s' % truncate(res))
-        res = res.get(u'CreateVpcResponse').get(u'vpcSet')[0].get(u'vpcId')
+        res = res.get(u'CreateVpcResponse').get(u'instancesSet')[0].get(u'vpcId')
         res = {u'msg': u'Add vpc %s' % res}
         self.result(res, headers=[u'msg'])
 
@@ -230,7 +277,25 @@ class SubnetServiceController(VPCaaServiceControllerChild):
         fields = [u'subnetId', u'name', u'state', u'subnetOwnerAlias', u'availabilityZone', u'vpcName', u'cidrBlock']
         self.result(res, headers=headers, fields=fields, maxsize=40)
 
- 
+    @expose(aliases=[u'create <name> <vpc> <availability_zone> <cidr>'], aliases_only=True)
+    @check_error
+    def create(self):
+        """Create a subnet
+        """
+        data = {
+            u'SubnetName': self.get_arg(name=u'name'),
+            u'VpcId': self.get_arg(name=u'vpc'),
+            u'AvailabilityZone': self.get_arg(name=u'availability_zone'),
+            u'CidrBlock': self.get_arg(name=u'cidr')
+        }
+        uri = u'%s/computeservices/subnet/createsubnet' % self.baseuri
+        res = self._call(uri, u'POST', data={u'subnet': data}, timeout=600)
+        logger.info(u'Add subnet: %s' % truncate(res))
+        res = res.get(u'CreateSubnetResponse').get(u'instancesSet')[0].get(u'subnetId')
+        res = {u'msg': u'Add subnet %s' % res}
+        self.result(res, headers=[u'msg'])
+
+
 class SGroupServiceController(VPCaaServiceControllerChild):
     class Meta:
         label = 'securitygroups'
@@ -258,42 +323,24 @@ class SGroupServiceController(VPCaaServiceControllerChild):
         }
         sg = self._call(u'/v1.0/nws/serviceinsts', u'post', data=data)
 
-    @expose(aliases=[u'create <account> <definition> <name>'], aliases_only=True)
+    @expose(aliases=[u'create <name> <vpc> [template=..]'], aliases_only=True)
     @check_error
     def create(self):
-        """Create service groups
+        """Create a service group
         """
-        account = self.get_arg(u'account')
-        definition = self.get_arg(u'definition')
-        name = self.get_arg(u'name')
         data = {
-            u'serviceinst': {
-                u'name': name,
-                u'desc': name,
-                u'account_id': account,
-                u'service_def_id': definition,
-                u'status': u'ACTIVE',
-                u'bpmn_process_id': None,
-                u'active': True,
-                u'version': u'1.0'
-            }
+            u'GroupName': self.get_arg(name=u'name'),
+            u'VpcId': self.get_arg(name=u'vpc')
         }
-        sg = self._call(u'/v1.0/nws/serviceinsts', u'post', data=data)
-
-        # create config
-        data = {
-            u'instancecfg': {
-                u'name': u'%s-conf' % name,
-                u'desc': u'%s-conf' % name,
-                u'service_instance_id': sg.get(u'uuid'),
-                u'json_cfg': {
-                },
-            }
-        }
-        sg_config = self._call(u'/v1.0/nws/instancecfgs', u'post', data=data)
-
-        res = {u'msg': u'Create security group %s' % name}
-        self.result(res, headers={u'msg'}, maxsize=100)
+        sg_type = self.get_arg(name=u'template', keyvalue=True, default=None)
+        if sg_type is not None:
+            data[u'GroupType'] = sg_type
+        uri = u'%s/computeservices/securitygroup/createsecuritygroup2' % self.baseuri
+        res = self._call(uri, u'POST', data={u'security_group': data}, timeout=600)
+        logger.info(u'Add securitygroup: %s' % truncate(res))
+        res = res.get(u'CreateSecurityGroupResponse').get(u'instancesSet')[0].get(u'groupId')
+        res = {u'msg': u'Add securitygroup %s' % res}
+        self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'describes [field=<id1, id2>]'], aliases_only=True)
     @check_error
@@ -306,7 +353,7 @@ class SGroupServiceController(VPCaaServiceControllerChild):
         dataSearch[u'vpc-id.N'] = self.split_arg(u'vpc-id.N')       
                  
         uri = u'%s/computeservices/securitygroup/describesecuritygroups' % self.baseuri
-        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch,doseq=True))\
+        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True))\
             .get(u'DescribeSecurityGroupsResponse').get(u'securityGroupInfo', [])
         for item in res:
             item[u'egress_rules'] = len(item[u'ipPermissionsEgress'])
@@ -354,6 +401,68 @@ class SGroupServiceController(VPCaaServiceControllerChild):
         self.app.print_output(u'Ingress rules: ')
         self.result(ingress_rules, headers=[u'fromSecuritygroup', u'fromCidr', u'protocol', u'fromPort', u'toPort'],
                     fields=fields, maxsize=60)
+
+    @expose(aliases=[u'delete <uuid>'], aliases_only=True)
+    @check_error
+    def delete(self):
+        """Delete a service group
+        """
+        data = {
+            u'GroupName': self.get_arg(name=u'uuid')
+        }
+        uri = u'%s/computeservices/securitygroup/deletesecuritygroup2' % self.baseuri
+        res = self._call(uri, u'DELETE', data={u'security_group': data}, timeout=600)
+        logger.info(u'Add securitygroup: %s' % truncate(res))
+        res = res.get(u'DeleteSecurityGroupResponse').get(u'return')
+        res = {u'msg': u'Delete securitygroup %s' % res}
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'add-rule <name> <compute_zone> <source> <dest> [proto=..] [port:..]'], aliases_only=True)
+    @check_error
+    def add_rule(self):
+        """Add rule
+        TODO:
+    - proto: ca be  6 [tcp], 17 [udp], 1,<subprotocol> [icmp], * [all]. If use icmp specify also subprotocol (ex. 8
+      for echo request). [default=*]
+    - port: can be an integer between 0 and 65535 or a range with start and end in the same interval. Range format
+      is <start>-<end>. Use * for all ports. [default=*]
+    - source: rule source. Syntax <type>:<value>.
+    - dest: rule destination. Syntax <type>:<value>.
+    Source and destination type can be SecurityGroup, Cidr.
+    Source and destination value can be security group id or uuid, cidr like 10.102.167.0/24.
+        """
+        name = self.get_arg(name=u'name')
+        zone = self.get_arg(name=u'compute_zone')
+        source = self.get_arg(name=u'source').split(u':')
+        dest = self.get_arg(name=u'dest').split(u':')
+        port = self.get_arg(name=u'port', default=u'*', keyvalue=True)
+        proto = self.get_arg(name=u'proto', default=u'*', keyvalue=True)
+        data = {
+            u'rule': {
+                u'container': self.get_container(),
+                u'name': name,
+                u'desc': name,
+                u'compute_zone': zone,
+                u'source': {
+                    u'type': source[0],
+                    u'value': source[1]
+                },
+                u'destination': {
+                    u'type': dest[0],
+                    u'value': dest[1]
+                },
+                u'service': {
+                    u'port': port,
+                    u'protocol': proto
+                }
+            }
+        }
+        uri = self.uri
+        res = self._call(uri, u'POST', data=data)
+        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))
+        self.wait_job(res[u'jobid'])
+        res = {u'msg': u'Add %s %s' % (self._meta.aliases[0], res[u'uuid'])}
+        self.result(res, headers=[u'msg'])
 
 
 vpcaas_controller_handlers = [

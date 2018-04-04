@@ -4,6 +4,8 @@ Created on Sep 27, 2017
 @author: darkbk
 """
 import logging
+import urllib
+
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController,\
     check_error
@@ -114,18 +116,24 @@ class TaskController(object):
         res = self._call(uri, u'GET')
         logger.info(res)
         resp = []
-        for k,v in res[u'task_definitions'].items():
+        for k, v in res[u'task_definitions'].items():
             for v1 in v:
-                resp.append({u'worker':k, u'task':v1})
+                resp.append({u'worker': k, u'task': v1})
         self.result(resp, headers=[u'worker', u'task'], maxsize=400)    
     
-    @expose()
+    @expose(aliases=[u'list <id> [status=]'], aliases_only=True)
     @check_error
     def list(self):
         """List all task instance
+    - id : resource id
+    - status: filter by job status
         """
+        status = self.get_arg(name=u'status', default=None, keyvalue=True)
+        data = u''
+        if status is not None:
+            data = urllib.urlencode({u'jobstatus': status})
         uri = u'%s/worker/tasks' % self.baseuri
-        res = self._call(uri, u'GET')
+        res = self._call(uri, u'GET', data)
         logger.info(res)
         self.result(res, key=u'task_instances', headers=[u'task_id', u'type', u'status', u'name', u'start_time',
                                                          u'stop_time', u'elapsed'], maxsize=200)
@@ -141,7 +149,9 @@ class TaskController(object):
         logger.info(res)
         resp = []
         resp.append(res)
-        resp.extend(res.get(u'children'))
+        child = res.get(u'children')
+        if child is not None:
+            resp.extend(child)
         self.result(resp, headers=[u'task_id', u'type', u'status', u'name', u'start_time', u'stop_time', u'elapsed'],
                     maxsize=100)
     
@@ -156,8 +166,10 @@ class TaskController(object):
         logger.info(res)
         resp = []
         for i in res:
-            resp.append({u'timestamp':i[0], u'task':i[1], u'task id':i[2], 
-                         u'msg':truncate(i[3], 150)})
+            try:
+                resp.append({u'timestamp': i[0], u'task': i[1], u'task id': i[2], u'msg': truncate(i[3], 200)})
+            except:
+                resp.append({u'timestamp': i[0], u'msg': truncate(i[1], 200)})
         self.result(resp, headers=[u'timestamp', u'msg'], maxsize=200)        
     
     @expose(aliases=[u'graph <id>'], aliases_only=True)
@@ -215,8 +227,9 @@ class TaskController(object):
         }
         uri = u'%s/worker/tasks/test' % self.baseuri
         res = self._call(uri, u'POST', data=data)
+        self.wait_job(res[u'jobid'])
         logger.info(u'Run job test: %s' % res)
-        self.result(res)
+        # self.result(res)
 
 
 class ScheduleController(object):

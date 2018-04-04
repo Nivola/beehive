@@ -58,9 +58,10 @@ class GetSchedulerEntries(TaskApiView):
         }
         return resp
 
-## get
+
 class GetSchedulerEntryResponseSchema(Schema):
     schedule = fields.Nested(SchedulerEntryResponseSchema, required=True, allow_none=True)
+
 
 class GetSchedulerEntry(TaskApiView):
     definitions = {

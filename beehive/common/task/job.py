@@ -1,8 +1,8 @@
-'''
+"""
 Created on May 12, 2017
 
 @author: darkbk
-'''
+"""
 import ujson as json
 from time import time
 from beehive.common.task import BaseTask
@@ -11,7 +11,7 @@ from beehive.common.apimanager import ApiManagerError, ApiObject
 from celery.result import AsyncResult, GroupResult
 from beehive.common.data import operation
 from beehive.common.task.manager import task_manager
-from beecell.simple import get_value, import_class, nround
+from beecell.simple import get_value, import_class, nround, truncate
 from celery import chord
 from traceback import format_tb
 from beehive.common.task.handler import TaskResult, task_local
@@ -19,6 +19,7 @@ from gevent import sleep
 from functools import wraps
 
 logger = get_task_logger(__name__)
+
 
 class JobError(Exception):
     def __init__(self, value, code=0):
@@ -31,7 +32,8 @@ class JobError(Exception):
 
     def __str__(self):
         return "JobError: %s" % self.value
-    
+
+
 class JobInvokeApiError(Exception):
     def __init__(self, value, code=0):
         self.code = code
@@ -44,14 +46,15 @@ class JobInvokeApiError(Exception):
     def __str__(self):
         return "JobInvokeApiError: %s" % self.value    
 
+
 class AbstractJob(BaseTask):
     abstract = True
     ops = []
 
     @property
     def controller(self):
-        return task_local.controller    
-    
+        return task_local.controller
+
     #
     # permissions assignment
     #
@@ -204,7 +207,12 @@ class AbstractJob(BaseTask):
         job = TaskResult.get(task_local.opid)
         if job[u'status'] is not None and job[u'status'] == u'FAILURE':
             return None
-        
+
+        params = self.get_shared_data()
+        if u'start-time' not in params.keys():
+            params[u'start-time'] = job.get(u'start_time')
+            self.set_shared_data(params)
+
         # set result if status is SUCCESS
         retval = None
         if status == u'SUCCESS':
@@ -218,8 +226,9 @@ class AbstractJob(BaseTask):
 
         # store job data
         msg = None
+        counter = int(job[u'counter']) + 1
         TaskResult.store(task_local.opid, status=status, retval=retval, inner_type=u'JOB', traceback=traceback,
-                         stop_time=current_time, start_time=start_time, msg=msg)
+                         stop_time=current_time, msg=msg, counter=counter)
         if status == u'FAILURE':
             logger.error(u'JOB %s status change to %s' % (task_local.opid, status))
         else:         
@@ -272,8 +281,8 @@ class Job(AbstractJob):
         trace = format_tb(einfo.tb)
         trace.append(err)
         logger.error(err, exc_info=1)
-        self.update_job(params={}, status=u'FAILURE', current_time=time(), 
-                        ex=err, traceback=trace, result=None, msg=err)
+        self.update_job(params={}, status=u'FAILURE', current_time=time(), ex=err, traceback=trace,
+                        result=None, msg=err)
 
     def on_retry(self, exc, task_id, args, kwargs, einfo):
         """This is run by the worker when the task is to be retried.
@@ -300,13 +309,14 @@ class JobTask(AbstractJob):
     #
     def api_admin_request(self, module, path, method, data=u'', 
                           other_headers=None):
-        if isinstance(data, dict): data = json.dumps(data)
-        return self.app.api_manager.api_client.admin_request(module, path, method, data, other_headers)
+        if isinstance(data, dict):
+            data = json.dumps(data)
+        return self.app.api_manager.api_client.admin_request(module, path, method, data, other_headers, silent=True)
 
-    def api_user_request(self, module, path, method, data=u'',
-                         other_headers=None):
-        if isinstance(data, dict): data = json.dumps(data)
-        return self.app.api_manager.api_client.user_request(module, path, method, data, other_headers)
+    def api_user_request(self, module, path, method, data=u'', other_headers=None):
+        if isinstance(data, dict):
+            data = json.dumps(data)
+        return self.app.api_manager.api_client.user_request(module, path, method, data, other_headers, silent=True)
 
     def _query_job(self, module, job_id, attempt):
         """Query remote job status.
@@ -345,6 +355,7 @@ class JobTask(AbstractJob):
         :raise: ApiManagerError
         """
         res = self.api_admin_request(module, uri, method, data, other_headers)
+        self.update(u'PROGRESS', msg=u'Invoke api %s [%s] in module %s' % (uri, method, module))
 
         if link is not None:
             # set up link from remote stack to instance
@@ -407,10 +418,17 @@ class JobTask(AbstractJob):
 
             # loop until inner_task finish with success or error
             status = inner_task.get(u'status')
+            start_counter = inner_task.get(u'counter')
             while status != u'SUCCESS' and status != u'FAILURE':
                 sleep(task_local.delta)
                 inner_task = TaskResult.get(task_id)
+                counter = inner_task.get(u'counter')
                 elapsed = time() - start
+
+                # verify job is stalled
+                if counter - start_counter == 0 and elapsed > 60:
+                    raise JobError(u'Task %s is stalled' % task_id)
+
                 self.update(u'PROGRESS', msg=u'Task %s status %s after %ss' % (task_id, status, elapsed))
                 status = inner_task.get(u'status')
             
@@ -456,7 +474,7 @@ class JobTask(AbstractJob):
                 logger.error(msg)
                 msg = u'ERROR: %s' % msg
             else:
-                logger.debug(msg)
+                logger.debug(truncate(msg))
         
         # update jobtask result
         task_id = self.request.id
@@ -467,7 +485,7 @@ class JobTask(AbstractJob):
         job_start_time = params.get(u'start-time', 0)        
         
         # update job only if job_start_time is not 0. job_start_time=0 if
-        # job already finished and shared area is emty
+        # job already finished and shared area is empty
         if job_start_time != 0:
             # get elapsed
             elapsed = current_time - float(job_start_time)        
@@ -591,13 +609,12 @@ def job(entity_class=None, name=None, module=None, delta=2):
             
             # record PENDING task and set start-time
             status = u'STARTED'
-            start_time = time()
-            params = {
-                u'start-time':start_time,
-            }
-            task.set_shared_data(params)
-            task.update_job(params=params, status=status, 
-                            current_time=start_time, start_time=start_time)
+            # start_time = time()
+            # params = {
+            #     u'start-time': start_time,
+            # }
+            # task.set_shared_data(params)
+            task.update_job(status=status, current_time=time())
             
             # send event
             task.send_job_event(status, 0, ex=None, msg=None)
@@ -644,7 +661,8 @@ def job_task(module=u''):
             operation.session = None
             operation.transaction = None
 
-            task.update(u'STARTED', start_time=time(), msg=u'Start %s:%s' % (task.name, task.request.id))
+            # task.update(u'STARTED', start_time=time(), msg=u'Start %s:%s' % (task.name, task.request.id))
+            task.update(u'STARTED', msg=u'Start %s:%s' % (task.name, task.request.id))
             res = fn(task, params, *args, **kwargs)
             return res
         return decorated_view

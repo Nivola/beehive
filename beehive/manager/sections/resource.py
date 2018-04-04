@@ -126,7 +126,7 @@ class ContainerController(ResourceControllerChild, WorkerController):
 
     def get_job_state(self, jobid):
         try:
-            res = self._call(u'%s/worker/tasks/%s' % (self.baseuri, jobid), u'GET')
+            res = self._call(u'%s/worker/tasks/%s' % (self.baseuri, jobid), u'GET', silent=True)
             state = res.get(u'task_instance').get(u'status')
             logger.debug(u'Get job %s state: %s' % (jobid, state))
             if state == u'FAILURE':
@@ -136,16 +136,31 @@ class ContainerController(ResourceControllerChild, WorkerController):
         except (NotFoundException, Exception):
             return u'EXPUNGED'
 
-    def wait_job(self, jobid, delta=1):
-        """Wait resource
+    def wait_job(self, jobid, delta=2, maxtime=180):
+        """Wait job
         """
         logger.debug(u'wait for job: %s' % jobid)
         state = self.get_job_state(jobid)
-        while state not in [u'SUCCESS', u'FAILURE']:
-            logger.info(u'.')
-            print(u'.')
+        sys.stdout.write(u'JOB:%s' % jobid)
+        sys.stdout.flush()
+        elapsed = 0
+        while state not in [u'SUCCESS', u'FAILURE', u'TIMEOUT']:
+            sys.stdout.write(u'.')
+            sys.stdout.flush()
+            # logger.info(u'.')
+            # print(u'.')
             sleep(delta)
             state = self.get_job_state(jobid)
+            elapsed += delta
+            if elapsed > maxtime:
+                state = u'TIMEOUT'
+
+        if state == u'TIMEOUT':
+            self.app.print_error(u'- TIMEOUT -')
+        elif state == u'FAILURE':
+            self.app.print_error(u'- ERROR -')
+
+        print(u'END')
 
     @expose(aliases=[u'list [status]'], aliases_only=True)
     @check_error
@@ -274,6 +289,7 @@ class ContainerController(ResourceControllerChild, WorkerController):
     def jobs(self, *args):
         """List all container jobs
     - id : resource id
+    - status: filter by job status
         """
         oid = self.get_arg(name=u'id')
         status = self.get_arg(name=u'status', default=None, keyvalue=True)
@@ -757,13 +773,16 @@ class ResourceEntityController(ResourceControllerChild):
         logger.info(u'Get resource jobs: %s' % truncate(res))
         self.result(res, key=u'resourcejobs', headers=[u'job', u'name', u'timestamp'], maxsize=400)
 
-    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @expose(aliases=[u'delete <id> [force=..]'], aliases_only=True)
     @check_error
     def delete(self):
         """Delete resource
         """
         value = self.get_arg(name=u'id')
+        force = self.get_arg(name=u'force', keyvalue=True, default=False)
         uri = u'%s/entities/%s' % (self.baseuri, value)
+        if force is True:
+            uri += u'?force=true'
         res = self._call(uri, u'DELETE')
         logger.info(res)
         jobid = res.get(u'jobid', None)

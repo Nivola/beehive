@@ -381,17 +381,19 @@ class VspherePlatformNetworkSecurityGroupController(VspherePlatformNetworkChildC
     def get(self):
         oid = self.get_arg(name=u'id')
         res = self.entity_class.get(oid)
-        rules = res.pop(u'member', [])
+        print res
+        members = res.pop(u'member', [])
         self.result(res, details=True)
         print(u'Members:')
-        self.result(rules, headers=[u'objectId', u'name', u'objectTypeName'])
+        self.result(members, headers=[u'objectId', u'name', u'objectTypeName'])
     
-    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @expose(aliases=[u'delete <id> [force=false]'], aliases_only=True)
     @check_error
     def delete(self):
         oid = self.get_arg(name=u'id')
-        res = self.entity_class.delete(oid)
-        res = {u'msg':u'Delete security-group %s' % (oid)}
+        force = self.get_arg(name=u'force', keyvalue=True, default=False)
+        res = self.entity_class.delete(oid, force)
+        res = {u'msg': u'Delete security-group %s' % (oid)}
         self.result(res, headers=[u'msg'])    
     
     @expose(aliases=[u'delete-member <id>'], aliases_only=True)

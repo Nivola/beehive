@@ -435,12 +435,12 @@ commands:
         elif u'msg' in data:
             maxsize = 200
             headers = [u'msg']
-    
-        if isinstance(data, dict) and u'jobid' in data:
-            jobid = data.get(u'jobid')
-            print(u'Start JOB: %s' % jobid)
-            self.query_task_status(jobid)
-            return None
+
+        # if isinstance(data, dict) and u'jobid' in data:
+        #     jobid = data.get(u'jobid')
+        #     print(u'Start JOB: %s' % jobid)
+        #     self.query_task_status(jobid)
+        #     return None
         
         if format == u'json':
             if data is not None:
@@ -505,9 +505,21 @@ commands:
         :return: data
         :rtype: dict
         """
-        f = open(file_config, 'r')
+        f = open(file_config, u'r')
         data = f.read()
         data = json.loads(data)
+        f.close()
+        return data
+
+    def load_file(self, file_config):
+        """Load data from a file.
+
+        :param file_config: file name
+        :return: data
+        :rtype: dict
+        """
+        f = open(file_config, u'r')
+        data = f.read()
         f.close()
         return data
 
@@ -682,30 +694,69 @@ class ApiController(BaseController):
             # set token
             self.save_token(self.client.uid, self.client.seckey)
 
-    def _call(self, uri, method, data=u'', headers=None, timeout=30):
+    def _call(self, uri, method, data=u'', headers=None, timeout=30, silent=False):
         try:
             # make request
-            res = self.client.invoke(self.subsystem, uri, method, data=data, other_headers=headers, parse=True,
-                                     timeout=timeout)
+            resp = self.client.invoke(self.subsystem, uri, method, data=data, other_headers=headers, parse=True,
+                                     timeout=timeout, silent=silent)
         except BeehiveApiClientError as ex:
             raise
         finally:
             # set token
             self.save_token(self.client.uid, self.client.seckey)
-        
-        return res
+
+        return resp
     
-    def __query_task_status(self, task_id):
-        uri = u'%s/worker/tasks/%s' % (self.baseuri, task_id)
-        res = self._call(uri, u'GET').get(u'task_instance')
-        return res
-    
-    @check_error 
-    def query_task_status(self, task_id):
-        while True:
-            res = self.__query_task_status(task_id)
-            status = res[u'status']
-            print(u'.')
-            if status in [u'SUCCESS', u'FAILURE']:
-                break
-            sleep(1)
+    # def __query_task_status(self, task_id):
+    #     uri = u'%s/worker/tasks/%s' % (self.baseuri, task_id)
+    #     res = self._call(uri, u'GET').get(u'task_instance')
+    #     return res
+    #
+    # @check_error
+    # def query_task_status(self, task_id):
+    #     while True:
+    #         res = self.__query_task_status(task_id)
+    #         status = res[u'status']
+    #         sys.stdout.write(u'.')
+    #         # print(u'.')
+    #         if status in [u'SUCCESS', u'FAILURE']:
+    #             break
+    #         sleep(1)
+
+    def get_job_state(self, jobid):
+        try:
+            res = self._call(u'%s/worker/tasks/%s' % (self.baseuri, jobid), u'GET', silent=True)
+            state = res.get(u'task_instance').get(u'status')
+            logger.debug(u'Get job %s state: %s' % (jobid, state))
+            if state == u'FAILURE':
+                # print(res)
+                self.app.print_error(res[u'task_instance'][u'traceback'][-1])
+            return state
+        except (Exception):
+            return u'EXPUNGED'
+
+    def wait_job(self, jobid, delta=2, maxtime=180):
+        """Wait job
+        """
+        logger.debug(u'wait for job: %s' % jobid)
+        state = self.get_job_state(jobid)
+        sys.stdout.write(u'JOB:%s' % jobid)
+        sys.stdout.flush()
+        elapsed = 0
+        while state not in [u'SUCCESS', u'FAILURE', u'TIMEOUT']:
+            sys.stdout.write(u'.')
+            sys.stdout.flush()
+            # logger.info(u'.')
+            # print(u'.')
+            sleep(delta)
+            state = self.get_job_state(jobid)
+            elapsed += delta
+            if elapsed > maxtime:
+                state = u'TIMEOUT'
+
+        if state == u'TIMEOUT':
+            self.app.print_error(u'- TIMEOUT -')
+        elif state == u'FAILURE':
+            self.app.print_error(u'- ERROR -')
+
+        print(u'END')

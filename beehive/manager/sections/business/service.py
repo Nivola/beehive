@@ -417,7 +417,10 @@ class ServiceDefinitionController(ServiceControllerChild):
         uri = u'%s/servicecfgs' % self.baseuri
         res = self._call(uri, u'GET', data=u'service_definition_id=%s' % value).get(u'servicecfgs', [{}])[0]
         logger.info(res)
+        params = res.pop(u'params', [])
         self.result(res, details=True)
+        self.output(u'Params:')
+        self.result(params, details=True)
  
 
 class ServiceDefinitionCostController(ApiController):
@@ -669,9 +672,9 @@ class ServiceCatalogController(ServiceControllerChild):
 
 class ServiceInstanceController(ServiceControllerChild):
     fields = [u'id', u'uuid', u'name', u'version', u'account_id', u'service_definition_id', u'status', u'active',
-              u'resource_uuid', u'date.creation']
+              u'resource_uuid', u'is_container', u'parent.name', u'date.creation']
     headers = [u'id', u'uuid', u'name', u'version', u'account', u'definition', u'status', u'active', u'resource',
-               u'creation']
+               u'is_container', u'parent', u'creation']
 
     class Meta:
         label = 'instances'
