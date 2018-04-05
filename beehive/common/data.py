@@ -56,10 +56,10 @@ def transaction2(rollback_throwable=True):
         def fn(*args, **kwargs):
             ....
     """
-    def wrapper_transaction(fn):
+    def wrapper_transaction2(fn):
         
         @wraps(fn)
-        def transaction_inner(*args, **kwargs): #1
+        def transaction_inner2(*args, **kwargs): #1
             start = time()
             stmp_id = id_gen()
             session = operation.session
@@ -165,8 +165,8 @@ def transaction2(rollback_throwable=True):
                         logger.log(100, u'Commit transaction on exception %s' % operation.transaction)
                         operation.transaction = None
                     
-        return transaction_inner
-    return wrapper_transaction
+        return transaction_inner2
+    return wrapper_transaction2
 
 def transaction(fn):
     """Use this decorator to transform a function that contains delete, insert
