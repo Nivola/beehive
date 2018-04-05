@@ -187,7 +187,7 @@ class CliManager(CementCmd):
         debug = False
         prompt = u'beehive> '
         
-        logging_level = logging.DEBUG
+        logging_level = LoggerHelper.DEBUG
         logging_format = u'%(asctime)s - %(levelname)s - %(name)s.%(funcName)s:%(lineno)d - %(message)s'
         logging_file = u'/var/log/beehive/manage.log'
         logging_max_files = 4

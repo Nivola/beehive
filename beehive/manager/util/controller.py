@@ -698,7 +698,7 @@ class ApiController(BaseController):
         try:
             # make request
             resp = self.client.invoke(self.subsystem, uri, method, data=data, other_headers=headers, parse=True,
-                                     timeout=timeout, silent=silent)
+                                      timeout=timeout, silent=silent, print_curl=True)
         except BeehiveApiClientError as ex:
             raise
         finally:

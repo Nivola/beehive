@@ -335,7 +335,7 @@ class SGroupServiceController(VPCaaServiceControllerChild):
         sg_type = self.get_arg(name=u'template', keyvalue=True, default=None)
         if sg_type is not None:
             data[u'GroupType'] = sg_type
-        uri = u'%s/computeservices/securitygroup/createsecuritygroup2' % self.baseuri
+        uri = u'%s/computeservices/securitygroup/createsecuritygroup' % self.baseuri
         res = self._call(uri, u'POST', data={u'security_group': data}, timeout=600)
         logger.info(u'Add securitygroup: %s' % truncate(res))
         res = res.get(u'CreateSecurityGroupResponse').get(u'instancesSet')[0].get(u'groupId')
@@ -410,58 +410,76 @@ class SGroupServiceController(VPCaaServiceControllerChild):
         data = {
             u'GroupName': self.get_arg(name=u'uuid')
         }
-        uri = u'%s/computeservices/securitygroup/deletesecuritygroup2' % self.baseuri
+        uri = u'%s/computeservices/securitygroup/deletesecuritygroup' % self.baseuri
         res = self._call(uri, u'DELETE', data={u'security_group': data}, timeout=600)
         logger.info(u'Add securitygroup: %s' % truncate(res))
         res = res.get(u'DeleteSecurityGroupResponse').get(u'return')
         res = {u'msg': u'Delete securitygroup %s' % res}
         self.result(res, headers=[u'msg'])
 
-    @expose(aliases=[u'add-rule <name> <compute_zone> <source> <dest> [proto=..] [port:..]'], aliases_only=True)
+    @expose(aliases=[u'add-egress-rule <type> <group> <dest/source> [proto=..] [port:..]'], aliases_only=True)
     @check_error
     def add_rule(self):
-        """Add rule
-        TODO:
-    - proto: ca be  6 [tcp], 17 [udp], 1,<subprotocol> [icmp], * [all]. If use icmp specify also subprotocol (ex. 8
-      for echo request). [default=*]
+        """Add egress rule
+    - type: egress or ingress. For egress group is the source and specify the destination. For ingress group is the
+      destination and specify the source.
+    - proto: ca be tcp, udp, icmp or -1 for all. [default=-1]
     - port: can be an integer between 0 and 65535 or a range with start and end in the same interval. Range format
-      is <start>-<end>. Use * for all ports. [default=*]
-    - source: rule source. Syntax <type>:<value>.
-    - dest: rule destination. Syntax <type>:<value>.
-    Source and destination type can be SecurityGroup, Cidr.
-    Source and destination value can be security group id or uuid, cidr like 10.102.167.0/24.
+      is <start>-<end>. Use -1 for all ports. [default=-1]
+    - dest/source: rule destination. Syntax <type>:<value>.
+    Source and destination type can be SG, CIDR. For SG value must be <sg_id>. For CIDR value should like
+    10.102.167.0/24.
         """
-        name = self.get_arg(name=u'name')
-        zone = self.get_arg(name=u'compute_zone')
-        source = self.get_arg(name=u'source').split(u':')
-        dest = self.get_arg(name=u'dest').split(u':')
-        port = self.get_arg(name=u'port', default=u'*', keyvalue=True)
-        proto = self.get_arg(name=u'proto', default=u'*', keyvalue=True)
+        rule_type = self.get_arg(name=u'type')
+        group_id = self.get_arg(name=u'group')
+        dest = self.get_arg(name=u'dest/source').split(u':')
+        port = self.get_arg(name=u'port', default=None, keyvalue=True)
+        proto = self.get_arg(name=u'proto', default=u'-1', keyvalue=True)
+        from_port = -1
+        to_port = -1
+        if port is not None:
+            port = port.split(u'-')
+            if len(port) == 1:
+                from_port = to_port = port[0]
+            else:
+                from_port, to_port = port
+
+        if len(dest) <= 0 or len(dest) > 2:
+            raise Exception(u'Source/destination syntax is wrong')
+        if dest[0] not in [u'SG', u'CIDR']:
+            raise Exception(u'Source/destination type can be only SG or CIDR')
         data = {
-            u'rule': {
-                u'container': self.get_container(),
-                u'name': name,
-                u'desc': name,
-                u'compute_zone': zone,
-                u'source': {
-                    u'type': source[0],
-                    u'value': source[1]
-                },
-                u'destination': {
-                    u'type': dest[0],
-                    u'value': dest[1]
-                },
-                u'service': {
-                    u'port': port,
-                    u'protocol': proto
+            u'GroupId': group_id,
+            u'IpPermissions.N': [
+                {
+                    u'FromPort': from_port,
+                    u'ToPort': to_port,
+                    u'IpProtocol': proto
                 }
-            }
+            ]
         }
-        uri = self.uri
-        res = self._call(uri, u'POST', data=data)
-        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))
-        self.wait_job(res[u'jobid'])
-        res = {u'msg': u'Add %s %s' % (self._meta.aliases[0], res[u'uuid'])}
+        if dest[0] == u'SG':
+            data[u'IpPermissions.N'][0][u'UserIdGroupPairs'] = [{
+                u'GroupId': dest[1]
+            }]
+        elif dest[0] == u'CIDR':
+            data[u'IpPermissions.N'][0][u'IpRanges'] = [{
+                u'CidrIp': dest[1]
+            }]
+        else:
+            raise Exception(u'Wrong rule type')
+
+        if rule_type == u'egress':
+            uri = u'%s/computeservices/securitygroup/authorizesecuritygroupegress' % self.baseuri
+            key = u'AuthorizeSecurityGroupEgressResponse'
+        elif rule_type == u'ingress':
+            uri = u'%s/computeservices/securitygroup/authorizesecuritygroupingress' % self.baseuri
+            key = u'AuthorizeSecurityGroupIngressResponse'
+        res = self._call(uri, u'POST', data={u'rule': data}, timeout=600)
+        logger.info(u'Add securitygroup: %s' % truncate(res))
+        print res
+        res = res.get(key).get(u'Return')
+        res = {u'msg': u'Create securitygroup egress rule %s' % res}
         self.result(res, headers=[u'msg'])
 
 

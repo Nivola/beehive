@@ -669,6 +669,72 @@ class ServiceCatalogController(ServiceControllerChild):
         logger.info(msg)
         self.result({u'msg': msg}, headers=[u'msg'])
 
+    @expose(aliases=[u'add-admin-role <catalog_id>'], aliases_only=True)
+    @check_error
+    def add_admin_role(self):
+        """Add catalog admin role
+        """
+        catalog_id = self.get_arg(name=u'catalog_id')
+
+        # get catalog
+        uri = u'%s/srvcatalogs/%s' % (self.baseuri, catalog_id)
+        catalog = self._call(uri, u'GET').get(u'catalog')
+        catalog_objid = catalog[u'__meta__'][u'objid']
+
+        # get catalog defs
+        uri = u'%s/srvcatalogs/%s/defs' % (self.baseuri, catalog_id)
+        defs = self._call(uri, u'GET').get(u'servicedefs')
+        defs_objid = []
+        for definition in defs:
+            defs_objid.append(definition[u'__meta__'][u'objid'])
+
+        # add role
+        try:
+            self.subsystem = u'auth'
+            data = {
+                u'role': {
+                    u'name': u'AdminRoleCatalog-%s' % catalog_id,
+                    u'desc': u'AdminRoleCatalog-%s' % catalog_id
+                }
+            }
+            uri = u'/v1.0/nas/roles'
+            role = self._call(uri, u'POST', data=data)
+            logger.info(u'Add role: %s' % role)
+        except Exception as ex:
+            uri = u'/v1.0/nas/roles/AdminRoleCatalog-%s' % catalog_id
+            role = self._call(uri, u'GET', data=u'').get(u'role')
+            logger.info(u'Add role: %s' % role)
+
+        # add role permissions
+        roleid = role[u'uuid']
+        perms = [
+            {u'subsystem': u'service', u'type': u'ServiceCatalog', u'objid': catalog_objid, u'action': u'*'},
+        ]
+        for def_objid in defs_objid:
+            perms.append({u'subsystem': u'service',
+                          u'type': u'ServiceType.ServiceDefinition',
+                          u'objid': def_objid,
+                          u'action': u'view'})
+
+        for perm in perms:
+            data = {
+                u'role': {
+                    u'perms': {
+                        u'append': [
+                            perm
+                        ],
+                        u'remove': []
+                    }
+                }
+            }
+            uri = u'/v1.0/nas/roles/%s' % role[u'uuid']
+            res = self._call(uri, u'PUT', data=data)
+
+        self.subsystem = u'service'
+
+        res = {u'msg': u'Add role %s' % role[u'uuid']}
+        self.result(res, headers=[u'msg'])
+
 
 class ServiceInstanceController(ServiceControllerChild):
     fields = [u'id', u'uuid', u'name', u'version', u'account_id', u'service_definition_id', u'status', u'active',

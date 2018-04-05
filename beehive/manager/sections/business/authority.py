@@ -697,8 +697,6 @@ class AccountController(AuthorityControllerChild):
         for definition in defs:
             defs_objid.append(definition[u'__meta__'][u'objid'])
 
-        print defs_objid
-
         # add role
         try:
             self.subsystem = u'auth'

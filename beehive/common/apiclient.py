@@ -351,7 +351,7 @@ class BeehiveApiClient(object):
         return res
     
     def send_request(self, subsystem, path, method, data=u'', uid=None, seckey=None, other_headers=None, timeout=30,
-                     silent=False):
+                     silent=False, print_curl=False):
         """Send api request
 
         :param subsystem:
@@ -390,11 +390,12 @@ class BeehiveApiClient(object):
         elif isinstance(data, dict) or isinstance(data, list):
             data = json.dumps(data)
         res = self.http_client(proto, host, path, method, port=port, data=data, headers=headers, timeout=timeout,
-                               silent=silent)
+                               silent=silent, print_curl=print_curl)
         return res
 
     @watch
-    def invoke(self, subsystem, path, method, data=u'', other_headers=None, parse=False, timeout=30, silent=False):
+    def invoke(self, subsystem, path, method, data=u'', other_headers=None, parse=False, timeout=30, silent=False,
+               print_curl=False):
         """Make api request using subsystem internal admin user credentials.
 
         :param subsystem:
@@ -412,7 +413,7 @@ class BeehiveApiClient(object):
             if parse is True and isinstance(data, dict) or isinstance(data, list):
                 data = json.dumps(data)
             res = self.send_request(subsystem, path, method, data, self.uid, self.seckey, other_headers,
-                                    timeout=timeout, silent=silent)
+                                    timeout=timeout, silent=silent, print_curl=print_curl)
         except BeehiveApiClientError as ex:
             self.logger.error(u'Send request to %s using uid %s: %s, %s' % (path, self.uid, ex.value, ex.code))
             # Request is not authorized
