@@ -202,37 +202,37 @@ class ServiceTypeProcessController(ApiController):
     @check_error
     def setval(self):
         # , st_uuid, template, name, ):
-        typeid = None 
+        typeid = None
         typeoid = self.get_arg(name=u'typeoid', keyvalue=True)
         method = self.get_arg(name=u'method', keyvalue=True)
         # http://{{nws}}/v1.0/nws/servicetypes?name=limits.6d0216b6db7c1cad41d6
         if method is None:
-            raise Exception(u'Param method is not defined' )
+            raise Exception(u'Param method is not defined')
         if typeoid is not None:
             uri = u'%s/servicetypes/%s' % (self.baseuri, typeoid)
-            res = self._call(uri, u'GET' ).get(u'servicetype', {})
-            typeid=res.get("id",typeid) 
+            res = self._call(uri, u'GET').get(u'servicetype', {})
+            typeid = res.get("id",typeid) 
             if typeid is None:
-                raise Exception(u'Could not found a type whose oid is %s' % ( typeoid ) )
+                raise Exception(u'Could not found a type whose oid is %s' % (typeoid))
 
         uri = u'%s/serviceprocesses' % self.baseuri
-        res = self._call(uri, u'GET', data=u'service_type_id=%s&method_key=%s' % (typeid, method ) ).get(u'serviceprocesses', [])
-        
+        res = self._call(uri, u'GET', data=u'service_type_id=%s&method_key=%s' % (typeid, method)).get(u'serviceprocesses', [])
+
         if len(res) >= 1:
             prev=res[0] 
             name = self.get_arg(name=u'name', keyvalue=True, default=prev['method_key'])
             desc = self.get_arg(name=u'desc', keyvalue=True, default=prev['desc'])
             process = self.get_arg(name=u'process', keyvalue=True, default=prev['process_key'])
-            template = self.get_arg(name=u'template', keyvalue=True, default=prev['template'] )
+            template = self.get_arg(name=u'template', keyvalue=True, default=prev['template'])
         else:
             prev=None
             name = self.get_arg(name=u'name', keyvalue=True, default='proc')
             desc = self.get_arg(name=u'desc', keyvalue=True, default='description-%s'%(name))
             process = self.get_arg(name=u'process', keyvalue=True, default='invalid_key')
             template = self.get_arg(name=u'template', keyvalue=True, default="{}")
-        
+
         if template[0] == '@':
-            filename=template[1:]
+            filename = template[1:]
             if os.path.isfile(filename):
                 f = open(filename, 'r')
                 template = f.read()
@@ -242,22 +242,22 @@ class ServiceTypeProcessController(ApiController):
 
         data = {
             u'serviceprocess':{
-                u'name':name, 
+                u'name':name,
                 u'desc':desc,
                 u'service_type_id':str(typeid),
                 u'method_key':method,
-                u'process_key': process,
+                u'process_key':process,
                 u'template':template
             }
         }
         if prev == None:
             uri = u'%s/serviceprocesses' % self.baseuri
-            res = self._call(uri, u'POST', data= data)
+            res = self._call(uri, u'POST', data=data)
             logger.info(res)
             self.result(res)
         else:
             uri = u'%s/serviceprocesses/%s' % (self.baseuri, prev['uuid'])
-            res = self._call(uri, u'PUT', data= data)
+            res = self._call(uri, u'PUT', data=data)
             logger.info(res)
             self.result(res)
 
@@ -1024,6 +1024,63 @@ class ServiceInstanceConfigController(ApiController):
         res = {u'msg': u'Delete service instancecfgs cfgs %s' % value}
         self.result(res, headers=[u'msg'])
 
+class ServiceInstanceTaskController(ApiController):
+    baseuri = u'/v1.0/nws'
+    subsystem = u'service'
+
+    class Meta:
+        label = 'instance.task'
+        aliases = ['task']
+        aliases_only = True
+        stacked_on = 'instances'
+        stacked_type = 'nested'
+        description = "Service instance tasks management"
+
+    @expose(aliases=[u'list <id> '], aliases_only=True)
+    @check_error
+    def list(self):
+        """List tasks for service .
+        """
+        ### TODO /serviceinsts/<oid>/task/<taskid>
+        instid = self.get_arg()
+        # self.app.kvargs[u'service_instance_id'] = value
+        # data = urllib.urlencode(self.app.kvargs)
+        # data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = u'%s/serviceinsts/%s/task' % (self.baseuri, instid)
+        # res = self._call(uri, u'GET', data=data)
+        res = self._call(uri, u'GET')
+        logger.info(u'Get service instances tasks: %s' % truncate(res))
+        self.result(res, key=u'tasks', headers=[u'instance_id', u'task_id', u'execution_id', u'task_name', u'due_date', u'created'])
+
+    @expose(aliases=[u'get <id> <taskid>'], aliases_only=True)
+    @check_error
+    def get(self):
+        """Get detail for task
+        - id : service instance id
+        - taskid : task id
+        """
+        instid = self.get_arg(name=u'id')
+        taskid = self.get_arg(name=u'taskid')
+        uri = u'%s/serviceinsts/%s/task/%s' % (self.baseuri, instid, taskid)
+        res = self._call(uri, u'GET')
+        logger.info(res)
+        self.result(res, key=u'variables', headers=res.get("variables", {}).keys())
+
+    @expose(aliases=[u'complete <id> <taskid> [var1=vla1 .. varn=valn]'], aliases_only=True)
+    @check_error
+    def complete(self):
+        """ complete task
+        - id service id
+        - taskid task id
+        - variables json value to set"")
+        """
+        instid = self.get_arg(name=u'id')
+        taskid = self.get_arg(name=u'taskid')
+        data= self.app.kvargs
+        uri = u'%s/serviceinsts/%s/task/%s' % (self.baseuri, instid, taskid)
+        res = self._call(uri, u'POST', data=data)
+        self.result(res)
+
 
 class ServiceLinkInstanceController(ApiController):
     baseuri = u'/v1.0/nws'
@@ -1480,6 +1537,8 @@ service_controller_handlers = [
     # ServiceLinkDefinitionController,
     ServiceInstanceController,
     ServiceInstanceConfigController,
+    ServiceInstanceTaskController, 
+    ###########
     ServiceLinkInstanceController,
     ServiceInstanceConsumeController,
     # ServiceInstanteCostController,
