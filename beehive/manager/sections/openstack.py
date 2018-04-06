@@ -716,7 +716,9 @@ class OpenstackPlatformKeyPairController(OpenstackPlatformControllerChild):
 
 
 class OpenstackPlatformServerController(OpenstackPlatformControllerChild):
-    headers = [u'id', u'tenant_id', u'name', u'status', u'flavor.id', u'OS-EXT-SRV-ATTR:host', u'created']
+    headers = [u'id', u'tenant_id', u'name', u'instance_name', u'status', u'flavor', u'host', u'created']
+    fields = [u'id', u'tenant_id', u'name', u'OS-EXT-SRV-ATTR:instance_name', u'status', u'flavor.id',
+              u'OS-EXT-SRV-ATTR:host', u'created']
     
     class Meta:
         label = 'openstack.platform.servers'
@@ -737,7 +739,7 @@ class OpenstackPlatformServerController(OpenstackPlatformControllerChild):
         res = []
         for obj in objs:
             res.append(obj)
-        self.result(res, headers=self.headers, maxsize=80)
+        self.result(res, headers=self.headers, fields=self.fields, maxsize=80)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
