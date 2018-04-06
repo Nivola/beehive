@@ -737,7 +737,7 @@ class OpenstackPlatformServerController(OpenstackPlatformControllerChild):
         res = []
         for obj in objs:
             res.append(obj)
-        self.result(res, headers=self.headers, maxsize=40)
+        self.result(res, headers=self.headers, maxsize=80)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
