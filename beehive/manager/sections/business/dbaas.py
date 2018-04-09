@@ -65,11 +65,14 @@ class DBServiceInstanceController(DBaaServiceControllerChild):
         dataSearch[u'owner-id.N'] = self.split_arg(u'owner-id.N') 
         dataSearch[u'db-instance-id.N'] = self.split_arg(u'db-instance-id.N')
         uri = u'%s/databaseservices/instance/describedbinstances' % self.baseuri
-        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True))\
-            .get(u'DescribeDBInstancesResponse').get(u'DescribeDBInstancesResult').get(u'DBInstances', [])
-        headers = [u'DBInstanceIdentifier', u'DBInstanceStatus', u'Engine', u'EngineVersion', u'MultiAZ',
-                   u'AvailabilityZone', u'DBSubnetGroup.VpcId', u'Endpoint.Address', u'Endpoint.Port']
-        self.result(res, headers=headers, maxsize=40)
+        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True))
+        res = res.get(u'DescribeDBInstancesResponse').get(u'DescribeDBInstancesResult').get(u'DBInstances', [])
+        headers = [u'id', u'name', u'status', u'Engine', u'EngineVersion', u'MultiAZ',
+                   u'AvailabilityZone', u'DBInstanceClass', u'Subnet', u'Listen', u'Port']
+        fields = [u'DBInstanceIdentifier', u'name', u'DBInstanceStatus', u'Engine', u'EngineVersion', u'MultiAZ',
+                  u'AvailabilityZone', u'DBInstanceClass', u'DBSubnetGroup.DBSubnetGroupName', u'Endpoint.Address',
+                  u'Endpoint.Port']
+        self.result(res, headers=headers, fields=fields, maxsize=40)
 
     @expose(aliases=[u'describes <id>'], aliases_only=True)
     @check_error
@@ -123,9 +126,15 @@ class DBServiceInstanceController(DBaaServiceControllerChild):
     @expose(aliases=[u'delete <id>'], aliases_only=True)
     @check_error
     def delete(self):
-        """delete database instances
+        """Delete database instances
         """
-        pass
+        uuid = self.get_arg(name=u'id')
+        uri = u'%s/databaseservices/instance/deletedbinstance' % self.baseuri
+        res = self._call(uri, u'DELETE', data={u'DBInstanceIdentifier': uuid})
+        res = res.get(u'DeleteDBInstanceResponse').get(u'DeleteDBInstanceResult').get(u'DBInstance', None)
+        logger.info(u'Delete database instance: %s' % res)
+        res = {u'msg': u'Delete database instance %s' % uuid}
+        self.result(res, headers=[u'msg'])
 
 
 class DBServiceInstanceUserController(DBaaServiceControllerChild):

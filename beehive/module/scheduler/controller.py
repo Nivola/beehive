@@ -369,22 +369,24 @@ class TaskManager(ApiObject):
                     # add elapsed
                     stop_time = val.get(u'stop_time', 0)
                     start_time = val.get(u'start_time', 0)
-                    if stop_time is None or start_time is None:
-                        val[u'elapsed'] = None
-                        val[u'stop_time'] = None
-                        val[u'start_time'] = None
-                    else:
-                        val[u'elapsed'] = stop_time - start_time
-                        val[u'stop_time'] = self.__convert_timestamp(stop_time)
-                        val[u'start_time'] = self.__convert_timestamp(start_time)                    
+                    elapsed = 0
+                    stop_time_str = 0
+                    if stop_time is not None:
+                        elapsed = stop_time - start_time
+                        stop_time_str = self.__convert_timestamp(stop_time)
+
+                    # add elapsed
+                    val[u'elapsed'] = elapsed
+                    val[u'stop_time'] = stop_time_str
+                    val[u'start_time'] = self.__convert_timestamp(start_time)
                     
                     # task status
-                    #if tasktype == 'JOB':
+                    # if tasktype == 'JOB':
                     #    status = self.query_chain_status(tid)[2]            
 
                     if tasktype in [u'JOB', u'TASK']:
                         res.append(val)
-                        #res = AsyncResult(key, app=task_manager).get()
+                        # res = AsyncResult(key, app=task_manager).get()
             
                     # sort task by date
                     res = sorted(res, key=lambda task: task[u'start_time'])
@@ -435,9 +437,18 @@ class TaskManager(ApiObject):
         val[u'ttl'] = ttl
         
         # add elapsed
-        val[u'elapsed'] = val.get(u'stop_time', 0) - val.get(u'start_time', 0)
-        val[u'stop_time'] = self.__convert_timestamp(val.get(u'stop_time', 0))
-        val[u'start_time'] = self.__convert_timestamp(val.get(u'start_time', 0))
+        stop_time = val.get(u'stop_time', 0)
+        start_time = val.get(u'start_time', 0)
+        elapsed = 0
+        stop_time_str = 0
+        if stop_time is not None:
+            elapsed = stop_time - start_time
+            stop_time_str = self.__convert_timestamp(stop_time)
+
+        # add elapsed
+        val[u'elapsed'] = elapsed
+        val[u'stop_time'] = stop_time_str
+        val[u'start_time'] = self.__convert_timestamp(start_time)
         
         return val
 
@@ -540,10 +551,19 @@ class TaskManager(ApiObject):
             
             # JOB
             if tasktype == u'JOB':
+                stop_time = val.get(u'stop_time', 0)
+                start_time = val.get(u'start_time', 0)
+                elapsed = 0
+                stop_time_str = 0
+                if stop_time is not None:
+                    elapsed = stop_time - start_time
+                    stop_time_str = self.__convert_timestamp(stop_time)
+
                 # add elapsed
-                val[u'elapsed'] = val.get(u'stop_time', 0) - val.get(u'start_time', 0)
-                val[u'stop_time'] = self.__convert_timestamp(val.get(u'stop_time', 0))
-                val[u'start_time'] = self.__convert_timestamp(val.get(u'start_time', 0))
+                val[u'elapsed'] = elapsed
+                val[u'stop_time'] = stop_time_str
+                val[u'start_time'] = self.__convert_timestamp(start_time)
+
                 try:
                     # get job childs
                     childrens = val.pop(u'children')

@@ -485,6 +485,17 @@ class AccountController(AuthorityControllerChild):
         logger.info(u'Get account perms: %s' % truncate(res))
         self.result(res, key=u'perms', headers=self.perm_headers)
   
+    @expose(aliases=[u'yaskss <id>'], aliases_only=True)
+    @check_error
+    def tasks(self):
+        """Get account permissions by id, uuid or name
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'%s/accounts/%s/tasks' % (self.baseuri, value)
+        res = self._call(uri, u'GET')
+        logger.info(u'Get account tasks: %s' % truncate(res))
+        self.result(res, key=u'tasks', headers=[u'instance_id', u'task_id', u'execution_id', u'task_name', u'due_date', u'created'])
+  
     @expose(aliases=[u'add <name> <division_id> [field=value]'], aliases_only=True)
     @check_error
     def add(self):
@@ -696,8 +707,6 @@ class AccountController(AuthorityControllerChild):
         defs_objid = []
         for definition in defs:
             defs_objid.append(definition[u'__meta__'][u'objid'])
-
-        print defs_objid
 
         # add role
         try:

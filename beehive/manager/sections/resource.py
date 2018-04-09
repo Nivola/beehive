@@ -147,8 +147,6 @@ class ContainerController(ResourceControllerChild, WorkerController):
         while state not in [u'SUCCESS', u'FAILURE', u'TIMEOUT']:
             sys.stdout.write(u'.')
             sys.stdout.flush()
-            # logger.info(u'.')
-            # print(u'.')
             sleep(delta)
             state = self.get_job_state(jobid)
             elapsed += delta
@@ -511,13 +509,14 @@ class ResourceEntityController(ResourceControllerChild):
             return state
         except (NotFoundException, Exception):
             return u'EXPUNGED'
-        
+
     def get_job_state(self, jobid):
         try:
-            res = self._call(u'%s/worker/tasks/%s' % (self.baseuri, jobid), u'GET')
+            res = self._call(u'%s/worker/tasks/%s' % (self.baseuri, jobid), u'GET', silent=True)
             state = res.get(u'task_instance').get(u'status')
             logger.debug(u'Get job %s state: %s' % (jobid, state))
             if state == u'FAILURE':
+                # print(res)
                 self.app.print_error(res[u'task_instance'][u'traceback'][-1])
             return state
         except (NotFoundException, Exception):
@@ -534,16 +533,29 @@ class ResourceEntityController(ResourceControllerChild):
             sleep(delta)
             state = self.get_resource_state(uuid)
     
-    def wait_job(self, jobid, delta=1):
-        """Wait resource
+    def wait_job(self, jobid, delta=2, maxtime=180):
+        """Wait job
         """
-        logger.debug(u'Wait for job: %s' % jobid)
+        logger.debug(u'wait for job: %s' % jobid)
         state = self.get_job_state(jobid)
-        while state not in [u'SUCCESS', u'FAILURE']:
-            logger.info(u'.')
-            print(u'.')
+        sys.stdout.write(u'JOB:%s' % jobid)
+        sys.stdout.flush()
+        elapsed = 0
+        while state not in [u'SUCCESS', u'FAILURE', u'TIMEOUT']:
+            sys.stdout.write(u'.')
+            sys.stdout.flush()
             sleep(delta)
             state = self.get_job_state(jobid)
+            elapsed += delta
+            if elapsed > maxtime:
+                state = u'TIMEOUT'
+
+        if state == u'TIMEOUT':
+            self.app.print_error(u'- TIMEOUT -')
+        elif state == u'FAILURE':
+            self.app.print_error(u'- ERROR -')
+
+        print(u'END')
 
     def __get_key(self):
         return self._meta.aliases[0].rstrip(u's')

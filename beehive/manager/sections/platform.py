@@ -2132,7 +2132,7 @@ class BeehiveConsoleController(AnsibleController):
         }
         self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
 
-    @expose(aliases=[u'deld-user <username>'], aliases_only=True)
+    @expose(aliases=[u'del-user <username>'], aliases_only=True)
     @check_error
     def del_user(self):
         """Delete user from beehive console
