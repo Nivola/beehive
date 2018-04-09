@@ -7,7 +7,7 @@ from beecell.db import ModelError, QueryError
 from beecell.perf import watch
 from datetime import datetime
 from sqlalchemy import Column, Integer, Float, String, Boolean, Index, DateTime
-from sqlalchemy.sql import text
+from sqlalchemy.sql import text, table
 import hashlib
 from uuid import uuid4
 from re import match
@@ -16,6 +16,42 @@ from sqlalchemy.dialects import mysql
 Base = declarative_base()
 
 logger = logging.getLogger(__name__)
+
+
+from sqlalchemy import *
+from sqlalchemy.schema import DDLElement 
+from sqlalchemy.ext import compiler
+
+
+class CreateView(DDLElement):
+    def __init__(self, name, selectable):
+        self.name = name
+        self.selectable = selectable
+
+class DropView(DDLElement):
+    def __init__(self, name):
+        self.name = name
+
+@compiler.compiles(CreateView)
+def compile_create_view(element, compiler, **kw):
+    return "CREATE OR REPLACE VIEW %s AS %s" % (
+        element.name, 
+        compiler.sql_compiler.process(element.selectable))
+
+@compiler.compiles(DropView)
+def compile_drop_view(element, compiler, **kw):
+    return "DROP VIEW %s" % (element.name)
+
+def view(name, metadata, selectable):
+    t = table(name)
+
+    for c in selectable.c:
+        c._make_proxy(t)
+
+    CreateView(name, selectable).execute_at('after-create', metadata)
+    DropView(name).execute_at('before-drop', metadata)
+    return t
+
 
 
 class AuditData(object):
