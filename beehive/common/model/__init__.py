@@ -63,12 +63,12 @@ class BaseEntity(AuditData):
          
         filters=[]
         # id is unique
-        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field( u'id', kvargs))
-        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field( u'uuid', kvargs))
-        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field( u'objid', kvargs))
-        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field( u'name', kvargs))
-        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field( u'desc', kvargs))
-        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field( u'active', kvargs))
+        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field(u'id', kvargs))
+        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field(u'uuid', kvargs))
+        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field(u'objid', kvargs))
+        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field(u'name', kvargs))
+        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field(u'desc', kvargs))
+        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field(u'active', kvargs))
 
         #expired
         if u'filter_expired' in kvargs and kvargs.get(u'filter_expired') is not None: 
@@ -106,7 +106,6 @@ class BaseEntity(AuditData):
         
         return filters  
 
-        
     def is_active(self):
         return (self.active or 
                 (self.expiry_date is None 
@@ -236,8 +235,7 @@ class PaginatedQueryGenerator(object):
         """
         if field in kvargs and kvargs.get(field) is not None:
             if custom_filter is None:    
-                self.other_filters.append(
-                    u'AND t3.{field}=:{field}'.format(field=field))
+                self.other_filters.append(u'AND t3.{field}=:{field}'.format(field=field))
             else:
                 self.other_filters.append(custom_filter)
     
@@ -566,7 +564,8 @@ class AbstractDbManager(object):
         :param kvargs: custom params        
         :param entity: entity
         :param tags: list of permission tags
-        :param name: name like [optional]
+        :param name: name [optional]
+        :param names: name like [optional]
         :param active: active [optional]
         :param creation_date: creation_date [optional]
         :param modification_date: modification_date [optional]
@@ -591,7 +590,7 @@ class AbstractDbManager(object):
         query.add_filter_by_field(u'active', kvargs)
         query.add_filter_by_field(u'creation_date', kvargs)
         query.add_filter_by_field(u'modification_date', kvargs)
-        
+
         for item in filters:
             query.add_filter(item)
         query.set_pagination(page=page, size=size, order=order, field=field)
