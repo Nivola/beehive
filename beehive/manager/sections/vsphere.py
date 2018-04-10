@@ -569,7 +569,79 @@ class VspherePlatformNetworkLgController(VspherePlatformNetworkChildController):
         network = self.entity_class.get(oid)
         res = self.entity_class.detail(network)
         logger.info(res)
-        self.result(res, details=True)     
+        self.result(res, details=True)
+
+
+class VspherePlatformNetworkIppoolController(VspherePlatformNetworkChildController):
+    class Meta:
+        label = 'vsphere.platform.networks.ippool'
+        aliases = ['ippools']
+        aliases_only = True
+        description = "Vsphere Network Nsx Ippool management"
+
+    def _ext_parse_args(self):
+        VspherePlatformControllerChild._ext_parse_args(self)
+
+        self.entity_class = self.client.network.nsx.ippool
+
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
+    def list(self):
+        objs = self.entity_class.list()
+        res = []
+        for obj in objs:
+            res.append(self.entity_class.info(obj))
+        logger.info(res)
+        headers = [u'objectId', u'name', u'dnsSuffix', u'gateway', u'startAddress',
+                   u'endAddress', u'totalAddressCount', u'usedAddressCount']
+        fields = [u'objectId', u'name', u'dnsSuffix', u'gateway', u'ipRanges.ipRangeDto.startAddress',
+                  u'ipRanges.ipRangeDto.endAddress', u'totalAddressCount', u'usedAddressCount']
+        self.result(res, headers=headers, fields=fields)
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
+    def get(self):
+        oid = self.get_arg(name=u'id')
+        network = self.entity_class.get(oid)
+        res = self.entity_class.detail(network)
+        logger.info(res)
+        self.result(res, details=True)
+
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
+    def delete(self):
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.delete(oid)
+        res = {u'msg': u'Delete ipset %s' % (oid)}
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'ip-allocated <id>'], aliases_only=True)
+    @check_error
+    def ip_allocated(self):
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.allocations(oid)
+        logger.info(res)
+        headers = [u'id', u'ipAddress', u'gateway', u'dnsSuffix', u'prefixLength', u'subnetId', u'dnsServer1',
+                   u'dnsServer2']
+        self.result(res, headers=headers)
+
+    @expose(aliases=[u'ip-allocate <id> [ip=..]'], aliases_only=True)
+    @check_error
+    def ip_allocate(self):
+        oid = self.get_arg(name=u'id')
+        ip = self.get_arg(name=u'ip', default=None, keyvalue=True)
+        res = self.entity_class.allocate(oid, static_ip=ip)
+        logger.info(res)
+        self.result(res, details=True)
+
+    @expose(aliases=[u'ip-release <id> <ip>'], aliases_only=True)
+    @check_error
+    def ip_release(self):
+        oid = self.get_arg(name=u'id')
+        ip = self.get_arg(name=u'ip')
+        res = self.entity_class.release(oid, ip)
+        logger.info(res)
+        self.result(res, details=True)
 
 
 class VspherePlatformNetworkIpsetController(VspherePlatformNetworkChildController):
@@ -609,7 +681,7 @@ class VspherePlatformNetworkIpsetController(VspherePlatformNetworkChildControlle
         oid = self.get_arg(name=u'id')
         res = self.entity_class.delete(oid)
         res = {u'msg':u'Delete ipset %s' % (oid)}
-        self.result(res, headers=[u'msg'])                
+        self.result(res, headers=[u'msg'])
 
 
 class VspherePlatformNetworkEdgeController(VspherePlatformNetworkChildController):
@@ -852,6 +924,7 @@ vsphere_platform_controller_handlers = [
     VspherePlatformNetworkSecurityGroupController,
     VspherePlatformNetworkDfwController,
     VspherePlatformNetworkLgController,
+    VspherePlatformNetworkIppoolController,
     VspherePlatformNetworkIpsetController,
     VspherePlatformNetworkEdgeController,
     VspherePlatformNetworkDlrController,
