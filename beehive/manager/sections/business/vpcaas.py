@@ -10,9 +10,10 @@ import json
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController, check_error
 from re import match
-from beecell.simple import truncate, id_gen
+from beecell.simple import truncate, id_gen, getkey
 from urllib import urlencode
 from beehive.manager.sections.business import SpecializedServiceControllerChild
+from beecell.paramiko_shell.shell import ParamikoShell
 
 logger = logging.getLogger(__name__)
 
@@ -211,6 +212,24 @@ class VMServiceController(VPCaaServiceControllerChild):
         headers = [u'id', u'uuid', u'instance_type', u'version', u'status', u'active', u'creation']
         fields = [u'id', u'uuid', u'name', u'version', u'status', u'active', u'date.creation']
         self.result(res, key=u'servicedefs', headers=headers, fields=fields)
+
+    @expose(aliases=[u'ssh <id> <user> [sshkey=..]'], aliases_only=True)
+    @check_error
+    def ssh(self):
+        """Opens ssh connection over provider instance
+        """
+        oid = self.get_arg(name=u'id')
+        user = self.get_arg(name=u'user')
+        sshkey = self.get_arg(name=u'sshkey', default=None, keyvalue=True)
+        dataSearch = {u'instance-id.N': [oid]}
+        uri = u'%s/computeservices/instance/describeinstances' % self.baseuri
+        server = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True)) \
+            .get(u'DescribeInstancesResponse') \
+            .get(u'reservationSet')[0].get(u'instancesSet')[0]
+        fixed_ip = getkey(server, u'privateIpAddress')
+
+        client = ParamikoShell(fixed_ip, user, keyfile=sshkey)
+        client.run()
 
 
 class VpcServiceController(VPCaaServiceControllerChild):
