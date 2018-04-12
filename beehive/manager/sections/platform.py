@@ -1555,37 +1555,82 @@ class ElkController(AnsibleController):
         description = "Elks management"
         
       
-    @expose(aliases=[u'search <argomenti>'], aliases_only=True)
+    @expose(aliases=[u'search <start_date> <stop_date> [field=..]'], aliases_only=True)
     @check_error
     def search(self):            
-        """
+        """search
+    - field: from, count, host, source
+
 i parametri in input devono essere:
- -f from (facoltatico - default:0)
- -c count (facoltativo - default:50)
- -d range di date  (obbligatorio) sintassi: -d 2018-04-08T00:00:40.712Z 2018-04-08T00:00:42.000Z
- -h elenco di host (facoltativo - default: tutti - sintassi: -h nomehost,nomehost2,nomehost3 --> senza spazi e separati da virgola)
- -s sorgente (facoltativo - default: tutti - sintassi: -s /var/log/keystone/keystone.log) 
+ from=xx (facoltativo - default:0)
+ count=xx (facoltativo - default:50)
+ start_date="2018-04-08T00:00:40.000Z"    (obbligatorio)
+ stop_date="2018-04-08T00:10:40.000Z"     (obbligatorio)
+ host=nomehost,nomehost2,nomehost3 --> senza spazi e separati da virgola (facoltativo, default:tutti)
+ source=/var/log/keystone/keystone.log   (facoltativo - default:tutti)
         """
-        import sys
-        arg = sys.argv
-        print arg
+        start_date = self.get_arg(name=u'start_date', keyvalue=True, default="")
+        stop_date = self.get_arg(name=u'stop_date', keyvalue=True, default="")
+        fromv = self.get_arg(name=u'from', keyvalue=True, default="0")
+        count = self.get_arg(name=u'count', keyvalue=True, default="50")
+        source = self.get_arg(name=u'source', keyvalue=True, default="")
+        host = self.get_arg(name=u'host', keyvalue=True, default="")
+
+        print start_date, stop_date, fromv, count, source, host
+        if start_date=="":
+            print "start_date not defined"
+            return()
+        if stop_date=="":
+            print "stop_date not defined"
+            return()
+        d1 = start_date
+        d2 = stop_date
+        fr = int(fromv)
+        co = int(count)
+        elenco_host = host.split(",")
         
+        parametri = []
+        parametri.append({ "match_all": {} })
+        if elenco_host != "":
+            parametri.append({"terms": { "tags": elenco_host}})
+        if source != "":
+            parametri.append({"term": {"source": source}})
+        parametri.append({ "range": {"@timestamp": {
+                                  "gte": d1,
+                                  "lt": d2}}})
+
+        print parametri
+        
+        data_elencohost = {
+            "from": fr,
+            "size": co,
+            "query": {
+                "constant_score" : {
+                    "filter": {
+                        "bool" : {
+                            "must": parametri
+                                }
+                               }
+                                    }
+                      }
+                           }
+
+        data_elencohost = json.dumps(data_elencohost)
+        res = requests.get('http://10.138.144.85:9200/filebeat-*/_search', data=data_elencohost)
+
+        rj = json.loads(res.text)
+        hi = rj.get("hits").get("hits")
+
+        for x in hi:
+            print "------------------------"
+            me = x.get("_source").get("message")
+            ti = x.get("_source").get("@timestamp")
+            ta = x.get("_source").get("tags")[0]
+            so = x.get("_source").get("source")
+            print ti, ta, me, so
+
         return("elk")
         
-
-    @expose(aliases=[u'prova <start_date> <stop_date> [field=..]'], aliases_only=True)
-    @check_error
-    def prova(self):
-        """prova
-    - field: from, count
-        """
-        start_date = self.get_arg(name=u'start date')
-        stop_date = self.get_arg(name=u'stop date')
-        fromv = self.get_arg(name=u'from', keyvalue=True, default=0)
-        count = self.get_arg(name=u'count', keyvalue=True, default=50)
-
-        print start_date, stop_date, fromv, count
-
 
 class NodeController(AnsibleController):
     class Meta:
