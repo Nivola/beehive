@@ -629,6 +629,46 @@ class VspherePlatformNetworkIppoolController(VspherePlatformNetworkChildControll
         logger.info(res)
         self.result(res, details=True)
 
+    @expose(aliases=[u'add <name> <startip> <stopip> <gw> <dns1> <dns2> [prefix=24] [dnssuffix=domain.local]'],
+            aliases_only=True)
+    @check_error
+    def add(self):
+        """Add new ippool
+        """
+        name = self.get_arg(name=u'name')
+        startip = self.get_arg(name=u'startip')
+        stopip = self.get_arg(name=u'stopip')
+        gw = self.get_arg(name=u'gw')
+        dns1 = self.get_arg(name=u'dns1')
+        dns2 = self.get_arg(name=u'dns2')
+        prefix = self.get_arg(name=u'prefix', keyvalue=True, default=24)
+        dnssuffix = self.get_arg(name=u'dnssuffix', keyvalue=True, default=u'domain.local')
+        res = self.entity_class.create(name, prefix=prefix, gateway=gw, dnssuffix=dnssuffix, dns1=dns1, dns2=dns2,
+                                       startip=startip, stopip=stopip)
+        res = {u'msg': u'Add ipset %s' % name}
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'update <ippool> [field=..]'],
+            aliases_only=True)
+    @check_error
+    def update(self):
+        """Update ippool
+    - field: name, startip, stopip gw dns1, dns2, prefix, dnssuffix
+        """
+        oid = self.get_arg(name=u'ippool id')
+        name = self.get_arg(name=u'name', keyvalue=True, default=None)
+        startip = self.get_arg(name=u'startip', keyvalue=True, default=None)
+        stopip = self.get_arg(name=u'stopip', keyvalue=True, default=None)
+        gw = self.get_arg(name=u'gw', keyvalue=True, default=None)
+        dns1 = self.get_arg(name=u'dns1', keyvalue=True, default=None)
+        dns2 = self.get_arg(name=u'dns2', keyvalue=True, default=None)
+        prefix = self.get_arg(name=u'prefix', keyvalue=True, default=None)
+        dnssuffix = self.get_arg(name=u'dnssuffix', keyvalue=True, default=None)
+        res = self.entity_class.update(oid, name=name, prefix=prefix, gateway=gw, dnssuffix=dnssuffix, dns1=dns1,
+                                       dns2=dns2, startip=startip, stopip=stopip)
+        res = {u'msg': u'Update ipset %s' % name}
+        self.result(res, headers=[u'msg'])
+
     @expose(aliases=[u'delete <id>'], aliases_only=True)
     @check_error
     def delete(self):
