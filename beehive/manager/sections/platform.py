@@ -1573,6 +1573,19 @@ i parametri in input devono essere:
         return("elk")
         
 
+    @expose(aliases=[u'prova <start_date> <stop_date> [field=..]'], aliases_only=True)
+    @check_error
+    def prova(self):
+        """prova
+    - field: from, count
+        """
+        start_date = self.get_arg(name=u'start date')
+        stop_date = self.get_arg(name=u'stop date')
+        fromv = self.get_arg(name=u'from', keyvalue=True, default=0)
+        count = self.get_arg(name=u'count', keyvalue=True, default=50)
+
+        print start_date, stop_date, fromv, count
+
 
 class NodeController(AnsibleController):
     class Meta:
