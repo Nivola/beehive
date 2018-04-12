@@ -2321,6 +2321,30 @@ class BeehiveController(AnsibleController):
             sleep(delta)
             state = self.get_job_state(jobid)
 
+    def file_render(self, resurce ):
+        from jinja2 import Template
+        content = self.file_content(resurce)
+        template = Template(content)
+        context_data = self.get_hosts_vars () 
+
+        out_rep =  template.render(**context_data)
+    
+        pass
+    def file_content(self, valorname ):
+        """ if valorname starts witth @ return the file content relative to ansible_path
+            otherwise return valorname itself
+        """
+        if valorname[0] == '@':
+            filename = os.path.join( self.ansible_path, valorname[1:])
+            if os.path.isfile(filename):
+                f = open(filename, 'r')
+                value = f.read()
+                f.close()
+                return value
+            else:
+                raise Exception(u'%s is not a file' % filename)
+        else:
+            return valorname
     @expose(aliases=[u'post-install <config>'], aliases_only=True)
     @check_error
     def post_install(self):
@@ -2359,6 +2383,14 @@ class BeehiveController(AnsibleController):
         # camunda
         # - metatabelle decisioni
         # - processi
+        if apply.get(u'camunda', False) is True:
+            for obj in configs.get(u'camunda').get(u'deploy'):
+                try:
+                    pass
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
+
 
         self.subsystem = u'resource'
 
@@ -2476,6 +2508,60 @@ class BeehiveController(AnsibleController):
                     res = self._call(u'/v1.0/nws/servicecfgs', u'POST', data={u'servicecfg': data})
                     logger.info(u'Add service def config: %s' % res)
                     self.output(u'Add service def config: %s' % configs)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
+
+        # create service process
+        if apply.get(u'service-processes', False) is True:
+            for obj in configs.get(u'service').get(u'processes'):
+                try:
+                    typeoid = obj.get("service_type_id", None)
+                    method = obj.get("method", None)
+                    if method is None:
+                        break
+                    if typeoid is  None:
+                        break
+                    # get service type id
+                    res = self._call(u'/v1.0/nws/servicetypes/%s' % (typeoid), u'GET').get(u'servicetype', {})
+                    typeid = res.get("id",typeid) 
+                    if typeid is None:
+                        logger.error(u'Could not found a type whose oid is %s' % (typeoid))
+                        break
+                    # get serviceprocess for service type and  method
+                    res = self._call(u'/v1.0/nws/serviceprocesses', u'GET', 
+                                data=u'service_type_id=%s&method_key=%s' % (typeid, method)
+                                ).get(u'serviceprocesses', [])
+
+                    if len(res) >= 1:
+                        prev=res[0] 
+                        name = obj.get( u'name', prev['method_key'])
+                        desc = obj.get( u'desc', prev['desc'])
+                        process = obj.get( u'process', prev['process_key'])
+                        template = obj.get(u'template', '{}')
+                    else:
+                        prev=None
+                        name = obj.get(u'name', '%s-%s' % (method,typeoid))
+                        desc = obj.get(u'desc', name)
+                        process = obj.get(u'process','invalid_key')
+                        template = obj.get(u'template','{}')
+                    template=self.file_content(template)
+
+                    data = {
+                        u'serviceprocess':{
+                            u'name':name,
+                            u'desc':desc,
+                            u'service_type_id':str(typeid),
+                            u'method_key':method,
+                            u'process_key':process,
+                            u'template':template
+                        }
+                    }
+
+                    if prev == None:
+                        res = self._call( u'/v1.0/nws/serviceprocesses' , u'POST', data=data)
+                    else:
+                        res = self._call ( u'/v.10/nws/serviceprocesses/%s' % (prev['uuid']), u'PUT', data=data)
                 except Exception as ex:
                     self.error(ex)
                     self.app.error = False
