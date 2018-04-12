@@ -2267,8 +2267,8 @@ class BeehiveController(AnsibleController):
             self.result(resp, headers=[u'host', u'pid', u'uid', u'gid', u'id', u'first_run', u'last_run', u'last_ready',
                                        u'last_mod', u'last_accepting'])
         except Exception as ex:
-            self.error(ex)            
-                            
+            self.error(ex)
+ 
     def get_emperor_blacklist(self, details=u'', system=None):
         """Get uwsgi emperor active vassals statistics
         
@@ -2322,16 +2322,21 @@ class BeehiveController(AnsibleController):
             sleep(delta)
             state = self.get_job_state(jobid)
 
-    def file_render(self, resurce ):
+    def file_render(self, runner, resource ):
         """ render a j2 template aginst 
         """
-        from jinja2 import Template
-        content = self.file_content(resurce)
-        template = Template(content)
-        runner 
-        context_data = self.get_hosts_vars () 
+        # from jinja2 import Template
+        from ansible.template import AnsibleJ2Template
 
-        out_rep =  template.render(**context_data)
+        content = self.file_content(resource)
+        template = AnsibleJ2Template(content)
+        
+        hosts = self.get_hosts(runner, u'beehive')
+        context_data = self.get_hosts_vars(runner, hosts)
+        template.new_context(vars=context_data)
+
+        out_rep =  template.render( **context_data)
+        return out_rep
     
         pass
     def file_content(self, valorname ):
@@ -2339,7 +2344,7 @@ class BeehiveController(AnsibleController):
             otherwise return valorname itself
         """
         if valorname[0] == '@':
-            filename = os.path.join( self.ansible_path, valorname[1:])
+            filename = os.path.join(self.ansible_path, valorname[1:])
             if os.path.isfile(filename):
                 f = open(filename, 'r')
                 value = f.read()
@@ -2349,6 +2354,17 @@ class BeehiveController(AnsibleController):
                 raise Exception(u'%s is not a file' % filename)
         else:
             return valorname
+
+    @expose(aliases=[u'test  <config>'], aliases_only=True)
+    @check_error
+    def test(self):
+        param=self.get_arg(name=u'config')
+        runners = self.get_runners()
+        for runner in runners:
+            content = self.file_render(runner,param)
+            print(content)
+        pass
+            
     @expose(aliases=[u'post-install <config>'], aliases_only=True)
     @check_error
     def post_install(self):
