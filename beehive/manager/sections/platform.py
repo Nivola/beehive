@@ -218,12 +218,10 @@ class AnsibleController(ApiController):
         logger.debug(u'Get hosts from ansible groups %s: %s' % (groups, all_hosts))
         return all_hosts
 
-    def get_hosts_vars(self, runner, groups):
+    def get_hosts_vars(self, runner, hosts):
         all_vars = {}
-        if not isinstance(groups, list):
-            groups = [groups]
-        for group in groups:
-            hosts_vars = runner.variable_manager.get_vars(runner.loader)
+        for host in hosts:
+            hosts_vars = runner.variable_manager.get_vars(runner.loader, host=host)
             all_vars.update(hosts_vars)
         logger.debug(u'Get hosts vars from ansible inventory: %s' % all_vars)
         return all_vars
@@ -924,9 +922,12 @@ class CamundaController(AnsibleController):
 
     @expose(help="Camunda management", hide=True)
     @check_error
-    def default(self):
-        self.app.args.print_help()
-    
+    def pippo(self):
+        runners = self.get_runners()
+        print runners
+        hosts = self.get_hosts(runners[0], u'camunda')
+        print self.get_hosts_vars(runners[0], hosts)
+
     @expose(aliases=[u'ping [port]'], aliases_only=True)
     @check_error
     def ping(self):

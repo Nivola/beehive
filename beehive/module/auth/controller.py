@@ -96,8 +96,7 @@ class AuthController(BaseAuthController):
             
             # search roles by role TODO
             if perm is not None:
-                roles, total = self.manager.get_permission_roles(
-                    perm=perm, *args, **kvargs)
+                roles, total = self.manager.get_permission_roles(perm=perm, *args, **kvargs)
 
             # search roles by user
             elif user is not None:

@@ -4,6 +4,8 @@ Created on Nov 20, 2017
 @author: darkbk
 """
 import logging
+import urllib
+
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController
 from re import match
@@ -29,6 +31,22 @@ class ConnectionHelper(object):
     def format_name(name, account_id):
         """"""
         return u'%s-%s' % (name, account_id)
+
+    @staticmethod
+    def get_org(ctrl, value):
+        return ctrl._call(u'/v1.0/nws/organizations/%s' % value, u'GET').get(u'organization')
+
+    @staticmethod
+    def get_div(ctrl, value):
+        return ctrl._call(u'/v1.0/nws/divisions/%s' % value, u'GET').get(u'division')
+
+    @staticmethod
+    def get_account(ctrl, value):
+        return ctrl._call(u'/v1.0/nws/accounts/%s' % value, u'GET').get(u'account')
+
+    @staticmethod
+    def get_catalog(ctrl, value):
+        return ctrl._call(u'/v1.0/nws/srvcatalogs/%s' % value, u'GET').get(u'catalog')
 
     @staticmethod
     def service_instance_exist(ctrl, type, name):
@@ -66,6 +84,39 @@ class ConnectionHelper(object):
             raise Exception(u'Template %s does not exist' % name)
 
         return res.get(u'servicedefs')[0][u'uuid']
+
+    @staticmethod
+    def get_service_instances(ctrl, filter=u''):
+        """Get account service instances tree.
+        """
+        data = u''
+        uri = u'/v1.0/nws/serviceinsts'
+        res = ctrl._call(uri, u'GET', data=filter).get(u'serviceinsts', [])
+        logger.info(res)
+
+        if ctrl.format == u'tree':
+
+            def get_tree_alias(data):
+                return u'[%s] %s' % (data[u'uuid'], data[u'name'])
+
+            index = {i[u'uuid']: {get_tree_alias(i): {}} for i in res}
+
+            tree = {}
+            for item in res:
+                parent = item[u'parent']
+                idx_item = index[item[u'uuid']]
+                # idx_childs = index[item[u'uuid']].values()[0]
+                if parent.has_key(u'uuid'):
+                    index[parent[u'uuid']].values()[0].update(idx_item)
+                if parent == {}:
+                    tree.update(idx_item)
+            ctrl.result({u'services': tree})
+        else:
+            fields = [u'id', u'uuid', u'name', u'version', u'service_definition_id', u'status', u'active',
+                      u'resource_uuid', u'is_container', u'parent.name', u'date.creation']
+            headers = [u'id', u'uuid', u'name', u'version', u'definition', u'status', u'active', u'resource',
+                       u'is_container', u'parent', u'creation']
+            ctrl.result(res, headers=headers, fields=fields)
 
     @staticmethod
     def create_image(ctrl, account=None, name=None, template=None, **kvargs):
@@ -128,6 +179,103 @@ class ConnectionHelper(object):
         res = res.get(u'CreateSecurityGroupResponse').get(u'instancesSet')[0].get(u'groupId')
         ctrl.output(u'Create security group %s' % res)
         return res
+
+    @staticmethod
+    def get_roles(ctrl, name):
+        ctrl.subsystem = u'auth'
+
+        roles = ctrl._call(u'/v1.0/nas/roles', u'GET', data=urllib.urlencode({u'names': name})).get(u'roles', [])
+        logger.debug(u'Get roles: %s' % truncate(roles))
+        headers = [u'id', u'uuid', u'name', u'active', u'date.creation', u'date.modified', u'date.expiry']
+        ctrl.result(roles, headers=headers)
+
+        for role in roles:
+            role_name = role.get(u'name')
+            users = ctrl._call(u'/v1.0/nas/users', u'GET', data=urllib.urlencode({u'role': role_name}))\
+                .get(u'users', [])
+            logger.debug(u'Get role %s users: %s' % (role_name, truncate(users)))
+            ctrl.output(u'Role %s users' % role_name)
+            ctrl.result(users, headers=headers)
+
+        ctrl.subsystem = u'service'
+
+        return roles
+
+    @staticmethod
+    def set_role(ctrl, role, user, op=u'append'):
+        """Append/remove role to/from a user
+
+        :param ctrl: cement controller reference
+        :param role: role id, uuid or name
+        :param user: user id, uuid or name
+        :param op: append or remove
+        :return:
+        """
+        ctrl.subsystem = u'auth'
+
+        if op == u'append':
+            role = (role, u'2099-12-31')
+        data = {
+            u'user': {
+                u'roles': {
+                    op: [role]
+                },
+            }
+        }
+        uri = u'/v1.0/nas/users/%s' % user
+        res = ctrl._call(uri, u'PUT', data=data)
+        logger.info(u'%s user %s role %s' % (op, user, role))
+        ctrl.result({u'msg': u'%s user %s role %s' % (op, user, role)})
+
+        ctrl.subsystem = u'service'
+
+    @staticmethod
+    def add_role(ctrl, name, desc, perms):
+        ctrl.subsystem = u'auth'
+
+        # add role
+        try:
+            data = {
+                u'role': {
+                    u'name': name,
+                    u'desc': desc
+                }
+            }
+            uri = u'/v1.0/nas/roles'
+            role = ctrl._call(uri, u'POST', data=data)
+            logger.info(u'Add role: %s' % role)
+            ctrl.output(u'Add role: %s' % role)
+        except Exception as ex:
+            uri = u'/v1.0/nas/roles/%s' % name
+            role = ctrl._call(uri, u'GET', data=u'').get(u'role')
+            logger.info(u'Role %s already exists' % role.get(u'name'))
+            ctrl.output(u'Role %s already exists' % role.get(u'name'))
+
+        # add role permissions
+        # for perm in perms:
+        data = {
+            u'role': {
+                u'perms': {
+                    u'append': perms,
+                    u'remove': []
+                }
+            }
+        }
+        uri = u'/v1.0/nas/roles/%s' % role[u'uuid']
+        res = ctrl._call(uri, u'PUT', data=data)
+        logger.info(u'Add role perms %s' % perms)
+        ctrl.output(u'Add role perms')
+
+        ctrl.subsystem = u'service'
+
+        return role[u'uuid']
+
+    @staticmethod
+    def set_perms_objid(perms, objid):
+        for perm in perms:
+            if perm.get(u'objid').find(u'<objid>') >= 0:
+                perm[u'objid'] = perm[u'objid'].replace(u'<objid>', objid)
+        return perms
 
 
 class SpecializedServiceControllerChild(ApiController):
