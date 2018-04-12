@@ -1553,6 +1553,25 @@ class ElkController(AnsibleController):
     class Meta:
         label = 'elk'
         description = "Elks management"
+        
+      
+    @expose(aliases=[u'search <argomenti>'], aliases_only=True)
+    @check_error
+    def search(self):            
+        """
+i parametri in input devono essere:
+ -f from (facoltatico - default:0)
+ -c count (facoltativo - default:50)
+ -d range di date  (obbligatorio) sintassi: -d 2018-04-08T00:00:40.712Z 2018-04-08T00:00:42.000Z
+ -h elenco di host (facoltativo - default: tutti - sintassi: -h nomehost,nomehost2,nomehost3 --> senza spazi e separati da virgola)
+ -s sorgente (facoltativo - default: tutti - sintassi: -s /var/log/keystone/keystone.log) 
+        """
+        import sys
+        arg = sys.argv
+        print arg
+        
+        return("elk")
+        
 
 
 class NodeController(AnsibleController):
@@ -1660,9 +1679,7 @@ class NodeController(AnsibleController):
     @expose(aliases=[u'powervolt <pod>'], aliases_only=True)
     @check_error
     def powervolt(self):
-        """Legge lo stato della tensione in ingresso per ogni singolo alimentatore
-    Da usarsi dopo power per avere indicazioni sui volt in ingresso
-        """
+
         pod = self.get_arg(name=u'pod')
 
         # il presente script interroga via snmp i server dei diversi pod e raccoglie la tensione su ogni alimentatore 
