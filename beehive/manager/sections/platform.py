@@ -226,7 +226,7 @@ class AnsibleController(ApiController):
             hosts_vars = runner.variable_manager.get_vars(runner.loader)
             all_vars.update(hosts_vars)
         logger.debug(u'Get hosts vars from ansible inventory: %s' % all_vars)
-        return hosts_vars
+        return all_vars
 
     def get_multi_hosts(self, groups):
         runners = self.get_runners()
@@ -2322,9 +2322,12 @@ class BeehiveController(AnsibleController):
             state = self.get_job_state(jobid)
 
     def file_render(self, resurce ):
+        """ render a j2 template aginst 
+        """
         from jinja2 import Template
         content = self.file_content(resurce)
         template = Template(content)
+        runner 
         context_data = self.get_hosts_vars () 
 
         out_rep =  template.render(**context_data)
@@ -2390,7 +2393,6 @@ class BeehiveController(AnsibleController):
                 except Exception as ex:
                     self.error(ex)
                     self.app.error = False
-
 
         self.subsystem = u'resource'
 
