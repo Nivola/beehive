@@ -1549,6 +1549,12 @@ class OpenstackController(AnsibleController):
         self.result(resp, headers=headers, maxsize=200)
 
 
+class ElkController(AnsibleController):
+    class Meta:
+        label = 'elk'
+        description = "Elks management"
+
+
 class NodeController(AnsibleController):
     class Meta:
         label = 'node'
@@ -2771,6 +2777,7 @@ platform_controller_handlers = [
     CamundaProcessController,
     VsphereController,
     OpenstackController,
+    ElkController,
     NodeController,
     BeehiveController,
     BeehiveConsoleController,
