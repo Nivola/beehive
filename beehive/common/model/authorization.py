@@ -835,10 +835,8 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         return res    
     
     @query
-    def get_permissions(self, objid=None, objid_filter=None, 
-                        objtype=None, objtypes=None, objdef=None,
-                        objdef_filter=None, action=None,
-                        page=0, size=10, order=u'DESC', field=u'id'):
+    def get_permissions(self, objid=None, objid_filter=None, objtype=None, objtypes=None, objdef=None,
+                        objdef_filter=None, action=None, page=0, size=10, order=u'DESC', field=u'id'):
         """Get system object permisssion.
         
         :param objid: Total or partial objid [optional]
@@ -905,10 +903,16 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         offset = size * page
         sql.append(u'ORDER BY %s %s' % (field, order))
         sql.append(u'LIMIT %s OFFSET %s' % (size, offset))        
-        
-        res = session.query(SysObjectPermission) \
-                     .from_statement(text(u' '.join(sql))) \
-                     .params(params).all()
+
+        query = session.query(SysObjectPermission).from_statement(text(u' '.join(sql))).params(params)
+        self.logger.warn(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
+        self.logger.warn(objid)
+        self.logger.warn(objid_filter)
+        self.logger.warn(objtype)
+        self.logger.warn(objdef)
+        self.logger.warn(action)
+
+        res = query.all()
         
         if len(res) <= 0:
             self.logger.error(u'No permissions found')
@@ -1137,7 +1141,8 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         """Get roles
         
         :param tags: list of permission tags
-        :param name: name like [optional]
+        :param name: name [optional]
+        :param names: name like [optional]
         :param active: active [optional]
         :param creation_date: creation_date [optional]
         :param modification_date: modification_date [optional]
@@ -1150,8 +1155,9 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         :raises QueryError: raise :class:`QueryError`
         """
         filters = []
-        res, total = self.get_paginated_entities(Role, filters=filters, 
-                                                 *args, **kvargs)     
+        if kvargs.get(u'names', None) is not None:
+            filters.append(u'AND t3.name like :names')
+        res, total = self.get_paginated_entities(Role, filters=filters, *args, **kvargs)
         
         return res, total
     

@@ -243,12 +243,12 @@ class DeleteToken(SwaggerApiView):
 #
 # user
 #
-## list
 class ListUsersRequestSchema(PaginatedRequestQuerySchema):
     group = fields.String(context=u'query')
     role = fields.String(context=u'query')
     active = fields.Boolean(context=u'query')
     expiry_date = fields.String(load_from=u'expirydate', default=u'2099-12-31',context=u'query')
+    names = fields.String(context=u'query')
 
 
 class ListUsersResponseSchema(PaginatedResponseSchema):
@@ -562,13 +562,14 @@ class DeleteUser(SwaggerApiView):
         resp = user.delete()
         return (resp, 204)
 
+
 #
 # role
 #
-## list
 class ListRolesRequestSchema(PaginatedRequestQuerySchema):
     user = fields.String(context=u'query')
     group = fields.String(context=u'query')
+    names = fields.String(context=u'query')
 
 
 class ListRolesResponseSchema(PaginatedResponseSchema):
@@ -1558,48 +1559,7 @@ class AuthorizationAPI(ApiView):
     """
     @staticmethod
     def register_api(module):
-        base = u'auth'
         rules = [
-            # (u'%s/domains' % base, u'GET', ListDomains, {u'secure':False}),
-            #
-            # (u'%s/tokens' % base, u'GET', ListTokens, {}),
-            # (u'%s/tokens/<oid>' % base, u'GET', GetToken, {}),
-            # #(u'%s/tokens/<oid>/refresh' % base, u'PUT', TokenRefresh, {}),
-            # (u'%s/tokens/<oid>' % base, u'DELETE', DeleteToken, {}),
-            # #(u'%s/tokens/<oid>/exist' % base, u'GET', LoginExists, {}),
-            #
-            # (u'%s/users' % base, u'GET', ListUsers, {}),
-            # (u'%s/users/<oid>' % base, u'GET', GetUser, {}),
-            # (u'%s/users/<oid>/attributes' % base, u'GET', GetUserAtributes, {}),
-            # (u'%s/users' % base, u'POST', CreateUser, {}),
-            # (u'%s/users/<oid>' % base, u'PUT', UpdateUser, {}),
-            # (u'%s/users/<oid>/attributes' % base, u'POST', CreateUserAttribute, {}),
-            # (u'%s/users/<oid>/attributes/<aid>' % base, u'DELETE', DeleteUserAttribute, {}),
-            # (u'%s/users/<oid>' % base, u'DELETE', DeleteUser, {}),
-            #
-            # (u'%s/roles' % base, u'GET', ListRoles, {}),
-            # (u'%s/roles/<oid>' % base, u'GET', GetRole, {}),
-            # (u'%s/roles' % base, u'POST', CreateRole, {}),
-            # (u'%s/roles/<oid>' % base, u'PUT', UpdateRole, {}),
-            # (u'%s/roles/<oid>' % base, u'DELETE', DeleteRole, {}),
-            #
-            # (u'%s/groups' % base, u'GET', ListGroups, {}),
-            # (u'%s/groups/<oid>' % base, u'GET', GetGroup, {}),
-            # (u'%s/groups' % base, u'POST', CreateGroup, {}),
-            # (u'%s/groups/<oid>' % base, u'PUT', UpdateGroup, {}),
-            # (u'%s/groups/<oid>' % base, u'DELETE', DeleteGroup, {}),
-            #
-            # (u'%s/objects' % base, u'GET', ListObjects, {}),
-            # (u'%s/objects/<oid>' % base, u'GET', GetObject, {}),
-            # (u'%s/objects' % base, u'POST', CreateObject, {}),
-            # (u'%s/objects/<oid>' % base, u'DELETE', DeleteObject, {}),
-            # (u'%s/objects/types' % base, u'GET', ListObjectTypes, {}),
-            # (u'%s/objects/types' % base, u'POST', CreateObjectType, {}),
-            # (u'%s/objects/types/<oid>' % base, u'DELETE', DeleteObjectType, {}),
-            # (u'%s/objects/perms' % base, u'GET', ListObjectPerms, {}),
-            # (u'%s/objects/perms/<oid>' % base, u'GET', GetObjectPerms, {}),
-            # (u'%s/objects/actions' % base, u'GET', ListObjectActions, {}),
-
             # new routes
             (u'%s/domains' % module.base_path, u'GET', ListDomains, {u'secure': False}),
 

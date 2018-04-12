@@ -3,7 +3,9 @@ Created on Sep 27, 2017
 
 @author: darkbk
 """
+import json
 import logging
+from base64 import b64encode
 from time import sleep
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController,\
@@ -164,12 +166,22 @@ class VspherePlatformClusterController(VspherePlatformControllerChild):
         logger.info(res)
         self.result(res, headers=self.headers)
 
+    @expose(aliases=[u'servers <cluster_id>'], aliases_only=True)
+    @check_error
+    def servers(self):
+        cluster_id = self.get_arg(name=u'cluster_id')
+        objs = self.entity_class.get_servers(cluster_id)
+        res = []
+        for o in objs:
+            res.append(self.entity_class.info(o))
+        headers = [u'id', u'parent', u'name', u'os', u'state', u'ip_address', u'hostname', u'cpu', u'ram', u'template']
+        logger.info(res)
+        self.result(res, headers=headers)
+
 
 class VspherePlatformDatastoreController(VspherePlatformControllerChild):
-    headers = [u'id', u'name', u'overallStatus', u'accessible',
-                 u'capacity', u'url', 
-                 u'freeSpace', u'maxFileSize',
-                 u'maintenanceMode', u'type']
+    headers = [u'id', u'name', u'overallStatus', u'accessible', u'capacity', u'url', u'freeSpace', u'maxFileSize',
+               u'maintenanceMode', u'type']
     
     class Meta:
         label = 'vsphere.platform.datastores'
@@ -374,7 +386,7 @@ class VspherePlatformNetworkSecurityGroupController(VspherePlatformNetworkChildC
         for obj in objs:
             res.append(self.entity_class.info(obj))        
         logger.info(res)
-        self.result(res, headers=[u'objectId', u'name'])
+        self.result(res, headers=[u'objectId', u'name'], maxsize=200)
         
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -396,15 +408,25 @@ class VspherePlatformNetworkSecurityGroupController(VspherePlatformNetworkChildC
         res = {u'msg': u'Delete security-group %s' % (oid)}
         self.result(res, headers=[u'msg'])    
     
-    @expose(aliases=[u'delete-member <id>'], aliases_only=True)
+    @expose(aliases=[u'del-member <id> <member>'], aliases_only=True)
     @check_error
-    def delete_member(self):
+    def del_member(self):
         oid = self.get_arg(name=u'id')
         member = self.get_arg(name=u'member')
         res = self.entity_class.delete_member(oid, member)
         logger.info(res)
-        res = {u'msg':u'Delete security-group %s member %s' % (oid, member)}
-        self.result(res, headers=[u'msg'])        
+        res = {u'msg': u'Delete security-group %s member %s' % (oid, member)}
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'add-member <id> <member>'], aliases_only=True)
+    @check_error
+    def add_member(self):
+        oid = self.get_arg(name=u'id')
+        member = self.get_arg(name=u'member')
+        res = self.entity_class.add_member(oid, member)
+        logger.info(res)
+        res = {u'msg': u'Add security-group %s member %s' % (oid, member)}
+        self.result(res, headers=[u'msg'])
 
 
 class VspherePlatformNetworkDfwController(VspherePlatformNetworkChildController):
@@ -569,7 +591,79 @@ class VspherePlatformNetworkLgController(VspherePlatformNetworkChildController):
         network = self.entity_class.get(oid)
         res = self.entity_class.detail(network)
         logger.info(res)
-        self.result(res, details=True)     
+        self.result(res, details=True)
+
+
+class VspherePlatformNetworkIppoolController(VspherePlatformNetworkChildController):
+    class Meta:
+        label = 'vsphere.platform.networks.ippool'
+        aliases = ['ippools']
+        aliases_only = True
+        description = "Vsphere Network Nsx Ippool management"
+
+    def _ext_parse_args(self):
+        VspherePlatformControllerChild._ext_parse_args(self)
+
+        self.entity_class = self.client.network.nsx.ippool
+
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
+    def list(self):
+        objs = self.entity_class.list()
+        res = []
+        for obj in objs:
+            res.append(self.entity_class.info(obj))
+        logger.info(res)
+        headers = [u'objectId', u'name', u'dnsSuffix', u'gateway', u'startAddress',
+                   u'endAddress', u'totalAddressCount', u'usedAddressCount']
+        fields = [u'objectId', u'name', u'dnsSuffix', u'gateway', u'ipRanges.ipRangeDto.startAddress',
+                  u'ipRanges.ipRangeDto.endAddress', u'totalAddressCount', u'usedAddressCount']
+        self.result(res, headers=headers, fields=fields)
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
+    def get(self):
+        oid = self.get_arg(name=u'id')
+        network = self.entity_class.get(oid)
+        res = self.entity_class.detail(network)
+        logger.info(res)
+        self.result(res, details=True)
+
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
+    def delete(self):
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.delete(oid)
+        res = {u'msg': u'Delete ipset %s' % (oid)}
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'ip-allocated <id>'], aliases_only=True)
+    @check_error
+    def ip_allocated(self):
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.allocations(oid)
+        logger.info(res)
+        headers = [u'id', u'ipAddress', u'gateway', u'dnsSuffix', u'prefixLength', u'subnetId', u'dnsServer1',
+                   u'dnsServer2']
+        self.result(res, headers=headers)
+
+    @expose(aliases=[u'ip-allocate <id> [ip=..]'], aliases_only=True)
+    @check_error
+    def ip_allocate(self):
+        oid = self.get_arg(name=u'id')
+        ip = self.get_arg(name=u'ip', default=None, keyvalue=True)
+        res = self.entity_class.allocate(oid, static_ip=ip)
+        logger.info(res)
+        self.result(res, details=True)
+
+    @expose(aliases=[u'ip-release <id> <ip>'], aliases_only=True)
+    @check_error
+    def ip_release(self):
+        oid = self.get_arg(name=u'id')
+        ip = self.get_arg(name=u'ip')
+        res = self.entity_class.release(oid, ip)
+        logger.info(res)
+        self.result(res, details=True)
 
 
 class VspherePlatformNetworkIpsetController(VspherePlatformNetworkChildController):
@@ -609,7 +703,7 @@ class VspherePlatformNetworkIpsetController(VspherePlatformNetworkChildControlle
         oid = self.get_arg(name=u'id')
         res = self.entity_class.delete(oid)
         res = {u'msg':u'Delete ipset %s' % (oid)}
-        self.result(res, headers=[u'msg'])                
+        self.result(res, headers=[u'msg'])
 
 
 class VspherePlatformNetworkEdgeController(VspherePlatformNetworkChildController):
@@ -852,6 +946,7 @@ vsphere_platform_controller_handlers = [
     VspherePlatformNetworkSecurityGroupController,
     VspherePlatformNetworkDfwController,
     VspherePlatformNetworkLgController,
+    VspherePlatformNetworkIppoolController,
     VspherePlatformNetworkIpsetController,
     VspherePlatformNetworkEdgeController,
     VspherePlatformNetworkDlrController,
@@ -877,6 +972,7 @@ class VsphereController(BaseController):
 class VsphereControllerChild(ApiController):
     subsystem = u'resource'
     headers = [u'id', u'uuid', u'parent.name', u'container.name', u'name', u'state', u'ext_id']
+    fields = None
     
     class Meta:
         stacked_on = 'vsphere'
@@ -895,7 +991,9 @@ class VsphereControllerChild(ApiController):
         uri = self.uri
         res = self._call(uri, u'GET', data=data)
         logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
-        self.result(res, headers=self.headers, key=self._meta.aliases[0], maxsize=100)
+        if self.fields is None:
+            self.fields = self.headers
+        self.result(res, headers=self.headers, fields=self.fields, key=self._meta.aliases[0], maxsize=100)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -1076,6 +1174,7 @@ class VsphereSecurityGroupController(VsphereControllerChild):
 
 class VsphereServerController(VsphereControllerChild):
     uri = u'/v1.0/nrs/vsphere/servers'
+    baseuri = u'/v1.0/nrs'
     headers = [u'id', u'parent.name', u'container.name', u'name', u'state', u'details.state', u'details.ip_address',
                u'details.hostname', u'details.cpu', u'details.ram', u'details.template']
 
@@ -1084,6 +1183,62 @@ class VsphereServerController(VsphereControllerChild):
         aliases = ['servers']
         aliases_only = True         
         description = "Vsphere Server management"
+
+    @expose(aliases=[u'add <file data>'], aliases_only=True)
+    @check_error
+    def add(self):
+        file_data = self.get_arg(name=u'data file')
+        data = self.load_config(file_data)
+        if u'pubkey' in data.get(u'server'):
+            data[u'server'][u'user_data'] = b64encode(json.dumps({u'pubkey': data.get(u'server').get(u'pubkey')}))
+        uri = self.uri
+        res = self._call(uri, u'POST', data=data)
+        self.wait_job(res[u'jobid'])
+        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))
+        self.result(res)
+
+
+class VsphereFlavorController(VsphereControllerChild):
+    uri = u'/v1.0/nrs/vsphere/flavors'
+    headers = [u'id', u'parent', u'container', u'name', u'state', u'vcpus', u'ram', u'version', u'guest_id']
+    fields = [u'id', u'parent.name', u'container.name', u'name', u'state', u'details.vcpus', u'details.ram',
+              u'details.version', u'details.guest_id']
+
+    class Meta:
+        label = 'vsphere.beehive.flavors'
+        aliases = ['flavors']
+        aliases_only = True
+        description = "Vsphere Flavor management"
+
+    @expose(aliases=[u'add <container> <name> <datacenter>, <vcpus> <ram> [field=..]'], aliases_only=True)
+    @check_error
+    def add(self):
+        """Add new flavor
+    - field: core_x_socket, guest_id, version
+        """
+        container = self.get_arg(name=u'container')
+        name = self.get_arg(name=u'name')
+        datacenter = self.get_arg(name=u'datacenter')
+        core_x_socket = self.get_arg(name=u'core_x_socket', keyvalue=True, default=1)
+        vcpus = self.get_arg(name=u'vcpus')
+        guest_id = self.get_arg(name=u'version', keyvalue=True, default=u'centos64Guest')
+        ram = self.get_arg(name=u'ram')
+        version = self.get_arg(name=u'version', keyvalue=True, default=u'vmx-11')
+        data = {
+            u'container': container,
+            u'name': name,
+            u'desc': name,
+            u'datacenter': datacenter,
+            u'core_x_socket': core_x_socket,
+            u'vcpus': vcpus,
+            u'guest_id': guest_id,
+            u'ram': ram,
+            u'version': version,
+        }
+        uri = self.uri
+        res = self._call(uri, u'POST', data={u'flavor': data})
+        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))
+        self.result(res)
 
 
 vsphere_controller_handlers = [
@@ -1100,4 +1255,5 @@ vsphere_controller_handlers = [
     VsphereSecurityGroupController,
 
     VsphereServerController,
+    VsphereFlavorController,
 ]

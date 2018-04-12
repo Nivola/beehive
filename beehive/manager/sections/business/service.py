@@ -1,8 +1,8 @@
-'''
+"""
 Created on Sep 27, 2017
  
 @author: darkbk
-'''
+"""
 import os
 import logging
 import urllib
@@ -12,7 +12,8 @@ from beehive.manager.util.controller import BaseController, ApiController, check
 from beecell.simple import truncate
 import json
 from urllib import urlencode
- 
+from beehive.manager.sections.business import ConnectionHelper
+
 logger = logging.getLogger(__name__)
  
  
@@ -542,6 +543,89 @@ class ServiceCatalogController(ServiceControllerChild):
         aliases_only = True
         description = "Service catalog management"
 
+        role_template = [
+            {
+                u'name': u'CatalogAdminRole-%s',
+                u'perms': [
+                    {u'subsystem': u'service', u'type': u'ServiceCatalog', u'objid': u'<objid>', u'action': u'*'},
+                ],
+                u'perm_tmpls': [
+                    {u'subsystem': u'service', u'type': u'ServiceType.ServiceDefinition', u'objid': u'<objid>',
+                     u'action': u'view'}
+                ]
+            },
+            {
+                u'name': u'CatalogViewerRole-%s',
+                u'perms': [
+                    {u'subsystem': u'service', u'type': u'ServiceCatalog', u'objid': u'<objid>', u'action': u'view'},
+                ]
+            }
+        ]
+
+    @expose(aliases=[u'get-roles <catalog>'], aliases_only=True)
+    @check_error
+    def get_roles(self):
+        """Get catalog roles
+        """
+        catalog_id = self.get_arg(name=u'catalog')
+        catalog_id = ConnectionHelper.get_catalog(self, catalog_id).get(u'id')
+        roles = ConnectionHelper.get_roles(self, u'Catalog%' + u'Role-%s' % catalog_id)
+
+    @expose(aliases=[u'set-role <catalog> <type> <user>'], aliases_only=True)
+    @check_error
+    def set_role(self):
+        """Get catalog roles
+    - type: role type. Admin or Viewer
+        """
+        catalog_id = self.get_arg(name=u'catalog')
+        catalog_id = ConnectionHelper.get_catalog(self, catalog_id).get(u'id')
+        role_type = self.get_arg(name=u'role type. Admin or Viewer')
+        user = self.get_arg(name=u'user')
+        ConnectionHelper.set_role(self, u'Catalog%sRole-%s' % (role_type, catalog_id), user)
+
+    @expose(aliases=[u'unset-role <catalog> <type> <user>'], aliases_only=True)
+    @check_error
+    def unset_role(self):
+        """Get catalog roles
+    - type: role type. Admin or Viewer
+        """
+        catalog_id = self.get_arg(name=u'catalog')
+        catalog_id = ConnectionHelper.get_catalog(self, catalog_id).get(u'id')
+        role_type = self.get_arg(name=u'role type. Admin or Viewer')
+        user = self.get_arg(name=u'user')
+        ConnectionHelper.set_role(self, u'Catalog%sRole-%s' % (role_type, catalog_id), user, op=u'remove')
+
+    @expose(aliases=[u'add-roles <catalog>'], aliases_only=True)
+    @check_error
+    def add_roles(self):
+        """Add catalog roles
+        """
+        catalog_id = self.get_arg(name=u'catalog')
+        catalog_id = ConnectionHelper.get_catalog(self, catalog_id).get(u'id')
+
+        # get catalog
+        uri = u'%s/srvcatalogs/%s' % (self.baseuri, catalog_id)
+        catalog = self._call(uri, u'GET').get(u'catalog')
+        catalog_objid = catalog[u'__meta__'][u'objid']
+
+        # get catalog defs
+        uri = u'%s/srvcatalogs/%s/defs' % (self.baseuri, catalog_id)
+        defs = self._call(uri, u'GET').get(u'servicedefs')
+        defs_objid = []
+        for definition in defs:
+            defs_objid.append(definition[u'__meta__'][u'objid'])
+
+        # add roles
+        for role in self._meta.role_template:
+            name = role.get(u'name') % catalog_id
+            perms = ConnectionHelper.set_perms_objid(role.get(u'perms'), catalog_objid)
+            if role.get(u'perm_tmpls', None) is not None:
+                perm_tmpl = role.get(u'perm_tmpls')[0]
+                for def_objid in defs_objid:
+                    perm = ConnectionHelper.set_perms_objid([perm_tmpl], def_objid)
+                    perms.extend(perm)
+            ConnectionHelper.add_role(self, name, name, perms)
+
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     @check_error
     def list(self):
@@ -583,9 +667,7 @@ class ServiceCatalogController(ServiceControllerChild):
     @expose(aliases=[u'add <name> [desc=..]'], aliases_only=True)
     @check_error
     def add(self):
-        """Add service catalogo <name>
-         - service_type_id: id or uuid of the service type
-         - field: can be desc
+        """Add service catalog
         """
         name = self.get_arg(name=u'name')
         params = self.get_query_params(*self.app.pargs.extra_arguments)
@@ -631,7 +713,7 @@ class ServiceCatalogController(ServiceControllerChild):
         res = {u'msg': u'Delete service catalog %s' % value}
         self.result(res, headers=[u'msg'])
 
-    @expose(aliases=[u'defs <id> [field=value]'], aliases_only=True)
+    @expose(aliases=[u'defs <catalog> [field=value]'], aliases_only=True)
     @check_error
     def defs(self):
         """List all service definitions linked to service catalog
@@ -641,10 +723,11 @@ class ServiceCatalogController(ServiceControllerChild):
         - plugintype=.. filter by plugin type
         - flag_container=true select only container type
         """
-        value = self.get_arg(name=u'id')
+        catalog_id = self.get_arg(name=u'catalog')
+        catalog_id = ConnectionHelper.get_catalog(self, catalog_id).get(u'id')
         data = urllib.urlencode(self.app.kvargs)
         # data = urllib.urlencode({u'flag_container': True})
-        uri = u'%s/srvcatalogs/%s/defs' % (self.baseuri, value)
+        uri = u'%s/srvcatalogs/%s/defs' % (self.baseuri, catalog_id)
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
         self.result(res, key=u'servicedefs', headers=[u'id', u'uuid', u'name', u'version', u'status',
@@ -668,72 +751,6 @@ class ServiceCatalogController(ServiceControllerChild):
         msg = u'Add service definitions %s to catalog %s' % (definitions, value)
         logger.info(msg)
         self.result({u'msg': msg}, headers=[u'msg'])
-
-    @expose(aliases=[u'add-admin-role <catalog_id>'], aliases_only=True)
-    @check_error
-    def add_admin_role(self):
-        """Add catalog admin role
-        """
-        catalog_id = self.get_arg(name=u'catalog_id')
-
-        # get catalog
-        uri = u'%s/srvcatalogs/%s' % (self.baseuri, catalog_id)
-        catalog = self._call(uri, u'GET').get(u'catalog')
-        catalog_objid = catalog[u'__meta__'][u'objid']
-
-        # get catalog defs
-        uri = u'%s/srvcatalogs/%s/defs' % (self.baseuri, catalog_id)
-        defs = self._call(uri, u'GET').get(u'servicedefs')
-        defs_objid = []
-        for definition in defs:
-            defs_objid.append(definition[u'__meta__'][u'objid'])
-
-        # add role
-        try:
-            self.subsystem = u'auth'
-            data = {
-                u'role': {
-                    u'name': u'AdminRoleCatalog-%s' % catalog_id,
-                    u'desc': u'AdminRoleCatalog-%s' % catalog_id
-                }
-            }
-            uri = u'/v1.0/nas/roles'
-            role = self._call(uri, u'POST', data=data)
-            logger.info(u'Add role: %s' % role)
-        except Exception as ex:
-            uri = u'/v1.0/nas/roles/AdminRoleCatalog-%s' % catalog_id
-            role = self._call(uri, u'GET', data=u'').get(u'role')
-            logger.info(u'Add role: %s' % role)
-
-        # add role permissions
-        roleid = role[u'uuid']
-        perms = [
-            {u'subsystem': u'service', u'type': u'ServiceCatalog', u'objid': catalog_objid, u'action': u'*'},
-        ]
-        for def_objid in defs_objid:
-            perms.append({u'subsystem': u'service',
-                          u'type': u'ServiceType.ServiceDefinition',
-                          u'objid': def_objid,
-                          u'action': u'view'})
-
-        for perm in perms:
-            data = {
-                u'role': {
-                    u'perms': {
-                        u'append': [
-                            perm
-                        ],
-                        u'remove': []
-                    }
-                }
-            }
-            uri = u'/v1.0/nas/roles/%s' % role[u'uuid']
-            res = self._call(uri, u'PUT', data=data)
-
-        self.subsystem = u'service'
-
-        res = {u'msg': u'Add role %s' % role[u'uuid']}
-        self.result(res, headers=[u'msg'])
 
 
 class ServiceInstanceController(ServiceControllerChild):
