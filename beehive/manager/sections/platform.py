@@ -1559,15 +1559,17 @@ class ElkController(AnsibleController):
     @check_error
     def search(self):            
         """search
-    - field: from, count, host, source
+    - field: from, count, pod, host, source, key
 
 i parametri in input devono essere:
  from=xx (facoltativo - default:0)
  count=xx (facoltativo - default:50)
+ pod=xxxxx (facoltativo - default:podto1 - valori validi: podto1, podto2, podvc)
  start_date="2018-04-08T00:00:40.000Z"    (obbligatorio)
  stop_date="2018-04-08T00:10:40.000Z"     (obbligatorio)
  host=nomehost,nomehost2,nomehost3 --> senza spazi e separati da virgola (facoltativo, default:tutti)
  source=/var/log/keystone/keystone.log   (facoltativo - default:tutti)
+ key=words_on_message (facoltativo - default:tutti)
         """
         start_date = self.get_arg(name=u'start_date', keyvalue=True, default="")
         stop_date = self.get_arg(name=u'stop_date', keyvalue=True, default="")
@@ -1575,6 +1577,8 @@ i parametri in input devono essere:
         count = self.get_arg(name=u'count', keyvalue=True, default="50")
         source = self.get_arg(name=u'source', keyvalue=True, default="")
         host = self.get_arg(name=u'host', keyvalue=True, default="")
+        key = self.get_arg(name=u'key', keyvalue=True, default="")
+        pod = self.get_arg(name=u'pod', keyvalue=True, default="podto1")
 
         print start_date, stop_date, fromv, count, source, host
         if start_date=="":
@@ -1583,6 +1587,18 @@ i parametri in input devono essere:
         if stop_date=="":
             print "stop_date not defined"
             return()
+        print pod
+        if pod in ["podto1","podto2","podvc"]:
+            if pod == "podto1":
+                url = 'http://10.138.144.85:9200/filebeat-*/_search'
+            elif pod == "podto2":
+                url = 'http://10.138.144.85:9200/filebeat-*/_search'
+            elif pod == "podvc":
+                url = 'http://10.138.144.85:9200/filebeat-*/_search'
+        else:
+            print "pod non valido"
+            return()
+        
         d1 = start_date
         d2 = stop_date
         fr = int(fromv)
@@ -1591,16 +1607,19 @@ i parametri in input devono essere:
         
         parametri = []
         parametri.append({ "match_all": {} })
+        parametri.append({ "range": {"@timestamp": {
+                                  "gte": d1,
+                                  "lt": d2}}})
+# parametri opzionali
         if elenco_host != "":
             parametri.append({"terms": { "tags": elenco_host}})
         if source != "":
             parametri.append({"term": {"source": source}})
-        parametri.append({ "range": {"@timestamp": {
-                                  "gte": d1,
-                                  "lt": d2}}})
+        if key != "":
+           parametri.append({"match" : {
+              "message": {"query" : key}}})
 
-        print parametri
-        
+        print parametri 
         data_elencohost = {
             "from": fr,
             "size": co,
@@ -1616,21 +1635,21 @@ i parametri in input devono essere:
                            }
 
         data_elencohost = json.dumps(data_elencohost)
-        res = requests.get('http://10.138.144.85:9200/filebeat-*/_search', data=data_elencohost)
+        res = requests.get(url, data=data_elencohost)
 
         rj = json.loads(res.text)
         hi = rj.get("hits").get("hits")
-
-        for x in hi:
-            print "------------------------"
-            me = x.get("_source").get("message")
-            ti = x.get("_source").get("@timestamp")
-            ta = x.get("_source").get("tags")[0]
-            so = x.get("_source").get("source")
-            print ti, ta, me, so
-
-        return("elk")
+        ricerca=[]
         
+        for x in hi:
+            ricerca.append({u'messaggio':x.get("_source").get("message"),
+                            u'timestamp': x.get("_source").get("@timestamp"),
+                            u'host': x.get("_source").get("tags")[0],
+                            u'sorgente': x.get("_source").get("source")})
+#            print x.get("_source").get("message")
+        self.result(ricerca, headers=[u'timestamp', u'host', u'sorgente', u'messaggio'], maxsize=100)
+#        self.result(ricerca, headers=[u'timestamp', u'messaggio'], maxsize=100)
+
 
 class NodeController(AnsibleController):
     class Meta:
