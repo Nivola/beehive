@@ -1580,7 +1580,7 @@ i parametri in input devono essere:
         host = self.get_arg(name=u'host', keyvalue=True, default="")
         key = self.get_arg(name=u'key', keyvalue=True, default="")
         pod = self.get_arg(name=u'pod', keyvalue=True, default="podto1")
-
+        msize = self.get_arg(name=u'msize', keyvalue=True, default="50")
         print start_date, stop_date, fromv, count, source, host
         if start_date=="":
             print "start_date not defined"
@@ -1604,6 +1604,7 @@ i parametri in input devono essere:
         d2 = stop_date
         fr = int(fromv)
         co = int(count)
+        msize = int(msize)
         elenco_host = host.split(",")
         
         parametri = []
@@ -1647,7 +1648,7 @@ i parametri in input devono essere:
                             u'host': x.get("_source").get("tags")[0],
                             u'sorgente': x.get("_source").get("source")})
 #            print x.get("_source").get("message")
-        self.result(ricerca, headers=[u'timestamp', u'host', u'sorgente', u'messaggio'], maxsize=100)
+        self.result(ricerca, headers=[u'timestamp', u'host', u'sorgente', u'messaggio'], maxsize=msize)
 #        self.result(ricerca, headers=[u'timestamp', u'messaggio'], maxsize=100)
 
 
