@@ -1208,12 +1208,13 @@ class VsphereNetworkNsxController(VsphereNetworkChildController):
         self.result(res.get(u'nsx_transport_zones'), headers=[u'id', u'name'])
 
         
-class VsphereSecurityGroupController(VsphereControllerChild):
-    headers = [u'id', u'tenant_id', u'name']
+class VsphereSecurityGroupController(VsphereNetworkChildController):
+    uri = u'/v1.0/nrs/vsphere/network/nsx_security_groups'
+    headers = [u'id', u'parent.name', u'container.name', u'name', u'state', u'date.creation']
     
     class Meta:
         label = 'vsphere.beehive.security_groups'
-        aliases = ['security_groups']
+        aliases = ['nsx_security_groups']
         aliases_only = True         
         description = "Vsphere SecurityGroup management"
 

@@ -322,6 +322,8 @@ class SpecializedServiceControllerChild(ApiController):
             count = res.get(u'count')
             if count > 1:
                 raise Exception(u'There are some template with name %s. Select one using uuid' % oid)
+            if count == 0:
+                raise Exception(u'%s does not exist or you are not authorized to see it' % oid)
 
             return res.get(u'servicedefs')[0][u'uuid']
         return oid

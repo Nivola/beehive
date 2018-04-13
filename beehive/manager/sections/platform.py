@@ -2516,12 +2516,15 @@ class BeehiveController(AnsibleController):
                 try:
                     name = obj.get(u'name')
                     defs = obj.get(u'defs')
-                    res = self._call(u'/v1.0/nws/srvcatalogs', u'POST', data={u'catalog': {u'name': name, u'desc': name}})
+                    res = self._call(u'/v1.0/nws/srvcatalogs', u'POST',
+                                     data={u'catalog': {u'name': name, u'desc': name}})
                     logger.info(u'Add service catalog: %s' % res)
                     self.output(u'Add service catalog: %s' % obj)
                 except Exception as ex:
                     self.error(ex)
                     self.app.error = False
+                    res = self._call(u'/v1.0/nws/srvcatalogs', u'GET', data={u'name': name}).get(u'catalogs')[0]
+                    logger.info(u'Get service catalog: %s' % res)
 
                 res = self._call(u'/v1.0/nws/srvcatalogs/%s/defs' % res[u'uuid'], u'PUT',
                                  data={u'definitions': {u'oids': defs}})
