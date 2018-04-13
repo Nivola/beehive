@@ -31,6 +31,7 @@ from struct import pack, unpack
 from datetime import datetime as dt
 from pysnmp.entity.rfc3413.oneliner import cmdgen
 from pysnmp.proto.rfc1902 import Integer, IpAddress, OctetString
+from ansible.plugins.callback.profile_tasks import timestamp
 
 
 logger = getLogger(__name__)
@@ -1611,8 +1612,8 @@ i parametri in input devono essere:
                                   "gte": d1,
                                   "lt": d2}}})
 # parametri opzionali
-        if elenco_host != "":
-            parametri.append({"terms": { "tags": elenco_host}})
+        if host != "":
+           parametri.append({"terms": { "tags": elenco_host}})
         if source != "":
             parametri.append({"term": {"source": source}})
         if key != "":
@@ -1626,21 +1627,20 @@ i parametri in input devono essere:
             "query": {
                 "constant_score" : {
                     "filter": {
-                        "bool" : {
-                            "must": parametri
-                                }
-                               }
-                                    }
-                      }
-                           }
+                        "bool" : {"must": parametri }
+                               } } },
+            "sort": [{"@timestamp": {"order" : "asc"}}] }
 
         data_elencohost = json.dumps(data_elencohost)
         res = requests.get(url, data=data_elencohost)
-
         rj = json.loads(res.text)
+ #       import pprint
+ #       pp = pprint.PrettyPrinter(indent=4)
+ #       pp.pprint(rj)
+        total=rj.get("hits").get("total")
+        print "n. di risultati totali: ", total
         hi = rj.get("hits").get("hits")
         ricerca=[]
-        
         for x in hi:
             ricerca.append({u'messaggio':x.get("_source").get("message"),
                             u'timestamp': x.get("_source").get("@timestamp"),
