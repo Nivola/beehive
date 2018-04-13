@@ -414,6 +414,7 @@ class AuthController(BaseAuthController):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
 
+
 class Objects(AuthObject):
     objdef = u'Objects'
     objdesc = u'Authorization objects'
@@ -801,8 +802,7 @@ class Objects(AuthObject):
                 u'objid':p.obj.objid, 
                 u'aid':p.action.id, 
                 u'action':p.action.value, 
-                u'desc':p.obj.desc, 
-                #u'roles':roles                
+                u'desc':p.obj.desc,
             }
             return res
         except QueryError as ex:         
@@ -810,8 +810,7 @@ class Objects(AuthObject):
             raise ApiManagerError(u'Permission %s not found' % (oid), code=404)
 
     @trace(op=u'perms.view')
-    def get_permissions(self, objid=None, subsystem=None, type=None, 
-                        cascade=False, page=0, size=10, order=u'DESC', 
+    def get_permissions(self, objid=None, subsystem=None, type=None, cascade=False, page=0, size=10, order=u'DESC',
                         field=u'id', **kvargs):
         """Get system object permisssions with roles.
         
@@ -875,6 +874,7 @@ class Objects(AuthObject):
             self.logger.error(ex.desc, exc_info=1)
             return [], 0
 
+
 class Role(AuthObject):
     objdef = u'Role'
     objdesc = u'System roles'
@@ -892,43 +892,8 @@ class Role(AuthObject):
         #    self.uuid = self.model.uuid
         self.expiry_date = None
 
-    '''
-    def info(self):
-        """Get role info
-        
-        :return: Dictionary with role info.
-        :rtype: dict        
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
-        """
-        creation_date = str2uni(self.model.creation_date\
-                                .strftime(u'%d-%m-%Y %H:%M:%S'))
-        modification_date = str2uni(self.model.modification_date\
-                                    .strftime(u'%d-%m-%Y %H:%M:%S'))
-        res = {
-            u'id':self.oid, 
-            u'uuid':self.uuid,    
-            u'type':self.objtype, 
-            u'definition':self.objdef, 
-            u'name':self.name, 
-            u'objid':self.objid, 
-            u'desc':self.desc,
-            u'active':self.active, 
-            u'date':{
-                u'creation':creation_date,
-                u'modified':modification_date
-            }
-        }
-        
-        if self.expiry_date is not None:
-            expiry_date = str2uni(self.expiry_date\
-                                  .strftime(u'%d-%m-%Y %H:%M:%S'))
-            res[u'date'][u'expiry'] = expiry_date
-        
-        return res'''
-
     @trace(op=u'perms.view')
-    def get_permissions(self, page=0, size=10, order=u'DESC', field=u'id',
-                        **kvargs):
+    def get_permissions(self, page=0, size=10, order=u'DESC', field=u'id',**kvargs):
         """Get users permissions.
 
         :param page: perm list page to show [default=0]
@@ -943,8 +908,8 @@ class Role(AuthObject):
                                             u'*', u'view')
         
         try:  
-            perms, total = self.manager.get_role_permissions([self.name], 
-                            page=page, size=size, order=order, field=field)      
+            perms, total = self.manager.get_role_permissions([self.name], page=page, size=size, order=order,
+                                                             field=field)
             role_perms = []
             for i in perms:
                 role_perms.append({
@@ -957,8 +922,7 @@ class Role(AuthObject):
                     u'action':i.action.value,
                     u'desc':i.obj.desc
                 })                
-            self.logger.debug(u'Get role %s permissions: %s' % (
-                                        self.name, truncate(role_perms)))        
+            self.logger.debug(u'Get role %s permissions: %s' % (self.name, truncate(role_perms)))
             return role_perms, total
         except QueryError as ex:
             self.logger.error(ex, exc_info=1)
@@ -989,9 +953,8 @@ class Role(AuthObject):
                                     
                 # perm as [subsystem, type, objid, action]
                 else:
-                    perms, total = self.manager.get_permissions(
-                            objid=perm[u'objid'], objtype=perm[u'subsystem'], 
-                            objdef=perm[u'type'], action=perm[u'action'], size=10)
+                    perms, total = self.manager.get_permissions(objid=perm[u'objid'], objtype=perm[u'subsystem'],
+                                                                objdef=perm[u'type'], action=perm[u'action'], size=10)
                     roleperms.extend(perms)
             
             res = self.manager.append_role_permissions(self.model, roleperms)
@@ -1038,6 +1001,7 @@ class Role(AuthObject):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex)
 
+
 class User(BaseUser):
     objdef = u'User'
     objdesc = u'System users'
@@ -1049,86 +1013,7 @@ class User(BaseUser):
                             desc=desc, active=active, model=model)
         
         self.update_object = self.manager.update_user
-        self.delete_object = self.manager.remove_user        
-        
-        #if self.model is not None:
-        #    self.uuid = self.model.uuid
-
-    '''
-    def info(self):
-        """Get user info
-        
-        :return: Dictionary with user info.
-        :rtype: dict        
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
-        """
-        # verify permissions
-        self.controller.check_authorization(self.objtype, self.objdef, 
-                                            self.objid, u'view')
-           
-        creation_date = str2uni(self.model.creation_date\
-                                .strftime(u'%d-%m-%Y %H:%M:%S'))
-        modification_date = str2uni(self.model.modification_date\
-                                    .strftime(u'%d-%m-%Y %H:%M:%S'))
-        expiry_date = u''
-        if self.model.expiry_date is not None:
-            expiry_date = str2uni(self.model.expiry_date\
-                                  .strftime(u'%d-%m-%Y %H:%M:%S'))
-        #attrib = self.get_attribs()
-        return {
-            u'id':self.oid,
-            u'uuid':self.uuid,
-            u'type':self.objtype, 
-            u'definition':self.objdef, 
-            u'name':self.name, 
-            u'objid':self.objid, 
-            u'desc':self.desc,
-            u'password':self.model.password,
-            u'active':self.active, 
-            u'date':{
-                u'creation':creation_date,
-                u'modified':modification_date,
-                u'expiry':expiry_date
-            }
-        }'''
-
-    '''
-    @trace(op=u'delete')
-    def delete(self):
-        """Delete entity.
-        
-        :return: True if role deleted correctly
-        :rtype: bool
-        :raises ApiManagerError: raise :class:`ApiManagerError`
-        """
-        #params = {u'id':self.oid}
-        
-        if self.delete_object is None:
-            raise ApiManagerError(u'Delete is not supported for %s:%s' % 
-                                  (self.objtype, self.objdef))        
-        
-        # verify permissions
-        self.controller.check_authorization(self.objtype, self.objdef, 
-                                            self.objid, u'delete')
-                
-        try:
-            # remove associated roles
-            roles, total = self.manager.get_user_roles(user=self.model, size=1000)
-            for role in roles:
-                res = self.manager.remove_user_role(self.model, role)
-            
-            # delete user
-            res = self.delete_object(oid=self.oid)
-            # remove object and permissions
-            self.deregister_object([self.objid])
-            
-            self.logger.debug(u'Delete %s: %s' % (self.objdef, self.oid))
-            #self.send_event(u'delete', params=params)
-            return res
-        except TransactionError as ex:
-            #self.send_event(u'delete', params=params, exception=ex)         
-            self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=ex.code)'''
+        self.delete_object = self.manager.remove_user
 
     @trace(op=u'attribs-get.update')
     def get_attribs(self):
@@ -1241,8 +1126,7 @@ class User(BaseUser):
             raise ApiManagerError(ex, code=ex.code)
 
     @trace(op=u'perms.view')
-    def get_permissions(self, page=0, size=10, order=u'DESC', field=u'id',
-                        **kvargs):
+    def get_permissions(self, page=0, size=10, order=u'DESC', field=u'id', **kvargs):
         """Get users permissions.
 
         :param page: perm list page to show [default=0]
@@ -1253,12 +1137,10 @@ class User(BaseUser):
         :rtype: pands.Series
         :raises ApiManagerError: if query empty return error.
         """
-        self.controller.check_authorization(Objects.objtype, Objects.objdef, 
-                                            u'*', u'view')
+        self.controller.check_authorization(Objects.objtype, Objects.objdef, u'*', u'view')
         
         try:  
-            perms, total = self.manager.get_user_permissions(self.model, 
-                            page=page, size=size, order=order, field=field)      
+            perms, total = self.manager.get_user_permissions(self.model, page=page, size=size, order=order, field=field)
             user_perms = []
             for i in perms:
                 user_perms.append({

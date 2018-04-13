@@ -3,6 +3,7 @@ Created on Jan 25, 2014
 
 @author: darkbk
 '''
+import inspect
 import ujson as json
 import logging
 import datetime
@@ -784,10 +785,9 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
                "WHERE t4.obj_id=t1.id AND t4.action_id=t3.id",
                "AND t1.type_id=t2.id AND t4.id=:permission_id"]
                 
-        params = {u'permission_id':permission_id}
+        params = {u'permission_id': permission_id}
                      
-        res = session.query(SysObjectPermission).\
-                      from_statement(text(" ".join(sql))).params(params).first()
+        res = session.query(SysObjectPermission).from_statement(text(" ".join(sql))).params(params).first()
 
         if res is None:
             self.logger.error(u'Permission %s was not found' % permission_id)
@@ -905,12 +905,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         sql.append(u'LIMIT %s OFFSET %s' % (size, offset))        
 
         query = session.query(SysObjectPermission).from_statement(text(u' '.join(sql))).params(params)
-        self.logger.warn(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
-        self.logger.warn(objid)
-        self.logger.warn(objid_filter)
-        self.logger.warn(objtype)
-        self.logger.warn(objdef)
-        self.logger.warn(action)
+        self.print_query(self.get_permissions, query, inspect.getargvalues(inspect.currentframe()))
 
         res = query.all()
         
@@ -922,8 +917,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         return res, total
     
     @query
-    def get_deep_permissions(self, objids=[], objtype=None, objtypes=None, 
-                             objdef=None, page=0, size=10, order=u'DESC', 
+    def get_deep_permissions(self, objids=[], objtype=None, objtypes=None, objdef=None, page=0, size=10, order=u'DESC',
                              field=u'id'):
         """Get all the system object permisssions for an object with its childs .
         
@@ -1197,57 +1191,24 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
                "t6.permission_id=t4.id and t5.name IN :role_names"]
 
         # get total rows
-        total = session.execute(u' '.join(sqlcount), 
-                                {u'role_names':names}).fetchone()[0]
-                
+        total = session.execute(u' '.join(sqlcount), {u'role_names': names}).fetchone()[0]
+
         offset = size * page
         sql.append(u'ORDER BY %s %s' % (field, order))
-        sql.append(u'LIMIT %s OFFSET %s' % (size, offset)) 
+        sql.append(u'LIMIT %s OFFSET %s' % (size, offset))
 
-        query = session.query(SysObjectPermission).\
-                from_statement(text(" ".join(sql))).\
-                params(role_names=names).all()
-        
-        self.logger.debug(u'Get role %s permissions: %s' % 
-                          (names, truncate(query)))
+        query = session.query(SysObjectPermission).from_statement(text(" ".join(sql))).params(role_names=names)
+
+        self.print_query(self.get_permissions, query, inspect.getargvalues(inspect.currentframe()))
+
+        query = query.all()
+        self.logger.warn(u'Get role %s permissions: %s' % (names, query))
+
+        self.logger.debug(u'Get role %s permissions: %s' % (names, truncate(query)))
         return query, total
-
-    '''
-    @query
-    def get_role_permissions2(self, names, *args, **kvargs):
-        """Get role permissions.
-        
-        :param names: role name list
-        :return: list of object with the following fields:
-                 (id, oid, objtype, objdef, objid, aid, action)
-        :rtype: list of tuple
-        :raises QueryError: raise :class:`QueryError`
-        """
-        session = self.get_session()  
-        sql = ["SELECT t4.id as id, t1.id as oid, t1.objid as objid, ",
-               "t2.objtype as objtype, t2.objdef as objdef, ",
-               "t3.id as aid, t3.value as action",
-               "FROM sysobject t1, sysobject_type t2,",
-               "sysobject_action t3, sysobject_permission t4,"
-               "role t5, role_permission t6",
-               "WHERE t4.obj_id=t1.id and t4.action_id=t3.id and",
-               "t1.type_id=t2.id and t6.role_id = t5.id and",
-               "t6.permission_id=t4.id and t5.name IN :role_name"]
-
-        #columns = ['id', 'oid', 'objtype', 'objdef', 'objclass', 'objid', 'aid', 'action']
-        columns = [u'id', u'oid', u'objtype', u'objdef', u'objid', u'aid', 
-                   u'action']
-        query = session.query(*columns).\
-                from_statement(text(" ".join(sql))).\
-                params(role_name=names).all()
-
-        self.logger.debug(u'Get role %s permissions: %s' % (names, 
-                                                            truncate(query)))
-        return query'''
         
     @query
-    def get_permission_roles(self, tags=None, perm=None, page=0, size=10, 
-            order=u'DESC', field=u'id', *args, **kvargs):
+    def get_permission_roles(self, tags=None, perm=None, page=0, size=10, order=u'DESC', field=u'id', *args, **kvargs):
         """Get roles related to a permission.
         
         :param perm: permission id
@@ -1313,13 +1274,13 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         session = self.get_session()
         append_perms = []
         for perm in perms:
-            # append permission to role if it doesn't already exists
-            if role not in perm.role:
+            roles = session.query(role_permission).filter_by(permission_id=perm.id).all()
+            # append permission to role only if it does not already exist
+            if len(roles) == 0:
                 role.permission.append(perm)
                 append_perms.append(perm.id)
             else:
-                self.logger.warn(u'Permission %s already exists in role %s' % (
-                    perm, role))
+                self.logger.warn(u'Permission %s already exists in role %s' % (perm, role))
         
         self.logger.debug(u'Append to role %s permissions: %s' % (role, perms))
         return append_perms
@@ -1802,8 +1763,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         return res, total
         
     @query
-    def get_user_permissions(self, user, page=0, size=10, order=u'DESC', 
-                             field=u'id', *args, **kvargs):
+    def get_user_permissions(self, user, page=0, size=10, order=u'DESC', field=u'id', *args, **kvargs):
         """Get user permissions.
         
         :param user: Orm User instance
@@ -1841,7 +1801,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             perms, total = self.get_role_permissions(names=roles, page=page, 
                                                      size=size, order=order, 
                                                      field=field)
-        
+
         self.logger.debug(u'Get user %s perms: %s' % (user.name, truncate(perms)))
         return perms, total
     

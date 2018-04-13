@@ -6,6 +6,7 @@ Created on Nov 20, 2017
 import logging
 import urllib
 
+import copy
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController
 from re import match
@@ -272,10 +273,13 @@ class ConnectionHelper(object):
 
     @staticmethod
     def set_perms_objid(perms, objid):
+        new_perms = []
         for perm in perms:
             if perm.get(u'objid').find(u'<objid>') >= 0:
-                perm[u'objid'] = perm[u'objid'].replace(u'<objid>', objid)
-        return perms
+                new_perm = copy.deepcopy(perm)
+                new_perm[u'objid'] = new_perm[u'objid'].replace(u'<objid>', objid)
+                new_perms.append(new_perm)
+        return new_perms
 
 
 class SpecializedServiceControllerChild(ApiController):
@@ -338,6 +342,8 @@ class SpecializedServiceControllerChild(ApiController):
             count = res.get(u'count')
             if count > 1:
                 raise Exception(u'There are some service with name %s. Select one using uuid' % oid)
+            if count == 0:
+                raise Exception(u'%s does not exist or you are not authorized to see it' % oid)
 
             return res.get(u'serviceinsts')[0][u'uuid']
         return oid
