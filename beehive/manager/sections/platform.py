@@ -1593,9 +1593,9 @@ i parametri in input devono essere:
             if pod == "podto1":
                 url = 'http://10.138.144.85:9200/filebeat-*/_search'
             elif pod == "podto2":
-                url = 'http://10.138.144.85:9200/filebeat-*/_search'
+                url = 'http://10.138.176.85:9200/filebeat-*/_search'
             elif pod == "podvc":
-                url = 'http://10.138.144.85:9200/filebeat-*/_search'
+                url = 'http://10.138.208.85:9200/filebeat-*/_search'
         else:
             print "pod non valido"
             return()
