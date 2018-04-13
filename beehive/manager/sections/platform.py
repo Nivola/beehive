@@ -2167,10 +2167,20 @@ class BeehiveConsoleController(AnsibleController):
     @expose()
     @check_error
     def sync(self):
-        """Sync python package on beehive console
+        """Sync beehive python package on beehive console
         """
         run_data = {
             u'tags': [u'sync']
+        }
+        self.ansible_playbook(u'console', run_data, playbook=self.console_playbook)
+
+    @expose()
+    @check_error
+    def pip(self):
+        """Update python package on beehive console
+        """
+        run_data = {
+            u'tags': [u'pip']
         }
         self.ansible_playbook(u'console', run_data, playbook=self.console_playbook)
 

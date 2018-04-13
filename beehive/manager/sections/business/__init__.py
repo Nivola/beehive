@@ -173,7 +173,7 @@ class ConnectionHelper(object):
         }
         if template is not None:
             data[u'GroupType'] = ConnectionHelper.get_service_def(ctrl, template)
-        uri = u'/v1.0/nws/computeservices/securitygroup/createsecuritygroup2'
+        uri = u'/v1.0/nws/computeservices/securitygroup/createsecuritygroup'
         res = ctrl._call(uri, u'POST', data={u'security_group': data}, timeout=600)
         logger.info(u'Add security group: %s' % truncate(res))
         res = res.get(u'CreateSecurityGroupResponse').get(u'instancesSet')[0].get(u'groupId')
