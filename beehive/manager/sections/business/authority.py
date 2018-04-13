@@ -658,7 +658,7 @@ class AccountController(AuthorityControllerChild):
         ]
 
         default_data = [
-            {u'name': u'Centos7.2', u'template': u'Centos7.2sync', u'type': u'image'},
+            {u'name': u'Centos7.2', u'template': u'Centos7.2Sync', u'type': u'image'},
             {u'name': u'Centos6.9', u'template': u'Centos6.9Sync', u'type': u'image'},
             {u'name': u'VpcBE', u'template': u'VpcBESync', u'type': u'vpc'},
             {u'name': u'SubnetBE-torino01', u'vpc': u'VpcBE', u'zone': u'SiteTorino01',
