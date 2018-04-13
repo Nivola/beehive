@@ -81,7 +81,7 @@ class ConnectionHelper(object):
         res = ctrl._call(uri, u'GET', data=u'name=%s' % name)
         logger.info(u'Get service definition by name: %s' % res)
         count = res.get(u'count')
-        if count > 1:
+        if count < 1:
             raise Exception(u'Template %s does not exist' % name)
 
         return res.get(u'servicedefs')[0][u'uuid']
