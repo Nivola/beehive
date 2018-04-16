@@ -364,10 +364,15 @@ class PaginatedQueryGenerator(object):
         
         # set group by and limit
         if count is False:
-            sql.extend([
-                u'GROUP BY {field}',
-                u'ORDER BY {field} {order}'
-            ])
+            if not hasattr(self.entity, u'__view__'):
+                sql.extend([
+                    u'GROUP BY {field}',
+                    u'ORDER BY {field} {order}'
+                ])
+            else:
+                sql.extend([
+                    u'ORDER BY {field} {order}'
+                ])
             if self.size > 0:
                 sql.append(u'LIMIT {start},{size}')
             else:
@@ -383,6 +388,7 @@ class PaginatedQueryGenerator(object):
             table = u'`%s`' % self.entity.__tablename__
         stmp = stmp.format(table=table, fields=fields, field=self.field, order=self.order, start=self.start,
                            size=self.size)
+        self.logger.debug(u'query: %s' % stmp)
         return stmp
     
     def run(self, tags, *args, **kvargs):
