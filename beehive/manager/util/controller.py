@@ -37,6 +37,12 @@ from tabulate import tabulate
 from time import sleep
 from cryptography.fernet import Fernet
 
+try:
+    import asciitree
+    asciitree_loaded = True
+except:
+    asciitree_loaded = False
+
 logger = getLogger(__name__)
 
 
@@ -137,7 +143,7 @@ class BaseController(CementCmdBaseController):
             (['extra_arguments'], dict(action='store', nargs='*')),
         ]
     
-        formats = [u'json', u'yaml', u'table', u'custom', u'native']
+        formats = [u'json', u'yaml', u'table', u'tree', u'custom', u'native']
     
     def _setup(self, base_app):
         CementCmdBaseController._setup(self, base_app)
@@ -435,12 +441,6 @@ commands:
         elif u'msg' in data:
             maxsize = 200
             headers = [u'msg']
-
-        # if isinstance(data, dict) and u'jobid' in data:
-        #     jobid = data.get(u'jobid')
-        #     print(u'Start JOB: %s' % jobid)
-        #     self.query_task_status(jobid)
-        #     return None
         
         if format == u'json':
             if data is not None:
@@ -451,7 +451,11 @@ commands:
             if data is not None:
                 if isinstance(data, dict) or isinstance(data, list):
                     self.__yamlprint(data)
-            
+
+        elif format == u'tree':
+            tr = asciitree.LeftAligned()
+            print(tr(data))
+
         elif format == u'table' or format == u'text':
             if data is not None:
                 # convert input data for query with one raw

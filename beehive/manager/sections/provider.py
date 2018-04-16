@@ -454,6 +454,36 @@ class ProviderComputeComputeRuleController(ProviderControllerChild):
         aliases_only = True
         description = "Provider compute rule management"
 
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
+    def list(self):
+        """List provider items
+    - field: service, source, dest
+    - service: can be <proto> or <proto>:<port>
+    - proto: ca be  6 [tcp], 17 [udp], 1,<subproto> [icmp], * [all]. If use icmp specify also subprotocol (ex. 8
+      for echo request). [default=*]
+    - port: can be an integer between 0 and 65535 or a range with start and end in the same interval. Range format
+      is <start>-<end>. Use * for all ports. [default=*]
+    - source: rule source. Syntax <type>:<value>.
+    - dest: rule destination. Syntax <type>:<value>.
+    Source and destination type can be SecurityGroup, Cidr.
+    Source and destination value can be security group id or uuid, cidr like 10.102.167.0/24.
+        """
+        data = {}
+        source = self.get_arg(name=u'source', keyvalue=True, default=None)
+        dest = self.get_arg(name=u'dest', keyvalue=True, default=None)
+        service = self.get_arg(name=u'service', keyvalue=True, default=None)
+        if source is not None:
+            data[u'source'] = source
+        if dest is not None:
+            data[u'destination'] = dest
+        if service is not None:
+            data[u'service'] = service
+        uri = self.uri
+        res = self._call(uri, u'GET', data=urllib.urlencode(data))
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], res))
+        self.result(res, headers=self.headers, fields=self.fields, key=self._meta.aliases[0])
+
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
     def get(self):

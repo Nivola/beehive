@@ -253,21 +253,21 @@ class UserController(AuthControllerChild):
         role = self.get_arg(name=u'role')
         expiry = self.get_arg(name=u'expiry')
         data = {
-            u'user':{
-                u'roles':{
-                    u'append':[(role, expiry)],
-                    u'remove':[]
+            u'user': {
+                u'roles': {
+                    u'append': [(role, expiry)],
+                    u'remove': []
                 },
             }
         }
         uri = u'%s/users/%s' % (self.baseuri, oid)
         res = self._call(uri, u'PUT', data=data)
         logger.info(u'Update user roles: %s' % res)
-        self.result({u'msg':u'Add user role: %s' % res[u'role_append']})
+        self.result({u'msg': u'Add user role: %s' % res[u'role_append']})
 
-    @expose(aliases=[u'delete-role <id> <role>'], aliases_only=True)
+    @expose(aliases=[u'del-role <id> <role>'], aliases_only=True)
     @check_error
-    def delete_role(self):
+    def del_role(self):
         """Remove role from user
     - expirydate syntax: yyyy-mm-dd
         """
@@ -549,9 +549,9 @@ class GroupController(AuthControllerChild):
         logger.info(u'Update group roles: %s' % res)
         self.result({u'msg':u'Add group role: %s' % res[u'role_append']})
 
-    @expose(aliases=[u'delete-role <id> <role>'], aliases_only=True)
+    @expose(aliases=[u'del-role <id> <role>'], aliases_only=True)
     @check_error
-    def delete_role(self):
+    def del_role(self):
         """Remove role from group
     - expirydate syntax: yyyy-mm-dd
         """

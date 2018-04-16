@@ -10,9 +10,10 @@ import json
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController, check_error
 from re import match
-from beecell.simple import truncate, id_gen
+from beecell.simple import truncate, id_gen, getkey
 from urllib import urlencode
 from beehive.manager.sections.business import SpecializedServiceControllerChild
+from beecell.paramiko_shell.shell import ParamikoShell
 
 logger = logging.getLogger(__name__)
 
@@ -212,6 +213,24 @@ class VMServiceController(VPCaaServiceControllerChild):
         fields = [u'id', u'uuid', u'name', u'version', u'status', u'active', u'date.creation']
         self.result(res, key=u'servicedefs', headers=headers, fields=fields)
 
+    @expose(aliases=[u'ssh <id> <user> [sshkey=..]'], aliases_only=True)
+    @check_error
+    def ssh(self):
+        """Opens ssh connection over provider instance
+        """
+        oid = self.get_arg(name=u'id')
+        user = self.get_arg(name=u'user')
+        sshkey = self.get_arg(name=u'sshkey', default=None, keyvalue=True)
+        dataSearch = {u'instance-id.N': [oid]}
+        uri = u'%s/computeservices/instance/describeinstances' % self.baseuri
+        server = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True)) \
+            .get(u'DescribeInstancesResponse') \
+            .get(u'reservationSet')[0].get(u'instancesSet')[0]
+        fixed_ip = getkey(server, u'privateIpAddress')
+
+        client = ParamikoShell(fixed_ip, user, keyfile=sshkey)
+        client.run()
+
 
 class VpcServiceController(VPCaaServiceControllerChild):
     class Meta:
@@ -372,7 +391,7 @@ class SGroupServiceController(VPCaaServiceControllerChild):
                 rule[u'toPort'] = u'*'
             if len(rule.get(u'groups', None)) > 0:
                 group = rule[u'groups'][0]
-                rule[u'groups'] = u'%s:%s' % (group[u'userName'], group[u'groupName'])
+                rule[u'groups'] = u'%s:%s [%s]' % (group[u'userName'], group[u'groupName'], group[u'groupId'])
             else:
                 rule[u'groups'] = u''
             if len(rule.get(u'ipRanges', None)) > 0:
@@ -387,20 +406,24 @@ class SGroupServiceController(VPCaaServiceControllerChild):
     def describe(self):
         """Get service group with rules
         """
-        dataSearch = {u'GroupId.N': [self.get_arg(u'id')]}
+        value = self.get_arg(u'id')
+        dataSearch = {u'GroupId.N': [value]}
         uri = u'%s/computeservices/securitygroup/describesecuritygroups' % self.baseuri
-        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True)) \
-            .get(u'DescribeSecurityGroupsResponse').get(u'securityGroupInfo', [])[0]
+        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True))
+        res = res.get(u'DescribeSecurityGroupsResponse').get(u'securityGroupInfo', [])
+        if len(res) == 0:
+            raise Exception(u'Security group %s does not exist' % value)
+        res = res[0]
         egress_rules = self.__format_rule(res.pop(u'ipPermissionsEgress'))
         ingress_rules = self.__format_rule(res.pop(u'ipPermissions'))
-        fields = [u'groups', u'ipRanges', u'ipProtocol', u'fromPort', u'toPort']
+        fields = [u'groups', u'ipRanges', u'ipProtocol', u'fromPort', u'toPort', u'reserved']
         self.result(res, details=True, maxsize=40)
         self.app.print_output(u'Egress rules: ')
-        self.result(egress_rules, headers=[u'toSecuritygroup', u'toCidr', u'protocol', u'fromPort', u'toPort'],
-                    fields=fields, maxsize=60)
+        self.result(egress_rules, headers=[u'toSecuritygroup', u'toCidr', u'protocol', u'fromPort', u'toPort',
+                                           u'reserved'], fields=fields, maxsize=80)
         self.app.print_output(u'Ingress rules: ')
-        self.result(ingress_rules, headers=[u'fromSecuritygroup', u'fromCidr', u'protocol', u'fromPort', u'toPort'],
-                    fields=fields, maxsize=60)
+        self.result(ingress_rules, headers=[u'fromSecuritygroup', u'fromCidr', u'protocol', u'fromPort', u'toPort',
+                                            u'reserved'], fields=fields, maxsize=80)
 
     @expose(aliases=[u'delete <uuid>'], aliases_only=True)
     @check_error
@@ -417,7 +440,7 @@ class SGroupServiceController(VPCaaServiceControllerChild):
         res = {u'msg': u'Delete securitygroup %s' % res}
         self.result(res, headers=[u'msg'])
 
-    @expose(aliases=[u'add-egress-rule <type> <group> <dest/source> [proto=..] [port:..]'], aliases_only=True)
+    @expose(aliases=[u'add-rule <type> <group> <dest/source> [proto=..] [port:..]'], aliases_only=True)
     @check_error
     def add_rule(self):
         """Add egress rule
@@ -476,10 +499,73 @@ class SGroupServiceController(VPCaaServiceControllerChild):
             uri = u'%s/computeservices/securitygroup/authorizesecuritygroupingress' % self.baseuri
             key = u'AuthorizeSecurityGroupIngressResponse'
         res = self._call(uri, u'POST', data={u'rule': data}, timeout=600)
-        logger.info(u'Add securitygroup: %s' % truncate(res))
-        print res
+        logger.info(u'Add securitygroup rule: %s' % truncate(res))
         res = res.get(key).get(u'Return')
-        res = {u'msg': u'Create securitygroup egress rule %s' % res}
+        res = {u'msg': u'Create securitygroup rule %s' % res}
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'del-rule <type> <group> <dest/source> [proto=..] [port:..]'], aliases_only=True)
+    @check_error
+    def del_rule(self):
+        """Add egress rule
+    - type: egress or ingress. For egress group is the source and specify the destination. For ingress group is the
+      destination and specify the source.
+    - proto: ca be tcp, udp, icmp or -1 for all. [default=-1]
+    - port: can be an integer between 0 and 65535 or a range with start and end in the same interval. Range format
+      is <start>-<end>. Use -1 for all ports. [default=-1]
+    - dest/source: rule destination. Syntax <type>:<value>.
+    Source and destination type can be SG, CIDR. For SG value must be <sg_id>. For CIDR value should like
+    10.102.167.0/24.
+        """
+        rule_type = self.get_arg(name=u'type')
+        group_id = self.get_arg(name=u'group')
+        dest = self.get_arg(name=u'dest/source').split(u':')
+        port = self.get_arg(name=u'port', default=None, keyvalue=True)
+        proto = self.get_arg(name=u'proto', default=u'-1', keyvalue=True)
+        from_port = -1
+        to_port = -1
+        if port is not None:
+            port = port.split(u'-')
+            if len(port) == 1:
+                from_port = to_port = port[0]
+            else:
+                from_port, to_port = port
+
+        if len(dest) <= 0 or len(dest) > 2:
+            raise Exception(u'Source/destination syntax is wrong')
+        if dest[0] not in [u'SG', u'CIDR']:
+            raise Exception(u'Source/destination type can be only SG or CIDR')
+        data = {
+            u'GroupId': group_id,
+            u'IpPermissions.N': [
+                {
+                    u'FromPort': from_port,
+                    u'ToPort': to_port,
+                    u'IpProtocol': proto
+                }
+            ]
+        }
+        if dest[0] == u'SG':
+            data[u'IpPermissions.N'][0][u'UserIdGroupPairs'] = [{
+                u'GroupId': dest[1]
+            }]
+        elif dest[0] == u'CIDR':
+            data[u'IpPermissions.N'][0][u'IpRanges'] = [{
+                u'CidrIp': dest[1]
+            }]
+        else:
+            raise Exception(u'Wrong rule type')
+
+        if rule_type == u'egress':
+            uri = u'%s/computeservices/securitygroup/revokesecuritygroupegress' % self.baseuri
+            key = u'RevokeSecurityGroupEgressResponse'
+        elif rule_type == u'ingress':
+            uri = u'%s/computeservices/securitygroup/revokesecuritygroupingress' % self.baseuri
+            key = u'RevokeSecurityGroupIngressResponse'
+        res = self._call(uri, u'DELETE', data={u'rule': data}, timeout=600)
+        logger.info(u'Delete securitygroup rules: %s' % truncate(res))
+        res = res.get(key).get(u'Return')
+        res = {u'msg': u'Delete securitygroup rules %s' % res}
         self.result(res, headers=[u'msg'])
 
 
