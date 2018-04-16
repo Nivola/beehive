@@ -1288,7 +1288,8 @@ class VsphereServerController(VsphereControllerChild):
         self.output(u'Networks')
         self.result(networks, headers=[u'name', u'mac_addr', u'dns', u'fixed_ips', u'net_id', u'port_state'])
         self.output(u'Volumes')
-        self.result(volumes, headers=[u'id', u'name', u'storage', u'size', u'type', u'bootable', u'format', u'mode'])
+        self.result(volumes, headers=[u'id', u'name', u'storage', u'size', u'type', u'bootable', u'format', u'mode'],
+                    maxsize=100)
 
     @expose(aliases=[u'hardware <id>'], aliases_only=True)
     @check_error
@@ -1371,7 +1372,7 @@ class VsphereServerController(VsphereControllerChild):
         self.output(u'tools:')
         self.result(tools, details=True)
         self.output(u'disks:')
-        self.result(disk, headers=[u'diskPath', u'capacity', u'free_space'])
+        self.result(disk, headers=[u'diskPath', u'capacity', u'free_space'], maxsize=100)
         self.output(u'nics:')
         self.result(nics, headers=[u'netbios_config', u'network', u'dnsConfig', u'connected', u'ip_config',
                                    u'mac_address', u'device_config_id'])
@@ -1440,7 +1441,55 @@ class VsphereFlavorController(VsphereControllerChild):
         uri = self.uri
         res = self._call(uri, u'POST', data={u'flavor': data})
         logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))
-        self.result(res)
+        msg = {u'msg': u'Add %s: %s' % (self._meta.aliases[0], truncate(res))}
+        self.result(msg, headers=[u'msg'])
+
+    @expose(aliases=[u'datastores <id>'], aliases_only=True)
+    @check_error
+    def datastores(self):
+        oid = self.get_arg(name=u'id')
+        uri = self.uri + u'/' + oid + u'/datastores'
+        res = self._call(uri, u'GET').get(u'datastores', [])
+        logger.info(u'Get flavor datastores: %s' % truncate(res))
+        self.result(res, headers=[u'id', u'uuid', u'name', u'state', u'tag'])
+
+    @expose(aliases=[u'datastore-add <id> <datastore> <tag>'], aliases_only=True)
+    @check_error
+    def datastore_add(self):
+        """Add datastore to flavor
+        """
+        oid = self.get_arg(name=u'id')
+        datastore = self.get_arg(name=u'datastore')
+        tag = self.get_arg(name=u'tag')
+        uri = self.uri + u'/' + oid + u'/datastores'
+        data = {
+            u'datastore': {
+                u'uuid': datastore,
+                u'tag': tag
+            }
+        }
+        res = self._call(uri, u'POST', data)
+        logger.info(u'Add datastore %s to flavor' % datastore)
+        msg = {u'msg': u'Add datastore %s to flavor' % datastore}
+        self.result(msg, headers=[u'msg'])
+
+    @expose(aliases=[u'datastore-del <id> <datastore>'], aliases_only=True)
+    @check_error
+    def datastore_del(self):
+        """Remove datastore from flavor
+        """
+        oid = self.get_arg(name=u'id')
+        datastore = self.get_arg(name=u'datastore')
+        uri = self.uri + u'/' + oid + u'/datastores'
+        data = {
+            u'datastore': {
+                u'uuid': datastore
+            }
+        }
+        res = self._call(uri, u'DELETE', data)
+        logger.info(u'Remove datastore %s from flavor' % datastore)
+        msg = {u'msg': u'Remove datastore %s from flavor' % datastore}
+        self.result(msg, headers=[u'msg'])
 
 
 vsphere_controller_handlers = [

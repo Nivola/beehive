@@ -712,7 +712,7 @@ class ApiController(BaseController):
         except BeehiveApiClientError as ex:
             raise
         finally:
-            # set token
+            # set token3
             if self.client.uid is not None:
                 self.save_token(self.client.uid, self.client.seckey)
 

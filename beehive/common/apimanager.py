@@ -3150,7 +3150,8 @@ class PaginatedRequestQuerySchema(Schema):
     page = fields.Integer(default=0, example=0, missing=0, context=u'query',
                           description=u'enitities list page selected',
                           validate=Range(min=0, max=1000, error=u'Page is out from range'))
-    order = fields.String(validate=OneOf([u'ASC', u'asc', u'DESC', u'desc'], error=u'Order can be asc, ASC, desc, DESC'),
+    order = fields.String(validate=OneOf([u'ASC', u'asc', u'DESC', u'desc'],
+                                         error=u'Order can be asc, ASC, desc, DESC'),
                           description=u'enitities list order: ASC or DESC',
                           default=u'DESC', example=u'DESC', missing=u'DESC', context=u'query')
     field = fields.String(validate=OneOf([u'id', u'uuid', u'objid', u'name'],
