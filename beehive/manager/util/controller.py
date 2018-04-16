@@ -680,6 +680,7 @@ class ApiController(BaseController):
             raise Exception(u'Auth endpoint is not configured')
 
         # get user and password
+        print os.environ
         user_env = os.environ.get(u'BEEHIVE_CMP_USER', None)
         user_pwd_env = os.environ.get(u'BEEHIVE_CMP_USER_PWD', None)
         user = config.get(u'user', user_env)
