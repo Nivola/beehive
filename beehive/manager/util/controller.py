@@ -713,7 +713,8 @@ class ApiController(BaseController):
             raise
         finally:
             # set token
-            self.save_token(self.client.uid, self.client.seckey)
+            if self.client.uid is not None:
+                self.save_token(self.client.uid, self.client.seckey)
 
         return resp
     
