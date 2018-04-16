@@ -6,6 +6,7 @@ Created on Sep 27, 2017
 import os
 import logging
 import urllib
+from datetime import datetime
 
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController, check_error
@@ -1494,7 +1495,7 @@ class ServiceMetricsController(ServiceControllerChild):
                     headers=[u'id', u'day', u'num', u'type', u'value', u'platform', u'instance',  u'job_id'],
                     fields=[u'id', u'date.creation', u'metric_num', u'metric_type', u'value', u'platform', u'service_instance_id',  u'job_id'])
 
-
+    
 #     @expose(aliases=[u'perms <id>'], aliases_only=True)
 #     @check_error
 #     def perms(self):
@@ -1525,6 +1526,65 @@ class ServiceMetricsController(ServiceControllerChild):
 #         res = {u'msg': u'Update service catalog %s with data %s' % (oid, params)}
 #         self.result(res, headers=[u'msg'])
 
+
+class ServiceMetricCostsController(ServiceControllerChild):
+    class Meta:
+        label = 'service.costs'
+        aliases = ['costs']
+        aliases_only = True
+        description = "Service metric management"
+    
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
+    def list(self):
+        """List all service metric by field:
+            day, id, value, metric_num, platform, u'instance', u'metric_type',  u'job_id'
+        """
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        # = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        
+        header_field = {
+            u'id':u'id', 
+            u'type': u'metric_type_name',
+            u'num': u'metric_num',
+            u'platform': u'platform_name',
+            u'instance': u'instance_oid',
+            u'job_id': u'job_id',
+            u'pricelist': u'pricelist_id',
+            u'date_start': u'evaluation_date_start',
+            u'date_end': u'evaluation_date_stop',
+        }
+        data = {}
+        for k in header_field:
+            par = params.get(k, None)
+            if par is not None:
+                if k.startswith(u'date_'):
+                    g, m, y = par.split(u'-')
+                    data[header_field[k]] = datetime(int(y), int(m), int(g))
+                else: 
+                    data[header_field[k]] = par
+                
+        uri = u'%s/services/cost_views' % self.baseuri
+        res = self._call(uri, u'GET', data=urlencode(data))
+        logger.info(res)
+        self.result(res, key=u'metric_cost', 
+                    headers=[u'id'       , u'type'     , u'value', u'num'       , u'platform'     , u'instance'   ,  u'job_id', u'cost'        , u'cost_iva', u'pricelist'],
+                    fields= [u'metric_id', u'type_name', u'value', u'metric_num', u'platform_name', u'instance_id',  u'job_id', u'cost_not_iva', u'cost_iva', u'pricelist_id'])
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
+    def get(self):
+        """Get service catalog by value id or uuid
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'%s/services/cost_views/%s' % (self.baseuri, value)
+        res = self._call(uri, u'GET')
+        logger.info(res)
+
+        self.result(res, key=u'metric_cost', 
+                    headers=[u'id'       , u'type'     , u'name'         , u'value', u'num'       , u'platform'     , u'instance'   ,  u'job_id', u'cost'        , u'cost_iva', u'listino'],
+                    fields= [u'metric_id', u'type_name', u'platform_name', u'value', u'metric_num', u'platform_name', u'instance_id',  u'job_id', u'cost_not_iva', u'cost_iva', u'pricelist_id'])
+
    
 service_controller_handlers = [
     ServiceController,
@@ -1546,5 +1606,6 @@ service_controller_handlers = [
     ServiceCatalogController,
     ServiceLinkController,
     ServiceTagController,
-    ServiceMetricsController
+    ServiceMetricsController,
+    ServiceMetricCostsController
 ]        
