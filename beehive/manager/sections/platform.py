@@ -2136,27 +2136,30 @@ class BeehiveConsoleController(AnsibleController):
         label = 'console'
         description = "Beehive Console management"
 
-    @expose(aliases=[u'add-user <type> <username> <config>'], aliases_only=True)
+    @expose(aliases=[u'add-user <type> <sshuser> <cmpuser> <config>'], aliases_only=True)
     @check_error
     def add_user(self):
         """Create new user in beehive console
     - type: admin, user
         """
         type = self.get_arg(name=u'type')
-        username = self.get_arg(name=u'username')
+        sshuser = self.get_arg(name=u'sshuser')
+        cmpuser = self.get_arg(name=u'cmpuser')
         config = self.get_arg(name=u'config')
         run_data = {
             u'tags': [u'useradd'],
-            u'username': username,
+            u'sshuser': sshuser,
+            u'cmpuser': cmpuser,
             u'config': config,
         }
         self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
 
-    @expose(aliases=[u'del-user <username>'], aliases_only=True)
+    @expose(aliases=[u'del-user <type> <username>'], aliases_only=True)
     @check_error
     def del_user(self):
         """Delete user from beehive console
         """
+        type = self.get_arg(name=u'type')
         username = self.get_arg(name=u'username')
         run_data = {
             u'tags': [u'userdel'],
@@ -2166,7 +2169,7 @@ class BeehiveConsoleController(AnsibleController):
 
     @expose()
     @check_error
-    def sync(self):
+    def update(self):
         """Sync beehive python package on beehive console
         """
         run_data = {

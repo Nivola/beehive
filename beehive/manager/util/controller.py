@@ -679,11 +679,17 @@ class ApiController(BaseController):
         if config[u'endpoint'] is None:
             raise Exception(u'Auth endpoint is not configured')
 
+        # get user and password
+        user_env = os.environ.get(u'BEEHIVE_CMP_USER', None)
+        user_pwd_env = os.environ.get(u'BEEHIVE_CMP_USER_PWD', None)
+        user = config.get(u'user', user_env)
+        pwd = config.get(u'pwd', user_pwd_env)
+
         client_config = config.get(u'oauth2-client', None)
         self.client = BeehiveApiClient(config[u'endpoint'],
                                        config[u'authtype'],
-                                       config[u'user'], 
-                                       config[u'pwd'],
+                                       user,
+                                       pwd,
                                        config[u'catalog'],
                                        client_config=client_config,
                                        key=self.key)
