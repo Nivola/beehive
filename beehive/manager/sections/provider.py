@@ -3,8 +3,10 @@ Created on Dec 11, 2017
 
 @author: darkbk
 """
+import json
 import logging
 import urllib
+from base64 import b64encode
 
 import sh
 from cement.core.controller import expose
@@ -445,7 +447,7 @@ class ProviderComputeSecurityGroupController(ProviderControllerChild):
         self.result(res, headers=[u'msg'])
 
 
-class ProviderComputeComputeRuleController(ProviderControllerChild):
+class ProviderComputeRuleController(ProviderControllerChild):
     uri = u'/v1.0/nrs/provider/rules'
 
     class Meta:
@@ -563,7 +565,7 @@ class ProviderComputeComputeRuleController(ProviderControllerChild):
         self.result(res, headers=[u'msg'])
 
 
-class ProviderComputeComputeInstanceController(ProviderControllerChild):
+class ProviderComputeInstanceController(ProviderControllerChild):
     uri = u'/v1.0/nrs/provider/instances'
     fields = [u'id', u'name', u'parent.name', u'availability_zone.name', u'attributes.type', u'state',
               u'date.creation', u'image_desc', u'vpcs.0.name', u'flavor.vcpus', u'flavor.memory', u'flavor.disk',
@@ -614,6 +616,19 @@ class ProviderComputeComputeInstanceController(ProviderControllerChild):
 
         self.get_resource(oid, format_result=format_result)
 
+    @expose(aliases=[u'add <file data>'], aliases_only=True)
+    @check_error
+    def add(self):
+        file_data = self.get_arg(name=u'data file')
+        data = self.load_config(file_data)
+        if u'pubkey' in data.get(u'instance'):
+            data[u'instance'][u'user_data'] = b64encode(json.dumps({u'pubkey': data.get(u'instance').get(u'pubkey')}))
+        uri = self.uri
+        res = self._call(uri, u'POST', data=data)
+        self.wait_job(res[u'jobid'])
+        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))
+        self.result(res)
+
     @expose(aliases=[u'ssh <id> <user> [sshkey=..]'], aliases_only=True)
     @check_error
     def ssh(self):
@@ -630,7 +645,7 @@ class ProviderComputeComputeInstanceController(ProviderControllerChild):
         client.run()
 
 
-class ProviderComputeComputeStackController(ProviderControllerChild):
+class ProviderComputeStackController(ProviderControllerChild):
     uri = u'/v1.0/nrs/provider/stacks'
     headers = [u'id', u'uuid', u'name', u'parent', u'state', u'creation']
     headers = [u'id', u'uuid', u'name', u'parent.name', u'state', u'date.creation', u'date.modified']
@@ -711,7 +726,7 @@ provider_controller_handlers = [
     ProviderComputeImageController,
     ProviderComputeVpcController,
     ProviderComputeSecurityGroupController,
-    ProviderComputeComputeRuleController,
-    ProviderComputeComputeInstanceController,
-    ProviderComputeComputeStackController,
+    ProviderComputeRuleController,
+    ProviderComputeInstanceController,
+    ProviderComputeStackController,
 ]        
