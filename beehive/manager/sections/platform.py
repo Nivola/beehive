@@ -2167,6 +2167,24 @@ class BeehiveConsoleController(AnsibleController):
         }
         self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
 
+    @expose(aliases=[u'set-user <type> <sshuser> <cmpuser> <config>'], aliases_only=True)
+    @check_error
+    def set_user(self):
+        """Set user configuration in beehive console
+    - type: admin, user
+        """
+        type = self.get_arg(name=u'type')
+        sshuser = self.get_arg(name=u'sshuser')
+        cmpuser = self.get_arg(name=u'cmpuser')
+        config = self.get_arg(name=u'config')
+        run_data = {
+            u'tags': [u'userset'],
+            u'sshuser': sshuser,
+            u'cmpuser': cmpuser,
+            u'config': config,
+        }
+        self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
+
     @expose()
     @check_error
     def update(self):

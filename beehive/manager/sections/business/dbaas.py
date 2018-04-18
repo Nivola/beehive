@@ -56,9 +56,9 @@ class DBServiceInstanceController(DBaaServiceControllerChild):
         fields = [u'id', u'uuid', u'name', u'version', u'status', u'active', u'date.creation']
         self.result(res, key=u'servicedefs', headers=headers, fields=fields)
 
-    @expose(aliases=[u'describes [field=<id1, id2>]'], aliases_only=True)
+    @expose(aliases=[u'list [field=<id1, id2>]'], aliases_only=True)
     @check_error
-    def describes(self):
+    def list(self):
         """List all database instances by field: owner-id.N, db-instance-id.N
         """
         dataSearch = {}
@@ -74,17 +74,17 @@ class DBServiceInstanceController(DBaaServiceControllerChild):
                   u'Endpoint.Port']
         self.result(res, headers=headers, fields=fields, maxsize=40)
 
-    @expose(aliases=[u'describes <id>'], aliases_only=True)
+    @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
-    def describe(self):
+    def get(self):
         """Get database instance info
         """
         pass
 
-    @expose(aliases=[u'create <name> <account> <template> <subnet> <engine> <version> <security group> [field=..]'],
+    @expose(aliases=[u'add <name> <account> <template> <subnet> <engine> <version> <security group> [field=..]'],
             aliases_only=True)
     @check_error
-    def create(self):
+    def add(self):
         """Create db instance 
     - field: can be Port, DBName, MasterUsername, MasterUserPassword, AvailabilityZone
         """

@@ -831,16 +831,15 @@ class ApiManager(object):
                     self.logger.info(u'Configure apiclient - CONFIGURE')
                     
                     # get auth catalog
-                    self.catalog = configurator.get(app=self.app_name, 
-                                                    group=u'api', 
-                                                    name=u'catalog')[0].value
-                    self.logger.info(u'Get catalog: %s' % self.catalog)                
+                    # self.catalog = configurator.get(app=self.app_name,
+                    #                                 group=u'api',
+                    #                                 name=u'catalog')[0].value
+                    self.catalog = self.params[u'api_catalog']
+                    self.logger.info(u'Get catalog: %s' % self.catalog)
                     
                     # get auth endpoints
                     try:
-                        endpoints = configurator.get(app=self.app_name, 
-                                                     group=u'api', 
-                                                     name=u'endpoints')[0].value
+                        endpoints = configurator.get(app=self.app_name, group=u'api', name=u'endpoints')[0].value
                         self.endpoints = json.loads(endpoints)
                     except:
                         # auth subsystem instance
@@ -848,9 +847,7 @@ class ApiManager(object):
                     self.logger.info(u'Get auth endpoints: %s' % self.endpoints)                    
                     
                     # get auth system user
-                    auth_user = configurator.get(app=self.app_name, 
-                                                 group=u'api', 
-                                                 name=u'user')[0].value
+                    auth_user = configurator.get(app=self.app_name, group=u'api', name=u'user')[0].value
                     self.auth_user = json.loads(auth_user)
                     self.logger.info(u'Get auth user: %s' % self.auth_user)
 
@@ -917,8 +914,7 @@ class ApiManager(object):
         catalog = self.catalog
         service = self.app_subsytem
         uri = self.app_uri        
-        self.catalog_producer.send(self.app_endpoint_id, self.app_desc, 
-                                   service, catalog, uri)
+        self.catalog_producer.send(self.app_endpoint_id, self.app_desc, service, catalog, uri)
         self.logger.info(u'Register %s instance in catalog' % self.app_endpoint_id)
             
     def register_monitor(self):
