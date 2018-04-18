@@ -32,6 +32,9 @@ from datetime import datetime as dt
 from pysnmp.entity.rfc3413.oneliner import cmdgen
 from pysnmp.proto.rfc1902 import Integer, IpAddress, OctetString
 from ansible.plugins.callback.profile_tasks import timestamp
+from jinja2 import Template
+import re
+import binascii
 
 
 logger = getLogger(__name__)
@@ -2423,38 +2426,82 @@ class BeehiveController(AnsibleController):
             sleep(delta)
             state = self.get_job_state(jobid)
 
-    def file_render(self, runner, resource ):
-        """ render a j2 template aginst 
+    def file_render(self, runner, resource, context={} ):
+        """ render a j2 template using current ansible variables
+            hacks: 
+                - iterate the rendering for values containig variables
+                - in order to prevent looping in rendering iteration compute crc32 as 
+                hashing function and compare with previus crc. There may be some problems 
+                because of crc32 collissions maybe murmur (mmh3) should be better but 
+                at this time we do not want to have a new library
         """
-        # from jinja2 import Template
-        from ansible.template import AnsibleJ2Template
-
-        content = self.file_content(resource)
-        template = AnsibleJ2Template(content)
+        # from ansible.template import AnsibleJ2Template
+        content ,filename = self.file_content(resource)
+        template = Template(content)
         
         hosts = self.get_hosts(runner, u'beehive')
         context_data = self.get_hosts_vars(runner, hosts)
-        template.new_context(vars=context_data)
+        for key in context.keys():
+            context_data[key]=context[key]
+        # template.new_context(vars=context_data)
 
         out_rep =  template.render( **context_data)
-        return out_rep
-    
-        pass
+        pp_crc = 0
+        p_crc = 0
+        c_crc = binascii.crc32(out_rep)
+        # print('current crc = 0x%08x' % c_crc  )
+        while re.search("{{.*}}", out_rep) and (p_crc != c_crc) and (pp_crc != c_crc):
+            template = Template(out_rep)
+            out_rep =  template.render( **context_data)
+            pp_crc = p_crc
+            p_crc = c_crc
+            c_crc = binascii.crc32(out_rep)
+            # print('render iteration current crc = 0x%08x' % c_crc  )
+        return out_rep, filename
+
     def file_content(self, valorname ):
-        """ if valorname starts witth @ return the file content relative to ansible_path
+        """ if valorname starts with @ return the file content relative to ansible_path
             otherwise return valorname itself
         """
+        
         if valorname[0] == '@':
-            filename = os.path.join(self.ansible_path, valorname[1:])
+            name = valorname[1:]
+            if os.path.isfile(name):
+                filename = name
+            else:
+                filename = os.path.join(self.ansible_path, name)
             if os.path.isfile(filename):
                 f = open(filename, 'r')
                 value = f.read()
                 f.close()
-                return value
+                return value, filename
             else:
-                raise Exception(u'%s is not a file' % filename)
+                raise Exception(u'%s is not a file' % name)
         else:
-            return valorname
+            # return '' for file so wi do not need to check 
+            return valorname, ''
+
+    def get_camunda_clients(self, runner, port=8080):
+        hosts, vars = runner.get_inventory_with_vars(u'camunda')
+        
+        clients = []
+        for host in hosts:
+            conn = {
+                u'host': str(host),
+                u'port': port,
+                u'path': u'/engine-rest',
+                u'proto': u'http'
+            }
+            user = u'admin'
+            passwd = u'camunda'
+            proxy = None
+            keyfile=None
+            certfile=None
+            client = WorkFlowEngine(conn, user=user, passwd=passwd,
+                proxy=proxy, keyfile=keyfile, certfile=certfile)
+            clients.append(client)
+        return clients
+
 
     @expose(aliases=[u'test  <config>'], aliases_only=True)
     @check_error
@@ -2462,10 +2509,13 @@ class BeehiveController(AnsibleController):
         param=self.get_arg(name=u'config')
         runners = self.get_runners()
         for runner in runners:
-            content = self.file_render(runner,param)
+            cc = { u'cmp_admin': "camunda@local", u'cmp_password': "camunda123" }
+            # cc = { }
+            content, filename = self.file_render(runner,param,cc)
             print(content)
+            cli = self.get_camunda_clients(runner)
         pass
-            
+
     @expose(aliases=[u'post-install <config>'], aliases_only=True)
     @check_error
     def post_install(self):
@@ -2505,12 +2555,39 @@ class BeehiveController(AnsibleController):
         # - metatabelle decisioni
         # - processi
         if apply.get(u'camunda', False) is True:
-            for obj in configs.get(u'camunda').get(u'deploy'):
-                try:
-                    pass
-                except Exception as ex:
-                    self.error(ex)
-                    self.app.error = False
+            runners = self.get_runners()
+            #loop for all env
+            for runner in runners:
+                camundaclients= self.get_camunda_clients(runner)
+                render = configs.get(u'camunda').get(u'render',{u'context':{}, u'deploy':[]})
+                for obj in render.get(u'deploy'):
+                    try:
+                        content, filename = self.file_render( runner, obj, render['context'])
+                        name,dtype = os.path.splitext(os.path.split(filename)[1])
+                        dtype = dtype[1:]
+                        for cli in camundaclients:
+                            res = cli.process_deployment_create( content.rstrip(), name, 
+                                type=dtype, checkduplicate=True, changeonly=True, tenantid=None)
+                        
+                        logger.info(u'camunda rendered deploy: %s' % res)
+                        self.output( u'Camunda rendered deploy: %s.%s' %(name, dtype) )
+                    except Exception as ex:
+                        self.error(ex)
+                        self.app.error = False
+
+                for obj in configs.get(u'camunda').get(u'deploy',[]):
+                    try:
+                        content, filename = self.file_content( obj)
+                        name,dtype = os.path.splitext(os.path.split(filename)[1])
+                        dtype = dtype[1:]
+                        for cli in camundaclients:
+                            res = cli.process_deployment_create( content.rstrip(), name, 
+                                type=dtype, checkduplicate=True, changeonly=True, tenantid=None)
+                        logger.info(u'camunda deploy: %s' % resp)
+                        self.output( u'Camunda deploy: %s.%s' %(name, dtype) )
+                    except Exception as ex:
+                        self.error(ex)
+                        self.app.error = False
 
         self.subsystem = u'resource'
 
@@ -2665,23 +2742,23 @@ class BeehiveController(AnsibleController):
                         desc = obj.get(u'desc', name)
                         process = obj.get(u'process','invalid_key')
                         template = obj.get(u'template','{}')
-                    template=self.file_content(template)
+                    template, filename = self.file_content(template)
 
                     data = {
                         u'serviceprocess':{
-                            u'name':name,
-                            u'desc':desc,
-                            u'service_type_id':str(typeid),
-                            u'method_key':method,
-                            u'process_key':process,
-                            u'template':template
+                            u'name': name,
+                            u'desc': desc,
+                            u'service_type_id': str(typeid),
+                            u'method_key': method,
+                            u'process_key': process,
+                            u'template': template
                         }
                     }
-
                     if prev == None:
                         res = self._call( u'/v1.0/nws/serviceprocesses' , u'POST', data=data)
                     else:
                         res = self._call ( u'/v.10/nws/serviceprocesses/%s' % (prev['uuid']), u'PUT', data=data)
+                    
                 except Exception as ex:
                     self.error(ex)
                     self.app.error = False
@@ -2716,7 +2793,7 @@ class BeehiveController(AnsibleController):
             u'tags': [u'sync']
         }        
         self.ansible_playbook(u'beehive', run_data, playbook=self.beehive_playbook)
-    
+
     @expose()
     @check_error
     def pip(self):
@@ -2726,7 +2803,7 @@ class BeehiveController(AnsibleController):
             u'tags': [u'pip']
         }        
         self.ansible_playbook(u'beehive', run_data, playbook=self.beehive_playbook)
-    
+
     @expose()
     @check_error
     def subsystems(self):
@@ -2945,7 +3022,7 @@ class BeehiveController(AnsibleController):
     @expose()
     @check_error
     def doc(self):
-        """Make e deploy beehive documentation
+        """Make a deploy beehive documentation
         """
         run_data = {
             u'tags': [u'doc'],
@@ -2956,7 +3033,7 @@ class BeehiveController(AnsibleController):
     @expose()
     @check_error
     def apidoc(self):
-        """Make e deploy beehive api documentation
+        """Make a deploy beehive api documentation
         """
         run_data = {
             u'tags': [u'apidoc'],
