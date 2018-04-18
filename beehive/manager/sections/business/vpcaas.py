@@ -186,9 +186,9 @@ class VMServiceController(VPCaaServiceControllerChild):
         fields = [u'id', u'name', u'state',  u'currentState', u'previousState']
         self.result(res, headers=headers, fields=fields, maxsize=40)
 
-    @expose(aliases=[u'terminate <id>'], aliases_only=True)
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
     @check_error
-    def terminate(self):
+    def delete(self):
         """Delete service instance
     - field: can be recursive
         """
