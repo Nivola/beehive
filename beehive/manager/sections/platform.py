@@ -31,6 +31,7 @@ from struct import pack, unpack
 from datetime import datetime as dt
 from pysnmp.entity.rfc3413.oneliner import cmdgen
 from pysnmp.proto.rfc1902 import Integer, IpAddress, OctetString
+from ansible.plugins.callback.profile_tasks import timestamp
 
 
 logger = getLogger(__name__)
@@ -1549,6 +1550,108 @@ class OpenstackController(AnsibleController):
         self.result(resp, headers=headers, maxsize=200)
 
 
+class ElkController(AnsibleController):
+    class Meta:
+        label = 'elk'
+        description = "Elks management"
+        
+      
+    @expose(aliases=[u'search <start_date> <stop_date> [field=..]'], aliases_only=True)
+    @check_error
+    def search(self):            
+        """search
+    - field: from, count, pod, host, source, key
+
+i parametri in input devono essere:
+ from=xx (facoltativo - default:0)
+ count=xx (facoltativo - default:50)
+ pod=xxxxx (facoltativo - default:podto1 - valori validi: podto1, podto2, podvc)
+ start_date="2018-04-08T00:00:40.000Z"    (obbligatorio)
+ stop_date="2018-04-08T00:10:40.000Z"     (obbligatorio)
+ host=nomehost,nomehost2,nomehost3 --> senza spazi e separati da virgola (facoltativo, default:tutti)
+ source=/var/log/keystone/keystone.log   (facoltativo - default:tutti)
+ key=words_on_message (facoltativo - default:tutti)
+        """
+        start_date = self.get_arg(name=u'start_date', keyvalue=True, default="")
+        stop_date = self.get_arg(name=u'stop_date', keyvalue=True, default="")
+        fromv = self.get_arg(name=u'from', keyvalue=True, default="0")
+        count = self.get_arg(name=u'count', keyvalue=True, default="50")
+        source = self.get_arg(name=u'source', keyvalue=True, default="")
+        host = self.get_arg(name=u'host', keyvalue=True, default="")
+        key = self.get_arg(name=u'key', keyvalue=True, default="")
+        pod = self.get_arg(name=u'pod', keyvalue=True, default="podto1")
+        msize = self.get_arg(name=u'msize', keyvalue=True, default="50")
+        print start_date, stop_date, fromv, count, source, host
+        if start_date=="":
+            print "start_date not defined"
+            return()
+        if stop_date=="":
+            print "stop_date not defined"
+            return()
+        print pod
+        if pod in ["podto1","podto2","podvc"]:
+            if pod == "podto1":
+                url = 'http://10.138.144.85:9200/filebeat-*/_search'
+            elif pod == "podto2":
+                url = 'http://10.138.176.85:9200/filebeat-*/_search'
+            elif pod == "podvc":
+                url = 'http://10.138.208.85:9200/filebeat-*/_search'
+        else:
+            print "pod non valido"
+            return()
+        
+        d1 = start_date
+        d2 = stop_date
+        fr = int(fromv)
+        co = int(count)
+        msize = int(msize)
+        elenco_host = host.split(",")
+        
+        parametri = []
+        parametri.append({ "match_all": {} })
+        parametri.append({ "range": {"@timestamp": {
+                                  "gte": d1,
+                                  "lt": d2}}})
+# parametri opzionali
+        if host != "":
+           parametri.append({"terms": { "tags": elenco_host}})
+        if source != "":
+            parametri.append({"term": {"source": source}})
+        if key != "":
+           parametri.append({"match" : {
+              "message": {"query" : key}}})
+
+        print parametri 
+        data_elencohost = {
+            "from": fr,
+            "size": co,
+            "query": {
+                "constant_score" : {
+                    "filter": {
+                        "bool" : {"must": parametri }
+                               } } },
+            "sort": [{"@timestamp": {"order" : "asc"}}] }
+
+        data_elencohost = json.dumps(data_elencohost)
+        res = requests.get(url, data=data_elencohost)
+        rj = json.loads(res.text)
+ #       import pprint
+ #       pp = pprint.PrettyPrinter(indent=4)
+ #       pp.pprint(rj)
+        total=rj.get("hits").get("total")
+        print "n. di risultati totali: ", total
+        hi = rj.get("hits").get("hits")
+        ricerca=[]
+        for x in hi:
+            ricerca.append({u'messaggio':x.get("_source").get("message"),
+                            u'timestamp': x.get("_source").get("@timestamp"),
+                            u'host': x.get("_source").get("tags")[0],
+                            u'sorgente': x.get("_source").get("source")})
+#            print x.get("_source").get("message")
+        self.result(ricerca, headers=[u'timestamp', u'host', u'sorgente', u'messaggio'], maxsize=msize)
+#        self.result(ricerca, headers=[u'timestamp', u'messaggio'], maxsize=100)
+
+
 class NodeController(AnsibleController):
     class Meta:
         label = 'node'
@@ -1654,9 +1757,7 @@ class NodeController(AnsibleController):
     @expose(aliases=[u'powervolt <pod>'], aliases_only=True)
     @check_error
     def powervolt(self):
-        """Legge lo stato della tensione in ingresso per ogni singolo alimentatore
-    Da usarsi dopo power per avere indicazioni sui volt in ingresso
-        """
+
         pod = self.get_arg(name=u'pod')
 
         # il presente script interroga via snmp i server dei diversi pod e raccoglie la tensione su ogni alimentatore 
@@ -2875,6 +2976,7 @@ platform_controller_handlers = [
     CamundaProcessController,
     VsphereController,
     OpenstackController,
+    ElkController,
     NodeController,
     BeehiveController,
     BeehiveConsoleController,

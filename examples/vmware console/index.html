@@ -1,0 +1,96 @@
+<link rel="stylesheet" type="text/css" href="wmkssdk/css/wmks-all.css" />
+<script type="text/javascript" src="http://code.jquery.com/jquery-1.8.3.js"></script>
+<script type="text/javascript" src="http://code.jquery.com/ui/1.8.16/jquery-ui.js"></script>
+<script type="text/javascript" src="wmkssdk/wmks.js" type="text/javascript"></script>
+<!-- ><script type="text/javascript" src="https://vcenter.nsxlab.local:9443/vsphere-client/js/wmks.js" type="text/javascript"></script>-->
+
+<div  id="container" style=""></div>
+
+<script>
+var options = {
+	rescale: true,
+	enableUint8Utf8: false,
+	//enableVVC: true,
+	useVNCHandshake: false,
+	//retryConnectionInterval: 1000,
+	keyboardLayoutId: 'it-IT',
+	changeResolution: true,
+}
+var wmks = WMKS.createWMKS("container", options);
+
+wmks.register(WMKS.CONST.Events.CONNECTION_STATE_CHANGE, function(event, data){
+	console.log(event)
+	console.log(data)
+	if(data.state == WMKS.CONST.ConnectionState.CONNECTED) {
+	    console.log("connection state change : connected");
+	}
+});
+
+wmks.register(WMKS.CONST.Events.ERROR, function(event, data){
+    console.log(event)
+    console.log(data)
+});
+/*
+wmks.register("connecting", function() {
+    console.log("The console is connecting");
+    $("#bar").slideUp("slow", relayout);
+ })
+wmks.register("connected", function() {
+    console.log("The console has been connected");
+    $("#spinner").removeClass("spinner");
+    $("#bar").slideDown("fast", relayout);
+ })
+wmks.register("disconnected", function(evt, info) {
+    console.log("The console has been disconnected");
+    console.log(evt, info);
+    showRemoteConsoleMessage("The console has been disconnected. Close this window and re-launch the console to reconnect.");
+ })
+wmks.register("wmkserror", function(evt, errObj) {
+    console.log("Error!");
+    console.log(evt, errObj);
+    if(errObj.error) {
+       var idx = errObj.error.lastIndexOf(".") + 1;
+       alert(errObj.error.substr(idx) + " - " + errObj.msg);
+    }
+ })
+wmks.register("wmksiniterror", function(evt, customData) {
+    console.log(evt);
+    console.log(customData);
+    showRemoteConsoleMessage(customData.errorMsg);
+ })
+wmks.register("wmksresolutionchanged", function(canvas) {
+    console.log("Resolution has changed!");
+ })
+         */
+//var ip = "vcenter.nsxlab.local";
+var ip = "172.25.3.10";
+//var path = ":9443/vsphere-client/webconsole";
+
+{
+  "sslThumbprint": "F0:86:6D:35:91:8C:41:F3:FD:16:32:68:82:CC:2B:BB:2F:4D:A4:3F",
+  "uri": "wss://tst-esx01.tstsddc.csi.it:443/ticket/b8dc54e294b1ed3a",
+  "cfgFile": "/vmfs/volumes/570f5cbe-e4fe7585-bd91-1402eceb2978/__prova-01/__prova-01.vmx",
+  "host": "tst-esx01.tstsddc.csi.it",
+  "ticket": "b8dc54e294b1ed3a",
+  "port": 443
+}
+
+
+var vmId = 'vm-5660';
+var vmName = '__prova-01';
+var serverGuid = '64b9af30-f59d-4e86-9e07-0cba501e1d5a';
+var server = 'vcenter.nsxlab.local';
+var path = ":9443/vsphere-client/webconsole";
+var ticket = 'cst-VCT-52e03e3b-dca2-bce1-610b-75a3225d44bf--tp-13-9D-7B-AF-52-80-7D-51-4F-13-A3-A3-16-C0-B9-3B-3F-54-3C-B9';
+var thumbprint = '13:9D:7B:AF:52:80:7D:51:4F:13:A3:A3:16:C0:B9:3B:3F:54:3C:B9';
+var authd = 'vmId='+ vmId + '&vmName=' + vmName + '&serverGuid=' +serverGuid + '&host=' + server + ':443&sessionTicket=' + ticket + '&thumbprint=' + thumbprint;
+var uri = 'wss://' + server + path + '/authd?' + authd;
+//var uri = 'wss://vcenter.nsxlab.local:9443/vsphere-client/webconsole/authd?'
+//uri = 'wss://vcenter.nsxlab.local:9443/vsphere-client/webconsole/authd?vmId=vm-205&vmName=tst-vm2&serverGuid=64b9af30-f59d-4e86-9e07-0cba501e1d5a&host=vcenter.nsxlab.local:443&sessionTicket=cst-VCT-526a734f-022b-35cf-4bf7-05be35da5533--tp-13-9D-7B-AF-52-80-7D-51-4F-13-A3-A3-16-C0-B9-3B-3F-54-3C-B9&thumbprint=13:9D:7B:AF:52:80:7D:51:4F:13:A3:A3:16:C0:B9:3B:3F:54:3C:B9'
+
+//var ESXhost = 'esx6-r610-n01.nuvolacsi.it';
+//var TICKETNUMBER = '1267c928453c95d0'
+//uri = 'wss://'+ESXhost+':443/ticket/'+TICKETNUMBER;
+wmks.connect(uri);
+</script >
+
