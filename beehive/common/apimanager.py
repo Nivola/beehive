@@ -3193,13 +3193,16 @@ class ApiObjectSmallResponseSchema(Schema):
     __meta__ = fields.Nested(ApiObjectMetadataResponseSchema, required=True)
 
 
-class ApiObjectResponseSchema(Schema):
+class AuditResponseSchema(Schema):
+    date = fields.Nested(ApiObjectResponseDateSchema, required=True)
+
+
+class ApiObjectResponseSchema(AuditResponseSchema):
     id = fields.Integer(required=True, default=10, example=10)
     uuid = fields.String(required=True,  default=u'4cdf0ea4-159a-45aa-96f2-708e461130e1',
                          example=u'4cdf0ea4-159a-45aa-96f2-708e461130e1')
     name = fields.String(required=True, default=u'test', example=u'test')
     desc = fields.String(required=True, default=u'test', example=u'test')
-    date = fields.Nested(ApiObjectResponseDateSchema, required=True)
     active = fields.Boolean(required=True, default=True, example=True)
     __meta__ = fields.Nested(ApiObjectMetadataResponseSchema, required=True)
 
