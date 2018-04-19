@@ -9,7 +9,7 @@ import os
 import textwrap
 import sys
 from beecell.simple import truncate, str2bool
-from cement.core.controller import CementBaseController
+from cement.core.controller import CementBaseController, expose
 from functools import wraps
 import logging
 from beecell.logger.helper import LoggerHelper
@@ -153,7 +153,12 @@ class BaseController(CementCmdBaseController):
         
         # get configs
         self.configs = self.app.config.get_section_dict(u'configs')
-        
+
+    @property
+    def _help_cmd_list(self):
+        """Returns the help visible command list."""
+        return self._visible_commands
+
     @property
     def _help_text(self):
         """Returns the help text displayed when '--help' is passed."""
@@ -201,6 +206,8 @@ commands:
         #    return None
     
     def _parse_args(self):
+        self.app.args.cmd_list = self._help_cmd_list
+
         CementCmdBaseController._parse_args(self)
 
         envs = u', '.join(self.configs[u'environments'].keys())
@@ -650,6 +657,15 @@ commands:
         cipher_suite = Fernet(self.key)
         cipher_text = cipher_suite.decrypt(data)
         return cipher_text
+
+    @expose(hide=True)
+    def default(self):
+        """Default controller command
+        """
+        if self.app.pargs.cmds is True:
+            self.app.print_cmd_list()
+        else:
+            self.app.print_help()
 
 
 class ApiController(BaseController):

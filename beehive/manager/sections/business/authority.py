@@ -909,7 +909,12 @@ class AccountController(AuthorityControllerChild):
         # get service def
         data = urllib.urlencode({u'plugintype': plugintype})
         uri = u'%s/servicedefs' % self.baseuri
-        service_def = self._call(uri, u'GET', data=data).get(u'servicedefs', [])[0]
+        service_def = self._call(uri, u'GET', data=data).get(u'servicedefs', [])
+        if len(service_def) < 1:
+            raise Exception(u'You can not create %s' % plugintype)
+        else:
+            service_def = service_def[0]
+
         service_definition_id = service_def.get(u'uuid')
         name = u'%s-%s' % (plugintype, account_id)
 

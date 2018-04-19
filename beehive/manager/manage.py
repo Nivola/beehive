@@ -153,6 +153,7 @@ def config_cli(app):
         app.args.add_argument('--color', action='store', dest='color',
                               help='response colered. Can be true or false. [default=true]')
         app.args.add_argument('--verbosity', action='store', dest='verbosity', help='ansible verbosity')
+        app.args.add_argument('--cmds', dest='cmds', action='store_true', help='list available commands')
     # else:
     #    app.args.add_argument('version', action='version', version=BANNER)
 
@@ -167,12 +168,6 @@ class CliController(CementCmdBaseController):
 
     def _setup(self, base_app):
         CementCmdBaseController._setup(self, base_app)
-
-    @expose(hide=True)
-    def default(self):
-        """Default controller command
-        """
-        self.app.print_help()
 
 
 class CliManager(CementCmd):
