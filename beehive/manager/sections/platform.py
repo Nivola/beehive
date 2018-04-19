@@ -1554,6 +1554,92 @@ class ElkController(AnsibleController):
     class Meta:
         label = 'elk'
         description = "Elks management"
+
+    @expose(aliases=[u'query index <pod>'], aliases_only=True)
+    @check_error
+    def qindex(self):            
+        """
+    - pod: podto1, podto2, podvc
+    
+il metodo restituisce l'elenco degli indici presenti in elk del pod indicato
+        """
+        pod = self.get_arg(name=u'pod', keyvalue=True, default="podto1")
+        import re
+        if pod in ["podto1","podto2","podvc"]:
+            if pod == "podto1":
+                url = 'http://10.138.144.85:9200/_cat/indices'
+            elif pod == "podto2":
+                url = 'http://10.138.176.85:9200/_cat/indices'
+            elif pod == "podvc":
+                url = 'http://10.138.208.85:9200/_cat/indices'
+        else:
+            print "pod non valido"
+            return()
+#        res = requests.get(url, data="")
+        res = requests.get(url)
+        list_ind = []
+        lista_indici = []
+        for riga in res.text.split("\n"):
+            list_ind = re.findall(r'\S+',riga)
+            if len(list_ind) == 10:
+                diz_indici = {u"healt": list_ind[0], 
+                              u"status": list_ind[1],
+                              u"indice": list_ind[2],
+                              u"uuid": list_ind[3],
+                              u"pri":list_ind[4],
+                              u"rep":list_ind[5],
+                              u"doccount": list_ind[6],
+                              u"docdeleted": list_ind[7],
+                              u"storesize": list_ind[8],
+                              u"pristoresize": list_ind[9]}
+                lista_indici.append(diz_indici)
+      #  print lista_indici
+        key_list = ("indice","healt","status","uuid","pri","rep","doccount","docdeleted","storesize","pristoresize")
+        temp_list = []
+        for i in lista_indici:
+               temp_list.append(sorted(i.items(),key=lambda pair: key_list.index(pair[0])))
+        sorted_list=sorted(temp_list)
+        print "-------------------------------------------------"
+        for i in sorted_list: print i
+
+
+    @expose(aliases=[u'delete index <pod> <index>'], aliases_only=True)
+    @check_error
+    def delindex(self):            
+        """
+    - pod: podto1, podto2, podvc
+    - index: indice presente nel db.
+    ATTENZIONE, la cancellazione e' definitiva!
+        """
+        pod = self.get_arg(name=u'pod', keyvalue=True, default="podto1")
+        import re
+        if pod in ["podto1","podto2","podvc"]:
+            if pod == "podto1":
+                url = 'http://10.138.144.85:9200/'
+            elif pod == "podto2":
+                url = 'http://10.138.176.85:9200/'
+            elif pod == "podvc":
+                url = 'http://10.138.208.85:9200/'
+        else:
+            print "pod non valido"
+            return()
+#        res = requests.get(url, data="")
+        indice = self.get_arg(name=u'index', keyvalue=True, default="")
+        if indice=="":
+            print "indice non indicato"
+            return()
+        if indice[0:8]!="filebeat":
+            print "E' possibile cancellare solo indici di tipo 'filebeat'"  
+            return()
+        if "*" in indice:
+            print "Non e' possibile indicare * nel nome dell'indice"
+            return()    
+        url=url+indice
+        res = requests.delete(url)
+        if res.status_code==200: 
+            print "L'indice "+ indice + " del pod "+ pod + " e' stato cancellato!!"
+        else:
+            print "L'indice "+ indice + " del pod "+ pod + " non e' stato trovato!!"
         
       
     @expose(aliases=[u'search <start_date> <stop_date> [field=..]'], aliases_only=True)
@@ -1620,8 +1706,7 @@ i parametri in input devono essere:
         if key != "":
            parametri.append({"match" : {
               "message": {"query" : key}}})
-
-        print parametri 
+#        print parametri 
         data_elencohost = {
             "from": fr,
             "size": co,
