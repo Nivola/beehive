@@ -197,7 +197,7 @@ class VMServiceController(VPCaaServiceControllerChild):
             u'InstanceId_N': [value]
         }
         uri = u'%s/computeservices/instance/terminateinstances' % self.baseuri
-        res = self._call(uri, u'DELETE', data=data)
+        res = self._call(uri, u'DELETE', data=data, timeout=600)
         logger.info(res)
         res = {u'msg': u'Delete virtual machine %s' % value}
         self.result(res, headers=[u'msg'])

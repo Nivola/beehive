@@ -1089,14 +1089,11 @@ class User(BaseUser):
             if expiry_date is not None:
                 y, m, d = expiry_date.split(u'-')
                 expiry_date_obj = datetime(int(y), int(m), int(d))
-            res = self.manager.append_user_role(self.model, role.model, 
-                                                expiry_date=expiry_date_obj)
+            res = self.manager.append_user_role(self.model, role.model, expiry_date=expiry_date_obj)
             if res is True: 
-                self.logger.debug(u'Append role %s to user %s' % (
-                                            role, self.name))
+                self.logger.debug(u'Append role %s to user %s' % (role, self.name))
             else:
-                self.logger.debug(u'Role %s already linked with user %s' % (
-                                            role, self.name))
+                self.logger.debug(u'Role %s already linked with user %s' % (role, self.name))
             return role_id
         except (QueryError, TransactionError) as ex:
             self.logger.error(ex, exc_info=1)

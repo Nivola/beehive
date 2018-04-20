@@ -627,63 +627,55 @@ class AccountController(AuthorityControllerChild):
     class Meta:
         label = 'accounts'
         description = "Accounts management"
-        role_template = [
-            {
-                u'name': u'AccountAdminRole-%s',
-                u'perms': [
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account',
-                     u'objid': u'<objid>', u'action': u'*'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceInstance',
-                     u'objid': u'<objid>' + u'//*', u'action': u'*'},
-                    {u'subsystem': u'service',
-                     u'type': u'Organization.Division.Account.ServiceInstance.ServiceLinkInst',
-                     u'objid': u'<objid>' + u'//*//*', u'action': u'*'},
-                    {u'subsystem': u'service',
-                     u'type': u'Organization.Division.Account.ServiceInstance.ServiceInstanceConfig',
-                     u'objid': u'<objid>' + u'//*//*', u'action': u'*'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceLink',
-                     u'objid': u'<objid>' + u'//*', u'action': u'*'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceTag',
-                     u'objid': u'<objid>' + u'//*', u'action': u'*'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceLink',
-                     u'objid': u'*//*//*//*', u'action': u'view'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceTag',
-                     u'objid': u'*//*//*//*', u'action': u'view'},
-                ],
-            },
-            {
-                u'name': u'AccountViewerRole-%s',
-                u'perms': [
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account',
-                     u'objid': u'<objid>', u'action': u'view'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceInstance',
-                     u'objid': u'<objid>' + u'//*', u'action': u'view'},
-                    {u'subsystem': u'service',
-                     u'type': u'Organization.Division.Account.ServiceInstance.ServiceLinkInst',
-                     u'objid': u'<objid>' + u'//*//*', u'action': u'view'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceLink',
-                     u'objid': u'<objid>' + u'//*', u'action': u'view'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceTag',
-                     u'objid': u'<objid>' + u'//*', u'action': u'view'}
-                ]
-            }
-        ]
-
-        default_data = [
-            {u'name': u'Centos7.2', u'template': u'Centos7.2Sync', u'type': u'image'},
-            {u'name': u'Centos6.9', u'template': u'Centos6.9Sync', u'type': u'image'},
-            {u'name': u'VpcBE', u'template': u'VpcBESync', u'type': u'vpc'},
-            {u'name': u'SubnetBE-torino01', u'vpc': u'VpcBE', u'zone': u'SiteTorino01',
-             u'cidr': u'10.138.128.0/21', u'type': u'subnet'},
-            {u'name': u'SubnetBE-vercelli01', u'vpc': u'VpcBE', u'zone': u'SiteVercelli01', u'cidr': u'10.138.192.0/21',
-             u'type': u'subnet'},
-            {u'name': u'SecurityGroupBE', u'vpc': u'VpcBE', u'type': u'sg'},
-            {u'name': u'VpcWEB', u'template': u'VpcWEBSync', u'type': u'vpc'},
-            {u'name': u'SubnetWEB-torino01', u'vpc': u'VpcWEB', u'zone': u'SiteTorino01', u'cidr': u'10.138.136.0/21',
-             u'type': u'subnet'},
-            {u'name': u'SubnetWEB-vercelli01', u'vpc': u'VpcWEB', u'zone': u'SiteVercelli01',
-             u'cidr': u'10.138.200.0/21', u'type': u'subnet'},
-            {u'name': u'SecurityGroupWEB', u'vpc': u'VpcWEB', u'template': u'SecurityGroupWEBSync', u'type': u'sg'},
+        default_services = [
+            {u'type': u'ComputeService',
+             u'name': u'ComputeService',
+             u'template': u'compute.medium'},
+            {u'type': u'DatabaseService',
+             u'name': u'DatabaseService',
+             u'template': u'database.medium',
+             u'require': {u'type': u'ComputeService', u'name': u'ComputeService'}},
+            {u'type': u'ComputeImage',
+             u'name': u'Centos7.2',
+             u'template': u'Centos7.2Sync',
+             u'require': {u'type': u'ComputeService', u'name': u'ComputeService'}},
+            {u'type': u'ComputeImage',
+             u'name': u'Centos6.9',
+             u'template': u'Centos6.9Sync',
+             u'require': {u'type': u'ComputeService', u'name': u'ComputeService'}},
+            {u'type': u'ComputeVPC',
+             u'name': u'VpcBE',
+             u'template': u'VpcBESync',
+             u'require': {u'type': u'ComputeService', u'name': u'ComputeService'}},
+            {u'type': u'ComputeSubnet',
+             u'name': u'SubnetBE-torino01',
+             u'params': {u'vpc': u'VpcBE', u'zone': u'SiteTorino01', u'cidr': u'10.138.128.0/21'},
+             u'require': {u'type': u'ComputeVPC', u'name': u'VpcBE'}},
+            {u'type': u'ComputeSubnet',
+             u'name': u'SubnetBE-vercelli01',
+             u'params': {u'vpc': u'VpcBE', u'zone': u'SiteVercelli01', u'cidr': u'10.138.192.0/21'},
+             u'require': {u'type': u'ComputeVPC', u'name': u'VpcBE'}},
+            {u'type': u'ComputeSecurityGroup',
+             u'name': u'SecurityGroupBE',
+             u'params': {u'vpc': u'VpcBE'},
+             u'require': {u'type': u'ComputeVPC', u'name': u'VpcBE'}},
+            {u'type': u'ComputeVPC',
+             u'name': u'VpcWEB',
+             u'template': u'VpcWEBSync',
+             u'require': {u'type': u'ComputeService', u'name': u'ComputeService'}},
+            {u'type': u'ComputeSubnet',
+             u'name': u'SubnetWEB-torino01',
+             u'params': {u'vpc': u'VpcWEB', u'zone': u'SiteTorino01', u'cidr': u'10.138.136.0/21'},
+             u'require': {u'type': u'ComputeVPC', u'name': u'VpcWEB'}},
+            {u'type': u'ComputeSubnet',
+             u'name': u'SubnetWEB-vercelli01',
+             u'params': {u'vpc': u'VpcWEB', u'zone': u'SiteVercelli01', u'cidr': u'10.138.200.0/21'},
+             u'require': {u'type': u'ComputeVPC', u'name': u'VpcWEB'}},
+            {u'type': u'ComputeSecurityGroup',
+             u'name': u'SecurityGroupWEB',
+             u'params': {u'vpc': u'VpcWEB'},
+             u'template': u'SecurityGroupWEBSync',
+             u'require': {u'type': u'ComputeVPC', u'name': u'VpcWEB'}}
         ]
         default_methods = {
             u'image': ConnectionHelper.create_image,
@@ -692,47 +684,7 @@ class AccountController(AuthorityControllerChild):
             u'subnet': ConnectionHelper.create_subnet,
         }
 
-    @expose(aliases=[u'get-roles <account>'], aliases_only=True)
-    @check_error
-    def get_roles(self):
-        """Get account roles
-        """
-        account_id = self.get_arg(name=u'account')
-        account_id = ConnectionHelper.get_account(self, account_id).get(u'id')
-        roles = ConnectionHelper.get_roles(self, u'Account%' + u'Role-%s' % account_id)
-
-    @expose(aliases=[u'set-role <account> <type> <user>'], aliases_only=True)
-    @check_error
-    def set_role(self):
-        """Get account roles
-    - type: role type. Admin or Viewer
-        """
-        account_id = self.get_arg(name=u'account')
-        account_id = ConnectionHelper.get_account(self, account_id).get(u'id')
-        role_type = self.get_arg(name=u'role type. Admin or Viewer')
-        user = self.get_arg(name=u'user')
-        ConnectionHelper.set_role(self, u'Account%sRole-%s' % (role_type, account_id), user)
-
-    @expose(aliases=[u'unset-role <account> <type> <user>'], aliases_only=True)
-    @check_error
-    def unset_role(self):
-        """Get account roles
-    - type: role type. Admin or Viewer
-        """
-        account_id = self.get_arg(name=u'account')
-        account_id = ConnectionHelper.get_account(self, account_id).get(u'id')
-        role_type = self.get_arg(name=u'role type. Admin or Viewer')
-        user = self.get_arg(name=u'user')
-        ConnectionHelper.set_role(self, u'Account%sRole-%s' % (role_type, account_id), user, op=u'remove')
-
-    @expose(aliases=[u'add-roles <account>'], aliases_only=True)
-    @check_error
-    def add_roles(self):
-        """Add account roles
-        """
-        account_id = self.get_arg(name=u'account')
-        account_id = ConnectionHelper.get_account(self, account_id).get(u'id')
-
+    def __add_role(self, account_id):
         # get account
         uri = u'%s/accounts/%s' % (self.baseuri, account_id)
         account = self._call(uri, u'GET').get(u'account')
@@ -743,6 +695,68 @@ class AccountController(AuthorityControllerChild):
             name = role.get(u'name') % account_id
             perms = ConnectionHelper.set_perms_objid(role.get(u'perms'), account_objid)
             ConnectionHelper.add_role(self, name, name, perms)
+
+    @expose(aliases=[u'roles <account>'], aliases_only=True)
+    @check_error
+    def roles(self):
+        """Get account roles
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'%s/accounts/%s/roles' % (self.baseuri, value)
+        res = self._call(uri, u'GET')
+        logger.info(res)
+        self.result(res, key=u'roles', headers=[u'name', u'desc'], maxsize=200)
+
+    @expose(aliases=[u'users <account>'], aliases_only=True)
+    @check_error
+    def users(self):
+        """Get account users
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'%s/accounts/%s/users' % (self.baseuri, value)
+        res = self._call(uri, u'GET')
+        logger.info(res)
+        self.result(res, key=u'users', headers=[u'name', u'role'], maxsize=200)
+
+    @expose(aliases=[u'add-user <account> <role> <user>'], aliases_only=True)
+    @check_error
+    def add_user(self):
+        """Add account role to a user
+        """
+        value = self.get_arg(name=u'id')
+        role = self.get_arg(name=u'role')
+        user = self.get_arg(name=u'user')
+        data = {
+            u'user': {
+                u'user_id': user,
+                u'role': role
+            }
+        }
+        uri = u'%s/accounts/%s/users' % (self.baseuri, value)
+        res = self._call(uri, u'POST', data)
+        logger.info(res)
+        msg = {u'msg': res}
+        self.result(msg, headers=[u'msg'], maxsize=200)
+
+    @expose(aliases=[u'del-user <account> <role> <user>'], aliases_only=True)
+    @check_error
+    def del_user(self):
+        """Remove account role from a user
+        """
+        value = self.get_arg(name=u'id')
+        role = self.get_arg(name=u'role')
+        user = self.get_arg(name=u'user')
+        data = {
+            u'user': {
+                u'user_id': user,
+                u'role': role
+            }
+        }
+        uri = u'%s/accounts/%s/users' % (self.baseuri, value)
+        res = self._call(uri, u'DELETE', data)
+        logger.info(res)
+        msg = {u'msg': res}
+        self.result(msg, headers=[u'msg'], maxsize=200)
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     @check_error
@@ -758,7 +772,7 @@ class AccountController(AuthorityControllerChild):
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
         self.result(res, key=u'accounts', headers=[u'id', u'uuid', u'name', u'division_name', u'contact', u'email',
-                    u'email_support', u'email_support_link', u'active', u'date.creation'], maxsize=40)
+                    u'email_support', u'email_support_link', u'status', u'date.creation'], maxsize=40)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -783,7 +797,7 @@ class AccountController(AuthorityControllerChild):
         logger.info(u'Get account perms: %s' % truncate(res))
         self.result(res, key=u'perms', headers=self.perm_headers)
   
-    @expose(aliases=[u'yaskss <id>'], aliases_only=True)
+    @expose(aliases=[u'tasks <id>'], aliases_only=True)
     @check_error
     def tasks(self):
         """Get account permissions by id, uuid or name
@@ -799,37 +813,42 @@ class AccountController(AuthorityControllerChild):
     def add(self):
         """Add account <name> <division_id>
     - field: can be desc, contact, email, email_support, email_support_link, note
+    - service: if True create default services
         """
         name = self.get_arg(name=u'name')
         division_id = self.get_arg(name=u'division_id')
+        create_services = self.get_arg(name=u'services', keyvalue=True, default=False)
         params = self.get_query_params(*self.app.pargs.extra_arguments)
+
+        services = []
+        if create_services is True:
+            services = self._meta.default_services
         
         data = {
-            u'account':{
-                # u'name': name.split(u'=')[1],
+            u'account': {
                 u'name': name,
-                u'desc':params.get(u'desc', None),
-                #  u'division_id':division_id.split(u'=')[1],
-                u'division_id':division_id,
-                u'contact':params.get(u'contact', None),
-                u'email':params.get(u'email', None),
-                u'note':params.get(u'note', None), 
-                u'email_support':params.get(u'email_support', None),
-                u'email_support_link':params.get(u'email_support_link', None),
+                u'desc': params.get(u'desc', None),
+                u'division_id': division_id,
+                u'contact': params.get(u'contact', None),
+                u'email': params.get(u'email', None),
+                u'note': params.get(u'note', None),
+                u'email_support': params.get(u'email_support', None),
+                u'email_support_link': params.get(u'email_support_link', None),
+                u'services': services
             }  
          }        
-        uri = u'%s/accounts' % (self.baseuri)
-        res = self._call(uri, u'POST', data=data)
+        uri = u'%s/accounts' % self.baseuri
+        res = self._call(uri, u'POST', data=data, timeout=600)
         logger.info(u'Add account: %s' % truncate(res))
-        res = {u'msg': u'Add account %s' % res}
+        res = {u'msg': u'Add account %s' % res[u'uuid']}
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'update <id> [field=value]'], aliases_only=True)
     @check_error
     def update(self):
         """Update account
-            - id: id or uuid of the account
-            - field: can be name, desc, email, contact, active, note, email_support, email_support_link
+    - id: id or uuid of the account
+    - field: can be name, desc, email, contact, active, note, email_support, email_support_link
         """
         oid = self.get_arg(name=u'id')
         params = self.app.kvargs
@@ -840,6 +859,31 @@ class AccountController(AuthorityControllerChild):
         self._call(uri, u'PUT', data=data)
         logger.info(u'Update account %s with data %s' % (oid, params))
         res = {u'msg': u'Update account %s with data %s' % (oid, params)}
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'refresh <id> [field=value]'], aliases_only=True)
+    @check_error
+    def refresh(self):
+        """Refresh account
+    - id: id or uuid of the account
+    - service: if True create default services
+        """
+        oid = self.get_arg(name=u'id')
+        create_services = self.get_arg(name=u'services', keyvalue=True, default=False)
+
+        services = []
+        if create_services is True:
+            services = self._meta.default_services
+
+        data = {
+            u'account': {
+                u'services': services
+            }
+        }
+        uri = u'%s/accounts/%s' % (self.baseuri, oid)
+        self._call(uri, u'PATCH', data=data, timeout=600)
+        logger.info(u'Refresh account %s' % (oid))
+        res = {u'msg': u'Refresh account %s' % (oid)}
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
@@ -881,77 +925,86 @@ class AccountController(AuthorityControllerChild):
         self.result(res, headers=[u'id', u'uuid', u'name', u'amount', u'evaluation_date', u'active', u'date.creation'],
                     maxsize=40)
 
-    @expose(aliases=[u'add-core-service <account_id> <type>'], aliases_only=True)
-    @check_error
-    def add_core_service(self):
-        """Add container core service instance
-    - type : can be ComputeService, DatabaseService
-        """
-        account_id = self.get_arg(name=u'account_id')
-        plugintype = self.get_arg(name=u'type')
-
-        uri_internal = {
-            u'ComputeService': u'computeservices',
-            u'DatabaseService': u'databaseservices',
-        }
-
-        # check service already exists
-        data = urllib.urlencode({u'plugintype': plugintype, u'account_id': account_id, u'flag_container': True})
-        uri = u'%s/serviceinsts' % self.baseuri
-        service_inst = self._call(uri, u'GET', data=data).get(u'serviceinsts', [])
-
-        if len(service_inst) > 0:
-            logger.info(u'Service instance container %s already exists' % plugintype)
-            res = {u'msg': u'Service instance container %s already exists' % plugintype}
-            self.result(res, headers=[u'msg'])
-            return
-
-        # get service def
-        data = urllib.urlencode({u'plugintype': plugintype})
-        uri = u'%s/servicedefs' % self.baseuri
-        service_def = self._call(uri, u'GET', data=data).get(u'servicedefs', [])
-        if len(service_def) < 1:
-            raise Exception(u'You can not create %s' % plugintype)
-        else:
-            service_def = service_def[0]
-
-        service_definition_id = service_def.get(u'uuid')
-        name = u'%s-%s' % (plugintype, account_id)
-
-        # create instance
-        data = {
-            u'serviceinst': {
-                u'name': name,
-                u'desc': u'Account %s %s' % (account_id, plugintype),
-                u'account_id': account_id,
-                u'service_def_id': service_definition_id,
-                u'params_resource': u'',
-                u'version': u'1.0'
-            }
-        }
-        uri = u'%s/%s' % (self.baseuri, uri_internal.get(plugintype))
-        res = self._call(uri, u'POST', data=data, timeout=600)
-        logger.info(u'Add service instance container: %s' % plugintype)
-        res = {u'msg': u'Add service instance %s' % res}
-        self.result(res, headers=[u'msg'])
-
-    @expose(aliases=[u'add-default-services <account_id>'], aliases_only=True)
-    @check_error
-    def add_default_services(self):
-        """Add default compute service child instances
-
-        :param account: account id
-        :param data: dict with service data
-        :return:
-        """
-        account_id = self.get_arg(name=u'account_id')
-
-        for item in self._meta.default_data:
-            item[u'account'] = account_id
-            type = item.pop(u'type')
-            if not ConnectionHelper.service_instance_exist(self, type, u'%s-%s' % (item[u'name'], account_id)):
-                func = self._meta.default_methods.get(type)
-                func(self, **item)
+    # def __add_core_service(self, account_id, plugintype):
+    #     """Add container core service instance
+    #
+    #     :param account_id: account id
+    #     :param plugintype: can be ComputeService, DatabaseService
+    #     """
+    #     uri_internal = {
+    #         u'ComputeService': u'computeservices',
+    #         u'DatabaseService': u'databaseservices',
+    #     }
+    #
+    #     # check service already exists
+    #     data = urllib.urlencode({u'plugintype': plugintype, u'account_id': account_id, u'flag_container': True})
+    #     uri = u'%s/serviceinsts' % self.baseuri
+    #     service_inst = self._call(uri, u'GET', data=data).get(u'serviceinsts', [])
+    #
+    #     if len(service_inst) > 0:
+    #         logger.info(u'Service instance container %s already exists' % plugintype)
+    #         res = {u'msg': u'Service instance container %s already exists' % plugintype}
+    #         self.result(res, headers=[u'msg'])
+    #         return
+    #
+    #     # get service def
+    #     data = urllib.urlencode({u'plugintype': plugintype})
+    #     uri = u'%s/servicedefs' % self.baseuri
+    #     service_def = self._call(uri, u'GET', data=data).get(u'servicedefs', [])
+    #     if len(service_def) < 1:
+    #         raise Exception(u'You can not create %s' % plugintype)
+    #     else:
+    #         service_def = service_def[0]
+    #
+    #     service_definition_id = service_def.get(u'uuid')
+    #     name = u'%s-%s' % (plugintype, account_id)
+    #
+    #     # create instance
+    #     data = {
+    #         u'serviceinst': {
+    #             u'name': name,
+    #             u'desc': u'Account %s %s' % (account_id, plugintype),
+    #             u'account_id': account_id,
+    #             u'service_def_id': service_definition_id,
+    #             u'params_resource': u'',
+    #             u'version': u'1.0'
+    #         }
+    #     }
+    #     uri = u'%s/%s' % (self.baseuri, uri_internal.get(plugintype))
+    #     res = self._call(uri, u'POST', data=data, timeout=600)
+    #     logger.info(u'Add service instance container: %s' % plugintype)
+    #     res = {u'msg': u'Add service instance %s' % res}
+    #     self.result(res, headers=[u'msg'])
+    #
+    # def __add_default_services(self, account_id):
+    #     """Add default compute service child instances
+    #
+    #     :param account_id: account id
+    #     """
+    #     for item in self._meta.default_data:
+    #         item[u'account'] = account_id
+    #         type = item.pop(u'type')
+    #         if not ConnectionHelper.service_instance_exist(self, type, u'%s-%s' % (item[u'name'], account_id)):
+    #             func = self._meta.default_methods.get(type)
+    #             func(self, **item)
+    #
+    # @expose(aliases=[u'add-core-service <account_id> <type>'], aliases_only=True)
+    # @check_error
+    # def add_core_service(self):
+    #     """Add container core service instance
+    # - type : can be ComputeService, DatabaseService
+    #     """
+    #     account_id = self.get_arg(name=u'account_id')
+    #     plugintype = self.get_arg(name=u'type')
+    #     self.__add_core_service(account_id, plugintype)
+    #
+    # @expose(aliases=[u'add-default-services <account_id>'], aliases_only=True)
+    # @check_error
+    # def add_default_services(self):
+    #     """Add default compute service child instances
+    #     """
+    #     account_id = self.get_arg(name=u'account_id')
+    #     self.__add_default_services(account_id)
 
     @expose(aliases=[u'delete-service <service_id>'], aliases_only=True)
     @check_error
@@ -979,15 +1032,6 @@ class AccountController(AuthorityControllerChild):
             self.app.kvargs[u'flag_container'] = True
         data = urllib.urlencode(self.app.kvargs)
         ConnectionHelper.get_service_instances(self, data)
-
-        # uri = u'%s/serviceinsts' % self.baseuri
-        # res = self._call(uri, u'GET', data=data)
-        # logger.info(res)
-        # fields = [u'id', u'uuid', u'name', u'version', u'service_definition_id', u'status', u'active',
-        #           u'resource_uuid', u'is_container', u'parent.name', u'date.creation']
-        # headers = [u'id', u'uuid', u'name', u'version', u'definition', u'status', u'active', u'resource',
-        #            u'is_container', u'parent', u'creation']
-        # self.result(res, key=u'serviceinsts', headers=headers, fields=fields)
 
 
 class SubwalletController(AuthorityControllerChild):

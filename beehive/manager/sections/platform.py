@@ -2552,8 +2552,18 @@ class BeehiveController(AnsibleController):
                 logger.info(u'Add service catalog defs: %s' % res)
                 self.output(u'Add service catalog defs: %s' % defs)
 
-        # create main org structure
-        # org, div, account common
+        # create org
+        if apply.get(u'authority', False) is True:
+            for obj in configs.get(u'authority').get(u'orgs'):
+                name = obj.get(u'name')
+                res = self._call(u'/v1.0/nws/organizations', u'GET', data={u'name': name}).get(u'organizations')
+                if len(res) > 0:
+                    self.error(u'Organization %s already exists' % name)
+                    self.app.error = False
+
+                # res = self._call(u'/v1.0/nws/orgs', u'POST', data={u'servicetype': obj})
+                # logger.info(u'Add service type: %s' % res)
+                # self.output(u'Add service type: %s' % obj)
 
     @expose()
     @check_error

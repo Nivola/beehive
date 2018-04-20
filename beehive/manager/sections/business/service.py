@@ -760,7 +760,7 @@ class ServiceInstanceController(ServiceControllerChild):
                u'is_container', u'parent', u'creation']
 
     class Meta:
-        label = 'instances'
+        label = 'insts'
         description = "Service instance management"
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
@@ -929,6 +929,21 @@ class ServiceInstanceController(ServiceControllerChild):
         logger.info(res)
         self.result(res, key=u'serviceinsts', headers=self.headers, fields=self.fields)
 
+    @expose(aliases=[u'config <id>'], aliases_only=True)
+    @check_error
+    def config(self):
+        """Get service instance configuration  by value id or uuid
+    - id : config id
+        """
+        value = self.get_arg(name=u'id')
+        self.app.kvargs[u'service_instance_id'] = value
+        data = urllib.urlencode(self.app.kvargs)
+        uri = u'%s/instancecfgs' % self.baseuri
+        res = self._call(uri, u'GET', data=data).get(u'instancecfgs')
+        logger.info(res)
+        if len(res) > 0:
+            self.result(res[0].get(u'json_cfg'), details=True)
+
 
 class ServiceInstanceConfigController(ApiController):
     baseuri = u'/v1.0/nws'
@@ -938,7 +953,7 @@ class ServiceInstanceConfigController(ApiController):
         label = 'instance.configs'
         aliases = ['configs']
         aliases_only = True
-        stacked_on = 'instances'
+        stacked_on = 'insts'
         stacked_type = 'nested'
         description = "Service instance configuration management"
 
@@ -1040,6 +1055,7 @@ class ServiceInstanceConfigController(ApiController):
         logger.info(res)
         res = {u'msg': u'Delete service instancecfgs cfgs %s' % value}
         self.result(res, headers=[u'msg'])
+
 
 class ServiceInstanceTaskController(ApiController):
     baseuri = u'/v1.0/nws'

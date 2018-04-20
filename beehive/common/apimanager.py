@@ -2066,7 +2066,7 @@ class ApiObject(object):
             
         **Raise:** :class:`ApiManagerError`
         """
-        return kvargs    
+        return kvargs
     
     #
     # db session
@@ -2243,8 +2243,7 @@ class ApiObject(object):
         **Raise:** :class:`ApiManagerError`
         """
         if self.update_object is None:
-            raise ApiManagerError(u'Update is not supported for %s:%s' % 
-                                  (self.objtype, self.objdef))
+            raise ApiManagerError(u'Update is not supported for %s:%s' % (self.objtype, self.objdef))
         
         # verify permissions
         self.verify_permisssions(u'update', authorize=authorize)
@@ -2256,12 +2255,9 @@ class ApiObject(object):
         try:  
             res = self.update_object(oid=self.oid, *args, **kvargs)
             
-            self.logger.debug(u'Update %s %s with data %s' % 
-                              (self.objdef, self.oid, kvargs))
-            # self.send_event(u'update', params=params)
+            self.logger.debug(u'Update %s %s with data %s' % (self.objdef, self.oid, kvargs))
             return self.uuid
         except TransactionError as ex:
-            # self.send_event(u'update', params=params, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -2573,6 +2569,8 @@ class ApiViewResponse(ApiObject):
             action = u'insert'
         elif method in [u'PUT']:
             action = u'update'
+        elif method in [u'PATCH']:
+            action = u'patch'
         elif method in [u'DELETE']:
             action = u'delete'
         #else:
@@ -3212,6 +3210,10 @@ class PaginatedResponseSchema(Schema):
     page = fields.Integer(required=True, default=0, example=0)
     total = fields.Integer(required=True, default=20, example=20)
     sort = fields.Nested(PaginatedResponseSortSchema, required=True)
+
+
+class CrudApiObjectSimpleResponseSchema(Schema):
+    uuid = fields.Boolean(required=True,  default=True, example=True)
 
 
 class CrudApiObjectResponseSchema(Schema):

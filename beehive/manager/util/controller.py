@@ -445,7 +445,7 @@ commands:
         
         if key is not None:
             data = data[key]
-        elif u'msg' in data:
+        elif getattr(data, u'msg', None) is not None:
             maxsize = 200
             headers = [u'msg']
         
