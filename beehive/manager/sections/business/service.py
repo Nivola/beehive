@@ -772,7 +772,6 @@ class ServiceInstanceController(ServiceControllerChild):
              filter_expiry_date_start, filter_expiry_date_stop
         """
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        urllib.quote
         uri = u'%s/serviceinsts' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)

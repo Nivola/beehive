@@ -1141,6 +1141,18 @@ class BeehiveApiClient(object):
     #
     # services
     #
+    def get_service_instance(self, plugintype=None, account=None, name=None):
+        data = urlencode({u'account_id': account, u'name': name, u'plugintype': plugintype})
+        uri = u'/v1.0/nws/serviceinsts'
+        res = self.invoke(u'service', uri, u'GET', data, timeout=60)
+        self.logger.debug(u'Get service instance: %s' % truncate(res))
+        res = res.get(u'serviceinsts')
+        if len(res) < 1:
+            raise BeehiveApiClientError(u'Service instance %s does not exist' % name)
+        if len(res) > 1:
+            raise BeehiveApiClientError(u'Service instance %s multiplicity is > 1' % name)
+        return res[0].get(u'uuid')
+
     def create_vpcaas_image(self, account=None, name=None, template=None, **kvargs):
         data = {
             u'ImageName': name,
@@ -1166,9 +1178,10 @@ class BeehiveApiClient(object):
         return res
 
     def create_vpcaas_subnet(self, account=None, name=None, vpc=None, zone=None, cidr=None, **kvargs):
+        vpc_id = self.get_service_instance(plugintype=u'ComputeVPC', account=account, name=vpc)
         data = {
             u'SubnetName': name,
-            u'VpcId': vpc,
+            u'VpcId': vpc_id,
             u'AvailabilityZone': zone,
             u'CidrBlock': cidr
         }
@@ -1179,9 +1192,10 @@ class BeehiveApiClient(object):
         return res
 
     def create_vpcaas_sg(self, account=None, name=None, vpc=None, template=None, **kvargs):
+        vpc_id = self.get_service_instance(plugintype=u'ComputeVPC', account=account, name=vpc)
         data = {
             u'GroupName': name,
-            u'VpcId': vpc
+            u'VpcId': vpc_id
         }
         if template is not None:
             data[u'GroupType'] = template
