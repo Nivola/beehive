@@ -768,10 +768,10 @@ class AccountController(AuthorityControllerChild):
         logger.info(u'Get account perms: %s' % truncate(res))
         self.result(res, key=u'perms', headers=self.perm_headers)
   
-    @expose(aliases=[u'yaskss <id>'], aliases_only=True)
+    @expose(aliases=[u'tasks <id>'], aliases_only=True)
     @check_error
     def tasks(self):
-        """Get account permissions by id, uuid or name
+        """Get account pending tasks by id, uuid or name
         """
         value = self.get_arg(name=u'id')
         uri = u'%s/accounts/%s/tasks' % (self.baseuri, value)

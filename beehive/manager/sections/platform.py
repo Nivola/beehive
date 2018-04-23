@@ -32,6 +32,9 @@ from datetime import datetime as dt
 from pysnmp.entity.rfc3413.oneliner import cmdgen
 from pysnmp.proto.rfc1902 import Integer, IpAddress, OctetString
 from ansible.plugins.callback.profile_tasks import timestamp
+from jinja2 import Template
+import re
+import binascii
 
 
 logger = getLogger(__name__)
@@ -235,6 +238,60 @@ class AnsibleController(ApiController):
             all_hosts.extend(hosts)
         logger.debug(u'Get hosts from ansible groups %s: %s' % (groups, all_hosts))
         return all_hosts
+
+    def file_render(self, runner, resource, context={}):
+        """ render a j2 template using current ansible variables
+            hacks:
+                - iterate the rendering for values containig variables
+                - in order to prevent looping in rendering iteration compute crc32 as
+                hashing function and compare with previus crc. There may be some problems
+                because of crc32 collissions maybe murmur (mmh3) should be better but
+                at this time we do not want to have a new library
+        """
+        # from ansible.template import AnsibleJ2Template
+        content ,filename = self.file_content(resource)
+        template = Template(content)
+        
+        hosts = self.get_hosts(runner, u'beehive')
+        context_data = self.get_hosts_vars(runner, hosts)
+        for key in context.keys():
+            context_data[key]=context[key]
+
+        out_rep =  template.render( **context_data)
+        pp_crc = 0
+        p_crc = 0
+        c_crc = binascii.crc32(out_rep)
+        # print('current crc = 0x%08x' % c_crc  )
+        while re.search("{{.*}}", out_rep) and (p_crc != c_crc) and (pp_crc != c_crc):
+            template = Template(out_rep)
+            out_rep =  template.render( **context_data)
+            pp_crc = p_crc
+            p_crc = c_crc
+            c_crc = binascii.crc32(out_rep)
+            # print('render iteration current crc = 0x%08x' % c_crc  )
+        return out_rep, filename
+
+    def file_content(self, valorname):
+        """ if valorname starts with @ return the file content try for path or relative to ansible_path
+            otherwise return valorname itself
+        """
+        
+        if valorname[0] == '@':
+            name = valorname[1:]
+            if os.path.isfile(name):
+                filename = name
+            else:
+                filename = os.path.join(self.ansible_path, name)
+            if os.path.isfile(filename):
+                f = open(filename, 'r')
+                value = f.read()
+                f.close()
+                return value, filename
+            else:
+                raise Exception(u'%s is not a file' % name)
+        else:
+            # return '' for file so wi do not need to check 
+            return valorname, ''
 
 
 class NginxController(AnsibleController):
@@ -464,7 +521,7 @@ class RedisController(AnsibleController):
     @check_error
     def inspect(self):
         """Inspect redis instances
-    - pattern: keys search pattern [default=*]
+        - pattern: keys search pattern [default=*]
         """        
         pattern = self.get_arg(default=u'*')
         
@@ -476,7 +533,7 @@ class RedisController(AnsibleController):
     @check_error
     def query(self):
         """Query redis instances by key
-    - pattern: keys search pattern [default=*]
+        - pattern: keys search pattern [default=*]
         """        
         pattern = self.get_arg(default=u'*')
         count = self.get_arg(default=False)      
@@ -496,7 +553,7 @@ class RedisController(AnsibleController):
     @check_error
     def delete(self):
         """Delete redis instances keys.
-    - pattern: keys search pattern [default=*]
+        - pattern: keys search pattern [default=*]
         """        
         pattern = self.get_arg(default=u'*')
         
@@ -655,7 +712,7 @@ class MysqlController(AnsibleController):
     @check_error
     def ping(self):
         """Test mysql instance
-    - port: instance port [default=3306]
+        - port: instance port [default=3306]
         """
         port = self.get_arg(default=3306)
         hosts, root = self.__get_hosts()
@@ -674,7 +731,7 @@ class MysqlController(AnsibleController):
     @check_error
     def cluster_status(self):
         """Get mysql cluster status
-    - port: instance port [default=3306]
+        - port: instance port [default=3306]
         """
         port = self.get_arg(name=u'port', default=3306, keyvalue=True)
         check_host = self.get_arg(name=u'check_host', default=None, keyvalue=True)
@@ -701,7 +758,7 @@ class MysqlController(AnsibleController):
     @check_error
     def schemas(self):
         """Get mysql schemas list
-    - port: instance port [default=3306]
+        - port: instance port [default=3306]
         """
         port = self.get_arg(default=3306)
         hosts, root = self.__get_hosts()
@@ -742,7 +799,7 @@ class MysqlController(AnsibleController):
     @check_error
     def users(self):
         """Get mysql users list
-    - port: instance port [default=3306]
+        - port: instance port [default=3306]
         """
         port = self.get_arg(default=3306)
         hosts, root = self.__get_hosts()
@@ -780,8 +837,8 @@ class MysqlController(AnsibleController):
     @check_error
     def tables_check(self):
         """Get mysql users list
-    - schema: schema name
-    - port: instance port [default=3306]
+        - schema: schema name
+        - port: instance port [default=3306]
         """
         schema = self.get_arg(name=u'schema')
         port = self.get_arg(default=3306)
@@ -965,15 +1022,10 @@ class CamundaDeployController(CamundaController):
         port = self.get_arg(name=u'port',default=8080)
         clients = self.camunda_engine(port=port) #__get_engine(port=port)
         resp = []
-        if os.path.isfile(filename):
-            f = open(filename, 'r')
-            content = f.read()
-            f.close()
-            name,dtype = os.path.splitext(os.path.split(filename)[1])
-            dtype = dtype[1:]
-        else:
-            raise Exception(u'bpmn %s is not a file' % filename)
-            
+        content, filename = self.file_content('@'+ filename)
+        name,dtype = os.path.splitext(os.path.split(filename)[1])
+        dtype = dtype[1:]
+
         for client in clients:
             res = client.process_deployment_create( content.rstrip(), name, type=dtype, checkduplicate=True, changeonly=True, tenantid=None)
             resp.append({u'host':client.connection.get(u'host'), u'response':res})
@@ -1056,14 +1108,7 @@ class CamundaProcessController(CamundaController):
         """
         key = self.get_arg(name=u'key')
         jsonparams = self.get_arg(name=u'jsonparams',default=u'{}' )
-        if jsonparams[0] == '@':
-            filename=jsonparams[1:]
-            if os.path.isfile(filename):
-                f = open(filename, 'r')
-                jsonparams = f.read()
-                f.close()
-            else:
-               raise Exception(u'json specification %s is not a file' % filename)
+        jsonparams, filename = self.file_content(jsonparams)
         port = self.get_arg(name=u'port',default=8080)
         clients = self.camunda_engine(port=port) # __get_engine(port=port)
         resp = []
@@ -1239,8 +1284,8 @@ class VsphereController(AnsibleController):
     @check_error
     def ping(self):
         """Ping vsphere instances
-    - instances: comma separated vsphere instances
-    - vip: if true query only the vip [default=True]
+        - instances: comma separated vsphere instances
+        - vip: if true query only the vip [default=True]
         """
         instances = self.get_arg(default=None)
         vip = self.get_arg(default=True, name=u'vip', keyvalue=True)
@@ -1396,8 +1441,8 @@ class OpenstackController(AnsibleController):
     @check_error
     def ping3(self):
         """Ping main components of openstack instances
-    - instances: comma separated openstack instances
-    - vip: if true query only the vip [default=True]
+        - instances: comma separated openstack instances
+        - vip: if true query only the vip [default=True]
         """
         instances = self.get_arg(default=None)
         vip = self.get_arg(default=True, name=u'vip', keyvalue=True)
@@ -1488,8 +1533,8 @@ class OpenstackController(AnsibleController):
     @check_error
     def usage(self):
         """Displays extra statistical information from the machine that hosts the hypervisor through the API for the
-    hypervisor (XenAPI or KVM/libvirt).
-    - instances: comma separated openstack instances [optional]
+        hypervisor (XenAPI or KVM/libvirt).
+        - instances: comma separated openstack instances [optional]
         """
         instances = self.get_arg(default=None)
 
@@ -1511,8 +1556,8 @@ class OpenstackController(AnsibleController):
     @check_error
     def status(self):
         """Get services/agents status: compute, storage, network, orchestrator
-    - component: openstack component. Can be: compute, storage, network, orchestrator [default=compute]
-    - instances: comma separated openstack instances [optional]
+        - component: openstack component. Can be: compute, storage, network, orchestrator [default=compute]
+        - instances: comma separated openstack instances [optional]
         """
         component = self.get_arg(default=u'compute', name=u'component', keyvalue=True)
         instances = self.get_arg(default=None)
@@ -1559,9 +1604,9 @@ class ElkController(AnsibleController):
     @check_error
     def qindex(self):            
         """
-    - pod: podto1, podto2, podvc
-    
-il metodo restituisce l'elenco degli indici presenti in elk del pod indicato
+        - pod: podto1, podto2, podvc
+            
+        il metodo restituisce l'elenco degli indici presenti in elk del pod indicato
         """
         pod = self.get_arg(name=u'pod', keyvalue=True, default="podto1")
         import re
@@ -1575,7 +1620,7 @@ il metodo restituisce l'elenco degli indici presenti in elk del pod indicato
         else:
             print "pod non valido"
             return()
-#        res = requests.get(url, data="")
+        # res = requests.get(url, data="")
         res = requests.get(url)
         list_ind = []
         lista_indici = []
@@ -1607,9 +1652,9 @@ il metodo restituisce l'elenco degli indici presenti in elk del pod indicato
     @check_error
     def delindex(self):            
         """
-    - pod: podto1, podto2, podvc
-    - index: indice presente nel db.
-    ATTENZIONE, la cancellazione e' definitiva!
+        - pod: podto1, podto2, podvc
+        - index: indice presente nel db.
+        ATTENZIONE, la cancellazione e' definitiva!
         """
         pod = self.get_arg(name=u'pod', keyvalue=True, default="podto1")
         import re
@@ -1623,7 +1668,7 @@ il metodo restituisce l'elenco degli indici presenti in elk del pod indicato
         else:
             print "pod non valido"
             return()
-#        res = requests.get(url, data="")
+        # res = requests.get(url, data="")
         indice = self.get_arg(name=u'index', keyvalue=True, default="")
         if indice=="":
             print "indice non indicato"
@@ -1646,17 +1691,17 @@ il metodo restituisce l'elenco degli indici presenti in elk del pod indicato
     @check_error
     def search(self):            
         """search
-    - field: from, count, pod, host, source, key
+            - field: from, count, pod, host, source, key
 
-i parametri in input devono essere:
- from=xx (facoltativo - default:0)
- count=xx (facoltativo - default:50)
- pod=xxxxx (facoltativo - default:podto1 - valori validi: podto1, podto2, podvc)
- start_date="2018-04-08T00:00:40.000Z"    (obbligatorio)
- stop_date="2018-04-08T00:10:40.000Z"     (obbligatorio)
- host=nomehost,nomehost2,nomehost3 --> senza spazi e separati da virgola (facoltativo, default:tutti)
- source=/var/log/keystone/keystone.log   (facoltativo - default:tutti)
- key=words_on_message (facoltativo - default:tutti)
+        i parametri in input devono essere:
+        from=xx (facoltativo - default:0)
+        count=xx (facoltativo - default:50)
+        pod=xxxxx (facoltativo - default:podto1 - valori validi: podto1, podto2, podvc)
+        start_date="2018-04-08T00:00:40.000Z"    (obbligatorio)
+        stop_date="2018-04-08T00:10:40.000Z"     (obbligatorio)
+        host=nomehost,nomehost2,nomehost3 --> senza spazi e separati da virgola (facoltativo, default:tutti)
+        source=/var/log/keystone/keystone.log   (facoltativo - default:tutti)
+        key=words_on_message (facoltativo - default:tutti)
         """
         start_date = self.get_arg(name=u'start_date', keyvalue=True, default="")
         stop_date = self.get_arg(name=u'stop_date', keyvalue=True, default="")
@@ -1698,7 +1743,7 @@ i parametri in input devono essere:
         parametri.append({ "range": {"@timestamp": {
                                   "gte": d1,
                                   "lt": d2}}})
-# parametri opzionali
+        # parametri opzionali
         if host != "":
            parametri.append({"terms": { "tags": elenco_host}})
         if source != "":
@@ -1706,7 +1751,7 @@ i parametri in input devono essere:
         if key != "":
            parametri.append({"match" : {
               "message": {"query" : key}}})
-#        print parametri 
+        # print parametri 
         data_elencohost = {
             "from": fr,
             "size": co,
@@ -1720,9 +1765,9 @@ i parametri in input devono essere:
         data_elencohost = json.dumps(data_elencohost)
         res = requests.get(url, data=data_elencohost)
         rj = json.loads(res.text)
- #       import pprint
- #       pp = pprint.PrettyPrinter(indent=4)
- #       pp.pprint(rj)
+        # import pprint
+        # pp = pprint.PrettyPrinter(indent=4)
+        # pp.pprint(rj)
         total=rj.get("hits").get("total")
         print "n. di risultati totali: ", total
         hi = rj.get("hits").get("hits")
@@ -1732,9 +1777,9 @@ i parametri in input devono essere:
                             u'timestamp': x.get("_source").get("@timestamp"),
                             u'host': x.get("_source").get("tags")[0],
                             u'sorgente': x.get("_source").get("source")})
-#            print x.get("_source").get("message")
+        # print x.get("_source").get("message")
         self.result(ricerca, headers=[u'timestamp', u'host', u'sorgente', u'messaggio'], maxsize=msize)
-#        self.result(ricerca, headers=[u'timestamp', u'messaggio'], maxsize=100)
+        # self.result(ricerca, headers=[u'timestamp', u'messaggio'], maxsize=100)
 
 
 class NodeController(AnsibleController):
@@ -2453,8 +2498,8 @@ class BeehiveController(AnsibleController):
             self.result(resp, headers=[u'host', u'pid', u'uid', u'gid', u'id', u'first_run', u'last_run', u'last_ready',
                                        u'last_mod', u'last_accepting'])
         except Exception as ex:
-            self.error(ex)            
-                            
+            self.error(ex)
+ 
     def get_emperor_blacklist(self, details=u'', system=None):
         """Get uwsgi emperor active vassals statistics
         
@@ -2508,6 +2553,41 @@ class BeehiveController(AnsibleController):
             sleep(delta)
             state = self.get_job_state(jobid)
 
+    def get_camunda_clients(self, runner, port=8080):
+        hosts, vars = runner.get_inventory_with_vars(u'camunda')
+        
+        clients = []
+        for host in hosts:
+            conn = {
+                u'host': str(host),
+                u'port': port,
+                u'path': u'/engine-rest',
+                u'proto': u'http'
+            }
+            user = u'admin'
+            passwd = u'camunda'
+            proxy = None
+            keyfile=None
+            certfile=None
+            client = WorkFlowEngine(conn, user=user, passwd=passwd,
+                proxy=proxy, keyfile=keyfile, certfile=certfile)
+            clients.append(client)
+        return clients
+
+
+    @expose(aliases=[u'test  <config>'], aliases_only=True)
+    @check_error
+    def test(self):
+        param=self.get_arg(name=u'config')
+        runners = self.get_runners()
+        for runner in runners:
+            cc = { u'cmp_admin': "camunda@local", u'cmp_password': "camunda123" }
+            # cc = { }
+            content, filename = self.file_render(runner,param,cc)
+            print(content)
+            cli = self.get_camunda_clients(runner)
+        pass
+
     @expose(aliases=[u'post-install <config>'], aliases_only=True)
     @check_error
     def post_install(self):
@@ -2543,9 +2623,43 @@ class BeehiveController(AnsibleController):
                 logger.info(u'Add schedule: %s' % res)
                 self.output(u'Add schedule: %s' % scope)
 
-        # camunda
+        #  camunda
         # - metatabelle decisioni
         # - processi
+        if apply.get(u'camunda', False) is True:
+            runners = self.get_runners()
+            #loop for all env
+            for runner in runners:
+                camundaclients= self.get_camunda_clients(runner)
+                # render and deploy to camunda
+                render = configs.get(u'camunda').get(u'render',{u'context':{}, u'deploy':[]})
+                for obj in render.get(u'deploy'):
+                    try:
+                        content, filename = self.file_render( runner, obj, render['context'])
+                        name,dtype = os.path.splitext(os.path.split(filename)[1])
+                        dtype = dtype[1:]
+                        for cli in camundaclients:
+                            res = cli.process_deployment_create( content.rstrip(), name, 
+                                type=dtype, checkduplicate=True, changeonly=True, tenantid=None)
+                            logger.info(u'camunda rendered deploy: %s' % res)
+                            self.output( u'Camunda rendered deploy: %s.%s' %(name, dtype) )
+                    except Exception as ex:
+                        self.error(ex)
+                        self.app.error = False
+                # deploy
+                for obj in configs.get(u'camunda').get(u'deploy',[]):
+                    try:
+                        content, filename = self.file_content( obj)
+                        name,dtype = os.path.splitext(os.path.split(filename)[1])
+                        dtype = dtype[1:]
+                        for cli in camundaclients:
+                            res = cli.process_deployment_create( content.rstrip(), name, 
+                                type=dtype, checkduplicate=True, changeonly=True, tenantid=None)
+                            logger.info(u'camunda deploy: %s' % res)
+                            self.output( u'Camunda deploy: %s.%s' %(name, dtype) )
+                    except Exception as ex:
+                        self.error(ex)
+                        self.app.error = False
 
         self.subsystem = u'resource'
 
@@ -2667,6 +2781,61 @@ class BeehiveController(AnsibleController):
                     self.error(ex)
                     self.app.error = False
 
+        # create service process
+        if apply.get(u'service-processes', False) is True:
+            for obj in configs.get(u'service',{u'processes':[]}).get(u'processes'):
+                try:
+                    type_oid = obj.get("service_type_id", None)
+                    method = obj.get("method", None)
+                    if method is None:
+                        break
+                    if type_oid is  None:
+                        break
+                    # get service type id
+                    res = self._call(u'/v1.0/nws/servicetypes/%s' % (type_oid), u'GET').get(u'servicetype', {})
+                    type_id = res.get("id",None) 
+                    if type_id is None:
+                        logger.error(u'Could not found a type whose oid is %s' % (type_oid))
+                        self.outpu(u'Could not found a type whose oid is %s' % (type_oid))
+                        break
+                    # get serviceprocess for service type and  method
+                    res = self._call(u'/v1.0/nws/serviceprocesses', u'GET', 
+                                data=u'service_type_id=%s&method_key=%s' % (type_id, method)
+                                ).get(u'serviceprocesses', [])
+
+                    if len(res) >= 1:
+                        prev=res[0] 
+                        name = obj.get( u'name', prev['method_key'])
+                        desc = obj.get( u'desc', prev['desc'])
+                        process = obj.get( u'process', prev['process_key'])
+                        template = obj.get(u'template', '{}')
+                    else:
+                        prev=None
+                        name = obj.get(u'name', '%s-%s' % (method,type_oid))
+                        desc = obj.get(u'desc', name)
+                        process = obj.get(u'process','invalid_key')
+                        template = obj.get(u'template','{}')
+                    template, filename = self.file_content(template)
+
+                    data = {
+                        u'serviceprocess':{
+                            u'name': name,
+                            u'desc': desc,
+                            u'service_type_id': str(type_id),
+                            u'method_key': method,
+                            u'process_key': process,
+                            u'template': template
+                        }
+                    }
+                    if prev == None:
+                        res = self._call( u'/v1.0/nws/serviceprocesses' , u'POST', data=data)
+                    else:
+                        res = self._call ( u'/v1.0/nws/serviceprocesses/%s' % prev['uuid'], u'PUT', data=data)
+                    self.output(u'Set process %s for method %s to service type %s' % (process, method, type_oid ))
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
+
         # create service catalogs
         if apply.get(u'service-catalogs', False) is True:
             for obj in configs.get(u'service').get(u'catalogs'):
@@ -2697,7 +2866,7 @@ class BeehiveController(AnsibleController):
             u'tags': [u'sync']
         }        
         self.ansible_playbook(u'beehive', run_data, playbook=self.beehive_playbook)
-    
+
     @expose()
     @check_error
     def pip(self):
@@ -2707,7 +2876,7 @@ class BeehiveController(AnsibleController):
             u'tags': [u'pip']
         }        
         self.ansible_playbook(u'beehive', run_data, playbook=self.beehive_playbook)
-    
+
     @expose()
     @check_error
     def subsystems(self):
@@ -2926,7 +3095,7 @@ class BeehiveController(AnsibleController):
     @expose()
     @check_error
     def doc(self):
-        """Make e deploy beehive documentation
+        """Make a deploy beehive documentation
         """
         run_data = {
             u'tags': [u'doc'],
@@ -2937,7 +3106,7 @@ class BeehiveController(AnsibleController):
     @expose()
     @check_error
     def apidoc(self):
-        """Make e deploy beehive api documentation
+        """Make a deploy beehive api documentation
         """
         run_data = {
             u'tags': [u'apidoc'],
