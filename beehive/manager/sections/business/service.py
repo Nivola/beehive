@@ -10,7 +10,7 @@ from datetime import datetime
 
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController, check_error
-from beecell.simple import truncate
+from beecell.simple import truncate, format_date
 import json
 from urllib import urlencode
 from beehive.manager.sections.business import ConnectionHelper
@@ -1602,7 +1602,128 @@ class ServiceMetricCostsController(ServiceControllerChild):
                     headers=[u'id'       , u'type'     , u'name'         , u'value', u'num'       , u'platform'     , u'instance'   ,  u'job_id', u'cost'        , u'cost_iva', u'listino'],
                     fields= [u'metric_id', u'type_name', u'platform_name', u'value', u'metric_num', u'platform_name', u'instance_id',  u'job_id', u'cost_not_iva', u'cost_iva', u'pricelist_id'])
 
-   
+
+class ServiceAggregateCostsController(ServiceControllerChild):
+    class Meta:
+        label = 'service.aggregate_costs'
+        aliases = ['aggr_costs']
+        aliases_only = True
+        description = "Service Aggregate cost management"
+    
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
+    def list(self):
+        """List all service metric by field:
+            day, id, value, metric_num, platform, u'instance', u'metric_type',  u'job_id'
+        """
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        # = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        
+        header_field = {
+            u'id':u'id', 
+            u'type_id': u'metric_type_id',
+            u'platform_id': u'platform_id',
+            u'instance': u'instance_oid',
+            u'aggr_type': u'aggregation_type',
+            u'period': u'period',
+            u'job_id': u'job_id',
+            u'date_start': u'evaluation_date_start',
+            u'date_end': u'evaluation_date_stop',
+        }
+        data = {}
+        for k in header_field:
+            par = params.get(k, None)
+            if par is not None:
+                if k.startswith(u'evaluation_date_'):
+                    g, m, y = par.split(u'-')
+                    data[header_field[k]] = datetime(int(y), int(m), int(g))
+                else: 
+                    data[header_field[k]] = par
+                
+        uri = u'%s/services/aggregatecosts' % self.baseuri
+        res = self._call(uri, u'GET', data=urlencode(data))
+        logger.info(res)
+        self.result(res, key=u'aggregate_cost', 
+                    headers=[u'id', u'type_id', u'platform_id', u'cost'        , u'cost_iva', u'instance',            u'aggr_type'       , u'period', u'job_id', u'date'],
+                    fields= [u'id', u'type_id', u'platform_id', u'cost_not_iva', u'cost_iva', u'service_instance_id', u'aggregation_type', u'period', u'job_id', u'evaluation_date'])
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
+    def get(self):
+        """Get service catalog by value id or uuid
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'%s/services/aggregatecosts/%s' % (self.baseuri, value)
+        res = self._call(uri, u'GET')
+        logger.info(res)
+
+        self.result(res, key=u'aggregate_cost', 
+                    headers=[u'id', u'type_id', u'platform_id', u'cost'        , u'cost_iva', u'instance',            u'aggr_type'       , u'period', u'job_id', u'date'],
+                    fields= [u'id', u'type_id', u'platform_id', u'cost_not_iva', u'cost_iva', u'service_instance_id', u'aggregation_type', u'period', u'job_id', u'evaluation_date'])
+
+    @expose(aliases=[u'add <platform_id> <metric_type_id> <cost_iva> <cost_not_iva> <instance_oid> <aggregation_type> <period> [field=..]'],
+            aliases_only=True)
+    @check_error
+    def add(self):
+        """Add aggregate cost 
+    - field: can be version, container, status
+        """
+        platform_id = self.get_arg(name=u'platform_id')
+        metric_type_id = self.get_arg(name=u'metric_type_id')
+        cost_iva = self.get_arg(name=u'cost_iva')
+        cost_not_iva = self.get_arg(name=u'cost_not_iva')
+        instance_oid = self.get_arg(name=u'instance_oid')
+        aggregation_type = self.get_arg(name=u'aggregation_type')
+        period = self.get_arg(name=u'period')
+        job_id = self.get_arg(name=u'job_id', keyvalue=True)
+        evaluation_date = self.get_arg(name=u'version', default=format_date(datetime.today()), keyvalue=True)
+        
+        data = {
+            u'aggregate_cost':{
+                u'platform_id':platform_id,  
+                u'metric_type_id': metric_type_id, 
+                u'cost_iva': cost_iva,
+                u'cost_not_iva': cost_not_iva, 
+                u'service_instance_oid': instance_oid, 
+                u'aggregation_type': aggregation_type,
+                u'period': period,
+                u'job_id': job_id,
+                u'evaluation_date':evaluation_date
+            }
+        }
+       
+        uri = u'%s/services/aggregatecosts' % self.baseuri
+        res = self._call(uri, u'POST', data=data)
+        logger.info(u'Add aggregate cost: %s' % truncate(res))
+        res = {u'msg': u'Add ggregate cost %s' % res}
+        self.result(res, headers=[u'msg'])
+        
+    @expose(aliases=[u'batch_delete [batch=..]'], aliases_only=True)
+    @check_error
+    def batch_delete(self):
+        """Delete service definition
+        """
+#         value = self.get_arg(name=u'id')
+        data = {
+            u'aggregate_cost':{
+                u'platform_id':self.get_arg(name=u'platform_id', keyvalue=True),  
+                u'metric_type_id': self.get_arg(name=u'type_id', keyvalue=True), 
+                u'service_instance_id': self.get_arg(name=u'instance', keyvalue=True), 
+                u'aggregation_type': self.get_arg(name=u'aggr_type', keyvalue=True),
+                u'period': self.get_arg(name=u'period', keyvalue=True),
+                u'job_id': self.get_arg(name=u'job_id', keyvalue=True),
+                u'limit': self.get_arg(name=u'limit', default=1000, keyvalue=True),
+                u'evaluation_date_start':self.get_arg(name=u'date_start', keyvalue=True),
+                u'evaluation_date_end':self.get_arg(name=u'date_end', keyvalue=True)
+            }
+        }
+        
+        uri = u'%s/services/aggregatecosts' % (self.baseuri)
+        res = self._call(uri, u'DELETE', data=data)
+        logger.info(res)
+        res = {u'msg': u'Delete n. %s aggregation costs' % res.get(u'deleted')}
+        self.result(res, headers=[u'msg'])
+    
 service_controller_handlers = [
     ServiceController,
     ServiceTypeController,
@@ -1624,5 +1745,6 @@ service_controller_handlers = [
     ServiceLinkController,
     ServiceTagController,
     ServiceMetricsController,
-    ServiceMetricCostsController
+    ServiceMetricCostsController,
+    ServiceAggregateCostsController
 ]        
