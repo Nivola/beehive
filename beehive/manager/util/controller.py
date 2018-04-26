@@ -670,7 +670,8 @@ commands:
 
 class ApiController(BaseController):
     subsytem = None
-    baseuri = None    
+    baseuri = None
+    setup_cmp = True
     
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
@@ -690,35 +691,38 @@ class ApiController(BaseController):
     def _parse_args(self):
         BaseController._parse_args(self)
 
-        config = self.configs[u'environments'][self.env][u'cmp']
-    
-        if config[u'endpoint'] is None:
-            raise Exception(u'Auth endpoint is not configured')
+        if self.setup_cmp is True:
+            logger.debug(u'--- Setup cmp ---')
 
-        # get user and password
-        user_env = os.environ.get(u'BEEHIVE_CMP_USER', None)
-        user_pwd_env = os.environ.get(u'BEEHIVE_CMP_USER_PWD', None)
-        user = config.get(u'user', user_env)
-        pwd = config.get(u'pwd', user_pwd_env)
+            config = self.configs[u'environments'][self.env][u'cmp']
 
-        client_config = config.get(u'oauth2-client', None)
-        self.client = BeehiveApiClient(config[u'endpoint'],
-                                       config[u'authtype'],
-                                       user,
-                                       pwd,
-                                       config[u'catalog'],
-                                       client_config=client_config,
-                                       key=self.key)
-        
-        # get token
-        self.client.uid, self.client.seckey = self.get_token()
-    
-        if self.client.uid is None:
-            # create token
-            self.client.create_token()
-        
-            # set token
-            self.save_token(self.client.uid, self.client.seckey)
+            if config[u'endpoint'] is None:
+                raise Exception(u'Auth endpoint is not configured')
+
+            # get user and password
+            user_env = os.environ.get(u'BEEHIVE_CMP_USER', None)
+            user_pwd_env = os.environ.get(u'BEEHIVE_CMP_USER_PWD', None)
+            user = config.get(u'user', user_env)
+            pwd = config.get(u'pwd', user_pwd_env)
+
+            client_config = config.get(u'oauth2-client', None)
+            self.client = BeehiveApiClient(config[u'endpoint'],
+                                           config[u'authtype'],
+                                           user,
+                                           pwd,
+                                           config[u'catalog'],
+                                           client_config=client_config,
+                                           key=self.key)
+
+            # get token
+            self.client.uid, self.client.seckey = self.get_token()
+
+            if self.client.uid is None:
+                # create token
+                self.client.create_token()
+
+                # set token
+                self.save_token(self.client.uid, self.client.seckey)
 
     def _call(self, uri, method, data=u'', headers=None, timeout=30, silent=False):
         try:

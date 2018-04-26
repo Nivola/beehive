@@ -94,7 +94,7 @@ class AnsibleController(ApiController):
         stacked_type = 'nested'  
 
     def _setup(self, base_app):
-        BaseController._setup(self, base_app)
+        ApiController._setup(self, base_app)
 
         self.baseuri = u'/v1.0/resource'
         self.subsystem = u'resource'
@@ -237,6 +237,8 @@ class AnsibleController(ApiController):
 
 
 class NginxController(AnsibleController):
+    setup_cmp = False
+
     class Meta:
         label = 'nginx'
         description = "Nginx management"
@@ -346,6 +348,8 @@ class NginxController(AnsibleController):
 
 
 class RedisController(AnsibleController):
+    setup_cmp = False
+
     class Meta:
         label = 'redis'
         description = "Redis management"
@@ -505,6 +509,8 @@ class RedisController(AnsibleController):
 
 
 class RedisClutserController(RedisController):
+    setup_cmp = False
+
     class Meta:
         label = 'redis-cluster'
         description = "Redis Cluster management"
@@ -628,6 +634,8 @@ class RedisClutserController(RedisController):
 
 
 class MysqlController(AnsibleController):
+    setup_cmp = False
+
     class Meta:
         label = 'mysql'
         description = "Mysql management"
@@ -889,6 +897,8 @@ class MysqlController(AnsibleController):
 
 
 class CamundaController(AnsibleController):
+    setup_cmp = False
+
     class Meta:
         label = 'camunda'
         description = "Camunda management"
@@ -1168,6 +1178,8 @@ class CamundaProcessController(CamundaController):
 
 
 class VsphereController(AnsibleController):
+    setup_cmp = False
+
     class Meta:
         label = 'platform.vsphere'
         aliases = ['vsphere']
@@ -1260,6 +1272,8 @@ class VsphereController(AnsibleController):
 
 
 class OpenstackController(AnsibleController):
+    setup_cmp = False
+
     class Meta:
         label = 'platform.openstack'
         aliases = ['openstack']
@@ -1550,6 +1564,8 @@ class OpenstackController(AnsibleController):
 
 
 class ElkController(AnsibleController):
+    setup_cmp = False
+
     class Meta:
         label = 'elk'
         description = "Elks management"
@@ -1569,6 +1585,8 @@ class ElkController(AnsibleController):
 
 
 class NodeController(AnsibleController):
+    setup_cmp = False
+
     class Meta:
         label = 'node'
         description = "Nodes management"
@@ -2132,6 +2150,8 @@ class NodeController(AnsibleController):
 
 
 class BeehiveConsoleController(AnsibleController):
+    setup_cmp = False
+
     class Meta:
         label = 'console'
         description = "Beehive Console management"

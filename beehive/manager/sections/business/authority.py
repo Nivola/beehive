@@ -643,6 +643,10 @@ class AccountController(AuthorityControllerChild):
              u'name': u'Centos6.9',
              u'template': u'Centos6.9Sync',
              u'require': {u'type': u'ComputeService', u'name': u'ComputeService'}},
+            {u'type': u'ComputeImage',
+             u'name': u'Centos7.2-Oracle',
+             u'template': u'Centos7.2-OracleSync',
+             u'require': {u'type': u'ComputeService', u'name': u'ComputeService'}},
             {u'type': u'ComputeVPC',
              u'name': u'VpcBE',
              u'template': u'VpcBESync',
@@ -866,7 +870,7 @@ class AccountController(AuthorityControllerChild):
     def refresh(self):
         """Refresh account
     - id: id or uuid of the account
-    - service: if True create default services
+    - services: if True create default services
         """
         oid = self.get_arg(name=u'id')
         create_services = self.get_arg(name=u'services', keyvalue=True, default=False)
