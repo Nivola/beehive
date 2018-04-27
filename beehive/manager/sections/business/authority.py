@@ -775,8 +775,11 @@ class AccountController(AuthorityControllerChild):
         uri = u'%s/accounts' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        self.result(res, key=u'accounts', headers=[u'id', u'uuid', u'name', u'division_name', u'contact', u'email',
-                    u'email_support', u'email_support_link', u'status', u'date.creation'], maxsize=40)
+        headers = [u'id', u'uuid', u'name', u'division', u'contact', u'core services', u'base services',
+                   u'status', u'date']
+        fields = [u'id', u'uuid', u'name', u'division_name', u'contact', u'services.core', u'services.base',
+                  u'status', u'date.creation']
+        self.result(res, key=u'accounts', headers=headers, fields=fields, maxsize=40)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -1030,7 +1033,6 @@ class AccountController(AuthorityControllerChild):
     - field: all=true show all the core services with childs
         """
         self.app.kvargs[u'account_id'] = self.get_arg(name=u'id')
-        self.app.kvargs[u'size'] = 100
         all = self.get_arg(name=u'all', keyvalue=True, default=False)
         if all is False:
             self.app.kvargs[u'flag_container'] = True

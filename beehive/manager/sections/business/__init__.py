@@ -92,11 +92,12 @@ class ConnectionHelper(object):
         """
         data = u''
         uri = u'/v1.0/nws/serviceinsts'
-        res = ctrl._call(uri, u'GET', data=filter).get(u'serviceinsts', [])
-        logger.info(res)
 
         if ctrl.format == u'tree':
-
+            filter += u'&size=100'
+            res = ctrl._call(uri, u'GET', data=filter)
+            logger.info(res)
+            res = res.get(u'serviceinsts', [])
             def get_tree_alias(data):
                 return u'[%s] %s' % (data[u'uuid'], data[u'name'])
 
@@ -113,11 +114,13 @@ class ConnectionHelper(object):
                     tree.update(idx_item)
             ctrl.result({u'services': tree})
         else:
+            res = ctrl._call(uri, u'GET', data=filter)
+            logger.info(res)
             fields = [u'id', u'uuid', u'name', u'version', u'service_definition_id', u'status', u'active',
                       u'resource_uuid', u'is_container', u'parent.name', u'date.creation']
             headers = [u'id', u'uuid', u'name', u'version', u'definition', u'status', u'active', u'resource',
                        u'is_container', u'parent', u'creation']
-            ctrl.result(res, headers=headers, fields=fields)
+            ctrl.result(res, key=u'serviceinsts', headers=headers, fields=fields)
 
     @staticmethod
     def create_image(ctrl, account=None, name=None, template=None, **kvargs):
