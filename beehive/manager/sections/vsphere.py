@@ -831,7 +831,7 @@ class VspherePlatformNetworkDlrController(VspherePlatformNetworkChildController)
 
 class VspherePlatformServerController(VspherePlatformControllerChild):
     headers = [u'id', u'parent', u'name', u'os', u'state', u'ip_address', u'hostname',
-               u'cpu', u'ram', u'template']
+               u'cpu', u'ram', u'disk', u'template']
     
     class Meta:
         label = 'vsphere.platform.servers'
@@ -869,7 +869,7 @@ class VspherePlatformServerController(VspherePlatformControllerChild):
                 u'template':o.get(u'config.template', None)
             })'''
         logger.info(res)
-        self.result(res, headers=self.headers)
+        self.result(res, headers=self.headers, maxsize=30)
         
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -1241,14 +1241,27 @@ class VsphereSecurityGroupController(VsphereNetworkChildController):
 class VsphereServerController(VsphereControllerChild):
     uri = u'/v1.0/nrs/vsphere/servers'
     baseuri = u'/v1.0/nrs'
-    headers = [u'id', u'parent.name', u'container.name', u'name', u'state', u'details.state', u'details.ip_address',
-               u'details.hostname', u'details.cpu', u'details.ram', u'details.template']
+    headers = [u'id', u'parent', u'container', u'name', u'state', u'runstate', u'ip-address',
+               u'hostname', u'cpu', u'ram', u'disk', u'is-template']
+    fields = [u'id', u'parent.name', u'container.name', u'name', u'state', u'details.state', u'details.ip_address',
+              u'details.hostname', u'details.cpu', u'details.ram', u'details.disk', u'details.template']
 
     class Meta:
         label = 'vsphere.beehive.servers'
         aliases = ['servers']
         aliases_only = True         
         description = "Vsphere Server management"
+
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
+    def list(self):
+        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = self.uri
+        res = self._call(uri, u'GET', data=data)
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
+        if self.fields is None:
+            self.fields = self.headers
+        self.result(res, headers=self.headers, fields=self.fields, key=self._meta.aliases[0], maxsize=30)
 
     @expose(aliases=[u'add <file data>'], aliases_only=True)
     @check_error
