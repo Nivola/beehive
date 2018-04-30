@@ -155,11 +155,6 @@ class BaseController(CementCmdBaseController):
         self.configs = self.app.config.get_section_dict(u'configs')
 
     @property
-    def _help_cmd_list(self):
-        """Returns the help visible command list."""
-        return self._visible_commands
-
-    @property
     def _help_text(self):
         """Returns the help text displayed when '--help' is passed."""
 
@@ -206,8 +201,6 @@ commands:
         #    return None
     
     def _parse_args(self):
-        self.app.args.cmd_list = self._help_cmd_list
-
         CementCmdBaseController._parse_args(self)
 
         envs = u', '.join(self.configs[u'environments'].keys())
@@ -598,7 +591,7 @@ commands:
             f.write(seckey)
             f.close()
 
-    def get_arg(self, default=None, name=None, keyvalue=False):
+    def get_arg(self, default=None, name=None, keyvalue=False, required=False):
         """Get arguments from command line. Arguments can be positional or key/value. Example::
 
             arg1 arg2 key1=val1
@@ -612,6 +605,7 @@ commands:
         :param default: default value for keyvalue argument
         :param name: argument name
         :param keyvalue: if True argument is keyvalue, if False argument i postional
+        :param required: if True a keyvalue arg is required
         :return: argument value
         """
         if len(self.app.pargs.extra_arguments) > 0:
@@ -637,7 +631,10 @@ commands:
 
         if keyvalue is True:
             kvargs = getattr(self.app, u'kvargs', {})
-            item = kvargs.get(name, default)
+            if required is True and name not in kvargs:
+                raise Exception(u'Param %s=.. is required' % name)
+            else:
+                item = kvargs.get(name, default)
             return item
 
         arg = None
@@ -647,7 +644,7 @@ commands:
             if default is not None:
                 arg = default
             elif name is not None:
-                raise Exception(u'Param %s is not defined' % name)
+                raise Exception(u'Param %s is required' % name)
         return arg
 
     def decrypt(self, data):
@@ -730,7 +727,7 @@ class ApiController(BaseController):
             resp = self.client.invoke(self.subsystem, uri, method, data=data, other_headers=headers, parse=True,
                                       timeout=timeout, silent=silent, print_curl=True)
         except BeehiveApiClientError as ex:
-            raise
+            raise Exception(ex.value)
         finally:
             # set token3
             if self.client.uid is not None:

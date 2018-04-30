@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 #
 class VspherePlatformController(BaseController):
     class Meta:
-        label = 'vsphere.platform'
+        label = 'vsphere_platform'
         stacked_on = 'base'
         stacked_type = 'nested'
         description = "Vsphere Platform management"
@@ -39,7 +39,7 @@ class VspherePlatformControllerChild(BaseController):
     entity_class = None
     
     class Meta:
-        stacked_on = 'vsphere.platform'
+        stacked_on = 'vsphere_platform'
         stacked_type = 'nested'
         arguments = [
             (['extra_arguments'], dict(action='store', nargs='*')),
@@ -281,7 +281,7 @@ class VspherePlatformVappController(VspherePlatformControllerChild):
 
 class VspherePlatformNetworkController(BaseController):
     class Meta:
-        stacked_on = 'vsphere.platform'
+        stacked_on = 'vsphere_platform'
         stacked_type = 'nested'
         label = 'vsphere.platform.network'
         aliases = ['network']
@@ -302,7 +302,7 @@ class VspherePlatformNetworkChildController(VspherePlatformControllerChild):
 
 class VspherePlatformNetworkDvsController(VspherePlatformNetworkChildController):
     class Meta:
-        label = 'vsphere.platform.networks.dvs'
+        label = 'vsphere.platform.network.dvs'
         aliases = ['dvss']
         aliases_only = True
         description = "Vsphere Network Dvs management"
@@ -330,7 +330,7 @@ class VspherePlatformNetworkDvsController(VspherePlatformNetworkChildController)
 
 class VspherePlatformNetworkDvpController(VspherePlatformNetworkChildController):
     class Meta:
-        label = 'vsphere.platform.networks.dvpg'
+        label = 'vsphere.platform.network.dvpg'
         aliases = ['dvpgs']
         aliases_only = True
         description = "Vsphere Network Dvpg management"
@@ -380,7 +380,7 @@ class VspherePlatformNetworkDvpController(VspherePlatformNetworkChildController)
 
 class VspherePlatformNetworkSecurityGroupController(VspherePlatformNetworkChildController):
     class Meta:
-        label = 'vsphere.platform.networks.sg'
+        label = 'vsphere.platform.network.sg'
         aliases = ['sgs']
         aliases_only = True
         description = "Vsphere Network Security group management"
@@ -443,7 +443,7 @@ class VspherePlatformNetworkSecurityGroupController(VspherePlatformNetworkChildC
 
 class VspherePlatformNetworkDfwController(VspherePlatformNetworkChildController):
     class Meta:
-        label = 'vsphere.platform.networks.dfw'
+        label = 'vsphere.platform.network.dfw'
         aliases = ['dfw']
         aliases_only = True
         description = "Vsphere Network Nsx Distributed Firewall management"
@@ -536,9 +536,7 @@ class VspherePlatformNetworkDfwController(VspherePlatformNetworkChildController)
             self.__print_rule_datail(u'appliedTo', appliedToList)
             print(u'services')
             if type(services) is not list: services = [services]
-            self.result(services, headers=[u'protocol', u'subProtocol', 
-                                                  u'destinationPort', 
-                                                  u'protocolName']) 
+            self.result(services, headers=[u'protocol', u'subProtocol', u'destinationPort', u'protocolName'])
 
     @expose(aliases=[u'section-delete <section>'], aliases_only=True)
     @check_error
@@ -568,15 +566,14 @@ class VspherePlatformNetworkDfwController(VspherePlatformNetworkChildController)
         for item in res:
             resp.append(item[u'member'])
         logger.info(res)
-        self.result(resp, headers=[u'objectId', u'name', u'scope.name',
-                                          u'objectTypeName', u'revision'])        
+        self.result(resp, headers=[u'objectId', u'name', u'scope.name', u'objectTypeName', u'revision'])
 
 
 class VspherePlatformNetworkLgController(VspherePlatformNetworkChildController):
     headers = [u'objectId', u'name']
     
     class Meta:
-        label = 'vsphere.platform.networks.lg'
+        label = 'vsphere.platform.network.lg'
         aliases = ['lgs']
         aliases_only = True
         description = "Vsphere Network Nsx Logical Switch management"
@@ -608,7 +605,7 @@ class VspherePlatformNetworkLgController(VspherePlatformNetworkChildController):
 
 class VspherePlatformNetworkIppoolController(VspherePlatformNetworkChildController):
     class Meta:
-        label = 'vsphere.platform.networks.ippool'
+        label = 'vsphere.platform.network.ippool'
         aliases = ['ippools']
         aliases_only = True
         description = "Vsphere Network Nsx Ippool management"
@@ -720,7 +717,7 @@ class VspherePlatformNetworkIppoolController(VspherePlatformNetworkChildControll
 
 class VspherePlatformNetworkIpsetController(VspherePlatformNetworkChildController):
     class Meta:
-        label = 'vsphere.platform.networks.ipset'
+        label = 'vsphere.platform.network.ipset'
         aliases = ['ipsets']
         aliases_only = True
         description = "Vsphere Network Nsx Ipset management"
@@ -760,7 +757,7 @@ class VspherePlatformNetworkIpsetController(VspherePlatformNetworkChildControlle
 
 class VspherePlatformNetworkEdgeController(VspherePlatformNetworkChildController):
     class Meta:
-        label = 'vsphere.platform.networks.edge'
+        label = 'vsphere.platform.network.edge'
         aliases = ['edges']
         aliases_only = True
         description = "Vsphere Network Nsx Edge management"
@@ -802,7 +799,7 @@ class VspherePlatformNetworkEdgeController(VspherePlatformNetworkChildController
 
 class VspherePlatformNetworkDlrController(VspherePlatformNetworkChildController):
     class Meta:
-        label = 'vsphere.platform.networks.dlr'
+        label = 'vsphere.platform.network.dlr'
         aliases = ['dlrs']
         aliases_only = True
         description = "Vsphere Network Nsx Dlr management"
@@ -1185,7 +1182,7 @@ class VsphereNetworkDvsController(VsphereNetworkChildController):
     uri = u'/v1.0/nrs/vsphere/network/dvss'
 
     class Meta:
-        label = 'vsphere.beehive.networks.dvs'
+        label = 'vsphere.beehive.network.dvs'
         aliases = ['dvss']
         aliases_only = True
         description = "Vsphere Network distributed virtual switch management"
@@ -1195,7 +1192,7 @@ class VsphereNetworkDvpgController(VsphereNetworkChildController):
     uri = u'/v1.0/nrs/vsphere/network/dvpgs'
 
     class Meta:
-        label = 'vsphere.beehive.networks.dvpg'
+        label = 'vsphere.beehive.network.dvpg'
         aliases = ['dvpgs']
         aliases_only = True
         description = "Vsphere Network distributed virtual port group management"
@@ -1205,7 +1202,7 @@ class VsphereNetworkNsxController(VsphereNetworkChildController):
     uri = u'/v1.0/nrs/vsphere/network/nsxs'
     
     class Meta:
-        label = 'vsphere.beehive.networks.nsx'
+        label = 'vsphere.beehive.network.nsx'
         aliases = ['nsxs']
         aliases_only = True
         description = "Vsphere Network Nsx Manager management"

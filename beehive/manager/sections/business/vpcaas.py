@@ -114,20 +114,22 @@ class VMServiceController(VPCaaServiceControllerChild):
             .get(u'reservationSet')[0].get(u'instancesSet')[0]
         self.result(res, details=True, maxsize=40)
 
-    @expose(aliases=[u'add <name> <account> <type> <subnet> <image> <security group> [sshkey=..]'],
+    @expose(aliases=[u'add name=.. account=.. type=.. subnet=.. image=.. security-group=.. [sshkey=..]'],
             aliases_only=True)
     @check_error
     def add(self):
         """Create a virtual machine
     - sshkey: use this optional parameter to set sshkey. Pass reference to a file
         """
-        name = self.get_arg(name=u'name')
-        account = self.get_account(self.get_arg(name=u'account'))
-        itype = self.get_service_def(self.get_arg(name=u'type'))
-        subnet = self.get_service_instance(self.get_arg(name=u'subnet'))
-        image = self.get_service_instance(self.get_arg(name=u'image'))
-        sg = self.get_service_instance(self.get_arg(name=u'security group'))
-        sshkey = self.get_arg(name=u'sshkey', default=None, keyvalue=True)
+        name = self.get_arg(name=u'name', keyvalue=True)
+        account = self.get_account(self.get_arg(name=u'account', keyvalue=True, required=True))
+        itype = self.get_service_def(self.get_arg(name=u'type', keyvalue=True, required=True))
+        subnet = self.get_service_instance(self.get_arg(name=u'subnet', keyvalue=True, required=True),
+                                           account_id=account)
+        image = self.get_service_instance(self.get_arg(name=u'image', keyvalue=True, required=True), account_id=account)
+        sg = self.get_service_instance(self.get_arg(name=u'security-group', keyvalue=True, required=True),
+                                       account_id=account)
+        sshkey = self.get_arg(name=u'sshkey', default=None, keyvalue=True, required=True)
 
         data = {
             u'Name': name,
@@ -200,7 +202,7 @@ class VMServiceController(VPCaaServiceControllerChild):
         res = self._call(uri, u'DELETE', data=data, timeout=600)
         logger.info(res)
         res = {u'msg': u'Delete virtual machine %s' % value}
-        self.result(res, headers=[u'msg'])
+        self.result(res, headers=[u'msg'], maxsize=200)
 
     @expose()
     @check_error

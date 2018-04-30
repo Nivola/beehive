@@ -335,11 +335,14 @@ class SpecializedServiceControllerChild(ApiController):
             return res.get(u'servicedefs')[0][u'uuid']
         return oid
 
-    def get_service_instance(self, oid):
+    def get_service_instance(self, oid, account_id=None):
         """"""
         check = self.is_name(oid)
         if check is True:
             uri = u'%s/serviceinsts' % self.baseuri
+            data = u'name=%s' % oid
+            if account_id is not None:
+                data += u'&account_id=%s' % account_id
             res = self._call(uri, u'GET', data=u'name=%s' % oid)
             logger.info(u'Get account by name: %s' % res)
             count = res.get(u'count')

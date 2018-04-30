@@ -77,7 +77,7 @@ class ApiManagerWarning(Exception):
         * **value** (:py:class:`str`): error description
         * **code** (:py:class:`int`): error code [default=400]
     """
-    def __init__(self, value, code=208):
+    def __init__(self, value, code=400):
         self.code = code
         self.value = value
         Exception.__init__(self, value, code)
@@ -2067,6 +2067,23 @@ class ApiObject(object):
         **Raise:** :class:`ApiManagerError`
         """
         return kvargs
+
+    def post_delete(self, *args, **kvargs):
+        """Post delete function. This function is used in delete method. Extend
+        this function to execute action after object was deleted.
+
+        **Parameters:**
+
+            * **args** (:py:class:`list`): custom params
+            * **kvargs** (:py:class:`dict`): custom params
+
+        **Returns:**
+
+            True
+
+        **Raise:** :class:`ApiManagerError`
+        """
+        return True
     
     #
     # db session
@@ -2082,8 +2099,7 @@ class ApiObject(object):
     #
     # event
     #
-    def send_event(self, op, args=None, params={}, opid=None, response=True, 
-                   exception=None, etype=None, elapsed=0):
+    def send_event(self, op, args=None, params={}, opid=None, response=True, exception=None, etype=None, elapsed=0):
         """Publish an event to event queue.
         
         :param op: operation to audit
@@ -2108,17 +2124,17 @@ class ApiObject(object):
             if str(type(a)).find(u'class') < 0:
                 nargs.append(a)
                 
-        for k,v in params.items():
+        for k, v in params.items():
             if str(type(v)).find(u'class') > -1:
-                args.pop(k)                
+                params.pop(k)
         
         data = {
-            u'opid':opid,
-            u'op':u'%s.%s' % (self.objdef, op),
-            u'args':nargs,
-            u'params':params,
-            u'elapsed':elapsed,
-            u'response':response
+            u'opid': opid,
+            u'op': u'%s.%s' % (self.objdef, op),
+            u'args': nargs,
+            u'params': params,
+            u'elapsed': elapsed,
+            u'response': response
         }
 
         source = {
@@ -2299,10 +2315,15 @@ class ApiObject(object):
             else:
                 self.delete_object(self.model)
                 self.logger.debug(u'Soft delete %s: %s' % (self.objdef, self.oid))
-            return None
         except TransactionError as ex:
             self.logger.error(ex.desc, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
+
+        # custom action
+        if self.post_delete is not None:
+            self.post_delete(**kvargs)
+
+        return None
 
 
 class ApiInternalObject(ApiObject):

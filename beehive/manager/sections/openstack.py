@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 #
 class OpenstackPlatformController(BaseController):
     class Meta:
-        label = 'openstack.platform'
+        label = 'openstack_platform'
         stacked_on = 'base'
         stacked_type = 'nested'
         description = "Openstack Platform management"
@@ -40,7 +40,7 @@ class OpenstackPlatformControllerChild(BaseController):
     entity_class = None
     
     class Meta:
-        stacked_on = 'openstack.platform'
+        stacked_on = 'openstack_platform'
         stacked_type = 'nested'
         arguments = [
             (['extra_arguments'], dict(action='store', nargs='*')),
@@ -2348,7 +2348,7 @@ class OpenstackHeatStackController(OpenstackControllerChild):
     headers = [u'id', u'container.name', u'parent.name', u'name', u'state', u'ext_id']
     
     class Meta:
-        label = 'openstack.beehive.heat.stack'
+        label = 'openstack.beehive.heat.stacks'
         aliases = ['stacks']
         aliases_only = True         
         description = "Openstack Heat Stack management"
@@ -2438,7 +2438,7 @@ class OpenstackHeatStackTemplateController(OpenstackControllerChild):
     headers = [u'id', u'container.name', u'parent.name', u'name', u'state', u'ext_id']
 
     class Meta:
-        label = 'openstack.beehive.heat.template'
+        label = 'openstack.beehive.heat.templates'
         aliases = ['templates']
         aliases_only = True
         description = "Openstack Heat Stack template management"
@@ -2494,7 +2494,7 @@ class OpenstackManilaShareController(OpenstackControllerChild):
                u'details.share_proto', u'details.size']
 
     class Meta:
-        label = 'openstack.beehive.manila.share'
+        label = 'openstack.beehive.manila.shares'
         aliases = ['shares']
         aliases_only = True
         description = "Openstack Manila Share management"
