@@ -567,8 +567,8 @@ class ProviderComputeRuleController(ProviderControllerChild):
 
 class ProviderComputeInstanceController(ProviderControllerChild):
     uri = u'/v1.0/nrs/provider/instances'
-    fields = [u'id', u'name', u'parent.name', u'availability_zone.name', u'attributes.type', u'state',
-              u'date.creation', u'image_desc', u'vpcs.0.name', u'flavor.vcpus', u'flavor.memory', u'flavor.disk',
+    fields = [u'id', u'name', u'parent.name', u'availability_zone.name', u'hypervisor', u'state',
+              u'date.creation', u'image_desc', u'vpcs.0.name', u'flavor.vcpus', u'flavor.memory', u'storage',
               u'vpcs.0.fixed_ip.ip']
     headers = [u'id', u'name', u'parent', u'av_zone', u'type', u'state', u'creation', u'image',
                u'vpc', u'vcpus', u'memory', u'disk', u'ip']
@@ -590,6 +590,8 @@ class ProviderComputeInstanceController(ProviderControllerChild):
         for item in res:
             image = item.get(u'image', {})
             item[u'image_desc'] = u'%s %s' % (image.get(u'os', u''), image.get(u'os_ver', u''))
+            if len(item[u'storage']) > 0:
+                item[u'storage'] = [i[u'size'] for i in item[u'storage']]
         logger.info(u'Get %s: %s' % (self._meta.aliases[0], res))
         self.result(res, headers=self.headers, fields=self.fields)
 
