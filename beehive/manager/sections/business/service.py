@@ -1573,12 +1573,13 @@ class ServiceMetricCostsController(ServiceControllerChild):
             u'date_start': u'evaluation_date_start',
             u'date_end': u'evaluation_date_stop',
         }
-        data = {}
+        data = self.get_query_params(*self.app.pargs.extra_arguments)
         for k in header_field:
             par = params.get(k, None)
             if par is not None:
                 if k.startswith(u'date_'):
                     g, m, y = par.split(u'-')
+                    data.pop(k)
                     data[header_field[k]] = datetime(int(y), int(m), int(g))
                 else: 
                     data[header_field[k]] = par
