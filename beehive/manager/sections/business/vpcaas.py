@@ -124,7 +124,7 @@ class VMServiceController(VPCaaServiceControllerChild):
     - pwd: vm password [default=mypass]
     - disks: list of additional disk sizes comma separated. Ex. 5,10
         """
-        name = self.get_arg(name=u'name', keyvalue=True)
+        name = self.get_arg(name=u'name', keyvalue=True, required=True)
         account = self.get_account(self.get_arg(name=u'account', keyvalue=True, required=True))
         itype = self.get_service_def(self.get_arg(name=u'type', keyvalue=True, required=True))
         subnet = self.get_service_instance(self.get_arg(name=u'subnet', keyvalue=True, required=True),
