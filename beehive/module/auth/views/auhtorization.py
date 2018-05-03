@@ -978,7 +978,8 @@ class DeleteGroup(SwaggerApiView):
         group = controller.get_group(oid)
         resp = group.delete()
         return (resp, 204)
-    
+
+
 #
 # object
 #

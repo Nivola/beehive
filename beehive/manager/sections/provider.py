@@ -591,7 +591,7 @@ class ProviderComputeInstanceController(ProviderControllerChild):
             image = item.get(u'image', {})
             item[u'image_desc'] = u'%s %s' % (image.get(u'os', u''), image.get(u'os_ver', u''))
             if len(item[u'storage']) > 0:
-                item[u'storage'] = [i[u'size'] for i in item[u'storage']]
+                item[u'storage'] = [i.get(u'volume_size', None) for i in item[u'storage']]
         logger.info(u'Get %s: %s' % (self._meta.aliases[0], res))
         self.result(res, headers=self.headers, fields=self.fields)
 
@@ -607,6 +607,7 @@ class ProviderComputeInstanceController(ProviderControllerChild):
             image = data.pop(u'image')
             vpcs = data.pop(u'vpcs')
             sgs = data.pop(u'security_groups')
+            storage = data.pop(u'storage')
             self.output(u'Flavor:')
             self.result(flavor, headers=[u'vcpus', u'memory', u'disk', u'disk_iops', u'bandwidth'])
             self.output(u'Image:')
@@ -615,6 +616,8 @@ class ProviderComputeInstanceController(ProviderControllerChild):
             self.result(sgs, headers=[u'uuid', u'name'])
             self.output(u'Networks:')
             self.result(vpcs, headers=[u'uuid', u'name', u'cidr', u'gateway', u'fixed_ip.ip'])
+            self.output(u'Storage:')
+            self.result(storage, headers=[u'id', u'name', u'storage', u'format', u'bootable', u'mode', u'type', u'size'])
 
         self.get_resource(oid, format_result=format_result)
 
@@ -718,6 +721,29 @@ class ProviderComputeStackController(ProviderControllerChild):
                                 u'required_by'], maxsize=40, table_style=u'simple')
 
 
+class ProviderComputeSqlStackController(ProviderControllerChild):
+    uri = u'/v1.0/nrs/provider/sql_stacks'
+    headers = [u'id', u'uuid', u'name', u'parent', u'state', u'creation']
+    headers = [u'id', u'uuid', u'name', u'parent.name', u'state', u'date.creation', u'date.modified']
+
+    class Meta:
+        label = 'provider.beehive.sql_stacks'
+        aliases = ['sql-stacks']
+        aliases_only = True
+        description = "Provider compute sql stack management"
+
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
+    def list(self):
+        """List provider items
+        """
+        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = self.uri
+        res = self._call(uri, u'GET', data=data)
+        logger.info(u'Get %s: %s' % (u'stacks', res))
+        self.result(res, headers=self.headers, key=u'stacks')
+
+
 provider_controller_handlers = [
     ProviderController,
     ProviderRegionController,
@@ -731,4 +757,5 @@ provider_controller_handlers = [
     ProviderComputeRuleController,
     ProviderComputeInstanceController,
     ProviderComputeStackController,
+    ProviderComputeSqlStackController,
 ]        

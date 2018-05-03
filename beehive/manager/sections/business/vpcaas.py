@@ -114,12 +114,15 @@ class VMServiceController(VPCaaServiceControllerChild):
             .get(u'reservationSet')[0].get(u'instancesSet')[0]
         self.result(res, details=True, maxsize=40)
 
-    @expose(aliases=[u'add name=.. account=.. type=.. subnet=.. image=.. security-group=.. [sshkey=..]'],
+    @expose(aliases=[u'add name=.. account=.. type=.. subnet=.. image=.. security-group=.. [sshkey=..] [pwd=..] '
+                     u'[disks=..]'],
             aliases_only=True)
     @check_error
     def add(self):
         """Create a virtual machine
     - sshkey: use this optional parameter to set sshkey. Pass reference to a file
+    - pwd: vm password [default=mypass]
+    - disks: list of additional disk sizes comma separated. Ex. 5,10
         """
         name = self.get_arg(name=u'name', keyvalue=True)
         account = self.get_account(self.get_arg(name=u'account', keyvalue=True, required=True))
@@ -129,7 +132,9 @@ class VMServiceController(VPCaaServiceControllerChild):
         image = self.get_service_instance(self.get_arg(name=u'image', keyvalue=True, required=True), account_id=account)
         sg = self.get_service_instance(self.get_arg(name=u'security-group', keyvalue=True, required=True),
                                        account_id=account)
-        sshkey = self.get_arg(name=u'sshkey', default=None, keyvalue=True, required=True)
+        sshkey = self.get_arg(name=u'sshkey', default=None, keyvalue=True, required=False)
+        pwd = self.get_arg(name=u'pwd', default=u'mypass', keyvalue=True, required=False)
+        disks = self.get_arg(name=u'disks', default=None, keyvalue=True, required=False)
 
         data = {
             u'Name': name,
@@ -137,10 +142,16 @@ class VMServiceController(VPCaaServiceControllerChild):
             u'AdditionalInfo': u'',
             u'SubnetId': subnet,
             u'InstanceType': itype,
-            u'AdminPassword': u'mypass',
+            u'AdminPassword': pwd,
             u'ImageId': image,
             u'SecurityGroupId_N': [sg],
         }
+        if disks is not None:
+            blocks = []
+            for disk in disks.split(u','):
+                blocks.append({u'Ebs': {u'VolumeSize': disk}})
+            data[u'BlockDeviceMapping_N'] = blocks
+
         if sshkey is not None:
             key = self.load_file(sshkey)
             key = key.replace(u'\n', u'')

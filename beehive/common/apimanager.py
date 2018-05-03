@@ -1388,7 +1388,7 @@ class ApiController(object):
                            desc=entity.desc, model=entity)
         
         # execute custom post_get
-        res.post_get()        
+        res.post_get()
         
         self.logger.debug(u'Get %s : %s' % (entity_class.__name__, res))
         return res
