@@ -757,8 +757,9 @@ class ApiController(BaseController):
             state = res.get(u'task_instance').get(u'status')
             logger.debug(u'Get job %s state: %s' % (jobid, state))
             if state == u'FAILURE':
-                # print(res)
-                self.app.print_error(res[u'task_instance'][u'traceback'][-1])
+                data = self.app.colored_text.error(u'%s ..' % res[u'task_instance'][u'traceback'][-1])
+                sys.stdout.write(data)
+                sys.stdout.flush()
             return state
         except (Exception):
             return u'EXPUNGED'
@@ -783,8 +784,58 @@ class ApiController(BaseController):
                 state = u'TIMEOUT'
 
         if state == u'TIMEOUT':
-            self.app.print_error(u'- TIMEOUT -')
+            data = self.app.colored_text.error(u'..TIMEOUT..')
+            sys.stdout.write(data)
+            sys.stdout.flush()
         elif state == u'FAILURE':
-            self.app.print_error(u'- ERROR -')
+            # data = self.colored_text.error(u'- ERROR -')
+            # sys.stdout.write(data)
+            # sys.stdout.flush()
+            pass
 
         print(u'END')
+
+
+
+
+    # def get_job_state(self, jobid):
+    #     try:
+    #         res = self._call(u'%s/worker/tasks/%s' % (self.baseuri, jobid), u'GET', silent=True)
+    #         state = res.get(u'task_instance').get(u'status')
+    #         logger.debug(u'Get job %s state: %s' % (jobid, state))
+    #         if state == u'FAILURE':
+    #             data = self.colored_text.error(res[u'task_instance'][u'traceback'][-1])
+    #             sys.stdout.write(data)
+    #             sys.stdout.flush()
+    #         return state
+    #     except (NotFoundException, Exception):
+    #         return u'EXPUNGED'
+    #
+    # def wait_job(self, jobid, delta=2, maxtime=180):
+    #     """Wait job
+    #     """
+    #     logger.debug(u'wait for job: %s' % jobid)
+    #     state = self.get_job_state(jobid)
+    #     sys.stdout.write(u'JOB:%s' % jobid)
+    #     sys.stdout.flush()
+    #     elapsed = 0
+    #     while state not in [u'SUCCESS', u'FAILURE', u'TIMEOUT']:
+    #         sys.stdout.write(u'.')
+    #         sys.stdout.flush()
+    #         sleep(delta)
+    #         state = self.get_job_state(jobid)
+    #         elapsed += delta
+    #         if elapsed > maxtime:
+    #             state = u'TIMEOUT'
+    #
+    #     if state == u'TIMEOUT':
+    #         data = self.colored_text.error(u'- TIMEOUT -')
+    #         sys.stdout.write(data)
+    #         sys.stdout.flush()
+    #     elif state == u'FAILURE':
+    #         # data = self.colored_text.error(u'- ERROR -')
+    #         # sys.stdout.write(data)
+    #         # sys.stdout.flush()
+    #         pass
+    #
+    #     print(u'END')

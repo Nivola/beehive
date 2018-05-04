@@ -7,6 +7,8 @@ import logging
 import urllib
 
 from cement.core.controller import expose
+
+from beecell.cement_cmd.foundation import ColoredText
 from beehive.manager.util.controller import BaseController, ApiController,\
     check_error
 from re import match
@@ -135,8 +137,13 @@ class TaskController(object):
         uri = u'%s/worker/tasks' % self.baseuri
         res = self._call(uri, u'GET', data)
         logger.info(res)
-        self.result(res, key=u'task_instances', headers=[u'task_id', u'type', u'status', u'name', u'start_time',
-                                                         u'stop_time', u'elapsed'], maxsize=200)
+        resp = []
+        for item in res[u'task_instances']:
+            if item[u'status'] == u'FAILURE':
+                item[u'status'] = self.app.colored_text.output(item[u'status'], u'REDonBLACK')
+            resp.append(item)
+        headers = [u'task_id', u'type', u'status', u'name', u'worker', u'start_time', u'stop_time', u'elapsed']
+        self.result(resp, headers=headers, maxsize=200)
         
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -147,13 +154,18 @@ class TaskController(object):
         uri = u'%s/worker/tasks/%s' % (self.baseuri, task_id)
         res = self._call(uri, u'GET').get(u'task_instance')
         logger.info(res)
-        resp = []
-        resp.append(res)
+        tasks = []
+        tasks.append(res)
         child = res.get(u'children')
         if child is not None:
-            resp.extend(child)
-        self.result(resp, headers=[u'task_id', u'type', u'status', u'name', u'start_time', u'stop_time', u'elapsed'],
-                    maxsize=100)
+            tasks.extend(child)
+        resp = []
+        for item in tasks:
+            if item[u'status'] == u'FAILURE':
+                item[u'status'] = self.app.colored_text.output(item[u'status'], u'REDonBLACK')
+            resp.append(item)
+        headers = [u'task_id', u'type', u'status', u'name', u'worker', u'start_time', u'stop_time', u'elapsed']
+        self.result(resp, headers=headers, maxsize=100)
     
     @expose(aliases=[u'trace <id>'], aliases_only=True)
     @check_error
@@ -170,7 +182,22 @@ class TaskController(object):
                 resp.append({u'timestamp': i[0], u'task': i[1], u'task id': i[2], u'msg': truncate(i[3], 200)})
             except:
                 resp.append({u'timestamp': i[0], u'msg': truncate(i[1], 200)})
-        self.result(resp, headers=[u'timestamp', u'msg'], maxsize=200)        
+        for item in resp:
+            if item[u'msg'].find(u'ERROR') >= 0:
+                self.output(u'[%s] %s' % (item[u'timestamp'], item[u'msg']), color=u'REDonBLACK')
+            else:
+                self.output(u'[%s] %s' % (item[u'timestamp'], item[u'msg']))
+
+    @expose(aliases=[u'last-error <id>'], aliases_only=True)
+    @check_error
+    def last_error(self):
+        """Get task instance execution error by id
+        """
+        task_id = self.get_arg(name=u'id')
+        uri = u'%s/worker/tasks/%s' % (self.baseuri, task_id)
+        res = self._call(uri, u'GET').get(u'task_instance').get(u'trace')
+        logger.info(res)
+        self.output(res[-1][3], color=u'REDonBLACK')
     
     @expose(aliases=[u'graph <id>'], aliases_only=True)
     @check_error
@@ -218,12 +245,12 @@ class TaskController(object):
         """
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         data = {
-            u'x':2,
-            u'y':234, 
-            u'numbers':[2, 78], 
-            u'mul_numbers':[],
-            u'error':str2bool(params.get(u'error', False)),
-            u'suberror':str2bool(params.get(u'suberror', False))
+            u'x': 2,
+            u'y': 234,
+            u'numbers': [2, 78],
+            u'mul_numbers': [],
+            u'error': str2bool(params.get(u'error', False)),
+            u'suberror': str2bool(params.get(u'suberror', False))
         }
         uri = u'%s/worker/tasks/test' % self.baseuri
         res = self._call(uri, u'POST', data=data)
