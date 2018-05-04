@@ -15,18 +15,6 @@ from beehive.manager.sections.business import ConnectionHelper
 logger = logging.getLogger(__name__)
 
 
-# class AuthorityController(BaseController):
-#     class Meta:
-#         label = 'authority'
-#         stacked_on = 'business'
-#         stacked_type = 'nested'
-#         description = "Business Authority Management"
-#         arguments = []
-#
-#     def _setup(self, base_app):
-#         BaseController._setup(self, base_app)
-
-
 class AuthorityControllerChild(ApiController):
     baseuri = u'/v1.0/nws'
     subsystem = u'service'
@@ -41,110 +29,184 @@ class OrganizationController(AuthorityControllerChild):
         label = 'orgs'
         description = "Organization management"
 
-        role_template = [
-            {
-                u'name': u'OrgAdminRole-%s',
-                u'perms': [
-                    {u'subsystem': u'service', u'type': u'Organization',
-                     u'objid': u'<objid>', u'action': u'*'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division',
-                     u'objid': u'<objid>' + u'//*', u'action': u'*'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account',
-                     u'objid': u'<objid>' + u'//*//*', u'action': u'*'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceInstance',
-                     u'objid': u'<objid>' + u'//*//*//*', u'action': u'*'},
-                    {u'subsystem': u'service',
-                     u'type': u'Organization.Division.Account.ServiceInstance.ServiceLinkInst',
-                     u'objid': u'<objid>' + u'//*//*//*', u'action': u'*'},
-                    {u'subsystem': u'service',
-                     u'type': u'Organization.Division.Account.ServiceInstance.ServiceInstanceConfig',
-                     u'objid': u'<objid>' + u'//*//*//*//*', u'action': u'*'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceLink',
-                     u'objid': u'<objid>' + u'//*//*//*', u'action': u'*'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceTag',
-                     u'objid': u'<objid>' + u'//*//*//*', u'action': u'*'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceLink',
-                     u'objid': u'*//*//*//*', u'action': u'view'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceTag',
-                     u'objid': u'*//*//*//*', u'action': u'view'},
-                ],
-            },
-            {
-                u'name': u'OrgViewerRole-%s',
-                u'perms': [
-                    {u'subsystem': u'service', u'type': u'Organization',
-                     u'objid': u'<objid>', u'action': u'view'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division',
-                     u'objid': u'<objid>' + u'//*', u'action': u'view'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account',
-                     u'objid': u'<objid>' + u'//*//*', u'action': u'view'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceInstance',
-                     u'objid': u'<objid>' + u'//*//*//*', u'action': u'view'},
-                    {u'subsystem': u'service',
-                     u'type': u'Organization.Division.Account.ServiceInstance.ServiceInstanceConfig',
-                     u'objid': u'<objid>' + u'//*//*//*', u'action': u'view'},
-                    {u'subsystem': u'service',
-                     u'type': u'Organization.Division.Account.ServiceInstance.ServiceLinkInst',
-                     u'objid': u'<objid>' + u'//*//*//*//*', u'action': u'view'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceLink',
-                     u'objid': u'<objid>' + u'//*//*//*', u'action': u'view'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceTag',
-                     u'objid': u'<objid>' + u'//*//*//*', u'action': u'view'},
-                ]
-            }
-        ]
+        # role_template = [
+        #     {
+        #         u'name': u'OrgAdminRole-%s',
+        #         u'perms': [
+        #             {u'subsystem': u'service', u'type': u'Organization',
+        #              u'objid': u'<objid>', u'action': u'*'},
+        #             {u'subsystem': u'service', u'type': u'Organization.Division',
+        #              u'objid': u'<objid>' + u'//*', u'action': u'*'},
+        #             {u'subsystem': u'service', u'type': u'Organization.Division.Account',
+        #              u'objid': u'<objid>' + u'//*//*', u'action': u'*'},
+        #             {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceInstance',
+        #              u'objid': u'<objid>' + u'//*//*//*', u'action': u'*'},
+        #             {u'subsystem': u'service',
+        #              u'type': u'Organization.Division.Account.ServiceInstance.ServiceLinkInst',
+        #              u'objid': u'<objid>' + u'//*//*//*', u'action': u'*'},
+        #             {u'subsystem': u'service',
+        #              u'type': u'Organization.Division.Account.ServiceInstance.ServiceInstanceConfig',
+        #              u'objid': u'<objid>' + u'//*//*//*//*', u'action': u'*'},
+        #             {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceLink',
+        #              u'objid': u'<objid>' + u'//*//*//*', u'action': u'*'},
+        #             {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceTag',
+        #              u'objid': u'<objid>' + u'//*//*//*', u'action': u'*'},
+        #             {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceLink',
+        #              u'objid': u'*//*//*//*', u'action': u'view'},
+        #             {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceTag',
+        #              u'objid': u'*//*//*//*', u'action': u'view'},
+        #         ],
+        #     },
+        #     {
+        #         u'name': u'OrgViewerRole-%s',
+        #         u'perms': [
+        #             {u'subsystem': u'service', u'type': u'Organization',
+        #              u'objid': u'<objid>', u'action': u'view'},
+        #             {u'subsystem': u'service', u'type': u'Organization.Division',
+        #              u'objid': u'<objid>' + u'//*', u'action': u'view'},
+        #             {u'subsystem': u'service', u'type': u'Organization.Division.Account',
+        #              u'objid': u'<objid>' + u'//*//*', u'action': u'view'},
+        #             {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceInstance',
+        #              u'objid': u'<objid>' + u'//*//*//*', u'action': u'view'},
+        #             {u'subsystem': u'service',
+        #              u'type': u'Organization.Division.Account.ServiceInstance.ServiceInstanceConfig',
+        #              u'objid': u'<objid>' + u'//*//*//*', u'action': u'view'},
+        #             {u'subsystem': u'service',
+        #              u'type': u'Organization.Division.Account.ServiceInstance.ServiceLinkInst',
+        #              u'objid': u'<objid>' + u'//*//*//*//*', u'action': u'view'},
+        #             {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceLink',
+        #              u'objid': u'<objid>' + u'//*//*//*', u'action': u'view'},
+        #             {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceTag',
+        #              u'objid': u'<objid>' + u'//*//*//*', u'action': u'view'},
+        #         ]
+        #     }
+        # ]
 
-    @expose(aliases=[u'get-roles <organization>'], aliases_only=True)
-    @check_error
-    def get_roles(self):
-        """Get organization roles
-        """
-        organization_id = self.get_arg(name=u'organization')
-        organization_id = ConnectionHelper.get_org(self, organization_id).get(u'id')
-        ConnectionHelper.get_roles(self, u'Org%' + u'Role-%s' % organization_id)
+    # @expose(aliases=[u'get-roles <organization>'], aliases_only=True)
+    # @check_error
+    # def get_roles(self):
+    #     """Get organization roles
+    #     """
+    #     organization_id = self.get_arg(name=u'organization')
+    #     organization_id = ConnectionHelper.get_org(self, organization_id).get(u'id')
+    #     ConnectionHelper.get_roles(self, u'Org%' + u'Role-%s' % organization_id)
+    #
+    # @expose(aliases=[u'set-role <organization> <type> <user>'], aliases_only=True)
+    # @check_error
+    # def set_role(self):
+    #     """Get organization roles
+    # - type: role type. Admin or Viewer
+    #     """
+    #     organization_id = self.get_arg(name=u'organization')
+    #     organization_id = ConnectionHelper.get_org(self, organization_id).get(u'id')
+    #     role_type = self.get_arg(name=u'role type. Admin or Viewer')
+    #     user = self.get_arg(name=u'user')
+    #     ConnectionHelper.set_role(self, u'Org%sRole-%s' % (role_type, organization_id), user)
+    #
+    # @expose(aliases=[u'unset-role <organization> <type> <user>'], aliases_only=True)
+    # @check_error
+    # def unset_role(self):
+    #     """Get organization roles
+    # - type: role type. Admin or Viewer
+    #     """
+    #     organization_id = self.get_arg(name=u'organization')
+    #     organization_id = ConnectionHelper.get_org(self, organization_id).get(u'id')
+    #     role_type = self.get_arg(name=u'role type. Admin or Viewer')
+    #     user = self.get_arg(name=u'user')
+    #     ConnectionHelper.set_role(self, u'Org%sRole-%s' % (role_type, organization_id), user, op=u'remove')
+    #
+    # @expose(aliases=[u'add-roles <organization>'], aliases_only=True)
+    # @check_error
+    # def add_roles(self):
+    #     """Add organization roles
+    #     """
+    #     organization_id = self.get_arg(name=u'organization')
+    #     organization_id = ConnectionHelper.get_org(self, organization_id).get(u'id')
+    #
+    #     # get organization
+    #     uri = u'%s/organizations/%s' % (self.baseuri, organization_id)
+    #     organization = self._call(uri, u'GET').get(u'organization')
+    #     organization_objid = organization[u'__meta__'][u'objid']
+    #
+    #     # add roles
+    #     for role in self._meta.role_template:
+    #         name = role.get(u'name') % organization_id
+    #         perms = ConnectionHelper.set_perms_objid(role.get(u'perms'), organization_objid)
+    #         ConnectionHelper.add_role(self, name, name, perms)
 
-    @expose(aliases=[u'set-role <organization> <type> <user>'], aliases_only=True)
-    @check_error
-    def set_role(self):
-        """Get organization roles
-    - type: role type. Admin or Viewer
-        """
-        organization_id = self.get_arg(name=u'organization')
-        organization_id = ConnectionHelper.get_org(self, organization_id).get(u'id')
-        role_type = self.get_arg(name=u'role type. Admin or Viewer')
-        user = self.get_arg(name=u'user')
-        ConnectionHelper.set_role(self, u'Org%sRole-%s' % (role_type, organization_id), user)
-
-    @expose(aliases=[u'unset-role <organization> <type> <user>'], aliases_only=True)
-    @check_error
-    def unset_role(self):
-        """Get organization roles
-    - type: role type. Admin or Viewer
-        """
-        organization_id = self.get_arg(name=u'organization')
-        organization_id = ConnectionHelper.get_org(self, organization_id).get(u'id')
-        role_type = self.get_arg(name=u'role type. Admin or Viewer')
-        user = self.get_arg(name=u'user')
-        ConnectionHelper.set_role(self, u'Org%sRole-%s' % (role_type, organization_id), user, op=u'remove')
-
-    @expose(aliases=[u'add-roles <organization>'], aliases_only=True)
-    @check_error
-    def add_roles(self):
-        """Add organization roles
-        """
-        organization_id = self.get_arg(name=u'organization')
-        organization_id = ConnectionHelper.get_org(self, organization_id).get(u'id')
-
-        # get organization
-        uri = u'%s/organizations/%s' % (self.baseuri, organization_id)
-        organization = self._call(uri, u'GET').get(u'organization')
-        organization_objid = organization[u'__meta__'][u'objid']
+    def __add_role(self, account_id):
+        # get account
+        uri = u'%s/organizations/%s' % (self.baseuri, account_id)
+        account = self._call(uri, u'GET').get(u'account')
+        account_objid = account[u'__meta__'][u'objid']
 
         # add roles
         for role in self._meta.role_template:
-            name = role.get(u'name') % organization_id
-            perms = ConnectionHelper.set_perms_objid(role.get(u'perms'), organization_objid)
+            name = role.get(u'name') % account_id
+            perms = ConnectionHelper.set_perms_objid(role.get(u'perms'), account_objid)
             ConnectionHelper.add_role(self, name, name, perms)
+
+    @expose(aliases=[u'roles <account>'], aliases_only=True)
+    @check_error
+    def roles(self):
+        """Get organization roles
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'%s/organizations/%s/roles' % (self.baseuri, value)
+        res = self._call(uri, u'GET')
+        logger.info(res)
+        self.result(res, key=u'roles', headers=[u'name', u'desc'], maxsize=200)
+
+    @expose(aliases=[u'users <account>'], aliases_only=True)
+    @check_error
+    def users(self):
+        """Get organization users
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'%s/organizations/%s/users' % (self.baseuri, value)
+        res = self._call(uri, u'GET')
+        logger.info(res)
+        self.result(res, key=u'users', headers=[u'name', u'role'], maxsize=200)
+
+    @expose(aliases=[u'add-user <organization> <role> <user>'], aliases_only=True)
+    @check_error
+    def add_user(self):
+        """Add organization role to a user
+        """
+        value = self.get_arg(name=u'id')
+        role = self.get_arg(name=u'role')
+        user = self.get_arg(name=u'user')
+        data = {
+            u'user': {
+                u'user_id': user,
+                u'role': role
+            }
+        }
+        uri = u'%s/organizations/%s/users' % (self.baseuri, value)
+        res = self._call(uri, u'POST', data)
+        logger.info(res)
+        msg = {u'msg': res}
+        self.result(msg, headers=[u'msg'], maxsize=200)
+
+    @expose(aliases=[u'del-user <organization> <role> <user>'], aliases_only=True)
+    @check_error
+    def del_user(self):
+        """Remove organization role from a user
+        """
+        value = self.get_arg(name=u'id')
+        role = self.get_arg(name=u'role')
+        user = self.get_arg(name=u'user')
+        data = {
+            u'user': {
+                u'user_id': user,
+                u'role': role
+            }
+        }
+        uri = u'%s/organizations/%s/users' % (self.baseuri, value)
+        res = self._call(uri, u'DELETE', data)
+        logger.info(res)
+        msg = {u'msg': res}
+        self.result(msg, headers=[u'msg'], maxsize=200)
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     @check_error
@@ -156,9 +218,9 @@ class OrganizationController(AuthorityControllerChild):
         uri = u'%s/organizations' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        self.result(res, key=u'organizations',
-                    headers=[u'id', u'uuid', u'name', u'org_type', u'ext_anag_id', u'active', u'date.creation'],
-                    maxsize=40)
+        headers = [u'id', u'uuid', u'name', u'type', u'divisions', u'anagrafica', u'status', u'date']
+        fields = [u'id', u'uuid', u'name', u'org_type', u'divisions', u'ext_anag_id', u'status', u'date.creation']
+        self.result(res, key=u'organizations', headers=headers, fields=fields, maxsize=40)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -182,7 +244,7 @@ class OrganizationController(AuthorityControllerChild):
         res = self._call(uri, u'GET', data=data)
         logger.info(u'Get organization perms: %s' % truncate(res))
         self.result(res, key=u'perms', headers=self.perm_headers)
- 
+
     @expose(aliases=[u'add <name> <org_type> [field=value]'], aliases_only=True)
     @check_error
     def add(self):
@@ -190,7 +252,7 @@ class OrganizationController(AuthorityControllerChild):
     - field: can be desc, ext_anag_id, attributes, hasvat, partner, referent, email, legaemail, postaladdress
         """
         name = self.get_arg(name=u'name')
-        org_type = self.get_arg(name=u'org_type')        
+        org_type = self.get_arg(name=u'org_type')
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         data = {
             u'organization':{
@@ -208,7 +270,7 @@ class OrganizationController(AuthorityControllerChild):
                 u'email':params.get(u'email', None),
                 u'legalemail':params.get(u'legalemail', None),
                 u'postaladdress':params.get(u'postaladdress', None),
-            }  
+            }
          }
         uri = u'%s/organizations' % (self.baseuri)
         res = self._call(uri, u'POST', data=data)
@@ -233,6 +295,24 @@ class OrganizationController(AuthorityControllerChild):
         self._call(uri, u'PUT', data=data)
         logger.info(u'Update organization %s with data %s' % (oid, params))
         res = {u'msg': u'Update resource %s with data %s' % (oid, params)}
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'refresh <id> [field=value]'], aliases_only=True)
+    @check_error
+    def refresh(self):
+        """Refresh organization
+    - id: id or uuid of the organization
+        """
+        oid = self.get_arg(name=u'id')
+
+        data = {
+            u'organization': {
+            }
+        }
+        uri = u'%s/organizations/%s' % (self.baseuri, oid)
+        self._call(uri, u'PATCH', data=data, timeout=600)
+        logger.info(u'Refresh organization %s' % (oid))
+        res = {u'msg': u'Refresh organization %s' % (oid)}
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
@@ -350,106 +430,79 @@ class DivisionController(AuthorityControllerChild):
         label = 'divs'
         description = "Divisions management"
 
-        role_template = [
-            {
-                u'name': u'DivAdminRole-%s',
-                u'perms': [
-                    {u'subsystem': u'service', u'type': u'Organization.Division',
-                     u'objid': u'<objid>', u'action': u'*'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account',
-                     u'objid': u'<objid>' + u'//*', u'action': u'*'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceInstance',
-                     u'objid': u'<objid>' + u'//*//*', u'action': u'*'},
-                    {u'subsystem': u'service',
-                     u'type': u'Organization.Division.Account.ServiceInstance.ServiceInstanceConfig',
-                     u'objid': u'<objid>' + u'//*//*//*', u'action': u'*'},
-                    {u'subsystem': u'service',
-                     u'type': u'Organization.Division.Account.ServiceInstance.ServiceLinkInst',
-                     u'objid': u'<objid>' + u'//*//*//*', u'action': u'*'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceLink',
-                     u'objid': u'<objid>' + u'//*//*', u'action': u'*'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceTag',
-                     u'objid': u'<objid>' + u'//*//*', u'action': u'*'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceLink',
-                     u'objid': u'*//*//*//*', u'action': u'view'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceTag',
-                     u'objid': u'*//*//*//*', u'action': u'view'},
-                ],
-            },
-            {
-                u'name': u'DivViewerRole-%s',
-                u'perms': [
-                    {u'subsystem': u'service', u'type': u'Organization.Division',
-                     u'objid': u'<objid>', u'action': u'view'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account',
-                     u'objid': u'<objid>' + u'//*', u'action': u'view'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceInstance',
-                     u'objid': u'<objid>' + u'//*//*', u'action': u'view'},
-                    {u'subsystem': u'service',
-                     u'type': u'Organization.Division.Account.ServiceInstance.ServiceInstanceConfig',
-                     u'objid': u'<objid>' + u'//*//*//*', u'action': u'view'},
-                    {u'subsystem': u'service',
-                     u'type': u'Organization.Division.Account.ServiceInstance.ServiceLinkInst',
-                     u'objid': u'<objid>' + u'//*//*//*', u'action': u'view'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceLink',
-                     u'objid': u'<objid>' + u'//*//*', u'action': u'view'},
-                    {u'subsystem': u'service', u'type': u'Organization.Division.Account.ServiceTag',
-                     u'objid': u'<objid>' + u'//*//*', u'action': u'view'},
-                ]
-            }
-        ]
-
-    @expose(aliases=[u'get-roles <division>'], aliases_only=True)
-    @check_error
-    def get_roles(self):
-        """Get division roles
-        """
-        division_id = self.get_arg(name=u'division')
-        division_id = ConnectionHelper.get_div(self, division_id).get(u'id')
-        roles = ConnectionHelper.get_roles(self, u'Div%' + u'Role-%s' % division_id)
-
-    @expose(aliases=[u'set-role <division> <type> <user>'], aliases_only=True)
-    @check_error
-    def set_role(self):
-        """Get division roles
-    - type: role type. Admin or Viewer
-        """
-        division_id = self.get_arg(name=u'division')
-        division_id = ConnectionHelper.get_div(self, division_id).get(u'id')
-        role_type = self.get_arg(name=u'role type. Admin or Viewer')
-        user = self.get_arg(name=u'user')
-        ConnectionHelper.set_role(self, u'Div%sRole-%s' % (role_type, division_id), user)
-
-    @expose(aliases=[u'unset-role <division> <type> <user>'], aliases_only=True)
-    @check_error
-    def unset_role(self):
-        """Get division roles
-    - type: role type. Admin or Viewer
-        """
-        division_id = self.get_arg(name=u'division')
-        division_id = ConnectionHelper.get_div(self, division_id).get(u'id')
-        role_type = self.get_arg(name=u'role type. Admin or Viewer')
-        user = self.get_arg(name=u'user')
-        ConnectionHelper.set_role(self, u'Div%sRole-%s' % (role_type, division_id), user, op=u'remove')
-
-    @expose(aliases=[u'add-roles <division>'], aliases_only=True)
-    @check_error
-    def add_roles(self):
-        """Add division roles
-        """
-        division_id = self.get_arg(name=u'division')
-        division_id = ConnectionHelper.get_div(self, division_id).get(u'id')
-
-        # get division
-        uri = u'%s/divisions/%s' % (self.baseuri, division_id)
-        division = self._call(uri, u'GET').get(u'division')
-        division_objid = division[u'__meta__'][u'objid']
+    def __add_role(self, account_id):
+        # get account
+        uri = u'%s/divisions/%s' % (self.baseuri, account_id)
+        account = self._call(uri, u'GET').get(u'account')
+        account_objid = account[u'__meta__'][u'objid']
 
         # add roles
         for role in self._meta.role_template:
-            name = role.get(u'name') % division_id
-            perms = ConnectionHelper.set_perms_objid(role.get(u'perms'), division_objid)
+            name = role.get(u'name') % account_id
+            perms = ConnectionHelper.set_perms_objid(role.get(u'perms'), account_objid)
             ConnectionHelper.add_role(self, name, name, perms)
+
+    @expose(aliases=[u'roles <account>'], aliases_only=True)
+    @check_error
+    def roles(self):
+        """Get division roles
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'%s/divisions/%s/roles' % (self.baseuri, value)
+        res = self._call(uri, u'GET')
+        logger.info(res)
+        self.result(res, key=u'roles', headers=[u'name', u'desc'], maxsize=200)
+
+    @expose(aliases=[u'users <account>'], aliases_only=True)
+    @check_error
+    def users(self):
+        """Get division users
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'%s/divisions/%s/users' % (self.baseuri, value)
+        res = self._call(uri, u'GET')
+        logger.info(res)
+        self.result(res, key=u'users', headers=[u'name', u'role'], maxsize=200)
+
+    @expose(aliases=[u'add-user <division> <role> <user>'], aliases_only=True)
+    @check_error
+    def add_user(self):
+        """Add division role to a user
+        """
+        value = self.get_arg(name=u'id')
+        role = self.get_arg(name=u'role')
+        user = self.get_arg(name=u'user')
+        data = {
+            u'user': {
+                u'user_id': user,
+                u'role': role
+            }
+        }
+        uri = u'%s/divisions/%s/users' % (self.baseuri, value)
+        res = self._call(uri, u'POST', data)
+        logger.info(res)
+        msg = {u'msg': res}
+        self.result(msg, headers=[u'msg'], maxsize=200)
+
+    @expose(aliases=[u'del-user <division> <role> <user>'], aliases_only=True)
+    @check_error
+    def del_user(self):
+        """Remove division role from a user
+        """
+        value = self.get_arg(name=u'id')
+        role = self.get_arg(name=u'role')
+        user = self.get_arg(name=u'user')
+        data = {
+            u'user': {
+                u'user_id': user,
+                u'role': role
+            }
+        }
+        uri = u'%s/divisions/%s/users' % (self.baseuri, value)
+        res = self._call(uri, u'DELETE', data)
+        logger.info(res)
+        msg = {u'msg': res}
+        self.result(msg, headers=[u'msg'], maxsize=200)
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     @check_error
@@ -464,8 +517,11 @@ class DivisionController(AuthorityControllerChild):
         uri = u'%s/divisions' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        self.result(res, key=u'divisions', headers=[u'id', u'uuid', u'name', u'organization_id', u'contact', u'email',
-                    u'postaladdress', u'active', u'date.creation'], maxsize=40)
+        headers = [u'id', u'uuid', u'name', u'organization', u'accounts', u'contact', u'email', u'postaladdress',
+                   u'status', u'date']
+        fields = [u'id', u'uuid', u'name', u'organization_name', u'accounts', u'contact', u'email', u'postaladdress',
+                  u'status', u'date.creation']
+        self.result(res, key=u'divisions', headers=headers, fields=fields, maxsize=40)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -533,6 +589,24 @@ class DivisionController(AuthorityControllerChild):
         self._call(uri, u'PUT', data=data)
         logger.info(u'Update division %s with data %s' % (oid, params))
         res = {u'msg': u'Update division %s with data %s' % (oid, params)}
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'refresh <id> [field=value]'], aliases_only=True)
+    @check_error
+    def refresh(self):
+        """Refresh division
+    - id: id or uuid of the division
+        """
+        oid = self.get_arg(name=u'id')
+
+        data = {
+            u'division': {
+            }
+        }
+        uri = u'%s/divisions/%s' % (self.baseuri, oid)
+        self._call(uri, u'PATCH', data=data, timeout=600)
+        logger.info(u'Refresh division %s' % (oid))
+        res = {u'msg': u'Refresh division %s' % (oid)}
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)

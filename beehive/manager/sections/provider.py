@@ -587,13 +587,13 @@ class ProviderComputeInstanceController(ProviderControllerChild):
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
         uri = self.uri
         res = self._call(uri, u'GET', data=data)
-        for item in res:
+        for item in res.get(u'instances'):
             image = item.get(u'image', {})
             item[u'image_desc'] = u'%s %s' % (image.get(u'os', u''), image.get(u'os_ver', u''))
             if len(item[u'storage']) > 0:
                 item[u'storage'] = [i.get(u'volume_size', None) for i in item[u'storage']]
-        logger.info(u'Get %s: %s' % (self._meta.aliases[0], res))
-        self.result(res, headers=self.headers, fields=self.fields, key=self._meta.aliases[0])
+        logger.info(u'Get instances: %s' % truncate(res))
+        self.result(res, headers=self.headers, fields=self.fields, key=u'instances')
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error

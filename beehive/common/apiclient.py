@@ -315,7 +315,7 @@ class BeehiveApiClient(object):
             conn.close()
         except Exception as ex:
             elapsed = time() - start
-            self.logger.error(ex, exc_info=True)
+            self.logger.error(ex, exc_info=1)
             if silent is False:
                 if response is not None:
                     self.logger.error(u'API Request: %s - Response: HOST=%s, STATUS=%s, CONTENT-TYPE=%s, RES=%s, '

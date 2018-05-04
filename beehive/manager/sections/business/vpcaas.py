@@ -44,20 +44,36 @@ class ImageServiceController(VPCaaServiceControllerChild):
         label = 'images'
         description = "Images service management"
 
-    @expose(aliases=[u'list [field=<id1, id2>]'], aliases_only=True)
+    @expose(aliases=[u'list [field=..]'], aliases_only=True)
     @check_error
     def list(self):
-        """List all images by field: owner-id.N, image-id.N
+        """List all virtual machine
+    - field: account, ids, size
+        - accounts: list of account id comma separated
+        - ids: list of image id
+        - size: number of records
         """
-        dataSearch={}
-        dataSearch[u'owner-id.N'] = self.split_arg(u'owner-id.N')
-        dataSearch[u'image-id.N'] = self.split_arg(u'image-id.N')
+        data_search = {}
+        data_search[u'owner-id.N'] = self.split_arg(u'accounts')
+        data_search[u'image-id.N'] = self.split_arg(u'ids')
+        data_search[u'Nvl-MaxResults'] = self.get_arg(name=u'size', default=10, keyvalue=True)
+        data_search[u'Nvl-NextToken'] = self.get_arg(name=u'page', default=0, keyvalue=True)
+
         uri = u'%s/computeservices/image/describeimages' % self.baseuri
-        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True)).get(u'DescribeImagesResponse')\
-            .get(u'imagesSet', [])
+        res = self._call(uri, u'GET', data=urllib.urlencode(data_search, doseq=True))
+        res = res.get(u'DescribeImagesResponse')
+        page = data_search[u'Nvl-NextToken']
+        resp = {
+            u'count': len(res.get(u'imagesSet')),
+            u'page': page,
+            u'total': res.get(u'nvl-imageTotal'),
+            u'sort': {u'field': u'id', u'order': u'asc'},
+            u'instances': res.get(u'imagesSet')
+        }
+
         headers = [u'id', u'name', u'state', u'type', u'account', u'platform']
         fields = [u'imageId', u'name', u'imageState', u'imageType', u'imageOwnerAlias', u'platform']
-        self.result(res, headers=headers, fields=fields, maxsize=40)
+        self.result(resp, key=u'instances', headers=headers, fields=fields, maxsize=40)
 
     @expose(aliases=[u'add <name> <account> <type>'], aliases_only=True)
     @check_error
@@ -82,34 +98,49 @@ class VMServiceController(VPCaaServiceControllerChild):
         label = 'vms'
         description = "Virtual Machine service management"
 
-    @expose(aliases=[u'list [field=<id1, id2>]'], aliases_only=True)
+    @expose(aliases=[u'list [field=..]'], aliases_only=True)
     @check_error
     def list(self):
-        """List all virtual machine by field: owner-id.N, instance-id.N
+        """List all virtual machine
+    - field: account, ids, size
+        - accounts: list of account id comma separated
+        - ids: list of instance id
+        - size: number of records
         """
-
-        dataSearch = {}
-        dataSearch[u'owner-id.N'] = self.split_arg(u'owner-id.N')
-        dataSearch[u'instance-id.N'] = self.split_arg(u'instance-id.N')
+        data_search = {}
+        data_search[u'owner-id.N'] = self.split_arg(u'accounts')
+        data_search[u'instance-id.N'] = self.split_arg(u'ids')
+        data_search[u'MaxResults'] = self.get_arg(name=u'size', default=10, keyvalue=True)
+        data_search[u'NextToken'] = self.get_arg(name=u'page', default=0, keyvalue=True)
 
         uri = u'%s/computeservices/instance/describeinstances' % self.baseuri
-        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True)).get(u'DescribeInstancesResponse')\
-            .get(u'reservationSet')[0].get(u'instancesSet')
+        res = self._call(uri, u'GET', data=urllib.urlencode(data_search, doseq=True))
+        res = res.get(u'DescribeInstancesResponse')
+        page = res.get(u'nextToken')
+        res = res.get(u'reservationSet')[0]
+        resp = {
+            u'count': len(res.get(u'instancesSet')),
+            u'page': page,
+            u'total': res.get(u'nvl-instanceTotal'),
+            u'sort': {u'field': u'id', u'order': u'asc'},
+            u'instances': res.get(u'instancesSet')
+        }
+
         headers = [u'id', u'name', u'type', u'state', u'launchTime', u'account', u'availabilityZone',
                    u'privateIp', u'image', u'subnet']
         fields = [u'instanceId', u'name', u'instanceType', u'instanceState.name', u'launchTime',
                   u'OwnerAlias', u'placement.availabilityZone', u'privateIpAddress', u'imageName',
                   u'subnetName']
-        self.result(res, headers=headers, fields=fields, maxsize=40)
+        self.result(resp, key=u'instances', headers=headers, fields=fields, maxsize=40)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
     def get(self):
         """Get virtual machine
         """
-        dataSearch = {u'instance-id.N': [self.get_arg(u'id')]}
+        data_search = {u'instance-id.N': [self.get_arg(u'id')]}
         uri = u'%s/computeservices/instance/describeinstances' % self.baseuri
-        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True)) \
+        res = self._call(uri, u'GET', data=urllib.urlencode(data_search, doseq=True)) \
             .get(u'DescribeInstancesResponse') \
             .get(u'reservationSet')[0].get(u'instancesSet')[0]
         self.result(res, details=True, maxsize=40)
@@ -170,12 +201,12 @@ class VMServiceController(VPCaaServiceControllerChild):
         """Start service instance by field
     - field: owner-id.N, instance-id.N
         """
-        dataSearch = {}
-        dataSearch[u'owner-id.N'] = self.split_arg(u'owner-id.N')
-        dataSearch[u'instance-id.N'] = self.split_arg(u'instance-id.N')
+        data_search = {}
+        data_search[u'owner-id.N'] = self.split_arg(u'owner-id.N')
+        data_search[u'instance-id.N'] = self.split_arg(u'instance-id.N')
 
         uri = u'%s/computeservices/instance/startinstances' % self.baseuri
-        res = self._call(uri, u'GET', data=urlencode(dataSearch, doseq=True)).get(u'StartInstancesResponse')\
+        res = self._call(uri, u'GET', data=urlencode(data_search, doseq=True)).get(u'StartInstancesResponse')\
             .get(u'instancesSet', [])
         headers = [u'id', u'name', u'state',  u'currentState', u'previousState']
         fields = [u'id', u'name', u'state',  u'currentState', u'previousState']
@@ -188,12 +219,12 @@ class VMServiceController(VPCaaServiceControllerChild):
     - field: list of owner-id.N, instance-id.N
     - field: force is set to true forces the instances to stop (default is false)
         """
-        dataSearch = {}
-        dataSearch[u'instance-id.N'] = self.split_arg(u'instance-id.N')
-        dataSearch[u'Force'] = self.get_arg(default=False, name=u'Force', keyvalue=True)
+        data_search = {}
+        data_search[u'instance-id.N'] = self.split_arg(u'instance-id.N')
+        data_search[u'Force'] = self.get_arg(default=False, name=u'Force', keyvalue=True)
 
         uri = u'%s/computeservices/instance/stopinstances' % self.baseuri
-        res = self._call(uri, u'GET', data=urlencode(dataSearch, doseq=True)).get(u'StopInstancesResponse')\
+        res = self._call(uri, u'GET', data=urlencode(data_search, doseq=True)).get(u'StopInstancesResponse')\
             .get(u'instancesSet', [])
         headers = [u'id', u'name', u'state',  u'currentState', u'previousState']
         fields = [u'id', u'name', u'state',  u'currentState', u'previousState']
@@ -236,9 +267,9 @@ class VMServiceController(VPCaaServiceControllerChild):
         oid = self.get_arg(name=u'id')
         user = self.get_arg(name=u'user')
         sshkey = self.get_arg(name=u'sshkey', default=None, keyvalue=True)
-        dataSearch = {u'instance-id.N': [oid]}
+        data_search = {u'instance-id.N': [oid]}
         uri = u'%s/computeservices/instance/describeinstances' % self.baseuri
-        server = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True)) \
+        server = self._call(uri, u'GET', data=urllib.urlencode(data_search, doseq=True)) \
             .get(u'DescribeInstancesResponse') \
             .get(u'reservationSet')[0].get(u'instancesSet')[0]
         fixed_ip = getkey(server, u'privateIpAddress')
@@ -252,24 +283,39 @@ class VpcServiceController(VPCaaServiceControllerChild):
         label = 'vpcs'
         description = "Virtual network service management"
 
-    @expose(aliases=[u'list [field=<id1, id2>]'], aliases_only=True)
+    @expose(aliases=[u'list [field=..]'], aliases_only=True)
     @check_error
     def list(self):
-        """List all vpcs by field: owner-id.N, vpc-id.N
+        """List all vpcs
+    - field: account, ids, size, page
+        - accounts: list of account id comma separated
+        - ids: list of image id
+        - size: number of records
         """
-        dataSearch = {}
-        dataSearch[u'owner-id.N'] = self.split_arg(u'owner-id.N')
-        dataSearch[u'vpc-id.N'] = self.split_arg(u'vpc-id.N')
+        data_search = {}
+        data_search[u'owner-id.N'] = self.split_arg(u'accounts')
+        data_search[u'vpc-id.N'] = self.split_arg(u'vpc-id.N')
+        data_search[u'Nvl-MaxResults'] = self.get_arg(name=u'size', default=10, keyvalue=True)
+        data_search[u'Nvl-NextToken'] = self.get_arg(name=u'page', default=0, keyvalue=True)
 
         uri = u'%s/computeservices/vpc/describevpcs' % self.baseuri
-        res = self._call(uri, u'GET', data=urlencode(dataSearch, doseq=True)).get(u'DescribeVpcsResponse')\
-            .get(u'vpcSet', [])
-        for item in res:
+        res = self._call(uri, u'GET', data=urlencode(data_search, doseq=True))
+        res = res.get(u'DescribeVpcsResponse')
+        page = data_search[u'Nvl-NextToken']
+        for item in res.get(u'vpcSet'):
             item[u'cidr'] = [u'%s' % (i[u'cidrBlock']) for i in item[u'cidrBlockAssociationSet']]
             item[u'cidr'] = u', '.join(item[u'cidr'])
+        resp = {
+            u'count': len(res.get(u'vpcSet')),
+            u'page': page,
+            u'total': res.get(u'nvl-vpcTotal'),
+            u'sort': {u'field': u'id', u'order': u'asc'},
+            u'instances': res.get(u'vpcSet')
+        }
+
         headers = [u'id', u'name', u'state',  u'account', u'cidr']
         fields = [u'vpcId', u'name', u'state', u'vpcOwnerAlias', u'cidr']
-        self.result(res, headers=headers, fields=fields, maxsize=40)
+        self.result(resp, key=u'instances', headers=headers, fields=fields, maxsize=40)
 
     @expose(aliases=[u'add <name> <account> <type>'], aliases_only=True)
     @check_error
@@ -294,22 +340,37 @@ class SubnetServiceController(VPCaaServiceControllerChild):
         label = 'subnets'
         description = "Subnet service management"
 
-    @expose(aliases=[u'list [field=<id1, id2>]'], aliases_only=True)
+    @expose(aliases=[u'list [field=..]'], aliases_only=True)
     @check_error
     def list(self):
-        """List all subnets by field: owner-id.N, subnet-id.N, vpc-id.N
+        """List all subntes
+    - field: account, ids, vpcs, size, page
+        - accounts: list of account id comma separated
+        - ids: list of image id
+        - size: number of records
         """
-        dataSearch = {}
-        dataSearch[u'owner-id.N'] = self.split_arg(u'owner-id.N')
-        dataSearch[u'subnet-id.N'] = self.split_arg(u'subnet-id.N')
-        dataSearch[u'vpc-id.N'] = self.split_arg(u'vpc-id.N')
+        data_search = {}
+        data_search[u'owner-id.N'] = self.split_arg(u'accounts')
+        data_search[u'subnet-id.N'] = self.split_arg(u'ids')
+        data_search[u'vpc-id.N'] = self.split_arg(u'vpc-id.N')
+        data_search[u'Nvl-MaxResults'] = self.get_arg(name=u'size', default=10, keyvalue=True)
+        data_search[u'Nvl-NextToken'] = self.get_arg(name=u'page', default=0, keyvalue=True)
 
         uri = u'%s/computeservices/subnet/describesubnets' % self.baseuri
-        res = self._call(uri, u'GET', data=urlencode(dataSearch, doseq=True)).get(u'DescribeSubnetsResponse')\
-            .get(u'subnetSet')
+        res = self._call(uri, u'GET', data=urlencode(data_search, doseq=True))
+        res = res.get(u'DescribeSubnetsResponse')
+        page = data_search[u'Nvl-NextToken']
+        resp = {
+            u'count': len(res.get(u'subnetSet')),
+            u'page': page,
+            u'total': res.get(u'nvl-subnetTotal'),
+            u'sort': {u'field': u'id', u'order': u'asc'},
+            u'instances': res.get(u'subnetSet')
+        }
+
         headers = [u'id', u'name', u'state',  u'account', u'availabilityZone', u'vpc', u'cidr']
         fields = [u'subnetId', u'name', u'state', u'subnetOwnerAlias', u'availabilityZone', u'vpcName', u'cidrBlock']
-        self.result(res, headers=headers, fields=fields, maxsize=40)
+        self.result(resp, key=u'instances', headers=headers, fields=fields, maxsize=40)
 
     @expose(aliases=[u'add <name> <vpc> <availability_zone> <cidr>'], aliases_only=True)
     @check_error
@@ -335,28 +396,6 @@ class SGroupServiceController(VPCaaServiceControllerChild):
         label = 'securitygroups'
         description = "Security groups service management"
 
-    @expose(aliases=[u'add <account> <definition> <name>'], aliases_only=True)
-    @check_error
-    def add_by_id(self):
-        """Create service groups
-        """
-        account = self.get_arg(u'account')
-        definition = self.get_arg(u'definition')
-        name = self.get_arg(u'name')
-        data = {
-            u'serviceinst': {
-                u'name': name,
-                u'desc': name,
-                u'account_id': account,
-                u'service_def_id': definition,
-                u'status': u'ACTIVE',
-                u'bpmn_process_id': None,
-                u'active': True,
-                u'version': u'1.0'
-            }
-        }
-        sg = self._call(u'/v1.0/nws/serviceinsts', u'post', data=data)
-
     @expose(aliases=[u'add <name> <vpc> [template=..]'], aliases_only=True)
     @check_error
     def add(self):
@@ -376,25 +415,42 @@ class SGroupServiceController(VPCaaServiceControllerChild):
         res = {u'msg': u'Add securitygroup %s' % res}
         self.result(res, headers=[u'msg'])
 
-    @expose(aliases=[u'list [field=<id1, id2>]'], aliases_only=True)
+    @expose(aliases=[u'list [field=..]'], aliases_only=True)
     @check_error
     def list(self):
-        """List all service groups by field: owner-id.N, subnet-id.N, vpc-id.N
+        """List all security groups
+    - field: account, ids, vpcs, size, page
+        - accounts: list of account id comma separated
+        - ids: list of image id
+        - size: number of records
         """
-        dataSearch = {}
-        dataSearch[u'owner-id.N'] = self.split_arg(u'owner-id.N')
-        dataSearch[u'subnet-id.N'] = self.split_arg(u'subnet-id.N')
-        dataSearch[u'vpc-id.N'] = self.split_arg(u'vpc-id.N')
+        data_search = {}
+        data_search[u'owner-id.N'] = self.split_arg(u'accounts')
+        data_search[u'group-id.N'] = self.split_arg(u'ids')
+        data_search[u'vpc-id.N'] = self.split_arg(u'vpcs')
+        data_search[u'MaxResults'] = self.get_arg(name=u'size', default=10, keyvalue=True)
+        data_search[u'NextToken'] = self.get_arg(name=u'page', default=0, keyvalue=True)
 
         uri = u'%s/computeservices/securitygroup/describesecuritygroups' % self.baseuri
-        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True))\
-            .get(u'DescribeSecurityGroupsResponse').get(u'securityGroupInfo', [])
-        for item in res:
+        res = self._call(uri, u'GET', data=urllib.urlencode(data_search, doseq=True))
+        res = res.get(u'DescribeSecurityGroupsResponse', {})
+        page = data_search[u'NextToken']
+
+        for item in res.get(u'securityGroupInfo'):
             item[u'egress_rules'] = len(item[u'ipPermissionsEgress'])
             item[u'ingress_rules'] = len(item[u'ipPermissions'])
+
+        resp = {
+            u'count': len(res.get(u'securityGroupInfo')),
+            u'page': page,
+            u'total': res.get(u'nvl-securityGroupTotal'),
+            u'sort': {u'field': u'id', u'order': u'asc'},
+            u'instances': res.get(u'securityGroupInfo')
+        }
+
         headers = [u'id', u'name', u'state',  u'account', u'vpc', u'egress_rules', u'ingress_rules']
         fields = [u'groupId', u'groupName', u'state', u'sgOwnerAlias', u'vpcName', u'egress_rules', u'ingress_rules']
-        self.result(res, headers=headers, fields=fields, maxsize=40)
+        self.result(resp, key=u'instances', headers=headers, fields=fields, maxsize=40)
 
     def __format_rule(self, rules):
         for rule in rules:
@@ -422,9 +478,9 @@ class SGroupServiceController(VPCaaServiceControllerChild):
         """Get service group with rules
         """
         value = self.get_arg(u'id')
-        dataSearch = {u'GroupId.N': [value]}
+        data_search = {u'GroupId.N': [value]}
         uri = u'%s/computeservices/securitygroup/describesecuritygroups' % self.baseuri
-        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True))
+        res = self._call(uri, u'GET', data=urllib.urlencode(data_search, doseq=True))
         res = res.get(u'DescribeSecurityGroupsResponse').get(u'securityGroupInfo', [])
         if len(res) == 0:
             raise Exception(u'Security group %s does not exist' % value)
