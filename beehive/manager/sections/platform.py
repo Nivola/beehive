@@ -2838,10 +2838,11 @@ class BeehiveController(AnsibleController):
 
         # create service catalogs
         if apply.get(u'service-catalogs', False) is True:
-            for obj in configs.get(u'service').get(u'catalogs'):
+            for obj in configs.get(u'service',{}).get(u'catalogs',[]):
                 try:
                     name = obj.get(u'name')
                     defs = obj.get(u'defs')
+                    logger.info(u'Adding  service catalog: %s' % name)
                     res = self._call(u'/v1.0/nws/srvcatalogs', u'POST', data={u'catalog': {u'name': name, u'desc': name}})
                     logger.info(u'Add service catalog: %s' % res)
                     self.output(u'Add service catalog: %s' % obj)
