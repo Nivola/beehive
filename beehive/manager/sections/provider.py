@@ -299,7 +299,7 @@ class ProviderComputeZoneController(ProviderControllerChild):
         uri = u'%s/%s/quotas' % (self.uri, oid)
         res = self._call(uri, u'GET').get(u'quotas', [])
         logger.info(u'Get compute zone %s quotas: %s' % (oid, truncate(res)))
-        self.result(res, headers=[u'quota', u'value', u'unit'])
+        self.result(res, headers=[u'quota', u'value', u'allocated', u'unit'])
 
     @expose(aliases=[u'quotas-default <id>'], aliases_only=True)
     @check_error
