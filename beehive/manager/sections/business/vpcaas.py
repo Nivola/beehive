@@ -18,16 +18,30 @@ from beecell.paramiko_shell.shell import ParamikoShell
 logger = logging.getLogger(__name__)
 
 
-class VPCaaServiceController(BaseController):
+class VPCaaServiceController(ApiController):
+    baseuri = u'/v1.0/nws'
+    subsystem = u'service'
+
     class Meta:
         label = 'vpcaas'
         stacked_on = 'business'
         stacked_type = 'nested'
         description = "Virtual Private Cloud Service management"
-        arguments = []
  
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
+
+    @expose(aliases=[u'get <account>'], aliases_only=True)
+    @check_error
+    def info(self):
+        """Get compute service info
+        """
+        data_search = {u'owner-id': self.get_arg(name=u'account')}
+        uri = u'%s/computeservices' % self.baseuri
+        res = self._call(uri, u'GET', data=urllib.urlencode(data_search)) \
+            .get(u'DescribeComputeResponse') \
+            .get(u'computeSet')[0]
+        self.result(res, details=True, maxsize=40)
 
 
 class VPCaaServiceControllerChild(SpecializedServiceControllerChild):
@@ -131,7 +145,14 @@ class VMServiceController(VPCaaServiceControllerChild):
         fields = [u'instanceId', u'name', u'instanceType', u'instanceState.name', u'launchTime',
                   u'OwnerAlias', u'placement.availabilityZone', u'privateIpAddress', u'imageName',
                   u'subnetName']
-        self.result(resp, key=u'instances', headers=headers, fields=fields, maxsize=40)
+
+        def color_error(val):
+            if val == u'error':
+                val = self.app.colored_text.output(val, u'REDonBLACK')
+            return val
+
+        transform = {u'state': color_error}
+        self.result(resp, key=u'instances', headers=headers, fields=fields, transform=transform, maxsize=40)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error

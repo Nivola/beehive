@@ -1662,7 +1662,8 @@ class ApiObject(object):
         """
         """
         timestamp = datetime.fromtimestamp(timestamp)
-        return str2uni(timestamp.strftime(u'%d-%m-%Y %H:%M:%S.%f'))
+        return format_date(timestamp)
+        # return str2uni(timestamp.strftime(u'%Y-%m-%dT%H:%M:%SZ'))
 
     #
     # encryption method

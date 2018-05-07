@@ -76,13 +76,15 @@ class ResourceControllerChild(ApiController):
     @check_error
     def jobs(self, *args):
         """List all jobs
-    - id : resource id
+    - id: resource id
     - status: filter by job status
+    - jobid: job id
+    - trace: if True show job trace, if False show job tasks status
         """
         oid = self.get_arg(name=u'id')
         status = self.get_arg(name=u'status', default=None, keyvalue=True)
         jobid = self.get_arg(default=None)
-        trace = self.get_arg(name=u'trace', default=False, keyvalue=True)
+        trace = self.get_arg(name=u'trace', default=True, keyvalue=True)
 
         if jobid is None:
             data = u''
@@ -116,36 +118,29 @@ class ResourceControllerChild(ApiController):
                 headers = [u'task_id', u'type', u'status', u'name', u'start_time', u'stop_time', u'elapsed']
                 self.result(resp, headers=headers, maxsize=100)
 
-    @expose(aliases=[u'job <id>'], aliases_only=True)
+    @expose(aliases=[u'errors <id>'], aliases_only=True)
     @check_error
-    def job(self):
-        """Get resource job
-    - id : job id
+    def errors(self):
+        """Get the resource last job error
         """
-        task_id = self.get_arg(name=u'id')
-        uri = u'%s/worker/tasks/%s' % (self.baseuri, task_id)
-        res = self._call(uri, u'GET').get(u'task_instance')
-        logger.info(res)
-        resp = []
-        resp.append(res)
-        resp.extend(res.get(u'children'))
-        headers = [u'task_id', u'type', u'status', u'name', u'start_time', u'stop_time', u'elapsed']
-        self.result(resp, headers=headers, maxsize=100)
+        oid = self.get_arg(name=u'id')
+        #
+        # key = self._meta.label2 + u'jobs'
+        # data = urllib.urlencode({u'jobstatus': u'FAILURE'})
+        # uri = u'%s/%s/%s/jobs' % (self.baseuri, self._meta.label, oid)
+        # jobs = self._call(uri, u'GET', data=data).get(key, [])
+        # resp = []
+        # for job in jobs:
+        #     task_id = job[u'job']
+        #     uri = u'%s/worker/tasks/%s' % (self.baseuri, task_id)
+        #     res = self._call(uri, u'GET').get(u'task_instance').get(u'trace')
+        #     logger.info(res)
+        #     resp.append({u'job': task_id, u'timestamp': res[-1][0], u'task': res[-1][1], u'error': res[-1][3]})
 
-    @expose(aliases=[u'jobtrace <id>'], aliases_only=True)
-    @check_error
-    def jobtrace(self):
-        """Get resource job trace
-    - id : job id
-        """
-        task_id = self.get_arg(name=u'id')
-        uri = u'%s/worker/tasks/%s' % (self.baseuri, task_id)
-        res = self._call(uri, u'GET').get(u'task_instance').get(u'trace')
-        logger.info(res)
-        resp = []
-        for i in res:
-            resp.append({u'timestamp': i[0], u'task': i[1], u'task id': i[2], u'msg': truncate(i[3], 150)})
-        self.result(resp, headers=[u'timestamp', u'msg'], maxsize=200)
+        uri = u'%s/%s/%s/errors' % (self.baseuri, self._meta.label, oid)
+        resp = self._call(uri, u'GET').get(u'resource_errors')
+
+        self.result(resp, headers=[u'job', u'timestamp', u'error'], maxsize=200)
 
 
 class ResourceWorkerController(ResourceSchedControllerChild, WorkerController):
@@ -520,28 +515,28 @@ class ResourceEntityController(ResourceControllerChild):
                 print data
             self.__print_tree(child, space=space+u'   ')
 
-    def get_resource_state(self, uuid):
-        try:
-            res = self._call(u'%s/entities/%s' % (self.baseuri, uuid), u'GET')
-            state = res.get(u'resource').get(u'state')
-            logger.debug(u'Get resource %s state: %s' % (uuid, state))
-            return state
-        except (NotFoundException, Exception):
-            return u'EXPUNGED'
-
-    def wait_resource(self, uuid, delta=1):
-        """Wait resource
-        """
-        logger.debug(u'Wait for resource: %s' % uuid)
-        state = self.get_resource_state(uuid)
-        while state not in [u'ACTIVE', u'ERROR', u'EXPUNGED']:
-            logger.info(u'.')
-            print(u'.')
-            sleep(delta)
-            state = self.get_resource_state(uuid)
+    # def get_resource_state(self, uuid):
+    #     try:
+    #         res = self._call(u'%s/entities/%s' % (self.baseuri, uuid), u'GET')
+    #         state = res.get(u'resource').get(u'state')
+    #         logger.debug(u'Get resource %s state: %s' % (uuid, state))
+    #         return state
+    #     except (NotFoundException, Exception):
+    #         return u'EXPUNGED'
+    #
+    # def wait_resource(self, uuid, delta=1):
+    #     """Wait resource
+    #     """
+    #     logger.debug(u'Wait for resource: %s' % uuid)
+    #     state = self.get_resource_state(uuid)
+    #     while state not in [u'ACTIVE', u'ERROR', u'EXPUNGED']:
+    #         logger.info(u'.')
+    #         print(u'.')
+    #         sleep(delta)
+    #         state = self.get_resource_state(uuid)
 
     def __get_key(self):
-        return self._meta.aliases[0].rstrip(u's')
+        return self._meta.alias.rstrip(u's')
 
     def get_resource(self, oid, format_result=None):
         """Get resource
@@ -682,12 +677,17 @@ class ResourceEntityController(ResourceControllerChild):
         uri = u'%s/entities' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        resp = []
-        for item in res[u'resources']:
-            if item[u'state'] == u'ERROR':
-                item[u'state'] = self.app.colored_text.output(item[u'state'], u'REDonBLACK')
-            # resp.append(item)
-        self.result(res, key=u'resources', headers=self.res_headers)
+        # for item in res[u'resources']:
+        #     if item[u'state'] == u'ERROR':
+        #         item[u'state'] = self.app.colored_text.output(item[u'state'], u'REDonBLACK')
+
+        def color_error(val):
+            if val == u'ERROR':
+                val = self.app.colored_text.output(val, u'REDonBLACK')
+            return val
+
+        transform = {u'state': color_error}
+        self.result(res, key=u'resources', headers=self.res_headers, transform=transform)
     
     @expose(aliases=[u'types [field=value]'], aliases_only=True)
     @check_error

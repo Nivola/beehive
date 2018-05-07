@@ -270,7 +270,7 @@ class ProviderComputeZoneController(ProviderControllerChild):
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
     def get(self):
-        """Get provider item
+        """Get provider computes zone
         """
         oid = self.get_arg(name=u'id')
 
@@ -280,14 +280,38 @@ class ProviderComputeZoneController(ProviderControllerChild):
             availability_zones = data.pop(u'availability_zones', [])
             for i in availability_zones:
                 i[u'type'] = u'availability_zones'
-            self.result(availability_zones, headers=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'created',
-                                                     u'modified', u'expiry'],
-                        fields=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'date.creation', u'date.modified',
-                                u'date.expiry'], maxsize=200)
+            headers = [u'type', u'id', u'uuid', u'name', u'desc', u'state', u'created', u'modified', u'expiry']
+            fields = [u'type', u'id', u'uuid', u'name', u'desc', u'state', u'date.creation', u'date.modified',
+                      u'date.expiry']
+            self.result(availability_zones, headers=headers, fields=fields, maxsize=200)
             self.app.print_output(u'quotas:')
             self.result(quotas, details=True)
 
         self.get_resource(oid, format_result=format_result)
+
+    @expose(aliases=[u'quotas <id>'], aliases_only=True)
+    @check_error
+    def quotas(self):
+        """Get provider computes zone quotas
+        """
+        oid = self.get_arg(name=u'id')
+
+        uri = u'%s/%s/quotas' % (self.uri, oid)
+        res = self._call(uri, u'GET').get(u'quotas', [])
+        logger.info(u'Get compute zone %s quotas: %s' % (oid, truncate(res)))
+        self.result(res, headers=[u'quota', u'value', u'unit'])
+
+    @expose(aliases=[u'quotas-default <id>'], aliases_only=True)
+    @check_error
+    def quotas_default(self):
+        """Get provider computes zone quotas classes
+        """
+        oid = self.get_arg(name=u'id')
+
+        uri = u'%s/%s/quotas/classes' % (self.uri, oid)
+        res = self._call(uri, u'GET').get(u'quota_classes', [])
+        logger.info(u'Get compute zone %s quotas classes: %s' % (oid, truncate(res)))
+        self.result(res, headers=[u'quota', u'default', u'unit'])
         
     @expose(aliases=[u'metric <id>'], aliases_only=True)
     @check_error

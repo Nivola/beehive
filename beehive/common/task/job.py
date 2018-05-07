@@ -31,7 +31,7 @@ class JobError(Exception):
         return "JobError: %s" % self.value
 
     def __str__(self):
-        return "JobError: %s" % self.value
+        return self.value
 
 
 class JobInvokeApiError(Exception):
@@ -44,7 +44,7 @@ class JobInvokeApiError(Exception):
         return "JobInvokeApiError: %s" % self.value
 
     def __str__(self):
-        return "JobInvokeApiError: %s" % self.value    
+        return self.value
 
 
 class AbstractJob(BaseTask):

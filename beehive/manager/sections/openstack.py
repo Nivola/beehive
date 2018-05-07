@@ -2002,6 +2002,37 @@ class OpenstackProjectController(OpenstackControllerChild):
         aliases_only = True        
         description = "Openstack Project management"
 
+    @expose(aliases=[u'quotas <id>'], aliases_only=True)
+    @check_error
+    def quotas(self):
+        """List openstack project quotas
+        """
+        oid = self.get_arg(name=u'id')
+        uri = u'%s/%s/quotas' % (self.uri, oid)
+        res = self._call(uri, u'GET', data=u'')
+        logger.info(u'Get %s: %s' % (u'project quotas', res))
+
+        self.result(res, headers=self.headers, key=u'quotas', details=True, maxsize=40)
+
+    @expose(aliases=[u'quotas-set <id> <type> <quota> <value>'], aliases_only=True)
+    @check_error
+    def quotas_set(self):
+        """List openstack project quotas
+        """
+        oid = self.get_arg(name=u'id')
+        data = {
+            u'quotas': [{
+                u'type': self.get_arg(name=u'type'),
+                u'quota': self.get_arg(name=u'quota'),
+                u'value': self.get_arg(name=u'value'),
+            }]
+        }
+        uri = u'%s/%s/quotas' % (self.uri, oid)
+        res = self._call(uri, u'POST', data=data)
+        logger.info(u'Set %s: %s' % (u'project quotas', data))
+        msg = {u'msg': u'Set quota %s' % data}
+        self.result(msg, headers=[u'msg'], maxsize=100)
+
 
 class OpenstackNetworkController(OpenstackControllerChild):
     uri = u'/v1.0/nrs/openstack/networks'
