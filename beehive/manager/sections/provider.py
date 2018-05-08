@@ -312,6 +312,19 @@ class ProviderComputeZoneController(ProviderControllerChild):
         res = self._call(uri, u'GET').get(u'quota_classes', [])
         logger.info(u'Get compute zone %s quotas classes: %s' % (oid, truncate(res)))
         self.result(res, headers=[u'quota', u'default', u'unit'])
+
+    @expose(aliases=[u'quotas-check <id> <quotas>'], aliases_only=True)
+    @check_error
+    def quotas_check(self):
+        """Check provider computes zone quotas
+        """
+        oid = self.get_arg(name=u'id')
+        quotas = self.get_arg(name=u'quotas')
+
+        uri = u'%s/%s/quotas/check' % (self.uri, oid)
+        res = self._call(uri, u'PUT', {u'quotas': json.loads(quotas)}).get(u'quotas', [])
+        logger.info(u'Quotas compute zone %s quotas classes: %s' % (oid, truncate(res)))
+        self.result(res, headers=[u'quota', u'default', u'unit'])
         
     @expose(aliases=[u'metric <id>'], aliases_only=True)
     @check_error
