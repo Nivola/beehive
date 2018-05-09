@@ -2782,7 +2782,7 @@ class BeehiveController(AnsibleController):
         subsystem = self.get_arg(name=u'subsystem')
         vassal = self.get_arg(name=u'vassal')
         rows = self.get_arg(default=100)
-        cmd  = u'tail -%s /var/log/beehive/beehive100/%s-%s.log' % (rows, subsystem, vassal)
+        cmd = u'tail -%s /var/log/beehive/beehive100/%s-%s.log' % (rows, subsystem, vassal)
         path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
         path_lib = u'%s/library/beehive/' % (self.ansible_path)
         runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 

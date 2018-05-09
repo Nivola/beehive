@@ -119,14 +119,13 @@ class ResultCallback(CallbackBase):
         host = result._host.get_name()
         logger.debug(u'Get host: %s' % host)
         logger.debug(u'Get format: %s' % self.frmt)
-        logger.debug(u'Get result: %s' % result._result[u'stdout_lines'])
+        logger.debug(u'Get result: %s' % result._result.get(u'stdout_lines', None))
         if self.frmt == u'json':
-            print json.dumps({host.name: result._result[u'stdout_lines']}, 
-                             indent=4)
+            print json.dumps({host.name: result._result.get(u'stdout_lines', None)}, indent=4)
         elif self.frmt == u'text':
             print(host)
             print(u'-----------------------------')
-            for item in result._result[u'stdout_lines']:
+            for item in result._result.get(u'stdout_lines', []):
                 print(u'  %s' % item)
             print(u'')
                         
@@ -134,14 +133,14 @@ class ResultCallback(CallbackBase):
         host = result._host.get_name()
         logger.debug(u'Get host: %s' % host)
         logger.debug(u'Get format: %s' % self.frmt)
-        logger.error(u'Get result: %s' % result._result[u'stderr_lines'])
+        self.logger.warn(result._result)
+        logger.error(u'Get result: %s' % result._result.get(u'stderr_lines', None))
         if self.frmt == u'json':
-            print json.dumps({host.name: result._result[u'stderr_lines']}, 
-                             indent=4)
+            print json.dumps({host.name: result._result.get(u'stderr_lines', None)}, indent=4)
         elif self.frmt == u'text':
             print(host)
             print(u'-----------------------------')
-            for item in result._result[u'stderr_lines']:
+            for item in result._result.get(u'stderr_lines', []):
                 print(u'  %s' % item)
             print(u'')            
 
