@@ -133,7 +133,7 @@ class ResultCallback(CallbackBase):
         host = result._host.get_name()
         logger.debug(u'Get host: %s' % host)
         logger.debug(u'Get format: %s' % self.frmt)
-        self.logger.warn(result._result)
+        logger.warn(result._result)
         logger.error(u'Get result: %s' % result._result.get(u'stderr_lines', None))
         if self.frmt == u'json':
             print json.dumps({host.name: result._result.get(u'stderr_lines', None)}, indent=4)
