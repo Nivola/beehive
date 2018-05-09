@@ -1498,8 +1498,8 @@ class ServiceMetricsController(ServiceControllerChild):
         res = self._call(uri, u'GET', data=urlencode(data))
         logger.info(res)
         self.result(res, key=u'metrics', 
-                    headers=[u'id', u'date', u'num', u'type', u'value', u'platform', u'instance',  u'job_id'],
-                    fields=[u'id', u'date.creation', u'metric_num', u'metric_type', u'value', u'platform', u'service_instance_id',  u'job_id'])
+                    headers=[u'id', u'date',          u'num',        u'type',        u'value', u'platform', u'instance',             u'job_id'],
+                    fields= [u'id', u'date.creation', u'metric_num', u'metric_type', u'value', u'platform', u'service_instance_id',  u'job_id'])
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -1511,8 +1511,8 @@ class ServiceMetricsController(ServiceControllerChild):
         res = self._call(uri, u'GET')
         logger.info(res)
         self.result(res, key=u'metric', 
-                    headers=[u'id', u'day', u'num', u'type', u'value', u'platform', u'instance',  u'job_id'],
-                    fields=[u'id', u'date.creation', u'metric_num', u'metric_type', u'value', u'platform', u'service_instance_id',  u'job_id'])
+                    headers=[u'id', u'day',           u'num',        u'type',        u'value', u'platform', u'instance',             u'job_id'],
+                    fields= [u'id', u'date.creation', u'metric_num', u'metric_type', u'value', u'platform', u'service_instance_id',  u'job_id'])
 
     
 #     @expose(aliases=[u'perms <id>'], aliases_only=True)
@@ -1557,7 +1557,7 @@ class ServiceMetricCostsController(ServiceControllerChild):
     @check_error
     def list(self):
         """List all service metric by field:
-            day, id, value, metric_num, platform, u'instance', u'metric_type',  u'job_id'
+            id, type, num, platform, u'instance', u'account',  u'job_id', pricelist, date_start, date_end
         """
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         # = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
@@ -1571,15 +1571,15 @@ class ServiceMetricCostsController(ServiceControllerChild):
             u'account': u'account_oid',
             u'job_id': u'job_id',
             u'pricelist': u'pricelist_id',
-            u'date_start': u'evaluation_date_start',
-            u'date_end': u'evaluation_date_stop',
+            u'date_start': u'extraction_date_start',
+            u'date_end': u'extraction_date_end',
         }
         data = self.get_query_params(*self.app.pargs.extra_arguments)
         for k in header_field:
             par = params.get(k, None)
             if par is not None:
                 if k.startswith(u'date_'):
-                    g, m, y = par.split(u'-')
+                    y, m, g = par.split(u'-')
                     data.pop(k)
                     data[header_field[k]] = datetime(int(y), int(m), int(g))
                 else: 
@@ -1587,10 +1587,10 @@ class ServiceMetricCostsController(ServiceControllerChild):
                 
         uri = u'%s/services/cost_views' % self.baseuri
         res = self._call(uri, u'GET', data=urlencode(data))
-        logger.info(res)
+        
         self.result(res, key=u'metric_cost', 
-                    headers=[u'id'       , u'type'     , u'value', u'num'       , u'platform'     , u'instance'   , u'account',    u'job_id', u'price'        , u'price_iva', u'pricelist'],
-                    fields= [u'metric_id', u'type_name', u'value', u'metric_num', u'platform_name', u'instance_id', u'account_id', u'job_id', u'price_not_iva', u'price_iva', u'pricelist_id'])
+                    headers=[u'id'       , u'eval_date'      , u'type'     , u'value', u'num'       , u'platform'     , u'instance'   , u'account',    u'job_id', u'price'        , u'price_iva', u'pricelist'],
+                    fields= [u'metric_id', u'extraction_date', u'type_name', u'value', u'metric_num', u'platform_name', u'instance_id', u'account_id', u'job_id', u'price_not_iva', u'price_iva', u'pricelist_id'])
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -1632,13 +1632,13 @@ class ServiceAggregateCostsController(ServiceControllerChild):
             u'period': u'period',
             u'job_id': u'job_id',
             u'date_start': u'evaluation_date_start',
-            u'date_end': u'evaluation_date_stop',
+            u'date_end': u'evaluation_date_end',
         }
         data = {}
         for k in header_field:
             par = params.get(k, None)
             if par is not None:
-                if k.startswith(u'evaluation_date_'):
+                if k.startswith(u'date_'):
                     g, m, y = par.split(u'-')
                     data[header_field[k]] = datetime(int(y), int(m), int(g))
                 else: 
@@ -1646,7 +1646,6 @@ class ServiceAggregateCostsController(ServiceControllerChild):
                 
         uri = u'%s/services/aggregatecosts' % self.baseuri
         res = self._call(uri, u'GET', data=urlencode(data))
-        logger.info(res)
         self.result(res, key=u'aggregate_cost', 
                     headers=[u'id', u'type_id', u'platform_id', u'cost'        , u'cost_iva', u'instance',            u'aggr_type'       , u'period', u'job_id', u'date'],
                     fields= [u'id', u'type_id', u'platform_id', u'cost_not_iva', u'cost_iva', u'service_instance_id', u'aggregation_type', u'period', u'job_id', u'evaluation_date'])
