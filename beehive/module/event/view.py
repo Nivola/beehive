@@ -57,6 +57,7 @@ class ListEvents(SwaggerApiView):
     tags = [u'event']
     definitions = {
         u'ListEventsResponseSchema': ListEventsResponseSchema,
+        u'ListEventsRequestSchema': ListEventsRequestSchema
     }
     parameters = SwaggerHelper().get_parameters(ListEventsRequestSchema)
     parameters_schema = ListEventsRequestSchema
@@ -77,7 +78,6 @@ class ListEvents(SwaggerApiView):
         return self.format_paginated_response(res, u'events', total, **data)
 
 
-## get
 class GetEventResponseSchema(Schema):
     event = fields.Nested(EventsParamsResponseSchema, required=True, allow_none=True)
 
@@ -107,12 +107,13 @@ class GetEventTypesResponseSchema(Schema):
     count = fields.Integer()
     event_types = fields.List(fields.String)
 
+
 class GetEventTypes(SwaggerApiView):
     tags = [u'event']
     definitions = {
         u'GetEventTypesResponseSchema': GetEventTypesResponseSchema,
     }
-    #parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
+    # parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
     responses = SwaggerApiView.setResponses({
         200: {
             u'description': u'success',
@@ -122,20 +123,21 @@ class GetEventTypes(SwaggerApiView):
     
     def get(self, controller, data, *args, **kwargs):    
         resp = controller.get_event_types()
-        return {u'event_types':resp,
-                u'count':len(resp)}
+        return {u'event_types': resp,
+                u'count': len(resp)}
 
-# definition
+
 class GetEventEntityDefinitionResponseSchema(Schema):
     count = fields.Integer()
     event_entities = fields.List(fields.String)
+
 
 class GetEventEntityDefinition(SwaggerApiView):
     tags = [u'event']
     definitions = {
         u'GetEventEntityDefinitionResponseSchema': GetEventEntityDefinitionResponseSchema,
     }
-    #parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
+    # parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
     responses = SwaggerApiView.setResponses({
         200: {
             u'description': u'success',
@@ -145,20 +147,16 @@ class GetEventEntityDefinition(SwaggerApiView):
     
     def get(self, controller, data, *args, **kwargs):    
         resp = controller.get_entity_definitions()
-        return {u'event_entities':resp,
-                u'count':len(resp)}
-        
+        return {u'event_entities': resp,
+                u'count': len(resp)}
+
+
 class EventAPI(ApiView):
     """
     """
     @staticmethod
     def register_api(module):
         rules = [
-            # (u'events', u'GET', ListEvents, {}),
-            # (u'events/<oid>', u'GET', GetEvent, {}),
-            # (u'events/types', u'GET', GetEventTypes, {}),
-            # (u'events/entities', u'GET', GetEventEntityDefinition, {}),
-
             (u'%s/events' % module.base_path, u'GET', ListEvents, {}),
             (u'%s/events/<oid>' % module.base_path, u'GET', GetEvent, {}),
             (u'%s/events/types' % module.base_path, u'GET', GetEventTypes, {}),

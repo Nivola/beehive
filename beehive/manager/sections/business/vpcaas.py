@@ -8,6 +8,9 @@ import urllib
 import json
 
 from cement.core.controller import expose
+
+from beehive.manager.sections.platform import AnsibleController
+from beehive.manager.util.ansible2 import Runner
 from beehive.manager.util.controller import BaseController, ApiController, check_error
 from re import match
 from beecell.simple import truncate, id_gen, getkey
@@ -18,7 +21,7 @@ from beecell.paramiko_shell.shell import ParamikoShell
 logger = logging.getLogger(__name__)
 
 
-class VPCaaServiceController(ApiController):
+class VPCaaServiceController(AnsibleController):
     baseuri = u'/v1.0/nws'
     subsystem = u'service'
 
@@ -297,6 +300,139 @@ class VMServiceController(VPCaaServiceControllerChild):
 
         client = ParamikoShell(fixed_ip, user, keyfile=sshkey)
         client.run()
+
+    @expose(aliases=[u'ansible [ssh-key=..]'], aliases_only=True)
+    @check_error
+    def ansible(self):
+        """Execute command on managed platform nodes
+    - group: ansible group
+    - cmd: shell command
+        """
+        ssh_key = self.get_arg(name=u'ssh-key', default=u'%s/../configs/test/.ssh/vm.id_rsa' % self.ansible_path,
+                               keyvalue=True)
+        user = self.get_arg(name=u'ssh-user', default=u'centos', keyvalue=True)
+
+        data_search = {}
+        data_search[u'MaxResults'] = 100
+        data_search[u'NextToken'] = 0
+
+        uri = u'%s/computeservices/instance/describeinstances' % self.baseuri
+        res = self._call(uri, u'GET', data=urllib.urlencode(data_search, doseq=True))
+        res = res.get(u'DescribeInstancesResponse')
+
+        inventory_dict = {
+            u'all': {
+                u'vars': {
+                    u'ansible_user': user,
+                    u'ansible_ssh_private_key_file': ssh_key,
+                }
+            }
+        }
+        for item in res.get(u'reservationSet', [])[0].get(u'instancesSet'):
+            account = item.get(u'OwnerAlias', None)
+            host = item.get(u'privateIpAddress', None)
+            if account is not None and host is not None:
+                try:
+                    inventory_dict[account][u'hosts'].append(host)
+                except:
+                    inventory_dict[account] = {u'hosts': [host]}
+        path_lib = u'%s/library/beehive/' % self.ansible_path
+        runner = Runner(inventory=inventory_dict, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
+        res = runner.get_inventory()
+        logger.debug(u'Ansible inventory nodes: %s' % res)
+
+        # cache inventory dict
+        self.cache_data_on_disk(u'ansible', inventory_dict)
+
+        resp = []
+        for k, v in res.items():
+            resp.append({u'group': k, u'hosts': v})
+        resp = sorted(resp, key=lambda x: x.get(u'group'))
+
+        for i in resp:
+            print(u'%30s : %s' % (i[u'group'], u', '.join(i[u'hosts'][:6])))
+            for n in range(1, len(i[u'hosts']) / 6):
+                print(u'%30s : %s' % (u'', u', '.join(i[u'hosts'][n * 6:(n + 1) * 6])))
+
+    def __cmd(self, group, cmd):
+        """Execute command on group of virtual machines
+    - group: virtual machines group
+    - cmd: shell command
+        """
+        # read cached inventory dict
+        inventory_dict = self.read_cache_from_disk(u'ansible')
+        path_lib = u'%s/library/beehive/' % self.ansible_path
+        runner = Runner(inventory=inventory_dict, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
+        tasks = [
+            dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
+        ]
+        runner.run_task(group, tasks=tasks, frmt=u'text')
+
+    def __playbook(self, group, run_data, playbook=None):
+        """Execute a playbook on group of virtual machines
+    - group: virtual machines group
+    - cmd: shell command
+        """
+        # read cached inventory dict
+        inventory_dict = self.read_cache_from_disk(u'ansible')
+        path_lib = u'%s/library/beehive/' % self.ansible_path
+        runner = Runner(inventory=inventory_dict, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
+        tags = run_data.pop(u'tags')
+        if playbook is None:
+            playbook = self.console_playbook
+        runner.run_playbook(group, playbook, None, run_data, None, tags=tags, vault_password=self.vault)
+        logger.debug(u'Run ansible playbook: %s' % playbook)
+
+    @expose(aliases=[u'put <group> <local-file> <remote-file>'], aliases_only=True)
+    @check_error
+    def put(self):
+        """Copy file to remote nodes specified by group
+    - group: virtual machines group
+    - cmd: shell command
+        """
+        group = self.get_arg(u'group')
+        local_file = self.get_arg(u'local-file')
+        remote_file = self.get_arg(u'remote-file')
+        run_data = {
+            u'tags': [u'put'],
+            u'commands': {
+                u'group': group,
+                u'remote_file': remote_file,
+                u'local_file': local_file
+            }
+        }
+        self.__playbook(group, run_data)
+
+    @expose(aliases=[u'get <group> <remote-file> <local-file>'], aliases_only=True)
+    @check_error
+    def get(self):
+        """Copy file from remote nodes specified by group
+    - group: virtual machines group
+    - cmd: shell command
+        """
+        group = self.get_arg(u'group')
+        remote_file = self.get_arg(u'remote-file')
+        local_file = self.get_arg(u'local-file')
+        run_data = {
+            u'tags': [u'get'],
+            u'commands': {
+                u'group': group,
+                u'remote_file': remote_file,
+                u'local_file': local_file
+            }
+        }
+        self.__playbook(group, run_data)
+
+    @expose(aliases=[u'cmd2 <group> <cmd>'], aliases_only=True)
+    @check_error
+    def cmd(self):
+        """Execute command on group of virtual machines
+    - group: virtual machines group
+    - cmd: shell command
+        """
+        group = self.get_arg(u'group')
+        cmd = self.get_arg(u'command')
+        self.__cmd(group, cmd)
 
 
 class VpcServiceController(VPCaaServiceControllerChild):

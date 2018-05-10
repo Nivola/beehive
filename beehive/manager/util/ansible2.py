@@ -1,10 +1,10 @@
-'''
+"""
 Created on Feb 17, 2017
 
 @author: darkbk
 
 from : https://serversforhackers.com/running-ansible-2-programmatically
-'''
+"""
 import os
 import json
 from ansible.inventory import Inventory
@@ -19,6 +19,8 @@ from ansible.executor.task_queue_manager import TaskQueueManager
 from ansible.plugins.callback import CallbackBase
 from logging import getLogger
 from datetime import datetime
+from ansible.inventory.group import Group
+from ansible.inventory.host import Host
 
 try:
     from __main__ import display
@@ -133,7 +135,7 @@ class ResultCallback(CallbackBase):
         host = result._host.get_name()
         logger.debug(u'Get host: %s' % host)
         logger.debug(u'Get format: %s' % self.frmt)
-        logger.warn(result._result)
+        logger.error(u'Get result: %s' % result._result.get(u'msg', None))
         logger.error(u'Get result: %s' % result._result.get(u'stderr_lines', None))
         if self.frmt == u'json':
             print json.dumps({host.name: result._result.get(u'stderr_lines', None)}, indent=4)
@@ -142,7 +144,30 @@ class ResultCallback(CallbackBase):
             print(u'-----------------------------')
             for item in result._result.get(u'stderr_lines', []):
                 print(u'  %s' % item)
-            print(u'')            
+            print(u'')
+
+    def runner_on_skipped(self, host, item=None):
+        logger.warn(u'Get host: %s' % host)
+        logger.warn(u'Get item: %s' % item)
+
+    def runner_on_unreachable(self, host, res):
+        logger.warn(u'Get host: %s' % host)
+        logger.warn(u'Get res: %s' % res)
+
+    def runner_on_no_hosts(self):
+        logger.warn(u'Get no host')
+
+    def runner_on_async_poll(self, host, res, jid, clock):
+        logger.warn(u'Get host: %s' % host)
+        logger.warn(u'Get res: %s' % res)
+
+    def runner_on_async_ok(self, host, res, jid):
+        logger.warn(u'Get host: %s' % host)
+        logger.warn(u'Get res: %s' % res)
+
+    def runner_on_async_failed(self, host, res, jid):
+        logger.warn(u'Get host: %s' % host)
+        logger.warn(u'Get res: %s' % res)
 
 
 class CallbackModule(CallbackBase):
@@ -203,21 +228,47 @@ class Runner(object):
         
         self.passwords = None
         logger.debug(u'Create new runner: %s' % self)
-        
-    def get_inventory(self, group=None):
+
+    def __get_inventory(self):
         """Get inventory, using most of above objects
         """
         try:
-            inventory = Inventory(loader=self.loader, 
-                                  variable_manager=self.variable_manager, 
-                                  host_list=self.inventory)
-            hosts = inventory.get_group_dict()
-            if group is not None:
-                hosts = hosts[group]
-            return hosts
+            if isinstance(self.inventory, dict):
+                inventory = Inventory(loader=self.loader,
+                                      variable_manager=self.variable_manager)
+                # ans_group_all = inventory.get_group(u'all')
+                group_all = self.inventory.get(u'all')
+                all_vars = group_all.get(u'vars', {})
+                for group, objs in self.inventory.items():
+                    if group != u'all':
+                        ans_group = Group(group)
+                        inventory.add_group(ans_group)
+                        for host in objs.get(u'hosts', []):
+                            ans_host = Host(host, None)
+                            ans_group.add_host(ans_host)
+                            # ans_group_all.add_host(ans_host)
+                            for var, value in all_vars.items():
+                                ans_host.set_variable(var, value)
+                            for var, value in objs.get(u'vars', {}).items():
+                                ans_host.set_variable(var, value)
+
+            else:
+                inventory = Inventory(loader=self.loader,
+                                      variable_manager=self.variable_manager,
+                                      host_list=self.inventory)
+            return inventory
         except Exception as ex:
             logger.error(ex, exc_info=1)
             raise Exception(ex)
+
+    def get_inventory(self, group=None):
+        """Get inventory, using most of above objects
+        """
+        inventory = self.__get_inventory()
+        hosts = inventory.get_group_dict()
+        if group is not None:
+            hosts = hosts[group]
+        return hosts
     
     def get_inventory_with_vars(self, group):
         """Get inventory, using most of above objects
@@ -253,33 +304,25 @@ class Runner(object):
         # All the variables from all the various places
         self.variable_manager.extra_vars = run_data
         self.variable_manager.group_vars_files = u'%s/group_vars' % self.inventory
-        #print self.variable_manager.get_vars(self.loader)
+        # print self.variable_manager.get_vars(self.loader)
         
         # set options
         self.options.tags = tags
         self.options.limit = group
         
         # Set inventory, using most of above objects
-        inventory = Inventory(loader=self.loader, 
-                              variable_manager=self.variable_manager, 
-                              host_list=self.inventory)
+        inventory = self.__get_inventory()
         inventory.subset(group)
         logger.debug(u'Run playbook: %s' % playbook)
         logger.debug(u'Run playbook with vars: %s' % run_data)
         logger.debug(u'Run playbook with tags: %s' % tags)
         logger.debug(u'Run playbook over group: %s' % group)
         logger.debug(u'Run playbook over hosts: %s' % inventory.list_hosts(group))
-        #logger.debug(u'Run playbook tasks: %s' % self.options.listtasks)
         self.variable_manager.set_inventory(inventory)
 
         # Setup playbook executor, but don't run until run() called
-        self.pbex = PlaybookExecutor(
-            playbooks=[playbook], 
-            inventory=inventory, 
-            variable_manager=self.variable_manager,
-            loader=self.loader, 
-            options=self.options,
-            passwords=None)
+        self.pbex = PlaybookExecutor(playbooks=[playbook], inventory=inventory, variable_manager=self.variable_manager,
+                                     loader=self.loader, options=self.options, passwords=None)
         
         # Results of PlaybookExecutor
         res = self.pbex.run()
@@ -307,49 +350,32 @@ class Runner(object):
         self.options.tags = []        
         
         # Set inventory, using most of above objects
-        #inventory = InventoryManager(self.loader, sources=self.inventory)
-        inventory = Inventory(loader=self.loader, 
-                              variable_manager=self.variable_manager, 
-                              host_list=self.inventory)
+        # inventory = InventoryManager(self.loader, sources=self.inventory)
+        inventory = self.__get_inventory()
         inventory.subset(group)
         self.variable_manager.set_inventory(inventory)        
 
         # create play with tasks
-        play_source =  dict(
-                name = u'Ansible Play',
-                hosts = group,
-                gather_facts = gather_facts,
-                tasks = tasks
-            )
-        play = Play().load(play_source, 
-                           variable_manager=self.variable_manager, 
-                           loader=self.loader)
+        play_source = dict(name=u'Ansible Play', hosts=group, gather_facts=gather_facts, tasks=tasks)
+        logger.debug(play_source)
+        play = Play().load(play_source, variable_manager=self.variable_manager, loader=self.loader)
 
         # Instantiate our ResultCallback for handling results as they come in
         results_callback = ResultCallback(display=display, frmt=frmt)
+        logger.debug(results_callback)
 
         # run it
         tqm = None
         result = None
         try:
             # Use our custom callback instead of the ``default`` callback plugin
-            tqm = TaskQueueManager(
-                      inventory=inventory,
-                      variable_manager=self.variable_manager,
-                      loader=self.loader,
-                      options=self.options,
-                      passwords=self.passwords,
-                      stdout_callback=results_callback,  
-                  )
+            tqm = TaskQueueManager(inventory=inventory, variable_manager=self.variable_manager, loader=self.loader,
+                                   options=self.options, passwords=self.passwords, stdout_callback=results_callback)
+            logger.debug(tqm)
             result = tqm.run(play)
+            logger.debug(result)
         finally:
             if tqm is not None:
                 tqm.cleanup()
 
         return result
-
-# set global display
-#import ansible.inventory
-#ansible.inventory.display = Runner.display
-#ansible.inventory.logger = getLogger(u'ansible')
-        

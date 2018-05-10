@@ -115,7 +115,7 @@ class AnsibleController(ApiController):
     #
     # ansible
     #
-    def ansible_inventory(self, group=None):
+    def ansible_inventory(self, group=None, inventory_dict=None):
         """list host by group
         
         **Parameters**:
@@ -123,16 +123,20 @@ class AnsibleController(ApiController):
             * **group**: ansible group
         """
         try:
-            path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
-            path_lib = u'%s/library/beehive/' % (self.ansible_path)
-            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
+            if inventory_dict is None:
+                inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
+                path_lib = u'%s/library/beehive/' % self.ansible_path
+            else:
+                inventory = inventory_dict
+
+            runner = Runner(inventory=inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
             res = runner.get_inventory(group)
             if isinstance(res, list):
                 res = {group: res}
             logger.debug(u'Ansible inventory nodes: %s' % res)
             resp = []
-            for k,v in res.items():
-                resp.append({u'group':k, u'hosts':v})
+            for k, v in res.items():
+                resp.append({u'group': k, u'hosts': v})
             resp = sorted(resp, key=lambda x: x.get(u'group'))
 
             for i in resp:
@@ -142,13 +146,17 @@ class AnsibleController(ApiController):
         except Exception as ex:
             self.error(ex)
     
-    def ansible_playbook_run(self, group, run_data, playbook=None):
+    def ansible_playbook_run(self, group, run_data, playbook=None, inventory_dict=None):
         """run playbook on group and host
         """
         try:
-            path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
-            path_lib = u'%s/library/beehive/' % self.ansible_path
-            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
+            if inventory_dict is None:
+                inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
+                path_lib = u'%s/library/beehive/' % self.ansible_path
+            else:
+                inventory = inventory_dict
+
+            runner = Runner(inventory=inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
             logger.debug(u'Create new ansible runner: %s' % runner)
             tags = run_data.pop(u'tags')
             if playbook is None:
@@ -176,11 +184,7 @@ class AnsibleController(ApiController):
         """
         runners = self.get_runners()
 
-
         try:
-            # path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
-            # path_lib = u'%s/library/beehive/' % self.ansible_path
-            # runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
             for runner in runners:
                 tasks = [
                     dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
@@ -189,7 +193,7 @@ class AnsibleController(ApiController):
         except Exception as ex:
             self.error(ex)
 
-    def get_runners(self):
+    def get_runners(self, inventory_dict=None):
         runners = []
         envs = [self.env]
         if self.envs is not None:
@@ -197,9 +201,13 @@ class AnsibleController(ApiController):
 
         for env in envs:
             try:
-                path_inventory = u'%s/inventory/%s' % (self.ansible_path, env)
-                path_lib = u'%s/library/beehive/' % self.ansible_path
-                runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
+                if inventory_dict is None:
+                    inventory = u'%s/inventory/%s' % (self.ansible_path, env)
+                    path_lib = u'%s/library/beehive/' % self.ansible_path
+                else:
+                    inventory = inventory_dict
+                runner = Runner(inventory=inventory, verbosity=self.verbosity, module=path_lib,
+                                vault_password=self.vault)
                 runners.append(runner)
             except Exception as ex:
                 self.error(ex, exc_info=1)
@@ -2139,10 +2147,57 @@ class NodeController(AnsibleController):
     - cmd: shell command   
         """
         group = self.get_arg(name=u'group')
-        cmd  = self.get_arg(name=u'cmd')     
+        cmd = self.get_arg(name=u'cmd')
         path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
         path_lib = u'%s/library/beehive/' % (self.ansible_path)
         runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
+        tasks = [
+            dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
+        ]
+        runner.run_task(group, tasks=tasks, frmt=u'text')
+
+    @expose(aliases=[u'cmd2 <group> <cmd>'], aliases_only=True)
+    @check_error
+    def cmd2(self):
+        """Execute command on managed platform nodes
+    - group: ansible group
+    - cmd: shell command
+        """
+        inventory_dict = {
+            "all": {
+                "vars": {
+                    "ansible_user": "centos",
+                    "ansible_ssh_private_key_file": u'%s/../configs/test/.ssh/vm.id_rsa' % self.ansible_path,
+                }
+            },
+            "group001": {
+                "hosts": ["10.138.133.21", "10.138.197.4"],
+                "vars": {
+                    "ansible_user": "root",
+                    "ansible_ssh_pass": "mypass",
+                },
+                "children": ["group002"]
+            },
+            "group002": {
+                "hosts": ["10.138.197.3", "10.138.197.2"],
+                "vars": {
+                    "ansible_user": "root",
+                    "ansible_ssh_pass": "mypass",
+                },
+                "children": []
+            },
+            "group003": {
+                "hosts": ["10.138.128.50", "10.138.128.35"],
+                "vars": {
+                },
+                "children": []
+            }
+        }
+
+        group = self.get_arg(name=u'group')
+        cmd = self.get_arg(name=u'cmd')
+        path_lib = u'%s/library/beehive/' % (self.ansible_path)
+        runner = Runner(inventory=inventory_dict, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
         tasks = [
             dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
         ]

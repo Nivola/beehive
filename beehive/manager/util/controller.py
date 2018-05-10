@@ -532,6 +532,37 @@ commands:
         f.close()
         return data
 
+    def cache_data_on_disk(self, key, data):
+        """Cache data on a file.
+
+        :param key: key to cache
+        :param data: data to cache
+        :return: data
+        :rtype: dict
+        """
+        homedir = os.path.expanduser(u'~')
+        file_name = u'%s/.beehive/.cache.%s' % (homedir, key)
+        f = open(file_name, u'w')
+        f.write(json.dumps(data))
+        f.close()
+
+    def read_cache_from_disk(self, key):
+        """Load data from a file.
+
+        :param key: key to read from cache
+        :return: data
+        :rtype: dict
+        """
+        try:
+            homedir = os.path.expanduser(u'~')
+            file_name = u'%s/.beehive/.cache.%s' % (homedir, key)
+            f = open(file_name, u'r')
+            data = f.read()
+            f.close()
+            return json.loads(data)
+        except:
+            return {}
+
     @check_error
     def format_http_get_query_params(self, *args):
         """
