@@ -8,6 +8,8 @@ import urllib
 
 import copy
 from cement.core.controller import expose
+
+from beehive.manager.sections.scheduler import WorkerController, TaskController, ScheduleController
 from beehive.manager.util.controller import BaseController, ApiController
 from re import match
 from beecell.simple import truncate
@@ -25,6 +27,39 @@ class BusinessController(BaseController):
 
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
+
+
+class BusinessSchedControllerChild(ApiController):
+    baseuri = u'/v1.0/nrs'
+    subsystem = u'resource'
+
+    class Meta:
+        stacked_on = 'business'
+        stacked_type = 'nested'
+
+
+class BusinessWorkerController(BusinessSchedControllerChild, WorkerController):
+    class Meta:
+        label = 'business.workers'
+        aliases = ['workers']
+        aliases_only = True
+        description = "Worker management"
+
+
+class BusinessTaskController(BusinessSchedControllerChild, TaskController):
+    class Meta:
+        label = 'business.tasks'
+        aliases = ['tasks']
+        aliases_only = True
+        description = "Task management"
+
+
+class BusinessScheduleController(BusinessSchedControllerChild, ScheduleController):
+    class Meta:
+        label = 'business.schedules'
+        aliases = ['schedules']
+        aliases_only = True
+        description = "Schedule management"
 
 
 class ConnectionHelper(object):
@@ -98,6 +133,7 @@ class ConnectionHelper(object):
             res = ctrl._call(uri, u'GET', data=filter)
             logger.info(res)
             res = res.get(u'serviceinsts', [])
+
             def get_tree_alias(data):
                 return u'[%s] %s' % (data[u'uuid'], data[u'name'])
 
@@ -362,5 +398,8 @@ class SpecializedServiceControllerChild(ApiController):
 
 
 business_controller_handlers = [
-    BusinessController
+    BusinessController,
+    BusinessWorkerController,
+    BusinessScheduleController,
+    BusinessTaskController
 ]

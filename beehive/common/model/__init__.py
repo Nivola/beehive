@@ -867,5 +867,3 @@ class AbstractDbManager(object):
             query = query.filter_by(active=kvargs.get(u'active')) 
             
         return query  
-    
-    
