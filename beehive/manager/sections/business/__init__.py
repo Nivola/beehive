@@ -6,7 +6,10 @@ Created on Nov 20, 2017
 import logging
 import urllib
 
+import copy
 from cement.core.controller import expose
+
+from beehive.manager.sections.scheduler import WorkerController, TaskController, ScheduleController
 from beehive.manager.util.controller import BaseController, ApiController
 from re import match
 from beecell.simple import truncate
@@ -24,6 +27,39 @@ class BusinessController(BaseController):
 
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
+
+
+class BusinessSchedControllerChild(ApiController):
+    baseuri = u'/v1.0/nrs'
+    subsystem = u'resource'
+
+    class Meta:
+        stacked_on = 'business'
+        stacked_type = 'nested'
+
+
+class BusinessWorkerController(BusinessSchedControllerChild, WorkerController):
+    class Meta:
+        label = 'business.workers'
+        aliases = ['workers']
+        aliases_only = True
+        description = "Worker management"
+
+
+class BusinessTaskController(BusinessSchedControllerChild, TaskController):
+    class Meta:
+        label = 'business.tasks'
+        aliases = ['tasks']
+        aliases_only = True
+        description = "Task management"
+
+
+class BusinessScheduleController(BusinessSchedControllerChild, ScheduleController):
+    class Meta:
+        label = 'business.schedules'
+        aliases = ['schedules']
+        aliases_only = True
+        description = "Schedule management"
 
 
 class ConnectionHelper(object):
@@ -80,7 +116,7 @@ class ConnectionHelper(object):
         res = ctrl._call(uri, u'GET', data=u'name=%s' % name)
         logger.info(u'Get service definition by name: %s' % res)
         count = res.get(u'count')
-        if count > 1:
+        if count < 1:
             raise Exception(u'Template %s does not exist' % name)
 
         return res.get(u'servicedefs')[0][u'uuid']
@@ -91,10 +127,12 @@ class ConnectionHelper(object):
         """
         data = u''
         uri = u'/v1.0/nws/serviceinsts'
-        res = ctrl._call(uri, u'GET', data=filter).get(u'serviceinsts', [])
-        logger.info(res)
 
         if ctrl.format == u'tree':
+            filter += u'&size=100'
+            res = ctrl._call(uri, u'GET', data=filter)
+            logger.info(res)
+            res = res.get(u'serviceinsts', [])
 
             def get_tree_alias(data):
                 return u'[%s] %s' % (data[u'uuid'], data[u'name'])
@@ -112,11 +150,13 @@ class ConnectionHelper(object):
                     tree.update(idx_item)
             ctrl.result({u'services': tree})
         else:
+            res = ctrl._call(uri, u'GET', data=filter)
+            logger.info(res)
             fields = [u'id', u'uuid', u'name', u'version', u'service_definition_id', u'status', u'active',
                       u'resource_uuid', u'is_container', u'parent.name', u'date.creation']
             headers = [u'id', u'uuid', u'name', u'version', u'definition', u'status', u'active', u'resource',
                        u'is_container', u'parent', u'creation']
-            ctrl.result(res, headers=headers, fields=fields)
+            ctrl.result(res, key=u'serviceinsts', headers=headers, fields=fields)
 
     @staticmethod
     def create_image(ctrl, account=None, name=None, template=None, **kvargs):
@@ -173,7 +213,7 @@ class ConnectionHelper(object):
         }
         if template is not None:
             data[u'GroupType'] = ConnectionHelper.get_service_def(ctrl, template)
-        uri = u'/v1.0/nws/computeservices/securitygroup/createsecuritygroup2'
+        uri = u'/v1.0/nws/computeservices/securitygroup/createsecuritygroup'
         res = ctrl._call(uri, u'POST', data={u'security_group': data}, timeout=600)
         logger.info(u'Add security group: %s' % truncate(res))
         res = res.get(u'CreateSecurityGroupResponse').get(u'instancesSet')[0].get(u'groupId')
@@ -272,13 +312,22 @@ class ConnectionHelper(object):
 
     @staticmethod
     def set_perms_objid(perms, objid):
+        new_perms = []
         for perm in perms:
             if perm.get(u'objid').find(u'<objid>') >= 0:
-                perm[u'objid'] = perm[u'objid'].replace(u'<objid>', objid)
-        return perms
+                new_perm = copy.deepcopy(perm)
+                new_perm[u'objid'] = new_perm[u'objid'].replace(u'<objid>', objid)
+                new_perms.append(new_perm)
+        return new_perms
 
 
 class SpecializedServiceControllerChild(ApiController):
+    def _setup(self, base_app):
+        BaseController._setup(self, base_app)
+
+        self.ansible_path = self.configs[u'ansible_path']
+        self.console_playbook = u'%s/console-user.yml' % self.ansible_path
+
     def is_name(self, oid):
         """Check if id is uuid, id or literal name.
 
@@ -322,25 +371,35 @@ class SpecializedServiceControllerChild(ApiController):
             count = res.get(u'count')
             if count > 1:
                 raise Exception(u'There are some template with name %s. Select one using uuid' % oid)
+            if count == 0:
+                raise Exception(u'%s does not exist or you are not authorized to see it' % oid)
 
             return res.get(u'servicedefs')[0][u'uuid']
         return oid
 
-    def get_service_instance(self, oid):
+    def get_service_instance(self, oid, account_id=None):
         """"""
         check = self.is_name(oid)
         if check is True:
             uri = u'%s/serviceinsts' % self.baseuri
+            data = u'name=%s' % oid
+            if account_id is not None:
+                data += u'&account_id=%s' % account_id
             res = self._call(uri, u'GET', data=u'name=%s' % oid)
             logger.info(u'Get account by name: %s' % res)
             count = res.get(u'count')
             if count > 1:
                 raise Exception(u'There are some service with name %s. Select one using uuid' % oid)
+            if count == 0:
+                raise Exception(u'%s does not exist or you are not authorized to see it' % oid)
 
             return res.get(u'serviceinsts')[0][u'uuid']
         return oid
 
 
 business_controller_handlers = [
-    BusinessController
+    BusinessController,
+    BusinessWorkerController,
+    BusinessScheduleController,
+    BusinessTaskController
 ]

@@ -9,7 +9,7 @@ import os
 import textwrap
 import sys
 from beecell.simple import truncate, str2bool
-from cement.core.controller import CementBaseController
+from cement.core.controller import CementBaseController, expose
 from functools import wraps
 import logging
 from beecell.logger.helper import LoggerHelper
@@ -153,7 +153,7 @@ class BaseController(CementCmdBaseController):
         
         # get configs
         self.configs = self.app.config.get_section_dict(u'configs')
-        
+
     @property
     def _help_text(self):
         """Returns the help text displayed when '--help' is passed."""
@@ -336,7 +336,7 @@ commands:
         return res
     
     def __tabularprint(self, data, table_style, headers=None, other_headers=[], fields=None, maxsize=20,
-                       separator=u'.'):
+                       separator=u'.', transform={}):
         if data is None:
             data = u'-'
         if not isinstance(data, list):
@@ -349,6 +349,7 @@ commands:
         table = []
         if fields is None:
             fields = headers
+        idx = 0
         for item in values:
             raw = []
             if isinstance(item, dict):
@@ -357,7 +358,10 @@ commands:
                     raw.append(truncate(val, maxsize))
             else:
                 raw.append(truncate(item, maxsize))
-            
+            for k, func in transform.items():
+                raw_item = headers.index(k)
+                raw[raw_item] = func(raw[raw_item])
+
             table.append(raw)
         print(tabulate(table, headers=headers, tablefmt=table_style))
         print(u'')
@@ -409,7 +413,7 @@ commands:
 
     @check_error
     def result(self, data, other_headers=[], headers=None, key=None, fields=None, details=False, maxsize=50,
-               key_separator=u'.', format=None, table_style=u'simple'):
+               key_separator=u'.', format=None, table_style=u'simple', transform={}):
         """Print result with a certain format
 
         :param data: data to print
@@ -423,6 +427,7 @@ commands:
         :param key_separator: key separator used when parsing key [default=.]
         :param format: format used when print [default=text]
         :param table_style: table style used when format is tabular [defualt=simple]
+        :param transform: dict with function to apply to columns set in headers [default={}]
         :return:
         """
         logger.debug(u'Result format: %s' % self.format)
@@ -438,7 +443,7 @@ commands:
         
         if key is not None:
             data = data[key]
-        elif u'msg' in data:
+        elif getattr(data, u'msg', None) is not None:
             maxsize = 200
             headers = [u'msg']
         
@@ -491,7 +496,7 @@ commands:
                                                  orig_data.get(u'sort').get(u'order')))
                         print(u'')               
                     self.__tabularprint(data, table_style, other_headers=other_headers, headers=headers, fields=fields,
-                                        maxsize=maxsize, separator=key_separator)
+                                        maxsize=maxsize, separator=key_separator, transform=transform)
                     
         elif self.format == u'doc':
             print(data)
@@ -526,6 +531,37 @@ commands:
         data = f.read()
         f.close()
         return data
+
+    def cache_data_on_disk(self, key, data):
+        """Cache data on a file.
+
+        :param key: key to cache
+        :param data: data to cache
+        :return: data
+        :rtype: dict
+        """
+        homedir = os.path.expanduser(u'~')
+        file_name = u'%s/.beehive/.cache.%s' % (homedir, key)
+        f = open(file_name, u'w')
+        f.write(json.dumps(data))
+        f.close()
+
+    def read_cache_from_disk(self, key):
+        """Load data from a file.
+
+        :param key: key to read from cache
+        :return: data
+        :rtype: dict
+        """
+        try:
+            homedir = os.path.expanduser(u'~')
+            file_name = u'%s/.beehive/.cache.%s' % (homedir, key)
+            f = open(file_name, u'r')
+            data = f.read()
+            f.close()
+            return json.loads(data)
+        except:
+            return {}
 
     @check_error
     def format_http_get_query_params(self, *args):
@@ -591,7 +627,7 @@ commands:
             f.write(seckey)
             f.close()
 
-    def get_arg(self, default=None, name=None, keyvalue=False):
+    def get_arg(self, default=None, name=None, keyvalue=False, required=False):
         """Get arguments from command line. Arguments can be positional or key/value. Example::
 
             arg1 arg2 key1=val1
@@ -605,6 +641,7 @@ commands:
         :param default: default value for keyvalue argument
         :param name: argument name
         :param keyvalue: if True argument is keyvalue, if False argument i postional
+        :param required: if True a keyvalue arg is required
         :return: argument value
         """
         if len(self.app.pargs.extra_arguments) > 0:
@@ -630,7 +667,10 @@ commands:
 
         if keyvalue is True:
             kvargs = getattr(self.app, u'kvargs', {})
-            item = kvargs.get(name, default)
+            if required is True and name not in kvargs:
+                raise Exception(u'Param %s=.. is required' % name)
+            else:
+                item = kvargs.get(name, default)
             return item
 
         arg = None
@@ -640,7 +680,7 @@ commands:
             if default is not None:
                 arg = default
             elif name is not None:
-                raise Exception(u'Param %s is not defined' % name)
+                raise Exception(u'Param %s is required' % name)
         return arg
 
     def decrypt(self, data):
@@ -651,10 +691,20 @@ commands:
         cipher_text = cipher_suite.decrypt(data)
         return cipher_text
 
+    @expose(hide=True)
+    def default(self):
+        """Default controller command
+        """
+        if self.app.pargs.cmds is True:
+            self.app.print_cmd_list()
+        else:
+            self.app.print_help()
+
 
 class ApiController(BaseController):
     subsytem = None
-    baseuri = None    
+    baseuri = None
+    setup_cmp = True
     
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
@@ -674,29 +724,38 @@ class ApiController(BaseController):
     def _parse_args(self):
         BaseController._parse_args(self)
 
-        config = self.configs[u'environments'][self.env][u'cmp']
-    
-        if config[u'endpoint'] is None:
-            raise Exception(u'Auth endpoint is not configured')
+        if self.setup_cmp is True:
+            logger.debug(u'--- Setup cmp ---')
 
-        client_config = config.get(u'oauth2-client', None)
-        self.client = BeehiveApiClient(config[u'endpoint'],
-                                       config[u'authtype'],
-                                       config[u'user'], 
-                                       config[u'pwd'],
-                                       config[u'catalog'],
-                                       client_config=client_config,
-                                       key=self.key)
-        
-        # get token
-        self.client.uid, self.client.seckey = self.get_token()
-    
-        if self.client.uid is None:
-            # create token
-            self.client.create_token()
-        
-            # set token
-            self.save_token(self.client.uid, self.client.seckey)
+            config = self.configs[u'environments'][self.env][u'cmp']
+
+            if config[u'endpoint'] is None:
+                raise Exception(u'Auth endpoint is not configured')
+
+            # get user and password
+            user_env = os.environ.get(u'BEEHIVE_CMP_USER', None)
+            user_pwd_env = os.environ.get(u'BEEHIVE_CMP_USER_PWD', None)
+            user = config.get(u'user', user_env)
+            pwd = config.get(u'pwd', user_pwd_env)
+
+            client_config = config.get(u'oauth2-client', None)
+            self.client = BeehiveApiClient(config[u'endpoint'],
+                                           config[u'authtype'],
+                                           user,
+                                           pwd,
+                                           config[u'catalog'],
+                                           client_config=client_config,
+                                           key=self.key)
+
+            # get token
+            self.client.uid, self.client.seckey = self.get_token()
+
+            if self.client.uid is None:
+                # create token
+                self.client.create_token()
+
+                # set token
+                self.save_token(self.client.uid, self.client.seckey)
 
     def _call(self, uri, method, data=u'', headers=None, timeout=30, silent=False):
         try:
@@ -704,10 +763,11 @@ class ApiController(BaseController):
             resp = self.client.invoke(self.subsystem, uri, method, data=data, other_headers=headers, parse=True,
                                       timeout=timeout, silent=silent, print_curl=True)
         except BeehiveApiClientError as ex:
-            raise
+            raise Exception(ex.value)
         finally:
-            # set token
-            self.save_token(self.client.uid, self.client.seckey)
+            # set token3
+            if self.client.uid is not None:
+                self.save_token(self.client.uid, self.client.seckey)
 
         return resp
     
@@ -733,8 +793,9 @@ class ApiController(BaseController):
             state = res.get(u'task_instance').get(u'status')
             logger.debug(u'Get job %s state: %s' % (jobid, state))
             if state == u'FAILURE':
-                # print(res)
-                self.app.print_error(res[u'task_instance'][u'traceback'][-1])
+                data = self.app.colored_text.error(u'%s ..' % res[u'task_instance'][u'traceback'][-1])
+                sys.stdout.write(data)
+                sys.stdout.flush()
             return state
         except (Exception):
             return u'EXPUNGED'
@@ -759,8 +820,58 @@ class ApiController(BaseController):
                 state = u'TIMEOUT'
 
         if state == u'TIMEOUT':
-            self.app.print_error(u'- TIMEOUT -')
+            data = self.app.colored_text.error(u'..TIMEOUT..')
+            sys.stdout.write(data)
+            sys.stdout.flush()
         elif state == u'FAILURE':
-            self.app.print_error(u'- ERROR -')
+            # data = self.colored_text.error(u'- ERROR -')
+            # sys.stdout.write(data)
+            # sys.stdout.flush()
+            pass
 
         print(u'END')
+
+
+
+
+    # def get_job_state(self, jobid):
+    #     try:
+    #         res = self._call(u'%s/worker/tasks/%s' % (self.baseuri, jobid), u'GET', silent=True)
+    #         state = res.get(u'task_instance').get(u'status')
+    #         logger.debug(u'Get job %s state: %s' % (jobid, state))
+    #         if state == u'FAILURE':
+    #             data = self.colored_text.error(res[u'task_instance'][u'traceback'][-1])
+    #             sys.stdout.write(data)
+    #             sys.stdout.flush()
+    #         return state
+    #     except (NotFoundException, Exception):
+    #         return u'EXPUNGED'
+    #
+    # def wait_job(self, jobid, delta=2, maxtime=180):
+    #     """Wait job
+    #     """
+    #     logger.debug(u'wait for job: %s' % jobid)
+    #     state = self.get_job_state(jobid)
+    #     sys.stdout.write(u'JOB:%s' % jobid)
+    #     sys.stdout.flush()
+    #     elapsed = 0
+    #     while state not in [u'SUCCESS', u'FAILURE', u'TIMEOUT']:
+    #         sys.stdout.write(u'.')
+    #         sys.stdout.flush()
+    #         sleep(delta)
+    #         state = self.get_job_state(jobid)
+    #         elapsed += delta
+    #         if elapsed > maxtime:
+    #             state = u'TIMEOUT'
+    #
+    #     if state == u'TIMEOUT':
+    #         data = self.colored_text.error(u'- TIMEOUT -')
+    #         sys.stdout.write(data)
+    #         sys.stdout.flush()
+    #     elif state == u'FAILURE':
+    #         # data = self.colored_text.error(u'- ERROR -')
+    #         # sys.stdout.write(data)
+    #         # sys.stdout.flush()
+    #         pass
+    #
+    #     print(u'END')

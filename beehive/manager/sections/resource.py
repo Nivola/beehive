@@ -50,6 +50,15 @@ class ResourceController(BaseController):
         arguments = []
 
 
+class ResourceSchedControllerChild(ApiController):
+    baseuri = u'/v1.0/nrs'
+    subsystem = u'resource'
+
+    class Meta:
+        stacked_on = 'resource'
+        stacked_type = 'nested'
+
+
 class ResourceControllerChild(ApiController):
     baseuri = u'/v1.0/nrs'
     subsystem = u'resource'
@@ -63,39 +72,8 @@ class ResourceControllerChild(ApiController):
         stacked_on = 'resource'
         stacked_type = 'nested'
 
-    @expose(aliases=[u'job <id>'], aliases_only=True)
-    @check_error
-    def job(self):
-        """Get resource job
-    - id : job id
-        """
-        task_id = self.get_arg(name=u'id')
-        uri = u'%s/worker/tasks/%s' % (self.baseuri, task_id)
-        res = self._call(uri, u'GET').get(u'task_instance')
-        logger.info(res)
-        resp = []
-        resp.append(res)
-        resp.extend(res.get(u'children'))
-        self.result(resp, headers=[u'task_id', u'type', u'status', u'name', u'start_time', u'stop_time', u'elapsed'],
-                    maxsize=100)
 
-    @expose(aliases=[u'jobtrace <id>'], aliases_only=True)
-    @check_error
-    def jobtrace(self):
-        """Get resource job trace
-    - id : job id
-        """
-        task_id = self.get_arg(name=u'id')
-        uri = u'%s/worker/tasks/%s' % (self.baseuri, task_id)
-        res = self._call(uri, u'GET').get(u'task_instance').get(u'trace')
-        logger.info(res)
-        resp = []
-        for i in res:
-            resp.append({u'timestamp': i[0], u'task': i[1], u'task id': i[2], u'msg': truncate(i[3], 150)})
-        self.result(resp, headers=[u'timestamp', u'msg'], maxsize=200)
-
-
-class ResourceWorkerController(ResourceControllerChild, WorkerController):
+class ResourceWorkerController(ResourceSchedControllerChild, WorkerController):
     class Meta:
         label = 'resource.workers'
         aliases = ['workers']
@@ -103,7 +81,7 @@ class ResourceWorkerController(ResourceControllerChild, WorkerController):
         description = "Worker management"
 
 
-class ResourceTaskController(ResourceControllerChild, TaskController):
+class ResourceTaskController(ResourceSchedControllerChild, TaskController):
     class Meta:
         label = 'resource.tasks'
         aliases = ['tasks']
@@ -111,7 +89,7 @@ class ResourceTaskController(ResourceControllerChild, TaskController):
         description = "Task management"
 
 
-class ResourceScheduleController(ResourceControllerChild, ScheduleController):
+class ResourceScheduleController(ResourceSchedControllerChild, ScheduleController):
     class Meta:
         label = 'resource.schedules'
         aliases = ['schedules']
@@ -122,43 +100,65 @@ class ResourceScheduleController(ResourceControllerChild, ScheduleController):
 class ContainerController(ResourceControllerChild, WorkerController):
     class Meta:
         label = 'containers'
+        label2 = 'container'
         description = "Container management"
 
-    def get_job_state(self, jobid):
-        try:
-            res = self._call(u'%s/worker/tasks/%s' % (self.baseuri, jobid), u'GET', silent=True)
-            state = res.get(u'task_instance').get(u'status')
-            logger.debug(u'Get job %s state: %s' % (jobid, state))
-            if state == u'FAILURE':
-                # print(res)
-                self.app.print_error(res[u'task_instance'][u'traceback'][-1])
-            return state
-        except (NotFoundException, Exception):
-            return u'EXPUNGED'
-
-    def wait_job(self, jobid, delta=2, maxtime=180):
-        """Wait job
+    @expose(aliases=[u'jobs <id> <jobid> [trace=..] [status=] '], aliases_only=True)
+    @check_error
+    def jobs(self, *args):
+        """List all jobs
+    - id: resource id
+    - status: filter by job status
+    - jobid: job id
+    - trace: if True show job trace, if False show job tasks status
         """
-        logger.debug(u'wait for job: %s' % jobid)
-        state = self.get_job_state(jobid)
-        sys.stdout.write(u'JOB:%s' % jobid)
-        sys.stdout.flush()
-        elapsed = 0
-        while state not in [u'SUCCESS', u'FAILURE', u'TIMEOUT']:
-            sys.stdout.write(u'.')
-            sys.stdout.flush()
-            sleep(delta)
-            state = self.get_job_state(jobid)
-            elapsed += delta
-            if elapsed > maxtime:
-                state = u'TIMEOUT'
+        oid = self.get_arg(name=u'id')
+        status = self.get_arg(name=u'status', default=None, keyvalue=True)
+        jobid = self.get_arg(default=None)
+        trace = self.get_arg(name=u'trace', default=True, keyvalue=True)
 
-        if state == u'TIMEOUT':
-            self.app.print_error(u'- TIMEOUT -')
-        elif state == u'FAILURE':
-            self.app.print_error(u'- ERROR -')
+        if jobid is None:
+            data = u''
+            if status is not None:
+                data = urllib.urlencode({u'jobstatus': status})
+            uri = u'%s/%s/%s/jobs' % (self.baseuri, u'containers', oid)
+            res = self._call(uri, u'GET', data=data)
+            logger.info(u'Get container jobs: %s' % truncate(res))
+            key = u'containerjobs'
+            headers = [u'job', u'name', u'status', u'worker', u'children', u'timestamp', u'elapsed']
+            self.result(res, key=key, headers=headers, maxsize=400)
+        else:
+            uri = u'%s/worker/tasks/%s' % (self.baseuri, jobid)
+            res = self._call(uri, u'GET').get(u'task_instance')
+            logger.info(res)
+            resp = []
+            if trace is True:
+                for i in res.get(u'trace'):
+                    try:
+                        resp.append({u'timestamp': i[0], u'task': i[1], u'task id': i[2], u'msg': truncate(i[3], 200)})
+                    except:
+                        resp.append({u'timestamp': i[0], u'msg': truncate(i[1], 200)})
+                for item in resp:
+                    if item[u'msg'].find(u'ERROR') >= 0:
+                        self.output(u'[%s] %s' % (item[u'timestamp'], item[u'msg']), color=u'REDonBLACK')
+                    else:
+                        self.output(u'[%s] %s' % (item[u'timestamp'], item[u'msg']))
+            else:
+                resp.append(res)
+                resp.extend(res.get(u'children'))
+                headers = [u'task_id', u'type', u'status', u'name', u'start_time', u'stop_time', u'elapsed']
+                self.result(resp, headers=headers, maxsize=100)
 
-        print(u'END')
+    @expose(aliases=[u'errors <id>'], aliases_only=True)
+    @check_error
+    def errors(self):
+        """Get the resource last job error
+        """
+        oid = self.get_arg(name=u'id')
+        uri = u'%s/%s/%s/errors' % (self.baseuri, self._meta.label, oid)
+        resp = self._call(uri, u'GET').get(u'resource_errors')
+
+        self.result(resp, headers=[u'job', u'timestamp', u'error'], maxsize=200)
 
     @expose(aliases=[u'list [status]'], aliases_only=True)
     @check_error
@@ -471,6 +471,7 @@ class ContainerController(ResourceControllerChild, WorkerController):
 class ResourceEntityController(ResourceControllerChild):    
     class Meta:
         label = 'entities'
+        label2 = 'resource'
         description = "Entity management"
         
     def __print_tree(self, resource, space=u'   '):
@@ -501,64 +502,85 @@ class ResourceEntityController(ResourceControllerChild):
                 print data
             self.__print_tree(child, space=space+u'   ')
 
-    def get_resource_state(self, uuid):
-        try:
-            res = self._call(u'%s/entities/%s' % (self.baseuri, uuid), u'GET')
-            state = res.get(u'resource').get(u'state')
-            logger.debug(u'Get resource %s state: %s' % (uuid, state))
-            return state
-        except (NotFoundException, Exception):
-            return u'EXPUNGED'
-
-    def get_job_state(self, jobid):
-        try:
-            res = self._call(u'%s/worker/tasks/%s' % (self.baseuri, jobid), u'GET', silent=True)
-            state = res.get(u'task_instance').get(u'status')
-            logger.debug(u'Get job %s state: %s' % (jobid, state))
-            if state == u'FAILURE':
-                # print(res)
-                self.app.print_error(res[u'task_instance'][u'traceback'][-1])
-            return state
-        except (NotFoundException, Exception):
-            return u'EXPUNGED'
-
-    def wait_resource(self, uuid, delta=1):
-        """Wait resource
-        """
-        logger.debug(u'Wait for resource: %s' % uuid)
-        state = self.get_resource_state(uuid)
-        while state not in [u'ACTIVE', u'ERROR', u'EXPUNGED']:
-            logger.info(u'.')
-            print(u'.')
-            sleep(delta)
-            state = self.get_resource_state(uuid)
-    
-    def wait_job(self, jobid, delta=2, maxtime=180):
-        """Wait job
-        """
-        logger.debug(u'wait for job: %s' % jobid)
-        state = self.get_job_state(jobid)
-        sys.stdout.write(u'JOB:%s' % jobid)
-        sys.stdout.flush()
-        elapsed = 0
-        while state not in [u'SUCCESS', u'FAILURE', u'TIMEOUT']:
-            sys.stdout.write(u'.')
-            sys.stdout.flush()
-            sleep(delta)
-            state = self.get_job_state(jobid)
-            elapsed += delta
-            if elapsed > maxtime:
-                state = u'TIMEOUT'
-
-        if state == u'TIMEOUT':
-            self.app.print_error(u'- TIMEOUT -')
-        elif state == u'FAILURE':
-            self.app.print_error(u'- ERROR -')
-
-        print(u'END')
+    # def get_resource_state(self, uuid):
+    #     try:
+    #         res = self._call(u'%s/entities/%s' % (self.baseuri, uuid), u'GET')
+    #         state = res.get(u'resource').get(u'state')
+    #         logger.debug(u'Get resource %s state: %s' % (uuid, state))
+    #         return state
+    #     except (NotFoundException, Exception):
+    #         return u'EXPUNGED'
+    #
+    # def wait_resource(self, uuid, delta=1):
+    #     """Wait resource
+    #     """
+    #     logger.debug(u'Wait for resource: %s' % uuid)
+    #     state = self.get_resource_state(uuid)
+    #     while state not in [u'ACTIVE', u'ERROR', u'EXPUNGED']:
+    #         logger.info(u'.')
+    #         print(u'.')
+    #         sleep(delta)
+    #         state = self.get_resource_state(uuid)
 
     def __get_key(self):
-        return self._meta.aliases[0].rstrip(u's')
+        return self._meta.alias.rstrip(u's')
+
+    @expose(aliases=[u'jobs <id> <jobid> [trace=..] [status=] '], aliases_only=True)
+    @check_error
+    def jobs(self, *args):
+        """List all jobs
+    - id: resource id
+    - status: filter by job status
+    - jobid: job id
+    - trace: if True show job trace, if False show job tasks status
+        """
+        oid = self.get_arg(name=u'id')
+        status = self.get_arg(name=u'status', default=None, keyvalue=True)
+        jobid = self.get_arg(default=None)
+        trace = self.get_arg(name=u'trace', default=True, keyvalue=True)
+
+        if jobid is None:
+            data = u''
+            if status is not None:
+                data = urllib.urlencode({u'jobstatus': status})
+            uri = u'%s/%s/%s/jobs' % (self.baseuri, u'entities', oid)
+            res = self._call(uri, u'GET', data=data)
+            logger.info(u'Get container jobs: %s' % truncate(res))
+            key = u'resourcejobs'
+            headers = [u'job', u'name', u'status', u'worker', u'children', u'timestamp', u'elapsed']
+            self.result(res, key=key, headers=headers, maxsize=400)
+        else:
+            uri = u'%s/worker/tasks/%s' % (self.baseuri, jobid)
+            res = self._call(uri, u'GET').get(u'task_instance')
+            logger.info(res)
+            resp = []
+            if trace is True:
+                for i in res.get(u'trace'):
+                    try:
+                        resp.append({u'timestamp': i[0], u'task': i[1], u'task id': i[2], u'msg': truncate(i[3], 200)})
+                    except:
+                        resp.append({u'timestamp': i[0], u'msg': truncate(i[1], 200)})
+                for item in resp:
+                    if item[u'msg'].find(u'ERROR') >= 0:
+                        self.output(u'[%s] %s' % (item[u'timestamp'], item[u'msg']), color=u'REDonBLACK')
+                    else:
+                        self.output(u'[%s] %s' % (item[u'timestamp'], item[u'msg']))
+            else:
+                resp.append(res)
+                resp.extend(res.get(u'children'))
+                headers = [u'task_id', u'type', u'status', u'name', u'start_time', u'stop_time', u'elapsed']
+                self.result(resp, headers=headers, maxsize=100)
+
+    @expose(aliases=[u'errors <id>'], aliases_only=True)
+    @check_error
+    def errors(self):
+        """Get the resource last job error
+        """
+        oid = self.get_arg(name=u'id')
+        uri = u'%s/%s/%s/errors' % (self.baseuri, self._meta.label, oid)
+        resp = self._call(uri, u'GET').get(u'resource_errors')
+
+        self.result(resp, headers=[u'job', u'timestamp', u'error'], maxsize=200)
 
     def get_resource(self, oid, format_result=None):
         """Get resource
@@ -699,7 +721,17 @@ class ResourceEntityController(ResourceControllerChild):
         uri = u'%s/entities' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        self.result(res, key=u'resources', headers=self.res_headers)
+        # for item in res[u'resources']:
+        #     if item[u'state'] == u'ERROR':
+        #         item[u'state'] = self.app.colored_text.output(item[u'state'], u'REDonBLACK')
+
+        def color_error(val):
+            if val == u'ERROR':
+                val = self.app.colored_text.output(val, u'REDonBLACK')
+            return val
+
+        transform = {u'state': color_error}
+        self.result(res, key=u'resources', headers=self.res_headers, transform=transform)
     
     @expose(aliases=[u'types [field=value]'], aliases_only=True)
     @check_error
@@ -773,17 +805,17 @@ class ResourceEntityController(ResourceControllerChild):
         G = graph.tree_graph(res, attrs={'children': 'children', 'id': 'name', 'name':'name'})
         nx.draw_networkx(G, **options)'''
 
-    @expose(aliases=[u'jobs <id>'], aliases_only=True)
-    @check_error
-    def jobs(self, *args):
-        """List all resource jobs
-    - id : resource id
-        """
-        oid = self.get_arg(name=u'id')
-        uri = u'%s/entities/%s/jobs' % (self.baseuri, oid)
-        res = self._call(uri, u'GET', data=u'')
-        logger.info(u'Get resource jobs: %s' % truncate(res))
-        self.result(res, key=u'resourcejobs', headers=[u'job', u'name', u'timestamp'], maxsize=400)
+    # @expose(aliases=[u'jobs <id>'], aliases_only=True)
+    # @check_error
+    # def jobs(self, *args):
+    #     """List all resource jobs
+    # - id : resource id
+    #     """
+    #     oid = self.get_arg(name=u'id')
+    #     uri = u'%s/entities/%s/jobs' % (self.baseuri, oid)
+    #     res = self._call(uri, u'GET', data=u'')
+    #     logger.info(u'Get resource jobs: %s' % truncate(res))
+    #     self.result(res, key=u'resourcejobs', headers=[u'job', u'name', u'timestamp'], maxsize=400)
 
     @expose(aliases=[u'delete <id> [force=..]'], aliases_only=True)
     @check_error

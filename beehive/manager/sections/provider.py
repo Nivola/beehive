@@ -3,8 +3,10 @@ Created on Dec 11, 2017
 
 @author: darkbk
 """
+import json
 import logging
 import urllib
+from base64 import b64encode
 
 import sh
 from cement.core.controller import expose
@@ -57,8 +59,8 @@ class ProviderControllerChild(ResourceEntityController):
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
         uri = self.uri
         res = self._call(uri, u'GET', data=data)
-        logger.info(u'Get %s: %s' % (self._meta.aliases[0], res))
-        self.result(res, headers=self.headers, fields=self.fields, key=self._meta.aliases[0])
+        logger.info(u'Get %s: %s' % (self._meta.alias, res))
+        self.result(res, headers=self.headers, fields=self.fields, key=self._meta.alias)
     
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -79,8 +81,8 @@ class ProviderControllerChild(ResourceEntityController):
         jobid = res.get(u'jobid', None)
         if jobid is not None:
             self.wait_job(jobid)
-        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))
-        res = {u'msg': u'Add %s %s' % (self._meta.aliases[0], res[u'uuid'])}
+        logger.info(u'Add %s: %s' % (self._meta.alias, truncate(res)))
+        res = {u'msg': u'Add %s %s' % (self._meta.alias, res[u'uuid'])}
         self.result(res, headers=[u'msg'])
     
     @expose(aliases=[u'update <id> <file data>'], aliases_only=True)
@@ -94,8 +96,8 @@ class ProviderControllerChild(ResourceEntityController):
         jobid = res.get(u'jobid', None)
         if jobid is not None:
             self.wait_job(jobid)
-        logger.info(u'Update %s: %s' % (self._meta.aliases[0], truncate(res)))
-        res = {u'msg': u'Upd %s %s' % (self._meta.aliases[0], res[u'uuid'])}
+        logger.info(u'Update %s: %s' % (self._meta.alias, truncate(res)))
+        res = {u'msg': u'Upd %s %s' % (self._meta.alias, res[u'uuid'])}
         self.result(res, headers=[u'msg'])
     
     @expose(aliases=[u'delete <id>'], aliases_only=True)
@@ -107,8 +109,8 @@ class ProviderControllerChild(ResourceEntityController):
         jobid = res.get(u'jobid', None)
         if jobid is not None:
             self.wait_job(jobid)
-        logger.info(u'Delete %s: %s' % (self._meta.aliases[0], oid))
-        res = {u'msg': u'Del %s %s' % (self._meta.aliases[0], res[u'uuid'])}
+        logger.info(u'Delete %s: %s' % (self._meta.alias, oid))
+        res = {u'msg': u'Del %s %s' % (self._meta.alias, res[u'uuid'])}
         self.result(res, headers=[u'msg'])
 
 
@@ -118,6 +120,7 @@ class ProviderRegionController(ProviderControllerChild):
     class Meta:
         label = 'provider.beehive.regions'
         aliases = ['regions']
+        alias = u'regions'
         aliases_only = True
         description = "Provider region management"
 
@@ -128,6 +131,7 @@ class ProviderSiteController(ProviderControllerChild):
     class Meta:
         label = 'provider.beehive.sites'
         aliases = ['sites']
+        alias = u'sites'
         aliases_only = True
         description = "Provider site management"
 
@@ -191,7 +195,8 @@ class ProviderSiteNetworkController(ProviderControllerChild):
 
     class Meta:
         label = 'provider.beehive.site_networks'
-        aliases = ['site_networks']
+        aliases = ['site-networks']
+        alias = u'site_networks'
         aliases_only = True
         description = "Provider site network management"
 
@@ -222,7 +227,8 @@ class ProviderComputeZoneController(ProviderControllerChild):
 
     class Meta:
         label = 'provider.beehive.compute_zones'
-        aliases = ['compute_zones']
+        aliases = ['compute-zones']
+        alias = u'compute_zones'
         aliases_only = True
         description = "Provider compute zone management"
 
@@ -264,7 +270,7 @@ class ProviderComputeZoneController(ProviderControllerChild):
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
     def get(self):
-        """Get provider item
+        """Get provider computes zone
         """
         oid = self.get_arg(name=u'id')
 
@@ -274,15 +280,52 @@ class ProviderComputeZoneController(ProviderControllerChild):
             availability_zones = data.pop(u'availability_zones', [])
             for i in availability_zones:
                 i[u'type'] = u'availability_zones'
-            self.result(availability_zones, headers=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'created',
-                                                     u'modified', u'expiry'],
-                        fields=[u'type', u'id', u'uuid', u'name', u'desc', u'state', u'date.creation', u'date.modified',
-                                u'date.expiry'], maxsize=200)
+            headers = [u'type', u'id', u'uuid', u'name', u'desc', u'state', u'created', u'modified', u'expiry']
+            fields = [u'type', u'id', u'uuid', u'name', u'desc', u'state', u'date.creation', u'date.modified',
+                      u'date.expiry']
+            self.result(availability_zones, headers=headers, fields=fields, maxsize=200)
             self.app.print_output(u'quotas:')
             self.result(quotas, details=True)
 
         self.get_resource(oid, format_result=format_result)
-        
+
+    @expose(aliases=[u'quotas <id>'], aliases_only=True)
+    @check_error
+    def quotas(self):
+        """Get provider computes zone quotas
+        """
+        oid = self.get_arg(name=u'id')
+
+        uri = u'%s/%s/quotas' % (self.uri, oid)
+        res = self._call(uri, u'GET').get(u'quotas', [])
+        logger.info(u'Get compute zone %s quotas: %s' % (oid, truncate(res)))
+        self.result(res, headers=[u'quota', u'value', u'allocated', u'unit'])
+
+    @expose(aliases=[u'quotas-default <id>'], aliases_only=True)
+    @check_error
+    def quotas_default(self):
+        """Get provider computes zone quotas classes
+        """
+        oid = self.get_arg(name=u'id')
+
+        uri = u'%s/%s/quotas/classes' % (self.uri, oid)
+        res = self._call(uri, u'GET').get(u'quota_classes', [])
+        logger.info(u'Get compute zone %s quotas classes: %s' % (oid, truncate(res)))
+        self.result(res, headers=[u'quota', u'default', u'unit'])
+
+    @expose(aliases=[u'quotas-check <id> <quotas>'], aliases_only=True)
+    @check_error
+    def quotas_check(self):
+        """Check provider computes zone quotas
+        """
+        oid = self.get_arg(name=u'id')
+        quotas = self.get_arg(name=u'quotas')
+
+        uri = u'%s/%s/quotas/check' % (self.uri, oid)
+        res = self._call(uri, u'PUT', {u'quotas': json.loads(quotas)}).get(u'quotas', [])
+        logger.info(u'Quotas compute zone %s quotas classes: %s' % (oid, truncate(res)))
+        self.result(res, headers=[u'quota', u'default', u'unit'])
+
     @expose(aliases=[u'metric <id>'], aliases_only=True)
     @check_error
     def metric(self):
@@ -304,6 +347,7 @@ class ProviderComputeFlavorController(ProviderControllerChild):
     class Meta:
         label = 'provider.beehive.flavors'
         aliases = ['flavors']
+        alias = u'flavors'
         aliases_only = True
         description = "Provider compute flavor management"
 
@@ -332,6 +376,7 @@ class ProviderComputeImageController(ProviderControllerChild):
     class Meta:
         label = 'provider.beehive.images'
         aliases = ['images']
+        alias = u'images'
         aliases_only = True
         description = "Provider compute image management"
 
@@ -343,8 +388,8 @@ class ProviderComputeImageController(ProviderControllerChild):
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
         uri = self.uri
         res = self._call(uri, u'GET', data=data)
-        logger.info(u'Get %s: %s' % (self._meta.aliases[0], res))
-        self.result(res, headers=self.headers, fields=self.fields, key=self._meta.aliases[0])
+        logger.info(u'Get %s: %s' % (self._meta.alias, res))
+        self.result(res, headers=self.headers, fields=self.fields, key=self._meta.alias)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -371,8 +416,8 @@ class ProviderComputeImageController(ProviderControllerChild):
         data = self.load_config(file_data)
         uri = self.uri
         res = self._call(uri, u'POST', data=data)
-        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))
-        res = {u'msg': u'Add %s %s' % (self._meta.aliases[0], res[u'uuid'])}
+        logger.info(u'Add %s: %s' % (self._meta.alias, truncate(res)))
+        res = {u'msg': u'Add %s %s' % (self._meta.alias, res[u'uuid'])}
         self.result(res, headers=[u'msg'])
 
 
@@ -382,6 +427,7 @@ class ProviderComputeVpcController(ProviderControllerChild):
     class Meta:
         label = 'provider.beehive.vpcs'
         aliases = ['vpcs']
+        alias = u'vpcs'
         aliases_only = True
         description = "Provider compute vpc management"
 
@@ -410,7 +456,8 @@ class ProviderComputeSecurityGroupController(ProviderControllerChild):
 
     class Meta:
         label = 'provider.beehive.security_groups'
-        aliases = ['security_groups']
+        aliases = ['security-groups']
+        alias = u'security_groups'
         aliases_only = True
         description = "Provider compute security group management"
 
@@ -439,18 +486,19 @@ class ProviderComputeSecurityGroupController(ProviderControllerChild):
         }
         uri = self.uri
         res = self._call(uri, u'POST', data=data)
-        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))
+        logger.info(u'Add %s: %s' % (self._meta.alias, truncate(res)))
         self.wait_job(res[u'jobid'])
-        res = {u'msg': u'Add %s %s' % (self._meta.aliases[0], res[u'uuid'])}
+        res = {u'msg': u'Add %s %s' % (self._meta.alias, res[u'uuid'])}
         self.result(res, headers=[u'msg'])
 
 
-class ProviderComputeComputeRuleController(ProviderControllerChild):
+class ProviderComputeRuleController(ProviderControllerChild):
     uri = u'/v1.0/nrs/provider/rules'
 
     class Meta:
         label = 'provider.beehive.rules'
         aliases = ['rules']
+        alias = u'rules'
         aliases_only = True
         description = "Provider compute rule management"
 
@@ -481,8 +529,8 @@ class ProviderComputeComputeRuleController(ProviderControllerChild):
             data[u'service'] = service
         uri = self.uri
         res = self._call(uri, u'GET', data=urllib.urlencode(data))
-        logger.info(u'Get %s: %s' % (self._meta.aliases[0], res))
-        self.result(res, headers=self.headers, fields=self.fields, key=self._meta.aliases[0])
+        logger.info(u'Get %s: %s' % (self._meta.alias, res))
+        self.result(res, headers=self.headers, fields=self.fields, key=self._meta.alias)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -557,16 +605,16 @@ class ProviderComputeComputeRuleController(ProviderControllerChild):
         }
         uri = self.uri
         res = self._call(uri, u'POST', data=data)
-        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))
+        logger.info(u'Add %s: %s' % (self._meta.alias, truncate(res)))
         self.wait_job(res[u'jobid'])
-        res = {u'msg': u'Add %s %s' % (self._meta.aliases[0], res[u'uuid'])}
+        res = {u'msg': u'Add %s %s' % (self._meta.alias, res[u'uuid'])}
         self.result(res, headers=[u'msg'])
 
 
-class ProviderComputeComputeInstanceController(ProviderControllerChild):
+class ProviderComputeInstanceController(ProviderControllerChild):
     uri = u'/v1.0/nrs/provider/instances'
-    fields = [u'id', u'name', u'parent.name', u'availability_zone.name', u'attributes.type', u'state',
-              u'date.creation', u'image_desc', u'vpcs.0.name', u'flavor.vcpus', u'flavor.memory', u'flavor.disk',
+    fields = [u'id', u'name', u'parent.name', u'availability_zone.name', u'hypervisor', u'state',
+              u'date.creation', u'image_desc', u'vpcs.0.name', u'flavor.vcpus', u'flavor.memory', u'storage',
               u'vpcs.0.fixed_ip.ip']
     headers = [u'id', u'name', u'parent', u'av_zone', u'type', u'state', u'creation', u'image',
                u'vpc', u'vcpus', u'memory', u'disk', u'ip']
@@ -574,6 +622,7 @@ class ProviderComputeComputeInstanceController(ProviderControllerChild):
     class Meta:
         label = 'provider.beehive.instances'
         aliases = ['instances']
+        alias = u'instances'
         aliases_only = True
         description = "Provider compute instance management"
 
@@ -584,12 +633,14 @@ class ProviderComputeComputeInstanceController(ProviderControllerChild):
         """
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
         uri = self.uri
-        res = self._call(uri, u'GET', data=data).get(self._meta.aliases[0], [])
-        for item in res:
+        res = self._call(uri, u'GET', data=data)
+        for item in res.get(u'instances'):
             image = item.get(u'image', {})
             item[u'image_desc'] = u'%s %s' % (image.get(u'os', u''), image.get(u'os_ver', u''))
-        logger.info(u'Get %s: %s' % (self._meta.aliases[0], res))
-        self.result(res, headers=self.headers, fields=self.fields)
+            if len(item[u'storage']) > 0:
+                item[u'storage'] = [i.get(u'volume_size', None) for i in item[u'storage']]
+        logger.info(u'Get instances: %s' % truncate(res))
+        self.result(res, headers=self.headers, fields=self.fields, key=u'instances')
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -603,6 +654,7 @@ class ProviderComputeComputeInstanceController(ProviderControllerChild):
             image = data.pop(u'image')
             vpcs = data.pop(u'vpcs')
             sgs = data.pop(u'security_groups')
+            storage = data.pop(u'storage')
             self.output(u'Flavor:')
             self.result(flavor, headers=[u'vcpus', u'memory', u'disk', u'disk_iops', u'bandwidth'])
             self.output(u'Image:')
@@ -611,8 +663,23 @@ class ProviderComputeComputeInstanceController(ProviderControllerChild):
             self.result(sgs, headers=[u'uuid', u'name'])
             self.output(u'Networks:')
             self.result(vpcs, headers=[u'uuid', u'name', u'cidr', u'gateway', u'fixed_ip.ip'])
+            self.output(u'Storage:')
+            self.result(storage, headers=[u'id', u'name', u'storage', u'format', u'bootable', u'mode', u'type', u'size'])
 
         self.get_resource(oid, format_result=format_result)
+
+    @expose(aliases=[u'add <file data>'], aliases_only=True)
+    @check_error
+    def add(self):
+        file_data = self.get_arg(name=u'data file')
+        data = self.load_config(file_data)
+        if u'pubkey' in data.get(u'instance'):
+            data[u'instance'][u'user_data'] = b64encode(json.dumps({u'pubkey': data.get(u'instance').get(u'pubkey')}))
+        uri = self.uri
+        res = self._call(uri, u'POST', data=data)
+        self.wait_job(res[u'jobid'])
+        logger.info(u'Add %s: %s' % (self._meta.alias, truncate(res)))
+        self.result(res)
 
     @expose(aliases=[u'ssh <id> <user> [sshkey=..]'], aliases_only=True)
     @check_error
@@ -630,7 +697,7 @@ class ProviderComputeComputeInstanceController(ProviderControllerChild):
         client.run()
 
 
-class ProviderComputeComputeStackController(ProviderControllerChild):
+class ProviderComputeStackController(ProviderControllerChild):
     uri = u'/v1.0/nrs/provider/stacks'
     headers = [u'id', u'uuid', u'name', u'parent', u'state', u'creation']
     headers = [u'id', u'uuid', u'name', u'parent.name', u'state', u'date.creation', u'date.modified']
@@ -638,6 +705,7 @@ class ProviderComputeComputeStackController(ProviderControllerChild):
     class Meta:
         label = 'provider.beehive.stacks'
         aliases = ['stacks']
+        alias = u'stacks'
         aliases_only = True
         description = "Provider compute stack management"
 
@@ -649,8 +717,8 @@ class ProviderComputeComputeStackController(ProviderControllerChild):
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
         uri = self.uri
         res = self._call(uri, u'GET', data=data)
-        logger.info(u'Get %s: %s' % (self._meta.aliases[0], res))
-        self.result(res, headers=self.headers, key=self._meta.aliases[0])
+        logger.info(u'Get %s: %s' % (self._meta.alias, res))
+        self.result(res, headers=self.headers, key=self._meta.alias)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -700,16 +768,18 @@ class ProviderComputeComputeStackController(ProviderControllerChild):
                                 u'creation_time', u'resource_status', u'resource_status_reason',
                                 u'required_by'], maxsize=40, table_style=u'simple')
 
-class ProviderComputeFileShareController(ProviderControllerChild):
-    uri = u'/v1.0/nrs/provider/shares'
+
+class ProviderComputeSqlStackController(ProviderControllerChild):
+    uri = u'/v1.0/nrs/provider/sql_stacks'
     headers = [u'id', u'uuid', u'name', u'parent', u'state', u'creation']
     headers = [u'id', u'uuid', u'name', u'parent.name', u'state', u'date.creation', u'date.modified']
 
     class Meta:
-        label = 'provider.beehive.shares'
-        aliases = ['shares']
+        label = 'provider.beehive.sql_stacks'
+        aliases = ['sql-stacks']
+        alias = u'sql-stacks'
         aliases_only = True
-        description = "Provider compute file share management"
+        description = "Provider compute sql stack management"
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     @check_error
@@ -719,39 +789,10 @@ class ProviderComputeFileShareController(ProviderControllerChild):
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
         uri = self.uri
         res = self._call(uri, u'GET', data=data)
-        logger.info(u'Get %s: %s' % (self._meta.aliases[0], res))
-        self.result(res, headers=self.headers, fields=self.fields, key=self._meta.aliases[0])
+        logger.info(u'Get %s: %s' % (u'stacks', res))
+        self.result(res, headers=self.headers, key=u'stacks')
 
-    @expose(aliases=[u'get <id>'], aliases_only=True)
-    @check_error
-    def get(self):
-        """Get provider item
-        """
-        oid = self.get_arg(name=u'id')
 
-        def format_result(data):
-            attributes = data.get(u'attributes', [])
-            configs = attributes.pop(u'configs', [])
-            shares = data.pop(u'shares', [])
-            self.app.print_output(u'configs:')
-            self.result(configs, details=True)
-
-        self.get_resource(oid, format_result=format_result)
-
-    @expose(aliases=[u'add <file data>'], aliases_only=True)
-    @check_error
-    def add(self):
-        """Add file share storage
-        """
-        file_data = self.get_arg(name=u'data file')
-        data = self.load_config(file_data)
-        uri = self.uri
-        res = self._call(uri, u'POST', data=data)
-        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))
-        res = {u'msg': u'Add %s %s' % (self._meta.aliases[0], res[u'uuid'])}
-        self.result(res, headers=[u'msg'])
-
-            
 provider_controller_handlers = [
     ProviderController,
     ProviderRegionController,
@@ -762,9 +803,8 @@ provider_controller_handlers = [
     ProviderComputeImageController,
     ProviderComputeVpcController,
     ProviderComputeSecurityGroupController,
-    ProviderComputeComputeRuleController,
-    ProviderComputeComputeInstanceController,
-    ProviderComputeComputeStackController,
-    ProviderComputeFileShareController,
-    
+    ProviderComputeRuleController,
+    ProviderComputeInstanceController,
+    ProviderComputeStackController,
+    ProviderComputeSqlStackController,
 ]        

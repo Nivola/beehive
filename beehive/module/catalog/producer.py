@@ -44,7 +44,8 @@ class CatalogProducer(object):
         :param uri: endpoint uri
         """
         self._send(name, desc, service, catalog, uri)
-        
+
+
 class CatalogProducerRedis(CatalogProducer):
     def __init__(self, redis_uri, redis_channel):
         """Redis node producer
@@ -86,4 +87,3 @@ class CatalogProducerRedis(CatalogProducer):
             self.logger.error(u'Endpoint can not be send: %s' % ex)
         except Exception as ex:
             self.logger.error(u'Endpoint can not be send: %s' % ex)
-            

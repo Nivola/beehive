@@ -121,7 +121,8 @@ class Event(object):
         """
         msg = self.dict()
         return json.dumps(msg)
-    
+
+
 class EventProducer(object):
     def __init__(self):
         """Abstract event producer.
@@ -151,7 +152,8 @@ class EventProducer(object):
         :param dest: event destination      
         """
         self._send(event_type, data, source, dest)          
-        
+
+
 class EventProducerRedis(EventProducer):
     def __init__(self, redis_uri, redis_exchange, framework=u'kombu'):
         """Redis event producer

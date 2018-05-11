@@ -25,6 +25,7 @@ from cryptography.hazmat.primitives import serialization
 from beehive.common.model.authorization import User as ModelUser, \
     Role as ModelRole, Group as ModelGroup, SysObject as ModelObject
 
+
 class AuthenticationManager(object):
     """Manager used to login and logout user on authentication provider.
     
@@ -38,8 +39,35 @@ class AuthenticationManager(object):
     def __str__(self):
         return "<AuthenticationManager id:%s>" % id(self)
 
+    def check(self, username, domain, ipaddr):
+        """Login user using identity provider.
+
+        :return: System User
+        :rtype: :class:`SystemUser`
+        :raises AuthError: raise :class:`AuthError`
+        """
+        # get authentication provider
+        try:
+            self.logger.debug(u'Authentication providers: %s' % self.auth_providers)
+            auth_provider = self.auth_providers[domain]
+            self.logger.debug(u'Get authentication provider: %s' % auth_provider)
+        except KeyError:
+            self.logger.error(u'Authentication domain %s does not exist' % domain)
+            raise AuthError(u'', u'Authentication domain %s does not exist' % domain, code=10)
+
+        # login over authentication provider and get user attributes
+        username = u'%s@%s' % (username, domain)
+
+        auth_user = auth_provider.check(username)
+
+        # set user ip address
+        auth_user.current_login_ip = ipaddr
+
+        self.logger.debug(u'Login user: %s' % username)
+        return auth_user
+
     def login(self, username, password, domain, ipaddr):
-        """Login user using ldap server.
+        """Login user using identity provider.
         
         :return: System User
         :rtype: :class:`SystemUser`
@@ -52,8 +80,7 @@ class AuthenticationManager(object):
             self.logger.debug(u'Get authentication provider: %s' % auth_provider)
         except KeyError:
             self.logger.error(u'Authentication domain %s does not exist' % domain)
-            raise AuthError(u'', u'Authentication domain %s does not exist' % domain, 
-                            code=10)
+            raise AuthError(u'', u'Authentication domain %s does not exist' % domain, code=10)
         
         # login over authentication provider and get user attributes
         username = u'%s@%s' % (username, domain)
@@ -65,7 +92,7 @@ class AuthenticationManager(object):
         
         self.logger.debug(u'Login user: %s' % (username))
         return auth_user
-    
+
     def refresh(self, uid, username, domain):
         """Refresh user.
         
@@ -89,6 +116,7 @@ class AuthenticationManager(object):
         
         self.logger.debug(u'Login user: %s' % (username))
         return auth_user   
+
 
 class BaseAuthController(ApiController):
     """Auth Module base controller.
@@ -290,7 +318,7 @@ class BaseAuthController(ApiController):
                 msg = u'Username is not provided or syntax is wrong'
                 self.logger.error(msg)
                 raise ApiManagerError(msg, code=400)
-            if password.strip() == u'':
+            if password is not None and password.strip() == u'':
                 msg = u'Password is not provided or syntax is wrong'
                 self.logger.error(msg)
                 raise ApiManagerError(msg, code=400)
@@ -308,8 +336,7 @@ class BaseAuthController(ApiController):
                 self.logger.error(msg, exc_info=1)
                 raise ApiManagerError(msg, code=400)'''
             
-            self.logger.debug(u'User %s@%s:%s validated' % 
-                              (name, domain, login_ip))        
+            self.logger.debug(u'User %s@%s:%s validated' % (name, domain, login_ip))
         except ApiManagerError as ex:
             raise ApiManagerError(ex.value, code=ex.code)
     
@@ -330,7 +357,7 @@ class BaseAuthController(ApiController):
             user_name = u'%s@%s' % (name, domain)
             dbuser = self.auth_manager.get_entity(ModelUser, user_name)
             # get user attributes
-            dbuser_attribs = {a.name:(a.value, a.desc) for a in dbuser.attrib}
+            dbuser_attribs = {a.name: (a.value, a.desc) for a in dbuser.attrib}
         except (QueryError, Exception) as ex:
             msg = u'User %s does not exist' % user_name
             self.logger.error(msg, exc_info=1)
@@ -341,8 +368,7 @@ class BaseAuthController(ApiController):
         return dbuser, dbuser_attribs   
     
     @trace(entity=u'Token', op=u'login.base.insert')
-    def base_login(self, name, domain, password, login_ip, 
-                     dbuser, dbuser_attribs):
+    def base_login(self, name, domain, password, login_ip, dbuser, dbuser_attribs):
         """Base login.
         
         :param name: user name
@@ -356,8 +382,7 @@ class BaseAuthController(ApiController):
         """        
         # login user
         try:
-            user = self.module.authentication_manager.login(name, password, 
-                                                            domain, login_ip)
+            user = self.module.authentication_manager.login(name, password, domain, login_ip)
         except (AuthError) as ex:
             self.logger.error(ex.desc)
             raise ApiManagerError(ex.desc, code=401)
@@ -377,7 +402,42 @@ class BaseAuthController(ApiController):
             raise ApiManagerError(ex.desc, code=401)
         
         return user, dbuser_attribs
-    
+
+    @trace(entity=u'Token', op=u'login.check.insert')
+    def check_login(self, name, domain, login_ip, dbuser, dbuser_attribs):
+        """Base login.
+
+        :param name: user name
+        :param domain: user authentication domain
+        :param login_ip: user login_ip
+        :param dbuser: database user instance
+        :param dbuser_attribs: user attributes as dict
+        :return: SystemUser instance, user attributes as dict
+        :raise ApiManagerError:
+        """
+        # login user
+        try:
+            user = self.module.authentication_manager.check(name, domain, login_ip)
+        except (AuthError) as ex:
+            self.logger.error(ex.desc)
+            raise ApiManagerError(ex.desc, code=401)
+
+        self.logger.info(u'Login user: %s' % user)
+
+        # append attributes, roles and perms to SystemUser
+        try:
+            # set user attributes
+            # self.__set_user_attribs(user, dbuser_attribs)
+            # set user permission
+            self.__set_user_perms(dbuser, user)
+            # set user roles
+            self.__set_user_roles(dbuser, user)
+        except QueryError as ex:
+            self.logger.error(ex.desc)
+            raise ApiManagerError(ex.desc, code=401)
+
+        return user, dbuser_attribs
+
     def __set_user_attribs(self, user, attribs):
         """Set user attributes"""
         user.set_attributes(attribs)
@@ -604,44 +664,34 @@ class BaseAuthController(ApiController):
         :raise ApiManagerError:
         """
         opts = {
-            u'name':name, 
-            u'domain':domain, 
-            u'password':u'xxxxxxx', 
-            u'login_ip':login_ip
+            u'name': name,
+            u'domain': domain,
+            u'password': u'xxxxxxx',
+            u'login_ip': login_ip
         }        
         
         # validate input params
         try:
             self.validate_login_params(name, domain, password, login_ip)
         except ApiManagerError as ex:
-            #User(self).send_event(u'keyauth.token.insert', params=opts, 
-            #                      exception=ex)
             raise
         
         # check user
         try:
-            dbuser, dbuser_attribs = self.check_login_user(name, domain, 
-                                                       password, login_ip)
+            dbuser, dbuser_attribs = self.check_login_user(name, domain, password, login_ip)
         except ApiManagerError as ex:
-            #User(self).send_event(u'keyauth.token.insert', params=opts, 
-            #                      exception=ex)
             raise     
         
         # check user attributes
         
         # login user
         try:
-            user, attrib = self.base_login(name, domain, password, login_ip, 
-                                           dbuser, dbuser_attribs)
+            user, attrib = self.base_login(name, domain, password, login_ip, dbuser, dbuser_attribs)
         except ApiManagerError as ex:
             raise
-            #User(self).send_event(u'keyauth.token.insert', params=opts, 
-            #                      exception=ex)
         
         # generate asymmetric keys
         res = self.gen_authorizaion_key(user, domain, name, login_ip, attrib)
-
-        #User(self).send_event(u'keyauth.token.insert', params=opts)
         
         return res
     

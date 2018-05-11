@@ -491,7 +491,12 @@ class AbstractDbManager(object):
             
         self.logger.debug(u'Count %s: %s' % (entityclass.__name__, res))
         return res    
-    
+
+    def print_query(self, func, query, args):
+        self.logger.warn(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
+        args = {arg: args.locals[arg] for arg in args.args}
+        self.logger.warn(args)
+
     def query_entities(self, entityclass, session, oid=None, objid=None, uuid=None, name=None, *args, **kvargs):
         """Get model entities query
         
@@ -903,5 +908,3 @@ class AbstractDbManager(object):
             query = query.filter_by(active=kvargs.get(u'active')) 
             
         return query  
-    
-    

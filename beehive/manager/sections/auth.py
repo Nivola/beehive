@@ -4,6 +4,8 @@ Created on Sep 22, 2017
 @author: darkbk
 """
 import logging
+
+import sh
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController, check_error
 from re import match
@@ -94,7 +96,7 @@ class TokenController(AuthControllerChild):
     def list(self):
         """List all tokens       
         """
-        #data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        # data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
         uri = u'%s/tokens' % self.baseuri        
         res = self._call(uri, u'GET')
         logger.info(res)
@@ -122,6 +124,39 @@ class TokenController(AuthControllerChild):
         res = self._call(uri, u'DELETE')
         logger.info(res)
         res = {u'msg':u'Delete token %s' % value}
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'create <user> <pwd> [login-ip=..] [type=..]'], aliases_only=True)
+    @check_error
+    def create(self):
+        """Create keyauth token
+    - type: can be keyauth, oauth2, simplehttp. [dafault=keyauth]
+        """
+        user = self.get_arg(name=u'user')
+        pwd = self.get_arg(name=u'pwd')
+        login_ip = self.get_arg(name=u'login-ip', default=sh.hostname().stdout.rstrip(), keyvalue=True)
+        auth_type = self.get_arg(name=u'type', default=u'keyauth', keyvalue=True)
+
+        if auth_type == u'keyauth':
+            data = {u'user': user, u'password': pwd, u'login-ip': login_ip}
+            res = self.client.send_request(u'auth', u'/v1.0/nas/keyauth/token', u'POST', data=data)
+            token = res[u'access_token']
+        elif auth_type == u'oauth2':
+            pass
+            # # get client
+            # client_id = self.api_client_config[u'uuid']
+            # client_email = self.api_client_config[u'client_email']
+            # client_scope = self.api_client_config[u'scopes']
+            # private_key = binascii.a2b_base64(self.api_client_config[u'private_key'])
+            # client_token_uri = u'%s/v1.0/oauth2/token' % self.main_endpoint
+            # aud = self.api_client_config[u'aud']
+            #
+            # res = JWTClient.create_token(client_id, client_email, client_scope, private_key, client_token_uri, aud,
+            #                              api_user, api_user_pwd)
+            # self.uid = res[u'access_token']
+
+        logger.debug(u'Get %s token: %s' % (auth_type, token))
+        res = {u'msg': u'Get token %s' % token}
         self.result(res, headers=[u'msg'])
 
 

@@ -288,7 +288,8 @@ class BeehiveApiClient(object):
 
         response = None
         res = {}
-        try:            
+        content_type = u''
+        try:
             response = conn.getresponse()
             content_type = response.getheader(u'content-type')            
 
@@ -298,7 +299,7 @@ class BeehiveApiClient(object):
                     res = json.loads(res)
 
                 # insert for compliance with oauth2 error message
-                if u'error' in res:
+                if getattr(res, u'error', None) is not None:
                     res[u'message'] = res[u'error_description']
                     res[u'description'] = res[u'error_description']
                     res[u'code'] = response.status
@@ -314,7 +315,7 @@ class BeehiveApiClient(object):
             conn.close()
         except Exception as ex:
             elapsed = time() - start
-            self.logger.error(ex, exc_info=True)
+            self.logger.error(ex, exc_info=1)
             if silent is False:
                 if response is not None:
                     self.logger.error(u'API Request: %s - Response: HOST=%s, STATUS=%s, CONTENT-TYPE=%s, RES=%s, '
@@ -902,10 +903,10 @@ class BeehiveApiClient(object):
         :raise BeehiveApiClientError:
         """
         data = {
-            u'subsystem':objtype,
-            u'type':objdef,
-            u'objid':objid,
-            u'cascade':cascade
+            u'subsystem': objtype,
+            u'type': objdef,
+            u'objid': objid,
+            u'cascade': cascade
         }
         data.update(kvargs)
         uri = u'/v1.0/nas/objects/perms'
@@ -913,8 +914,7 @@ class BeehiveApiClient(object):
         self.logger.debug(u'Get permission : %s:%s %s, cascade: %s' % (objtype, objdef, objid, cascade))
         return res.get(u'perms'), res.get(u'total')
 
-    def append_role_permissions(self, role, objtype, objdef, objid, 
-                                objaction):
+    def append_role_permissions(self, role, objtype, objdef, objid, objaction):
         """Append permission to role
         
         :raise BeehiveApiClientError:
@@ -931,7 +931,25 @@ class BeehiveApiClient(object):
         res = self.invoke(u'auth', uri, u'PUT', data, parse=True, silent=True)
         self.logger.debug(u'Append permission %s:%s %s %s to role %s' % (objtype, objdef, objid, objaction, role))
         return res
-    
+
+    def append_role_permission_list(self, role, perms):
+        """Append permission to role
+
+        :raise BeehiveApiClientError:
+        """
+        data = {
+            u'role': {
+                u'perms': {
+                    u'append': perms,
+                    u'remove': []
+                }
+            }
+        }
+        uri = u'/v1.0/nas/roles/%s' % role
+        res = self.invoke(u'auth', uri, u'PUT', data, parse=True, silent=True)
+        self.logger.debug(u'Append permissions %s ' % truncate(perms))
+        return res
+
     def get_role(self, name):
         """Get role
         
@@ -940,7 +958,21 @@ class BeehiveApiClient(object):
         uri = u'/v1.0/nas/roles/%s' % name
         res = self.invoke(u'auth', uri, u'GET', u'', silent=True)
         self.logger.debug('Get role: %s' % name)
-        return res    
+        return res
+
+    def exist_role(self, name):
+        """Check role exists
+
+        :raise BeehiveApiClientError:
+        """
+        data = urlencode({u'names': name})
+        uri = u'/v1.0/nas/roles'
+        roles = self.invoke(u'auth', uri, u'GET', data, silent=True).get(u'roles')
+        res = None
+        if len(roles) > 0:
+            res = roles[0]
+        self.logger.debug(u'Check role %s exists: %s' % (name, res))
+        return res
     
     def add_role(self, name, desc):
         """Add role
@@ -955,7 +987,7 @@ class BeehiveApiClient(object):
         }
         uri = u'/v1.0/nas/roles'
         res = self.invoke(u'auth', uri, u'POST', data, parse=True, silent=True)
-        self.logger.debug('Add role: %s' % str(name))
+        self.logger.debug(u'Add role: %s' % str(name))
         return res
 
     def remove_role(self, oid):
@@ -968,7 +1000,18 @@ class BeehiveApiClient(object):
         res = self.invoke(u'auth', uri, u'DELETE', data, parse=True, silent=True)
         self.logger.debug(u'Remove role: %s' % oid)
         return res
-    
+
+    def get_users(self, role=None):
+        """Get users
+
+        :raise BeehiveApiClientError:
+        """
+        data = urlencode({u'role': role})
+        uri = u'/v1.0/nas/users'
+        res = self.invoke(u'auth', uri, u'GET', data, parse=True, silent=True).get(u'users', [])
+        self.logger.debug(u'Get users: %s' % truncate(res))
+        return res
+
     def get_user(self, name):
         """Get user
         
@@ -1062,10 +1105,11 @@ class BeehiveApiClient(object):
         
         :raise BeehiveApiClientError:
         """
+        self.logger.warn(roles)
         data = {
             u'user': {
                 u'roles': {
-                    u'append': str(roles),
+                    u'append': roles,
                     u'remove': []
                 },
             }
@@ -1073,4 +1117,90 @@ class BeehiveApiClient(object):
         uri = u'/v1.0/nas/users/%s' % oid
         res = self.invoke(u'auth', uri, u'PUT', data, parse=True, silent=True)
         self.logger.debug(u'Append roles %s to user %s' % (roles, oid))
-        return res    
+        return res
+
+    def remove_user_roles(self, oid, roles):
+        """Remove roles from user
+
+        :raise BeehiveApiClientError:
+        """
+        self.logger.warn(roles)
+        data = {
+            u'user': {
+                u'roles': {
+                    u'append': [],
+                    u'remove': roles
+                },
+            }
+        }
+        uri = u'/v1.0/nas/users/%s' % oid
+        res = self.invoke(u'auth', uri, u'PUT', data, parse=True, silent=True)
+        self.logger.debug(u'Remove roles %s from user %s' % (roles, oid))
+        return res
+
+    #
+    # services
+    #
+    def get_service_instance(self, plugintype=None, account=None, name=None):
+        data = urlencode({u'account_id': account, u'name': name, u'plugintype': plugintype})
+        uri = u'/v1.0/nws/serviceinsts'
+        res = self.invoke(u'service', uri, u'GET', data, timeout=60)
+        self.logger.debug(u'Get service instance: %s' % truncate(res))
+        res = res.get(u'serviceinsts')
+        if len(res) < 1:
+            raise BeehiveApiClientError(u'Service instance %s does not exist' % name)
+        if len(res) > 1:
+            raise BeehiveApiClientError(u'Service instance %s multiplicity is > 1' % name)
+        return res[0].get(u'uuid')
+
+    def create_vpcaas_image(self, account=None, name=None, template=None, **kvargs):
+        data = {
+            u'ImageName': name,
+            u'owner_id': account,
+            u'ImageType': template
+        }
+        uri = u'/v1.0/nws/computeservices/image/createimage'
+        res = self.invoke(u'service', uri, u'POST', data={u'image': data}, timeout=600)
+        self.logger.debug(u'Add image: %s' % truncate(res))
+        res = res.get(u'CreateImageResponse').get(u'instancesSet')[0].get(u'imageId')
+        return res
+
+    def create_vpcaas_vpc(self, account=None, name=None, template=None, **kvargs):
+        data = {
+            u'VpcName': name,
+            u'owner_id': account,
+            u'VpcType': template
+        }
+        uri = u'/v1.0/nws/computeservices/vpc/createvpc'
+        res = self.invoke(u'service', uri, u'POST', data={u'vpc': data}, timeout=600)
+        self.logger.debug(u'Add vpc: %s' % truncate(res))
+        res = res.get(u'CreateVpcResponse').get(u'instancesSet')[0].get(u'vpcId')
+        return res
+
+    def create_vpcaas_subnet(self, account=None, name=None, vpc=None, zone=None, cidr=None, **kvargs):
+        vpc_id = self.get_service_instance(plugintype=u'ComputeVPC', account=account, name=vpc)
+        data = {
+            u'SubnetName': name,
+            u'VpcId': vpc_id,
+            u'AvailabilityZone': zone,
+            u'CidrBlock': cidr
+        }
+        uri = u'/v1.0/nws/computeservices/subnet/createsubnet'
+        res = self.invoke(u'service', uri, u'POST', data={u'subnet': data}, timeout=600)
+        self.logger.debug(u'Add subnet: %s' % truncate(res))
+        res = res.get(u'CreateSubnetResponse').get(u'instancesSet')[0].get(u'subnetId')
+        return res
+
+    def create_vpcaas_sg(self, account=None, name=None, vpc=None, template=None, **kvargs):
+        vpc_id = self.get_service_instance(plugintype=u'ComputeVPC', account=account, name=vpc)
+        data = {
+            u'GroupName': name,
+            u'VpcId': vpc_id
+        }
+        if template is not None:
+            data[u'GroupType'] = template
+        uri = u'/v1.0/nws/computeservices/securitygroup/createsecuritygroup'
+        res = self.invoke(u'service', uri, u'POST', data={u'security_group': data}, timeout=600)
+        self.logger.debug(u'Add security group: %s' % truncate(res))
+        res = res.get(u'CreateSecurityGroupResponse').get(u'instancesSet')[0].get(u'groupId')
+        return res
