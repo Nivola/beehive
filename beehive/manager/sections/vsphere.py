@@ -1072,7 +1072,7 @@ class VsphereControllerChild(ApiController):
         res = self._call(uri, u'POST', data=data)
         if u'jobid' in res:
             self.wait_job(res[u'jobid'])
-        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))     
+        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))
         self.result(res)
 
     @expose(aliases=[u'update <id> <file data>'], aliases_only=True)
@@ -1085,7 +1085,7 @@ class VsphereControllerChild(ApiController):
         res = self._call(uri, u'UPDATE', data=data)
         if u'jobid' in res:
             self.wait_job(res[u'jobid'])
-        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))     
+        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))
         self.result(res)
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
@@ -1096,7 +1096,7 @@ class VsphereControllerChild(ApiController):
         res = self._call(uri, u'DELETE')
         if u'jobid' in res:
             self.wait_job(res[u'jobid'])
-        logger.info(u'Delete %s: %s' % (self._meta.aliases[0], oid))     
+        logger.info(u'Delete %s: %s' % (self._meta.aliases[0], oid))
         self.result(res)
 
 

@@ -904,7 +904,7 @@ class AccountController(AuthorityControllerChild):
         services = []
         if create_services is True:
             services = self._meta.default_services
-        
+
         data = {
             u'account': {
                 u'name': name,

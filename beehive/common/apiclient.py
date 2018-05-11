@@ -289,7 +289,8 @@ class BeehiveApiClient(object):
         response = None
         res = {}
         content_type = u''
-        try:            
+
+        try:
             response = conn.getresponse()
             content_type = response.getheader(u'content-type')            
 
@@ -949,7 +950,7 @@ class BeehiveApiClient(object):
         res = self.invoke(u'auth', uri, u'PUT', data, parse=True, silent=True)
         self.logger.debug(u'Append permissions %s ' % truncate(perms))
         return res
-    
+
     def get_role(self, name):
         """Get role
         

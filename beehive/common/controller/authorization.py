@@ -437,7 +437,7 @@ class BaseAuthController(ApiController):
             raise ApiManagerError(ex.desc, code=401)
 
         return user, dbuser_attribs
-    
+
     def __set_user_attribs(self, user, attribs):
         """Set user attributes"""
         user.set_attributes(attribs)

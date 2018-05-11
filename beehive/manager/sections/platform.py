@@ -990,7 +990,7 @@ class CamundaDeployController(CamundaController):
             dtype = dtype[1:]
         else:
             raise Exception(u'bpmn %s is not a file' % filename)
-            
+
         for client in clients:
             res = client.process_deployment_create( content.rstrip(), name, type=dtype, checkduplicate=True, changeonly=True, tenantid=None)
             resp.append({u'host':client.connection.get(u'host'), u'response':res})
@@ -1578,18 +1578,186 @@ class ElkController(AnsibleController):
         label = 'elk'
         description = "Elks management"
 
-    @expose(aliases=[u'prova <start_date> <stop_date> [field=..]'], aliases_only=True)
+    @expose(aliases=[u'query index <pod>'], aliases_only=True)
     @check_error
-    def prova(self):
-        """prova
-    - field: from, count
+    def qindex(self):
         """
-        start_date = self.get_arg(name=u'start date')
-        stop_date = self.get_arg(name=u'stop date')
-        fromv = self.get_arg(name=u'from', keyvalue=True, default=0)
-        count = self.get_arg(name=u'count', keyvalue=True, default=50)
+        - pod: podto1, podto2, podvc
 
-        print start_date, stop_date, fromv, count
+        il metodo restituisce l'elenco degli indici presenti in elk del pod indicato
+        """
+        pod = self.get_arg(name=u'pod', keyvalue=True, default="podto1")
+        import re
+        if pod in ["podto1","podto2","podvc"]:
+            if pod == "podto1":
+                url = 'http://10.138.144.85:9200/_cat/indices'
+            elif pod == "podto2":
+                url = 'http://10.138.176.85:9200/_cat/indices'
+            elif pod == "podvc":
+                url = 'http://10.138.208.85:9200/_cat/indices'
+        else:
+            print "pod non valido"
+            return()
+        # res = requests.get(url, data="")
+        res = requests.get(url)
+        list_ind = []
+        lista_indici = []
+        for riga in res.text.split("\n"):
+            list_ind = re.findall(r'\S+',riga)
+            if len(list_ind) == 10:
+                diz_indici = {u"healt": list_ind[0],
+                              u"status": list_ind[1],
+                              u"indice": list_ind[2],
+                              u"uuid": list_ind[3],
+                              u"pri":list_ind[4],
+                              u"rep":list_ind[5],
+                              u"doccount": list_ind[6],
+                              u"docdeleted": list_ind[7],
+                              u"storesize": list_ind[8],
+                              u"pristoresize": list_ind[9]}
+                lista_indici.append(diz_indici)
+      #  print lista_indici
+        key_list = ("indice","healt","status","uuid","pri","rep","doccount","docdeleted","storesize","pristoresize")
+        temp_list = []
+        for i in lista_indici:
+               temp_list.append(sorted(i.items(),key=lambda pair: key_list.index(pair[0])))
+        sorted_list=sorted(temp_list)
+        print "-------------------------------------------------"
+        for i in sorted_list: print i
+
+
+    @expose(aliases=[u'delete index <pod> <index>'], aliases_only=True)
+    @check_error
+    def delindex(self):
+        """
+        - pod: podto1, podto2, podvc
+        - index: indice presente nel db.
+        ATTENZIONE, la cancellazione e' definitiva!
+        """
+        pod = self.get_arg(name=u'pod', keyvalue=True, default="podto1")
+        import re
+        if pod in ["podto1","podto2","podvc"]:
+            if pod == "podto1":
+                url = 'http://10.138.144.85:9200/'
+            elif pod == "podto2":
+                url = 'http://10.138.176.85:9200/'
+            elif pod == "podvc":
+                url = 'http://10.138.208.85:9200/'
+        else:
+            print "pod non valido"
+            return()
+        # res = requests.get(url, data="")
+        indice = self.get_arg(name=u'index', keyvalue=True, default="")
+        if indice=="":
+            print "indice non indicato"
+            return()
+        if indice[0:8]!="filebeat":
+            print "E' possibile cancellare solo indici di tipo 'filebeat'"
+            return()
+        if "*" in indice:
+            print "Non e' possibile indicare * nel nome dell'indice"
+            return()
+        url=url+indice
+        res = requests.delete(url)
+        if res.status_code==200:
+            print "L'indice "+ indice + " del pod "+ pod + " e' stato cancellato!!"
+        else:
+            print "L'indice "+ indice + " del pod "+ pod + " non e' stato trovato!!"
+
+
+    @expose(aliases=[u'search <start_date> <stop_date> [field=..]'], aliases_only=True)
+    @check_error
+    def search(self):
+        """search
+            - field: from, count, pod, host, source, key
+
+        i parametri in input devono essere:
+        from=xx (facoltativo - default:0)
+        count=xx (facoltativo - default:50)
+        pod=xxxxx (facoltativo - default:podto1 - valori validi: podto1, podto2, podvc)
+        start_date="2018-04-08T00:00:40.000Z"    (obbligatorio)
+        stop_date="2018-04-08T00:10:40.000Z"     (obbligatorio)
+        host=nomehost,nomehost2,nomehost3 --> senza spazi e separati da virgola (facoltativo, default:tutti)
+        source=/var/log/keystone/keystone.log   (facoltativo - default:tutti)
+        key=words_on_message (facoltativo - default:tutti)
+        """
+        start_date = self.get_arg(name=u'start_date', keyvalue=True, default="")
+        stop_date = self.get_arg(name=u'stop_date', keyvalue=True, default="")
+        fromv = self.get_arg(name=u'from', keyvalue=True, default="0")
+        count = self.get_arg(name=u'count', keyvalue=True, default="50")
+        source = self.get_arg(name=u'source', keyvalue=True, default="")
+        host = self.get_arg(name=u'host', keyvalue=True, default="")
+        key = self.get_arg(name=u'key', keyvalue=True, default="")
+        pod = self.get_arg(name=u'pod', keyvalue=True, default="podto1")
+        msize = self.get_arg(name=u'msize', keyvalue=True, default="50")
+        print start_date, stop_date, fromv, count, source, host
+        if start_date=="":
+            print "start_date not defined"
+            return()
+        if stop_date=="":
+            print "stop_date not defined"
+            return()
+        print pod
+        if pod in ["podto1","podto2","podvc"]:
+            if pod == "podto1":
+                url = 'http://10.138.144.85:9200/filebeat-*/_search'
+            elif pod == "podto2":
+                url = 'http://10.138.176.85:9200/filebeat-*/_search'
+            elif pod == "podvc":
+                url = 'http://10.138.208.85:9200/filebeat-*/_search'
+        else:
+            print "pod non valido"
+            return()
+
+        d1 = start_date
+        d2 = stop_date
+        fr = int(fromv)
+        co = int(count)
+        msize = int(msize)
+        elenco_host = host.split(",")
+
+        parametri = []
+        parametri.append({ "match_all": {} })
+        parametri.append({ "range": {"@timestamp": {
+                                  "gte": d1,
+                                  "lt": d2}}})
+        # parametri opzionali
+        if host != "":
+           parametri.append({"terms": { "tags": elenco_host}})
+        if source != "":
+            parametri.append({"term": {"source": source}})
+        if key != "":
+           parametri.append({"match" : {
+              "message": {"query" : key}}})
+        # print parametri
+        data_elencohost = {
+            "from": fr,
+            "size": co,
+            "query": {
+                "constant_score" : {
+                    "filter": {
+                        "bool" : {"must": parametri }
+                               } } },
+            "sort": [{"@timestamp": {"order" : "asc"}}] }
+
+        data_elencohost = json.dumps(data_elencohost)
+        res = requests.get(url, data=data_elencohost)
+        rj = json.loads(res.text)
+        # import pprint
+        # pp = pprint.PrettyPrinter(indent=4)
+        # pp.pprint(rj)
+        total=rj.get("hits").get("total")
+        print "n. di risultati totali: ", total
+        hi = rj.get("hits").get("hits")
+        ricerca=[]
+        for x in hi:
+            ricerca.append({u'messaggio':x.get("_source").get("message"),
+                            u'timestamp': x.get("_source").get("@timestamp"),
+                            u'host': x.get("_source").get("tags")[0],
+                            u'sorgente': x.get("_source").get("source")})
+        # print x.get("_source").get("message")
+        self.result(ricerca, headers=[u'timestamp', u'host', u'sorgente', u'messaggio'], maxsize=msize)
+        # self.result(ricerca, headers=[u'timestamp', u'messaggio'], maxsize=100)
 
 
 class NodeController(AnsibleController):
@@ -2392,8 +2560,8 @@ class BeehiveController(AnsibleController):
             self.result(resp, headers=[u'host', u'pid', u'uid', u'gid', u'id', u'first_run', u'last_run', u'last_ready',
                                        u'last_mod', u'last_accepting'])
         except Exception as ex:
-            self.error(ex)            
-                            
+            self.error(ex)
+
     def get_emperor_blacklist(self, details=u'', system=None):
         """Get uwsgi emperor active vassals statistics
         
@@ -2447,6 +2615,41 @@ class BeehiveController(AnsibleController):
             sleep(delta)
             state = self.get_job_state(jobid)
 
+    def get_camunda_clients(self, runner, port=8080):
+        hosts, vars = runner.get_inventory_with_vars(u'camunda')
+        
+        clients = []
+        for host in hosts:
+            conn = {
+                u'host': str(host),
+                u'port': port,
+                u'path': u'/engine-rest',
+                u'proto': u'http'
+            }
+            user = u'admin'
+            passwd = u'camunda'
+            proxy = None
+            keyfile=None
+            certfile=None
+            client = WorkFlowEngine(conn, user=user, passwd=passwd,
+                proxy=proxy, keyfile=keyfile, certfile=certfile)
+            clients.append(client)
+        return clients
+
+
+    @expose(aliases=[u'test  <config>'], aliases_only=True)
+    @check_error
+    def test(self):
+        param=self.get_arg(name=u'config')
+        runners = self.get_runners()
+        for runner in runners:
+            cc = { u'cmp_admin': "camunda@local", u'cmp_password': "camunda123" }
+            # cc = { }
+            content, filename = self.file_render(runner,param,cc)
+            print(content)
+            cli = self.get_camunda_clients(runner)
+        pass
+
     @expose(aliases=[u'post-install <config>'], aliases_only=True)
     @check_error
     def post_install(self):
@@ -2482,9 +2685,43 @@ class BeehiveController(AnsibleController):
                 logger.info(u'Add schedule: %s' % res)
                 self.output(u'Add schedule: %s' % scope)
 
-        # camunda
+        #  camunda
         # - metatabelle decisioni
         # - processi
+        if apply.get(u'camunda', False) is True:
+            runners = self.get_runners()
+            #loop for all env
+            for runner in runners:
+                camundaclients= self.get_camunda_clients(runner)
+                # render and deploy to camunda
+                render = configs.get(u'camunda').get(u'render',{u'context':{}, u'deploy':[]})
+                for obj in render.get(u'deploy'):
+                    try:
+                        content, filename = self.file_render( runner, obj, render['context'])
+                        name,dtype = os.path.splitext(os.path.split(filename)[1])
+                        dtype = dtype[1:]
+                        for cli in camundaclients:
+                            res = cli.process_deployment_create( content.rstrip(), name, 
+                                type=dtype, checkduplicate=True, changeonly=True, tenantid=None)
+                            logger.info(u'camunda rendered deploy: %s' % res)
+                            self.output( u'Camunda rendered deploy: %s.%s' %(name, dtype) )
+                    except Exception as ex:
+                        self.error(ex)
+                        self.app.error = False
+                # deploy
+                for obj in configs.get(u'camunda').get(u'deploy',[]):
+                    try:
+                        content, filename = self.file_content( obj)
+                        name,dtype = os.path.splitext(os.path.split(filename)[1])
+                        dtype = dtype[1:]
+                        for cli in camundaclients:
+                            res = cli.process_deployment_create( content.rstrip(), name, 
+                                type=dtype, checkduplicate=True, changeonly=True, tenantid=None)
+                            logger.info(u'camunda deploy: %s' % res)
+                            self.output( u'Camunda deploy: %s.%s' %(name, dtype) )
+                    except Exception as ex:
+                        self.error(ex)
+                        self.app.error = False
 
         self.subsystem = u'resource'
 
@@ -2606,6 +2843,61 @@ class BeehiveController(AnsibleController):
                     self.error(ex)
                     self.app.error = False
 
+        # create service process
+        if apply.get(u'service-processes', False) is True:
+            for obj in configs.get(u'service',{u'processes':[]}).get(u'processes'):
+                try:
+                    type_oid = obj.get("service_type_id", None)
+                    method = obj.get("method", None)
+                    if method is None:
+                        break
+                    if type_oid is  None:
+                        break
+                    # get service type id
+                    res = self._call(u'/v1.0/nws/servicetypes/%s' % (type_oid), u'GET').get(u'servicetype', {})
+                    type_id = res.get("id",None) 
+                    if type_id is None:
+                        logger.error(u'Could not found a type whose oid is %s' % (type_oid))
+                        self.outpu(u'Could not found a type whose oid is %s' % (type_oid))
+                        break
+                    # get serviceprocess for service type and  method
+                    res = self._call(u'/v1.0/nws/serviceprocesses', u'GET', 
+                                data=u'service_type_id=%s&method_key=%s' % (type_id, method)
+                                ).get(u'serviceprocesses', [])
+
+                    if len(res) >= 1:
+                        prev=res[0] 
+                        name = obj.get( u'name', prev['method_key'])
+                        desc = obj.get( u'desc', prev['desc'])
+                        process = obj.get( u'process', prev['process_key'])
+                        template = obj.get(u'template', '{}')
+                    else:
+                        prev=None
+                        name = obj.get(u'name', '%s-%s' % (method,type_oid))
+                        desc = obj.get(u'desc', name)
+                        process = obj.get(u'process','invalid_key')
+                        template = obj.get(u'template','{}')
+                    template, filename = self.file_content(template)
+
+                    data = {
+                        u'serviceprocess':{
+                            u'name': name,
+                            u'desc': desc,
+                            u'service_type_id': str(type_id),
+                            u'method_key': method,
+                            u'process_key': process,
+                            u'template': template
+                        }
+                    }
+                    if prev == None:
+                        res = self._call( u'/v1.0/nws/serviceprocesses' , u'POST', data=data)
+                    else:
+                        res = self._call ( u'/v1.0/nws/serviceprocesses/%s' % prev['uuid'], u'PUT', data=data)
+                    self.output(u'Set process %s for method %s to service type %s' % (process, method, type_oid ))
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
+
         # create service catalogs
         if apply.get(u'service-catalogs', False) is True:
             for obj in configs.get(u'service').get(u'catalogs'):
@@ -2649,7 +2941,7 @@ class BeehiveController(AnsibleController):
             u'tags': [u'sync']
         }        
         self.ansible_playbook(u'beehive', run_data, playbook=self.beehive_playbook)
-    
+
     @expose()
     @check_error
     def pip(self):
@@ -2659,7 +2951,7 @@ class BeehiveController(AnsibleController):
             u'tags': [u'pip']
         }        
         self.ansible_playbook(u'beehive', run_data, playbook=self.beehive_playbook)
-    
+
     @expose()
     @check_error
     def subsystems(self):

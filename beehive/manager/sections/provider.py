@@ -325,7 +325,7 @@ class ProviderComputeZoneController(ProviderControllerChild):
         res = self._call(uri, u'PUT', {u'quotas': json.loads(quotas)}).get(u'quotas', [])
         logger.info(u'Quotas compute zone %s quotas classes: %s' % (oid, truncate(res)))
         self.result(res, headers=[u'quota', u'default', u'unit'])
-        
+
     @expose(aliases=[u'metric <id>'], aliases_only=True)
     @check_error
     def metric(self):

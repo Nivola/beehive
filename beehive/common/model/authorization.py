@@ -1202,11 +1202,10 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.print_query(self.get_permissions, query, inspect.getargvalues(inspect.currentframe()))
 
         query = query.all()
-        self.logger.warn(u'Get role %s permissions: %s' % (names, query))
 
         self.logger.debug(u'Get role %s permissions: %s' % (names, truncate(query)))
         return query, total
-        
+
     @query
     def get_permission_roles(self, tags=None, perm=None, page=0, size=10, order=u'DESC', field=u'id', *args, **kvargs):
         """Get roles related to a permission.
