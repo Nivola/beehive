@@ -392,7 +392,7 @@ class BaseAuthController(ApiController):
         # append attributes, roles and perms to SystemUser
         try:
             # set user attributes
-            #self.__set_user_attribs(user, dbuser_attribs)
+            # self.__set_user_attribs(user, dbuser_attribs)
             # set user permission
             self.__set_user_perms(dbuser, user)
             # set user roles
