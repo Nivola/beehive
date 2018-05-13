@@ -168,6 +168,7 @@ def transaction2(rollback_throwable=True):
         return transaction_inner2
     return wrapper_transaction2
 
+
 def transaction(fn):
     """Use this decorator to transform a function that contains delete, insert
     and update statement in a transaction.

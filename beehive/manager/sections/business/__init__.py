@@ -30,8 +30,8 @@ class BusinessController(BaseController):
 
 
 class BusinessSchedControllerChild(ApiController):
-    baseuri = u'/v1.0/nrs'
-    subsystem = u'resource'
+    baseuri = u'/v1.0/nws'
+    subsystem = u'service'
 
     class Meta:
         stacked_on = 'business'
