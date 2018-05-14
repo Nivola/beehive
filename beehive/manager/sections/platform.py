@@ -31,10 +31,6 @@ from struct import pack, unpack
 from datetime import datetime as dt
 from pysnmp.entity.rfc3413.oneliner import cmdgen
 from pysnmp.proto.rfc1902 import Integer, IpAddress, OctetString
-from ansible.plugins.callback.profile_tasks import timestamp
-from jinja2 import Template
-import re
-import binascii
 
 
 logger = getLogger(__name__)
@@ -98,7 +94,7 @@ class AnsibleController(ApiController):
         stacked_type = 'nested'  
 
     def _setup(self, base_app):
-        BaseController._setup(self, base_app)
+        ApiController._setup(self, base_app)
 
         self.baseuri = u'/v1.0/resource'
         self.subsystem = u'resource'
@@ -119,7 +115,7 @@ class AnsibleController(ApiController):
     #
     # ansible
     #
-    def ansible_inventory(self, group=None):
+    def ansible_inventory(self, group=None, inventory_dict=None):
         """list host by group
         
         **Parameters**:
@@ -127,16 +123,20 @@ class AnsibleController(ApiController):
             * **group**: ansible group
         """
         try:
-            path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
-            path_lib = u'%s/library/beehive/' % (self.ansible_path)
-            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
+            if inventory_dict is None:
+                inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
+                path_lib = u'%s/library/beehive/' % self.ansible_path
+            else:
+                inventory = inventory_dict
+
+            runner = Runner(inventory=inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
             res = runner.get_inventory(group)
             if isinstance(res, list):
                 res = {group: res}
             logger.debug(u'Ansible inventory nodes: %s' % res)
             resp = []
-            for k,v in res.items():
-                resp.append({u'group':k, u'hosts':v})
+            for k, v in res.items():
+                resp.append({u'group': k, u'hosts': v})
             resp = sorted(resp, key=lambda x: x.get(u'group'))
 
             for i in resp:
@@ -146,13 +146,17 @@ class AnsibleController(ApiController):
         except Exception as ex:
             self.error(ex)
     
-    def ansible_playbook_run(self, group, run_data, playbook=None):
+    def ansible_playbook_run(self, group, run_data, playbook=None, inventory_dict=None):
         """run playbook on group and host
         """
         try:
-            path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
-            path_lib = u'%s/library/beehive/' % self.ansible_path
-            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
+            if inventory_dict is None:
+                inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
+                path_lib = u'%s/library/beehive/' % self.ansible_path
+            else:
+                inventory = inventory_dict
+
+            runner = Runner(inventory=inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
             logger.debug(u'Create new ansible runner: %s' % runner)
             tags = run_data.pop(u'tags')
             if playbook is None:
@@ -180,11 +184,7 @@ class AnsibleController(ApiController):
         """
         runners = self.get_runners()
 
-
         try:
-            # path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
-            # path_lib = u'%s/library/beehive/' % self.ansible_path
-            # runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
             for runner in runners:
                 tasks = [
                     dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
@@ -193,7 +193,7 @@ class AnsibleController(ApiController):
         except Exception as ex:
             self.error(ex)
 
-    def get_runners(self):
+    def get_runners(self, inventory_dict=None):
         runners = []
         envs = [self.env]
         if self.envs is not None:
@@ -201,9 +201,13 @@ class AnsibleController(ApiController):
 
         for env in envs:
             try:
-                path_inventory = u'%s/inventory/%s' % (self.ansible_path, env)
-                path_lib = u'%s/library/beehive/' % self.ansible_path
-                runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
+                if inventory_dict is None:
+                    inventory = u'%s/inventory/%s' % (self.ansible_path, env)
+                    path_lib = u'%s/library/beehive/' % self.ansible_path
+                else:
+                    inventory = inventory_dict
+                runner = Runner(inventory=inventory, verbosity=self.verbosity, module=path_lib,
+                                vault_password=self.vault)
                 runners.append(runner)
             except Exception as ex:
                 self.error(ex, exc_info=1)
@@ -239,62 +243,10 @@ class AnsibleController(ApiController):
         logger.debug(u'Get hosts from ansible groups %s: %s' % (groups, all_hosts))
         return all_hosts
 
-    def file_render(self, runner, resource, context={}):
-        """ render a j2 template using current ansible variables
-            hacks:
-                - iterate the rendering for values containig variables
-                - in order to prevent looping in rendering iteration compute crc32 as
-                hashing function and compare with previus crc. There may be some problems
-                because of crc32 collissions maybe murmur (mmh3) should be better but
-                at this time we do not want to have a new library
-        """
-        # from ansible.template import AnsibleJ2Template
-        content ,filename = self.file_content(resource)
-        template = Template(content)
-        
-        hosts = self.get_hosts(runner, u'beehive')
-        context_data = self.get_hosts_vars(runner, hosts)
-        for key in context.keys():
-            context_data[key]=context[key]
-
-        out_rep =  template.render( **context_data)
-        pp_crc = 0
-        p_crc = 0
-        c_crc = binascii.crc32(out_rep)
-        # print('current crc = 0x%08x' % c_crc  )
-        while re.search("{{.*}}", out_rep) and (p_crc != c_crc) and (pp_crc != c_crc):
-            template = Template(out_rep)
-            out_rep =  template.render( **context_data)
-            pp_crc = p_crc
-            p_crc = c_crc
-            c_crc = binascii.crc32(out_rep)
-            # print('render iteration current crc = 0x%08x' % c_crc  )
-        return out_rep, filename
-
-    def file_content(self, valorname):
-        """ if valorname starts with @ return the file content try for path or relative to ansible_path
-            otherwise return valorname itself
-        """
-        
-        if valorname[0] == '@':
-            name = valorname[1:]
-            if os.path.isfile(name):
-                filename = name
-            else:
-                filename = os.path.join(self.ansible_path, name)
-            if os.path.isfile(filename):
-                f = open(filename, 'r')
-                value = f.read()
-                f.close()
-                return value, filename
-            else:
-                raise Exception(u'%s is not a file' % name)
-        else:
-            # return '' for file so wi do not need to check 
-            return valorname, ''
-
 
 class NginxController(AnsibleController):
+    setup_cmp = False
+
     class Meta:
         label = 'nginx'
         description = "Nginx management"
@@ -404,6 +356,8 @@ class NginxController(AnsibleController):
 
 
 class RedisController(AnsibleController):
+    setup_cmp = False
+
     class Meta:
         label = 'redis'
         description = "Redis management"
@@ -521,7 +475,7 @@ class RedisController(AnsibleController):
     @check_error
     def inspect(self):
         """Inspect redis instances
-        - pattern: keys search pattern [default=*]
+    - pattern: keys search pattern [default=*]
         """        
         pattern = self.get_arg(default=u'*')
         
@@ -533,7 +487,7 @@ class RedisController(AnsibleController):
     @check_error
     def query(self):
         """Query redis instances by key
-        - pattern: keys search pattern [default=*]
+    - pattern: keys search pattern [default=*]
         """        
         pattern = self.get_arg(default=u'*')
         count = self.get_arg(default=False)      
@@ -553,7 +507,7 @@ class RedisController(AnsibleController):
     @check_error
     def delete(self):
         """Delete redis instances keys.
-        - pattern: keys search pattern [default=*]
+    - pattern: keys search pattern [default=*]
         """        
         pattern = self.get_arg(default=u'*')
         
@@ -563,6 +517,8 @@ class RedisController(AnsibleController):
 
 
 class RedisClutserController(RedisController):
+    setup_cmp = False
+
     class Meta:
         label = 'redis-cluster'
         description = "Redis Cluster management"
@@ -686,6 +642,8 @@ class RedisClutserController(RedisController):
 
 
 class MysqlController(AnsibleController):
+    setup_cmp = False
+
     class Meta:
         label = 'mysql'
         description = "Mysql management"
@@ -712,7 +670,7 @@ class MysqlController(AnsibleController):
     @check_error
     def ping(self):
         """Test mysql instance
-        - port: instance port [default=3306]
+    - port: instance port [default=3306]
         """
         port = self.get_arg(default=3306)
         hosts, root = self.__get_hosts()
@@ -731,7 +689,7 @@ class MysqlController(AnsibleController):
     @check_error
     def cluster_status(self):
         """Get mysql cluster status
-        - port: instance port [default=3306]
+    - port: instance port [default=3306]
         """
         port = self.get_arg(name=u'port', default=3306, keyvalue=True)
         check_host = self.get_arg(name=u'check_host', default=None, keyvalue=True)
@@ -758,7 +716,7 @@ class MysqlController(AnsibleController):
     @check_error
     def schemas(self):
         """Get mysql schemas list
-        - port: instance port [default=3306]
+    - port: instance port [default=3306]
         """
         port = self.get_arg(default=3306)
         hosts, root = self.__get_hosts()
@@ -799,7 +757,7 @@ class MysqlController(AnsibleController):
     @check_error
     def users(self):
         """Get mysql users list
-        - port: instance port [default=3306]
+    - port: instance port [default=3306]
         """
         port = self.get_arg(default=3306)
         hosts, root = self.__get_hosts()
@@ -837,8 +795,8 @@ class MysqlController(AnsibleController):
     @check_error
     def tables_check(self):
         """Get mysql users list
-        - schema: schema name
-        - port: instance port [default=3306]
+    - schema: schema name
+    - port: instance port [default=3306]
         """
         schema = self.get_arg(name=u'schema')
         port = self.get_arg(default=3306)
@@ -947,6 +905,8 @@ class MysqlController(AnsibleController):
 
 
 class CamundaController(AnsibleController):
+    setup_cmp = False
+
     class Meta:
         label = 'camunda'
         description = "Camunda management"
@@ -1022,9 +982,14 @@ class CamundaDeployController(CamundaController):
         port = self.get_arg(name=u'port',default=8080)
         clients = self.camunda_engine(port=port) #__get_engine(port=port)
         resp = []
-        content, filename = self.file_content('@'+ filename)
-        name,dtype = os.path.splitext(os.path.split(filename)[1])
-        dtype = dtype[1:]
+        if os.path.isfile(filename):
+            f = open(filename, 'r')
+            content = f.read()
+            f.close()
+            name,dtype = os.path.splitext(os.path.split(filename)[1])
+            dtype = dtype[1:]
+        else:
+            raise Exception(u'bpmn %s is not a file' % filename)
 
         for client in clients:
             res = client.process_deployment_create( content.rstrip(), name, type=dtype, checkduplicate=True, changeonly=True, tenantid=None)
@@ -1108,7 +1073,14 @@ class CamundaProcessController(CamundaController):
         """
         key = self.get_arg(name=u'key')
         jsonparams = self.get_arg(name=u'jsonparams',default=u'{}' )
-        jsonparams, filename = self.file_content(jsonparams)
+        if jsonparams[0] == '@':
+            filename=jsonparams[1:]
+            if os.path.isfile(filename):
+                f = open(filename, 'r')
+                jsonparams = f.read()
+                f.close()
+            else:
+               raise Exception(u'json specification %s is not a file' % filename)
         port = self.get_arg(name=u'port',default=8080)
         clients = self.camunda_engine(port=port) # __get_engine(port=port)
         resp = []
@@ -1214,6 +1186,8 @@ class CamundaProcessController(CamundaController):
 
 
 class VsphereController(AnsibleController):
+    setup_cmp = False
+
     class Meta:
         label = 'platform.vsphere'
         aliases = ['vsphere']
@@ -1284,8 +1258,8 @@ class VsphereController(AnsibleController):
     @check_error
     def ping(self):
         """Ping vsphere instances
-        - instances: comma separated vsphere instances
-        - vip: if true query only the vip [default=True]
+    - instances: comma separated vsphere instances
+    - vip: if true query only the vip [default=True]
         """
         instances = self.get_arg(default=None)
         vip = self.get_arg(default=True, name=u'vip', keyvalue=True)
@@ -1306,6 +1280,8 @@ class VsphereController(AnsibleController):
 
 
 class OpenstackController(AnsibleController):
+    setup_cmp = False
+
     class Meta:
         label = 'platform.openstack'
         aliases = ['openstack']
@@ -1441,8 +1417,8 @@ class OpenstackController(AnsibleController):
     @check_error
     def ping3(self):
         """Ping main components of openstack instances
-        - instances: comma separated openstack instances
-        - vip: if true query only the vip [default=True]
+    - instances: comma separated openstack instances
+    - vip: if true query only the vip [default=True]
         """
         instances = self.get_arg(default=None)
         vip = self.get_arg(default=True, name=u'vip', keyvalue=True)
@@ -1533,8 +1509,8 @@ class OpenstackController(AnsibleController):
     @check_error
     def usage(self):
         """Displays extra statistical information from the machine that hosts the hypervisor through the API for the
-        hypervisor (XenAPI or KVM/libvirt).
-        - instances: comma separated openstack instances [optional]
+    hypervisor (XenAPI or KVM/libvirt).
+    - instances: comma separated openstack instances [optional]
         """
         instances = self.get_arg(default=None)
 
@@ -1556,8 +1532,8 @@ class OpenstackController(AnsibleController):
     @check_error
     def status(self):
         """Get services/agents status: compute, storage, network, orchestrator
-        - component: openstack component. Can be: compute, storage, network, orchestrator [default=compute]
-        - instances: comma separated openstack instances [optional]
+    - component: openstack component. Can be: compute, storage, network, orchestrator [default=compute]
+    - instances: comma separated openstack instances [optional]
         """
         component = self.get_arg(default=u'compute', name=u'component', keyvalue=True)
         instances = self.get_arg(default=None)
@@ -1596,16 +1572,18 @@ class OpenstackController(AnsibleController):
 
 
 class ElkController(AnsibleController):
+    setup_cmp = False
+
     class Meta:
         label = 'elk'
         description = "Elks management"
 
     @expose(aliases=[u'query index <pod>'], aliases_only=True)
     @check_error
-    def qindex(self):            
+    def qindex(self):
         """
         - pod: podto1, podto2, podvc
-            
+
         il metodo restituisce l'elenco degli indici presenti in elk del pod indicato
         """
         pod = self.get_arg(name=u'pod', keyvalue=True, default="podto1")
@@ -1627,7 +1605,7 @@ class ElkController(AnsibleController):
         for riga in res.text.split("\n"):
             list_ind = re.findall(r'\S+',riga)
             if len(list_ind) == 10:
-                diz_indici = {u"healt": list_ind[0], 
+                diz_indici = {u"healt": list_ind[0],
                               u"status": list_ind[1],
                               u"indice": list_ind[2],
                               u"uuid": list_ind[3],
@@ -1650,7 +1628,7 @@ class ElkController(AnsibleController):
 
     @expose(aliases=[u'delete index <pod> <index>'], aliases_only=True)
     @check_error
-    def delindex(self):            
+    def delindex(self):
         """
         - pod: podto1, podto2, podvc
         - index: indice presente nel db.
@@ -1674,22 +1652,22 @@ class ElkController(AnsibleController):
             print "indice non indicato"
             return()
         if indice[0:8]!="filebeat":
-            print "E' possibile cancellare solo indici di tipo 'filebeat'"  
+            print "E' possibile cancellare solo indici di tipo 'filebeat'"
             return()
         if "*" in indice:
             print "Non e' possibile indicare * nel nome dell'indice"
-            return()    
+            return()
         url=url+indice
         res = requests.delete(url)
-        if res.status_code==200: 
+        if res.status_code==200:
             print "L'indice "+ indice + " del pod "+ pod + " e' stato cancellato!!"
         else:
             print "L'indice "+ indice + " del pod "+ pod + " non e' stato trovato!!"
-        
-      
+
+
     @expose(aliases=[u'search <start_date> <stop_date> [field=..]'], aliases_only=True)
     @check_error
-    def search(self):            
+    def search(self):
         """search
             - field: from, count, pod, host, source, key
 
@@ -1730,14 +1708,14 @@ class ElkController(AnsibleController):
         else:
             print "pod non valido"
             return()
-        
+
         d1 = start_date
         d2 = stop_date
         fr = int(fromv)
         co = int(count)
         msize = int(msize)
         elenco_host = host.split(",")
-        
+
         parametri = []
         parametri.append({ "match_all": {} })
         parametri.append({ "range": {"@timestamp": {
@@ -1751,7 +1729,7 @@ class ElkController(AnsibleController):
         if key != "":
            parametri.append({"match" : {
               "message": {"query" : key}}})
-        # print parametri 
+        # print parametri
         data_elencohost = {
             "from": fr,
             "size": co,
@@ -1783,6 +1761,8 @@ class ElkController(AnsibleController):
 
 
 class NodeController(AnsibleController):
+    setup_cmp = False
+
     class Meta:
         label = 'node'
         description = "Nodes management"
@@ -1887,7 +1867,9 @@ class NodeController(AnsibleController):
     @expose(aliases=[u'powervolt <pod>'], aliases_only=True)
     @check_error
     def powervolt(self):
-
+        """Legge lo stato della tensione in ingresso per ogni singolo alimentatore
+    Da usarsi dopo power per avere indicazioni sui volt in ingresso
+        """
         pod = self.get_arg(name=u'pod')
 
         # il presente script interroga via snmp i server dei diversi pod e raccoglie la tensione su ogni alimentatore 
@@ -2333,7 +2315,7 @@ class NodeController(AnsibleController):
     - cmd: shell command   
         """
         group = self.get_arg(name=u'group')
-        cmd  = self.get_arg(name=u'cmd')     
+        cmd = self.get_arg(name=u'cmd')
         path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
         path_lib = u'%s/library/beehive/' % (self.ansible_path)
         runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
@@ -2342,33 +2324,85 @@ class NodeController(AnsibleController):
         ]
         runner.run_task(group, tasks=tasks, frmt=u'text')
 
+    @expose(aliases=[u'cmd2 <group> <cmd>'], aliases_only=True)
+    @check_error
+    def cmd2(self):
+        """Execute command on managed platform nodes
+    - group: ansible group
+    - cmd: shell command
+        """
+        inventory_dict = {
+            "all": {
+                "vars": {
+                    "ansible_user": "centos",
+                    "ansible_ssh_private_key_file": u'%s/../configs/test/.ssh/vm.id_rsa' % self.ansible_path,
+                }
+            },
+            "group001": {
+                "hosts": ["10.138.133.21", "10.138.197.4"],
+                "vars": {
+                    "ansible_user": "root",
+                    "ansible_ssh_pass": "mypass",
+                },
+                "children": ["group002"]
+            },
+            "group002": {
+                "hosts": ["10.138.197.3", "10.138.197.2"],
+                "vars": {
+                    "ansible_user": "root",
+                    "ansible_ssh_pass": "mypass",
+                },
+                "children": []
+            },
+            "group003": {
+                "hosts": ["10.138.128.50", "10.138.128.35"],
+                "vars": {
+                },
+                "children": []
+            }
+        }
+
+        group = self.get_arg(name=u'group')
+        cmd = self.get_arg(name=u'cmd')
+        path_lib = u'%s/library/beehive/' % (self.ansible_path)
+        runner = Runner(inventory=inventory_dict, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
+        tasks = [
+            dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
+        ]
+        runner.run_task(group, tasks=tasks, frmt=u'text')
+
 
 class BeehiveConsoleController(AnsibleController):
+    setup_cmp = False
+
     class Meta:
         label = 'console'
         description = "Beehive Console management"
 
-    @expose(aliases=[u'add-user <type> <username> <config>'], aliases_only=True)
+    @expose(aliases=[u'add-user <type> <sshuser> <cmpuser> <config>'], aliases_only=True)
     @check_error
     def add_user(self):
         """Create new user in beehive console
     - type: admin, user
         """
         type = self.get_arg(name=u'type')
-        username = self.get_arg(name=u'username')
+        sshuser = self.get_arg(name=u'sshuser')
+        cmpuser = self.get_arg(name=u'cmpuser')
         config = self.get_arg(name=u'config')
         run_data = {
             u'tags': [u'useradd'],
-            u'username': username,
+            u'sshuser': sshuser,
+            u'cmpuser': cmpuser,
             u'config': config,
         }
         self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
 
-    @expose(aliases=[u'del-user <username>'], aliases_only=True)
+    @expose(aliases=[u'del-user <type> <username>'], aliases_only=True)
     @check_error
     def del_user(self):
         """Delete user from beehive console
         """
+        type = self.get_arg(name=u'type')
         username = self.get_arg(name=u'username')
         run_data = {
             u'tags': [u'userdel'],
@@ -2376,13 +2410,41 @@ class BeehiveConsoleController(AnsibleController):
         }
         self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
 
+    @expose(aliases=[u'set-user <type> <sshuser> <cmpuser> <config>'], aliases_only=True)
+    @check_error
+    def set_user(self):
+        """Set user configuration in beehive console
+    - type: admin, user
+        """
+        type = self.get_arg(name=u'type')
+        sshuser = self.get_arg(name=u'sshuser')
+        cmpuser = self.get_arg(name=u'cmpuser')
+        config = self.get_arg(name=u'config')
+        run_data = {
+            u'tags': [u'userset'],
+            u'sshuser': sshuser,
+            u'cmpuser': cmpuser,
+            u'config': config,
+        }
+        self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
+
     @expose()
     @check_error
-    def sync(self):
-        """Sync python package on beehive console
+    def update(self):
+        """Sync beehive python package on beehive console
         """
         run_data = {
             u'tags': [u'sync']
+        }
+        self.ansible_playbook(u'console', run_data, playbook=self.console_playbook)
+
+    @expose()
+    @check_error
+    def pip(self):
+        """Update python package on beehive console
+        """
+        run_data = {
+            u'tags': [u'pip']
         }
         self.ansible_playbook(u'console', run_data, playbook=self.console_playbook)
 
@@ -2499,7 +2561,7 @@ class BeehiveController(AnsibleController):
                                        u'last_mod', u'last_accepting'])
         except Exception as ex:
             self.error(ex)
- 
+
     def get_emperor_blacklist(self, details=u'', system=None):
         """Get uwsgi emperor active vassals statistics
         
@@ -2838,25 +2900,37 @@ class BeehiveController(AnsibleController):
 
         # create service catalogs
         if apply.get(u'service-catalogs', False) is True:
-            for obj in configs.get(u'service',{}).get(u'catalogs',[]):
+            for obj in configs.get(u'service').get(u'catalogs'):
                 try:
                     name = obj.get(u'name')
                     defs = obj.get(u'defs')
-                    logger.info(u'Adding  service catalog: %s' % name)
-                    res = self._call(u'/v1.0/nws/srvcatalogs', u'POST', data={u'catalog': {u'name': name, u'desc': name}})
+                    res = self._call(u'/v1.0/nws/srvcatalogs', u'POST',
+                                     data={u'catalog': {u'name': name, u'desc': name}})
                     logger.info(u'Add service catalog: %s' % res)
                     self.output(u'Add service catalog: %s' % obj)
                 except Exception as ex:
                     self.error(ex)
                     self.app.error = False
+                    res = self._call(u'/v1.0/nws/srvcatalogs', u'GET', data={u'name': name}).get(u'catalogs')[0]
+                    logger.info(u'Get service catalog: %s' % res)
 
                 res = self._call(u'/v1.0/nws/srvcatalogs/%s/defs' % res[u'uuid'], u'PUT',
                                  data={u'definitions': {u'oids': defs}})
                 logger.info(u'Add service catalog defs: %s' % res)
                 self.output(u'Add service catalog defs: %s' % defs)
 
-        # create main org structure
-        # org, div, account common
+        # create org
+        if apply.get(u'authority', False) is True:
+            for obj in configs.get(u'authority').get(u'orgs'):
+                name = obj.get(u'name')
+                res = self._call(u'/v1.0/nws/organizations', u'GET', data={u'name': name}).get(u'organizations')
+                if len(res) > 0:
+                    self.error(u'Organization %s already exists' % name)
+                    self.app.error = False
+
+                # res = self._call(u'/v1.0/nws/orgs', u'POST', data={u'servicetype': obj})
+                # logger.info(u'Add service type: %s' % res)
+                # self.output(u'Add service type: %s' % obj)
 
     @expose()
     @check_error
@@ -3055,7 +3129,7 @@ class BeehiveController(AnsibleController):
         subsystem = self.get_arg(name=u'subsystem')
         vassal = self.get_arg(name=u'vassal')
         rows = self.get_arg(default=100)
-        cmd  = u'tail -%s /var/log/beehive/beehive100/%s-%s.log' % (rows, subsystem, vassal)
+        cmd = u'tail -%s /var/log/beehive/beehive100/%s-%s.log' % (rows, subsystem, vassal)
         path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
         path_lib = u'%s/library/beehive/' % (self.ansible_path)
         runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
@@ -3096,7 +3170,7 @@ class BeehiveController(AnsibleController):
     @expose()
     @check_error
     def doc(self):
-        """Make a deploy beehive documentation
+        """Make e deploy beehive documentation
         """
         run_data = {
             u'tags': [u'doc'],
@@ -3107,7 +3181,7 @@ class BeehiveController(AnsibleController):
     @expose()
     @check_error
     def apidoc(self):
-        """Make a deploy beehive api documentation
+        """Make e deploy beehive api documentation
         """
         run_data = {
             u'tags': [u'apidoc'],

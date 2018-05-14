@@ -56,35 +56,51 @@ class DBServiceInstanceController(DBaaServiceControllerChild):
         fields = [u'id', u'uuid', u'name', u'version', u'status', u'active', u'date.creation']
         self.result(res, key=u'servicedefs', headers=headers, fields=fields)
 
-    @expose(aliases=[u'describes [field=<id1, id2>]'], aliases_only=True)
+    @expose(aliases=[u'list [field=..]'], aliases_only=True)
     @check_error
-    def describes(self):
-        """List all database instances by field: owner-id.N, db-instance-id.N
+    def list(self):
+        """List all database instances
+    - field: account, ids, size
+        - accounts: list of account id comma separated
+        - ids: list of image id
+        - size: number of records
         """
-        dataSearch = {}
-        dataSearch[u'owner-id.N'] = self.split_arg(u'owner-id.N') 
-        dataSearch[u'db-instance-id.N'] = self.split_arg(u'db-instance-id.N')
-        uri = u'%s/databaseservices/instance/describedbinstances' % self.baseuri
-        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True))
-        res = res.get(u'DescribeDBInstancesResponse').get(u'DescribeDBInstancesResult').get(u'DBInstances', [])
-        headers = [u'id', u'name', u'status', u'Engine', u'EngineVersion', u'MultiAZ',
-                   u'AvailabilityZone', u'DBInstanceClass', u'Subnet', u'Listen', u'Port']
-        fields = [u'DBInstanceIdentifier', u'name', u'DBInstanceStatus', u'Engine', u'EngineVersion', u'MultiAZ',
-                  u'AvailabilityZone', u'DBInstanceClass', u'DBSubnetGroup.DBSubnetGroupName', u'Endpoint.Address',
-                  u'Endpoint.Port']
-        self.result(res, headers=headers, fields=fields, maxsize=40)
+        data_search = {}
+        data_search[u'owner-id.N'] = self.split_arg(u'accounts')
+        data_search[u'db-instance-id.N'] = self.split_arg(u'ids')
+        data_search[u'MaxRecords'] = self.get_arg(name=u'size', default=10, keyvalue=True)
+        data_search[u'Marker'] = self.get_arg(name=u'page', default=0, keyvalue=True)
 
-    @expose(aliases=[u'describes <id>'], aliases_only=True)
+        uri = u'%s/databaseservices/instance/describedbinstances' % self.baseuri
+        res = self._call(uri, u'GET', data=urllib.urlencode(data_search, doseq=True))
+        res = res.get(u'DescribeDBInstancesResponse').get(u'DescribeDBInstancesResult')
+        page = data_search[u'Marker']
+        resp = {
+            u'count': len(res.get(u'DBInstances')),
+            u'page': page,
+            u'total': res.get(u'nvl-DBInstancesTotal'),
+            u'sort': {u'field': u'id', u'order': u'asc'},
+            u'instances': res.get(u'DBInstances')
+        }
+
+        headers = [u'id', u'name', u'status', u'account', u'Engine', u'EngineVersion', u'MultiAZ',
+                   u'AvailabilityZone', u'DBInstanceClass', u'Subnet', u'Listen', u'Port']
+        fields = [u'DBInstanceIdentifier', u'name', u'DBInstanceStatus', u'OwnerAlias', u'Engine', u'EngineVersion',
+                  u'MultiAZ', u'AvailabilityZone', u'DBInstanceClass', u'DBSubnetGroup.DBSubnetGroupName',
+                  u'Endpoint.Address', u'Endpoint.Port']
+        self.result(resp, key=u'instances', headers=headers, fields=fields, maxsize=40)
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
-    def describe(self):
+    def get(self):
         """Get database instance info
         """
         pass
 
-    @expose(aliases=[u'create <name> <account> <template> <subnet> <engine> <version> <security group> [field=..]'],
+    @expose(aliases=[u'add <name> <account> <template> <subnet> <engine> <version> <security group> [field=..]'],
             aliases_only=True)
     @check_error
-    def create(self):
+    def add(self):
         """Create db instance 
     - field: can be Port, DBName, MasterUsername, MasterUserPassword, AvailabilityZone
         """

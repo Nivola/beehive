@@ -42,7 +42,8 @@ class TaskResult(object):
     
     @staticmethod
     def store(task_id, name=None, hostname=None, args=None, kwargs=None, status=None, retval=None, start_time=None,
-              stop_time=None, childs=None, traceback=None, inner_type=None, msg=None, jobs=None, counter=None):
+              stop_time=None, childs=None, traceback=None, inner_type=None, msg=None, jobs=None, counter=None,
+              failure=False):
         """Store task result in redis
         """
         _redis = task_manager.api_manager.redis_taskmanager.conn
@@ -82,7 +83,7 @@ class TaskResult(object):
                 if result.get(u'status') != u'FAILURE':
                     # val_counter = int(data.get(u'counter', 0)) + 1
                     result.update(data)
-                    #result[u'counter'] = val_counter
+                    # result[u'counter'] = val_counter
                 else:
                     result.update({u'stop_time': stop_time})
             else:
@@ -105,8 +106,12 @@ class TaskResult(object):
             
             # update task trace
             if msg is not None:
+                if failure is True:
+                    msg1 = u'ERROR - %s' % msg
+                else:
+                    msg1 = u'DEBUG - %s' % msg
                 _timestamp = str2uni(datetime.today().strftime(u'%d-%m-%y %H:%M:%S-%f'))
-                result[u'trace'].append((_timestamp, msg))
+                result[u'trace'].append((_timestamp, msg1))
             
             # serialize data
             val = json.dumps(result)
@@ -236,7 +241,7 @@ class TaskResult(object):
         # store task
         TaskResult.store(task_id, name=None, hostname=None, args=None, kwargs=None, status=status, retval=None,
                          start_time=None, stop_time=stop_time, childs=None, traceback=trace, inner_type=None, msg=err,
-                         jobs=None)
+                         jobs=None, failure=True)
 
 
 # @before_task_publish.connect

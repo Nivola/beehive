@@ -31,7 +31,7 @@ class JobError(Exception):
         return "JobError: %s" % self.value
 
     def __str__(self):
-        return "JobError: %s" % self.value
+        return self.value
 
 
 class JobInvokeApiError(Exception):
@@ -44,7 +44,7 @@ class JobInvokeApiError(Exception):
         return "JobInvokeApiError: %s" % self.value
 
     def __str__(self):
-        return "JobInvokeApiError: %s" % self.value    
+        return self.value
 
 
 class AbstractJob(BaseTask):
@@ -276,11 +276,14 @@ class Job(AbstractJob):
         The return value of this handler is ignored.
         """
         BaseTask.on_failure(self, exc, task_id, args, kwargs, einfo)
-              
-        err = str(exc)
+
+        try:
+            err = str(exc)
+        except:
+            err = exc
         trace = format_tb(einfo.tb)
         trace.append(err)
-        logger.error(err, exc_info=1)
+        logger.error(u'', exc_info=1)
         self.update_job(params={}, status=u'FAILURE', current_time=time(), ex=err, traceback=trace,
                         result=None, msg=err)
 
@@ -391,7 +394,7 @@ class JobTask(AbstractJob):
                     trace = u'Job %s was not found' % job_id
                 err = u'Remote job %s error: %s' % (job_id, trace)
                 logger.error(err)
-                raise JobInvokeApiError(err)
+                raise JobInvokeApiError(trace)
             else:
                 return job[u'result']
         else:
@@ -427,21 +430,24 @@ class JobTask(AbstractJob):
 
                 # verify job is stalled
                 if counter - start_counter == 0 and elapsed > 60:
-                    raise JobError(u'Task %s is stalled' % task_id)
+                    raise JobError(u'Job %s is stalled' % task_id)
 
-                self.update(u'PROGRESS', msg=u'Task %s status %s after %ss' % (task_id, status, elapsed))
+                self.update(u'PROGRESS', msg=u'Job %s status %s after %ss' % (task_id, status, elapsed))
                 status = inner_task.get(u'status')
             
             elapsed = time() - start
             if status == u'FAILURE':
-                logger.error(u'Task %s error after %ss' % (task_id, elapsed))
-                raise JobError(u'Task %s error' % task_id)
+                err = inner_task.get(u'traceback')[-1]
+                logger.error(u'Job %s error after %ss' % (task_id, elapsed))
+                self.update(u'PROGRESS', msg=u'Job %s status %s after %ss' % (task_id, status, elapsed))
+                raise JobError(err)
             elif status == u'SUCCESS':
-                logger.debug(u'Task %s success after %ss' % (task_id, elapsed))
+                self.update(u'PROGRESS', msg=u'Job %s success after %ss' % (task_id, elapsed))
                 res = inner_task
             else:
-                logger.error(u'Task %s unknown error after %ss' % (task_id, elapsed))
-                raise JobError(u'Unknown error with task %s' % task_id)
+                logger.error(u'Job %s unknown error after %ss' % (task_id, elapsed))
+                self.update(u'PROGRESS', msg=u'Job %s status %s after %ss' % (task_id, u'UNKNONWN', elapsed))
+                raise JobError(u'Unknown error')
             
             return res
         except Exception as ex:
@@ -472,7 +478,7 @@ class JobTask(AbstractJob):
             if status == u'FAILURE':
                 # logger.error(msg, exc_info=1)
                 logger.error(msg)
-                msg = u'ERROR: %s' % msg
+                # msg = u'ERROR: %s' % msg
             else:
                 logger.debug(truncate(msg))
         
@@ -519,9 +525,9 @@ class JobTask(AbstractJob):
             err = exc
         trace = format_tb(einfo.tb)
         trace.append(err)
-        logger.error(err, exc_info=1)
+        logger.error(u'', exc_info=1)
         msg = u'Error %s:%s %s' % (self.name, task_id, err)
-        self.update(u'FAILURE', ex=err, traceback=trace, result=None, msg=msg)
+        self.update(u'FAILURE', ex=err, traceback=trace, result=None, msg=err)
         
         # update job
         self.update_job(params={}, status=u'FAILURE', current_time=time(), ex=err, traceback=trace, result=None,

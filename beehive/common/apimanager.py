@@ -77,7 +77,7 @@ class ApiManagerWarning(Exception):
         * **value** (:py:class:`str`): error description
         * **code** (:py:class:`int`): error code [default=400]
     """
-    def __init__(self, value, code=208):
+    def __init__(self, value, code=400):
         self.code = code
         self.value = value
         Exception.__init__(self, value, code)
@@ -831,16 +831,15 @@ class ApiManager(object):
                     self.logger.info(u'Configure apiclient - CONFIGURE')
                     
                     # get auth catalog
-                    self.catalog = configurator.get(app=self.app_name, 
-                                                    group=u'api', 
-                                                    name=u'catalog')[0].value
-                    self.logger.info(u'Get catalog: %s' % self.catalog)                
+                    # self.catalog = configurator.get(app=self.app_name,
+                    #                                 group=u'api',
+                    #                                 name=u'catalog')[0].value
+                    self.catalog = self.params[u'api_catalog']
+                    self.logger.info(u'Get catalog: %s' % self.catalog)
                     
                     # get auth endpoints
                     try:
-                        endpoints = configurator.get(app=self.app_name, 
-                                                     group=u'api', 
-                                                     name=u'endpoints')[0].value
+                        endpoints = configurator.get(app=self.app_name, group=u'api', name=u'endpoints')[0].value
                         self.endpoints = json.loads(endpoints)
                     except:
                         # auth subsystem instance
@@ -848,9 +847,7 @@ class ApiManager(object):
                     self.logger.info(u'Get auth endpoints: %s' % self.endpoints)                    
                     
                     # get auth system user
-                    auth_user = configurator.get(app=self.app_name, 
-                                                 group=u'api', 
-                                                 name=u'user')[0].value
+                    auth_user = configurator.get(app=self.app_name, group=u'api', name=u'user')[0].value
                     self.auth_user = json.loads(auth_user)
                     self.logger.info(u'Get auth user: %s' % self.auth_user)
 
@@ -859,8 +856,9 @@ class ApiManager(object):
                     
                     self.logger.info(u'Configure apiclient - CONFIGURED')
                 except Exception as ex:
+                    self.logger.warning(u'', exc_info=1)
                     self.logger.warning(u'Configure apiclient - NOT CONFIGURED')
-                ##### api authentication configuration #####              
+                ##### api authentication configuration #####
                 
                 del configurator
                 
@@ -917,8 +915,7 @@ class ApiManager(object):
         catalog = self.catalog
         service = self.app_subsytem
         uri = self.app_uri        
-        self.catalog_producer.send(self.app_endpoint_id, self.app_desc, 
-                                   service, catalog, uri)
+        self.catalog_producer.send(self.app_endpoint_id, self.app_desc, service, catalog, uri)
         self.logger.info(u'Register %s instance in catalog' % self.app_endpoint_id)
             
     def register_monitor(self):
@@ -1392,7 +1389,7 @@ class ApiController(object):
                            desc=entity.desc, model=entity)
         
         # execute custom post_get
-        res.post_get()        
+        res.post_get()
         
         self.logger.debug(u'Get %s : %s' % (entity_class.__name__, res))
         return res
@@ -1666,7 +1663,8 @@ class ApiObject(object):
         """
         """
         timestamp = datetime.fromtimestamp(timestamp)
-        return str2uni(timestamp.strftime(u'%d-%m-%Y %H:%M:%S.%f'))
+        return format_date(timestamp)
+        # return str2uni(timestamp.strftime(u'%Y-%m-%dT%H:%M:%SZ'))
 
     #
     # encryption method
@@ -2070,7 +2068,24 @@ class ApiObject(object):
             
         **Raise:** :class:`ApiManagerError`
         """
-        return kvargs    
+        return kvargs
+
+    def post_delete(self, *args, **kvargs):
+        """Post delete function. This function is used in delete method. Extend
+        this function to execute action after object was deleted.
+
+        **Parameters:**
+
+            * **args** (:py:class:`list`): custom params
+            * **kvargs** (:py:class:`dict`): custom params
+
+        **Returns:**
+
+            True
+
+        **Raise:** :class:`ApiManagerError`
+        """
+        return True
     
     #
     # db session
@@ -2086,8 +2101,7 @@ class ApiObject(object):
     #
     # event
     #
-    def send_event(self, op, args=None, params={}, opid=None, response=True, 
-                   exception=None, etype=None, elapsed=0):
+    def send_event(self, op, args=None, params={}, opid=None, response=True, exception=None, etype=None, elapsed=0):
         """Publish an event to event queue.
         
         :param op: operation to audit
@@ -2112,17 +2126,17 @@ class ApiObject(object):
             if str(type(a)).find(u'class') < 0:
                 nargs.append(a)
                 
-        for k,v in params.items():
+        for k, v in params.items():
             if str(type(v)).find(u'class') > -1:
-                args.pop(k)                
+                params.pop(k)
         
         data = {
-            u'opid':opid,
-            u'op':u'%s.%s' % (self.objdef, op),
-            u'args':nargs,
-            u'params':params,
-            u'elapsed':elapsed,
-            u'response':response
+            u'opid': opid,
+            u'op': u'%s.%s' % (self.objdef, op),
+            u'args': nargs,
+            u'params': params,
+            u'elapsed': elapsed,
+            u'response': response
         }
 
         source = {
@@ -2247,8 +2261,7 @@ class ApiObject(object):
         **Raise:** :class:`ApiManagerError`
         """
         if self.update_object is None:
-            raise ApiManagerError(u'Update is not supported for %s:%s' % 
-                                  (self.objtype, self.objdef))
+            raise ApiManagerError(u'Update is not supported for %s:%s' % (self.objtype, self.objdef))
         
         # verify permissions
         self.verify_permisssions(u'update', authorize=authorize)
@@ -2260,12 +2273,9 @@ class ApiObject(object):
         try:  
             res = self.update_object(oid=self.oid, *args, **kvargs)
             
-            self.logger.debug(u'Update %s %s with data %s' % 
-                              (self.objdef, self.oid, kvargs))
-            # self.send_event(u'update', params=params)
+            self.logger.debug(u'Update %s %s with data %s' % (self.objdef, self.oid, kvargs))
             return self.uuid
         except TransactionError as ex:
-            # self.send_event(u'update', params=params, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -2307,10 +2317,15 @@ class ApiObject(object):
             else:
                 self.delete_object(self.model)
                 self.logger.debug(u'Soft delete %s: %s' % (self.objdef, self.oid))
-            return None
         except TransactionError as ex:
             self.logger.error(ex.desc, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
+
+        # custom action
+        if self.post_delete is not None:
+            self.post_delete(**kvargs)
+
+        return None
 
 
 class ApiInternalObject(ApiObject):
@@ -2577,6 +2592,8 @@ class ApiViewResponse(ApiObject):
             action = u'insert'
         elif method in [u'PUT']:
             action = u'update'
+        elif method in [u'PATCH']:
+            action = u'patch'
         elif method in [u'DELETE']:
             action = u'delete'
         #else:
@@ -3150,7 +3167,8 @@ class PaginatedRequestQuerySchema(Schema):
     page = fields.Integer(default=0, example=0, missing=0, context=u'query',
                           description=u'enitities list page selected',
                           validate=Range(min=0, max=1000, error=u'Page is out from range'))
-    order = fields.String(validate=OneOf([u'ASC', u'asc', u'DESC', u'desc'], error=u'Order can be asc, ASC, desc, DESC'),
+    order = fields.String(validate=OneOf([u'ASC', u'asc', u'DESC', u'desc'],
+                                         error=u'Order can be asc, ASC, desc, DESC'),
                           description=u'enitities list order: ASC or DESC',
                           default=u'DESC', example=u'DESC', missing=u'DESC', context=u'query')
     field = fields.String(validate=OneOf([u'id', u'uuid', u'objid', u'name'],
@@ -3218,6 +3236,10 @@ class PaginatedResponseSchema(Schema):
     page = fields.Integer(required=True, default=0, example=0)
     total = fields.Integer(required=True, default=20, example=20)
     sort = fields.Nested(PaginatedResponseSortSchema, required=True)
+
+
+class CrudApiObjectSimpleResponseSchema(Schema):
+    uuid = fields.Boolean(required=True,  default=True, example=True)
 
 
 class CrudApiObjectResponseSchema(Schema):

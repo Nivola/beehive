@@ -6,7 +6,6 @@ Created on Sep 27, 2017
 import os
 import logging
 import urllib
-from datetime import datetime
 
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController, check_error
@@ -14,6 +13,7 @@ from beecell.simple import truncate, format_date
 import json
 from urllib import urlencode
 from beehive.manager.sections.business import ConnectionHelper
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
  
@@ -563,19 +563,19 @@ class ServiceCatalogController(ServiceControllerChild):
             }
         ]
 
-    @expose(aliases=[u'get-roles <catalog>'], aliases_only=True)
+    @expose(aliases=[u'roles <catalog>'], aliases_only=True)
     @check_error
-    def get_roles(self):
+    def roles(self):
         """Get catalog roles
         """
         catalog_id = self.get_arg(name=u'catalog')
         catalog_id = ConnectionHelper.get_catalog(self, catalog_id).get(u'id')
         roles = ConnectionHelper.get_roles(self, u'Catalog%' + u'Role-%s' % catalog_id)
 
-    @expose(aliases=[u'set-role <catalog> <type> <user>'], aliases_only=True)
+    @expose(aliases=[u'add-user <catalog> <type> <user>'], aliases_only=True)
     @check_error
-    def set_role(self):
-        """Get catalog roles
+    def add_user(self):
+        """Set catalog roles
     - type: role type. Admin or Viewer
         """
         catalog_id = self.get_arg(name=u'catalog')
@@ -584,10 +584,10 @@ class ServiceCatalogController(ServiceControllerChild):
         user = self.get_arg(name=u'user')
         ConnectionHelper.set_role(self, u'Catalog%sRole-%s' % (role_type, catalog_id), user)
 
-    @expose(aliases=[u'unset-role <catalog> <type> <user>'], aliases_only=True)
+    @expose(aliases=[u'del-user <catalog> <type> <user>'], aliases_only=True)
     @check_error
-    def unset_role(self):
-        """Get catalog roles
+    def del_user(self):
+        """Unset catalog roles
     - type: role type. Admin or Viewer
         """
         catalog_id = self.get_arg(name=u'catalog')
@@ -596,10 +596,10 @@ class ServiceCatalogController(ServiceControllerChild):
         user = self.get_arg(name=u'user')
         ConnectionHelper.set_role(self, u'Catalog%sRole-%s' % (role_type, catalog_id), user, op=u'remove')
 
-    @expose(aliases=[u'add-roles <catalog>'], aliases_only=True)
+    @expose(aliases=[u'refresh <catalog>'], aliases_only=True)
     @check_error
-    def add_roles(self):
-        """Add catalog roles
+    def refresh(self):
+        """Refresh catalog roles
         """
         catalog_id = self.get_arg(name=u'catalog')
         catalog_id = ConnectionHelper.get_catalog(self, catalog_id).get(u'id')
@@ -611,7 +611,7 @@ class ServiceCatalogController(ServiceControllerChild):
 
         # get catalog defs
         uri = u'%s/srvcatalogs/%s/defs' % (self.baseuri, catalog_id)
-        defs = self._call(uri, u'GET').get(u'servicedefs')
+        defs = self._call(uri, u'GET', data=u'size=100').get(u'servicedefs')
         defs_objid = []
         for definition in defs:
             defs_objid.append(definition[u'__meta__'][u'objid'])
@@ -761,7 +761,7 @@ class ServiceInstanceController(ServiceControllerChild):
                u'is_container', u'parent', u'creation']
 
     class Meta:
-        label = 'instances'
+        label = 'insts'
         description = "Service instance management"
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
@@ -773,7 +773,6 @@ class ServiceInstanceController(ServiceControllerChild):
              filter_expiry_date_start, filter_expiry_date_stop
         """
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        urllib.quote
         uri = u'%s/serviceinsts' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
@@ -930,6 +929,21 @@ class ServiceInstanceController(ServiceControllerChild):
         logger.info(res)
         self.result(res, key=u'serviceinsts', headers=self.headers, fields=self.fields)
 
+    @expose(aliases=[u'config <id>'], aliases_only=True)
+    @check_error
+    def config(self):
+        """Get service instance configuration  by value id or uuid
+    - id : config id
+        """
+        value = self.get_arg(name=u'id')
+        self.app.kvargs[u'service_instance_id'] = value
+        data = urllib.urlencode(self.app.kvargs)
+        uri = u'%s/instancecfgs' % self.baseuri
+        res = self._call(uri, u'GET', data=data).get(u'instancecfgs')
+        logger.info(res)
+        if len(res) > 0:
+            self.result(res[0].get(u'json_cfg'), details=True)
+
 
 class ServiceInstanceConfigController(ApiController):
     baseuri = u'/v1.0/nws'
@@ -939,7 +953,7 @@ class ServiceInstanceConfigController(ApiController):
         label = 'instance.configs'
         aliases = ['configs']
         aliases_only = True
-        stacked_on = 'instances'
+        stacked_on = 'insts'
         stacked_type = 'nested'
         description = "Service instance configuration management"
 
@@ -1041,6 +1055,7 @@ class ServiceInstanceConfigController(ApiController):
         logger.info(res)
         res = {u'msg': u'Delete service instancecfgs cfgs %s' % value}
         self.result(res, headers=[u'msg'])
+
 
 class ServiceInstanceTaskController(ApiController):
     baseuri = u'/v1.0/nws'
@@ -1514,7 +1529,7 @@ class ServiceMetricsController(ServiceControllerChild):
                     headers=[u'id', u'day',           u'num',        u'type',        u'value', u'platform', u'instance',             u'job_id'],
                     fields= [u'id', u'date.creation', u'metric_num', u'metric_type', u'value', u'platform', u'service_instance_id',  u'job_id'])
 
-    
+
 #     @expose(aliases=[u'perms <id>'], aliases_only=True)
 #     @check_error
 #     def perms(self):
@@ -1752,4 +1767,5 @@ service_controller_handlers = [
     ServiceMetricsController,
     ServiceMetricCostsController,
     ServiceAggregateCostsController
-]        
+]
+

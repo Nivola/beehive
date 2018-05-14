@@ -1,0 +1,64 @@
+alias beehive="beehive"
+
+CMD1=`beehive --cmds`
+unset CMD_HASH
+declare -A CMD_HASH
+
+#IFS=' ' read -r -a array <<< "$CMD1"
+#for i in ${array[@]}; do
+#    CMD_HASH[$i]=`beehive $i --cmds`
+#    echo ${CMD_HASH[$i]}
+#done
+
+_beehive_complete()
+{
+    local cur prev BASE_LEVEL
+
+    COMPREPLY=()
+    cur=${COMP_WORDS[COMP_CWORD]}
+    #prev=${COMP_WORDS[COMP_CWORD-1]}
+    #echo ${COMP_WORDS}
+
+    # SETUP THE BASE LEVEL (everything after "beehive_app")
+    if [ $COMP_CWORD -eq 1 ]; then
+        COMPREPLY=( $(compgen -W "$CMD1" -- $cur) )
+
+    elif [ $COMP_CWORD -eq 2 ]; then
+        prev=${COMP_WORDS[COMP_CWORD-1]}
+        key=$prev
+        #key="${prev/-/.}"
+        if [ ${CMD_HASH["$key"]+_} ]; then
+            CMD2=${CMD_HASH["$key"]}
+        else
+            CMD_HASH["$key"]=`beehive $prev --cmds`
+        fi
+        #echo $CMD2
+        COMPREPLY=( $(compgen -W "$CMD2" -- $cur) )
+
+    elif [ $COMP_CWORD -eq 3 ]; then
+        prev="${COMP_WORDS[COMP_CWORD-2]} ${COMP_WORDS[COMP_CWORD-1]}"
+        #key="${COMP_WORDS[COMP_CWORD-2]}.${COMP_WORDS[COMP_CWORD-1]}"
+        key=$prev
+        if [ ${CMD_HASH["$key"]+_} ]; then
+            CMD3=${CMD_HASH["$key"]}
+        else
+            CMD_HASH["$key"]=`beehive $prev --cmds`
+        fi
+        COMPREPLY=( $(compgen -W "$CMD3" -- $cur) )
+
+    elif [ $COMP_CWORD -eq 4 ]; then
+        prev="${COMP_WORDS[COMP_CWORD-3]} ${COMP_WORDS[COMP_CWORD-2]} ${COMP_WORDS[COMP_CWORD-1]}"
+        #key="${COMP_WORDS[COMP_CWORD-3]}.COMP_WORDS[COMP_CWORD-2]}.${COMP_WORDS[COMP_CWORD-1]}"
+        key=$prev
+        if [ ${CMD_HASH[$key]+_} ]; then
+            CMD4=${CMD_HASH[$key]}
+        else
+            CMD_HASH[$key]=`beehive $prev --cmds`
+        fi
+        COMPREPLY=( $(compgen -W "$CMD4" -- $cur) )
+    fi
+
+    return 0
+
+} &&
+complete -F _beehive_complete beehive

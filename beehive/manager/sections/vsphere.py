@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 #
 class VspherePlatformController(BaseController):
     class Meta:
-        label = 'vsphere.platform'
+        label = 'vsphere_platform'
         stacked_on = 'base'
         stacked_type = 'nested'
         description = "Vsphere Platform management"
@@ -39,7 +39,7 @@ class VspherePlatformControllerChild(BaseController):
     entity_class = None
     
     class Meta:
-        stacked_on = 'vsphere.platform'
+        stacked_on = 'vsphere_platform'
         stacked_type = 'nested'
         arguments = [
             (['extra_arguments'], dict(action='store', nargs='*')),
@@ -281,7 +281,7 @@ class VspherePlatformVappController(VspherePlatformControllerChild):
 
 class VspherePlatformNetworkController(BaseController):
     class Meta:
-        stacked_on = 'vsphere.platform'
+        stacked_on = 'vsphere_platform'
         stacked_type = 'nested'
         label = 'vsphere.platform.network'
         aliases = ['network']
@@ -302,7 +302,7 @@ class VspherePlatformNetworkChildController(VspherePlatformControllerChild):
 
 class VspherePlatformNetworkDvsController(VspherePlatformNetworkChildController):
     class Meta:
-        label = 'vsphere.platform.networks.dvs'
+        label = 'vsphere.platform.network.dvs'
         aliases = ['dvss']
         aliases_only = True
         description = "Vsphere Network Dvs management"
@@ -330,7 +330,7 @@ class VspherePlatformNetworkDvsController(VspherePlatformNetworkChildController)
 
 class VspherePlatformNetworkDvpController(VspherePlatformNetworkChildController):
     class Meta:
-        label = 'vsphere.platform.networks.dvpg'
+        label = 'vsphere.platform.network.dvpg'
         aliases = ['dvpgs']
         aliases_only = True
         description = "Vsphere Network Dvpg management"
@@ -365,10 +365,22 @@ class VspherePlatformNetworkDvpController(VspherePlatformNetworkChildController)
         res = {u'msg':u'Delete dvpg %s' % (oid)}
         self.result(res, headers=[u'msg'])
 
+    @expose(aliases=[u'servers <id>'], aliases_only=True)
+    @check_error
+    def servers(self):
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.get_network_servers(oid)
+        logger.info(res)
+        servers = []
+        for item in res:
+            servers.append(self.client.server.info(item))
+        headers = [u'id', u'parent', u'name', u'os', u'state', u'ip_address', u'hostname', u'cpu', u'ram', u'template']
+        self.result(servers, headers=headers)
+
 
 class VspherePlatformNetworkSecurityGroupController(VspherePlatformNetworkChildController):
     class Meta:
-        label = 'vsphere.platform.networks.sg'
+        label = 'vsphere.platform.network.sg'
         aliases = ['sgs']
         aliases_only = True
         description = "Vsphere Network Security group management"
@@ -431,7 +443,7 @@ class VspherePlatformNetworkSecurityGroupController(VspherePlatformNetworkChildC
 
 class VspherePlatformNetworkDfwController(VspherePlatformNetworkChildController):
     class Meta:
-        label = 'vsphere.platform.networks.dfw'
+        label = 'vsphere.platform.network.dfw'
         aliases = ['dfw']
         aliases_only = True
         description = "Vsphere Network Nsx Distributed Firewall management"
@@ -524,9 +536,7 @@ class VspherePlatformNetworkDfwController(VspherePlatformNetworkChildController)
             self.__print_rule_datail(u'appliedTo', appliedToList)
             print(u'services')
             if type(services) is not list: services = [services]
-            self.result(services, headers=[u'protocol', u'subProtocol', 
-                                                  u'destinationPort', 
-                                                  u'protocolName']) 
+            self.result(services, headers=[u'protocol', u'subProtocol', u'destinationPort', u'protocolName'])
 
     @expose(aliases=[u'section-delete <section>'], aliases_only=True)
     @check_error
@@ -556,15 +566,14 @@ class VspherePlatformNetworkDfwController(VspherePlatformNetworkChildController)
         for item in res:
             resp.append(item[u'member'])
         logger.info(res)
-        self.result(resp, headers=[u'objectId', u'name', u'scope.name',
-                                          u'objectTypeName', u'revision'])        
+        self.result(resp, headers=[u'objectId', u'name', u'scope.name', u'objectTypeName', u'revision'])
 
 
 class VspherePlatformNetworkLgController(VspherePlatformNetworkChildController):
     headers = [u'objectId', u'name']
     
     class Meta:
-        label = 'vsphere.platform.networks.lg'
+        label = 'vsphere.platform.network.lg'
         aliases = ['lgs']
         aliases_only = True
         description = "Vsphere Network Nsx Logical Switch management"
@@ -596,7 +605,7 @@ class VspherePlatformNetworkLgController(VspherePlatformNetworkChildController):
 
 class VspherePlatformNetworkIppoolController(VspherePlatformNetworkChildController):
     class Meta:
-        label = 'vsphere.platform.networks.ippool'
+        label = 'vsphere.platform.network.ippool'
         aliases = ['ippools']
         aliases_only = True
         description = "Vsphere Network Nsx Ippool management"
@@ -708,7 +717,7 @@ class VspherePlatformNetworkIppoolController(VspherePlatformNetworkChildControll
 
 class VspherePlatformNetworkIpsetController(VspherePlatformNetworkChildController):
     class Meta:
-        label = 'vsphere.platform.networks.ipset'
+        label = 'vsphere.platform.network.ipset'
         aliases = ['ipsets']
         aliases_only = True
         description = "Vsphere Network Nsx Ipset management"
@@ -748,7 +757,7 @@ class VspherePlatformNetworkIpsetController(VspherePlatformNetworkChildControlle
 
 class VspherePlatformNetworkEdgeController(VspherePlatformNetworkChildController):
     class Meta:
-        label = 'vsphere.platform.networks.edge'
+        label = 'vsphere.platform.network.edge'
         aliases = ['edges']
         aliases_only = True
         description = "Vsphere Network Nsx Edge management"
@@ -766,7 +775,9 @@ class VspherePlatformNetworkEdgeController(VspherePlatformNetworkChildController
         for obj in objs:
             res.append(self.entity_class.info(obj))        
         logger.info(res)
-        self.result(res, headers=[u'objectId', u'name'])
+        headers = [u'id', u'name', u'type', u'status', u'state', u'datacenter']
+        fields = [u'objectId', u'name', u'edgeType', u'edgeStatus', u'state', u'datacenterName']
+        self.result(res, headers=headers, fields=fields, maxsize=200)
         
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -777,10 +788,18 @@ class VspherePlatformNetworkEdgeController(VspherePlatformNetworkChildController
         logger.info(res)
         self.result(res, details=True)        
 
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
+    def delete(self):
+        oid = self.get_arg(name=u'id')
+        res = self.entity_class.delete(oid)
+        logger.info(res)
+        self.result(res, details=True)
+
 
 class VspherePlatformNetworkDlrController(VspherePlatformNetworkChildController):
     class Meta:
-        label = 'vsphere.platform.networks.dlr'
+        label = 'vsphere.platform.network.dlr'
         aliases = ['dlrs']
         aliases_only = True
         description = "Vsphere Network Nsx Dlr management"
@@ -812,7 +831,7 @@ class VspherePlatformNetworkDlrController(VspherePlatformNetworkChildController)
 
 class VspherePlatformServerController(VspherePlatformControllerChild):
     headers = [u'id', u'parent', u'name', u'os', u'state', u'ip_address', u'hostname',
-               u'cpu', u'ram', u'template']
+               u'cpu', u'ram', u'disk', u'template']
     
     class Meta:
         label = 'vsphere.platform.servers'
@@ -850,7 +869,7 @@ class VspherePlatformServerController(VspherePlatformControllerChild):
                 u'template':o.get(u'config.template', None)
             })'''
         logger.info(res)
-        self.result(res, headers=self.headers)
+        self.result(res, headers=self.headers, maxsize=30)
         
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -1051,7 +1070,9 @@ class VsphereControllerChild(ApiController):
         data = self.load_config(file_data)
         uri = self.uri
         res = self._call(uri, u'POST', data=data)
-        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))     
+        if u'jobid' in res:
+            self.wait_job(res[u'jobid'])
+        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))
         self.result(res)
 
     @expose(aliases=[u'update <id> <file data>'], aliases_only=True)
@@ -1062,7 +1083,9 @@ class VsphereControllerChild(ApiController):
         data = self.load_config(file_data)
         uri = self.uri + u'/' + oid
         res = self._call(uri, u'UPDATE', data=data)
-        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))     
+        if u'jobid' in res:
+            self.wait_job(res[u'jobid'])
+        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))
         self.result(res)
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
@@ -1071,7 +1094,9 @@ class VsphereControllerChild(ApiController):
         oid = self.get_arg(name=u'id')
         uri = self.uri + u'/' + oid
         res = self._call(uri, u'DELETE')
-        logger.info(u'Delete %s: %s' % (self._meta.aliases[0], oid))     
+        if u'jobid' in res:
+            self.wait_job(res[u'jobid'])
+        logger.info(u'Delete %s: %s' % (self._meta.aliases[0], oid))
         self.result(res)
 
 
@@ -1157,7 +1182,7 @@ class VsphereNetworkDvsController(VsphereNetworkChildController):
     uri = u'/v1.0/nrs/vsphere/network/dvss'
 
     class Meta:
-        label = 'vsphere.beehive.networks.dvs'
+        label = 'vsphere.beehive.network.dvs'
         aliases = ['dvss']
         aliases_only = True
         description = "Vsphere Network distributed virtual switch management"
@@ -1167,7 +1192,7 @@ class VsphereNetworkDvpgController(VsphereNetworkChildController):
     uri = u'/v1.0/nrs/vsphere/network/dvpgs'
 
     class Meta:
-        label = 'vsphere.beehive.networks.dvpg'
+        label = 'vsphere.beehive.network.dvpg'
         aliases = ['dvpgs']
         aliases_only = True
         description = "Vsphere Network distributed virtual port group management"
@@ -1177,7 +1202,7 @@ class VsphereNetworkNsxController(VsphereNetworkChildController):
     uri = u'/v1.0/nrs/vsphere/network/nsxs'
     
     class Meta:
-        label = 'vsphere.beehive.networks.nsx'
+        label = 'vsphere.beehive.network.nsx'
         aliases = ['nsxs']
         aliases_only = True
         description = "Vsphere Network Nsx Manager management"
@@ -1202,12 +1227,13 @@ class VsphereNetworkNsxController(VsphereNetworkChildController):
         self.result(res.get(u'nsx_transport_zones'), headers=[u'id', u'name'])
 
         
-class VsphereSecurityGroupController(VsphereControllerChild):
-    headers = [u'id', u'tenant_id', u'name']
+class VsphereSecurityGroupController(VsphereNetworkChildController):
+    uri = u'/v1.0/nrs/vsphere/network/nsx_security_groups'
+    headers = [u'id', u'parent.name', u'container.name', u'name', u'state', u'date.creation']
     
     class Meta:
         label = 'vsphere.beehive.security_groups'
-        aliases = ['security_groups']
+        aliases = ['nsx_security_groups']
         aliases_only = True         
         description = "Vsphere SecurityGroup management"
 
@@ -1215,14 +1241,27 @@ class VsphereSecurityGroupController(VsphereControllerChild):
 class VsphereServerController(VsphereControllerChild):
     uri = u'/v1.0/nrs/vsphere/servers'
     baseuri = u'/v1.0/nrs'
-    headers = [u'id', u'parent.name', u'container.name', u'name', u'state', u'details.state', u'details.ip_address',
-               u'details.hostname', u'details.cpu', u'details.ram', u'details.template']
+    headers = [u'id', u'parent', u'container', u'name', u'state', u'runstate', u'ip-address',
+               u'hostname', u'cpu', u'ram', u'disk', u'is-template']
+    fields = [u'id', u'parent.name', u'container.name', u'name', u'state', u'details.state', u'details.ip_address',
+              u'details.hostname', u'details.cpu', u'details.ram', u'details.disk', u'details.template']
 
     class Meta:
         label = 'vsphere.beehive.servers'
         aliases = ['servers']
         aliases_only = True         
         description = "Vsphere Server management"
+
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
+    def list(self):
+        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = self.uri
+        res = self._call(uri, u'GET', data=data)
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
+        if self.fields is None:
+            self.fields = self.headers
+        self.result(res, headers=self.headers, fields=self.fields, key=self._meta.aliases[0], maxsize=30)
 
     @expose(aliases=[u'add <file data>'], aliases_only=True)
     @check_error
@@ -1236,6 +1275,140 @@ class VsphereServerController(VsphereControllerChild):
         self.wait_job(res[u'jobid'])
         logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))
         self.result(res)
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
+    def get(self):
+        oid = self.get_arg(name=u'id')
+        uri = self.uri + u'/' + oid
+        res = self._call(uri, u'GET').get(self._meta.aliases[0][:-1], {})
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], truncate(res)))
+        details = res.pop(u'details')
+        volumes = details.pop(u'volumes')
+        networks = details.pop(u'networks')
+        flavor = details.pop(u'flavor')
+        tools = details.pop(u'vsphere:tools')
+        self.result(res, details=True)
+        self.output(u'Details:')
+        self.result(details, details=True)
+        self.output(u'Guest Tools')
+        self.result(tools, headers=[u'status', u'version'])
+        self.output(u'Flavor')
+        self.result(flavor, headers=[u'id', u'cpu', u'memory'])
+        self.output(u'Networks')
+        self.result(networks, headers=[u'name', u'mac_addr', u'dns', u'fixed_ips', u'net_id', u'port_state'])
+        self.output(u'Volumes')
+        self.result(volumes, headers=[u'id', u'name', u'storage', u'size', u'type', u'bootable', u'format', u'mode'],
+                    maxsize=100)
+
+    @expose(aliases=[u'hardware <id>'], aliases_only=True)
+    @check_error
+    def hardware(self):
+        oid = self.get_arg(name=u'id')
+        uri = self.uri + u'/' + oid + u'/hw'
+        res = self._call(uri, u'GET').get(u'server_hardware', {})
+        logger.info(u'Get server hardware: %s' % truncate(res))
+        file_layout = res.pop(u'file_layout')
+        files = file_layout.pop(u'files')
+        other = res.pop(u'other')
+        network = res.pop(u'network')
+        storage = res.pop(u'storage')
+        controllers = other.pop(u'controllers')
+        pci = other.pop(u'pci')
+        input_devices = other.pop(u'input_devices')
+        self.result(res, details=True)
+        self.output(u'network:')
+        self.result(network, headers=[u'type', u'name', u'key', u'connected', u'network.name', u'network.dvs',
+                                      u'network.vlan', u'macaddress'])
+        self.output(u'storage:')
+        self.result(storage, headers=[u'type', u'name', u'size', u'datastore.file_name', u'datastore.disk_mode',
+                                      u'datastore.write_through'], maxsize=200)
+        self.output(u'file layout:')
+        self.result(file_layout, details=True)
+        self.result(files, headers=[u'accessible', u'name', u'uniqueSize', u'key', u'type', u'size'], maxsize=200)
+        self.output(u'controllers:')
+        self.result(controllers, headers=[u'type', u'name', u'key'])
+        self.output(u'pci:')
+        self.result(pci, headers=[u'type', u'name', u'key'])
+        self.output(u'input devices:')
+        self.result(input_devices, headers=[u'type', u'name', u'key'])
+
+    @expose(aliases=[u'console <id>'], aliases_only=True)
+    @check_error
+    def console(self):
+        oid = self.get_arg(name=u'id')
+        uri = self.uri + u'/' + oid + u'/console'
+        res = self._call(uri, u'GET').get(u'server_console', {})
+        logger.info(u'Get server console: %s' % truncate(res))
+        self.result(res, details=True)
+
+    @expose(aliases=[u'runtime <id>'], aliases_only=True)
+    @check_error
+    def runtime(self):
+        oid = self.get_arg(name=u'id')
+        uri = self.uri + u'/' + oid + u'/runtime'
+        res = self._call(uri, u'GET').get(u'server_runtime', {})
+        logger.info(u'Get server runtime: %s' % truncate(res))
+        resp = []
+        resp.append(res.get(u'resource_pool'))
+        resp.append(res.get(u'host'))
+        self.result(resp, headers=[u'type', u'id', u'uuid', u'name', u'state'],
+                    fields=[u'__meta__.definition', u'id', u'uuid', u'name', u'state'])
+
+    @expose(aliases=[u'stats <id>'], aliases_only=True)
+    @check_error
+    def stats(self):
+        oid = self.get_arg(name=u'id')
+        uri = self.uri + u'/' + oid + u'/stats'
+        res = self._call(uri, u'GET').get(u'server_stats', {})
+        logger.info(u'Get server stats: %s' % truncate(res))
+        self.result(res, details=True)
+
+    @expose(aliases=[u'guest <id>'], aliases_only=True)
+    @check_error
+    def guest(self):
+        oid = self.get_arg(name=u'id')
+        uri = self.uri + u'/' + oid + u'/guest'
+        res = self._call(uri, u'GET').get(u'server_guest', {})
+        logger.info(u'Get server guest: %s' % truncate(res))
+        guest = res.pop(u'guest')
+        tools = res.pop(u'tools')
+        disk = res.pop(u'disk')
+        nics = res.pop(u'nics')
+        ip_stack = res.pop(u'ip_stack')
+        self.result(res, details=True)
+        self.output(u'Guest:')
+        self.result(guest, details=True)
+        self.output(u'tools:')
+        self.result(tools, details=True)
+        self.output(u'disks:')
+        self.result(disk, headers=[u'diskPath', u'capacity', u'free_space'], maxsize=100)
+        self.output(u'nics:')
+        self.result(nics, headers=[u'netbios_config', u'network', u'dnsConfig', u'connected', u'ip_config',
+                                   u'mac_address', u'device_config_id'])
+        self.output(u'ip_stacks:')
+        for item in ip_stack:
+            self.result(item.get(u'dns_config'), headers=[u'dhcp', u'search_domain', u'hostname', u'ip_address',
+                                                          u'domainname'])
+            self.result(item.get(u'ip_route_config'), headers=[u'network', u'gateway'])
+
+    # @expose(aliases=[u'snapshots <id>'], aliases_only=True)
+    # @check_error
+    # def snapshots(self):
+    #     oid = self.get_arg(name=u'id')
+    #     uri = self.uri + u'/' + oid + u'/snapshots'
+    #     res = self._call(uri, u'GET').get(self._meta.aliases[0][:-1], {})
+    #     logger.info(u'Get server snapshots: %s' % truncate(res))
+    #     self.result(res, details=True)
+
+    @expose(aliases=[u'security-groups <id>'], aliases_only=True)
+    @check_error
+    def security_groups(self):
+        oid = self.get_arg(name=u'id')
+        uri = self.uri + u'/' + oid + u'/security_groups'
+        res = self._call(uri, u'GET').get(u'server_security_groups', {})
+        logger.info(u'Get server security_groups: %s' % truncate(res))
+        self.result(res, headers=[u'id', u'uuid', u'name', u'state'])
 
 
 class VsphereFlavorController(VsphereControllerChild):
@@ -1278,7 +1451,55 @@ class VsphereFlavorController(VsphereControllerChild):
         uri = self.uri
         res = self._call(uri, u'POST', data={u'flavor': data})
         logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))
-        self.result(res)
+        msg = {u'msg': u'Add %s: %s' % (self._meta.aliases[0], truncate(res))}
+        self.result(msg, headers=[u'msg'])
+
+    @expose(aliases=[u'datastores <id>'], aliases_only=True)
+    @check_error
+    def datastores(self):
+        oid = self.get_arg(name=u'id')
+        uri = self.uri + u'/' + oid + u'/datastores'
+        res = self._call(uri, u'GET').get(u'datastores', [])
+        logger.info(u'Get flavor datastores: %s' % truncate(res))
+        self.result(res, headers=[u'id', u'uuid', u'name', u'state', u'tag'])
+
+    @expose(aliases=[u'datastore-add <id> <datastore> <tag>'], aliases_only=True)
+    @check_error
+    def datastore_add(self):
+        """Add datastore to flavor
+        """
+        oid = self.get_arg(name=u'id')
+        datastore = self.get_arg(name=u'datastore')
+        tag = self.get_arg(name=u'tag')
+        uri = self.uri + u'/' + oid + u'/datastores'
+        data = {
+            u'datastore': {
+                u'uuid': datastore,
+                u'tag': tag
+            }
+        }
+        res = self._call(uri, u'POST', data)
+        logger.info(u'Add datastore %s to flavor' % datastore)
+        msg = {u'msg': u'Add datastore %s to flavor' % datastore}
+        self.result(msg, headers=[u'msg'])
+
+    @expose(aliases=[u'datastore-del <id> <datastore>'], aliases_only=True)
+    @check_error
+    def datastore_del(self):
+        """Remove datastore from flavor
+        """
+        oid = self.get_arg(name=u'id')
+        datastore = self.get_arg(name=u'datastore')
+        uri = self.uri + u'/' + oid + u'/datastores'
+        data = {
+            u'datastore': {
+                u'uuid': datastore
+            }
+        }
+        res = self._call(uri, u'DELETE', data)
+        logger.info(u'Remove datastore %s from flavor' % datastore)
+        msg = {u'msg': u'Remove datastore %s from flavor' % datastore}
+        self.result(msg, headers=[u'msg'])
 
 
 vsphere_controller_handlers = [
