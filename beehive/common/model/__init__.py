@@ -835,6 +835,22 @@ class AbstractDbManager(object):
         return entity
     
     @transaction
+    def add_all(self, entities):
+        """
+
+        :param entities:
+        :return: num of entities 
+        """
+        if entities is None:
+            raise QueryError("Error: can't not add None entity")
+        
+        session = self.get_session()
+        session.add_all(entities)
+        session.flush()
+        self.logger.debug(u'Add all %s entity %s' % (entities[0].__class__.__name__, len(entities)))
+        return len(entities)
+    
+    @transaction
     def update(self, entity):
         if entity is None:
             raise QueryError("Error: can't not add None entity")
