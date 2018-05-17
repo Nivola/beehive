@@ -76,7 +76,12 @@ class TaskResult(object):
             # pipe = _redis.pipeline()
 
             # get data from redis
-            val = _redis.get(_prefix + task_id)
+            logger.debug(u'  prefix: %s  task_id: %s' % (_prefix, task_id))
+            key = (u'%s%s' % (_prefix , task_id))
+            try:
+                val = _redis.get(key, None)
+            except:
+                val = None
 
             if val is not None:
                 result = json.loads(val)
@@ -117,7 +122,7 @@ class TaskResult(object):
             val = json.dumps(result)
             
             # save data in redis
-            _redis.setex(_prefix + task_id, _expire, val)
+            _redis.setex(key, _expire, val)
             # pipe.execute()
 
             return val

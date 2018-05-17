@@ -1588,6 +1588,7 @@ class ServiceMetricCostsController(ServiceControllerChild):
             u'pricelist': u'pricelist_id',
             u'date_start': u'extraction_date_start',
             u'date_end': u'extraction_date_end',
+            u'tme_unit': u'time_unit'
         }
         data = self.get_query_params(*self.app.pargs.extra_arguments)
         for k in header_field:
@@ -1604,8 +1605,8 @@ class ServiceMetricCostsController(ServiceControllerChild):
         res = self._call(uri, u'GET', data=urlencode(data))
         
         self.result(res, key=u'metric_cost', 
-                    headers=[u'id'       , u'eval_date'      , u'type'     , u'value', u'num'       , u'platform'     , u'instance'   , u'account',    u'job_id', u'price'        , u'price_iva', u'pricelist'],
-                    fields= [u'metric_id', u'extraction_date', u'type_name', u'value', u'metric_num', u'platform_name', u'instance_id', u'account_id', u'job_id', u'price_not_iva', u'price_iva', u'pricelist_id'])
+                    headers=[u'id'       , u'eval_date'      , u'type'     , u'value', u'num'       , u'platform'     , u'instance'   , u'account',    u'job_id', u'price'        , u'price_iva', u'pricelist'   , u'time_unit'],
+                    fields= [u'metric_id', u'extraction_date', u'type_name', u'value', u'metric_num', u'platform_name', u'instance_id', u'account_id', u'job_id', u'price_not_iva', u'price_iva', u'pricelist_id', u'time_unit'])
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -1618,8 +1619,8 @@ class ServiceMetricCostsController(ServiceControllerChild):
         logger.info(res)
 
         self.result(res, key=u'metric_cost', 
-                    headers=[u'id'       , u'type'     , u'value', u'num'       , u'platform'     , u'instance'   , u'account',    u'job_id', u'price'        , u'price_iva', u'pricelist'],
-                    fields= [u'metric_id', u'type_name', u'value', u'metric_num', u'platform_name', u'instance_id', u'account_id', u'job_id', u'price_not_iva', u'price_iva', u'pricelist_id'])
+                    headers=[u'id'       , u'eval_date'      , u'type'     , u'value', u'num'       , u'platform'     , u'instance'   , u'account',    u'job_id', u'price'        , u'price_iva', u'pricelist'   , u'time_unit'],
+                    fields= [u'metric_id', u'extraction_date', u'type_name', u'value', u'metric_num', u'platform_name', u'instance_id', u'account_id', u'job_id', u'price_not_iva', u'price_iva', u'pricelist_id', u'time_unit'])
 
 
 class ServiceAggregateCostsController(ServiceControllerChild):

@@ -12,10 +12,13 @@ from cement.core.controller import expose
 
 from beehive.manager.util.controller import BaseController, ApiController, check_error
 from beecell.simple import truncate
-from beehive_service.service_util import __SRV_DEFAULT_STORAGE_EFS_SERVICE_DEF__
 from beehive.manager.sections.business import SpecializedServiceControllerChild
 
 logger = logging.getLogger(__name__)
+
+
+__SRV_DEFAULT_STORAGE_EFS_SERVICE_DEF__ = u'--DEFAULT--storage-efs-service-def'
+
 
 class STaaServiceController(BaseController):
     class Meta:
@@ -115,7 +118,7 @@ class STaaServiceEFSController(STaaServiceControllerChild):
         """
         uuid = self.get_arg(name=u'id')
         uri = u'%s/storageservices/efs/deletefilesystem' % self.baseuri
-        res = self._call(uri, u'DELETE', data={u'FileSystemId': uuid})
+        res = self._call(uri, u'DELETE', data={u'FileSystemId': uuid}, timeout=300)
         # TODO MANAGEMENT RESPONSE
         logger.info(u'Delete storage efs share instance: %s' % res)
         res = {u'msg': u'Delete share file system instance %s' % uuid}
