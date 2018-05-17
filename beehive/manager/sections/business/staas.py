@@ -86,6 +86,28 @@ class STaaServiceEFSController(STaaServiceControllerChild):
         res = {u'msg': u'Add storage efs instance share %s' % res}
         self.result(res, headers=[u'msg'])
 
+
+ 
+    @expose(aliases=[u'update <oid> [field=value]'], aliases_only=True)
+    @check_error
+    def update(self):
+        """Update file system share
+    - oid: id or uuid of the file system share instance
+    - field: can be name, desc
+        """
+        oid = self.get_arg(name=u'oid')
+        params = {}
+        params [u'name'] = self.get_arg(name=u'name', default=None, keyvalue=True)
+        params [u'desc'] = self.get_arg(name=u'desc', default=None, keyvalue=True)
+        data = {
+            u'share': params
+        }
+        uri = u'%s/storageservices/efs/%s' % (self.baseuri, oid)
+        self._call(uri, u'PUT', data=data)
+        logger.info(u'Update file system share %s with data %s' % (oid, params))
+        res = {u'msg': u'Update file system share %s with data %s' % (oid, params)}
+        self.result(res, headers=[u'msg'])
+
     @expose(aliases=[u'delete <id>'], aliases_only=True)
     @check_error
     def delete(self):
@@ -151,6 +173,61 @@ class STaaServiceEFSController(STaaServiceControllerChild):
         res = {u'msg': u'Delete share file system instance %s' % uuid}
         self.result(res, headers=[u'msg'])
  
+ 
+    @expose(aliases=[u'create-grant <id> <access_level> <access_type> <access_to>'],
+            aliases_only=True)
+    @check_error
+    def create_grant(self):
+        """Create file system grant
+        """
+
+        uuid =  self.get_arg(name=u'id')
+        data = { 
+            u'access_level' : self.get_arg(name=u'access_level'),
+            u'access_type' : self.get_arg(name=u'access_type'),
+            u'access_to' : self.get_arg(name=u'access_to'),
+        } 
+        uri = u'%s/storageservices/efs/%s/grant' % (self.baseuri, uuid)
+        res = self._call(uri, u'POST', data={u'share_grant': data}, timeout=600)
+        logger.info(u'Add grant to storage efs instance share: %s' % truncate(res))
+        res = {u'msg': u'Add grant to storage efs instance share %s' % res}
+        self.result(res, headers=[u'msg'])
+    
+    # TODO MANAGEMENT cli delete_grant command
+    @expose(aliases=[u'delete-grant <id> <access_id>'], aliases_only=True)
+    @check_error
+    def delete_grant(self):
+        """Delete grant file system instance
+        """
+
+        uuid = self.get_arg(name=u'id')
+        access_id = self.get_arg(name=u'access_id')
+        data = {
+            u'access_id': access_id
+        } 
+        uri = u'%s/storageservices/efs/%s/grant' % (self.baseuri, uuid)
+        res = self._call(uri, u'DELETE', data={u'share_grant': data})
+        # TODO MANAGEMENT RESPONSE
+        logger.info(u'Delete storage efs share grant: %s' % res)
+        res = {u'msg': u'Delete share file system share grant %s' % uuid}
+        self.result(res, headers=[u'msg'])
+
+    # TODO MANAGEMENT cli delete_grant command        
+    @expose(aliases=[u'list-grant <id>'], aliases_only=True)
+    @check_error
+    def list_grant(self):
+        """List all grants for a share file system instances by field: ???
+        """
+        uuid = self.get_arg(name=u'id')
+        dataSearch = {}
+        
+        uri = u'%s/storageservices/efs/%s/grant' % (self.baseuri, uuid)
+        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True))
+        res = []
+ 
+        headers = [ ]
+        fields = []
+        self.result(res, headers=headers, fields=fields, maxsize=40)        
            
 staas_controller_handlers = [
     STaaServiceController,
