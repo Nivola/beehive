@@ -527,7 +527,7 @@ class JobTask(AbstractJob):
         trace.append(err)
         logger.error(u'', exc_info=1)
         msg = u'Error %s:%s %s' % (self.name, task_id, err)
-        self.update(u'FAILURE', ex=err, traceback=trace, result=None, msg=err)
+        self.update(u'FAILURE', ex=err, traceback=trace, result=None, msg=msg)
         
         # update job
         self.update_job(params={}, status=u'FAILURE', current_time=time(), ex=err, traceback=trace, result=None,
