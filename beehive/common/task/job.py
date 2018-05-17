@@ -475,6 +475,7 @@ class JobTask(AbstractJob):
         
         # log message
         if msg is not None:
+            msg = str(msg)
             if status == u'FAILURE':
                 # logger.error(msg, exc_info=1)
                 logger.error(msg)
