@@ -77,6 +77,7 @@ class TaskResult(object):
 
             # get data from redis
             logger.debug(u'  prefix: %s  task_id: %s' % (_prefix, task_id))
+            logger.warn(u'------------------------  prefix: %s  task_id: %s' % (_prefix, task_id))
             key = (u'%s%s' % (_prefix , task_id))
             try:
                 val = _redis.get(key, None)

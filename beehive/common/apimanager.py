@@ -79,7 +79,7 @@ class ApiManagerWarning(Exception):
     """
     def __init__(self, value, code=400):
         self.code = code
-        self.value = value
+        self.value = str(value)
         Exception.__init__(self, value, code)
 
     def __repr__(self):
@@ -98,7 +98,7 @@ class ApiManagerError(Exception):
     """
     def __init__(self, value, code=400):
         self.code = code
-        self.value = value
+        self.value = str(value)
         Exception.__init__(self, value, code)
 
     def __repr__(self):
@@ -1306,8 +1306,7 @@ class ApiController(object):
             if res is False:
                 raise ApiManagerError('')
         except ApiManagerError:
-            msg = "Identity %s can not '%s' objects '%s:%s' '%s'" % (
-                    operation.user[2], action, objtype, objdef, objid)
+            msg = "Identity %s can not '%s' objects '%s:%s' '%s'" % (operation.user[2], action, objtype, objdef, objid)
             self.logger.error(msg)
             raise ApiManagerError(msg, code=403)
         return res
