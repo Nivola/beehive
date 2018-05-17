@@ -750,6 +750,15 @@ class OpenstackPlatformServerController(OpenstackPlatformControllerChild):
         logger.info(res)
         self.result(res, details=True)
 
+    @expose(aliases=[u'start <id>'], aliases_only=True)
+    @check_error
+    def start(self):
+        oid = self.get_arg(name=u'id')
+        obj = self.entity_class.start(oid)
+        res = obj
+        logger.info(res)
+        self.result(res, details=True)
+
     @expose(aliases=[u'stop <id>'], aliases_only=True)
     @check_error
     def stop(self):

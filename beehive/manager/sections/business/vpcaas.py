@@ -301,7 +301,7 @@ class VMServiceController(VPCaaServiceControllerChild):
         client = ParamikoShell(fixed_ip, user, keyfile=sshkey)
         client.run()
 
-    @expose(aliases=[u'ansible [ssh-key=..]'], aliases_only=True)
+    @expose(aliases=[u'ansible [ssh-key=..] [ssh-user=..]'], aliases_only=True)
     @check_error
     def ansible(self):
         """Execute command on managed platform nodes
