@@ -793,6 +793,58 @@ class ProviderComputeSqlStackController(ProviderControllerChild):
         self.result(res, headers=self.headers, key=u'stacks')
 
 
+class ProviderComputeFileShareController(ProviderControllerChild):
+    uri = u'/v1.0/nrs/provider/shares'
+    headers = [u'id', u'uuid', u'name', u'parent', u'state', u'creation']
+    headers = [u'id', u'uuid', u'name', u'parent.name', u'state', u'date.creation', u'date.modified']
+
+    class Meta:
+        label = 'provider.beehive.shares'
+        aliases = ['shares']
+        aliases_only = True
+        description = "Provider compute file share management"
+
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
+    def list(self):
+        """List provider items
+        """
+        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = self.uri
+        res = self._call(uri, u'GET', data=data)
+        logger.info(u'Get %s: %s' % (self._meta.aliases[0], res))
+        self.result(res, headers=self.headers, fields=self.fields, key=self._meta.aliases[0])
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
+    def get(self):
+        """Get provider item
+        """
+        oid = self.get_arg(name=u'id')
+
+        def format_result(data):
+            attributes = data.get(u'attributes', [])
+            configs = attributes.pop(u'configs', [])
+            shares = data.pop(u'shares', [])
+            self.app.print_output(u'configs:')
+            self.result(configs, details=True)
+
+        self.get_resource(oid, format_result=format_result)
+
+    @expose(aliases=[u'add <file data>'], aliases_only=True)
+    @check_error
+    def add(self):
+        """Add file share storage
+        """
+        file_data = self.get_arg(name=u'data file')
+        data = self.load_config(file_data)
+        uri = self.uri
+        res = self._call(uri, u'POST', data=data)
+        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))
+        res = {u'msg': u'Add %s %s' % (self._meta.aliases[0], res[u'uuid'])}
+        self.result(res, headers=[u'msg'])
+
+
 provider_controller_handlers = [
     ProviderController,
     ProviderRegionController,
@@ -807,4 +859,5 @@ provider_controller_handlers = [
     ProviderComputeInstanceController,
     ProviderComputeStackController,
     ProviderComputeSqlStackController,
+    ProviderComputeFileShareController,
 ]        
