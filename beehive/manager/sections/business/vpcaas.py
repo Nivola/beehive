@@ -301,7 +301,7 @@ class VMServiceController(VPCaaServiceControllerChild):
         client = ParamikoShell(fixed_ip, user, keyfile=sshkey)
         client.run()
 
-    @expose(aliases=[u'ansible [ssh-key=..]'], aliases_only=True)
+    @expose(aliases=[u'ansible [ssh-key=..] [ssh-user=..]'], aliases_only=True)
     @check_error
     def ansible(self):
         """Execute command on managed platform nodes
@@ -383,9 +383,9 @@ class VMServiceController(VPCaaServiceControllerChild):
         runner.run_playbook(group, playbook, None, run_data, None, tags=tags, vault_password=self.vault)
         logger.debug(u'Run ansible playbook: %s' % playbook)
 
-    @expose(aliases=[u'put <group> <local-file> <remote-file>'], aliases_only=True)
+    @expose(aliases=[u'file-put <group> <local-file> <remote-file>'], aliases_only=True)
     @check_error
-    def put(self):
+    def file_put(self):
         """Copy file to remote nodes specified by group
     - group: virtual machines group
     - cmd: shell command
@@ -403,9 +403,9 @@ class VMServiceController(VPCaaServiceControllerChild):
         }
         self.__playbook(group, run_data)
 
-    @expose(aliases=[u'get <group> <remote-file> <local-file>'], aliases_only=True)
+    @expose(aliases=[u'file-get <group> <remote-file> <local-file>'], aliases_only=True)
     @check_error
-    def get(self):
+    def file_get(self):
         """Copy file from remote nodes specified by group
     - group: virtual machines group
     - cmd: shell command
@@ -423,7 +423,7 @@ class VMServiceController(VPCaaServiceControllerChild):
         }
         self.__playbook(group, run_data)
 
-    @expose(aliases=[u'cmd2 <group> <cmd>'], aliases_only=True)
+    @expose(aliases=[u'cmd <group> <cmd>'], aliases_only=True)
     @check_error
     def cmd(self):
         """Execute command on group of virtual machines
