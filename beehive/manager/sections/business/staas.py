@@ -96,7 +96,7 @@ class STaaServiceEFSController(STaaServiceControllerChild):
         """
         uuid = self.get_arg(name=u'id')
         uri = u'%s/storageservices/efs/deletefilesystem' % self.baseuri
-        res = self._call(uri, u'DELETE', data={u'FileSystemId': uuid})
+        res = self._call(uri, u'DELETE', data={u'FileSystemId': uuid}, timeout=300)
         # TODO MANAGEMENT RESPONSE
         logger.info(u'Delete storage efs share instance: %s' % res)
         res = {u'msg': u'Delete share file system instance %s' % uuid}
