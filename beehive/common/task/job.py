@@ -495,7 +495,7 @@ class JobTask(AbstractJob):
             elapsed = current_time - float(job_start_time)        
             
             # update job
-            self.update_job(current_time=time())        
+            self.update_job(current_time=time(), status=u'PROGRESS')
     
             # send event
             self.send_job_event(status, elapsed, ex, msg)
