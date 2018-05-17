@@ -2448,6 +2448,16 @@ class BeehiveConsoleController(AnsibleController):
         }
         self.ansible_playbook(u'console', run_data, playbook=self.console_playbook)
 
+    @expose()
+    @check_error
+    def yum(self):
+        """Update system package on beehive console
+        """
+        run_data = {
+            u'tags': [u'package']
+        }
+        self.ansible_playbook(u'console', run_data, playbook=self.console_playbook)
+
 
 class BeehiveController(AnsibleController):
     class Meta:
