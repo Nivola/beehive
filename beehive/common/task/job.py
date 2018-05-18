@@ -24,7 +24,7 @@ logger = get_task_logger(__name__)
 class JobError(Exception):
     def __init__(self, value, code=0):
         self.code = code
-        self.value = value
+        self.value = str(value)
         Exception.__init__(self, value, code)
         
     def __repr__(self):
@@ -37,7 +37,7 @@ class JobError(Exception):
 class JobInvokeApiError(Exception):
     def __init__(self, value, code=0):
         self.code = code
-        self.value = value
+        self.value = str(value)
         Exception.__init__(self, value, code)
         
     def __repr__(self):
@@ -151,7 +151,7 @@ class AbstractJob(BaseTask):
         """
         response = [status]
         if ex is not None:
-            response.append(ex)
+            response.append(str(ex))
 
         action = task_local.op.split(u'.')[-1]
         op = task_local.op
@@ -165,7 +165,7 @@ class AbstractJob(BaseTask):
             u'params': self.request.args,
             u'response': response,
             u'elapsed': elapsed,
-            u'msg': msg
+            u'msg': str(msg)
         }
         
         source = {
@@ -275,12 +275,8 @@ class Job(AbstractJob):
     
         The return value of this handler is ignored.
         """
+        err = str(exc)
         BaseTask.on_failure(self, exc, task_id, args, kwargs, einfo)
-
-        try:
-            err = str(exc)
-        except:
-            err = exc
         trace = format_tb(einfo.tb)
         trace.append(err)
         logger.error(u'', exc_info=1)
@@ -393,6 +389,7 @@ class JobTask(AbstractJob):
                 except:
                     trace = u'Job %s was not found' % job_id
                 err = u'Remote job %s error: %s' % (job_id, trace)
+                trace = str(trace)
                 logger.error(err)
                 raise JobInvokeApiError(trace)
             else:
@@ -498,7 +495,7 @@ class JobTask(AbstractJob):
             elapsed = current_time - float(job_start_time)        
             
             # update job
-            self.update_job(current_time=time())        
+            self.update_job(current_time=time(), status=u'PROGRESS')
     
             # send event
             self.send_job_event(status, elapsed, ex, msg)
@@ -519,11 +516,8 @@ class JobTask(AbstractJob):
     
         The return value of this handler is ignored.
         """
+        err = str(exc)
         BaseTask.on_failure(self, exc, task_id, args, kwargs, einfo)
-        try:
-            err = str(exc)
-        except:
-            err = exc
         trace = format_tb(einfo.tb)
         trace.append(err)
         logger.error(u'', exc_info=1)

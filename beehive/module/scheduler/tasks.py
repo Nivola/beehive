@@ -4,6 +4,8 @@ Created on Nov 3, 2015
 @author: darkbk
 """
 from gevent import sleep
+
+from beehive.common.apimanager import ApiManagerError
 from beehive.common.task.canvas import signature
 from celery.utils.log import get_task_logger
 from beehive.common.data import operation
@@ -197,7 +199,8 @@ def test_raise(self, options, i):
     :param tupla options: Tupla with some useful options.
         (class_name, objid, job, job id, start time, time before new query, user)
     """
-    raise Exception(u'Error in main job')
+    # raise ApiManagerError(u'Error in main job')
+    raise Exception(ApiManagerError(u'Error in main job'))
 
 
 @task_manager.task(bind=True, base=JobTask)
@@ -212,7 +215,7 @@ def jobtest_task4(self, options):
     params = self.get_shared_data()
     if params[u'suberror'] is True:
         logger.error(u'Test error in internal job')
-        raise Exception(u'Test error in internal job')
+        raise ApiManagerError(u'Test error in internal job')
 
     res = 0
     for n in xrange(10000):

@@ -77,7 +77,7 @@ class TaskResult(object):
 
             # get data from redis
             logger.debug(u'  prefix: %s  task_id: %s' % (_prefix, task_id))
-            key = (u'%s%s' % (_prefix , task_id))
+            key = (u'%s%s' % (_prefix, task_id))
             try:
                 val = _redis.get(key, None)
             except:
@@ -133,7 +133,7 @@ class TaskResult(object):
         if inner_type == u'JOB':
             logout = logger.info
             
-        logout(u'Save %s %s result: %s' % (inner_type, task_id, truncate(val)))
+        logout(u'Save %s %s result: %s' % (inner_type, task_id, truncate(val, size=400)))
 
         return data
 
