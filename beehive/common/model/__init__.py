@@ -391,7 +391,7 @@ class PaginatedQueryGenerator(object):
             table = u'`%s`' % self.entity.__tablename__
         stmp = stmp.format(table=table, fields=fields, field=self.field, order=self.order, start=self.start,
                            size=self.size)
-        self.logger.debug(u'query: %s' % stmp)
+        # self.logger.debug(u'query: %s' % stmp)
         return stmp
     
     def run(self, tags, *args, **kvargs):
@@ -498,9 +498,9 @@ class AbstractDbManager(object):
         return res    
 
     def print_query(self, func, query, args):
-        self.logger.warn(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
+        self.logger.debug2(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
         args = {arg: args.locals[arg] for arg in args.args}
-        self.logger.warn(args)
+        self.logger.debug2(args)
 
     def query_entities(self, entityclass, session, oid=None, objid=None, uuid=None, name=None, *args, **kvargs):
         """Get model entities query
