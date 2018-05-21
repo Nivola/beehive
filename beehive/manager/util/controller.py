@@ -627,7 +627,7 @@ commands:
             f.write(seckey)
             f.close()
 
-    def get_arg(self, default=None, name=None, keyvalue=False, required=False):
+    def get_arg(self, default=None, name=None, keyvalue=False, required=False, note=u''):
         """Get arguments from command line. Arguments can be positional or key/value. Example::
 
             arg1 arg2 key1=val1
@@ -642,6 +642,7 @@ commands:
         :param name: argument name
         :param keyvalue: if True argument is keyvalue, if False argument i postional
         :param required: if True a keyvalue arg is required
+        :param note: additional note to print when field is not provided
         :return: argument value
         """
         if len(self.app.pargs.extra_arguments) > 0:
@@ -668,7 +669,7 @@ commands:
         if keyvalue is True:
             kvargs = getattr(self.app, u'kvargs', {})
             if required is True and name not in kvargs:
-                raise Exception(u'Param %s=.. is required' % name)
+                raise Exception(u'Param %s=.. is required. %s' % (name, note))
             else:
                 item = kvargs.get(name, default)
             return item
@@ -680,7 +681,7 @@ commands:
             if default is not None:
                 arg = default
             elif name is not None:
-                raise Exception(u'Param %s is required' % name)
+                raise Exception(u'Param %s is required. %s' % (name, note))
         return arg
 
     def decrypt(self, data):

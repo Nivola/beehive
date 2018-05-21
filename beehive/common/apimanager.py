@@ -856,7 +856,6 @@ class ApiManager(object):
                     
                     self.logger.info(u'Configure apiclient - CONFIGURED')
                 except Exception as ex:
-                    self.logger.warning(u'', exc_info=1)
                     self.logger.warning(u'Configure apiclient - NOT CONFIGURED')
                 ##### api authentication configuration #####
                 

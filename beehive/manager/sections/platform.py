@@ -139,10 +139,15 @@ class AnsibleController(ApiController):
                 resp.append({u'group': k, u'hosts': v})
             resp = sorted(resp, key=lambda x: x.get(u'group'))
 
-            for i in resp:
-                print(u'%30s : %s' % (i[u'group'], u', '.join(i[u'hosts'][:6])))
-                for n in range(1, len(i[u'hosts'])/6):
-                    print(u'%30s : %s' % (u'', u', '.join(i[u'hosts'][n*6:(n+1)*6])))
+            def format_ips(ips):
+                return ips
+
+            self.result(resp, headers=[u'group', u'hosts'], transform={u'hosts': format_ips}, maxsize=150)
+
+            # for i in resp:
+            #     print(u'%30s : %s' % (i[u'group'], u', '.join(i[u'hosts'][:6])))
+            #     for n in range(1, len(i[u'hosts'])/6):
+            #         print(u'%30s : %s' % (u'', u', '.join(i[u'hosts'][n*6:(n+1)*6])))
         except Exception as ex:
             self.error(ex)
     
@@ -711,6 +716,27 @@ class MysqlController(AnsibleController):
                 self.error(ex)
 
         self.result(resp, headers=[u'check_host', u'MEMBER_HOST', u'MEMBER_PORT', u'MEMBER_STATE'])
+
+    @expose()
+    @check_error
+    def mysqld_status(self):
+        """Status of mysqld instances
+        """
+        self.ansible_task(u'mysql-cluster', u'systemctl status mysqld.service')
+
+    @expose()
+    @check_error
+    def mysql_router_status(self):
+        """Status of mysql router instances
+        """
+        self.ansible_task(u'mysql-cluster', u'systemctl status mysqlrouter.service')
+
+    @expose()
+    @check_error
+    def engine_start(self):
+        """Start nginx instances
+        """
+        self.ansible_task(u'nginx', u'systemctl start nginx')
 
     @expose(aliases=[u'schemas [port]'], aliases_only=True)
     @check_error
@@ -1664,7 +1690,6 @@ class ElkController(AnsibleController):
         else:
             print "L'indice "+ indice + " del pod "+ pod + " non e' stato trovato!!"
 
-
     @expose(aliases=[u'search <start_date> <stop_date> [field=..]'], aliases_only=True)
     @check_error
     def search(self):
@@ -1766,7 +1791,206 @@ class NodeController(AnsibleController):
     class Meta:
         label = 'node'
         description = "Nodes management"
-    
+
+    def __get_hosts_and_vars(self, env):
+        # get environemtn nodes
+        try:
+            path_inventory = u'%s/inventory/%s' % (self.ansible_path, env)
+            path_lib = u'%s/library/beehive/' % (self.ansible_path)
+            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib,
+                            vault_password=self.vault)
+            hosts, hvars = runner.get_inventory_with_vars(u'all')
+            hvars = runner.variable_manager.get_vars(runner.loader)
+            return hosts, hvars
+        except Exception as ex:
+            self.error(ex)
+            return [], []
+
+    @expose()
+    @check_error
+    def environments(self):
+        """List configured environments
+        """
+        envs = self.configs[u'environments']
+        default = envs.pop(u'default')
+        resp = []
+        for e in envs.keys():
+            hosts, hvars = self.__get_hosts_and_vars(e)
+            resp.append({u'environment': e, u'hosts': hosts})
+        logger.debug(resp)
+        self.app.print_output(u'Default environment: %s' % default)
+        self.result(resp, headers=[u'environment', u'hosts'], maxsize=400)
+
+    @expose(aliases=[u'list <group>'], aliases_only=True)
+    @check_error
+    def list(self):
+        """List managed platform nodes
+        """
+        group = self.get_arg(default=None)
+        self.ansible_inventory(group)
+
+    @expose(aliases=[u'create <group>'], aliases_only=True)
+    @check_error
+    def create(self):
+        """Create group nodes
+        """
+        group = self.get_arg(default=u'all')
+        run_data = {
+            u'tags': [u'create']
+        }
+        self.ansible_playbook(group, run_data, playbook=self.create_playbook)
+
+    @expose(aliases=[u'update <group>'], aliases_only=True)
+    @check_error
+    def update(self):
+        """Update group nodes - change hardware configuration
+        """
+        group = self.get_arg(default=u'all')
+        run_data = {
+            u'tags': [u'update']
+        }
+        self.ansible_playbook(group, run_data, playbook=self.site_playbook)
+
+    @expose(aliases=[u'configure <group>'], aliases_only=True)
+    @check_error
+    def configure(self):
+        """Make main configuration on group nodes
+        """
+        group = self.get_arg(default=u'all')
+        run_data = {
+            u'tags': [u'configure']
+        }
+        self.ansible_playbook(group, run_data, playbook=self.site_playbook)
+
+    @expose(aliases=[u'ssh-copy-id <group>'], aliases_only=True)
+    @check_error
+    def ssh_copy_id(self):
+        """Copy ssh id on group nodes
+        """
+        group = self.get_arg(default=u'all')
+        run_data = {
+            u'tags': [u'ssh']
+        }
+        self.ansible_playbook(group, run_data, playbook=self.site_playbook)
+
+    @expose(aliases=[u'install [group]'], aliases_only=True)
+    @check_error
+    def install(self):
+        """Install software on group nodes
+        """
+        group = self.get_arg(default=u'all')
+        if group == u'all':
+            playbook = self.site_playbook
+        else:
+            playbook = u'%s/%s.yml' % (self.ansible_path, group)
+        run_data = {
+            u'tags': [u'install']
+        }
+        self.ansible_playbook(group, run_data, playbook=playbook)
+
+    @expose(aliases=[u'yum-update [group]'], aliases_only=True)
+    @check_error
+    def yum_update(self):
+        """Update system package on beehive console
+    - group: ansible group
+        """
+        group = self.get_arg(default=u'all')
+
+        run_data = {
+            u'tags': [u'yum-update']
+        }
+        self.ansible_playbook(group, run_data, playbook=self.site_playbook)
+
+    @expose(aliases=[u'hosts [group]'], aliases_only=True)
+    @check_error
+    def hosts(self):
+        """Configure nodes hosts local resolution
+    - group: ansible group
+        """
+        group = self.get_arg(default=u'all')
+        run_data = {
+            u'tags': [u'hosts']
+        }
+        self.ansible_playbook(group, run_data, playbook=self.site_playbook)
+
+    @expose(aliases=[u'reboot <group>'], aliases_only=True)
+    @check_error
+    def reboot(self):
+        """Execute reboot on managed platform nodes
+    - group: ansible group
+    - cmd: shell command
+        """
+        group = self.get_arg(default=u'all')
+
+        run_data = {
+            u'tags': [u'node-reboot']
+        }
+        self.ansible_playbook(group, run_data, playbook=self.site_playbook)
+
+    @expose(aliases=[u'cmd <group> <cmd>'], aliases_only=True)
+    @check_error
+    def cmd(self):
+        """Execute command on managed platform nodes
+    - group: ansible group
+    - cmd: shell command
+        """
+        group = self.get_arg(name=u'group')
+        cmd = self.get_arg(name=u'cmd')
+        path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
+        path_lib = u'%s/library/beehive/' % (self.ansible_path)
+        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
+        tasks = [
+            dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
+        ]
+        runner.run_task(group, tasks=tasks, frmt=u'text')
+
+    @expose(aliases=[u'cmd2 <group> <cmd>'], aliases_only=True)
+    @check_error
+    def cmd2(self):
+        """Execute command on managed platform nodes
+    - group: ansible group
+    - cmd: shell command
+        """
+        inventory_dict = {
+            "all": {
+                "vars": {
+                    "ansible_user": "centos",
+                    "ansible_ssh_private_key_file": u'%s/../configs/test/.ssh/vm.id_rsa' % self.ansible_path,
+                }
+            },
+            "group001": {
+                "hosts": ["10.138.133.21", "10.138.197.4"],
+                "vars": {
+                    "ansible_user": "root",
+                    "ansible_ssh_pass": "mypass",
+                },
+                "children": ["group002"]
+            },
+            "group002": {
+                "hosts": ["10.138.197.3", "10.138.197.2"],
+                "vars": {
+                    "ansible_user": "root",
+                    "ansible_ssh_pass": "mypass",
+                },
+                "children": []
+            },
+            "group003": {
+                "hosts": ["10.138.128.50", "10.138.128.35"],
+                "vars": {
+                },
+                "children": []
+            }
+        }
+
+        group = self.get_arg(name=u'group')
+        cmd = self.get_arg(name=u'cmd')
+        path_lib = u'%s/library/beehive/' % (self.ansible_path)
+        runner = Runner(inventory=inventory_dict, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
+        tasks = [
+            dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
+        ]
+        runner.run_task(group, tasks=tasks, frmt=u'text')
+
     def ip_pod_fun(self,pod):
         # range podvc: da 216.141 al 216.159, podto1: dal 152.130 al 152.148, podt2: dal 184.130 al 184.148
         # da 1 a 3: mgmt
@@ -1863,7 +2087,6 @@ class NodeController(AnsibleController):
         self.result(servers, headers=[u'host', u'alimentazione', u'num'])
         print "beehive platform node powervolt <pod>  -  per avere indicazioni sui volt in input"
 
-
     @expose(aliases=[u'powervolt <pod>'], aliases_only=True)
     @check_error
     def powervolt(self):
@@ -1907,7 +2130,6 @@ class NodeController(AnsibleController):
                 ali = 2
 
         self.result(servers, headers=[u'host', u'volt', u'num'])
-
 
     @expose(aliases=[u'memory <pod>'], aliases_only=True)
     @check_error
@@ -2097,7 +2319,6 @@ class NodeController(AnsibleController):
         print "Numero errori rilevati: %s " % conta_errori 
         self.result(servers, headers=[u'host', u'nics', u'stato'])
 
-
     @expose(aliases=[u'globalstatus <pod>'], aliases_only=True)
     @check_error
     def globalstatus(self):
@@ -2198,180 +2419,6 @@ class NodeController(AnsibleController):
         self.result(servers, headers=[u'host', u'nics', u'nicsup'])
 
 
-    def __get_hosts_and_vars(self, env):
-        # get environemtn nodes
-        try:
-            path_inventory = u'%s/inventory/%s' % (self.ansible_path, env)
-            path_lib = u'%s/library/beehive/' % (self.ansible_path)
-            runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
-            hosts, hvars = runner.get_inventory_with_vars(u'all')
-            hvars = runner.variable_manager.get_vars(runner.loader)
-            return hosts, hvars
-        except Exception as ex:
-            self.error(ex)
-            return [], []        
-
-        # get root user
-        #vars = runner.variable_manager.get_vars(runner.loader, host=hosts[0])
-
-    @expose()
-    @check_error
-    def environments(self):
-        """List configured environments
-        """
-        envs = self.configs[u'environments']
-        default = envs.pop(u'default')
-        resp = []
-        for e in envs.keys():
-            hosts, hvars = self.__get_hosts_and_vars(e)
-            resp.append({u'environment': e, u'hosts': hosts})
-        logger.debug(resp)
-        self.app.print_output(u'Default environment: %s' % default)
-        self.result(resp, headers=[u'environment', u'hosts'], maxsize=400)
-    
-    @expose(aliases=[u'list <group>'], aliases_only=True)
-    @check_error
-    def list(self):
-        """List managed platform nodes
-        """
-        group = self.get_arg(default=None)
-        self.ansible_inventory(group)
-        
-    @expose(aliases=[u'create <group>'], aliases_only=True)
-    @check_error
-    def create(self):
-        """Create group nodes
-        """
-        group = self.get_arg(default=u'all')
-        run_data = {
-            u'tags':[u'create']
-        }        
-        self.ansible_playbook(group, run_data, playbook=self.create_playbook)
-
-    @expose(aliases=[u'update <group>'], aliases_only=True)
-    @check_error
-    def update(self):
-        """Update group nodes - change hardware configuration
-        """
-        group = self.get_arg(default=u'all')
-        run_data = {
-            u'tags':[u'update']
-        }        
-        self.ansible_playbook(group, run_data, playbook=self.site_playbook)
-
-    @expose(aliases=[u'configure <group>'], aliases_only=True)
-    @check_error
-    def configure(self):
-        """Make main configuration on group nodes
-        """
-        group = self.get_arg(default=u'all')
-        run_data = {
-            u'tags':[u'configure']
-        }        
-        self.ansible_playbook(group, run_data,playbook=self.site_playbook)
-        
-    @expose(aliases=[u'ssh-copy-id <group>'], aliases_only=True)
-    @check_error
-    def ssh_copy_id(self):
-        """Copy ssh id on group nodes
-        """
-        group = self.get_arg(default=u'all')
-        run_data = {
-            u'tags':[u'ssh']
-        }        
-        self.ansible_playbook(group, run_data, playbook=self.site_playbook)
-        
-    @expose(aliases=[u'install <group>'], aliases_only=True)
-    @check_error
-    def install(self):
-        """Install software on group nodes
-        """
-        group = self.get_arg(default=u'all')
-        if group == u'all':
-            playbook = self.site_playbook
-        else:
-            playbook = u'%s/%s.yml' % (self.ansible_path, group)
-        run_data = {
-            u'tags': [u'install']
-        }        
-        self.ansible_playbook(group, run_data, playbook=playbook)
-
-    @expose(aliases=[u'hosts <group>'], aliases_only=True)
-    @check_error
-    def hosts(self):
-        """Configure nodes hosts local resolution
-        """
-        group = self.get_arg(default=u'all')
-        run_data = {
-            u'tags': [u'hosts']
-        }        
-        self.ansible_playbook(group, run_data, playbook=self.site_playbook)
-        
-    @expose(aliases=[u'cmd <group> <cmd>'], aliases_only=True)
-    @check_error
-    def cmd(self):
-        """Execute command on managed platform nodes
-    - group: ansible group
-    - cmd: shell command   
-        """
-        group = self.get_arg(name=u'group')
-        cmd = self.get_arg(name=u'cmd')
-        path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
-        path_lib = u'%s/library/beehive/' % (self.ansible_path)
-        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
-        tasks = [
-            dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
-        ]
-        runner.run_task(group, tasks=tasks, frmt=u'text')
-
-    @expose(aliases=[u'cmd2 <group> <cmd>'], aliases_only=True)
-    @check_error
-    def cmd2(self):
-        """Execute command on managed platform nodes
-    - group: ansible group
-    - cmd: shell command
-        """
-        inventory_dict = {
-            "all": {
-                "vars": {
-                    "ansible_user": "centos",
-                    "ansible_ssh_private_key_file": u'%s/../configs/test/.ssh/vm.id_rsa' % self.ansible_path,
-                }
-            },
-            "group001": {
-                "hosts": ["10.138.133.21", "10.138.197.4"],
-                "vars": {
-                    "ansible_user": "root",
-                    "ansible_ssh_pass": "mypass",
-                },
-                "children": ["group002"]
-            },
-            "group002": {
-                "hosts": ["10.138.197.3", "10.138.197.2"],
-                "vars": {
-                    "ansible_user": "root",
-                    "ansible_ssh_pass": "mypass",
-                },
-                "children": []
-            },
-            "group003": {
-                "hosts": ["10.138.128.50", "10.138.128.35"],
-                "vars": {
-                },
-                "children": []
-            }
-        }
-
-        group = self.get_arg(name=u'group')
-        cmd = self.get_arg(name=u'cmd')
-        path_lib = u'%s/library/beehive/' % (self.ansible_path)
-        runner = Runner(inventory=inventory_dict, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
-        tasks = [
-            dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
-        ]
-        runner.run_task(group, tasks=tasks, frmt=u'text')
-
-
 class BeehiveConsoleController(AnsibleController):
     setup_cmp = False
 
@@ -2445,16 +2492,6 @@ class BeehiveConsoleController(AnsibleController):
         """
         run_data = {
             u'tags': [u'pip']
-        }
-        self.ansible_playbook(u'console', run_data, playbook=self.console_playbook)
-
-    @expose()
-    @check_error
-    def yum(self):
-        """Update system package on beehive console
-        """
-        run_data = {
-            u'tags': [u'package']
         }
         self.ansible_playbook(u'console', run_data, playbook=self.console_playbook)
 
@@ -2660,58 +2697,118 @@ class BeehiveController(AnsibleController):
             cli = self.get_camunda_clients(runner)
         pass
 
-    @expose(aliases=[u'post-install <config>'], aliases_only=True)
+    @expose(aliases=[u'post-install <config> [sections=..]'], aliases_only=True)
     @check_error
     def post_install(self):
-        """
+        """Run post install. This command can be used many times to add new items.
+    - config: config file
+    - sections: comma separated list of section to execute
         """
         # get configs
-        all_configs = self.load_config(self.get_arg(name=u'config'))
+        available_configs = [f[0:-5] for f in os.listdir(u'%s/../post-install' % self.ansible_path)
+                             if f.find(u'.json') > 0]
+        note = u'Available config are: ' + u', '.join(available_configs)
+        config_path = u'%s/../post-install/%s.json' % (self.ansible_path, self.get_arg(name=u'config', note=note))
+        all_configs = self.load_config(config_path)
         apply = all_configs.get(u'apply')
         configs = all_configs.get(u'configs')
 
+        # replace section values
+        new_apply = self.get_arg(name=u'sections', default=None, keyvalue=True)
+        if new_apply is not None:
+            new_apply = new_apply.split(u',')
+            for item in new_apply:
+                apply[item] = True
+
+        out_apply = [{u'section': k, u'enabled': v} for k, v in apply.items()]
+        self.result(out_apply, headers=[u'section', u'enabled'])
+
         self.subsystem = u'auth'
 
-        # oauth2 scopes
+        # oauth2 scopes and clients
         if apply.get(u'oauth2', False) is True:
+            self.output(u'------ oauth2 ------ ')
+
             for scope in configs.get(u'oauth2').get(u'scopes'):
-                res = self._call(u'/v1.0/oauth2/scopes', u'POST', data={u'scope': scope})
-                logger.info(u'Add scope: %s' % res)
-                self.output(u'Add scope: %s' % scope)
+                try:
+                    res = self._call(u'/v1.0/oauth2/scopes', u'POST', data={u'scope': scope})
+                    logger.info(u'Add scope: %s' % res)
+                    self.output(u'Add scope: %s' % scope)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
+            for client in configs.get(u'oauth2').get(u'clients'):
+                try:
+                    res = self._call(u'/v1.0/oauth2/clients', u'POST', data={u'client': client})
+                    logger.info(u'Add client: %s' % res)
+                    self.output(u'Add client: %s' % client)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
 
         # auth roles, users and groups
         if apply.get(u'auth', False) is True:
+            self.output(u'------ auth ------ ')
+
             for obj in configs.get(u'auth').get(u'roles'):
-                res = self._call(u'/v1.0/nas/roles', u'POST', data={u'role': {u'name': obj, u'desc': obj}})
-                logger.info(u'Add role: %s' % res)
-                self.output(u'Add roles: %s' % obj)
-            # TODO: users
+                try:
+                    res = self._call(u'/v1.0/nas/roles', u'POST', data={u'role': {u'name': obj, u'desc': obj}})
+                    logger.info(u'Add role: %s' % res)
+                    self.output(u'Add roles: %s' % obj)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
+
+            for obj in configs.get(u'auth').get(u'users'):
+                try:
+                    res = self._call(u'/v1.0/nas/users', u'POST', data={u'user': obj})
+                    logger.info(u'Add user: %s' % res)
+                    self.output(u'Add user: %s' % obj)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
+                try:
+                    roles = {
+                        u'append': obj[u'roles'],
+                        u'remove': []
+                    }
+                    res = self._call(u'/v1.0/nas/users/%s' % obj[u'name'], u'PUT', data={u'user': {u'roles': roles}})
+                    logger.info(u'Add user roles: %s' % res)
+                    self.output(u'Add user roles: %s' % obj[u'roles'])
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
+
             # TODO: groups
 
         # auth and catalog objects and schedule
         if apply.get(u'auth-schedule', False) is True:
+            self.output(u'------ auth-schedule ------ ')
+
             for schedule in configs.get(u'auth').get(u'schedules'):
                 res = self._call(u'/v1.0/nas/scheduler/entries', u'POST', data={u'schedule': schedule})
                 logger.info(u'Add schedule: %s' % res)
-                self.output(u'Add schedule: %s' % scope)
+                self.output(u'Add schedule: %s' % schedule)
 
         #  camunda
         # - metatabelle decisioni
         # - processi
         if apply.get(u'camunda', False) is True:
+            self.output(u'------ camunda ------ ')
+
             runners = self.get_runners()
-            #loop for all env
+            # loop for all env
             for runner in runners:
                 camundaclients= self.get_camunda_clients(runner)
                 # render and deploy to camunda
-                render = configs.get(u'camunda').get(u'render',{u'context':{}, u'deploy':[]})
+                render = configs.get(u'camunda').get(u'render', {u'context': {}, u'deploy': []})
                 for obj in render.get(u'deploy'):
                     try:
                         content, filename = self.file_render( runner, obj, render['context'])
                         name,dtype = os.path.splitext(os.path.split(filename)[1])
                         dtype = dtype[1:]
                         for cli in camundaclients:
-                            res = cli.process_deployment_create( content.rstrip(), name, 
+                            res = cli.process_deployment_create(content.rstrip(), name,
                                 type=dtype, checkduplicate=True, changeonly=True, tenantid=None)
                             logger.info(u'camunda rendered deploy: %s' % res)
                             self.output( u'Camunda rendered deploy: %s.%s' %(name, dtype) )
@@ -2719,13 +2816,13 @@ class BeehiveController(AnsibleController):
                         self.error(ex)
                         self.app.error = False
                 # deploy
-                for obj in configs.get(u'camunda').get(u'deploy',[]):
+                for obj in configs.get(u'camunda').get(u'deploy', []):
                     try:
-                        content, filename = self.file_content( obj)
+                        content, filename = self.file_content(obj)
                         name,dtype = os.path.splitext(os.path.split(filename)[1])
                         dtype = dtype[1:]
                         for cli in camundaclients:
-                            res = cli.process_deployment_create( content.rstrip(), name, 
+                            res = cli.process_deployment_create(content.rstrip(), name,
                                 type=dtype, checkduplicate=True, changeonly=True, tenantid=None)
                             logger.info(u'camunda deploy: %s' % res)
                             self.output( u'Camunda deploy: %s.%s' %(name, dtype) )
@@ -2737,6 +2834,8 @@ class BeehiveController(AnsibleController):
 
         # resource tags
         if apply.get(u'resource-tags', False) is True:
+            self.output(u'------ resource-tags ------ ')
+
             for obj in configs.get(u'resource').get(u'tags'):
                 try:
                     res = self._call(u'/v1.0/nrs/tags', u'POST', data={u'resourcetag': {u'value': obj}})
@@ -2748,6 +2847,8 @@ class BeehiveController(AnsibleController):
 
         # resource containers
         if apply.get(u'resource-containers', False) is True:
+            self.output(u'------ resource-containers ------ ')
+
             for obj in configs.get(u'resource').get(u'containers'):
                 try:
                     res = self._call(u'/v1.0/nrs/containers', u'POST', data={u'resourcecontainer': obj})
@@ -2759,6 +2860,8 @@ class BeehiveController(AnsibleController):
 
         # resource containers sync
         if apply.get(u'resource-containers-sync', False) is True:
+            self.output(u'------ resource-containers-sync ------ ')
+
             for obj in configs.get(u'resource').get(u'containers'):
                 name = obj.get(u'name')
                 cont_type = obj.get(u'type')
@@ -2772,21 +2875,48 @@ class BeehiveController(AnsibleController):
 
         # resource entities
         if apply.get(u'resource-entities', False) is True:
-            entitie_types = [u'region', u'site', u'site_network', u'compute_zone', u'image', u'flavor']
-            for entitie_type in entitie_types:
+            self.output(u'------ resource-entities ------ ')
+
+            entity_types = [u'vsphere-flavor']
+            for entity_type in entity_types:
                 resources = configs.get(u'resource').get(u'entities')
-                for obj in resources.get(entitie_type+u's'):
+                for obj in resources.get(entity_type+u's'):
+                    if entity_type == u'vsphere-flavor':
+                        try:
+                            res = self._call(u'/v1.0/nrs/vsphere/flavors', u'POST', data={u'flavor': obj})
+                            logger.info(u'Add %s: %s' % (entity_type, res))
+                            self.output(u'Add %s: %s' % (entity_type, obj))
+                        except Exception as ex:
+                            filter = urllib.urlencode({u'container': obj[u'container'], u'name': obj[u'name']})
+                            res = self._call(u'/v1.0/nrs/vsphere/flavors', u'GET', data=filter)[u'flavors'][0]
+                            self.error(ex)
+                            self.app.error = False
+
+                        for datastore in obj[u'datastores']:
+                            try:
+                                ds = self._call(u'/v1.0/nrs/vsphere/flavors/%s/datastores' % res[u'uuid'], u'POST',
+                                                data={u'datastore': datastore})
+                                logger.info(u'Add %s datastores: %s' % (entity_type, res))
+                                self.output(u'Add %s datastores: %s' % (entity_type, obj))
+                            except Exception as ex:
+                                self.error(ex)
+                                self.app.error = False
+
+            entity_types = [u'region', u'site', u'site_network', u'compute_zone', u'image', u'flavor']
+            for entity_type in entity_types:
+                resources = configs.get(u'resource').get(u'entities')
+                for obj in resources.get(entity_type+u's', []):
                     try:
-                        res = self._call(u'/v1.0/nrs/provider/'+entitie_type+u's', u'POST', data={entitie_type: obj})
+                        res = self._call(u'/v1.0/nrs/provider/'+entity_type+u's', u'POST', data={entity_type: obj})
                         if u'jobid' in res:
                             self.wait_job(res[u'jobid'], delta=1)
-                        logger.info(u'Add %s: %s' % (entitie_type, res))
-                        self.output(u'Add %s: %s' % (entitie_type, obj))
+                        logger.info(u'Add %s: %s' % (entity_type, res))
+                        self.output(u'Add %s: %s' % (entity_type, obj))
                     except Exception as ex:
                         self.error(ex)
                         self.app.error = False
 
-                    if entitie_type == u'site':
+                    if entity_type == u'site':
                         for orc in resources.get(u'site_orchestrators').get(obj[u'name']):
                             try:
                                 if orc[u'type'] == u'openstack':
@@ -2803,7 +2933,7 @@ class BeehiveController(AnsibleController):
                                 self.error(ex)
                                 self.app.error = False
 
-                    if entitie_type == u'compute_zone':
+                    if entity_type == u'compute_zone':
                         name = obj.get(u'name')
                         quota = obj.get(u'quota')
                         sites = obj.get(u'sites')
@@ -2823,15 +2953,60 @@ class BeehiveController(AnsibleController):
         self.subsystem = u'service'
 
         # create service types
-        if apply.get(u'service-types', False) is True:
-            for obj in configs.get(u'service').get(u'types'):
-                res = self._call(u'/v1.0/nws/servicetypes', u'POST', data={u'servicetype': obj})
-                logger.info(u'Add service type: %s' % res)
-                self.output(u'Add service type: %s' % obj)
+        if apply.get(u'service-types-sync', False) is True:
+            self.output(u'------ service-types-sync ------ ')
+
+            for obj in configs.get(u'service').get(u'types-sync'):
+                try:
+                    res = self._call(u'/v1.0/nws/servicetypes', u'POST', data={u'servicetype': obj})
+                    logger.info(u'Add service type: %s' % res)
+                    self.output(u'Add service type: %s' % obj)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
+
+        if apply.get(u'service-types-async', False) is True:
+            self.output(u'------ service-types-async ------ ')
+
+            for obj in configs.get(u'service').get(u'types-async'):
+                try:
+                    res = self._call(u'/v1.0/nws/servicetypes', u'POST', data={u'servicetype': obj})
+                    logger.info(u'Add service type: %s' % res)
+                    self.output(u'Add service type: %s' % obj)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
 
         # create service defs
-        if apply.get(u'service-defs', False) is True:
-            for obj in configs.get(u'service').get(u'defs'):
+        if apply.get(u'service-defs-sync', False) is True:
+            self.output(u'------ service-defs-sync ------ ')
+
+            for obj in configs.get(u'service').get(u'defs-sync'):
+                try:
+                    configs = obj.pop(u'configs')
+                    res = self._call(u'/v1.0/nws/servicedefs', u'POST', data={u'servicedef': obj})
+                    logger.info(u'Add service def: %s' % res)
+                    self.output(u'Add service def: %s' % obj)
+
+                    data = {
+                        u'name': u'%s-config' % obj.get(u'name'),
+                        u'desc': u'%s-config' % obj.get(u'name'),
+                        u'service_definition_id': res[u'uuid'],
+                        u'params': configs,
+                        u'params_type': u'JSON',
+                        u'version': obj.get(u'version')
+                    }
+                    res = self._call(u'/v1.0/nws/servicecfgs', u'POST', data={u'servicecfg': data})
+                    logger.info(u'Add service def config: %s' % res)
+                    self.output(u'Add service def config: %s' % configs)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
+
+        if apply.get(u'service-defs-async', False) is True:
+            self.output(u'------ service-defs-async ------ ')
+
+            for obj in configs.get(u'service').get(u'defs-async'):
                 try:
                     configs = obj.pop(u'configs')
                     res = self._call(u'/v1.0/nws/servicedefs', u'POST', data={u'servicedef': obj})
@@ -2855,7 +3030,9 @@ class BeehiveController(AnsibleController):
 
         # create service process
         if apply.get(u'service-processes', False) is True:
-            for obj in configs.get(u'service',{u'processes':[]}).get(u'processes'):
+            self.output(u'------ service-processes ------ ')
+
+            for obj in configs.get(u'service', {u'processes': []}).get(u'processes'):
                 try:
                     type_oid = obj.get("service_type_id", None)
                     method = obj.get("method", None)
@@ -2865,24 +3042,24 @@ class BeehiveController(AnsibleController):
                         break
                     # get service type id
                     res = self._call(u'/v1.0/nws/servicetypes/%s' % (type_oid), u'GET').get(u'servicetype', {})
-                    type_id = res.get("id",None) 
+                    type_id = res.get("id", None)
                     if type_id is None:
                         logger.error(u'Could not found a type whose oid is %s' % (type_oid))
                         self.outpu(u'Could not found a type whose oid is %s' % (type_oid))
                         break
                     # get serviceprocess for service type and  method
-                    res = self._call(u'/v1.0/nws/serviceprocesses', u'GET', 
-                                data=u'service_type_id=%s&method_key=%s' % (type_id, method)
-                                ).get(u'serviceprocesses', [])
+                    res = self._call(u'/v1.0/nws/serviceprocesses', u'GET',
+                                     data=u'service_type_id=%s&method_key=%s' % (type_id, method))\
+                        .get(u'serviceprocesses', [])
 
                     if len(res) >= 1:
-                        prev=res[0] 
+                        prev = res[0]
                         name = obj.get( u'name', prev['method_key'])
                         desc = obj.get( u'desc', prev['desc'])
                         process = obj.get( u'process', prev['process_key'])
                         template = obj.get(u'template', '{}')
                     else:
-                        prev=None
+                        prev = None
                         name = obj.get(u'name', '%s-%s' % (method,type_oid))
                         desc = obj.get(u'desc', name)
                         process = obj.get(u'process','invalid_key')
@@ -2899,10 +3076,10 @@ class BeehiveController(AnsibleController):
                             u'template': template
                         }
                     }
-                    if prev == None:
-                        res = self._call( u'/v1.0/nws/serviceprocesses' , u'POST', data=data)
+                    if prev is None:
+                        res = self._call(u'/v1.0/nws/serviceprocesses', u'POST', data=data)
                     else:
-                        res = self._call ( u'/v1.0/nws/serviceprocesses/%s' % prev['uuid'], u'PUT', data=data)
+                        res = self._call(u'/v1.0/nws/serviceprocesses/%s' % prev['uuid'], u'PUT', data=data)
                     self.output(u'Set process %s for method %s to service type %s' % (process, method, type_oid ))
                 except Exception as ex:
                     self.error(ex)
@@ -2910,6 +3087,8 @@ class BeehiveController(AnsibleController):
 
         # create service catalogs
         if apply.get(u'service-catalogs', False) is True:
+            self.output(u'------ service-catalogs ------ ')
+
             for obj in configs.get(u'service').get(u'catalogs'):
                 try:
                     name = obj.get(u'name')
@@ -2931,16 +3110,53 @@ class BeehiveController(AnsibleController):
 
         # create org
         if apply.get(u'authority', False) is True:
+            self.output(u'------ authority ------ ')
+
             for obj in configs.get(u'authority').get(u'orgs'):
-                name = obj.get(u'name')
-                res = self._call(u'/v1.0/nws/organizations', u'GET', data={u'name': name}).get(u'organizations')
-                if len(res) > 0:
-                    self.error(u'Organization %s already exists' % name)
+                try:
+                    res = self._call(u'/v1.0/nws/organizations', u'POST', data={u'organization': obj})
+                    logger.info(u'Add organization: %s' % res)
+                    self.output(u'Add organization: %s' % obj)
+                except Exception as ex:
+                    self.error(ex)
                     self.app.error = False
 
-                # res = self._call(u'/v1.0/nws/orgs', u'POST', data={u'servicetype': obj})
-                # logger.info(u'Add service type: %s' % res)
-                # self.output(u'Add service type: %s' % obj)
+            for obj in configs.get(u'authority').get(u'price-lists'):
+                try:
+                    res = self._call(u'/v1.0/nws/pricelists', u'POST', data={u'price_list': obj})
+                    logger.info(u'Add pricelist: %s' % res)
+                    self.output(u'Add pricelist: %s' % obj)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
+
+            for obj in configs.get(u'authority').get(u'divs'):
+                try:
+                    res = self._call(u'/v1.0/nws/divisions', u'POST', data={u'division': obj})
+                    logger.info(u'Add division: %s' % res)
+                    self.output(u'Add division: %s' % obj)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
+
+                # add users
+                for user in obj.get(u'users'):
+                    try:
+                        res = self._call(u'/v1.0/nws/divisions/%s/users' % obj[u'name'], u'POST', data={u'user': user})
+                        logger.info(u'Add division %s user: %s' % (obj[u'name'], res))
+                        self.output(u'Add division %s user: %s' % (obj[u'name'], user))
+                    except Exception as ex:
+                        self.error(ex)
+                        self.app.error = False
+
+            for obj in configs.get(u'authority').get(u'accounts'):
+                try:
+                    res = self._call(u'/v1.0/nws/accounts', u'POST', data={u'account': obj})
+                    logger.info(u'Add account: %s' % res)
+                    self.output(u'Add account: %s' % obj)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
 
     @expose()
     @check_error

@@ -29,9 +29,11 @@ class CreateView(DDLElement):
         self.name = name
         self.selectable = selectable
 
+
 class DropView(DDLElement):
     def __init__(self, name):
         self.name = name
+
 
 @compiler.compiles(CreateView)
 def compile_create_view(element, compiler, **kw):
@@ -39,9 +41,11 @@ def compile_create_view(element, compiler, **kw):
         element.name, 
         compiler.sql_compiler.process(element.selectable))
 
+
 @compiler.compiles(DropView)
 def compile_drop_view(element, compiler, **kw):
-    return "DROP VIEW %s" % (element.name)
+    return "DROP VIEW IF EXISTS %s" % (element.name)
+
 
 def view(name, metadata, selectable):
     t = table(name)
@@ -387,7 +391,7 @@ class PaginatedQueryGenerator(object):
             table = u'`%s`' % self.entity.__tablename__
         stmp = stmp.format(table=table, fields=fields, field=self.field, order=self.order, start=self.start,
                            size=self.size)
-        self.logger.debug(u'query: %s' % stmp)
+        # self.logger.debug(u'query: %s' % stmp)
         return stmp
     
     def run(self, tags, *args, **kvargs):
@@ -417,7 +421,7 @@ class PaginatedQueryGenerator(object):
 
         query = self.session.query(*entities).from_statement(stmp).params(tags=tags, **kvargs)
         self.logger.debug2(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
-        self.logger.debug2(u'kvargs: %s' % kvargs)
+        self.logger.debug2(u'kvargs: %s' % truncate(kvargs))
         self.logger.debug2(u'tags: %s' % tags)
         res = query.all()
         
@@ -494,9 +498,9 @@ class AbstractDbManager(object):
         return res    
 
     def print_query(self, func, query, args):
-        self.logger.warn(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
+        self.logger.debug2(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
         args = {arg: args.locals[arg] for arg in args.args}
-        self.logger.warn(args)
+        self.logger.debug2(args)
 
     def query_entities(self, entityclass, session, oid=None, objid=None, uuid=None, name=None, *args, **kvargs):
         """Get model entities query

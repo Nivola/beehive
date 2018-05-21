@@ -206,7 +206,6 @@ class ContainerController(ResourceControllerChild, WorkerController):
         """
         value = self.get_arg(name=u'id')
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
-        print data
         uri = u'%s/containers/%s/perms' % (self.baseuri, value)
         res = self._call(uri, u'GET', data=data)
         logger.info(u'Get resource resourcecontainer perms: %s' % truncate(res))
@@ -789,7 +788,6 @@ class ResourceEntityController(ResourceControllerChild):
             yield (Token.Literal.Number, str(res.get(u'id')))
             yield (Token.Literal.String, u' [%s]' % res.get(u'state'))
         data = format(create_data(), Terminal256Formatter(style=TreeStyle))
-        print data
         self.__print_tree(res)
 
         '''import networkx as nx
