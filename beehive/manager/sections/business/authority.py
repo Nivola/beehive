@@ -29,17 +29,17 @@ class OrganizationController(AuthorityControllerChild):
         label = 'orgs'
         description = "Organization management"
 
-    def __add_role(self, account_id):
-        # get account
-        uri = u'%s/organizations/%s' % (self.baseuri, account_id)
-        account = self._call(uri, u'GET').get(u'account')
-        account_objid = account[u'__meta__'][u'objid']
-
-        # add roles
-        for role in self._meta.role_template:
-            name = role.get(u'name') % account_id
-            perms = ConnectionHelper.set_perms_objid(role.get(u'perms'), account_objid)
-            ConnectionHelper.add_role(self, name, name, perms)
+    # def __add_role(self, account_id):
+    #     # get account
+    #     uri = u'%s/organizations/%s' % (self.baseuri, account_id)
+    #     account = self._call(uri, u'GET').get(u'account')
+    #     account_objid = account[u'__meta__'][u'objid']
+    #
+    #     # add roles
+    #     for role in self._meta.role_template:
+    #         name = role.get(u'name') % account_id
+    #         perms = ConnectionHelper.set_perms_objid(role.get(u'perms'), account_objid)
+    #         ConnectionHelper.add_role(self, name, name, perms)
 
     @expose(aliases=[u'roles <account>'], aliases_only=True)
     @check_error
@@ -325,17 +325,17 @@ class DivisionController(AuthorityControllerChild):
         label = 'divs'
         description = "Divisions management"
 
-    def __add_role(self, account_id):
-        # get account
-        uri = u'%s/divisions/%s' % (self.baseuri, account_id)
-        account = self._call(uri, u'GET').get(u'account')
-        account_objid = account[u'__meta__'][u'objid']
-
-        # add roles
-        for role in self._meta.role_template:
-            name = role.get(u'name') % account_id
-            perms = ConnectionHelper.set_perms_objid(role.get(u'perms'), account_objid)
-            ConnectionHelper.add_role(self, name, name, perms)
+    # def __add_role(self, account_id):
+    #     # get account
+    #     uri = u'%s/divisions/%s' % (self.baseuri, account_id)
+    #     account = self._call(uri, u'GET').get(u'account')
+    #     account_objid = account[u'__meta__'][u'objid']
+    #
+    #     # add roles
+    #     for role in self._meta.role_template:
+    #         name = role.get(u'name') % account_id
+    #         perms = ConnectionHelper.set_perms_objid(role.get(u'perms'), account_objid)
+    #         ConnectionHelper.add_role(self, name, name, perms)
 
     @expose(aliases=[u'roles <account>'], aliases_only=True)
     @check_error
@@ -656,18 +656,18 @@ class AccountController(AuthorityControllerChild):
             u'sg': ConnectionHelper.create_sg,
             u'subnet': ConnectionHelper.create_subnet,
         }
-
-    def __add_role(self, account_id):
-        # get account
-        uri = u'%s/accounts/%s' % (self.baseuri, account_id)
-        account = self._call(uri, u'GET').get(u'account')
-        account_objid = account[u'__meta__'][u'objid']
-
-        # add roles
-        for role in self._meta.role_template:
-            name = role.get(u'name') % account_id
-            perms = ConnectionHelper.set_perms_objid(role.get(u'perms'), account_objid)
-            ConnectionHelper.add_role(self, name, name, perms)
+    #
+    # def __add_role(self, account_id):
+    #     # get account
+    #     uri = u'%s/accounts/%s' % (self.baseuri, account_id)
+    #     account = self._call(uri, u'GET').get(u'account')
+    #     account_objid = account[u'__meta__'][u'objid']
+    #
+    #     # add roles
+    #     for role in self._meta.role_template:
+    #         name = role.get(u'name') % account_id
+    #         perms = ConnectionHelper.set_perms_objid(role.get(u'perms'), account_objid)
+    #         ConnectionHelper.add_role(self, name, name, perms)
 
     @expose(aliases=[u'roles <account>'], aliases_only=True)
     @check_error
