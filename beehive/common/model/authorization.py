@@ -910,9 +910,11 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         res = query.all()
         
         if len(res) <= 0:
-            self.logger.error(u'No permissions found')
-            raise ModelError(u'No permissions found')                           
-                     
+            filter = u'objid=%s, objid_filter=%s, objtype =%s, objtypes=%s, objdef=%s, objdef_filter=%s, action=%s' % \
+                     (objid, objid_filter, objtype, objtypes, objdef, objdef_filter, action)
+            self.logger.error(u'No permissions found for params: %s' % filter)
+            raise ModelError(u'No permissions found for params: %s' % filter)
+
         self.logger.debug(u'Get object permissions: %s' % truncate(res))
         return res, total
     

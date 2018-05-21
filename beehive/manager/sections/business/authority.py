@@ -850,6 +850,8 @@ class AccountController(AuthorityControllerChild):
         services = []
         if create_services is True:
             services = self._meta.default_services
+        elif create_services.find(u'@') == 0:
+            services = self.load_config(create_services[1:len(create_services)])
 
         data = {
             u'account': {
