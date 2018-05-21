@@ -205,7 +205,7 @@ class TaskController(object):
         """Get task instance execution graph by id
         """        
         task_id = self.get_arg(name=u'id')
-        uri = u'%s/worker/tasks%s/graph' % (self.baseuri, task_id)
+        uri = u'%s/worker/tasks/%s/graph' % (self.baseuri, task_id)
         res = self._call(uri, u'GET').get(u'task_instance_graph')
         logger.info(res)
         print(u'Nodes:')

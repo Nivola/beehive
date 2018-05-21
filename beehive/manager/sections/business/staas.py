@@ -17,7 +17,7 @@ from beehive.manager.sections.business import SpecializedServiceControllerChild
 logger = logging.getLogger(__name__)
 
 
-__SRV_DEFAULT_STORAGE_EFS_SERVICE_DEF__ = u'--DEFAULT--storage-efs-service-def'
+__SRV_DEFAULT_STORAGE_EFS__ =  u'--DEFAULT--storage-efs--'
 
 
 class STaaServiceController(BaseController):
@@ -69,18 +69,20 @@ class STaaServiceEFSController(STaaServiceControllerChild):
         self.result(res, headers=headers, fields=fields, maxsize=40)
 
 
-    @expose(aliases=[u'create <name> <account> [field=..]'],
+    @expose(aliases=[u'create <name> <account> <size> <type> '],
             aliases_only=True)
     @check_error
     def create(self):
         """Create share file system instance
-    - field: can be type
+    - field: can be type if is missing is used default value __SRV_DEFAULT_STORAGE_EFS__
         """
 
         data = {
                 u'CreationToken': self.get_arg(name=u'name'), 
                 u'owner_id' : self.get_account(self.get_arg(name=u'account')),
-                u'type': self.get_arg(name=u'type', default=__SRV_DEFAULT_STORAGE_EFS_SERVICE_DEF__, keyvalue=True)
+#                 u'Nvl-Owner-Id' : self.get_account(self.get_arg(name=u'account')),               
+                u'Nvl-FileSystem-Size' : self.get_account(self.get_arg(name=u'size')),
+                u'Nvl-FileSystem-Type': self.get_arg(name=u'type')
 
         }   
         uri = u'%s/storageservices/efs' % (self.baseuri)
@@ -96,12 +98,13 @@ class STaaServiceEFSController(STaaServiceControllerChild):
     def update(self):
         """Update file system share
     - oid: id or uuid of the file system share instance
-    - field: can be name, desc
+    - field: can be name, desc, size
         """
         oid = self.get_arg(name=u'oid')
         params = {}
         params [u'name'] = self.get_arg(name=u'name', default=None, keyvalue=True)
         params [u'desc'] = self.get_arg(name=u'desc', default=None, keyvalue=True)
+        params [u'size'] = self.get_arg(name=u'size', default=None, keyvalue=True)
         data = {
             u'share': params
         }
@@ -143,30 +146,30 @@ class STaaServiceEFSController(STaaServiceControllerChild):
                    u'OwnerId', u'MountTargetId', u'SubnetId', u'NetworkInterfaceId', u'IpAddress' ]
         self.result(res, headers=headers, fields=fields, maxsize=40)
 
-    @expose(aliases=[u'create-target <name> <account> [field=..]'],
+    @expose(aliases=[u'create-target <id> <subnet>'],
             aliases_only=True)
     @check_error
     def create_target(self):
-        """Create mount target file system instance
-    - field: can be type
+        """Create mount target to file system share instance
         """
 
         data = {
-                u'CreationToken': self.get_arg(name=u'name'), 
+                u'FileSystemId': self.get_arg(name=u'id'), 
                 u'owner_id' : self.get_account(self.get_arg(name=u'account')),
-                u'type': self.get_arg(name=u'type', default=__SRV_DEFAULT_STORAGE_EFS_SERVICE_DEF__, keyvalue=True)
+#                 u'Nvl-Owner-Id' : self.get_account(self.get_arg(name=u'account')),   
+                u'SubnetId': self.get_arg(name=u'subnet')
 
         }   
-        uri = u'%s/storageservices/efs' % (self.baseuri)
+        uri = u'%s/storageservices/efs/createmounttarget' % (self.baseuri)
         res = self._call(uri, u'POST', data=data, timeout=600)
-        logger.info(u'Add storage efs instance share: %s' % truncate(res))
-        res = {u'msg': u'Add storage efs instance share %s' % res}
+        logger.info(u'Mount target to storage efs instance share: %s' % truncate(res))
+        res = {u'msg': u'Mount target to storage efs instance share %s' % res}
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'delete-target <id>'], aliases_only=True)
     @check_error
     def delete_target(self):
-        """Delete mount target file system instance
+        """Delete mount target file system share instance
         """
         uuid = self.get_arg(name=u'id')
         uri = u'%s/storageservices/efs/deletefilesystem' % self.baseuri
