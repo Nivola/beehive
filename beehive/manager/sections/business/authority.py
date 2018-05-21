@@ -246,7 +246,7 @@ class PriceListController(AuthorityControllerChild):
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
     def get(self):
-        """Get division by value or id
+        """Get pricelist by value or id
         """
         value = self.get_arg(name=u'id')
         uri = u'%s/pricelists/%s' % (self.baseuri, value)
@@ -257,7 +257,7 @@ class PriceListController(AuthorityControllerChild):
     @expose(aliases=[u'perms <id>'], aliases_only=True)
     @check_error
     def perms(self):
-        """Get division permissions by id, uuid or name
+        """Get pricelist permissions by id, uuid or name
         """
         value = self.get_arg(name=u'id')
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)

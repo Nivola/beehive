@@ -566,7 +566,7 @@ class TaskManager(ApiObject):
 
                 try:
                     # get job childs
-                    childrens = val.pop(u'children')
+                    childrens = val.pop(u'children', [])
                     if len(childrens) > 0:
                         first_child_id = childrens[0]
                         first_child = self._get_task_info(first_child_id)

@@ -573,9 +573,13 @@ class OpenstackPlatformSecurityGroupController(OpenstackPlatformControllerChild)
         logger.info(res)
         self.result(res, headers=[u'msg'])
 
-    @expose()
+    @expose(aliases=[u'check [delete=false]'], aliases_only=True)
     @check_error
     def check(self):
+        """Found all the orphan security groups
+    - delete: if true remove orphan security groups
+        """
+        delete = self.get_arg(name=u'delete', default=False, keyvalue=True)
         obj = self.entity_class.list()
         sg_index = {i[u'tenant_id']: i for i in obj}
         projects = self.client.project.list()
@@ -583,6 +587,8 @@ class OpenstackPlatformSecurityGroupController(OpenstackPlatformControllerChild)
         for k, v in sg_index.items():
             if k not in projects_ids:
                 print v[u'id'], v[u'name']
+                if delete is True:
+                    res = self.entity_class.delete(v[u'id'])
 
 
 class OpenstackPlatformImageController(OpenstackPlatformControllerChild):
@@ -838,6 +844,23 @@ class OpenstackPlatformVolumeController(OpenstackPlatformControllerChild):
         res = {u'msg': u'Delete %s %s' % (self.entity_class, oid)}
         logger.info(res)
         self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'check [delete=false]'], aliases_only=True)
+    @check_error
+    def check(self):
+        """Found all the orphan security groups
+    - delete: if true remove orphan security groups
+        """
+        delete = self.get_arg(name=u'delete', default=False, keyvalue=True)
+        obj = self.entity_class.list(detail=True)
+        sg_index = {i[u'os-vol-tenant-attr:tenant_id']: i for i in obj}
+        projects = self.client.project.list()
+        projects_ids = [i[u'id'] for i in projects]
+        for k, v in sg_index.items():
+            if k not in projects_ids:
+                print v[u'id'], v[u'name']
+                if delete is True:
+                    res = self.entity_class.delete(v[u'id'])
 
 
 class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):

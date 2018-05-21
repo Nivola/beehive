@@ -112,7 +112,7 @@ class ResultCallback(CallbackBase):
     def __init__(self, display=None, frmt=None):
         CallbackBase.__init__(self, display=display)
         self.frmt = frmt
-    
+
     def v2_runner_on_ok(self, result):
         """Print a json representation of the result
 
@@ -121,7 +121,7 @@ class ResultCallback(CallbackBase):
         host = result._host.get_name()
         logger.debug(u'Get host: %s' % host)
         logger.debug(u'Get format: %s' % self.frmt)
-        logger.debug(u'Get result: %s' % result._result.get(u'stdout_lines', None))
+        logger.debug(u'Get result: %s' % result._result)
         if self.frmt == u'json':
             print json.dumps({host.name: result._result.get(u'stdout_lines', None)}, indent=4)
         elif self.frmt == u'text':
@@ -133,16 +133,18 @@ class ResultCallback(CallbackBase):
                         
     def v2_runner_on_failed(self, result, ignore_errors=False):
         host = result._host.get_name()
-        logger.debug(u'Get host: %s' % host)
-        logger.debug(u'Get format: %s' % self.frmt)
-        logger.error(u'Get result: %s' % result._result.get(u'msg', None))
-        logger.error(u'Get result: %s' % result._result.get(u'stderr_lines', None))
+        logger.error(u'Get host: %s' % host)
+        logger.error(u'Get format: %s' % self.frmt)
+        logger.error(u'Get result: %s' % result._result)
         if self.frmt == u'json':
             print json.dumps({host.name: result._result.get(u'stderr_lines', None)}, indent=4)
         elif self.frmt == u'text':
             print(host)
             print(u'-----------------------------')
             for item in result._result.get(u'stderr_lines', []):
+                print(u'  %s' % item)
+            print(u'')
+            for item in result._result.get(u'stdout_lines', []):
                 print(u'  %s' % item)
             print(u'')
 

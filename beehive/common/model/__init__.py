@@ -29,9 +29,11 @@ class CreateView(DDLElement):
         self.name = name
         self.selectable = selectable
 
+
 class DropView(DDLElement):
     def __init__(self, name):
         self.name = name
+
 
 @compiler.compiles(CreateView)
 def compile_create_view(element, compiler, **kw):
@@ -39,9 +41,11 @@ def compile_create_view(element, compiler, **kw):
         element.name, 
         compiler.sql_compiler.process(element.selectable))
 
+
 @compiler.compiles(DropView)
 def compile_drop_view(element, compiler, **kw):
-    return "DROP VIEW %s" % (element.name)
+    return "DROP VIEW IF EXISTS %s" % (element.name)
+
 
 def view(name, metadata, selectable):
     t = table(name)
@@ -417,7 +421,7 @@ class PaginatedQueryGenerator(object):
 
         query = self.session.query(*entities).from_statement(stmp).params(tags=tags, **kvargs)
         self.logger.debug2(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
-        self.logger.debug2(u'kvargs: %s' % kvargs)
+        self.logger.debug2(u'kvargs: %s' % truncate(kvargs))
         self.logger.debug2(u'tags: %s' % tags)
         res = query.all()
         

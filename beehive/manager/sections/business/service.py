@@ -282,8 +282,10 @@ class ServiceDefinitionController(ServiceControllerChild):
         uri = u'%s/servicedefs' % self.baseuri
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        self.result(res, key=u'servicedefs', headers=[u'id', u'uuid', u'name', u'version', u'status',
-                    u'service_type_id', u'active', u'date.creation'])
+        headers = [u'id', u'uuid', u'name', u'version', u'status', u'type', u'active', u'is_default', u'date']
+        fields = [u'id', u'uuid', u'name', u'version', u'status', u'service_type_id', u'active', u'is_default',
+                  u'date.creation']
+        self.result(res, key=u'servicedefs', headers=headers, fields=fields)
  
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
