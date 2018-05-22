@@ -809,7 +809,7 @@ class AccountController(AuthorityControllerChild):
         """
         name = self.get_arg(name=u'name')
         division_id = self.get_arg(name=u'division_id')
-        template = self.get_arg(name=u'template', keyvalue=True, default=False)
+        template = self.get_arg(name=u'template', keyvalue=True, default=u'')
         params = self.get_query_params(*self.app.pargs.extra_arguments)
 
         services = []
@@ -863,7 +863,7 @@ class AccountController(AuthorityControllerChild):
     - services: if True create default services
         """
         oid = self.get_arg(name=u'id')
-        template = self.get_arg(name=u'template', keyvalue=True, default=False)
+        template = self.get_arg(name=u'template', keyvalue=True, default=u'')
 
         services = []
         if template.find(u'@') == 0:
