@@ -860,7 +860,7 @@ class AccountController(AuthorityControllerChild):
     def refresh(self):
         """Refresh account
     - id: id or uuid of the account
-    - services: if True create default services
+    - template: use test, prod as key or a json file with @ in head of the name
         """
         oid = self.get_arg(name=u'id')
         template = self.get_arg(name=u'template', keyvalue=True, default=u'')

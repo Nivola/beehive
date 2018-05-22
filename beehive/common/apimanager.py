@@ -1973,8 +1973,7 @@ class ApiObject(object):
             # resource permissions
             if objid == None:
                 objid = self.objid
-            perms, total = self.api_client.get_permissions(
-                self.objtype, self.objdef, objid, cascade=True, **kvargs)
+            perms, total = self.api_client.get_permissions(self.objtype, self.objdef, objid, cascade=True, **kvargs)
 
             return perms, total
         except (ApiManagerError), ex:
@@ -2487,8 +2486,7 @@ class ApiInternalObject(ApiObject):
                       objid+u'//*//*//*//*',
                       objid+u'//*//*//*//*//*',
                       objid+u'//*//*//*//*//*//*']
-            perms, total = self.auth_db_manager.get_deep_permissions(
-                    objids=objids, objtype=self.objtype)
+            perms, total = self.auth_db_manager.get_deep_permissions(objids=objids, objtype=self.objtype, **kvargs)
 
             res = []
             for p in perms:
@@ -2503,8 +2501,7 @@ class ApiInternalObject(ApiObject):
                     u'desc':p.obj.desc
                 })
 
-            self.logger.debug(u'Get permissions %s: %s' % 
-                              (self.oid, truncate(res)))
+            self.logger.debug(u'Get permissions %s: %s' % (self.oid, truncate(res)))
             return res, total
         except (ApiManagerError), ex:
             self.logger.error(ex, exc_info=True)

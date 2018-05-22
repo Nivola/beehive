@@ -205,7 +205,7 @@ class ContainerController(ResourceControllerChild, WorkerController):
         """Get container permissions by id, uuid or name
         """
         value = self.get_arg(name=u'id')
-        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        data = urllib.urlencode(self.app.kvargs)
         uri = u'%s/containers/%s/perms' % (self.baseuri, value)
         res = self._call(uri, u'GET', data=data)
         logger.info(u'Get resource resourcecontainer perms: %s' % truncate(res))
@@ -760,7 +760,7 @@ class ResourceEntityController(ResourceControllerChild):
         """Get resource permissions
         """
         value = self.get_arg(name=u'id')
-        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        data = urllib.urlencode(self.app.kvargs)
         uri = u'%s/entities/%s/perms' % (self.baseuri, value)
         res = self._call(uri, u'GET', data=data)
         logger.info(res)

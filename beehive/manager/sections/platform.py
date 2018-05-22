@@ -2752,9 +2752,23 @@ class BeehiveController(AnsibleController):
 
             for obj in configs.get(u'auth').get(u'roles'):
                 try:
-                    res = self._call(u'/v1.0/nas/roles', u'POST', data={u'role': {u'name': obj, u'desc': obj}})
+                    res = self._call(u'/v1.0/nas/roles', u'POST', data={u'role': obj})
                     logger.info(u'Add role: %s' % res)
-                    self.output(u'Add roles: %s' % obj)
+                    self.output(u'Add role: %s' % obj)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
+
+                try:
+                    data = {
+                        u'perms': {
+                            u'append': obj.get(u'perms', []),
+                            u'remove': []
+                        }
+                    }
+                    res = self._call(u'/v1.0/nas/roles/%s' % obj[u'name'], u'PUT', data={u'role': data})
+                    logger.info(u'Add role %s perms: %s' % (obj[u'name'], res))
+                    self.output(u'Add role %s perms: %s' % (obj[u'name'], obj[u'perms']))
                 except Exception as ex:
                     self.error(ex)
                     self.app.error = False
