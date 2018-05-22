@@ -596,60 +596,76 @@ class AccountController(AuthorityControllerChild):
     class Meta:
         label = 'accounts'
         description = "Accounts management"
-        default_services = [
-            {u'type': u'ComputeService',
-             u'name': u'ComputeService',
-             u'template': u'compute.medium'},
-            {u'type': u'DatabaseService',
-             u'name': u'DatabaseService',
-             u'template': u'database.medium',
-             u'require': {u'type': u'ComputeService', u'name': u'ComputeService'}},
-            {u'type': u'ComputeImage',
-             u'name': u'Centos7.2',
-             u'template': u'Centos7.2Sync',
-             u'require': {u'type': u'ComputeService', u'name': u'ComputeService'}},
-            {u'type': u'ComputeImage',
-             u'name': u'Centos6.9',
-             u'template': u'Centos6.9Sync',
-             u'require': {u'type': u'ComputeService', u'name': u'ComputeService'}},
-            {u'type': u'ComputeImage',
-             u'name': u'Centos7.2-Oracle',
-             u'template': u'Centos7.2-OracleSync',
-             u'require': {u'type': u'ComputeService', u'name': u'ComputeService'}},
-            {u'type': u'ComputeVPC',
-             u'name': u'VpcBE',
-             u'template': u'VpcBESync',
-             u'require': {u'type': u'ComputeService', u'name': u'ComputeService'}},
-            {u'type': u'ComputeSubnet',
-             u'name': u'SubnetBE-torino01',
-             u'params': {u'vpc': u'VpcBE', u'zone': u'SiteTorino01', u'cidr': u'10.138.128.0/21'},
-             u'require': {u'type': u'ComputeVPC', u'name': u'VpcBE'}},
-            {u'type': u'ComputeSubnet',
-             u'name': u'SubnetBE-vercelli01',
-             u'params': {u'vpc': u'VpcBE', u'zone': u'SiteVercelli01', u'cidr': u'10.138.192.0/21'},
-             u'require': {u'type': u'ComputeVPC', u'name': u'VpcBE'}},
-            {u'type': u'ComputeSecurityGroup',
-             u'name': u'SecurityGroupBE',
-             u'params': {u'vpc': u'VpcBE'},
-             u'require': {u'type': u'ComputeVPC', u'name': u'VpcBE'}},
-            {u'type': u'ComputeVPC',
-             u'name': u'VpcWEB',
-             u'template': u'VpcWEBSync',
-             u'require': {u'type': u'ComputeService', u'name': u'ComputeService'}},
-            {u'type': u'ComputeSubnet',
-             u'name': u'SubnetWEB-torino01',
-             u'params': {u'vpc': u'VpcWEB', u'zone': u'SiteTorino01', u'cidr': u'10.138.136.0/21'},
-             u'require': {u'type': u'ComputeVPC', u'name': u'VpcWEB'}},
-            {u'type': u'ComputeSubnet',
-             u'name': u'SubnetWEB-vercelli01',
-             u'params': {u'vpc': u'VpcWEB', u'zone': u'SiteVercelli01', u'cidr': u'10.138.200.0/21'},
-             u'require': {u'type': u'ComputeVPC', u'name': u'VpcWEB'}},
-            {u'type': u'ComputeSecurityGroup',
-             u'name': u'SecurityGroupWEB',
-             u'params': {u'vpc': u'VpcWEB'},
-             u'template': u'SecurityGroupWEBSync',
-             u'require': {u'type': u'ComputeVPC', u'name': u'VpcWEB'}}
-        ]
+        default_services = {
+            u'prod': [
+                {u'type': u'ComputeService',
+                 u'name': u'ComputeService',
+                 u'template': u'compute.medium.sync'},
+                {u'type': u'DatabaseService',
+                 u'name': u'DatabaseService',
+                 u'template': u'database.medium.sync',
+                 u'require': {u'type': u'ComputeService', u'name': u'ComputeService'}},
+                {u'type': u'ComputeImage',
+                 u'name': u'Centos7.2',
+                 u'template': u'Centos7.2.sync',
+                 u'require': {u'type': u'ComputeService', u'name': u'ComputeService'}},
+                {u'type': u'ComputeImage',
+                 u'name': u'Centos6.9',
+                 u'template': u'Centos6.9.sync',
+                 u'require': {u'type': u'ComputeService', u'name': u'ComputeService'}},
+                {u'type': u'ComputeImage',
+                 u'name': u'Centos7.2-Oracle',
+                 u'template': u'Centos7.2-Oracle.sync',
+                 u'require': {u'type': u'ComputeService', u'name': u'ComputeService'}},
+                {u'type': u'ComputeVPC',
+                 u'name': u'VpcBE',
+                 u'template': u'VpcBE.sync',
+                 u'require': {u'type': u'ComputeService', u'name': u'ComputeService'}},
+                {u'type': u'ComputeSubnet',
+                 u'name': u'SubnetBE-torino01',
+                 u'params': {u'vpc': u'VpcBE', u'zone': u'SiteTorino01', u'cidr': u'10.138.128.0/21'},
+                 u'require': {u'type': u'ComputeVPC', u'name': u'VpcBE'}},
+                {u'type': u'ComputeSubnet',
+                 u'name': u'SubnetBE-vercelli01',
+                 u'params': {u'vpc': u'VpcBE', u'zone': u'SiteVercelli01', u'cidr': u'10.138.192.0/21'},
+                 u'require': {u'type': u'ComputeVPC', u'name': u'VpcBE'}},
+                {u'type': u'ComputeSecurityGroup',
+                 u'name': u'SecurityGroupBE',
+                 u'params': {u'vpc': u'VpcBE'},
+                 u'require': {u'type': u'ComputeVPC', u'name': u'VpcBE'}},
+                {u'type': u'ComputeVPC',
+                 u'name': u'VpcWEB',
+                 u'template': u'VpcWEBSync',
+                 u'require': {u'type': u'ComputeService', u'name': u'ComputeService'}},
+                {u'type': u'ComputeSubnet',
+                 u'name': u'SubnetWEB-torino01',
+                 u'params': {u'vpc': u'VpcWEB', u'zone': u'SiteTorino01', u'cidr': u'10.138.136.0/21'},
+                 u'require': {u'type': u'ComputeVPC', u'name': u'VpcWEB'}},
+                {u'type': u'ComputeSubnet',
+                 u'name': u'SubnetWEB-vercelli01',
+                 u'params': {u'vpc': u'VpcWEB', u'zone': u'SiteVercelli01', u'cidr': u'10.138.200.0/21'},
+                 u'require': {u'type': u'ComputeVPC', u'name': u'VpcWEB'}},
+                {u'type': u'ComputeSecurityGroup',
+                 u'name': u'SecurityGroupWEB',
+                 u'params': {u'vpc': u'VpcWEB'},
+                 u'template': u'SecurityGroupWEBSync',
+                 u'require': {u'type': u'ComputeVPC', u'name': u'VpcWEB'}}
+            ],
+            u'test': [
+                {"type": "ComputeService", "name": "ComputeService", "template": "compute.medium.sync"},
+                {"type": "DatabaseService", "name": "DatabaseService", "template": "database.medium.sync",
+                 "require": {"type": "ComputeService", "name": "ComputeService"}},
+                {"type": "ComputeImage", "name": "Centos7.2", "template": "Centos7.2.sync",
+                 "require": {"type": "ComputeService", "name": "ComputeService"}},
+                {"type": "ComputeVPC", "name": "VpcBE", "template": "VpcBE.sync",
+                 "require": {"type": "ComputeService", "name": "ComputeService"}},
+                {"type": "ComputeSubnet", "name": "SubnetBE-torino01",
+                 "params": {"vpc": "VpcBE", "zone": "SiteTorino01", "cidr": "10.102.185.0/24"},
+                 "require": {"type": "ComputeVPC", "name": "VpcBE"}},
+                {"type": "ComputeSecurityGroup", "name": "SecurityGroupBE", "params": {"vpc": "VpcBE"},
+                 "require": {"type": "ComputeVPC", "name": "VpcBE"}}
+            ]
+        }
         default_methods = {
             u'image': ConnectionHelper.create_image,
             u'vpc': ConnectionHelper.create_vpc,
@@ -789,16 +805,18 @@ class AccountController(AuthorityControllerChild):
     def add(self):
         """Add account <name> <division_id>
     - field: can be desc, contact, email, email_support, email_support_link, note
-    - service: if True create default services
+    - template: use test, prod as key or a json file with @ in head of the name
         """
         name = self.get_arg(name=u'name')
         division_id = self.get_arg(name=u'division_id')
-        create_services = self.get_arg(name=u'services', keyvalue=True, default=False)
+        template = self.get_arg(name=u'template', keyvalue=True, default=False)
         params = self.get_query_params(*self.app.pargs.extra_arguments)
 
         services = []
-        if create_services is True:
-            services = self._meta.default_services
+        if template.find(u'@') == 0:
+            services = self.load_config(template[1:len(template)])
+        else:
+            services = self._meta.default_services.get(template, [])
 
         data = {
             u'account': {
@@ -845,13 +863,13 @@ class AccountController(AuthorityControllerChild):
     - services: if True create default services
         """
         oid = self.get_arg(name=u'id')
-        create_services = self.get_arg(name=u'services', keyvalue=True, default=False)
+        template = self.get_arg(name=u'template', keyvalue=True, default=False)
 
         services = []
-        if create_services is True:
-            services = self._meta.default_services
-        elif create_services.find(u'@') == 0:
-            services = self.load_config(create_services[1:len(create_services)])
+        if template.find(u'@') == 0:
+            services = self.load_config(template[1:len(template)])
+        else:
+            services = self._meta.default_services.get(template, [])
 
         data = {
             u'account': {
