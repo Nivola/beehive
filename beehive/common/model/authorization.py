@@ -873,7 +873,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             sqlcount.append(u'AND t1.objid LIKE :objid')
             params[u'objid'] = objid
         if objid_filter is not None:
-            sql.appendu(u'AND t1.objid LIKE :objid')
+            sql.append(u'AND t1.objid LIKE :objid')
             sqlcount.append(u'AND t1.objid LIKE :objid')
             params[u'objid'] = u'%'+objid_filter+u'%'
         if objtype is not None:
@@ -910,9 +910,11 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         res = query.all()
         
         if len(res) <= 0:
-            self.logger.error(u'No permissions found')
-            raise ModelError(u'No permissions found')                           
-                     
+            filter = u'objid=%s, objid_filter=%s, objtype =%s, objtypes=%s, objdef=%s, objdef_filter=%s, action=%s' % \
+                     (objid, objid_filter, objtype, objtypes, objdef, objdef_filter, action)
+            self.logger.error(u'No permissions found for params: %s' % filter)
+            raise ModelError(u'No permissions found for params: %s' % filter)
+
         self.logger.debug(u'Get object permissions: %s' % truncate(res))
         return res, total
     
@@ -967,14 +969,12 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         
         # get total rows
         total = session.execute(u' '.join(sqlcount), params).fetchone()[0]
-                
-        start = int(size) * int(page)
+
+        offset = size * page
         sql.append(u'ORDER BY %s %s' % (field, order))
-        sql.append(u'LIMIT %s,%s' % (start, size))
+        sql.append(u'LIMIT %s OFFSET %s' % (size, offset))
         
-        query = session.query(SysObjectPermission) \
-                     .from_statement(text(u' '.join(sql))) \
-                     .params(params)
+        query = session.query(SysObjectPermission).from_statement(text(u' '.join(sql))).params(params)
         res = query.all()
         self.logger.warn(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect())) 
         self.logger.warn(u'objids: %s' % objids)

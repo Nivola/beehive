@@ -2752,9 +2752,23 @@ class BeehiveController(AnsibleController):
 
             for obj in configs.get(u'auth').get(u'roles'):
                 try:
-                    res = self._call(u'/v1.0/nas/roles', u'POST', data={u'role': {u'name': obj, u'desc': obj}})
+                    res = self._call(u'/v1.0/nas/roles', u'POST', data={u'role': obj})
                     logger.info(u'Add role: %s' % res)
-                    self.output(u'Add roles: %s' % obj)
+                    self.output(u'Add role: %s' % obj)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
+
+                try:
+                    data = {
+                        u'perms': {
+                            u'append': obj.get(u'perms', []),
+                            u'remove': []
+                        }
+                    }
+                    res = self._call(u'/v1.0/nas/roles/%s' % obj[u'name'], u'PUT', data={u'role': data})
+                    logger.info(u'Add role %s perms: %s' % (obj[u'name'], res))
+                    self.output(u'Add role %s perms: %s' % (obj[u'name'], obj[u'perms']))
                 except Exception as ex:
                     self.error(ex)
                     self.app.error = False
@@ -3108,6 +3122,17 @@ class BeehiveController(AnsibleController):
                 logger.info(u'Add service catalog defs: %s' % res)
                 self.output(u'Add service catalog defs: %s' % defs)
 
+                # add users
+                for user in obj.get(u'users', []):
+                    try:
+                        res = self._call(u'/v1.0/nws/srvcatalogs/%s/users' % obj[u'name'], u'POST',
+                                         data={u'user': user})
+                        logger.info(u'Add service catalog %s user: %s' % (obj[u'name'], res))
+                        self.output(u'Add service catalog %s user: %s' % (obj[u'name'], user))
+                    except Exception as ex:
+                        self.error(ex)
+                        self.app.error = False
+
         # create org
         if apply.get(u'authority', False) is True:
             self.output(u'------ authority ------ ')
@@ -3120,6 +3145,17 @@ class BeehiveController(AnsibleController):
                 except Exception as ex:
                     self.error(ex)
                     self.app.error = False
+
+                # add users
+                for user in obj.get(u'users', []):
+                    try:
+                        res = self._call(u'/v1.0/nws/organizations/%s/users' % obj[u'name'], u'POST',
+                                         data={u'user': user})
+                        logger.info(u'Add organization %s user: %s' % (obj[u'name'], res))
+                        self.output(u'Add organization %s user: %s' % (obj[u'name'], user))
+                    except Exception as ex:
+                        self.error(ex)
+                        self.app.error = False
 
             for obj in configs.get(u'authority').get(u'price-lists'):
                 try:
@@ -3140,7 +3176,7 @@ class BeehiveController(AnsibleController):
                     self.app.error = False
 
                 # add users
-                for user in obj.get(u'users'):
+                for user in obj.get(u'users', []):
                     try:
                         res = self._call(u'/v1.0/nws/divisions/%s/users' % obj[u'name'], u'POST', data={u'user': user})
                         logger.info(u'Add division %s user: %s' % (obj[u'name'], res))
@@ -3157,6 +3193,16 @@ class BeehiveController(AnsibleController):
                 except Exception as ex:
                     self.error(ex)
                     self.app.error = False
+
+                # add users
+                for user in obj.get(u'users', []):
+                    try:
+                        res = self._call(u'/v1.0/nws/accounts/%s/users' % obj[u'name'], u'POST', data={u'user': user})
+                        logger.info(u'Add account %s user: %s' % (obj[u'name'], res))
+                        self.output(u'Add account %s user: %s' % (obj[u'name'], user))
+                    except Exception as ex:
+                        self.error(ex)
+                        self.app.error = False
 
     @expose()
     @check_error

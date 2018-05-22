@@ -546,88 +546,150 @@ class ServiceCatalogController(ServiceControllerChild):
         aliases_only = True
         description = "Service catalog management"
 
-        role_template = [
-            {
-                u'name': u'CatalogAdminRole-%s',
-                u'perms': [
-                    {u'subsystem': u'service', u'type': u'ServiceCatalog', u'objid': u'<objid>', u'action': u'*'},
-                ],
-                u'perm_tmpls': [
-                    {u'subsystem': u'service', u'type': u'ServiceType.ServiceDefinition', u'objid': u'<objid>',
-                     u'action': u'view'}
-                ]
-            },
-            {
-                u'name': u'CatalogViewerRole-%s',
-                u'perms': [
-                    {u'subsystem': u'service', u'type': u'ServiceCatalog', u'objid': u'<objid>', u'action': u'view'},
-                ]
-            }
-        ]
+        # role_template = [
+        #     {
+        #         u'name': u'CatalogAdminRole-%s',
+        #         u'perms': [
+        #             {u'subsystem': u'service', u'type': u'ServiceCatalog', u'objid': u'<objid>', u'action': u'*'},
+        #         ],
+        #         u'perm_tmpls': [
+        #             {u'subsystem': u'service', u'type': u'ServiceType.ServiceDefinition', u'objid': u'<objid>',
+        #              u'action': u'view'}
+        #         ]
+        #     },
+        #     {
+        #         u'name': u'CatalogViewerRole-%s',
+        #         u'perms': [
+        #             {u'subsystem': u'service', u'type': u'ServiceCatalog', u'objid': u'<objid>', u'action': u'view'},
+        #         ]
+        #     }
+        # ]
+
+    # @expose(aliases=[u'roles <catalog>'], aliases_only=True)
+    # @check_error
+    # def roles(self):
+    #     """Get catalog roles
+    #     """
+    #     catalog_id = self.get_arg(name=u'catalog')
+    #     catalog_id = ConnectionHelper.get_catalog(self, catalog_id).get(u'id')
+    #     roles = ConnectionHelper.get_roles(self, u'Catalog%' + u'Role-%s' % catalog_id)
+    #
+    # @expose(aliases=[u'add-user <catalog> <type> <user>'], aliases_only=True)
+    # @check_error
+    # def add_user(self):
+    #     """Set catalog roles
+    # - type: role type. Admin or Viewer
+    #     """
+    #     catalog_id = self.get_arg(name=u'catalog')
+    #     catalog_id = ConnectionHelper.get_catalog(self, catalog_id).get(u'id')
+    #     role_type = self.get_arg(name=u'role type. Admin or Viewer')
+    #     user = self.get_arg(name=u'user')
+    #     ConnectionHelper.set_role(self, u'Catalog%sRole-%s' % (role_type, catalog_id), user)
+    #
+    # @expose(aliases=[u'del-user <catalog> <type> <user>'], aliases_only=True)
+    # @check_error
+    # def del_user(self):
+    #     """Unset catalog roles
+    # - type: role type. Admin or Viewer
+    #     """
+    #     catalog_id = self.get_arg(name=u'catalog')
+    #     catalog_id = ConnectionHelper.get_catalog(self, catalog_id).get(u'id')
+    #     role_type = self.get_arg(name=u'role type. Admin or Viewer')
+    #     user = self.get_arg(name=u'user')
+    #     ConnectionHelper.set_role(self, u'Catalog%sRole-%s' % (role_type, catalog_id), user, op=u'remove')
+    #
+    # @expose(aliases=[u'refresh <catalog>'], aliases_only=True)
+    # @check_error
+    # def refresh(self):
+    #     """Refresh catalog roles
+    #     """
+    #     catalog_id = self.get_arg(name=u'catalog')
+    #     catalog_id = ConnectionHelper.get_catalog(self, catalog_id).get(u'id')
+    #
+    #     # get catalog
+    #     uri = u'%s/srvcatalogs/%s' % (self.baseuri, catalog_id)
+    #     catalog = self._call(uri, u'GET').get(u'catalog')
+    #     catalog_objid = catalog[u'__meta__'][u'objid']
+    #
+    #     # get catalog defs
+    #     uri = u'%s/srvcatalogs/%s/defs' % (self.baseuri, catalog_id)
+    #     defs = self._call(uri, u'GET', data=u'size=100').get(u'servicedefs')
+    #     defs_objid = []
+    #     for definition in defs:
+    #         defs_objid.append(definition[u'__meta__'][u'objid'])
+    #
+    #     # add roles
+    #     for role in self._meta.role_template:
+    #         name = role.get(u'name') % catalog_id
+    #         perms = ConnectionHelper.set_perms_objid(role.get(u'perms'), catalog_objid)
+    #         if role.get(u'perm_tmpls', None) is not None:
+    #             perm_tmpl = role.get(u'perm_tmpls')[0]
+    #             for def_objid in defs_objid:
+    #                 perm = ConnectionHelper.set_perms_objid([perm_tmpl], def_objid)
+    #                 perms.extend(perm)
+    #         ConnectionHelper.add_role(self, name, name, perms)
 
     @expose(aliases=[u'roles <catalog>'], aliases_only=True)
     @check_error
     def roles(self):
         """Get catalog roles
         """
-        catalog_id = self.get_arg(name=u'catalog')
-        catalog_id = ConnectionHelper.get_catalog(self, catalog_id).get(u'id')
-        roles = ConnectionHelper.get_roles(self, u'Catalog%' + u'Role-%s' % catalog_id)
+        value = self.get_arg(name=u'id')
+        uri = u'%s/srvcatalogs/%s/roles' % (self.baseuri, value)
+        res = self._call(uri, u'GET')
+        logger.info(res)
+        self.result(res, key=u'roles', headers=[u'name', u'desc'], maxsize=200)
 
-    @expose(aliases=[u'add-user <catalog> <type> <user>'], aliases_only=True)
+    @expose(aliases=[u'users <catalog>'], aliases_only=True)
+    @check_error
+    def users(self):
+        """Get catalog users
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'%s/srvcatalogs/%s/users' % (self.baseuri, value)
+        res = self._call(uri, u'GET')
+        logger.info(res)
+        self.result(res, key=u'users', headers=[u'name', u'role'], maxsize=200)
+
+    @expose(aliases=[u'add-user <catalog> <role> <user>'], aliases_only=True)
     @check_error
     def add_user(self):
-        """Set catalog roles
-    - type: role type. Admin or Viewer
+        """Add catalog role to a user
         """
-        catalog_id = self.get_arg(name=u'catalog')
-        catalog_id = ConnectionHelper.get_catalog(self, catalog_id).get(u'id')
-        role_type = self.get_arg(name=u'role type. Admin or Viewer')
+        value = self.get_arg(name=u'id')
+        role = self.get_arg(name=u'role')
         user = self.get_arg(name=u'user')
-        ConnectionHelper.set_role(self, u'Catalog%sRole-%s' % (role_type, catalog_id), user)
+        data = {
+            u'user': {
+                u'user_id': user,
+                u'role': role
+            }
+        }
+        uri = u'%s/srvcatalogs/%s/users' % (self.baseuri, value)
+        res = self._call(uri, u'POST', data)
+        logger.info(res)
+        msg = {u'msg': res}
+        self.result(msg, headers=[u'msg'], maxsize=200)
 
-    @expose(aliases=[u'del-user <catalog> <type> <user>'], aliases_only=True)
+    @expose(aliases=[u'del-user <catalog> <role> <user>'], aliases_only=True)
     @check_error
     def del_user(self):
-        """Unset catalog roles
-    - type: role type. Admin or Viewer
+        """Remove catalog role from a user
         """
-        catalog_id = self.get_arg(name=u'catalog')
-        catalog_id = ConnectionHelper.get_catalog(self, catalog_id).get(u'id')
-        role_type = self.get_arg(name=u'role type. Admin or Viewer')
+        value = self.get_arg(name=u'id')
+        role = self.get_arg(name=u'role')
         user = self.get_arg(name=u'user')
-        ConnectionHelper.set_role(self, u'Catalog%sRole-%s' % (role_type, catalog_id), user, op=u'remove')
-
-    @expose(aliases=[u'refresh <catalog>'], aliases_only=True)
-    @check_error
-    def refresh(self):
-        """Refresh catalog roles
-        """
-        catalog_id = self.get_arg(name=u'catalog')
-        catalog_id = ConnectionHelper.get_catalog(self, catalog_id).get(u'id')
-
-        # get catalog
-        uri = u'%s/srvcatalogs/%s' % (self.baseuri, catalog_id)
-        catalog = self._call(uri, u'GET').get(u'catalog')
-        catalog_objid = catalog[u'__meta__'][u'objid']
-
-        # get catalog defs
-        uri = u'%s/srvcatalogs/%s/defs' % (self.baseuri, catalog_id)
-        defs = self._call(uri, u'GET', data=u'size=100').get(u'servicedefs')
-        defs_objid = []
-        for definition in defs:
-            defs_objid.append(definition[u'__meta__'][u'objid'])
-
-        # add roles
-        for role in self._meta.role_template:
-            name = role.get(u'name') % catalog_id
-            perms = ConnectionHelper.set_perms_objid(role.get(u'perms'), catalog_objid)
-            if role.get(u'perm_tmpls', None) is not None:
-                perm_tmpl = role.get(u'perm_tmpls')[0]
-                for def_objid in defs_objid:
-                    perm = ConnectionHelper.set_perms_objid([perm_tmpl], def_objid)
-                    perms.extend(perm)
-            ConnectionHelper.add_role(self, name, name, perms)
+        data = {
+            u'user': {
+                u'user_id': user,
+                u'role': role
+            }
+        }
+        uri = u'%s/srvcatalogs/%s/users' % (self.baseuri, value)
+        res = self._call(uri, u'DELETE', data)
+        logger.info(res)
+        msg = {u'msg': res}
+        self.result(msg, headers=[u'msg'], maxsize=200)
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     @check_error
@@ -702,6 +764,23 @@ class ServiceCatalogController(ServiceControllerChild):
         self._call(uri, u'PUT', data=data)
         logger.info(u'Update service catalog %s with data %s' % (oid, params))
         res = {u'msg': u'Update service catalog %s with data %s' % (oid, params)}
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'refresh <id> [field=value]'], aliases_only=True)
+    @check_error
+    def refresh(self):
+        """Refresh catalog
+    - id: id or uuid of the catalog
+        """
+        oid = self.get_arg(name=u'id')
+        data = {
+            u'catalog': {
+            }
+        }
+        uri = u'%s/srvcatalogs/%s' % (self.baseuri, oid)
+        self._call(uri, u'PATCH', data=data, timeout=600)
+        logger.info(u'Refresh catalog %s' % (oid))
+        res = {u'msg': u'Refresh catalog %s' % (oid)}
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
