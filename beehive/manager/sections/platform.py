@@ -2821,13 +2821,31 @@ class BeehiveController(AnsibleController):
                         u'remove': []
                     }
                     res = self._call(u'/v1.0/nas/users/%s' % obj[u'name'], u'PUT', data={u'user': {u'roles': roles}})
-                    logger.info(u'Add user roles: %s' % res)
-                    self.output(u'Add user roles: %s' % obj[u'roles'])
+                    logger.info(u'Add user %s roles: %s' % (obj[u'name'], res))
+                    self.output(u'Add user %s roles: %s' % (obj[u'name'], obj[u'roles']))
                 except Exception as ex:
                     self.error(ex)
                     self.app.error = False
 
-            # TODO: groups
+            for obj in configs.get(u'auth').get(u'groups'):
+                try:
+                    res = self._call(u'/v1.0/nas/groups', u'POST', data={u'group': obj})
+                    logger.info(u'Add group: %s' % res)
+                    self.output(u'Add group: %s' % obj)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
+                try:
+                    roles = {
+                        u'append': obj[u'users'],
+                        u'remove': []
+                    }
+                    res = self._call(u'/v1.0/nas/groups/%s' % obj[u'name'], u'PUT', data={u'group': {u'users': roles}})
+                    logger.info(u'Add group %s users: %s' % (obj[u'name'], res))
+                    self.output(u'Add group %s users: %s' % (obj[u'name'], obj[u'users']))
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
 
         # auth and catalog objects and schedule
         if apply.get(u'auth-schedule', False) is True:

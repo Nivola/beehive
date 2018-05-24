@@ -614,19 +614,19 @@ class GroupController(AuthControllerChild):
         user = self.get_arg(name=u'user')
         expiry = self.get_arg(name=u'expiry')
         data = {
-            u'group':{
-                u'users':{
-                    u'append':[
+            u'group': {
+                u'users': {
+                    u'append': [
                         user
                     ],
-                    u'remove':[]
+                    u'remove': []
                 },
             }
         }
         uri = u'%s/groups/%s' % (self.baseuri, oid)
         res = self._call(uri, u'PUT', data=data)
         logger.info(u'Update group users: %s' % res)
-        self.result({u'msg':u'Add group user: %s' % res[u'user_append']})
+        self.result({u'msg': u'Add group user: %s' % res[u'user_append']})
 
     @expose(aliases=[u'delete-user <id> <user>'], aliases_only=True)
     @check_error

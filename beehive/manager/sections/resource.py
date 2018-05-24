@@ -63,7 +63,7 @@ class ResourceControllerChild(ApiController):
     baseuri = u'/v1.0/nrs'
     subsystem = u'resource'
     res_headers = [u'id', u'__meta__.definition', u'name', u'container.name', u'parent.name', u'state',
-                   u'date.creation', u'ext_id']
+                   u'date.creation', u'ext_id', u'attributes']
     cont_headers = [u'id', u'category', u'__meta__.definition', u'name', u'active', u'state', u'date.creation',
                     u'date.modified', u'resources']
     tag_headers = [u'id', u'name', u'date.creation', u'date.modified', u'resources', u'containers', u'links']
@@ -679,6 +679,50 @@ class ResourceEntityController(ResourceControllerChild):
         logger.info(u'Update resource %s with data %s' % (oid, params))
         res = {u'msg': u'Update resource %s with data %s' % (oid, params)}
         self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'update-from <oid> [field=value]'], aliases_only=True)
+    @check_error
+    def update_from(self):
+        """Update resource
+    - oid: id or uuid of the resource
+    - field: can be name, desc, ext_id, active, attribute, state
+        """
+        data = []
+        file_name = u'/home/io/resource.txt'
+        with open(file_name) as f:
+            content = f.readlines()
+
+        for item in content:
+            data = item.split(u'\t')
+            if data[0] == u'id':
+                continue
+            oid = int(data[0])
+            attrib = data[3].replace(u'\n', u'')
+            try:
+                attrib = json.loads(attrib)
+            except:
+                attrib = {}
+
+            if oid > 756:
+                print oid, attrib
+                data = {u'resource': {u'attribute': attrib, u'force': True}}
+                uri = u'%s/entities/%s' % (self.baseuri, oid)
+                res = self._call(uri, u'PUT', data=data)
+
+
+        # oid = self.get_arg(name=u'oid')
+        # params = self.app.kvargs
+        # data = {
+        #     u'resource': {}
+        # }
+        # uri = u'%s/entities/%s' % (self.baseuri, oid)
+        # res = self._call(uri, u'PUT', data=data)
+        # jobid = res.get(u'jobid', None)
+        # if jobid is not None:
+        #     self.wait_job(jobid)
+        # logger.info(u'Update resource %s with data %s' % (oid, params))
+        # res = {u'msg': u'Update resource %s with data %s' % (oid, params)}
+        # self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'reset <oid>'], aliases_only=True)
     @check_error
