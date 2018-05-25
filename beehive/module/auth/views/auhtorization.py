@@ -351,7 +351,7 @@ class GetUserAtributes(SwaggerApiView):
 
 ## create
 class CreateUserParamRequestSchema(BaseCreateRequestSchema, BaseCreateExtendedParamRequestSchema):
-    password = fields.String(validate=Length(min=10, max=20), error=u'Password must be at least 8 characters')
+    password = fields.String(validate=Length(min=8, max=20), error=u'Password must be at least 8 characters')
     storetype = fields.String(validate=OneOf([u'DBUSER', u'LDAPUSER', u'SPID'],
                                              error=u'Field can be DBUSER, LDAPUSER or SPIDUSER'), missing=u'DBUSER')
     base = fields.Boolean(missing=False)
@@ -403,7 +403,7 @@ class UpdateUserParamRoleRequestSchema(Schema):
 
 class UpdateUserParamRequestSchema(BaseUpdateRequestSchema):
     roles = fields.Nested(UpdateUserParamRoleRequestSchema, allow_none=True)
-    password = fields.String(validate=Length(min=6, max=20), error=u'Password must be at least 8 characters')
+    password = fields.String(validate=Length(min=8, max=20), error=u'Password must be at least 8 characters')
     
     # @validates(u'name')
     # def validate_user(self, value):
