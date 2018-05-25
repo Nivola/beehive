@@ -594,7 +594,7 @@ class ResourceEntityController(ResourceControllerChild):
         """
         uri = self.uri + u'/' + oid
         res = self._call(uri, u'GET')
-        key = self.__get_key()
+        key = self.__get_key().replace(u'-', u'_')
         res = res.get(key)
         logger.info(u'Get %s: %s' % (key, truncate(res)))
         if self.format == u'text':

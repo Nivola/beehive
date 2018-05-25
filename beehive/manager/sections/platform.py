@@ -3185,6 +3185,19 @@ class BeehiveController(AnsibleController):
                         self.error(ex)
                         self.app.error = False
 
+        # create service tags
+        if apply.get(u'service-tags', False) is True:
+            self.output(u'------ service-tags ------ ')
+
+            for obj in configs.get(u'service').get(u'tags'):
+                try:
+                    res = self._call(u'/v1.0/nws/tags', u'POST', data={u'tag': obj})
+                    logger.info(u'Add service tag: %s' % res)
+                    self.output(u'Add service tag: %s' % obj)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
+
         # create org
         if apply.get(u'authority', False) is True:
             self.output(u'------ authority ------ ')
