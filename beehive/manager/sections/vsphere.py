@@ -848,26 +848,15 @@ class VspherePlatformServerController(VspherePlatformControllerChild):
     @check_error
     def list(self):
         """List servers
-    - field can be: name, uuid, ipaddress, dnsname, morid, template
-    - template=true list only template
+    - field can be: name, names, uuid, ipaddress, dnsname, morid, template
+        - template : true list only template
+        - names : filter by name like
         """
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         objs = self.entity_class.list(**params)
         res = []
         for o in objs:
             res.append(self.entity_class.info(o))
-            '''{
-                u'id':o[u'obj']._moId, 
-                u'parent':o[u'parent']._moId, 
-                u'name':truncate(o[u'name'], 30),
-                u'os':o.get(u'config.guestFullName', None),
-                u'state':o.get(u'runtime.powerState', None),
-                u'ip':o.get(u'guest.ipAddress', u''),
-                u'hostname':o.get(u'guest.hostName', u''),
-                u'cpu':o.get(u'config.hardware.numCPU', None),
-                u'ram':o.get(u'config.hardware.memoryMB', None),
-                u'template':o.get(u'config.template', None)
-            })'''
         logger.info(res)
         self.result(res, headers=self.headers, maxsize=30)
         
@@ -947,9 +936,8 @@ class VspherePlatformServerController(VspherePlatformControllerChild):
         dns = data.get(u'dns')
         dns_search = data.get(u'dns-search')
         server = self.entity_class.get_by_morid(oid)
-        res = self.entity_class.guest_setup_network(server, pwd, ipaddr, 
-                    macaddr, gw, hostname, dns, dns_search, 
-                    conn_name=u'net01', user=u'root')
+        res = self.entity_class.guest_setup_network(server, pwd, ipaddr, macaddr, gw, hostname, dns, dns_search,
+                                                    conn_name=u'net01', user=u'root')
         self.result(res)
     
     @expose(aliases=[u'ssh <id> <user> <pwd> <cmd>'], aliases_only=True)
@@ -989,6 +977,24 @@ class VspherePlatformServerController(VspherePlatformControllerChild):
         oid = self.get_arg(name=u'id')
         server = self.entity_class.get_by_morid(oid)
         task = self.entity_class.stop(server)        
+        self.wait_task(task)
+
+    #
+    # change hardware
+    #
+    @expose(aliases=[u'add-disk <server> <size> <datastore>'], aliases_only=True)
+    @check_error
+    def add_disk(self):
+        """Add disk to server
+    - size : size in GB
+    - datastore : morid of the datastore
+        """
+        oid = self.get_arg(name=u'id')
+        size = self.get_arg(name=u'size')
+        datastore = self.get_arg(name=u'datastore')
+        server = self.entity_class.get_by_morid(oid)
+        datastore = self.client.datastore.get(datastore)
+        task = self.entity_class.hardware.add_hard_disk(server, size, datastore, disk_type=u'thin')
         self.wait_task(task)
 
 

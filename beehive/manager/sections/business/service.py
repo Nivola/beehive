@@ -959,18 +959,19 @@ class ServiceInstanceController(ServiceControllerChild):
         res = {u'msg': u'Delete service instance %s' % value}
         self.result(res, headers=[u'msg'])
 
-    @expose(aliases=[u'add-tag <id> <tag>'], aliases_only=True)
+    @expose(aliases=[u'add-tag <id> <tags>'], aliases_only=True)
     @check_error
-    def add_tag(self):
-        """Add service instance tag
+    def add_tags(self):
+        """Add service instance tags
+    - tags: comma separated list of tags
         """
         value = self.get_arg(name=u'id')
-        tag = self.get_arg(name=u'tag')
+        tags = self.get_arg(name=u'tags').split(u',')
         data = {
-            u'service': {
+            u'serviceinst': {
                 u'tags': {
                     u'cmd': u'add',
-                    u'values': [tag]
+                    u'values': tags
                 }
             }
         }
@@ -979,18 +980,19 @@ class ServiceInstanceController(ServiceControllerChild):
         res = {u'msg': u'Add service %s tag %s' % (value, value)}
         self.result(res, headers=[u'msg'])
 
-    @expose(aliases=[u'delete-tag <id> <tag>'], aliases_only=True)
+    @expose(aliases=[u'del-tag <id> <tags>'], aliases_only=True)
     @check_error
-    def delete_tag(self):
-        """Delete service instance tag
+    def del_tags(self):
+        """Delete service instance tags
+    - tags: comma separated list of tags
         """
         value = self.get_arg(name=u'id')
-        tag = self.get_arg(name=u'tag')
+        tags = self.get_arg(name=u'tags').split(u',')
         data = {
-            u'service': {
+            u'serviceinst': {
                 u'tags': {
                     u'cmd': u'delete',
-                    u'values': [tag]
+                    u'values': tags
                 }
             }
         }
@@ -1289,7 +1291,7 @@ class ServiceLinkController(ServiceControllerChild):
     headers = [u'id', u'name', u'type', u'start', u'end', u'attributes', u'creation', u'modified']
 
     class Meta:
-        label = 'instance-links'
+        label = 'inst-links'
         aliases = ['links']
         aliases_only = True
         description = "Link management"
@@ -1444,19 +1446,21 @@ class ServiceTagController(ServiceControllerChild):
     tag_headers = [u'id', u'name', u'date.creation', u'date.modified', u'services', u'links']
 
     class Meta:
-        label = 'instance-tags'
+        label = 'instances.tags'
         aliases = ['tags']
         aliases_only = True
         description = "Tag management"
 
-    @expose(aliases=[u'add <value>'], aliases_only=True)
+    @expose(aliases=[u'add <account> <value>'], aliases_only=True)
     @check_error
     def add(self):
         """Add tag <value>
         """
+        account = self.get_arg(name=u'account')
         value = self.get_arg(name=u'value')
         data = {
             u'tag': {
+                u'account': account,
                 u'value': value
             }
         }
@@ -1480,7 +1484,7 @@ class ServiceTagController(ServiceControllerChild):
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     @check_error
     def list(self, *args):
-        """List all tags by field: value, container, service, link
+        """List all tags by field: value, service, link
         """
         data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
         uri = u'%s/tags' % self.baseuri
@@ -1544,6 +1548,7 @@ class ServiceTagController(ServiceControllerChild):
         logger.info(res)
         res = {u'msg': u'Delete tag %s' % value}
         self.result(res, headers=[u'msg'])
+
 
 class ServiceMetricsController(ServiceControllerChild):
     class Meta:
