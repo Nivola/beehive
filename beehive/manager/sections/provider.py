@@ -336,8 +336,8 @@ class ProviderComputeZoneController(ProviderControllerChild):
         uri = self.uri + u'/' + oid + u'/metrics'
         res = self._call(uri, u'GET')
         
-        self.result(res.get(u'compute_zone'), headers=[u'id', u'service_id',  u'platform_id', u'date', u'key', u'value'],
-                    fields=[u'id', u'service_uuid', u'platform_id', u'extraction_date', u'metrics.key', u'metrics.value'])
+        self.result(res.get(u'compute_zone'), headers=[u'id', u'service_id',  u'date', u'key', u'value'],
+                    fields=[u'id', u'service_uuid', u'extraction_date', u'metrics.key', u'metrics.value'])
         # TODO print di key e value delle metriche
         
 
