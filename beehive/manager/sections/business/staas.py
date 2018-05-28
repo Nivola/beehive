@@ -48,33 +48,45 @@ class STaaServiceEFSController(STaaServiceControllerChild):
         description = "Storage file system service management"
    
      
-    @expose(aliases=[u'describes [field=<id1, id2>]'], aliases_only=True)
+    @expose(aliases=[u'list [field=<id1, id2>]'], aliases_only=True)
     @check_error
-    def describes(self):
-        """List all share file system instances by field: owner_id, instance_id
+    def list(self):
+        """List all share file system instances by field: owner_id, instance_id, size, page
         """
-        dataSearch = {}
-        dataSearch[u'owner-id.N'] = self.split_arg(u'owner-id.N')
-        dataSearch[u'CreationToken'] = self.split_arg(u'name') 
-        dataSearch[u'FileSystemId'] = self.split_arg(u'instance_id')
+        data_search = {}
+        data_search[u'owner-id.N'] = self.split_arg(u'owner-id.N')
+        data_search[u'CreationToken'] = self.split_arg(u'name') 
+        data_search[u'FileSystemId'] = self.split_arg(u'instance_id')
+        data_search[u'MaxItems'] = self.get_arg(name=u'size', default=10, keyvalue=True)
+        data_search[u'Marker'] = self.get_arg(name=u'page', default=0, keyvalue=True)
+        page = data_search.get(u'Marker')
         
         uri = u'%s/storageservices/efs/describefilesystems' % self.baseuri
-        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True))
+        res = self._call(uri, u'GET', data=urllib.urlencode(data_search, doseq=True))
+        total = res.get(u'nvl-fileSystemTotal')
         res = res.get(u'FileSystems', [])
  
+ 
+        resp = {
+            u'count': len(res),
+            u'page': page,
+            u'total': total,
+            u'sort': {u'field': u'date.creation', u'order': u'desc'},
+            u'instances': res
+        } 
+ 
         headers = [u'id', u'name', u'status',  u'date.creation', 
-                   u'account', u'NumberOfMountTargets', u'SizeInBytes',  ]
+                   u'account', u'num.targets', u'size(bytes)',  ]
         fields = [u'FileSystemId',  u'CreationToken',  u'LifeCycleState',  u'CreationTime',
                    u'OwnerId', u'NumberOfMountTargets', u'SizeInBytes.Value']
-        self.result(res, headers=headers, fields=fields, maxsize=40)
+        self.result(resp, key=u'instances', headers=headers, fields=fields, maxsize=40)
 
 
-    @expose(aliases=[u'create <name> <account> <size> <type> '],
+    @expose(aliases=[u'add <name> <account> <size> <type> '],
             aliases_only=True)
     @check_error
-    def create(self):
+    def add(self):
         """Create share file system instance
-    - field: can be type if is missing is used default value __SRV_DEFAULT_STORAGE_EFS__
         """
 
         data = {
@@ -127,35 +139,48 @@ class STaaServiceEFSController(STaaServiceControllerChild):
         res = {u'msg': u'Delete share file system instance %s' % uuid}
         self.result(res, headers=[u'msg'])
  
-    @expose(aliases=[u'describes-target [field=<id1, id2>]'], aliases_only=True)
+    @expose(aliases=[u'list-target [field=<id1, id2>]'], aliases_only=True)
     @check_error
-    def describes_target(self):
-        """Lists all target mounted on a file system instance by field: owner_id, instance_id
+    def list_target(self):
+        """Lists all target mounted on a file system instance by field: owner-id.N, instance_id, 
         """
-        dataSearch = {}
-        dataSearch[u'owner-id.N'] = self.split_arg(u'owner-id.N')
-        dataSearch[u'FileSystemId'] = self.split_arg(u'instance_id')
-        
+        data_search = {}
+        data_search[u'owner-id.N'] = self.split_arg(u'owner-id.N')
+        data_search[u'FileSystemId'] = self.split_arg(u'instance_id')
+        data_search[u'MaxItems'] = self.get_arg(name=u'size', default=10, keyvalue=True)
+        data_search[u'Marker'] = self.get_arg(name=u'page', default=0, keyvalue=True)
+        page = data_search.get(u'Marker')
+                        
         uri = u'%s/storageservices/efs/describemounttargets' % self.baseuri
-        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True))
+        res = self._call(uri, u'GET', data=urllib.urlencode(data_search, doseq=True))
+        total = res.get(u'nvl-fileSystemTargetTotal')
         res = res.get(u'MountTargets', [])
- 
+        
+        resp = {
+            u'count': len(res),
+            u'page': page,
+            u'total': total,
+            u'sort': {u'field': u'date.creation', u'order': u'desc'},
+            u'instances': res
+        } 
+        
+        
         headers = [u'id', u'name', u'status',  u'date.creation', 
-                   u'account', u'target', u'subnet', u'network', u'ipaddress' ]
+                   u'account', u'target', u'subnet', u'network', u'ipaddress', u'size(bytes)']
         fields = [u'FileSystemId',  u'CreationToken',  u'LifeCycleState',  u'CreationTime',
-                   u'OwnerId', u'MountTargetId', u'SubnetId', u'NetworkInterfaceId', u'IpAddress' ]
-        self.result(res, headers=headers, fields=fields, maxsize=40)
+                   u'OwnerId', u'MountTargetId', u'SubnetId', u'NetworkInterfaceId', u'IpAddress', u'SizeInBytes.Value' ]
+        self.result(resp, key=u'instances', headers=headers, fields=fields, maxsize=40)
 
-    @expose(aliases=[u'create-target <id> <subnet>'],
+    @expose(aliases=[u'add-target <id> <subnet>'],
             aliases_only=True)
     @check_error
-    def create_target(self):
+    def add_target(self):
         """Create mount target to file system share instance
         """
 
         data = {
                 u'FileSystemId': self.get_arg(name=u'id'), 
-                u'owner_id' : self.get_account(self.get_arg(name=u'account')),
+#                 u'owner_id' : self.get_account(self.get_arg(name=u'account')),
 #                 u'Nvl-Owner-Id' : self.get_account(self.get_arg(name=u'account')),   
                 u'SubnetId': self.get_arg(name=u'subnet')
 
@@ -180,10 +205,10 @@ class STaaServiceEFSController(STaaServiceControllerChild):
         self.result(res, headers=[u'msg'])
  
  
-    @expose(aliases=[u'create-grant <id> <access_level> <access_type> <access_to>'],
+    @expose(aliases=[u'add-grant <id> <access_level> <access_type> <access_to>'],
             aliases_only=True)
     @check_error
-    def create_grant(self):
+    def add_grant(self):
         """Create file system grant
         """
 

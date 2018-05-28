@@ -635,7 +635,7 @@ class AccountController(AuthorityControllerChild):
                  u'require': {u'type': u'ComputeVPC', u'name': u'VpcBE'}},
                 {u'type': u'ComputeVPC',
                  u'name': u'VpcWEB',
-                 u'template': u'VpcWEBSync',
+                 u'template': u'VpcWEB.sync',
                  u'require': {u'type': u'ComputeService', u'name': u'ComputeService'}},
                 {u'type': u'ComputeSubnet',
                  u'name': u'SubnetWEB-torino01',
@@ -648,7 +648,7 @@ class AccountController(AuthorityControllerChild):
                 {u'type': u'ComputeSecurityGroup',
                  u'name': u'SecurityGroupWEB',
                  u'params': {u'vpc': u'VpcWEB'},
-                 u'template': u'SecurityGroupWEBSync',
+                 u'template': u'SecurityGroupWEB.sync',
                  u'require': {u'type': u'ComputeVPC', u'name': u'VpcWEB'}}
             ],
             u'test': [

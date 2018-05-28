@@ -84,10 +84,10 @@ class DBServiceInstanceController(DBaaServiceControllerChild):
         }
 
         headers = [u'id', u'name', u'status', u'account', u'Engine', u'EngineVersion', u'MultiAZ',
-                   u'AvailabilityZone', u'DBInstanceClass', u'Subnet', u'Listen', u'Port']
+                   u'AvailabilityZone', u'DBInstanceClass', u'Subnet', u'Listen', u'Port', u'Date']
         fields = [u'DBInstanceIdentifier', u'name', u'DBInstanceStatus', u'OwnerAlias', u'Engine', u'EngineVersion',
                   u'MultiAZ', u'AvailabilityZone', u'DBInstanceClass', u'DBSubnetGroup.DBSubnetGroupName',
-                  u'Endpoint.Address', u'Endpoint.Port']
+                  u'Endpoint.Address', u'Endpoint.Port', u'InstanceCreateTime']
         self.result(resp, key=u'instances', headers=headers, fields=fields, maxsize=40)
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
@@ -95,7 +95,16 @@ class DBServiceInstanceController(DBaaServiceControllerChild):
     def get(self):
         """Get database instance info
         """
-        pass
+        data_search = {}
+        data_search[u'db-instance-id.N'] = self.split_arg(u'id')
+
+        uri = u'%s/databaseservices/instance/describedbinstances' % self.baseuri
+        res = self._call(uri, u'GET', data=urllib.urlencode(data_search, doseq=True))
+        res = res.get(u'DescribeDBInstancesResponse').get(u'DescribeDBInstancesResult')
+
+        if len(res.get(u'DBInstances')) > 0:
+            resp = res.get(u'DBInstances')[0]
+            self.result(resp, details=True)
 
     @expose(aliases=[u'add <name> <account> <template> <subnet> <engine> <version> <security group> [field=..]'],
             aliases_only=True)

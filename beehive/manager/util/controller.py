@@ -335,21 +335,22 @@ commands:
         
         return res
     
-    def __tabularprint(self, data, table_style, headers=None, other_headers=[], fields=None, maxsize=20,
-                       separator=u'.', transform={}):
+    def __tabularprint(self, data, table_style, headers=None, other_headers=None, fields=None, maxsize=20,
+                       separator=u'.', transform={}, print_header=True):
         if data is None:
             data = u'-'
         if not isinstance(data, list):
             values = [data]
         else:
             values = data
-        if headers is None:
-            headers = [u'id', u'name']
-        headers.extend(other_headers)
+        # if headers is None:
+        #     headers = [u'id', u'name']
+        if headers is not None and other_headers is not None:
+            headers.extend(other_headers)
         table = []
         if fields is None:
             fields = headers
-        idx = 0
+        # idx = 0
         for item in values:
             raw = []
             if isinstance(item, dict):
@@ -363,8 +364,10 @@ commands:
                 raw[raw_item] = func(raw[raw_item])
 
             table.append(raw)
-        print(tabulate(table, headers=headers, tablefmt=table_style))
-        print(u'')
+        if print_header is True:
+            print(tabulate(table, headers=headers, tablefmt=table_style))
+        else:
+            print(tabulate(table, tablefmt=table_style))
     
     def __format(self, data, space=u'', delimiter=u':', key=None):
         """
@@ -413,7 +416,7 @@ commands:
 
     @check_error
     def result(self, data, other_headers=[], headers=None, key=None, fields=None, details=False, maxsize=50,
-               key_separator=u'.', format=None, table_style=u'simple', transform={}):
+               key_separator=u'.', format=None, table_style=u'simple', transform={}, print_header=True):
         """Print result with a certain format
 
         :param data: data to print
@@ -428,6 +431,7 @@ commands:
         :param format: format used when print [default=text]
         :param table_style: table style used when format is tabular [defualt=simple]
         :param transform: dict with function to apply to columns set in headers [default={}]
+        :param print_header: if True print table header [default=True]
         :return:
         """
         logger.debug(u'Result format: %s' % self.format)
@@ -496,7 +500,8 @@ commands:
                                                  orig_data.get(u'sort').get(u'order')))
                         print(u'')               
                     self.__tabularprint(data, table_style, other_headers=other_headers, headers=headers, fields=fields,
-                                        maxsize=maxsize, separator=key_separator, transform=transform)
+                                        maxsize=maxsize, separator=key_separator, transform=transform,
+                                        print_header=print_header)
                     
         elif self.format == u'doc':
             print(data)

@@ -4,6 +4,7 @@ Created on Sep 22, 2017
 @author: darkbk
 """
 import os
+import sys
 import ujson as json
 import urllib
 
@@ -1944,52 +1945,85 @@ class NodeController(AnsibleController):
         ]
         runner.run_task(group, tasks=tasks, frmt=u'text')
 
-    @expose(aliases=[u'cmd2 <group> <cmd>'], aliases_only=True)
-    @check_error
-    def cmd2(self):
-        """Execute command on managed platform nodes
-    - group: ansible group
-    - cmd: shell command
-        """
-        inventory_dict = {
-            "all": {
-                "vars": {
-                    "ansible_user": "centos",
-                    "ansible_ssh_private_key_file": u'%s/../configs/test/.ssh/vm.id_rsa' % self.ansible_path,
-                }
-            },
-            "group001": {
-                "hosts": ["10.138.133.21", "10.138.197.4"],
-                "vars": {
-                    "ansible_user": "root",
-                    "ansible_ssh_pass": "mypass",
-                },
-                "children": ["group002"]
-            },
-            "group002": {
-                "hosts": ["10.138.197.3", "10.138.197.2"],
-                "vars": {
-                    "ansible_user": "root",
-                    "ansible_ssh_pass": "mypass",
-                },
-                "children": []
-            },
-            "group003": {
-                "hosts": ["10.138.128.50", "10.138.128.35"],
-                "vars": {
-                },
-                "children": []
-            }
-        }
-
-        group = self.get_arg(name=u'group')
-        cmd = self.get_arg(name=u'cmd')
-        path_lib = u'%s/library/beehive/' % (self.ansible_path)
-        runner = Runner(inventory=inventory_dict, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
-        tasks = [
-            dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
-        ]
-        runner.run_task(group, tasks=tasks, frmt=u'text')
+    # @expose(aliases=[u'log <host> [file=..]'], aliases_only=True)
+    # @check_error
+    # def log(self):
+    #     """Get node log
+    # - host: specify host where inspect log
+    # - file: specify keyword (task, uwsgi) to select alternative log [optional]
+    #     """
+    #     host = self.get_arg(name=u'host')
+    #     file = self.get_arg(name=u'file', default=None, keyvalue=True)
+    #
+    #     runners = self.get_runners()
+    #     hosts = []
+    #     for runner in runners:
+    #         hosts.extend(self.get_hosts(runner, [u'all']))
+    #     vars = runner.variable_manager.get_vars(runner.loader, host=hosts[0])
+    #     print host in hosts
+    #     if file is None:
+    #         print hosts
+    #         print hosts[0].get_vars()
+    #     elif host in [h.name for h in hosts]:
+    #         ssh_key = vars.get(u'ansible_ssh_private_key_file').replace(u'{{ inventory_dir }}',
+    #                                                                     vars.get(u'inventory_dir'))
+    #         ssh_user = vars.get(u'ansible_user')
+    #         ssh_cmd = u'tailf /var/log/beehive/beehive100/%s-%s.log' % (subsystem, vassal)
+    #         if keyword is not None and keyword in [u'task', u'uwsgi']:
+    #             ssh_cmd = u'tailf /var/log/beehive/beehive100/%s-%s.%s.log' % (subsystem, vassal, keyword)
+    #
+    #         def ssh_interact(char):
+    #             sys.stdout.write(char.encode())
+    #             sys.stdout.flush()
+    #
+    #         sh.ssh(u'%s@%s' % (ssh_user, host), u'-i', ssh_key, ssh_cmd, _out=ssh_interact, _out_bufsize=0)
+    #
+    # @expose(aliases=[u'cmd2 <group> <cmd>'], aliases_only=True)
+    # @check_error
+    # def cmd2(self):
+    #     """Execute command on managed platform nodes
+    # - group: ansible group
+    # - cmd: shell command
+    #     """
+    #     inventory_dict = {
+    #         "all": {
+    #             "vars": {
+    #                 "ansible_user": "centos",
+    #                 "ansible_ssh_private_key_file": u'%s/../configs/test/.ssh/vm.id_rsa' % self.ansible_path,
+    #             }
+    #         },
+    #         "group001": {
+    #             "hosts": ["10.138.133.21", "10.138.197.4"],
+    #             "vars": {
+    #                 "ansible_user": "root",
+    #                 "ansible_ssh_pass": "mypass",
+    #             },
+    #             "children": ["group002"]
+    #         },
+    #         "group002": {
+    #             "hosts": ["10.138.197.3", "10.138.197.2"],
+    #             "vars": {
+    #                 "ansible_user": "root",
+    #                 "ansible_ssh_pass": "mypass",
+    #             },
+    #             "children": []
+    #         },
+    #         "group003": {
+    #             "hosts": ["10.138.128.50", "10.138.128.35"],
+    #             "vars": {
+    #             },
+    #             "children": []
+    #         }
+    #     }
+    #
+    #     group = self.get_arg(name=u'group')
+    #     cmd = self.get_arg(name=u'cmd')
+    #     path_lib = u'%s/library/beehive/' % (self.ansible_path)
+    #     runner = Runner(inventory=inventory_dict, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
+    #     tasks = [
+    #         dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
+    #     ]
+    #     runner.run_task(group, tasks=tasks, frmt=u'text')
 
     def ip_pod_fun(self,pod):
         # range podvc: da 216.141 al 216.159, podto1: dal 152.130 al 152.148, podt2: dal 184.130 al 184.148
@@ -2787,13 +2821,31 @@ class BeehiveController(AnsibleController):
                         u'remove': []
                     }
                     res = self._call(u'/v1.0/nas/users/%s' % obj[u'name'], u'PUT', data={u'user': {u'roles': roles}})
-                    logger.info(u'Add user roles: %s' % res)
-                    self.output(u'Add user roles: %s' % obj[u'roles'])
+                    logger.info(u'Add user %s roles: %s' % (obj[u'name'], res))
+                    self.output(u'Add user %s roles: %s' % (obj[u'name'], obj[u'roles']))
                 except Exception as ex:
                     self.error(ex)
                     self.app.error = False
 
-            # TODO: groups
+            for obj in configs.get(u'auth').get(u'groups'):
+                try:
+                    res = self._call(u'/v1.0/nas/groups', u'POST', data={u'group': obj})
+                    logger.info(u'Add group: %s' % res)
+                    self.output(u'Add group: %s' % obj)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
+                try:
+                    roles = {
+                        u'append': obj[u'users'],
+                        u'remove': []
+                    }
+                    res = self._call(u'/v1.0/nas/groups/%s' % obj[u'name'], u'PUT', data={u'group': {u'users': roles}})
+                    logger.info(u'Add group %s users: %s' % (obj[u'name'], res))
+                    self.output(u'Add group %s users: %s' % (obj[u'name'], obj[u'users']))
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
 
         # auth and catalog objects and schedule
         if apply.get(u'auth-schedule', False) is True:
@@ -3133,6 +3185,19 @@ class BeehiveController(AnsibleController):
                         self.error(ex)
                         self.app.error = False
 
+        # create service tags
+        if apply.get(u'service-tags', False) is True:
+            self.output(u'------ service-tags ------ ')
+
+            for obj in configs.get(u'service').get(u'tags'):
+                try:
+                    res = self._call(u'/v1.0/nws/tags', u'POST', data={u'tag': obj})
+                    logger.info(u'Add service tag: %s' % res)
+                    self.output(u'Add service tag: %s' % obj)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
+
         # create org
         if apply.get(u'authority', False) is True:
             self.output(u'------ authority ------ ')
@@ -3327,21 +3392,17 @@ class BeehiveController(AnsibleController):
         }        
         self.ansible_playbook(u'beehive', run_data, playbook=self.beehive_playbook)
     
-    @expose(aliases=[u'instance-ping [subsystem] [vassal]'], aliases_only=True)
+    @expose(aliases=[u'instance-ping [subsystem] [vassal] [count=..]'], aliases_only=True)
     @check_error
     def instance_ping(self):
         """Ping beehive instance
     - subsystem: subsystem
     - vassal: vassal
+    - count: number of pings [optional]
         """
-        subsystem = self.get_arg()
-        vassal = self.get_arg()
-        '''path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
-        path_lib = u'%s/library/beehive/' % (self.ansible_path)
-        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, module=path_lib, vault_password=self.vault)
-        hosts, vars = runner.get_inventory_with_vars(u'beehive')
-        vars = runner.variable_manager.get_vars(runner.loader, host=hosts[0])'''
-
+        subsystem = self.get_arg(name=u'subsystem')
+        vassal = self.get_arg(name=u'vassal')
+        count = int(self.get_arg(name=u'count', keyvalue=True, default=1))
         runners = self.get_runners()
         hosts = []
         for runner in runners:
@@ -3354,85 +3415,86 @@ class BeehiveController(AnsibleController):
         else:
             for instance in instances:
                 vassals.append(instance.split(u'-'))
-        
-        resp = []
-        for vassal in vassals:
-            port = instances.get(u'%s-%s' % tuple(vassal)).get(u'port')
-    
-            for host in hosts:
-                url = URL(u'http://%s:%s/v1.0/server/ping' % (host, port))
-                logger.debug(url)
-                http = HTTPClient(url.host, port=url.port, headers={u'Content-Type': u'application/json'})
-                try:
-                    # issue a get request
-                    response = http.get(url.request_uri)
-                    # read status_code
-                    response.status_code
-                    # read response body
-                    # res = json.loads(response.read())
-                    # close connections
-                    http.close()
-                    if response.status_code == 200:
-                        resp.append({u'subsystem': vassal[0], u'instance': vassal[1], u'host': host, u'port': port,
-                                     u'ping': True, u'status': u'UP'})
-                    else:
-                        resp.append({u'subsystem': vassal[0], u'instance': vassal[1], u'host': host, u'port': port,
-                                     u'ping': False, u'status': u'DOWN'})
-                except gevent.socket.error as ex:
-                    logger.error(ex)
-                    resp.append({u'subsystem': vassal[0], u'instance': vassal[1], u'host': host, u'port': port,
-                                 u'ping': False, u'status': u'DOWN'})
-                except Exception as ex:
-                    logger.error(ex)
-                    resp.append({u'subsystem': vassal[0], u'instance': vassal[1], u'host': host, u'port': port,
-                                 u'ping': False, u'status': u'DOWN'})
 
-        self.result(resp, headers=[u'subsystem', u'instance', u'host', u'port', u'status'])
-        
-    @expose(aliases=[u'instance-log <subsystem> <vassal> [rows=100]'], aliases_only=True)
+        for i in range(0, count):
+            resp = []
+            for vassal in vassals:
+                port = instances.get(u'%s-%s' % tuple(vassal)).get(u'port')
+
+                for host in hosts:
+                    url = URL(u'http://%s:%s/v1.0/server/ping' % (host, port))
+                    logger.debug(url)
+                    http = HTTPClient(url.host, port=url.port, headers={u'Content-Type': u'application/json'})
+                    try:
+                        # issue a get request
+                        response = http.get(url.request_uri)
+                        # read status_code
+                        response.status_code
+                        # read response body
+                        # res = json.loads(response.read())
+                        # close connections
+                        http.close()
+                        if response.status_code == 200:
+                            resp.append({u'subsystem': vassal[0], u'instance': vassal[1], u'host': host, u'port': port,
+                                         u'ping': True, u'status': u'UP', u'count': i})
+                        else:
+                            resp.append({u'subsystem': vassal[0], u'instance': vassal[1], u'host': host, u'port': port,
+                                         u'ping': False, u'status': u'DOWN', u'count': i})
+                    except gevent.socket.error as ex:
+                        logger.error(ex)
+                        resp.append({u'subsystem': vassal[0], u'instance': vassal[1], u'host': host, u'port': port,
+                                     u'ping': False, u'status': u'DOWN', u'count': i})
+                    except Exception as ex:
+                        logger.error(ex)
+                        resp.append({u'subsystem': vassal[0], u'instance': vassal[1], u'host': host, u'port': port,
+                                     u'ping': False, u'status': u'DOWN', u'count': i})
+
+            print_header = True
+            table_style = u'simple'
+            if count > 1:
+                print_header = False
+                table_style = u'plain'
+                sleep(2)
+            self.result(resp, headers=[u'subsystem', u'instance', u'host', u'port', u'status', u'count'],
+                        print_header=print_header, table_style=table_style)
+
+    @expose(aliases=[u'instance-log <subsystem> <vassal> [host=..] [keyword]'], aliases_only=True)
     @check_error
     def instance_log(self):
         """Get instance log
     - subsystem: beehive subsystem. Ex. auth, event
     - vassal: instance number. Ex. 01
-    - rows: number of row to tail [default=100]
+    - host: specify host where inspect log [optional]
+    - keyword: specify keyword (task, uwsgi) to select alternative log [optional]
         """
         group = u'beehive'
         subsystem = self.get_arg(name=u'subsystem')
         vassal = self.get_arg(name=u'vassal')
-        rows = self.get_arg(default=100)
-        cmd = u'tail -%s /var/log/beehive/beehive100/%s-%s.log' % (rows, subsystem, vassal)
-        path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
-        path_lib = u'%s/library/beehive/' % (self.ansible_path)
-        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
-                        module=path_lib, vault_password=self.vault)
-        tasks = [
-            dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
-        ]
-        runner.run_task(group, tasks=tasks, frmt=u'text')
-                
-    @expose(aliases=[u'uwsgi-log <subsystem> <vassal> [rows=100]'], aliases_only=True)
-    @check_error
-    def uwsgi_log(self):
-        """Get uwsgi instance log
-    - subsystem: beehive subsystem. Ex. auth, event
-    - vassal: instance number. Ex. 01
-    - rows: number of row to tail [default=100] 
-        """
-        group = u'beehive'
-        subsystem = self.get_arg(name=u'subsystem')
-        vassal = self.get_arg(name=u'vassal')
-        rows = self.get_arg(default=100)
-        cmd  = u'tail -%s /var/log/beehive/beehive100/%s-%s.uwsgi.log' % \
-            (rows, subsystem, vassal)
-        path_inventory = u'%s/inventory/%s' % (self.ansible_path, self.env)
-        path_lib = u'%s/library/beehive/' % (self.ansible_path)
-        runner = Runner(inventory=path_inventory, verbosity=self.verbosity, 
-                        module=path_lib, vault_password=self.vault)
-        tasks = [
-            dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
-        ]
-        runner.run_task(group, tasks=tasks, frmt=u'text')                
+        host = self.get_arg(name=u'host', default=None, keyvalue=True)
+        keyword = self.get_arg(name=u'keyword', default=None, keyvalue=True)
+
+        runners = self.get_runners()
+        hosts = []
+        for runner in runners:
+            hosts.extend(self.get_hosts(runner, [group]))
+        vars = runner.variable_manager.get_vars(runner.loader, host=hosts[0])
+        print host in hosts
+        if host is None:
+            print hosts
+            print hosts[0].get_vars()
+        elif host in [h.name for h in hosts]:
+            ssh_key = vars.get(u'ansible_ssh_private_key_file').replace(u'{{ inventory_dir }}',
+                                                                        vars.get(u'inventory_dir'))
+            ssh_user = vars.get(u'ansible_user')
+            ssh_cmd = u'tailf /var/log/beehive/beehive100/%s-%s.log' % (subsystem, vassal)
+            if keyword is not None and keyword in [u'task', u'uwsgi']:
+                ssh_cmd = u'tailf /var/log/beehive/beehive100/%s-%s.%s.log' % (subsystem, vassal, keyword)
+
+            def ssh_interact(char):
+                sys.stdout.write(char.encode())
+                sys.stdout.flush()
+
+            sh.ssh(u'%s@%s' % (ssh_user, host), u'-i', ssh_key, ssh_cmd, _out=ssh_interact, _out_bufsize=1)
                 
     '''def beehive_get_uwsgi_tree(self):
         """

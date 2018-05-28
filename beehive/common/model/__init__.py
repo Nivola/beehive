@@ -695,7 +695,7 @@ class AbstractDbManager(object):
         kvargs[u'modification_date'] = datetime.today()
         res = entity.update(kvargs)
             
-        self.logger.debug(u'Update %s %s with data: %s' %  (entityclass.__name__, oid, kvargs))
+        self.logger.debug(u'Update %s %s with data: %s' % (entityclass.__name__, oid, kvargs))
         return oid
     
     @transaction
