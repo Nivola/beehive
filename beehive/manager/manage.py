@@ -10,6 +10,7 @@ import sys
 import ujson as json
 from beecell.logger.helper import LoggerHelper
 from beehive.common.log import ColorFormatter
+from beehive.manager.sections.business.appengaas import appengine_controller_handlers
 from beehive.manager.util.logger import LoggingLogHandler
 
 from ansible.utils.display import Display as OrigDisplay
@@ -119,6 +120,7 @@ default_handlers = [
     dbaas_controller_handlers,
     vpcaas_controller_handlers,
     staas_controller_handlers,
+    appengine_controller_handlers,
 
     vsphere_controller_handlers,
     vsphere_platform_controller_handlers,
