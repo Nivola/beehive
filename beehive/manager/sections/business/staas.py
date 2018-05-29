@@ -139,9 +139,9 @@ class STaaServiceEFSController(STaaServiceControllerChild):
         res = {u'msg': u'Delete share file system instance %s' % uuid}
         self.result(res, headers=[u'msg'])
  
-    @expose(aliases=[u'list-target [field=<id1, id2>]'], aliases_only=True)
+    @expose(aliases=[u'target-list [field=<id1, id2>]'], aliases_only=True)
     @check_error
-    def list_target(self):
+    def target_list(self):
         """Lists all target mounted on a file system instance by field: owner-id.N, instance_id, 
         """
         data_search = {}
@@ -171,10 +171,10 @@ class STaaServiceEFSController(STaaServiceControllerChild):
                    u'OwnerId', u'MountTargetId', u'SubnetId', u'NetworkInterfaceId', u'IpAddress', u'SizeInBytes.Value' ]
         self.result(resp, key=u'instances', headers=headers, fields=fields, maxsize=40)
 
-    @expose(aliases=[u'add-target <id> <subnet>'],
+    @expose(aliases=[u'target-add <id> <subnet>'],
             aliases_only=True)
     @check_error
-    def add_target(self):
+    def target_add(self):
         """Create mount target to file system share instance
         """
 
@@ -191,9 +191,9 @@ class STaaServiceEFSController(STaaServiceControllerChild):
         res = {u'msg': u'Mount target to storage efs instance share %s' % res}
         self.result(res, headers=[u'msg'])
 
-    @expose(aliases=[u'delete-target <id>'], aliases_only=True)
+    @expose(aliases=[u'target-delete <id>'], aliases_only=True)
     @check_error
-    def delete_target(self):
+    def target_delete(self):
         """Delete mount target file system share instance
         """
         uuid = self.get_arg(name=u'id')
@@ -205,10 +205,10 @@ class STaaServiceEFSController(STaaServiceControllerChild):
         self.result(res, headers=[u'msg'])
  
  
-    @expose(aliases=[u'add-grant <id> <access_level> <access_type> <access_to>'],
+    @expose(aliases=[u'grant-add <id> <access_level> <access_type> <access_to>'],
             aliases_only=True)
     @check_error
-    def add_grant(self):
+    def grant_add(self):
         """Create file system grant
         """
 
@@ -225,9 +225,9 @@ class STaaServiceEFSController(STaaServiceControllerChild):
         self.result(res, headers=[u'msg'])
     
     # TODO MANAGEMENT cli delete_grant command
-    @expose(aliases=[u'delete-grant <id> <access_id>'], aliases_only=True)
+    @expose(aliases=[u'grant-delete <id> <access_id>'], aliases_only=True)
     @check_error
-    def delete_grant(self):
+    def grant_delete(self):
         """Delete grant file system instance
         """
 
@@ -244,21 +244,23 @@ class STaaServiceEFSController(STaaServiceControllerChild):
         self.result(res, headers=[u'msg'])
 
     # TODO MANAGEMENT cli delete_grant command        
-    @expose(aliases=[u'list-grant <id>'], aliases_only=True)
+    @expose(aliases=[u'grant-list <id>'], aliases_only=True)
     @check_error
-    def list_grant(self):
-        """List all grants for a share file system instances by field: ???
+    def grant_list(self):
+        """List all grants for a share file system instances
         """
         uuid = self.get_arg(name=u'id')
-        dataSearch = {}
-        
-        uri = u'%s/storageservices/efs/%s/grant' % (self.baseuri, uuid)
-        res = self._call(uri, u'GET', data=urllib.urlencode(dataSearch, doseq=True))
-        res = []
- 
-        headers = [ ]
-        fields = []
-        self.result(res, headers=headers, fields=fields, maxsize=40)        
+        data_search = {}
+        uri = u'%s/storageservices/efs/%s/grants' % (self.baseuri, uuid)
+        res = self._call(uri, u'GET', data=urllib.urlencode(data_search, doseq=True))
+        res = res.get(u'shares',[])
+        for item in res:
+            self.result(item, headers=self.headers, fields=self.fields)
+            self.app.print_output(u'Grants')
+            self.result(item.get(u'grants', []), headers=[u'id', u'state', u'level',  u'type', u'to'],
+                        fields=[u'id', u'state', u'access_level',  u'access_type', u'access_to'], maxsize=200, table_style=u'simple')
+   
+
            
 staas_controller_handlers = [
     STaaServiceController,

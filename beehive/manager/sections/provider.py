@@ -882,6 +882,21 @@ class ProviderComputeFileShareController(ProviderControllerChild):
         res = {u'msg': u'Add %s %s' % (self._meta.aliases[0], res[u'uuid'])}
         self.result(res, headers=[u'msg'])
 
+    @expose(aliases=[u'list-grant <id>'], aliases_only=True)
+    @check_error
+    def list_grant(self):
+        """List grants 
+        """
+        data = {}
+        oid = self.get_arg(name=u'id')
+        uri = u'%s/%s/grants' % (self.uri, oid)
+        res = self._call(uri, u'GET', data=data).get(u'shares')
+        for item in res:
+            self.result(item, headers=self.headers, fields=self.fields)
+            self.app.print_output(u'Grants')
+            self.result(item.get(u'grants', []), headers=[u'id', u'state', u'level',  u'type', u'to'],
+                        fields=[u'id', u'state', u'access_level',  u'access_type', u'access_to'], maxsize=200, table_style=u'simple')
+
 
 provider_controller_handlers = [
     ProviderController,
