@@ -1057,6 +1057,25 @@ class ApiController(object):
             
         # db manager
         self.dbmanager = None
+        
+    def resolve_fk_id(self, key, get_entity, data, new_key=None ):
+        fk = data.get(key)        
+        if fk is not None and not isinstance(fk, int) and not fk.isdigit():
+            oid = self.resolve_oid(fk, get_entity)
+            if new_key is None:
+                data[key] = oid
+            else:
+                data.pop(key)
+                data[new_key] = oid
+        else:
+            if new_key is not None and data.get(key, None) is not None:
+                data[new_key] = data.pop(key, None)
+                
+    def resolve_oid(self, fk, get_entity): 
+        res = fk   
+        if fk is not None and not isinstance(fk, int) and not fk.isdigit():
+            res = get_entity(fk).oid
+        return res
             
     def __repr__(self):
         return "<%s id='%s'>" % (self.__class__.__module__+u'.'+
