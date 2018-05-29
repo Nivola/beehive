@@ -1728,7 +1728,7 @@ class ServiceAggregateCostsController(ServiceControllerChild):
         header_field = {
             u'id':u'id', 
             u'type_id': u'metric_type_id',
-            u'platform_id': u'platform_id',
+#             u'platform_id': u'platform_id',
             u'instance': u'instance_oid',
             u'aggr_type': u'aggregation_type',
             u'period': u'period',
@@ -1749,8 +1749,8 @@ class ServiceAggregateCostsController(ServiceControllerChild):
         uri = u'%s/services/aggregatecosts' % self.baseuri
         res = self._call(uri, u'GET', data=urlencode(data))
         self.result(res, key=u'aggregate_cost', 
-                    headers=[u'id', u'type_id', u'platform_id', u'cost'        , u'cost_iva', u'instance',            u'aggr_type'       , u'period', u'job_id', u'date'],
-                    fields= [u'id', u'type_id', u'platform_id', u'cost_not_iva', u'cost_iva', u'service_instance_id', u'aggregation_type', u'period', u'job_id', u'evaluation_date'])
+                    headers=[u'id', u'type_id',  u'cost'        , u'cost_iva', u'instance',            u'aggr_type'       , u'period', u'job_id', u'date'],
+                    fields= [u'id', u'type_id',  u'cost_not_iva', u'cost_iva', u'service_instance_id', u'aggregation_type', u'period', u'job_id', u'evaluation_date'])
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -1763,17 +1763,17 @@ class ServiceAggregateCostsController(ServiceControllerChild):
         logger.info(res)
 
         self.result(res, key=u'aggregate_cost', 
-                    headers=[u'id', u'type_id', u'platform_id', u'cost'        , u'cost_iva', u'instance',            u'aggr_type'       , u'period', u'job_id', u'date'],
-                    fields= [u'id', u'type_id', u'platform_id', u'cost_not_iva', u'cost_iva', u'service_instance_id', u'aggregation_type', u'period', u'job_id', u'evaluation_date'])
+                    headers=[u'id', u'type_id', u'cost'        , u'cost_iva', u'instance',            u'aggr_type'       , u'period', u'job_id', u'date'],
+                    fields= [u'id', u'type_id', u'cost_not_iva', u'cost_iva', u'service_instance_id', u'aggregation_type', u'period', u'job_id', u'evaluation_date'])
 
-    @expose(aliases=[u'add <platform_id> <metric_type_id> <cost_iva> <cost_not_iva> <instance_oid> <aggregation_type> <period> <job_id> [field=..]'],
+    @expose(aliases=[u'add <metric_type_id> <cost_iva> <cost_not_iva> <instance_oid> <aggregation_type> <period> <job_id> [field=..]'],
             aliases_only=True)
     @check_error
     def add(self):
         """Add aggregate cost 
     - field: can be date
         """
-        platform_id = self.get_arg(name=u'platform_id')
+#         platform_id = self.get_arg(name=u'platform_id')
         metric_type_id = self.get_arg(name=u'metric_type_id')
         cost_iva = self.get_arg(name=u'cost_iva')
         cost_not_iva = self.get_arg(name=u'cost_not_iva')
@@ -1785,7 +1785,7 @@ class ServiceAggregateCostsController(ServiceControllerChild):
         
         data = {
             u'aggregate_cost':{
-                u'platform_id':platform_id,
+#                 u'platform_id':platform_id,
                 u'metric_type_id': metric_type_id,
                 u'cost_iva': cost_iva,
                 u'cost_not_iva': cost_not_iva,
@@ -1807,13 +1807,13 @@ class ServiceAggregateCostsController(ServiceControllerChild):
     @check_error
     def batch_delete(self):
         """Batch Delete aggregate costs
-    - field: can be platform_id, type_id, instance, aggr_type, period, job_id, date_start, date_end, limit
+    - field: can be type_id, instance, aggr_type, period, job_id, date_start, date_end, limit
             
         """
 #         value = self.get_arg(name=u'id')
         data = {
             u'aggregate_cost':{
-                u'platform_id':self.get_arg(name=u'platform_id', keyvalue=True),  
+#                 u'platform_id':self.get_arg(name=u'platform_id', keyvalue=True),  
                 u'metric_type_id': self.get_arg(name=u'type_id', keyvalue=True), 
                 u'service_instance_id': self.get_arg(name=u'instance', keyvalue=True), 
                 u'aggregation_type': self.get_arg(name=u'aggr_type', keyvalue=True),
