@@ -2865,7 +2865,7 @@ class BeehiveController(AnsibleController):
             runners = self.get_runners()
             # loop for all env
             for runner in runners:
-                camundaclients= self.get_camunda_clients(runner)
+                camundaclients = self.get_camunda_clients(runner)
                 # render and deploy to camunda
                 render = configs.get(u'camunda').get(u'render', {u'context': {}, u'deploy': []})
                 for obj in render.get(u'deploy'):
@@ -3173,6 +3173,11 @@ class BeehiveController(AnsibleController):
                                  data={u'definitions': {u'oids': defs}})
                 logger.info(u'Add service catalog defs: %s' % res)
                 self.output(u'Add service catalog defs: %s' % defs)
+
+                res = self._call(u'/v1.0/nws/srvcatalogs/%s' % res[u'uuid'], u'PATCH',
+                                 data={u'catalog': {}})
+                logger.info(u'Refresh service catalog: %s' % res)
+                self.output(u'Refresh service catalog: %s' % defs)
 
                 # add users
                 for user in obj.get(u'users', []):

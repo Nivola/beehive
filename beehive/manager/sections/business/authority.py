@@ -605,6 +605,10 @@ class AccountController(AuthorityControllerChild):
                  u'name': u'DatabaseService',
                  u'template': u'database.medium.sync',
                  u'require': {u'type': u'ComputeService', u'name': u'ComputeService'}},
+                {u'type': u'AppEngineService',
+                 u'name': u'AppEngineService',
+                 u'template': u'appengine.medium.sync',
+                 u'require': {u'type': u'ComputeService', u'name': u'ComputeService'}},
                 {u'type': u'ComputeImage',
                  u'name': u'Centos7.2',
                  u'template': u'Centos7.2.sync',
@@ -865,7 +869,6 @@ class AccountController(AuthorityControllerChild):
         oid = self.get_arg(name=u'id')
         template = self.get_arg(name=u'template', keyvalue=True, default=u'')
 
-        services = []
         if template.find(u'@') == 0:
             services = self.load_config(template[1:len(template)])
         else:
