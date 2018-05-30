@@ -2735,14 +2735,21 @@ class BeehiveController(AnsibleController):
     @check_error
     def post_install(self):
         """Run post install. This command can be used many times to add new items.
-    - config: config file
-    - sections: comma separated list of section to execute
+            - config: config file
+            - sections: comma separated list of section to execute
         """
         # get configs
         available_configs = [f[0:-5] for f in os.listdir(u'%s/../post-install' % self.ansible_path)
                              if f.find(u'.json') > 0]
         note = u'Available config are: ' + u', '.join(available_configs)
-        config_path = u'%s/../post-install/%s.json' % (self.ansible_path, self.get_arg(name=u'config', note=note))
+        # config_path = u'%s/../post-install/%s.json' % (self.ansible_path, self.get_arg(name=u'config', note=note))
+        config_path = u'%s/../post-install/%s' % (self.ansible_path, self.get_arg(name=u'config', note=note))
+        if os.path.isfile(config_path+'.yaml'):
+            config_path = config_path+'.yaml'
+        elif os.path.isfile(config_path+'.json'):
+            config_path = config_path+'.json'
+        elif os.path.isfile(config_path+'.yml'):
+            config_path = config_path+'.yml'
         all_configs = self.load_config(config_path)
         apply = all_configs.get(u'apply')
         configs = all_configs.get(u'configs')
@@ -2753,6 +2760,7 @@ class BeehiveController(AnsibleController):
             new_apply = new_apply.split(u',')
             for item in new_apply:
                 apply[item] = True
+
 
         out_apply = [{u'section': k, u'enabled': v} for k, v in apply.items()]
         self.result(out_apply, headers=[u'section', u'enabled'])
