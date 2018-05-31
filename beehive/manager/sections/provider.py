@@ -795,8 +795,9 @@ class ProviderComputeSqlStackController(ProviderControllerChild):
 
 class ProviderComputeAppEngineController(ProviderControllerChild):
     uri = u'/v1.0/nrs/provider/app_engines'
-    headers = [u'id', u'uuid', u'name', u'parent', u'state', u'creation']
-    headers = [u'id', u'uuid', u'name', u'parent.name', u'state', u'date.creation', u'date.modified']
+    headers = [u'id', u'uuid', u'name', u'parent', u'state', u'vpc', u'security_group', u'creation']
+    headers = [u'id', u'uuid', u'name', u'parent.name', u'state', u'vpc.name', u'security_group.name',
+               u'date.creation', u'date.modified']
 
     class Meta:
         label = 'provider.beehive.app_engines'

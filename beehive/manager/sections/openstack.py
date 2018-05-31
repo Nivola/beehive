@@ -2019,6 +2019,7 @@ class OpenstackDomainController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.domains'
         aliases = ['domains']
+        alias = u'domains'
         aliases_only = True        
         description = "Openstack Domain management"
 
@@ -2031,6 +2032,7 @@ class OpenstackProjectController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.projects'
         aliases = ['projects']
+        alias = u'projects'
         aliases_only = True        
         description = "Openstack Project management"
 
@@ -2074,6 +2076,7 @@ class OpenstackNetworkController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.networks'
         aliases = ['networks']
+        alias = u'networks'
         aliases_only = True
         description = "Openstack Network management"
 
@@ -2085,6 +2088,7 @@ class OpenstackSubnetController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.subnets'
         aliases = ['subnets']
+        alias = u'subnets'
         aliases_only = True
         description = "Openstack Subnet management"
 
@@ -2122,6 +2126,7 @@ class OpenstackPortController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.ports'
         aliases = ['ports']
+        alias = u'ports'
         aliases_only = True         
         description = "Openstack Port management"     
 
@@ -2132,6 +2137,7 @@ class OpenstackFloatingIpController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.floatingips'
         aliases = ['floatingips']
+        alias = u'floatingips'
         aliases_only = True         
         description = "Openstack FloatingIp management"
 
@@ -2149,6 +2155,7 @@ class OpenstackRouterController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.routers'
         aliases = ['routers']
+        alias = u'routers'
         aliases_only = True         
         description = "Openstack Router management"
 
@@ -2188,6 +2195,7 @@ class OpenstackSecurityGroupController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.security_groups'
         aliases = ['security_groups']
+        alias = u'security_groups'
         aliases_only = True         
         description = "Openstack SecurityGroup management"           
         
@@ -2217,6 +2225,7 @@ class OpenstackImageController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.images'
         aliases = ['images']
+        alias = u'iamges'
         aliases_only = True         
         description = "Openstack Image management"
 
@@ -2229,6 +2238,7 @@ class OpenstackFlavorController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.flavors'
         aliases = ['flavors']
+        alias = u'flavors'
         aliases_only = True         
         description = "Openstack Flavor management"
 
@@ -2241,6 +2251,7 @@ class OpenstackServerController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.servers'
         aliases = ['servers']
+        alias = u'servers'
         aliases_only = True         
         description = "Openstack Server management"
         
@@ -2413,6 +2424,7 @@ class OpenstackHeatStackController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.heat.stacks'
         aliases = ['stacks']
+        alias = u'stacks'
         aliases_only = True         
         description = "Openstack Heat Stack management"
 
@@ -2503,6 +2515,7 @@ class OpenstackHeatStackTemplateController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.heat.templates'
         aliases = ['templates']
+        alias = u'templates'
         aliases_only = True
         description = "Openstack Heat Stack template management"
 
@@ -2559,6 +2572,7 @@ class OpenstackManilaShareController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.manila.shares'
         aliases = ['shares']
+        alias = u'shares'
         aliases_only = True
         description = "Openstack Manila Share management"
 

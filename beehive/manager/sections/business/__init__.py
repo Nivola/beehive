@@ -362,7 +362,11 @@ class SpecializedServiceControllerChild(ApiController):
         return oid
 
     def get_service_def(self, oid):
-        """"""
+        """Get service definition
+
+        :param oid:
+        :return:
+        """
         check = self.is_name(oid)
         if check is True:
             uri = u'%s/servicedefs' % self.baseuri
@@ -378,14 +382,19 @@ class SpecializedServiceControllerChild(ApiController):
         return oid
 
     def get_service_instance(self, oid, account_id=None):
-        """"""
+        """Get service instance
+
+        :param oid:
+        :param account_id:
+        :return:
+        """
         check = self.is_name(oid)
         if check is True:
             uri = u'%s/serviceinsts' % self.baseuri
             data = u'name=%s' % oid
             if account_id is not None:
                 data += u'&account_id=%s' % account_id
-            res = self._call(uri, u'GET', data=u'name=%s' % oid)
+            res = self._call(uri, u'GET', data=data)
             logger.info(u'Get account by name: %s' % res)
             count = res.get(u'count')
             if count > 1:

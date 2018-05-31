@@ -117,10 +117,10 @@ class AppEngineInstanceController(AppEngineServiceControllerChild):
         name = self.get_arg(name=u'name')
         account = self.get_account(self.get_arg(name=u'account'))
         template = self.get_service_def(self.get_arg(name=u'template'))
-        subnet = self.get_service_instance(self.get_arg(name=u'subnet'))
-        sg = self.get_service_instance(self.get_arg(name=u'security group'))
-        farm_name = self.get_service_instance(self.get_arg(name=u'farm name'))
-        key_name = self.get_service_instance(self.get_arg(name=u'keyname', keyvalue=True, default=None))
+        subnet = self.get_service_instance(self.get_arg(name=u'subnet'), account_id=account)
+        sg = self.get_service_instance(self.get_arg(name=u'security group'), account_id=account)
+        farm_name = self.get_arg(name=u'farm name')
+        key_name = self.get_arg(name=u'keyname', keyvalue=True, default=None)
 
         data = {
             u'instance': {
@@ -129,7 +129,7 @@ class AppEngineInstanceController(AppEngineServiceControllerChild):
                 u'AdditionalInfo': name,
                 u'InstanceType': template,
                 u'SubnetId': subnet,
-                u'SecurityGroupId.N': sg,
+                u'SecurityGroupId.N': [sg],
                 u'EngineConfigs': {u'FarmName': farm_name}
             }
         }
