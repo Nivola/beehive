@@ -2797,8 +2797,9 @@ class BeehiveController(AnsibleController):
             - sections: comma separated list of section to execute
         """
         # get configs
+        pattern = re.compile(r".*\.json|.*\.yaml")
         available_configs = [f[0:-5] for f in os.listdir(u'%s/../post-install' % self.ansible_path)
-                             if f.find(u'.json') > 0]
+                    if pattern.match(f) is not None ]
         note = u'Available config are: ' + u', '.join(available_configs)
         # config_path = u'%s/../post-install/%s.json' % (self.ansible_path, self.get_arg(name=u'config', note=note))
         config_path = u'%s/../post-install/%s' % (self.ansible_path, self.get_arg(name=u'config', note=note))
@@ -2818,7 +2819,6 @@ class BeehiveController(AnsibleController):
             new_apply = new_apply.split(u',')
             for item in new_apply:
                 apply[item] = True
-
 
         out_apply = [{u'section': k, u'enabled': v} for k, v in apply.items()]
         self.result(out_apply, headers=[u'section', u'enabled'])
@@ -3115,7 +3115,7 @@ class BeehiveController(AnsibleController):
 
             for obj in configs.get(u'service').get(u'defs-sync'):
                 try:
-                    configs = obj.pop(u'configs')
+                    def_configs = obj.pop(u'configs')
                     res = self._call(u'/v1.0/nws/servicedefs', u'POST', data={u'servicedef': obj})
                     logger.info(u'Add service def: %s' % res)
                     self.output(u'Add service def: %s' % obj)
@@ -3124,13 +3124,13 @@ class BeehiveController(AnsibleController):
                         u'name': u'%s-config' % obj.get(u'name'),
                         u'desc': u'%s-config' % obj.get(u'name'),
                         u'service_definition_id': res[u'uuid'],
-                        u'params': configs,
+                        u'params': def_configs,
                         u'params_type': u'JSON',
                         u'version': obj.get(u'version')
                     }
                     res = self._call(u'/v1.0/nws/servicecfgs', u'POST', data={u'servicecfg': data})
                     logger.info(u'Add service def config: %s' % res)
-                    self.output(u'Add service def config: %s' % configs)
+                    self.output(u'Add service def config: %s' % def_configs)
                 except Exception as ex:
                     self.error(ex)
                     self.app.error = False
@@ -3140,7 +3140,7 @@ class BeehiveController(AnsibleController):
 
             for obj in configs.get(u'service').get(u'defs-async'):
                 try:
-                    configs = obj.pop(u'configs')
+                    def_configs = obj.pop(u'configs')
                     res = self._call(u'/v1.0/nws/servicedefs', u'POST', data={u'servicedef': obj})
                     logger.info(u'Add service def: %s' % res)
                     self.output(u'Add service def: %s' % obj)
@@ -3149,13 +3149,13 @@ class BeehiveController(AnsibleController):
                         u'name': u'%s-config' % obj.get(u'name'),
                         u'desc': u'%s-config' % obj.get(u'name'),
                         u'service_definition_id': res[u'uuid'],
-                        u'params': configs,
+                        u'params': def_configs,
                         u'params_type': u'JSON',
                         u'version': obj.get(u'version')
                     }
                     res = self._call(u'/v1.0/nws/servicecfgs', u'POST', data={u'servicecfg': data})
                     logger.info(u'Add service def config: %s' % res)
-                    self.output(u'Add service def config: %s' % configs)
+                    self.output(u'Add service def config: %s' % def_configs)
                 except Exception as ex:
                     self.error(ex)
                     self.app.error = False
@@ -3221,7 +3221,7 @@ class BeehiveController(AnsibleController):
         if apply.get(u'service-catalogs', False) is True:
             self.output(u'------ service-catalogs ------ ')
 
-            for obj in configs.get(u'service').get(u'catalogs'):
+            for obj in configs.get(u'service', {}).get(u'catalogs'):
                 try:
                     name = obj.get(u'name')
                     defs = obj.get(u'defs')
