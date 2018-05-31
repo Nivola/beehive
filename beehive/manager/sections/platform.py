@@ -7,7 +7,10 @@ import os
 import sys
 import ujson as json
 import urllib
+import re
 
+from jinja2 import  Template
+import binascii
 import gevent
 import sh
 import copy
@@ -27,6 +30,7 @@ import traceback
 from beedrones.camunda.engine import WorkFlowEngine
 from beedrones.openstack.client import OpenstackManager
 from beedrones.vsphere.client import VsphereManager
+
 
 from struct import pack, unpack
 from datetime import datetime as dt
@@ -248,6 +252,60 @@ class AnsibleController(ApiController):
             all_hosts.extend(hosts)
         logger.debug(u'Get hosts from ansible groups %s: %s' % (groups, all_hosts))
         return all_hosts
+
+    def file_render(self, runner, resource, context={}):
+        """ render a j2 template using current ansible variables
+            hacks:
+                - iterate the rendering for values containig variables
+                - in order to prevent looping in rendering iteration compute crc32 as
+                hashing function and compare with previus crc. There may be some problems
+                because of crc32 collissions maybe murmur (mmh3) should be better but
+                at this time we do not want to have a new library
+        """
+        # from ansible.template import AnsibleJ2Template
+        content, filename = self.file_content(resource)
+        template = Template(content)
+
+        hosts = self.get_hosts(runner, u'beehive')
+        context_data = self.get_hosts_vars(runner, hosts)
+        for key in context.keys():
+            context_data[key] = context[key]
+
+        out_rep = template.render(**context_data)
+        pp_crc = 0
+        p_crc = 0
+        c_crc = binascii.crc32(out_rep)
+        # print('current crc = 0x%08x' % c_crc  )
+        while re.search("{{.*}}", out_rep) and (p_crc != c_crc) and (pp_crc != c_crc):
+            template = Template(out_rep)
+            out_rep = template.render(**context_data)
+            pp_crc = p_crc
+            p_crc = c_crc
+            c_crc = binascii.crc32(out_rep)
+            # print('render iteration current crc = 0x%08x' % c_crc  )
+        return out_rep, filename
+
+    def file_content(self, valorname):
+        """ if valorname starts with @ return the file content try for path or relative to ansible_path
+            otherwise return valorname itself
+        """
+
+        if valorname[0] == '@':
+            name = valorname[1:]
+            if os.path.isfile(name):
+                filename = name
+            else:
+                filename = os.path.join(self.ansible_path, name)
+            if os.path.isfile(filename):
+                f = open(filename, 'r')
+                value = f.read()
+                f.close()
+                return value, filename
+            else:
+                raise Exception(u'%s is not a file' % name)
+        else:
+            # return '' for file so wi do not need to check
+            return valorname, ''
 
 
 class NginxController(AnsibleController):
