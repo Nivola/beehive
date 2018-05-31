@@ -123,7 +123,8 @@ class BeehiveApp(Flask):
                    logging.getLogger(u'beehive_oauth2'),
                    logging.getLogger(u'beehive_monitor'),
                    logging.getLogger(u'beehive_service'),
-                   logging.getLogger(u'beehive_resource')]
+                   logging.getLogger(u'beehive_resource'),
+                   logging.getLogger(u'beehive_ssh')]
         # LoggerHelper.DEBUG2
         LoggerHelper.rotatingfile_handler(loggers, LoggerHelper.DEBUG2, file_name)
         

@@ -513,7 +513,7 @@ commands:
         self.app.print_error(error)
     
     def load_config(self, file_config):
-        """Load dict from a json formtted file.
+        """Load dict from a json or yaml formatted file.
 
         :param file_config: file name
         :return: data
@@ -521,7 +521,15 @@ commands:
         """
         f = open(file_config, u'r')
         data = f.read()
-        data = json.loads(data)
+        extension=file_config[-4: ].lower()
+        if extension == 'json':
+            data = json.loads(data)
+        elif extension == 'yaml':
+            data = yaml.load(data)
+        elif extension == '.yml':
+            data = yaml.load(data)
+        else:
+            data = json.loads(data)
         f.close()
         return data
 
