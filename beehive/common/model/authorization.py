@@ -1273,7 +1273,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         session = self.get_session()
         append_perms = []
         for perm in perms:
-            roles = session.query(role_permission).filter_by(permission_id=perm.id).all()
+            roles = session.query(role_permission).filter_by(role_id=role.id).filter_by(permission_id=perm.id).all()
             # append permission to role only if it does not already exist
             if len(roles) == 0:
                 role.permission.append(perm)
@@ -1281,7 +1281,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             else:
                 self.logger.warn(u'Permission %s already exists in role %s' % (perm, role))
         
-        self.logger.debug(u'Append to role %s permissions: %s' % (role, perms))
+        self.logger.debug(u'Append permissions %s to role %s' % (append_perms, role))
         return append_perms
     
     @transaction

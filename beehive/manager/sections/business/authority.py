@@ -63,9 +63,9 @@ class OrganizationController(AuthorityControllerChild):
         logger.info(res)
         self.result(res, key=u'users', headers=[u'name', u'role'], maxsize=200)
 
-    @expose(aliases=[u'add-user <organization> <role> <user>'], aliases_only=True)
+    @expose(aliases=[u'users-add <organization> <role> <user>'], aliases_only=True)
     @check_error
-    def add_user(self):
+    def users_add(self):
         """Add organization role to a user
         """
         value = self.get_arg(name=u'id')
@@ -83,9 +83,9 @@ class OrganizationController(AuthorityControllerChild):
         msg = {u'msg': res}
         self.result(msg, headers=[u'msg'], maxsize=200)
 
-    @expose(aliases=[u'del-user <organization> <role> <user>'], aliases_only=True)
+    @expose(aliases=[u'users-del <organization> <role> <user>'], aliases_only=True)
     @check_error
-    def del_user(self):
+    def users_del(self):
         """Remove organization role from a user
         """
         value = self.get_arg(name=u'id')
@@ -359,9 +359,9 @@ class DivisionController(AuthorityControllerChild):
         logger.info(res)
         self.result(res, key=u'users', headers=[u'name', u'role'], maxsize=200)
 
-    @expose(aliases=[u'add-user <division> <role> <user>'], aliases_only=True)
+    @expose(aliases=[u'users-add <division> <role> <user>'], aliases_only=True)
     @check_error
-    def add_user(self):
+    def users_add(self):
         """Add division role to a user
         """
         value = self.get_arg(name=u'id')
@@ -379,9 +379,9 @@ class DivisionController(AuthorityControllerChild):
         msg = {u'msg': res}
         self.result(msg, headers=[u'msg'], maxsize=200)
 
-    @expose(aliases=[u'del-user <division> <role> <user>'], aliases_only=True)
+    @expose(aliases=[u'users-del <division> <role> <user>'], aliases_only=True)
     @check_error
-    def del_user(self):
+    def users_del(self):
         """Remove division role from a user
         """
         value = self.get_arg(name=u'id')
@@ -729,9 +729,9 @@ class AccountController(AuthorityControllerChild):
         logger.info(res)
         self.result(res, key=u'users', headers=[u'name', u'role'], maxsize=200)
 
-    @expose(aliases=[u'add-user <account> <role> <user>'], aliases_only=True)
+    @expose(aliases=[u'users-add <account> <role> <user>'], aliases_only=True)
     @check_error
-    def add_user(self):
+    def users_add(self):
         """Add account role to a user
         """
         value = self.get_arg(name=u'id')
@@ -749,9 +749,9 @@ class AccountController(AuthorityControllerChild):
         msg = {u'msg': res}
         self.result(msg, headers=[u'msg'], maxsize=200)
 
-    @expose(aliases=[u'del-user <account> <role> <user>'], aliases_only=True)
+    @expose(aliases=[u'users-del <account> <role> <user>'], aliases_only=True)
     @check_error
-    def del_user(self):
+    def users_del(self):
         """Remove account role from a user
         """
         value = self.get_arg(name=u'id')

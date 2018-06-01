@@ -411,6 +411,7 @@ class BeehiveApiClient(object):
         :return:
         :raise BeehiveApiClientError:
         """
+        self.logger.info(u'REQUEST: [%s] %s - uid=%s - data=%s' % (method, path, self.uid, truncate(data, size=50)))
         try:
             if parse is True and isinstance(data, dict) or isinstance(data, list):
                 data = json.dumps(data)
@@ -429,7 +430,8 @@ class BeehiveApiClient(object):
             else:
                 raise
 
-        self.logger.info(u'Send request to %s using uid %s' % (path, self.uid))
+        self.logger.info(u'RESPONSE: [%s] %s - res=%s' % (method, path, truncate(res, size=100)))
+
         return res
     
     #
@@ -1007,7 +1009,7 @@ class BeehiveApiClient(object):
 
         :raise BeehiveApiClientError:
         """
-        data = urlencode({u'role': role})
+        data = urlencode({u'role': role, u'size': 200})
         uri = u'/v1.0/nas/users'
         res = self.invoke(u'auth', uri, u'GET', data, parse=True, silent=True).get(u'users', [])
         self.logger.debug(u'Get users: %s' % truncate(res))

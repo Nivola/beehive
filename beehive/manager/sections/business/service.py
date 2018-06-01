@@ -651,9 +651,9 @@ class ServiceCatalogController(ServiceControllerChild):
         logger.info(res)
         self.result(res, key=u'users', headers=[u'name', u'role'], maxsize=200)
 
-    @expose(aliases=[u'add-user <catalog> <role> <user>'], aliases_only=True)
+    @expose(aliases=[u'users-add <catalog> <role> <user>'], aliases_only=True)
     @check_error
-    def add_user(self):
+    def users_add(self):
         """Add catalog role to a user
         """
         value = self.get_arg(name=u'id')
@@ -671,9 +671,9 @@ class ServiceCatalogController(ServiceControllerChild):
         msg = {u'msg': res}
         self.result(msg, headers=[u'msg'], maxsize=200)
 
-    @expose(aliases=[u'del-user <catalog> <role> <user>'], aliases_only=True)
+    @expose(aliases=[u'users-del <catalog> <role> <user>'], aliases_only=True)
     @check_error
-    def del_user(self):
+    def users_del(self):
         """Remove catalog role from a user
         """
         value = self.get_arg(name=u'id')
