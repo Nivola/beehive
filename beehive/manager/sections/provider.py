@@ -213,8 +213,8 @@ class ProviderSiteNetworkController(ProviderControllerChild):
             subnets = configs.pop(u'subnets', [])
             # self.result(data, details=True)
             self.app.print_output(u'subnets:')
-            self.result(subnets, headers=[u'cidr', u'gateway', u'allocable', u'enable_dhcp', u'dns_nameservers',
-                                          u'allocation_pools'], maxsize=200)
+            self.result(subnets, headers=[u'cidr', u'gateway', u'router', u'allocable', u'enable_dhcp',
+                                          u'dns_nameservers', u'allocation_pools'], maxsize=200)
 
         self.get_resource(oid, format_result=format_result)
 
@@ -748,7 +748,7 @@ class ProviderComputeStackController(ProviderControllerChild):
     @expose(aliases=[u'resources <id>'], aliases_only=True)
     @check_error
     def resources(self):
-        """Get provider item
+        """Get provider stack resources
         """
         oid = self.get_arg(name=u'id')
         uri = self.uri + u'/' + oid + u'/resources'
@@ -767,6 +767,24 @@ class ProviderComputeStackController(ProviderControllerChild):
                         fields=[u'physical_resource_id', u'logical_resource_id', u'resource_name', u'resource_type',
                                 u'creation_time', u'resource_status', u'resource_status_reason',
                                 u'required_by'], maxsize=40, table_style=u'simple')
+
+    @expose(aliases=[u'outputs <id>'], aliases_only=True)
+    @check_error
+    def outputs(self):
+        """Get provider stack outputs
+        """
+        oid = self.get_arg(name=u'id')
+        uri = self.uri + u'/' + oid + u'/outputs'
+        res = self._call(uri, u'GET', data=u'').get(u'stack_outputs')
+        for item in res:
+            print(u'Availability zone: %s' % item.get(u'availability_zone'))
+            for out in item.get(u'outputs'):
+                print(u'----------------------------------------------------------')
+                print(u'output_key: %s' % out.get(u'output_key', None))
+                print(u'description: %s' % out.get(u'description', None))
+                print(u'output_value: %s' % out.get(u'output_value', None))
+                print(u'output_error: %s' % out.get(u'output_error', None))
+                print(u'----------------------------------------------------------')
 
 
 class ProviderComputeSqlStackController(ProviderControllerChild):

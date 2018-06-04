@@ -1010,9 +1010,22 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         # name = self.get_arg(name=u'name')
         oid = self.get_arg(name=u'id')
         stack = self.entity_class.stack.list(oid=oid)[0]
-        res = self.entity_class.stack.outputs(stack_name=stack[u'stack_name'], oid=oid)
+        # res = self.entity_class.stack.outputs(stack_name=stack[u'stack_name'], oid=oid)
+        # logger.info(res)
+        # self.result(res, details=True, maxsize=800)
+        res = self.entity_class.stack.get(stack_name=stack[u'stack_name'], oid=oid)
         logger.info(res)
-        self.result(res, details=True, maxsize=800)
+        #parameters = [{u'parameter': item, u'value': val} for item, val in res.pop(u'parameters').items()]
+        outputs = res.pop(u'outputs', [])
+        for out in outputs:
+            print(u'----------------------------------------------------------')
+            print(u'output_key: %s' % out.get(u'output_key', None))
+            print(u'description: %s' % out.get(u'description', None))
+            print(u'output_value: %s' % out.get(u'output_value', None))
+            print(u'output_error: %s' % out.get(u'output_error', None))
+            print(u'----------------------------------------------------------')
+
+        # self.result(outputs, details=True, maxsize=2000)
 
     @expose(aliases=[u'output <id> <key>'], aliases_only=True)
     @check_error
@@ -2213,7 +2226,21 @@ class OpenstackSecurityGroupController(OpenstackControllerChild):
         print(u'rules:')
         self.result(rules, headers=[u'id', u'direction', u'protocol', 
             u'ethertype', u'remote_ip_prefix', u'remote_group.name', 
-            u'remote_group.id', u'port_range_min', u'port_range_max'])     
+            u'remote_group.id', u'port_range_min', u'port_range_max'])
+
+    @expose(aliases=[u'delete-rule <id> <ruleid>'], aliases_only=True)
+    @check_error
+    def delete_rule(self):
+        """Delete openstack security group rule
+        """
+        oid = self.get_arg(name=u'id')
+        ruleid = self.get_arg(name=u'ruleid')
+        uri = self.uri + u'/' + oid + u'/rules'
+        data = {u'security_group_rule': {u'rule_id': ruleid}}
+        res = self._call(uri, u'DELETE', data)
+        logger.info(u'Delete rule %s: %s' % (ruleid, truncate(res)))
+        msg = {u'msg': u'Delete rule %s: %s' % (ruleid, truncate(res))}
+        self.result(res, headers=[u'msg'])
 
 
 class OpenstackImageController(OpenstackControllerChild):
