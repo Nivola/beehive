@@ -112,29 +112,41 @@ class AppEngineInstanceController(AppEngineServiceControllerChild):
     def add(self):
         """Create app engine instance 
     - field: can be key_name
-        - key_name: name of the openstack key
+        - keyname: name of the openstack key
+        - sharesize: share size in GB
+        - public: if True appengine has public ip address [default=False]
+        - public-subnet: public subnet
         """
         name = self.get_arg(name=u'name')
         account = self.get_account(self.get_arg(name=u'account'))
         template = self.get_service_def(self.get_arg(name=u'template'))
-        subnet = self.get_service_instance(self.get_arg(name=u'subnet'))
-        sg = self.get_service_instance(self.get_arg(name=u'security group'))
-        farm_name = self.get_service_instance(self.get_arg(name=u'farm name'))
-        key_name = self.get_service_instance(self.get_arg(name=u'keyname', keyvalue=True, default=None))
+        subnet = self.get_service_instance(self.get_arg(name=u'subnet'), account_id=account)
+        public_subnet = self.get_arg(name=u'public-subnet', keyvalue=True, default=None)
+        sg = self.get_service_instance(self.get_arg(name=u'security group'), account_id=account)
+        farm_name = self.get_arg(name=u'farm name')
+        key_name = self.get_arg(name=u'keyname', keyvalue=True, default=None)
+        share_dimension = self.get_arg(name=u'sharesize', keyvalue=True, default=None)
+        is_public = self.get_arg(name=u'public', keyvalue=True, default=False)
 
         data = {
             u'instance': {
                 u'owner_id': account,
                 u'Name': name,
                 u'AdditionalInfo': name,
+                u'IsPublic': is_public,
                 u'InstanceType': template,
                 u'SubnetId': subnet,
-                u'SecurityGroupId.N': sg,
+                u'SecurityGroupId.N': [sg],
                 u'EngineConfigs': {u'FarmName': farm_name}
             }
         }
         if key_name is not None:
             data[u'instance'][u'KeyName'] = key_name
+        if share_dimension is not None:
+            data[u'instance'][u'EngineConfigs'][u'ShareDimension'] = share_dimension
+        if is_public is True:
+            data[u'instance'][u'PublicSubnetId'] = self.get_service_instance(public_subnet, account_id=account)
+
         uri = u'%s/appengineservices/instance/runinstances' % self.baseuri
         res = self._call(uri, u'POST', data=data, timeout=600).get(u'RunInstanceResponse').get(u'instanceId')
         logger.info(u'Add app engine instance: %s' % truncate(res))

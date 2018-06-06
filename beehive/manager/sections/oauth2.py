@@ -196,8 +196,7 @@ class AuthorizationCodeController(Oauth2ControllerChild):
 
 
 class ClientController(Oauth2ControllerChild):
-    client_headers = [u'id', u'uuid', u'name', u'response_type', 
-                      u'grant_type', u'scopes']
+    client_headers = [u'id', u'uuid', u'name', u'response_type', u'grant_type', u'scopes']
     
     class Meta:
         label = 'clients'
@@ -235,7 +234,7 @@ class ClientController(Oauth2ControllerChild):
         uri = u'%s/clients' % self.authuri
         res = self._call(uri, u'POST', data=data)
         logger.info(u'Add client: %s' % res)
-        res = {u'msg':u'Add client %s' % res}
+        res = {u'msg': u'Add client %s' % res}
         self.result(res, headers=[u'msg'])
         
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
@@ -247,8 +246,7 @@ class ClientController(Oauth2ControllerChild):
         uri = u'%s/clients' % self.authuri        
         res = self._call(uri, u'GET', data=data)
         logger.info(res)
-        self.result(res, key=u'clients', 
-                    headers=self.client_headers)
+        self.result(res, key=u'clients', headers=self.client_headers)
     
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -259,8 +257,7 @@ class ClientController(Oauth2ControllerChild):
         uri = u'%s/clients/%s' % (self.authuri, value)        
         res = self._call(uri, u'GET')
         logger.info(res)
-        self.result(res, key=u'client', headers=self.client_headers, 
-                    details=True)
+        self.result(res, key=u'client', headers=self.client_headers, details=True)
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
     @check_error

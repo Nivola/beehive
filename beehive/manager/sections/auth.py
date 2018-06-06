@@ -3,10 +3,14 @@ Created on Sep 22, 2017
 
 @author: darkbk
 """
+import binascii
 import logging
-
 import sh
+from datetime import datetime, timedelta
+import jwt
 from cement.core.controller import expose
+from requests_oauthlib import OAuth2Session
+
 from beehive.manager.util.controller import BaseController, ApiController, check_error
 from re import match
 from beehive.manager.sections.scheduler import WorkerController, ScheduleController, TaskController
@@ -36,9 +40,9 @@ class AuthControllerChild(ApiController):
     type_headers = [u'id', u'subsystem', u'type']
     act_headers = [u'id', u'value']
     perm_headers = [u'id', u'oid', u'objid', u'subsystem', u'type', u'aid', u'action']
-    user_headers = [u'id', u'uuid', u'name', u'active', u'date.creation', u'date.modified', u'date.expiry']
-    role_headers = [u'id', u'uuid', u'name', u'active', u'date.creation', u'date.modified', u'date.expiry']
-    group_headers = [u'id', u'uuid', u'name', u'active', u'date.creation', u'date.modified', u'date.expiry']
+    user_headers = [u'id', u'uuid', u'name', u'desc', u'active', u'date.creation', u'date.modified', u'date.expiry']
+    role_headers = [u'id', u'uuid', u'name', u'desc', u'active', u'date.creation', u'date.modified', u'date.expiry']
+    group_headers = [u'id', u'uuid', u'name', u'desc', u'active', u'date.creation', u'date.modified', u'date.expiry']
     token_headers = [u'token', u'type', u'user', u'ip', u'ttl', u'timestamp']
     
     class Meta:
@@ -126,14 +130,16 @@ class TokenController(AuthControllerChild):
         res = {u'msg':u'Delete token %s' % value}
         self.result(res, headers=[u'msg'])
 
-    @expose(aliases=[u'create <user> <pwd> [login-ip=..] [type=..]'], aliases_only=True)
+    @expose(aliases=[u'create <user> [pwd=..] [login-ip=..] [client-id=..] [type=..]'], aliases_only=True)
     @check_error
     def create(self):
         """Create keyauth token
     - type: can be keyauth, oauth2, simplehttp. [dafault=keyauth]
+        - oauth2: create a token using a jwt oauth2 client
         """
         user = self.get_arg(name=u'user')
-        pwd = self.get_arg(name=u'pwd')
+        pwd = self.get_arg(name=u'pwd', default=None, keyvalue=True)
+        client_id = self.get_arg(name=u'client-id', default=None, keyvalue=True)
         login_ip = self.get_arg(name=u'login-ip', default=sh.hostname().stdout.rstrip(), keyvalue=True)
         auth_type = self.get_arg(name=u'type', default=u'keyauth', keyvalue=True)
 
@@ -142,8 +148,38 @@ class TokenController(AuthControllerChild):
             res = self.client.send_request(u'auth', u'/v1.0/nas/keyauth/token', u'POST', data=data)
             token = res[u'access_token']
         elif auth_type == u'oauth2':
-            pass
-            # # get client
+            try:
+                from beehive_oauth2.jwtgrant import JWTClient
+            except:
+                raise Exception(u'JWTClient can not be imported')
+
+            # get client
+            uri = u'/v1.0/oauth2/clients/%s' % client_id
+            client = self._call(uri, u'GET').get(u'client')
+
+            client_id = client[u'uuid']
+            client_email = client[u'client_email']
+            client_scope = client[u'scopes']
+            private_key = binascii.a2b_base64(client[u'private_key'])
+            client_token_uri = client[u'token_uri']
+
+            client = JWTClient(client_id=client_id)
+            oauth = OAuth2Session(client=client)
+
+            now = datetime.utcnow()
+            claims = {
+                u'iss': client_email,
+                u'sub': user,
+                u'aud': client_token_uri,
+                u'exp': now + timedelta(seconds=60),
+                u'iat': now,
+                u'nbf': now
+            }
+            # priv_key = RSA.importKey(private_key)
+            encoded = jwt.encode(claims, private_key, algorithm=u'RS512')
+            res = client.prepare_request_body(assertion=encoded, client_id=client_id, scope=client_scope)
+            token = oauth.fetch_token(token_url=client_token_uri, body=res, verify=False)
+
             # client_id = self.api_client_config[u'uuid']
             # client_email = self.api_client_config[u'client_email']
             # client_scope = self.api_client_config[u'scopes']
@@ -157,7 +193,7 @@ class TokenController(AuthControllerChild):
 
         logger.debug(u'Get %s token: %s' % (auth_type, token))
         res = {u'msg': u'Get token %s' % token}
-        self.result(res, headers=[u'msg'])
+        self.result(res, headers=[u'msg'], maxsize=200)
 
 
 class UserController(AuthControllerChild):

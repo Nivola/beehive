@@ -404,8 +404,8 @@ class BaseAuthController(ApiController):
         return user, dbuser_attribs
 
     @trace(entity=u'Token', op=u'login.check.insert')
-    def check_login(self, name, domain, login_ip, dbuser, dbuser_attribs):
-        """Base login.
+    def check_base_login(self, name, domain, login_ip, dbuser, dbuser_attribs):
+        """Base check login.
 
         :param name: user name
         :param domain: user authentication domain

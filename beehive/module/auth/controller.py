@@ -958,7 +958,7 @@ class Role(AuthObject):
                     roleperms.extend(perms)
             
             res = self.manager.append_role_permissions(self.model, roleperms)
-            self.logger.debug(u'Append role %s permission : %s' % (self.name, perms))        
+            self.logger.debug(u'Append role %s permission : %s' % (self.name, res))
             return [str(p.id) for p in roleperms]
         except QueryError as ex:
             self.logger.error(ex, exc_info=1)

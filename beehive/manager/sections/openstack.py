@@ -1010,9 +1010,22 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         # name = self.get_arg(name=u'name')
         oid = self.get_arg(name=u'id')
         stack = self.entity_class.stack.list(oid=oid)[0]
-        res = self.entity_class.stack.outputs(stack_name=stack[u'stack_name'], oid=oid)
+        # res = self.entity_class.stack.outputs(stack_name=stack[u'stack_name'], oid=oid)
+        # logger.info(res)
+        # self.result(res, details=True, maxsize=800)
+        res = self.entity_class.stack.get(stack_name=stack[u'stack_name'], oid=oid)
         logger.info(res)
-        self.result(res, details=True, maxsize=800)
+        #parameters = [{u'parameter': item, u'value': val} for item, val in res.pop(u'parameters').items()]
+        outputs = res.pop(u'outputs', [])
+        for out in outputs:
+            print(u'----------------------------------------------------------')
+            print(u'output_key: %s' % out.get(u'output_key', None))
+            print(u'description: %s' % out.get(u'description', None))
+            print(u'output_value: %s' % out.get(u'output_value', None))
+            print(u'output_error: %s' % out.get(u'output_error', None))
+            print(u'----------------------------------------------------------')
+
+        # self.result(outputs, details=True, maxsize=2000)
 
     @expose(aliases=[u'output <id> <key>'], aliases_only=True)
     @check_error
@@ -2019,6 +2032,7 @@ class OpenstackDomainController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.domains'
         aliases = ['domains']
+        alias = u'domains'
         aliases_only = True        
         description = "Openstack Domain management"
 
@@ -2031,6 +2045,7 @@ class OpenstackProjectController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.projects'
         aliases = ['projects']
+        alias = u'projects'
         aliases_only = True        
         description = "Openstack Project management"
 
@@ -2074,6 +2089,7 @@ class OpenstackNetworkController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.networks'
         aliases = ['networks']
+        alias = u'networks'
         aliases_only = True
         description = "Openstack Network management"
 
@@ -2085,6 +2101,7 @@ class OpenstackSubnetController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.subnets'
         aliases = ['subnets']
+        alias = u'subnets'
         aliases_only = True
         description = "Openstack Subnet management"
 
@@ -2122,6 +2139,7 @@ class OpenstackPortController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.ports'
         aliases = ['ports']
+        alias = u'ports'
         aliases_only = True         
         description = "Openstack Port management"     
 
@@ -2132,6 +2150,7 @@ class OpenstackFloatingIpController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.floatingips'
         aliases = ['floatingips']
+        alias = u'floatingips'
         aliases_only = True         
         description = "Openstack FloatingIp management"
 
@@ -2149,6 +2168,7 @@ class OpenstackRouterController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.routers'
         aliases = ['routers']
+        alias = u'routers'
         aliases_only = True         
         description = "Openstack Router management"
 
@@ -2188,6 +2208,7 @@ class OpenstackSecurityGroupController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.security_groups'
         aliases = ['security_groups']
+        alias = u'security_groups'
         aliases_only = True         
         description = "Openstack SecurityGroup management"           
         
@@ -2205,7 +2226,21 @@ class OpenstackSecurityGroupController(OpenstackControllerChild):
         print(u'rules:')
         self.result(rules, headers=[u'id', u'direction', u'protocol', 
             u'ethertype', u'remote_ip_prefix', u'remote_group.name', 
-            u'remote_group.id', u'port_range_min', u'port_range_max'])     
+            u'remote_group.id', u'port_range_min', u'port_range_max'])
+
+    @expose(aliases=[u'delete-rule <id> <ruleid>'], aliases_only=True)
+    @check_error
+    def delete_rule(self):
+        """Delete openstack security group rule
+        """
+        oid = self.get_arg(name=u'id')
+        ruleid = self.get_arg(name=u'ruleid')
+        uri = self.uri + u'/' + oid + u'/rules'
+        data = {u'security_group_rule': {u'rule_id': ruleid}}
+        res = self._call(uri, u'DELETE', data)
+        logger.info(u'Delete rule %s: %s' % (ruleid, truncate(res)))
+        msg = {u'msg': u'Delete rule %s: %s' % (ruleid, truncate(res))}
+        self.result(res, headers=[u'msg'])
 
 
 class OpenstackImageController(OpenstackControllerChild):
@@ -2217,6 +2252,7 @@ class OpenstackImageController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.images'
         aliases = ['images']
+        alias = u'iamges'
         aliases_only = True         
         description = "Openstack Image management"
 
@@ -2229,6 +2265,7 @@ class OpenstackFlavorController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.flavors'
         aliases = ['flavors']
+        alias = u'flavors'
         aliases_only = True         
         description = "Openstack Flavor management"
 
@@ -2241,6 +2278,7 @@ class OpenstackServerController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.servers'
         aliases = ['servers']
+        alias = u'servers'
         aliases_only = True         
         description = "Openstack Server management"
         
@@ -2413,6 +2451,7 @@ class OpenstackHeatStackController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.heat.stacks'
         aliases = ['stacks']
+        alias = u'stacks'
         aliases_only = True         
         description = "Openstack Heat Stack management"
 
@@ -2503,6 +2542,7 @@ class OpenstackHeatStackTemplateController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.heat.templates'
         aliases = ['templates']
+        alias = u'templates'
         aliases_only = True
         description = "Openstack Heat Stack template management"
 
@@ -2559,6 +2599,7 @@ class OpenstackManilaShareController(OpenstackControllerChild):
     class Meta:
         label = 'openstack.beehive.manila.shares'
         aliases = ['shares']
+        alias = u'shares'
         aliases_only = True
         description = "Openstack Manila Share management"
 

@@ -439,7 +439,7 @@ class ContainerController(ResourceControllerChild, WorkerController):
             }
             uri = u'%s/containers/%s/discover' % (self.baseuri, contid)
             res = self._call(uri, u'PUT', data=data)
-            self.result(res)
+            # self.result(res)
             jobid = res[u'jobid']
             self.wait_job(jobid, delta=1)
 
