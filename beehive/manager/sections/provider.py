@@ -14,6 +14,7 @@ from beehive.manager.util.controller import BaseController, ApiController, check
 from beecell.simple import truncate, getkey, flatten_dict
 from beehive.manager.sections.resource import ResourceEntityController
 from beecell.paramiko_shell.shell import ParamikoShell
+from urllib import urlencode
 
 logger = logging.getLogger(__name__)
 
@@ -885,7 +886,8 @@ class ProviderComputeFileShareController(ProviderControllerChild):
     @expose(aliases=[u'list-grant <id>'], aliases_only=True)
     @check_error
     def list_grant(self):
-        """List grants 
+        """List file share storage grants
+        - id: id or name or uuid of the file share storage
         """
         data = {}
         oid = self.get_arg(name=u'id')
@@ -893,9 +895,60 @@ class ProviderComputeFileShareController(ProviderControllerChild):
         res = self._call(uri, u'GET', data=data).get(u'shares')
         for item in res:
             self.result(item, headers=self.headers, fields=self.fields)
-            self.app.print_output(u'Grants')
+            self.app.print_output(u'Grants:')
             self.result(item.get(u'grants', []), headers=[u'id', u'state', u'level',  u'type', u'to'],
                         fields=[u'id', u'state', u'access_level',  u'access_type', u'access_to'], maxsize=200, table_style=u'simple')
+
+
+    @expose(aliases=[u'add-grant <id> <access_level> <access_type> <access_to>'], aliases_only=True)
+    @check_error
+    def add_grant(self):
+        """Add file share storage grant
+        - id: id or name or uuid of the file share storage
+        - access_level: RW or RO
+        - access_type: access type like IP or USER or CERT
+        - access_to: access to like 10.102.185.0/24 or admin/user or TLS identity    
+        """
+
+        oid = self.get_arg(name=u'id')
+        access_level = self.get_arg(name=u'access_level')
+        access_type = self.get_arg(name=u'access_type')
+        access_to = self.get_arg(name=u'access_to')
+  
+        data = {
+            u'share_grant' : {
+                u'access_level': access_level,
+                u'access_type' : access_type,
+                u'access_to' : access_to
+            } 
+        }
+        logger.warning(u'Add %s: ' % data)
+        uri =  u'%s/%s/grants' % (self.uri, oid)
+        res = self._call(uri, u'POST', data=data)
+        logger.info(u'Add %s: %s' % (self._meta.aliases[0], truncate(res)))
+        res = {u'msg': u'Add %s  jobid=%s' % (self._meta.aliases[0], res[u'jobid'])}
+        self.result(res, headers=[u'msg'])
+
+   
+    @expose(aliases=[u'delete-grant <id> <access_id>'], aliases_only=True)
+    @check_error
+    def delete_grant(self):
+        """Delete file share grant
+        - id: id or name or uuid of the file share storage
+        - access_id: access grant id
+        """
+        
+        oid = self.get_arg(name=u'id')
+        access_id = self.get_arg(name=u'access_id')
+
+        uri = self.uri + u'/%s/grants' % oid    
+        res = self._call(uri, u'DELETE', data={ u'share_grant':{ u'access_id':access_id}})
+
+        jobid = res.get(u'jobid', None)
+        if jobid is not None:
+            self.wait_job(jobid)
+        logger.info(u'Remove grant %s from file share %s' % (access_id, oid))
+        res = {u'msg': u'Remove grant %s from file share %s' % (access_id, oid)}
 
 
 provider_controller_handlers = [

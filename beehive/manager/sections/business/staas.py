@@ -218,7 +218,7 @@ class STaaServiceEFSController(STaaServiceControllerChild):
             u'access_type' : self.get_arg(name=u'access_type'),
             u'access_to' : self.get_arg(name=u'access_to'),
         } 
-        uri = u'%s/storageservices/efs/%s/grant' % (self.baseuri, uuid)
+        uri = u'%s/storageservices/efs/%s/grants' % (self.baseuri, uuid)
         res = self._call(uri, u'POST', data={u'share_grant': data}, timeout=600)
         logger.info(u'Add grant to storage efs instance share: %s' % truncate(res))
         res = {u'msg': u'Add grant to storage efs instance share %s' % res}
@@ -233,12 +233,10 @@ class STaaServiceEFSController(STaaServiceControllerChild):
 
         uuid = self.get_arg(name=u'id')
         access_id = self.get_arg(name=u'access_id')
-        data = {
-            u'access_id': access_id
-        } 
-        uri = u'%s/storageservices/efs/%s/grant' % (self.baseuri, uuid)
-        res = self._call(uri, u'DELETE', data={u'share_grant': data})
-        # TODO MANAGEMENT RESPONSE
+        data_search = {u'share_grant': {u'access_id': access_id}} 
+        uri = u'%s/storageservices/efs/%s/grants' % (self.baseuri, uuid)
+        res = self._call(uri, u'DELETE', data=data_search)
+
         logger.info(u'Delete storage efs share grant: %s' % res)
         res = {u'msg': u'Delete share file system share grant %s' % uuid}
         self.result(res, headers=[u'msg'])
@@ -252,18 +250,19 @@ class STaaServiceEFSController(STaaServiceControllerChild):
         uuid = self.get_arg(name=u'id')
         data_search = {}
         uri = u'%s/storageservices/efs/%s/grants' % (self.baseuri, uuid)
-        res = self._call(uri, u'GET', data=urllib.urlencode(data_search, doseq=True))
-        res = res.get(u'shares',[])
-        for item in res:
-            self.result(item, headers=self.headers, fields=self.fields)
-            self.app.print_output(u'Grants')
-            self.result(item.get(u'grants', []), headers=[u'id', u'state', u'level',  u'type', u'to'],
+        res = self._call(uri, u'GET', data=urllib.urlencode(data_search))
+        filesystem = res.get(u'FileSystem',[])
+        headers = [u'id', u'name', u'status',  u'date.creation', 
+                   u'account', u'num.targets', u'size(bytes)',  ]
+        fields = [u'FileSystemId',  u'CreationToken',  u'LifeCycleState',  u'CreationTime',
+                   u'OwnerId', u'NumberOfMountTargets', u'SizeInBytes.Value']
+        self.result(filesystem, headers=headers, fields=fields)  
+        self.app.print_output(u'Grants:')
+        grants = res.get(u'grants', [])            
+        self.result(grants, headers=[u'id', u'state', u'level',  u'type', u'to'],
                         fields=[u'id', u'state', u'access_level',  u'access_type', u'access_to'], maxsize=200, table_style=u'simple')
-   
-
            
 staas_controller_handlers = [
     STaaServiceController,
-#     STaaServiceControllerChild,
     STaaServiceEFSController,
 ]         
