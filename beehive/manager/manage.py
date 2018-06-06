@@ -16,6 +16,7 @@ from beehive.manager.util.logger import LoggingLogHandler
 from ansible.utils.display import Display as OrigDisplay
 
 from beecell.simple import dynamic_import
+from beehive.manager.sections.business.ssh import ssh_controller_handlers
 
 
 class Display(OrigDisplay):
@@ -120,6 +121,7 @@ default_handlers = [
     dbaas_controller_handlers,
     vpcaas_controller_handlers,
     staas_controller_handlers,
+    ssh_controller_handlers,
     appengine_controller_handlers,
 
     vsphere_controller_handlers,
