@@ -869,6 +869,7 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
     class Meta:
         label = 'openstack.platform.stack'
         aliases = ['stacks']
+        alias = u'stacks'
         aliases_only = True         
         description = "Openstack Heat Stack management"
         
@@ -1111,14 +1112,24 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         logger.info(res)
         self.result(res, details=True)        
     
-    @expose(aliases=[u'create <name> ..'], aliases_only=True)
+    @expose(aliases=[u'create <name> [field=..]'], aliases_only=True)
     @check_error
     def create(self):
         """Create heat stack
+    - template
+    - environment
+    - files
+    - parameters
+    - tags=None
+    - timeout_mins
+    - disable_rollback
+    - stack_owner
         """
         name = self.get_arg(name=u'name')
+        template = self.load_yaml("%s/test_template_full.yaml" % self.test_files_path)
         params = self.get_query_params(*self.app.pargs.extra_arguments)
-        res = self.entity_class.stack.create(name, **params)
+        res = self.entity_class.stack.create(stack_name=name, tags="test_api,tag_test_api", template=template,
+                                             stack_owner="admin", **params)
         self.wait_stack_create(name, res[u'id'])
         logger.info(res)
         self.result(res, headers=self.headers)    
