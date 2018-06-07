@@ -6,6 +6,7 @@ Created on Nov 20, 2017
 import logging
 import urllib
 import json
+from base64 import b64decode
 
 from cement.core.controller import expose
 
@@ -290,7 +291,7 @@ class VMServiceController(VPCaaServiceControllerChild):
         """
         oid = self.get_arg(name=u'id')
         user = self.get_arg(name=u'user')
-        sshkey = self.get_arg(name=u'sshkey', default=None, keyvalue=True)
+        key_file = self.get_arg(name=u'sshkey', default=None, keyvalue=True)
         data_search = {u'instance-id.N': [oid]}
         uri = u'%s/computeservices/instance/describeinstances' % self.baseuri
         server = self._call(uri, u'GET', data=urllib.urlencode(data_search, doseq=True)) \
@@ -298,8 +299,41 @@ class VMServiceController(VPCaaServiceControllerChild):
             .get(u'reservationSet')[0].get(u'instancesSet')[0]
         fixed_ip = getkey(server, u'privateIpAddress')
 
-        client = ParamikoShell(fixed_ip, user, keyfile=sshkey)
+        # code to ssh module
+        self.subsystem = u'ssh'
+
+        # get ssh node
+        # if group_oid is not None:
+        #     data = {u'group_oid': group_oid}
+        data = {u'ip_address': fixed_ip}
+        uri = u'/v1.0/gas/sshnodes'
+        sshnode = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True)).get(u'sshnodes', [])[0]
+        #print sshnode
+
+        # get ssh user
+        data = {
+            u'node_oid': sshnode[u'id'],
+            u'username': user
+        }
+        uri = u'/v1.0/gas/sshusers'
+        sshuser = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True)).get(u'sshusers', [])[0]
+        #print sshuser
+
+        # get ssh ksy
+        data = {
+            u'user_oid': sshuser[u'id']
+        }
+        uri = u'/v1.0/gas/sshkeys'
+        sshkey = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True)).get(u'sshkeys', [])[0]
+        #print sshkey
+
+        priv_key = sshkey.get(u'priv_key')
+        priv_key = b64decode(priv_key)
+        client = ParamikoShell(fixed_ip, user, keyfile=key_file, keystring=priv_key)
         client.run()
+
+        self.subsystem = u'service'
+        print u'pooooo'
 
     @expose(aliases=[u'ansible [ssh-key=..] [ssh-user=..]'], aliases_only=True)
     @check_error
