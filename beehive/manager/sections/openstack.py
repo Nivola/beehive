@@ -1112,21 +1112,21 @@ class OpenstackPlatformHeatStackController(OpenstackPlatformControllerChild):
         logger.info(res)
         self.result(res, details=True)        
     
-    @expose(aliases=[u'create <name> [field=..]'], aliases_only=True)
+    @expose(aliases=[u'create <name> <template> [field=..]'], aliases_only=True)
     @check_error
     def create(self):
         """Create heat stack
-    - template
-    - environment
-    - files
-    - parameters
-    - tags=None
-    - timeout_mins
-    - disable_rollback
-    - stack_owner
+    - field can be:
+        - environment
+        - files
+        - parameters
+        - tags
+        - timeout_mins
+        - disable_rollback
+        - stack_owner
         """
         name = self.get_arg(name=u'name')
-        template = self.load_yaml("%s/test_template_full.yaml" % self.test_files_path)
+        template = self.load_config(self.get_arg(name=u'template'))
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         res = self.entity_class.stack.create(stack_name=name, tags="test_api,tag_test_api", template=template,
                                              stack_owner="admin", **params)

@@ -545,20 +545,6 @@ commands:
         f.close()
         return data
 
-    def load_yaml(self, file_name):
-        f = open(file_config, u'r')
-        config = f.read()
-        if frmt == u'json':
-            config = json.loads(config)
-        elif frmt == u'yaml':
-            config = load(config, Loader=Loader)
-        f.close()
-        return config
-
-        data = self.load_file(file_name, frmt=u'yaml')
-        data = yaml.dump(data)
-        return data
-
     def cache_data_on_disk(self, key, data):
         """Cache data on a file.
 
