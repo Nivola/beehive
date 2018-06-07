@@ -3463,7 +3463,7 @@ class BeehiveController(AnsibleController):
         }        
         self.ansible_playbook(u'beehive', run_data, playbook=self.beehive_playbook)
     
-    @expose(aliases=[u'instance-ping [subsystem] [vassal] [count=..]'], aliases_only=True)
+    @expose(aliases=[u'instance-ping [subsystem=..] [vassal=..] [count=..]'], aliases_only=True)
     @check_error
     def instance_ping(self):
         """Ping beehive instance
@@ -3471,8 +3471,8 @@ class BeehiveController(AnsibleController):
     - vassal: vassal
     - count: number of pings [optional]
         """
-        subsystem = self.get_arg(name=u'subsystem')
-        vassal = self.get_arg(name=u'vassal')
+        subsystem = self.get_arg(name=u'subsystem', default=None, keyvalue=True)
+        vassal = self.get_arg(name=u'vassal', default=None, keyvalue=True)
         count = int(self.get_arg(name=u'count', keyvalue=True, default=1))
         runners = self.get_runners()
         hosts = []
