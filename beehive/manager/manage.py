@@ -16,7 +16,6 @@ from beehive.manager.util.logger import LoggingLogHandler
 from ansible.utils.display import Display as OrigDisplay
 
 from beecell.simple import dynamic_import
-from beehive.manager.sections.business.ssh import ssh_controller_handlers
 
 
 class Display(OrigDisplay):
@@ -55,6 +54,7 @@ from beehive.manager.sections.provider import provider_controller_handlers
 from beehive.manager.sections.graphite import graphite_controller_handlers
 from beehive.manager.sections.example import example_controller_handlers
 from beehive.manager.sections.veeam import veeam_controller_handlers
+from beehive.manager.sections.ssh import ssh_controller_handlers
 from beecell.cement_cmd.foundation import CementCmd, CementCmdBaseController
 
 from cement.core.controller import expose

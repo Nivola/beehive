@@ -11,18 +11,20 @@ import urllib
 from base64 import b64encode
  
 logger = logging.getLogger(__name__)
- 
+
+
 class SshController(BaseController):
     class Meta:
         label = 'ssh'
-        stacked_on = 'business'
+        stacked_on = 'base'
         stacked_type = 'nested'
         description = "SSH Service management"
         arguments = []
   
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
-         
+
+
 class SshControllerChild(ApiController):
     baseuri = u'/v1.0/gas'
     subsystem = u'ssh'
@@ -30,7 +32,8 @@ class SshControllerChild(ApiController):
     class Meta:
         stacked_on = 'ssh'
         stacked_type = 'nested'
-         
+
+
 class SshGroupController(SshControllerChild):
     class Meta:
         label = 'ssh.groups'
@@ -93,7 +96,8 @@ class SshGroupController(SshControllerChild):
         res = self._call(uri, u'GET', data=None)
         logger.info(u'Get sshgroup perms: %s' % res)
         self.result(res, key=u'perms', headers=self.perm_headers)
-        
+
+
 class SshNodeController(SshControllerChild):
     class Meta:
         label = 'ssh.nodes'
@@ -172,6 +176,7 @@ class SshNodeController(SshControllerChild):
         res = self._call(uri, u'GET', data=None)
         logger.info(u'Get sshnode perms: %s' % res)
         self.result(res, key=u'perms', headers=self.perm_headers)
+
 
 class SshUserController(SshControllerChild):
     class Meta:

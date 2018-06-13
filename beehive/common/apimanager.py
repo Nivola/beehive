@@ -212,6 +212,9 @@ class ApiManager(object):
         # stack uri reference
         self.stacks_uri = None
 
+        # git reference
+        self.git = None
+
     def create_pool_engine(self, dbconf):
         """Create mysql pool engine.
         
@@ -824,6 +827,20 @@ class ApiManager(object):
                 except:
                     self.logger.warning(u'Configure stacks uri reference - NOT CONFIGURED')
                 ##### stacks uri reference configuration #####
+
+                ##### git uri reference configuration #####
+                try:
+                    self.logger.info(u'Configure git uri reference - CONFIGURE')
+                    conf = configurator.get(app=self.app_name, group=u'resource', name=u'stacks_uri')
+                    self.git = {
+                        u'uri': self.params[u'git_uri'],
+                        u'branch': self.params[u'git_branch'],
+                    }
+                    self.logger.info(u'Setup git reference: %s' % self.git)
+                    self.logger.info(u'Configure stacks uri reference - CONFIGURED')
+                except:
+                    self.logger.warning(u'Configure git uri reference - NOT CONFIGURED')
+                ##### git uri reference configuration #####
                 
                 ##### api authentication configuration #####
                 # not configure for auth module
