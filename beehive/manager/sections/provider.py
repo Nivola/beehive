@@ -851,6 +851,45 @@ class ProviderComputeAppEngineController(ProviderControllerChild):
         self.result(res, headers=[u'msg'])
 
 
+class ProviderComputeLoadBalancerController(ProviderControllerChild):
+    uri = u'/v1.0/nrs/provider/load_balancers'
+    headers = [u'id', u'uuid', u'name', u'parent', u'state', u'vpc', u'security_group', u'creation']
+    headers = [u'id', u'uuid', u'name', u'parent.name', u'state', u'vpc.name', u'security_group.name',
+               u'date.creation', u'date.modified']
+
+    class Meta:
+        label = 'provider.beehive.lbs'
+        aliases = ['lbs']
+        alias = u'load_balancers'
+        aliases_only = True
+        description = "Provider compute load balancer management"
+
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
+    def list(self):
+        """List provider items
+        """
+        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = self.uri
+        res = self._call(uri, u'GET', data=data)
+        logger.info(u'Get %s: %s' % (u'stacks', res))
+        self.result(res, headers=self.headers, key=u'load_balancers')
+
+    @expose(aliases=[u'add <file data>'], aliases_only=True)
+    @check_error
+    def add(self):
+        file_data = self.get_arg(name=u'data file')
+        data = self.load_config(file_data)
+        uri = self.uri
+        res = self._call(uri, u'POST', data=data)
+        jobid = res.get(u'jobid', None)
+        if jobid is not None:
+            self.wait_job(jobid, maxtime=600)
+        logger.info(u'Add %s: %s' % (self._meta.alias, truncate(res)))
+        res = {u'msg': u'Add %s %s' % (self._meta.alias, res[u'uuid'])}
+        self.result(res, headers=[u'msg'])
+
+
 class ProviderComputeFileShareController(ProviderControllerChild):
     uri = u'/v1.0/nrs/provider/shares'
     headers = [u'id', u'uuid', u'name', u'parent', u'state', u'creation']
@@ -1021,5 +1060,6 @@ provider_controller_handlers = [
     ProviderComputeStackController,
     ProviderComputeSqlStackController,
     ProviderComputeAppEngineController,
+    ProviderComputeLoadBalancerController,
     ProviderComputeFileShareController,
 ]        

@@ -3273,7 +3273,7 @@ class BeehiveController(AnsibleController):
         if apply.get(u'authority', False) is True:
             self.output(u'------ authority ------ ')
 
-            for obj in configs.get(u'authority').get(u'orgs'):
+            for obj in configs.get(u'authority', {}).get(u'orgs',[]):
                 try:
                     res = self._call(u'/v1.0/nws/organizations', u'POST', data={u'organization': obj})
                     logger.info(u'Add organization: %s' % res)
@@ -3293,7 +3293,7 @@ class BeehiveController(AnsibleController):
                         self.error(ex)
                         self.app.error = False
 
-            for obj in configs.get(u'authority').get(u'price-lists'):
+            for obj in configs.get(u'authority', {}).get(u'price-lists', []):
                 try:
                     res = self._call(u'/v1.0/nws/pricelists', u'POST', data={u'price_list': obj})
                     logger.info(u'Add pricelist: %s' % res)
@@ -3302,7 +3302,7 @@ class BeehiveController(AnsibleController):
                     self.error(ex)
                     self.app.error = False
 
-            for obj in configs.get(u'authority').get(u'divs'):
+            for obj in configs.get(u'authority', {}).get(u'divs', []):
                 try:
                     res = self._call(u'/v1.0/nws/divisions', u'POST', data={u'division': obj})
                     logger.info(u'Add division: %s' % res)
@@ -3321,7 +3321,7 @@ class BeehiveController(AnsibleController):
                         self.error(ex)
                         self.app.error = False
 
-            for obj in configs.get(u'authority').get(u'accounts'):
+            for obj in configs.get(u'authority', {}).get(u'accounts', {}):
                 try:
                     res = self._call(u'/v1.0/nws/accounts', u'POST', data={u'account': obj})
                     logger.info(u'Add account: %s' % res)
@@ -3463,7 +3463,7 @@ class BeehiveController(AnsibleController):
         }        
         self.ansible_playbook(u'beehive', run_data, playbook=self.beehive_playbook)
     
-    @expose(aliases=[u'instance-ping [subsystem] [vassal] [count=..]'], aliases_only=True)
+    @expose(aliases=[u'instance-ping [subsystem=..] [vassal=..] [count=..]'], aliases_only=True)
     @check_error
     def instance_ping(self):
         """Ping beehive instance
@@ -3471,8 +3471,8 @@ class BeehiveController(AnsibleController):
     - vassal: vassal
     - count: number of pings [optional]
         """
-        subsystem = self.get_arg(name=u'subsystem')
-        vassal = self.get_arg(name=u'vassal')
+        subsystem = self.get_arg(name=u'subsystem', default=None, keyvalue=True)
+        vassal = self.get_arg(name=u'vassal', default=None, keyvalue=True)
         count = int(self.get_arg(name=u'count', keyvalue=True, default=1))
         runners = self.get_runners()
         hosts = []
