@@ -785,7 +785,6 @@ class ProviderComputeStackController(ProviderControllerChild):
                 print(u'description: %s' % out.get(u'description', None))
                 print(u'output_value: %s' % out.get(u'output_value', None))
                 print(u'output_error: %s' % out.get(u'output_error', None))
-                print(u'----------------------------------------------------------')
 
 
 class ProviderComputeSqlStackController(ProviderControllerChild):

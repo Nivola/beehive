@@ -11,10 +11,10 @@ Features included:
 beehive is written and maintained by: 
 
 * Sergio Tonani
-* Pasquale Lepera
 * Michele Bello
 * Gianpiero Ardissono
 * Ignazio Cassano
+* Marco Paschetta
  
 and is licensed under MIT license.
 

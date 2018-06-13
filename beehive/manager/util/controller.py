@@ -4,10 +4,14 @@ Created on Sep 22, 2017
 @author: darkbk
 '''
 import json
+import urllib
+
 import yaml
 import os
 import textwrap
 import sys
+
+from beecell.paramiko_shell.shell import ParamikoShell
 from beecell.simple import truncate, str2bool
 from cement.core.controller import CementBaseController, expose
 from functools import wraps
@@ -23,7 +27,7 @@ from pprint import PrettyPrinter
 from beehive.common.apiclient import BeehiveApiClient, BeehiveApiClientError
 from logging import getLogger
 from urllib import urlencode
-from time import sleep
+from time import sleep, time
 from pygments import highlight
 from pygments import lexers
 from pygments.formatters import Terminal256Formatter
@@ -36,6 +40,7 @@ from re import match, sub
 from tabulate import tabulate
 from time import sleep
 from cryptography.fernet import Fernet
+from base64 import b64decode
 
 try:
     import asciitree
@@ -784,22 +789,6 @@ class ApiController(BaseController):
                 self.save_token(self.client.uid, self.client.seckey)
 
         return resp
-    
-    # def __query_task_status(self, task_id):
-    #     uri = u'%s/worker/tasks/%s' % (self.baseuri, task_id)
-    #     res = self._call(uri, u'GET').get(u'task_instance')
-    #     return res
-    #
-    # @check_error
-    # def query_task_status(self, task_id):
-    #     while True:
-    #         res = self.__query_task_status(task_id)
-    #         status = res[u'status']
-    #         sys.stdout.write(u'.')
-    #         # print(u'.')
-    #         if status in [u'SUCCESS', u'FAILURE']:
-    #             break
-    #         sleep(1)
 
     def get_job_state(self, jobid):
         try:
@@ -845,47 +834,65 @@ class ApiController(BaseController):
 
         print(u'END')
 
+    def ssh2node(self, host_ip=None, host_name=None, user=None, key_file=None, key_string=None):
+        """ssh to a node
 
+        :param host: host ip address
+        :param user: ssh user
+        :param key_file: private ssh key file [optional]
+        :param key_string: private ssh key string [optional]
+        :return:
+        """
+        subsystem = self.subsystem
+        self.subsystem = u'ssh'
 
+        # get ssh node
+        # if group_oid is not None:
+        #     data = {u'group_oid': group_oid}
+        data = {}
+        if host_ip is not None:
+            data[u'ip_address'] = host_ip
+        elif host_name is not None:
+            data[u'name'] = host_name
+        uri = u'/v1.0/gas/sshnodes'
+        sshnode = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True)).get(u'sshnodes', [])
+        if len(sshnode) == 0:
+            raise Exception(u'Host ip:%s name:%s not found' % (host_ip, host_name))
+        sshnode = sshnode[0]
 
-    # def get_job_state(self, jobid):
-    #     try:
-    #         res = self._call(u'%s/worker/tasks/%s' % (self.baseuri, jobid), u'GET', silent=True)
-    #         state = res.get(u'task_instance').get(u'status')
-    #         logger.debug(u'Get job %s state: %s' % (jobid, state))
-    #         if state == u'FAILURE':
-    #             data = self.colored_text.error(res[u'task_instance'][u'traceback'][-1])
-    #             sys.stdout.write(data)
-    #             sys.stdout.flush()
-    #         return state
-    #     except (NotFoundException, Exception):
-    #         return u'EXPUNGED'
-    #
-    # def wait_job(self, jobid, delta=2, maxtime=180):
-    #     """Wait job
-    #     """
-    #     logger.debug(u'wait for job: %s' % jobid)
-    #     state = self.get_job_state(jobid)
-    #     sys.stdout.write(u'JOB:%s' % jobid)
-    #     sys.stdout.flush()
-    #     elapsed = 0
-    #     while state not in [u'SUCCESS', u'FAILURE', u'TIMEOUT']:
-    #         sys.stdout.write(u'.')
-    #         sys.stdout.flush()
-    #         sleep(delta)
-    #         state = self.get_job_state(jobid)
-    #         elapsed += delta
-    #         if elapsed > maxtime:
-    #             state = u'TIMEOUT'
-    #
-    #     if state == u'TIMEOUT':
-    #         data = self.colored_text.error(u'- TIMEOUT -')
-    #         sys.stdout.write(data)
-    #         sys.stdout.flush()
-    #     elif state == u'FAILURE':
-    #         # data = self.colored_text.error(u'- ERROR -')
-    #         # sys.stdout.write(data)
-    #         # sys.stdout.flush()
-    #         pass
-    #
-    #     print(u'END')
+        # get ssh user
+        data = {
+            u'node_oid': sshnode[u'id'],
+            u'username': user
+        }
+        uri = u'/v1.0/gas/sshusers'
+        sshuser = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True)).get(u'sshusers', [])
+        if len(sshuser) == 0:
+            raise Exception(u'Host %s user %s not found' % (sshnode[u'name'], user))
+        sshuser = sshuser[0]
+
+        # get ssh ksy
+        if key_file is None and key_string is None:
+            data = {
+                u'user_oid': sshuser[u'id']
+            }
+            uri = u'/v1.0/gas/sshkeys'
+            sshkey = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True)).get(u'sshkeys', [])[0]
+
+            priv_key = sshkey.get(u'priv_key')
+            key_string = b64decode(priv_key)
+
+        # audit function
+        def pre_login():
+            data = (sshnode[u'id'], sshnode[u'name'], sshuser[u'username'], self.client.uid, time())
+            print(u'pre login: %s %s %s %s %s' % data)
+
+        def post_logout():
+            data = (sshnode[u'id'], sshnode[u'name'], sshuser[u'username'], self.client.uid, time())
+            print(u'post logout: %s %s %s %s %s' % data)
+
+        client = ParamikoShell(sshnode[u'ip_address'], user, keyfile=key_file, keystring=key_string,
+                               pre_login=pre_login, post_logout=post_logout)
+        client.run()
+
+        self.subsystem = subsystem

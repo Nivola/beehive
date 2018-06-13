@@ -333,7 +333,6 @@ class VMServiceController(VPCaaServiceControllerChild):
         client.run()
 
         self.subsystem = u'service'
-        print u'pooooo'
 
     @expose(aliases=[u'ansible [ssh-key=..] [ssh-user=..]'], aliases_only=True)
     @check_error

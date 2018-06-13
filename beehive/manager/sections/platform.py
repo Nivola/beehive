@@ -30,7 +30,7 @@ import traceback
 from beedrones.camunda.engine import WorkFlowEngine
 from beedrones.openstack.client import OpenstackManager
 from beedrones.vsphere.client import VsphereManager
-
+from base64 import b64encode
 
 from struct import pack, unpack
 from datetime import datetime as dt
@@ -108,6 +108,7 @@ class AnsibleController(ApiController):
         self.main_playbook = u'%s/site.yml' % (self.ansible_path)
         self.create_playbook = u'%s/server.yml' % (self.ansible_path)
         self.site_playbook = u'%s/site.yml' % (self.ansible_path)
+        self.nginx_playbook = u'%s/nginx.yml' % (self.ansible_path)
         self.beehive_playbook = u'%s/beehive.yml' % (self.ansible_path)
         self.beehive_doc_playbook = u'%s/beehive-doc.yml' % (self.ansible_path)
         self.console_playbook = u'%s/console.yml' % (self.ansible_path)
@@ -316,7 +317,7 @@ class NginxController(AnsibleController):
         description = "Nginx management"
 
     def run_cmd(self, func):
-        """Run command on redis instances
+        """Run command on nginx instances
         """
         hosts = self.get_multi_hosts(u'nginx')
 
@@ -417,6 +418,17 @@ class NginxController(AnsibleController):
         """Start nginx instances
         """
         self.ansible_task(u'nginx', u'systemctl stop nginx')
+
+    @expose()
+    @check_error
+    def config(self):
+        """Update nginx configuration
+        """
+        group = self.get_arg(default=u'nginx')
+        run_data = {
+            u'tags': [u'config']
+        }
+        self.ansible_playbook(group, run_data, playbook=self.nginx_playbook)
 
 
 class RedisController(AnsibleController):
@@ -1845,7 +1857,7 @@ class ElkController(AnsibleController):
 
 
 class NodeController(AnsibleController):
-    setup_cmp = False
+    setup_cmp = True
 
     class Meta:
         label = 'node'
@@ -1887,6 +1899,15 @@ class NodeController(AnsibleController):
         """
         group = self.get_arg(default=None)
         self.ansible_inventory(group)
+
+    @expose(aliases=[u'ssh <node> <user>'], aliases_only=True)
+    @check_error
+    def ssh(self):
+        """Ssh to node
+        """
+        node = self.get_arg(name=u'node')
+        user = self.get_arg(name=u'user')
+        self.ssh2node(host_name=node, user=user)
 
     @expose(aliases=[u'create <group>'], aliases_only=True)
     @check_error
@@ -2002,6 +2023,8 @@ class NodeController(AnsibleController):
             dict(action=dict(module=u'shell', args=cmd), register=u'shell_out'),
         ]
         runner.run_task(group, tasks=tasks, frmt=u'text')
+
+
 
     # @expose(aliases=[u'log <host> [file=..]'], aliases_only=True)
     # @check_error
@@ -3340,6 +3363,50 @@ class BeehiveController(AnsibleController):
                         self.error(ex)
                         self.app.error = False
 
+        # create ssh items
+        self.subsystem = u'ssh'
+
+        if apply.get(u'ssh', False) is True:
+            self.output(u'------ ssh ------ ')
+            for obj in configs.get(u'ssh', {}).get(u'groups', []):
+                try:
+                    res = self._call(u'/v1.0/gas/sshgroups', u'POST', data={u'sshgroup': obj})
+                    logger.info(u'Add sshgroup: %s' % res)
+                    self.output(u'Add sshgroup: %s' % obj)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
+
+            for obj in configs.get(u'ssh', {}).get(u'keys', []):
+                try:
+                    obj[u'priv_key'] = b64encode(self.load_file(obj[u'priv_key']))
+                    obj[u'pub_key'] = b64encode(self.load_file(obj[u'pub_key']))
+                    res = self._call(u'/v1.0/gas/sshkeys', u'POST', data={u'sshkey': obj})
+                    logger.info(u'Add sshkey: %s' % res)
+                    self.output(u'Add sshkey: %s' % obj)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
+
+            for obj in configs.get(u'ssh', {}).get(u'nodes', []):
+                try:
+                    res = self._call(u'/v1.0/gas/sshnodes', u'POST', data={u'sshnode': obj})
+                    logger.info(u'Add sshnode: %s' % res)
+                    self.output(u'Add sshnode: %s' % obj)
+                except Exception as ex:
+                    self.error(ex)
+                    self.app.error = False
+
+                for user in obj.get(u'users', []):
+                    try:
+                        user[u'node_oid'] = obj[u'name']
+                        res = self._call(u'/v1.0/gas/sshusers', u'POST', data={u'sshuser': user})
+                        logger.info(u'Add sshuser: %s' % res)
+                        self.output(u'Add sshuser: %s' % obj)
+                    except Exception as ex:
+                        self.error(ex)
+                        self.app.error = False
+
     @expose()
     @check_error
     def sync(self):
@@ -3506,18 +3573,20 @@ class BeehiveController(AnsibleController):
                         # close connections
                         http.close()
                         if response.status_code == 200:
-                            resp.append({u'subsystem': vassal[0], u'instance': vassal[1], u'host': host, u'port': port,
+                            resp.append({u'subsystem': vassal[0], u'instance': vassal[1], u'host': str(host),
+                                         u'port': port,
                                          u'ping': True, u'status': u'UP', u'count': i})
                         else:
-                            resp.append({u'subsystem': vassal[0], u'instance': vassal[1], u'host': host, u'port': port,
+                            resp.append({u'subsystem': vassal[0], u'instance': vassal[1], u'host': str(host),
+                                         u'port': port,
                                          u'ping': False, u'status': u'DOWN', u'count': i})
                     except gevent.socket.error as ex:
                         logger.error(ex)
-                        resp.append({u'subsystem': vassal[0], u'instance': vassal[1], u'host': host, u'port': port,
+                        resp.append({u'subsystem': vassal[0], u'instance': vassal[1], u'host': str(host), u'port': port,
                                      u'ping': False, u'status': u'DOWN', u'count': i})
                     except Exception as ex:
                         logger.error(ex)
-                        resp.append({u'subsystem': vassal[0], u'instance': vassal[1], u'host': host, u'port': port,
+                        resp.append({u'subsystem': vassal[0], u'instance': vassal[1], u'host': str(host), u'port': port,
                                      u'ping': False, u'status': u'DOWN', u'count': i})
 
             print_header = True
