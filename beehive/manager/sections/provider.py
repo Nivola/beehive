@@ -940,6 +940,42 @@ class ProviderComputeFileShareController(ProviderControllerChild):
         res = {u'msg': u'Add %s %s' % (self._meta.aliases[0], res[u'uuid'])}
         self.result(res, headers=[u'msg'])
 
+
+    @expose(aliases=[u'extend-size <oid> <new_size>'], aliases_only=True)
+    @check_error
+    def extend_size(self):
+        """Extend share size
+    - oid: id or uuid share resource
+    - new_size:  new size to assign
+        """
+        oid = self.get_arg(name=u'oid')
+        params = {
+            u'new_size' : self.get_arg(name=u'new_size'),
+        }
+        uri = u'%s/%s/extend' % (self.uri, oid)
+        self._call(uri, u'PUT', data={u'share': params})
+        logger.info(u'Update share %s with data %s' % (oid, params))
+        res = {u'msg': u'Update share %s with data %s' % (oid, params)}
+        self.result(res, headers=[u'msg'])
+ 
+    @expose(aliases=[u'shrink-size <oid> <new_size>'], aliases_only=True)
+    @check_error
+    def shrink_size(self):
+        """Update share size
+    - oid: id or uuid share resource
+    - new_size:  new size to assign
+        """
+        oid = self.get_arg(name=u'oid')
+        params = {
+            u'new_size' : self.get_arg(name=u'new_size'),
+        }
+        uri = u'%s/%s/shrink' % (self.uri, oid)
+        self._call(uri, u'PUT', data={u'share': params})
+        logger.info(u'Update share %s with data %s' % (oid, params))
+        res = {u'msg': u'Update share %s with data %s' % (oid, params)}
+        self.result(res, headers=[u'msg'])
+
+
     @expose(aliases=[u'list-grant <id>'], aliases_only=True)
     @check_error
     def list_grant(self):

@@ -9,7 +9,7 @@ import urllib
 import json
 
 from cement.core.controller import expose
-
+from urllib import urlencode
 from beehive.manager.util.controller import BaseController, ApiController, check_error
 from beecell.simple import truncate
 from beehive.manager.sections.business import SpecializedServiceControllerChild
@@ -48,25 +48,31 @@ class STaaServiceEFSController(STaaServiceControllerChild):
         description = "Storage file system service management"
    
      
-    @expose(aliases=[u'list [field=<id1, id2>]'], aliases_only=True)
+    @expose(aliases=[u'list [field=..]'], aliases_only=True)
     @check_error
     def list(self):
-        """List all share file system instances by field: owner_id, instance_id, size, page
-        """
+        """List all share file system instances by field: accounts, id, size, page
+    - field: accounts, id, size, page
+        - accounts: list of account id comma separated
+        - id: file system id
+        - name: file system name
+        - size: number of records
+        - page: number of page
+        """   
         data_search = {}
-        data_search[u'owner-id.N'] = self.split_arg(u'owner-id.N')
+        data_search[u'owner-id.N'] = self.split_arg(u'accounts')  
         data_search[u'CreationToken'] = self.split_arg(u'name') 
-        data_search[u'FileSystemId'] = self.split_arg(u'instance_id')
+        data_search[u'FileSystemId'] = self.split_arg(u'id')
         data_search[u'MaxItems'] = self.get_arg(name=u'size', default=10, keyvalue=True)
         data_search[u'Marker'] = self.get_arg(name=u'page', default=0, keyvalue=True)
         page = data_search.get(u'Marker')
         
         uri = u'%s/storageservices/efs/describefilesystems' % self.baseuri
         res = self._call(uri, u'GET', data=urllib.urlencode(data_search, doseq=True))
+        
         total = res.get(u'nvl-fileSystemTotal')
         res = res.get(u'FileSystems', [])
- 
- 
+  
         resp = {
             u'count': len(res),
             u'page': page,
@@ -78,7 +84,7 @@ class STaaServiceEFSController(STaaServiceControllerChild):
         headers = [u'id', u'name', u'status',  u'date.creation', 
                    u'account', u'num.targets', u'size(bytes)',  ]
         fields = [u'FileSystemId',  u'CreationToken',  u'LifeCycleState',  u'CreationTime',
-                   u'OwnerId', u'NumberOfMountTargets', u'SizeInBytes.Value']
+                   u'OwnerId', u'NumberOfMountTargets',  u'SizeInBytes.Value']
         self.result(resp, key=u'instances', headers=headers, fields=fields, maxsize=40)
 
 
@@ -93,7 +99,7 @@ class STaaServiceEFSController(STaaServiceControllerChild):
                 u'CreationToken': self.get_arg(name=u'name'), 
                 u'owner_id' : self.get_account(self.get_arg(name=u'account')),
 #                 u'Nvl-Owner-Id' : self.get_account(self.get_arg(name=u'account')),               
-                u'Nvl-FileSystem-Size' : self.get_account(self.get_arg(name=u'size')),
+                u'Nvl-FileSystem-Size' : self.get_arg(name=u'size'),
                 u'Nvl-FileSystem-Type': self.get_arg(name=u'type')
 
         }   
@@ -103,27 +109,56 @@ class STaaServiceEFSController(STaaServiceControllerChild):
         res = {u'msg': u'Add storage efs instance share %s' % res}
         self.result(res, headers=[u'msg'])
 
-
+    @expose(aliases=[u'extend-size <oid> <new_size>'], aliases_only=True)
+    @check_error
+    def extend_size(self):
+        """Extend file system share size
+    - oid: id or uuid of the file system share instance
+    - new_size:  new size to assign
+        """
+        oid = self.get_arg(name=u'oid')
+        params = {
+            u'new_size' : self.get_arg(name=u'new_size'),
+        }
+        uri = u'%s/storageservices/efs/%s/extend' % (self.baseuri, oid)
+        self._call(uri, u'PUT', data={u'share': params})
+        logger.info(u'Update file system share with data oid=%s params=%s' % (oid, params))
+        res = {u'msg': u'Update file system share with data oid=%s params=%s' % (oid, params)}
+        self.result(res, headers=[u'msg'])
  
+    @expose(aliases=[u'shrink-size <oid> <new_size>'], aliases_only=True)
+    @check_error
+    def shrink_size(self):
+        """Update file system share size
+    - oid: id or uuid of the file system share instance
+    - new_size:  new size to assign
+        """
+        oid = self.get_arg(name=u'oid')
+        params = {
+            u'new_size' : self.get_arg(name=u'new_size'),
+        }
+        uri = u'%s/storageservices/efs/%s/shrink' % (self.baseuri, oid)
+        self._call(uri, u'PUT', data={u'share': params})
+        logger.info(u'Update file system share with data oid=%s params=%s' % (oid, params))
+        res = {u'msg': u'Update file system share with data oid=%s params=%s' % (oid, params)}
+        self.result(res, headers=[u'msg'])
+         
     @expose(aliases=[u'update <oid> [field=value]'], aliases_only=True)
     @check_error
     def update(self):
         """Update file system share
     - oid: id or uuid of the file system share instance
-    - field: can be name, desc, size
+    - field: can be name, desc
         """
         oid = self.get_arg(name=u'oid')
-        params = {}
-        params [u'name'] = self.get_arg(name=u'name', default=None, keyvalue=True)
-        params [u'desc'] = self.get_arg(name=u'desc', default=None, keyvalue=True)
-        params [u'size'] = self.get_arg(name=u'size', default=None, keyvalue=True)
-        data = {
-            u'share': params
+        params = {
+            u'name' : self.get_arg(name=u'name', default=None, keyvalue=True),
+            u'desc' : self.get_arg(name=u'desc', default=None, keyvalue=True),
         }
         uri = u'%s/storageservices/efs/%s' % (self.baseuri, oid)
-        self._call(uri, u'PUT', data=data)
-        logger.info(u'Update file system share %s with data %s' % (oid, params))
-        res = {u'msg': u'Update file system share %s with data %s' % (oid, params)}
+        self._call(uri, u'PUT', data={u'share': params})
+        logger.info(u'Update file system share with data oid=%s params=%s' % (oid, params))
+        res = {u'msg': u'Update file system share with data oid=%s params=%s' % (oid, params)}
         self.result(res, headers=[u'msg'])
 
     @expose(aliases=[u'delete <id>'], aliases_only=True)
@@ -136,7 +171,7 @@ class STaaServiceEFSController(STaaServiceControllerChild):
         res = self._call(uri, u'DELETE', data={u'FileSystemId': uuid}, timeout=300)
         # TODO MANAGEMENT RESPONSE
         logger.info(u'Delete storage efs share instance: %s' % res)
-        res = {u'msg': u'Delete share file system instance %s' % uuid}
+        res = {u'msg': u'Delete file system share instance %s' % uuid}
         self.result(res, headers=[u'msg'])
  
     @expose(aliases=[u'target-list [field=<id1, id2>]'], aliases_only=True)
@@ -150,7 +185,7 @@ class STaaServiceEFSController(STaaServiceControllerChild):
         data_search[u'MaxItems'] = self.get_arg(name=u'size', default=10, keyvalue=True)
         data_search[u'Marker'] = self.get_arg(name=u'page', default=0, keyvalue=True)
         page = data_search.get(u'Marker')
-                        
+
         uri = u'%s/storageservices/efs/describemounttargets' % self.baseuri
         res = self._call(uri, u'GET', data=urllib.urlencode(data_search, doseq=True))
         total = res.get(u'nvl-fileSystemTargetTotal')
@@ -166,9 +201,9 @@ class STaaServiceEFSController(STaaServiceControllerChild):
         
         
         headers = [u'id', u'name', u'status',  u'date.creation', 
-                   u'account', u'target', u'subnet', u'network', u'ipaddress', u'size(bytes)']
+                   u'account', u'target', u'proto', u'subnet', u'network', u'ipaddress', u'size(bytes)']
         fields = [u'FileSystemId',  u'CreationToken',  u'LifeCycleState',  u'CreationTime',
-                   u'OwnerId', u'MountTargetId', u'SubnetId', u'NetworkInterfaceId', u'IpAddress', u'SizeInBytes.Value' ]
+                   u'OwnerId', u'MountTargetId', u'nvl_shareProto', u'SubnetId', u'NetworkInterfaceId', u'IpAddress', u'SizeInBytes.Value' ]
         self.result(resp, key=u'instances', headers=headers, fields=fields, maxsize=40)
 
     @expose(aliases=[u'target-add <id> <subnet>'],
