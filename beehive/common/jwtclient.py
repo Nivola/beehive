@@ -20,6 +20,7 @@ except ImportError:
 
 logger = getLogger(__name__)
 
+
 class GrantType(object):
     AUTHORIZATION_CODE = u'authorization_code'
     IMPLICIT = u'implicit'
@@ -27,12 +28,13 @@ class GrantType(object):
     CLIENT_CRDENTIAL = u'client_credentials'
     JWT_BEARER = u'urn:ietf:params:oauth:grant-type:jwt-bearer'
 
+
 class OAuth2Error(errors.OAuth2Error):
     def __init__(self, description=None, uri=None, state=None, status_code=None,
                  request=None, error=None):
         self.error = error
-        errors.OAuth2Error.__init__(self, description, uri, state, status_code,
-                                    request)
+        errors.OAuth2Error.__init__(self, description, uri, state, status_code, request)
+
 
 class JWTClient(Client):
     """A client that implement the use case 'JWTs as Authorization Grants' of 
@@ -46,7 +48,6 @@ class JWTClient(Client):
                                      scope=scope, **kwargs)
         
     def parse_request_body_response(self, body, scope=None, **kwargs):
-        logger.warn(body)
         self.token = self.__parse_token_response(body, scope=scope)
         self._populate_attributes(self.token)
         return self.token     
@@ -95,8 +96,7 @@ class JWTClient(Client):
             raise errors.MissingTokenError(description="Missing access token parameter.")
     
     @staticmethod
-    def create_token(client_id, client_email, client_scope, private_key, 
-                     client_token_uri, aud, user, pwd):
+    def create_token(client_id, client_email, client_scope, private_key, client_token_uri, sub):
         """Create access token using jwt grant
         
         :return: token
@@ -106,19 +106,15 @@ class JWTClient(Client):
         
         now = datetime.utcnow()
         claims = {
-            u'iss':client_email,
-            u'sub':u'%s:%s' % (user, pwd),
-            u'scope':client_scope,
-            u'aud':aud,
-            u'exp':now + timedelta(seconds=60),
-            u'iat':now,
-            u'nbf':now
+            u'iss': client_email,
+            u'sub': sub,
+            u'aud': client_token_uri,
+            u'exp': now + timedelta(seconds=60),
+            u'iat': now,
+            u'nbf': now
         }
-        #priv_key = RSA.importKey(private_key)
         encoded = jwt.encode(claims, private_key, algorithm=u'RS512')
-        #encoded = ''
-        res = client.prepare_request_body(assertion=encoded, client_id=client_id)
-        token = oauth.fetch_token(token_url=client_token_uri, 
-                                  body=res, verify=False)
-        logger.debug(u'Get token : %s' % token)
+        res = client.prepare_request_body(assertion=encoded, client_id=client_id, scope=client_scope)
+        token = oauth.fetch_token(token_url=client_token_uri, body=res, verify=False)
+        logger.info(u'Create new oauth2 jwt token for client %s and sub %s' % (client_id, sub))
         return token

@@ -3,6 +3,7 @@ Created on Sep 22, 2017
 
 @author: darkbk
 '''
+import binascii
 import json
 import urllib
 
@@ -41,6 +42,7 @@ from tabulate import tabulate
 from time import sleep
 from cryptography.fernet import Fernet
 from base64 import b64decode
+from datetime import datetime, timedelta
 
 try:
     import asciitree
@@ -739,6 +741,38 @@ class ApiController(BaseController):
                 splitList.append(value) 
         return splitList
 
+    def create_oauth2_jwt_token(self, client, user):
+        try:
+            import jwt
+            from requests_oauthlib import OAuth2Session
+            from beehive_oauth2.jwtgrant import JWTClient
+        except:
+            raise Exception(u'JWTClient can not be imported')
+
+        client_id = client[u'uuid']
+        client_email = client[u'client_email']
+        client_scope = client[u'scopes']
+        private_key = binascii.a2b_base64(client[u'private_key'])
+        client_token_uri = client[u'token_uri']
+
+        client = JWTClient(client_id=client_id)
+        oauth = OAuth2Session(client=client)
+
+        now = datetime.utcnow()
+        claims = {
+            u'iss': client_email,
+            u'sub': user,
+            u'aud': client_token_uri,
+            u'exp': now + timedelta(seconds=60),
+            u'iat': now,
+            u'nbf': now
+        }
+        encoded = jwt.encode(claims, private_key, algorithm=u'RS512')
+        res = client.prepare_request_body(assertion=encoded, client_id=client_id, scope=client_scope)
+        token = oauth.fetch_token(token_url=client_token_uri, body=res, verify=False)
+        logger.info(u'Create new oauth2 jwt token for client %s and user %s' % (client_id, user))
+        return token
+
     @check_error
     def _parse_args(self):
         BaseController._parse_args(self)
@@ -752,18 +786,24 @@ class ApiController(BaseController):
                 raise Exception(u'Auth endpoint is not configured')
 
             # get user and password
-            user_env = os.environ.get(u'BEEHIVE_CMP_USER', None)
-            user_pwd_env = os.environ.get(u'BEEHIVE_CMP_USER_PWD', None)
-            user = config.get(u'user', user_env)
-            pwd = config.get(u'pwd', user_pwd_env)
+            # user_env = os.environ.get(u'BEEHIVE_CMP_USER', None)
+            # user_trust = str2bool(os.environ.get(u'BEEHIVE_CMP_USER_TRUST', False))
+            # user_pwd_env = os.environ.get(u'BEEHIVE_CMP_USER_PWD', None)
+            # user = config.get(u'user', user_env)
+            # pwd = config.get(u'pwd', user_pwd_env)
 
-            client_config = config.get(u'oauth2-client', None)
+            user_shell_env = os.environ.get(u'USER')
+            user_cmp_env = os.environ.get(u'BEEHIVE_CMP_USER', user_shell_env)
+            user = config.get(u'user', user_cmp_env)
+            pwd = config.get(u'pwd', None)
+
+            # client_config = config.get(u'oauth2-client', None)
             self.client = BeehiveApiClient(config[u'endpoint'],
                                            config[u'authtype'],
                                            user,
                                            pwd,
                                            config[u'catalog'],
-                                           client_config=client_config,
+                                           client_config=self.app.oauth2_client,
                                            key=self.key)
 
             # get token
@@ -857,7 +897,10 @@ class ApiController(BaseController):
         uri = u'/v1.0/gas/sshnodes'
         sshnode = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True)).get(u'sshnodes', [])
         if len(sshnode) == 0:
-            raise Exception(u'Host ip:%s name:%s not found' % (host_ip, host_name))
+            name = host_ip
+            if name is None:
+                name = host_name
+            raise Exception(u'Host %s not found in managed ssh nodes' % name)
         sshnode = sshnode[0]
 
         # get ssh user

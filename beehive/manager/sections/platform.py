@@ -3380,7 +3380,10 @@ class BeehiveController(AnsibleController):
             for obj in configs.get(u'ssh', {}).get(u'keys', []):
                 try:
                     obj[u'priv_key'] = b64encode(self.load_file(obj[u'priv_key']))
-                    obj[u'pub_key'] = b64encode(self.load_file(obj[u'pub_key']))
+                    if obj[u'pub_key'] is not None:
+                        obj[u'pub_key'] = b64encode(self.load_file(obj[u'pub_key']))
+                    else:
+                        obj[u'pub_key'] = u''
                     res = self._call(u'/v1.0/gas/sshkeys', u'POST', data={u'sshkey': obj})
                     logger.info(u'Add sshkey: %s' % res)
                     self.output(u'Add sshkey: %s' % obj)

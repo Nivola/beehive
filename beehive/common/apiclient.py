@@ -519,33 +519,33 @@ class BeehiveApiClient(object):
         
         :raise BeehiveApiClientError:
         """
-        if api_user == None: api_user = self.api_user
-        if api_user_pwd == None: api_user_pwd = self.api_user_pwd            
+        if api_user is None:
+            api_user = self.api_user
+        if api_user_pwd is None:
+            api_user_pwd = self.api_user_pwd
         
-        data = {u'user':api_user, u'password':api_user_pwd}
+        data = {u'user': api_user, u'password': api_user_pwd}
         if login_ip is None:
             data[u'login-ip'] = self.host
         else:
             data[u'login-ip'] = login_ip
-        res = self.send_request(u'auth', u'/v1.0/nas/simplehttp/login',
-                                u'POST', data=json.dumps(data))
-        #res = res[u'response']
+        res = self.send_request(u'auth', u'/v1.0/nas/simplehttp/login', u'POST', data=json.dumps(data))
         self.logger.info(u'Login user %s: %s' % (self.api_user, res[u'uid']))
         self.uid = None
         self.seckey = None
         self.filter = u'simplehttp'
         
         return res
-    
+
     def create_token(self, api_user=None, api_user_pwd=None, login_ip=None):
         """Login module internal user
         
         :raise BeehiveApiClientError:s
         """
         res = None
-        if api_user == None:
+        if api_user is None:
             api_user = self.api_user
-        if api_user_pwd == None:
+        if api_user_pwd is None:
             api_user_pwd = self.api_user_pwd
         
         if self.api_authtype == u'keyauth':
@@ -564,12 +564,13 @@ class BeehiveApiClient(object):
             client_email = self.api_client_config[u'client_email']
             client_scope = self.api_client_config[u'scopes']
             private_key = binascii.a2b_base64(self.api_client_config[u'private_key'])
-            client_token_uri = u'%s/v1.0/oauth2/token' % self.main_endpoint
-            aud = self.api_client_config[u'aud']
+            # client_token_uri = u'%s/v1.0/oauth2/token' % self.main_endpoint
+            client_token_uri = self.api_client_config[u'token_uri']
 
-            res = JWTClient.create_token(client_id, client_email, client_scope, private_key, client_token_uri, aud,
-                                         api_user, api_user_pwd)
+            res = JWTClient.create_token(client_id, client_email, client_scope, private_key, client_token_uri,
+                                         api_user)
             self.uid = res[u'access_token']
+            self.seckey = u''
         
         self.logger.debug(u'Get %s token: %s' % (self.api_authtype, self.uid))
         return res

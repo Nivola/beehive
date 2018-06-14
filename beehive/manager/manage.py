@@ -180,6 +180,7 @@ class CliManager(CementCmd):
     set BEEHIVE_LOG to use alternative log file
     """
     vault = None
+    oauth2_client = None
 
     class Meta:
         label = "beehive"
@@ -224,6 +225,7 @@ class CliManager(CementCmd):
         history_file = u'~/.beehive.manage'
         fernet_key = u'/etc/beehive/manage.key'
         ansible_vault = u'/etc/beehive/manage.ansible.vault'
+        oauth2_client = u'/etc/beehive/client.json'
         
         # authorization
         token_file = u'/tmp/.manage.token'
@@ -315,17 +317,26 @@ class CliManager(CementCmd):
 
         # fernet key
         if os.path.exists(self._meta.fernet_key):
-            f = open(self._meta.fernet_key, 'r')
+            f = open(self._meta.fernet_key, u'r')
             self.fernet = f.read().rstrip()
             f.close()
             logger.info(u'Load fernet key from %s' % self._meta.fernet_key)
 
         # ansible vault
         if os.path.exists(self._meta.ansible_vault):
-            f = open(self._meta.ansible_vault, 'r')
+            f = open(self._meta.ansible_vault, u'r')
             self.vault = f.read().rstrip()
             f.close()
             logger.info(u'Load ansible vault pwd from %s' % self._meta.ansible_vault)
+
+        # oauth2 client
+        if os.path.exists(self._meta.oauth2_client):
+            f = open(self._meta.oauth2_client, u'r')
+            data = f.read().rstrip()
+            if data:
+                self.oauth2_client = json.loads(data)
+            f.close()
+            logger.info(u'Load oauth2 client from %s' % self._meta.oauth2_client)
 
     @staticmethod
     def setup_logging():

@@ -1,8 +1,8 @@
-'''
+"""
 Created on 05 giu 2018
  
 @author: fabrizio
-'''
+"""
 from beehive.manager.util.controller import BaseController, ApiController,\
     check_error
 from cement.core.controller import expose
@@ -46,13 +46,12 @@ class SshGroupController(SshControllerChild):
     @expose(aliases=[u'list '], aliases_only=True)
     @check_error
     def list(self):
-        '''List all sshgroup'''
-         
-#         data_search = {}
+        """List all sshgroup"""
         uri = u'%s/sshgroups' % self.baseuri
-#         res = self._call(uri, u'GET', data=urllib.urlencode(data_search, doseq=True))
         res = self._call(uri, u'GET')
-        self.result(res, details=True) 
+        self.result(res, key=u'sshgroups',
+                    headers=[u'id', u'uuid', u'name', u'date'],
+                    fields=[u'id', u'uuid', u'name', u'date.creation'])
      
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -105,25 +104,25 @@ class SshNodeController(SshControllerChild):
         aliases_only = True
         description = "Ssh nodes management"
          
-    @expose(aliases=[u'list [group_oid=..] [ip_address=..]'], aliases_only=True)
+    @expose(aliases=[u'list [group=..] [ip_address=..]'], aliases_only=True)
     @check_error
     def list(self):
-        '''List all sshnode
+        """List all sshnode
             - group_oid
-        '''
-        group_oid = self.get_arg(name=u'group_oid', keyvalue=True, default=None)
+        """
+        group_oid = self.get_arg(name=u'group', keyvalue=True, default=None)
         ip_address = self.get_arg(name=u'ip_address', keyvalue=True, default=None)
+        data = {}
         if group_oid is not None:
             data = {u'group_oid': group_oid}
         if ip_address is not None:
             data = {u'ip_address': ip_address}
 
-        logger.warn(data)
-#         data_search = {}
         uri = u'%s/sshnodes' % self.baseuri
         res = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True))
-        #res = self._call(uri, u'GET', data=data)
-        self.result(res, details=True) 
+        self.result(res, key=u'sshnodes',
+                    headers=[u'id', u'uuid', u'name', u'date'],
+                    fields=[u'id', u'uuid', u'name', u'date.creation'])
      
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -133,7 +132,17 @@ class SshNodeController(SshControllerChild):
         value = self.get_arg(name=u'id')
         uri = u'%s/sshnodes/%s' % (self.baseuri, value)
         res = self._call(uri, u'GET')
-        self.result(res, key=u'sshnode', details=True)  
+        self.result(res, key=u'sshnode', details=True)
+
+        data = {
+            u'node_oid': value
+        }
+        uri = u'%s/sshusers' % self.baseuri
+        res = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True)).get(u'sshusers')
+        self.output(u'Node users:')
+        self.result(res,
+                    headers=[u'id', u'uuid', u'name', u'date'],
+                    fields=[u'id', u'uuid', u'name', u'date.creation'])
          
     @expose(aliases=[u'add <name> <group_oid> <node_type> <ip_address> [desc=..] [attribute=..]'], aliases_only=True)
     @check_error
@@ -188,9 +197,9 @@ class SshUserController(SshControllerChild):
     @expose(aliases=[u'list <node_oid> [username=..]'], aliases_only=True)
     @check_error
     def list(self):
-        '''List all sshuser
+        """List all sshuser
             - node_oid
-        '''
+        """
         node_oid = self.get_arg(name=u'node_oid')
         username = self.get_arg(name=u'username', keyvalue=True, default=None)
         data = {
@@ -199,11 +208,11 @@ class SshUserController(SshControllerChild):
         if username is not None:
             data[u'username'] = username
 
-#         data_search = {}
         uri = u'%s/sshusers' % self.baseuri
         res = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True))
-        #res = self._call(uri, u'GET', data=data)
-        self.result(res, details=True) 
+        self.result(res, key=u'sshusers',
+                    headers=[u'id', u'uuid', u'name', u'date', u'node'],
+                    fields=[u'id', u'uuid', u'name', u'date.creation', u'node_oid'])
      
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -271,7 +280,7 @@ class SshKeyController(SshControllerChild):
     @expose(aliases=[u'list [user_oid=..]'], aliases_only=True)
     @check_error
     def list(self):
-        '''List all sshkey'''
+        """List all sshkey"""
          
         user_oid = self.get_arg(name=u'user_oid', keyvalue=True, default=None)
         data = u''
@@ -282,8 +291,9 @@ class SshKeyController(SshControllerChild):
 
         uri = u'%s/sshkeys' % self.baseuri
         res = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True))
-#         res = self._call(uri, u'GET')
-        self.result(res, details=True) 
+        self.result(res, key=u'sshkeys',
+                    headers=[u'id', u'uuid', u'name', u'desc', u'date', u'pub_key'],
+                    fields=[u'id', u'uuid', u'name', u'desc', u'date.creation', u'pub_key'])
      
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -293,9 +303,9 @@ class SshKeyController(SshControllerChild):
         value = self.get_arg(name=u'id')
         uri = u'%s/sshkeys/%s' % (self.baseuri, value)
         res = self._call(uri, u'GET')
-        self.result(res, key=u'sshkey', details=True)  
+        self.result(res, key=u'sshkey', details=True)
          
-    @expose(aliases=[u'add <name> <priv_key> <pub_key> [desc=..] [attribute=..]'], aliases_only=True)
+    @expose(aliases=[u'add <name> <priv_key> [pub_key=..] [desc=..] [attribute=..]'], aliases_only=True)
     @check_error
     def add(self):
         """Add new ssh key 
@@ -305,11 +315,14 @@ class SshKeyController(SshControllerChild):
         """
         name = self.get_arg(name=u'name')
         priv_key = self.get_arg(name=u'priv_key')
-        pub_key = self.get_arg(name=u'pub_key')
+        pub_key = self.get_arg(name=u'pub_key', keyvalue=True, default=None)
         desc = self.get_arg(name=u'desc', keyvalue=True, default=u'')
         attribute = self.get_arg(name=u'attribute', keyvalue=True, default=u'')
         priv_key = self.load_file(priv_key)
-        pub_key = self.load_file(pub_key)
+        if pub_key is not None:
+            pub_key = self.load_file(pub_key)
+        else:
+            pub_key = u''
         data = {
             u'sshkey': {
                 u'name': name,
