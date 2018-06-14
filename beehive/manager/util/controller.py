@@ -768,7 +768,7 @@ class ApiController(BaseController):
                 pwd = config.get(u'pwd', None)
             else:
                 domain = config.get(u'domain', u'local')
-                user = u'%s@%s' % (sh.id(u'-u', u'-n'), domain)
+                user = u'%s@%s' % (sh.id(u'-u', u'-n').rstrip(), domain)
                 pwd = None
 
             # client_config = config.get(u'oauth2-client', None)
