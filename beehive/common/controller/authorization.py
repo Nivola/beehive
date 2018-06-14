@@ -39,7 +39,7 @@ class AuthenticationManager(object):
     def __str__(self):
         return "<AuthenticationManager id:%s>" % id(self)
 
-    def check(self, username, domain, ipaddr):
+    def check(self, user_uuid, username, domain, ipaddr):
         """Login user using identity provider.
 
         :return: System User
@@ -58,7 +58,7 @@ class AuthenticationManager(object):
         # login over authentication provider and get user attributes
         username = u'%s@%s' % (username, domain)
 
-        auth_user = auth_provider.check(username)
+        auth_user = auth_provider.check(user_uuid, username)
 
         # set user ip address
         auth_user.current_login_ip = ipaddr
@@ -417,7 +417,7 @@ class BaseAuthController(ApiController):
         """
         # login user
         try:
-            user = self.module.authentication_manager.check(name, domain, login_ip)
+            user = self.module.authentication_manager.check(dbuser.uuid, name, domain, login_ip)
         except (AuthError) as ex:
             self.logger.error(ex.desc)
             raise ApiManagerError(ex.desc, code=401)

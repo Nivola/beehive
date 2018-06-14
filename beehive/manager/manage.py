@@ -249,6 +249,9 @@ class CliManager(CementCmd):
             os.makedirs(directory)
             os.chmod(directory, 0700)
 
+        os.environ[u'https_proxy'] = u''
+        os.environ[u'http_proxy'] = u''
+
         # load config file from home
         if os.path.isfile(u'%s/manage.conf' % directory) is True:
             self._meta.configs_file = u'%s/manage.conf' % directory
