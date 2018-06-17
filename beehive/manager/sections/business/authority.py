@@ -630,6 +630,10 @@ class AccountController(AuthorityControllerChild):
                  u'params': {u'vpc': u'VpcBE', u'zone': u'SiteTorino01', u'cidr': u'10.138.128.0/21'},
                  u'require': {u'type': u'ComputeVPC', u'name': u'VpcBE'}},
                 {u'type': u'ComputeSubnet',
+                 u'name': u'SubnetBE-torino02',
+                 u'params': {u'vpc': u'VpcBE', u'zone': u'SiteTorino02', u'cidr': u'10.138.160.0/21'},
+                 u'require': {u'type': u'ComputeVPC', u'name': u'VpcBE'}},
+                {u'type': u'ComputeSubnet',
                  u'name': u'SubnetBE-vercelli01',
                  u'params': {u'vpc': u'VpcBE', u'zone': u'SiteVercelli01', u'cidr': u'10.138.192.0/21'},
                  u'require': {u'type': u'ComputeVPC', u'name': u'VpcBE'}},
@@ -644,6 +648,10 @@ class AccountController(AuthorityControllerChild):
                 {u'type': u'ComputeSubnet',
                  u'name': u'SubnetWEB-torino01',
                  u'params': {u'vpc': u'VpcWEB', u'zone': u'SiteTorino01', u'cidr': u'10.138.136.0/21'},
+                 u'require': {u'type': u'ComputeVPC', u'name': u'VpcWEB'}},
+                {u'type': u'ComputeSubnet',
+                 u'name': u'SubnetWEB-torino02',
+                 u'params': {u'vpc': u'VpcWEB', u'zone': u'SiteTorino02', u'cidr': u'10.138.168.0/21'},
                  u'require': {u'type': u'ComputeVPC', u'name': u'VpcWEB'}},
                 {u'type': u'ComputeSubnet',
                  u'name': u'SubnetWEB-vercelli01',
@@ -1018,9 +1026,9 @@ class AccountController(AuthorityControllerChild):
     #     account_id = self.get_arg(name=u'account_id')
     #     self.__add_default_services(account_id)
 
-    @expose(aliases=[u'delete-service <service_id>'], aliases_only=True)
+    @expose(aliases=[u'services-delete <service_id>'], aliases_only=True)
     @check_error
-    def delete_service(self):
+    def services_delete(self):
         """Delete service instance
         """
         value = self.get_arg(name=u'service_id')
