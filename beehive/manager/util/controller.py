@@ -528,7 +528,7 @@ commands:
         """
         f = open(file_config, u'r')
         data = f.read()
-        extension=file_config[-4: ].lower()
+        extension = file_config[-4:].lower()
         if extension == 'json':
             data = json.loads(data)
         elif extension == 'yaml':

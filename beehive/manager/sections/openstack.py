@@ -440,6 +440,21 @@ class OpenstackPlatformPortController(OpenstackPlatformControllerChild):
         logger.info(res)
         self.result(res, headers=[u'msg'])
 
+    @expose(aliases=[u'deletes '], aliases_only=True)
+    @check_error
+    def deletes(self):
+        objs = self.entity_class.list()
+        for obj in objs:
+            if obj[u'device_owner'] == u'network:dhcp':
+                print obj[u'id'], obj[u'name'], obj[u'device_owner']
+                self.entity_class.delete(obj[u'id'])
+
+        # oid = self.get_arg(name=u'id')
+        # res = self.entity_class.delete(oid)
+        # res = {u'msg': u'Delete %s %s' % (self.entity_class, oid)}
+        # logger.info(res)
+        # self.result(res, headers=[u'msg'])
+
 
 class OpenstackPlatformFloatingIpController(OpenstackPlatformControllerChild):
     headers = [u'id', u'tenant_id', u'status', u'floating_ip_address',
@@ -2033,8 +2048,11 @@ class OpenstackControllerChild(ResourceEntityController):
         oid = self.get_arg(name=u'id')
         uri = self.uri + u'/' + oid
         res = self._call(uri, u'DELETE')
-        logger.info(u'Delete %s: %s' % (self._meta.aliases[0], oid))     
-        self.result(res)
+        if u'jobid' in res:
+            self.wait_job(res[u'jobid'], maxtime=600)
+        logger.info(u'Delete %s: %s' % (self._meta.aliases[0], oid))
+        msg = u'Delete %s: %s' % (self._meta.aliases[0], oid)
+        self.result({u'msg': msg}, headers=[u'msg'])
 
 
 class OpenstackDomainController(OpenstackControllerChild):

@@ -1025,7 +1025,7 @@ class AccountController(AuthorityControllerChild):
         """
         value = self.get_arg(name=u'service_id')
         uri = u'%s/serviceinsts/%s' % (self.baseuri, value)
-        res = self._call(uri, u'DELETE')
+        res = self._call(uri, u'DELETE', data={u'recursive': True}, timeout=600)
         logger.info(res)
         res = {u'msg': u'Delete service instance %s' % value}
         self.result(res, headers=[u'msg'])
@@ -1037,7 +1037,7 @@ class AccountController(AuthorityControllerChild):
     - id : account id
     - field: all=true show all the core services with childs
         """
-        self.app.kvargs[u'account_id'] = self.get_arg(name=u'id')
+        self.app.kvargs[u'account_id'] = self.get_arg(name=u'account')
         all = self.get_arg(name=u'all', keyvalue=True, default=False)
         if all is False:
             self.app.kvargs[u'flag_container'] = True

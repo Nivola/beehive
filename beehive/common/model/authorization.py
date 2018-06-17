@@ -18,7 +18,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func
 from sqlalchemy.sql import text
 from beecell.perf import watch
-from beecell.simple import truncate, id_gen
+from beecell.simple import truncate, id_gen, random_password
 from beecell.db import ModelError, QueryError
 from uuid import uuid4
 from beehive.common.data import operation, query, transaction
@@ -170,6 +170,7 @@ class User(Base, BaseEntity):
     __tablename__ = u'user'
 
     password = Column(String(150))
+    secret = Column(String(150))
     role = relationship(u'RoleUser', back_populates=u'user')
     attrib = relationship(u'UserAttribute')
 
@@ -197,6 +198,8 @@ class User(Base, BaseEntity):
             # generate new salt, and hash a password 
             # self.password = sha256_crypt.encrypt(password)
             self.password = bcrypt.hashpw(str(password), bcrypt.gensalt(14))
+
+        self.secret = random_password(length=100)
 
     def _check_password(self, password):
         # verifying the password

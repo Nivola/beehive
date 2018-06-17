@@ -116,10 +116,11 @@ class DBServiceInstanceController(DBaaServiceControllerChild):
         name = self.get_arg(name=u'name')
         account = self.get_account(self.get_arg(name=u'account'))
         template = self.get_service_def(self.get_arg(name=u'template'))
-        subnet = self.get_service_instance(self.get_arg(name=u'subnet'))
+        subnet = self.get_service_instance(self.get_arg(name=u'subnet'), account_id=account)
         engine = self.get_arg(name=u'engine')
         engine_version = self.get_arg(name=u'engine version')
-        sg = self.get_service_instance(self.get_arg(name=u'security group'))
+        sg = self.get_service_instance(self.get_arg(name=u'security group'), account_id=account)
+        admin_pwd = self.get_arg(name=u'MasterUserPassword', default=u'N!v0la12vr', keyvalue=True)
 
         data = {
             u'dbinstance': {
@@ -135,7 +136,7 @@ class DBServiceInstanceController(DBaaServiceControllerChild):
                 # u'DBName': self.get_arg(name=u'DBName', default=u'mydbname', keyvalue=True),
                 # u'AvailabilityZone': self.get_arg(name=u'AvailabilityZone', default=None, keyvalue=True),
                 # u'MasterUsername': self.get_arg(name=u'MasterUsername', default=u'root', keyvalue=True),
-                u'MasterUserPassword': self.get_arg(name=u'MasterUserPassword', default=u'N!v0la12vr', keyvalue=True),
+                u'MasterUserPassword': admin_pwd,
                 # u'Port': self.get_arg(name=u'Port', default=u'', keyvalue=True),
 
                 # u'SchemaName': u'schema name to use for a db instance postgres',

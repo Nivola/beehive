@@ -2541,54 +2541,57 @@ class BeehiveConsoleController(AnsibleController):
         label = 'console'
         description = "Beehive Console management"
 
-    @expose(aliases=[u'add-user <type> <sshuser> <cmpuser> <config>'], aliases_only=True)
-    @check_error
-    def add_user(self):
-        """Create new user in beehive console
-    - type: admin, user
-        """
-        type = self.get_arg(name=u'type')
-        sshuser = self.get_arg(name=u'sshuser')
-        cmpuser = self.get_arg(name=u'cmpuser')
-        config = self.get_arg(name=u'config')
-        run_data = {
-            u'tags': [u'useradd'],
-            u'sshuser': sshuser,
-            u'cmpuser': cmpuser,
-            u'config': config,
-        }
-        self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
+    # @expose(aliases=[u'add-user <type> <sshuser> <cmpuser> <config>'], aliases_only=True)
+    # @check_error
+    # def add_user(self):
+    #     """Create new user in beehive console
+    # - type: admin, user
+    #     """
+    #     type = self.get_arg(name=u'type')
+    #     sshuser = self.get_arg(name=u'sshuser')
+    #     cmpuser = self.get_arg(name=u'cmpuser')
+    #     config = self.get_arg(name=u'config')
+    #     run_data = {
+    #         u'tags': [u'useradd'],
+    #         u'sshuser': sshuser,
+    #         u'cmpuser': cmpuser,
+    #         u'config': config,
+    #     }
+    #     self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
+    #
+    # @expose(aliases=[u'del-user <type> <username>'], aliases_only=True)
+    # @check_error
+    # def del_user(self):
+    #     """Delete user from beehive console
+    #     """
+    #     type = self.get_arg(name=u'type')
+    #     username = self.get_arg(name=u'username')
+    #     run_data = {
+    #         u'tags': [u'userdel'],
+    #         u'username': username
+    #     }
+    #     self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
 
-    @expose(aliases=[u'del-user <type> <username>'], aliases_only=True)
+    @expose(aliases=[u'set-user <type> <sshusers> <config>'], aliases_only=True)
     @check_error
-    def del_user(self):
-        """Delete user from beehive console
-        """
-        type = self.get_arg(name=u'type')
-        username = self.get_arg(name=u'username')
-        run_data = {
-            u'tags': [u'userdel'],
-            u'username': username
-        }
-        self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
-
-    @expose(aliases=[u'set-user <type> <sshuser> <cmpuser> <config>'], aliases_only=True)
-    @check_error
-    def set_user(self):
-        """Set user configuration in beehive console
+    def set_users(self):
+        """Set users configuration in beehive console
     - type: admin, user
+    - sshusers: comma separated user list
         """
         type = self.get_arg(name=u'type')
-        sshuser = self.get_arg(name=u'sshuser')
-        cmpuser = self.get_arg(name=u'cmpuser')
+        sshusers = self.get_arg(name=u'sshusers').split(u',')
+        # cmpuser = self.get_arg(name=u'cmpuser')
         config = self.get_arg(name=u'config')
-        run_data = {
-            u'tags': [u'userset'],
-            u'sshuser': sshuser,
-            u'cmpuser': cmpuser,
-            u'config': config,
-        }
-        self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
+
+        for sshuser in sshusers:
+            run_data = {
+                u'tags': [u'userset'],
+                u'sshuser': sshuser,
+                # u'cmpuser': cmpuser,
+                u'config': config,
+            }
+            self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
 
     @expose()
     @check_error
