@@ -2572,26 +2572,37 @@ class BeehiveConsoleController(AnsibleController):
     #     }
     #     self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
 
-    @expose(aliases=[u'set-user <type> <sshusers> <config>'], aliases_only=True)
+    @expose(aliases=[u'set-users <type> <sshusers> <config>'], aliases_only=True)
     @check_error
     def set_users(self):
         """Set users configuration in beehive console
     - type: admin, user
     - sshusers: comma separated user list
         """
+        pattern = re.compile(r".*\.conf")
+        available_configs = [f[0:-5] for f in os.listdir(u'%s/../configs' % self.ansible_path)
+                             if pattern.match(f) is not None]
+        note = u'Available config are: ' + u', '.join(available_configs)
+
         type = self.get_arg(name=u'type')
         sshusers = self.get_arg(name=u'sshusers').split(u',')
         # cmpuser = self.get_arg(name=u'cmpuser')
-        config = self.get_arg(name=u'config')
+        config = self.get_arg(name=u'config', note=note)
 
-        for sshuser in sshusers:
-            run_data = {
-                u'tags': [u'userset'],
-                u'sshuser': sshuser,
-                # u'cmpuser': cmpuser,
-                u'config': config,
-            }
-            self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
+        if type not in [u'user', u'admin']:
+            raise Exception(u'type can be only user or admin')
+
+        if config not in available_configs:
+            raise Exception(note)
+
+        # for sshuser in sshusers:
+        #     run_data = {
+        #         u'tags': [u'userset'],
+        #         u'sshuser': sshuser,
+        #         # u'cmpuser': cmpuser,
+        #         u'config': config,
+        #     }
+        #     self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
 
     @expose()
     @check_error
@@ -2801,7 +2812,6 @@ class BeehiveController(AnsibleController):
             clients.append(client)
         return clients
 
-
     @expose(aliases=[u'test  <config>'], aliases_only=True)
     @check_error
     def test(self):
@@ -2825,7 +2835,7 @@ class BeehiveController(AnsibleController):
         # get configs
         pattern = re.compile(r".*\.json|.*\.yaml")
         available_configs = [f[0:-5] for f in os.listdir(u'%s/../post-install' % self.ansible_path)
-                    if pattern.match(f) is not None ]
+                    if pattern.match(f) is not None]
         note = u'Available config are: ' + u', '.join(available_configs)
         # config_path = u'%s/../post-install/%s.json' % (self.ansible_path, self.get_arg(name=u'config', note=note))
         config_path = u'%s/../post-install/%s' % (self.ansible_path, self.get_arg(name=u'config', note=note))
@@ -3299,7 +3309,7 @@ class BeehiveController(AnsibleController):
         if apply.get(u'authority', False) is True:
             self.output(u'------ authority ------ ')
 
-            for obj in configs.get(u'authority', {}).get(u'orgs',[]):
+            for obj in configs.get(u'authority', {}).get(u'orgs', []):
                 try:
                     res = self._call(u'/v1.0/nws/organizations', u'POST', data={u'organization': obj})
                     logger.info(u'Add organization: %s' % res)
@@ -3544,6 +3554,8 @@ class BeehiveController(AnsibleController):
     - vassal: vassal
     - count: number of pings [optional]
         """
+        self.setup_cmp = False
+
         subsystem = self.get_arg(name=u'subsystem', default=None, keyvalue=True)
         vassal = self.get_arg(name=u'vassal', default=None, keyvalue=True)
         count = int(self.get_arg(name=u'count', keyvalue=True, default=1))
@@ -3624,7 +3636,6 @@ class BeehiveController(AnsibleController):
         for runner in runners:
             hosts.extend(self.get_hosts(runner, [group]))
         vars = runner.variable_manager.get_vars(runner.loader, host=hosts[0])
-        print host in hosts
         if host is None:
             print hosts
             print hosts[0].get_vars()
@@ -3641,6 +3652,8 @@ class BeehiveController(AnsibleController):
                 sys.stdout.flush()
 
             sh.ssh(u'%s@%s' % (ssh_user, host), u'-i', ssh_key, ssh_cmd, _out=ssh_interact, _out_bufsize=1)
+        else:
+            raise Exception(u'Host %s not found' % host)
                 
     '''def beehive_get_uwsgi_tree(self):
         """

@@ -173,7 +173,8 @@ class AppEngineInstanceController(AppEngineServiceControllerChild):
             data[u'instance'][u'PublicSubnetId'] = self.get_service_instance(public_subnet, account_id=account)
 
         uri = u'%s/appengineservices/instance/runinstances' % self.baseuri
-        res = self._call(uri, u'POST', data=data, timeout=600).get(u'RunInstanceResponse').get(u'instanceId')
+        res = self._call(uri, u'POST', data=data, timeout=600).get(u'RunInstanceResponse').get(u'instancesSet')[0]\
+            .get(u'instanceId')
         logger.info(u'Add app engine instance: %s' % truncate(res))
         res = {u'msg': u'Add app engine instance %s' % res}
         self.result(res, headers=[u'msg'])

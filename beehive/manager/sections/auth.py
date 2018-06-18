@@ -248,7 +248,7 @@ class UserController(AuthControllerChild):
         uri = u'%s/users' % (self.baseuri)
         res = self._call(uri, u'POST', data=data)
         logger.info(u'Add user: %s' % res)
-        self.result({u'msg':u'Add user: %s' % res[u'uuid']})
+        self.result({u'msg':u'Add user: %s' % res[u'uuid']}, headers=[u'msg'])
 
     @expose(aliases=[u'list [field=value]'], aliases_only=True)
     @check_error
@@ -334,7 +334,7 @@ class UserController(AuthControllerChild):
         uri = u'%s/users/%s' % (self.baseuri, oid)
         res = self._call(uri, u'PUT', data=data)
         logger.info(u'Update user roles: %s' % res)
-        self.result({u'msg': u'Add user role: %s' % res[u'role_append']})
+        self.result({u'msg': u'Add user role: %s' % res[u'role_append']}, headers=[u'msg'])
 
     @expose(aliases=[u'del-role <id> <role>'], aliases_only=True)
     @check_error
@@ -355,7 +355,7 @@ class UserController(AuthControllerChild):
         uri = u'%s/users/%s' % (self.baseuri, oid)
         res = self._call(uri, u'PUT', data=data)
         logger.info(u'Update user roles: %s' % res)
-        self.result({u'msg':u'Add user role: %s' % res[u'role_remove']})  
+        self.result({u'msg':u'Add user role: %s' % res[u'role_remove']}, headers=[u'msg'])
     
     @expose(aliases=[u'attribs <id>'], aliases_only=True)
     @check_error
@@ -384,7 +384,7 @@ class UserController(AuthControllerChild):
         uri = u'%s/users/%s/attributes' % (self.baseuri, oid)
         res = self._call(uri, u'POST', data=data)
         logger.info(u'Add user attribute: %s' % res)
-        self.result({u'msg':u'Add/update user attrib %s' % attrib})     
+        self.result({u'msg':u'Add/update user attrib %s' % attrib}, headers=[u'msg'])
     
     @expose(aliases=[u'delete-attrib <id> <attrib>'], aliases_only=True)
     @check_error
@@ -394,7 +394,7 @@ class UserController(AuthControllerChild):
         uri = u'%s/users/%s/attributes/%s' % (self.baseuri, oid, attrib)
         res = self._call(uri, u'dELETE', data=u'')
         logger.info(u'Add user attribute: %s' % res)
-        self.result({u'msg':u'Delete user attrib %s' % attrib})        
+        self.result({u'msg':u'Delete user attrib %s' % attrib}, headers=[u'msg'])
 
 
 class RoleController(AuthControllerChild):
@@ -493,7 +493,7 @@ class RoleController(AuthControllerChild):
         uri = u'%s/roles/%s' % (self.baseuri, roleid)
         res = self._call(uri, u'PUT', data=data)
         logger.info(u'Update role perms: %s' % res)
-        self.result({u'msg': u'Add role perms: %s' % res[u'perm_append']})
+        self.result({u'msg': u'Add role perms: %s' % res[u'perm_append']}, headers=[u'msg'])
     
     @expose(aliases=[u'delete-perm <id> <permid>'], aliases_only=True)
     @check_error
@@ -511,7 +511,7 @@ class RoleController(AuthControllerChild):
         uri = u'%s/roles/%s' % (self.baseuri, roleid)
         res = self._call(uri, u'PUT', data=data)
         logger.info(u'Update role perms: %s' % res)
-        self.result({u'msg':u'Remove role perms: %s' % res[u'perm_remove']})        
+        self.result({u'msg':u'Remove role perms: %s' % res[u'perm_remove']}, headers=[u'msg'])
 
 
 class GroupController(AuthControllerChild):
@@ -618,7 +618,7 @@ class GroupController(AuthControllerChild):
         uri = u'%s/groups/%s' % (self.baseuri, oid)
         res = self._call(uri, u'PUT', data=data)
         logger.info(u'Update group roles: %s' % res)
-        self.result({u'msg':u'Add group role: %s' % res[u'role_append']})
+        self.result({u'msg':u'Add group role: %s' % res[u'role_append']}, headers=[u'msg'])
 
     @expose(aliases=[u'del-role <id> <role>'], aliases_only=True)
     @check_error
@@ -639,7 +639,7 @@ class GroupController(AuthControllerChild):
         uri = u'%s/groups/%s' % (self.baseuri, oid)
         res = self._call(uri, u'PUT', data=data)
         logger.info(u'Update group roles: %s' % res)
-        self.result({u'msg':u'Add group role: %s' % res[u'role_remove']})  
+        self.result({u'msg':u'Add group role: %s' % res[u'role_remove']}, headers=[u'msg'])
         
     @expose(aliases=[u'add-user <id> <user>'], aliases_only=True)
     @check_error
@@ -662,7 +662,7 @@ class GroupController(AuthControllerChild):
         uri = u'%s/groups/%s' % (self.baseuri, oid)
         res = self._call(uri, u'PUT', data=data)
         logger.info(u'Update group users: %s' % res)
-        self.result({u'msg': u'Add group user: %s' % res[u'user_append']})
+        self.result({u'msg': u'Add group user: %s' % res[u'user_append']}, headers=[u'msg'])
 
     @expose(aliases=[u'delete-user <id> <user>'], aliases_only=True)
     @check_error
@@ -684,7 +684,7 @@ class GroupController(AuthControllerChild):
         uri = u'%s/groups/%s' % (self.baseuri, oid)
         res = self._call(uri, u'PUT', data=data)
         logger.info(u'Update group users: %s' % res)
-        self.result({u'msg':u'Add group user: %s' % res[u'user_remove']})          
+        self.result({u'msg':u'Add group user: %s' % res[u'user_remove']}, headers=[u'msg'])
 
 
 class ObjectController(AuthControllerChild):
@@ -762,7 +762,7 @@ class ObjectController(AuthControllerChild):
         uri = u'%s/objects/types' % (self.baseuri)
         res = self._call(uri, u'POST', data=data)
         logger.info(u'Add object: %s' % res)
-        self.result({u'msg':u'Add object type: %s' % (res)})
+        self.result({u'msg':u'Add object type: %s' % (res)}, headers=[u'msg'])
     
     @expose(aliases=[u'delete-type <id>'], aliases_only=True)
     @check_error
@@ -771,7 +771,7 @@ class ObjectController(AuthControllerChild):
         uri = u'%s/objects/types/%s' % (self.baseuri, object_id)
         res = self._call(uri, u'DELETE', data=u'')
         logger.info(u'Delete object: %s' % res)
-        self.result({u'msg':u'Delete object type %s' % (object_id)})   
+        self.result({u'msg':u'Delete object type %s' % (object_id)}, headers=[u'msg'])
     
     #
     # objects
@@ -821,7 +821,7 @@ class ObjectController(AuthControllerChild):
         uri = u'%s/objects' % (self.baseuri)
         res = self._call(uri, u'POST', data=data)
         logger.info(u'Add object: %s' % res)
-        self.result({u'msg':u'Add object: %s' % (res)})
+        self.result({u'msg':u'Add object: %s' % (res)}, headers=[u'msg'])
     
     @expose(aliases=[u'delete <id>'], aliases_only=True)
     @check_error
@@ -832,7 +832,7 @@ class ObjectController(AuthControllerChild):
         uri = u'%s/objects/%s' % (self.baseuri, object_id)
         res = self._call(uri, u'DELETE', data=u'')
         logger.info(u'Delete object: %s' % res)
-        self.result({u'msg':u'Delete object %s' % (object_id)})
+        self.result({u'msg':u'Delete object %s' % (object_id)}, headers=[u'msg'])
         
     @expose(aliases=[u'deletes <id1,id2,..>'], aliases_only=True)
     @check_error
@@ -845,7 +845,7 @@ class ObjectController(AuthControllerChild):
             uri = u'%s/objects/%s' % (self.baseuri, object_id)
             res = self._call(uri, u'DELETE', data=u'')
             logger.info(u'Delete object: %s' % res)
-        self.result({u'msg':u'Delete objects %s' % (object_ids)}) 
+        self.result({u'msg':u'Delete objects %s' % (object_ids)}, headers=[u'msg'])
 
 
 auth_controller_handlers = [

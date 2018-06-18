@@ -753,16 +753,6 @@ class ApiController(BaseController):
             if config[u'endpoint'] is None:
                 raise Exception(u'Auth endpoint is not configured')
 
-            # get user and password
-            # user_env = os.environ.get(u'BEEHIVE_CMP_USER', None)
-            # user_trust = str2bool(os.environ.get(u'BEEHIVE_CMP_USER_TRUST', False))
-            # user_pwd_env = os.environ.get(u'BEEHIVE_CMP_USER_PWD', None)
-            # user = config.get(u'user', user_env)
-            # pwd = config.get(u'pwd', user_pwd_env)
-
-            # user_shell_env = os.environ.get(u'USER')
-            # user_cmp_env = os.environ.get(u'BEEHIVE_CMP_USER', user_shell_env)
-
             user = config.get(u'user', None)
             if user is not None:
                 pwd = config.get(u'pwd', None)
@@ -785,7 +775,14 @@ class ApiController(BaseController):
 
             if self.client.uid is None:
                 # create token
-                self.client.create_token()
+                try:
+                    self.client.create_token()
+                except BeehiveApiClientError as ex:
+                    if ex.code == 400:
+                        self.client.uid, self.client.seckey = u'', u''
+                        logger.warn(u'Authorization token can not be created')
+                    else:
+                        raise
 
                 # set token
                 self.save_token(self.client.uid, self.client.seckey)

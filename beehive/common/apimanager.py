@@ -207,6 +207,7 @@ class ApiManager(object):
 
         # proxy
         self.http_proxy = None
+        self.https_proxies = []
         self.tcp_proxy = None
 
         # stack uri reference
@@ -809,8 +810,9 @@ class ApiManager(object):
                 ##### http proxy configuration #####
                 try:
                     self.logger.info(u'Configure http proxy - CONFIGURE')
-                    conf = configurator.get(app=self.app_name, group=u'httpproxy')                    
-                    self.http_proxy = conf[0].value
+                    conf = configurator.get(app=self.app_name, group=u'httpproxy')
+                    proxy = conf[0].value
+                    self.http_proxy = proxy
                     self.logger.info(u'Setup http proxy: %s' % self.http_proxy)
                     self.logger.info(u'Configure http proxy - CONFIGURED')
                 except:
