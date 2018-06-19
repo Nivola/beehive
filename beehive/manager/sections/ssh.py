@@ -174,7 +174,19 @@ class SshNodeController(SshControllerChild):
         logger.info(res)
         msg = {u'msg': res}
         self.result(msg, headers=[u'msg'], maxsize=200)
-         
+
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
+    def delete(self):
+        """Delete sshnode by id, uuid or name
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'%s/sshnodes/%s' % (self.baseuri, value)
+        res = self._call(uri, u'DELETE', data=u'')
+        logger.info(u'Delete sshnode: %s' % res)
+        msg = {u'msg': u'Delete sshnode: %s' % value}
+        self.result(msg, headers=[u'msg'])
+
     @expose(aliases=[u'perms <id>'], aliases_only=True)
     @check_error
     def perms(self):
@@ -182,7 +194,7 @@ class SshNodeController(SshControllerChild):
         """
         value = self.get_arg(name=u'id')
         uri = u'%s/sshnodes/%s/perms' % (self.baseuri, value)
-        res = self._call(uri, u'GET', data=None)
+        res = self._call(uri, u'GET', data=u'')
         logger.info(u'Get sshnode perms: %s' % res)
         self.result(res, key=u'perms', headers=self.perm_headers)
 

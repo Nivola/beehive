@@ -2140,7 +2140,7 @@ class ApiObject(object):
         """Publish an event to event queue.
         
         :param op: operation to audit
-        :param op: operation id to audit [optional]
+        :param opid: operation id to audit [optional]
         :param params: operation params [default={}]
         :param response: operation response. [default=True]
         :param exception: exceptione raised [optinal]
@@ -2148,11 +2148,15 @@ class ApiObject(object):
             ApiObject.ASYNC_OPERATION
         :param elapsed: elapsed time [default=0] 
         """
-        if opid is None: opid = operation.id
+        if opid is None:
+            opid = operation.id
         objid = u'*'
-        if self.objid is not None: objid = self.objid
-        if etype is None: etype = self.SYNC_OPERATION
-        if exception is not None: response = (False, escape(str(exception)))
+        if self.objid is not None:
+            objid = self.objid
+        if etype is None:
+            etype = self.SYNC_OPERATION
+        if exception is not None:
+            response = (False, escape(str(exception)))
         action = op.split(u'.')[-1]
         
         # remove object from args - it does not serialize in event

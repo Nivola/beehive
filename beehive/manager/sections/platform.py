@@ -111,6 +111,7 @@ class AnsibleController(ApiController):
         self.nginx_playbook = u'%s/nginx.yml' % (self.ansible_path)
         self.beehive_playbook = u'%s/beehive.yml' % (self.ansible_path)
         self.beehive_doc_playbook = u'%s/beehive-doc.yml' % (self.ansible_path)
+        self.doc_playbook = u'%s/docs.yml' % (self.ansible_path)
         self.console_playbook = u'%s/console.yml' % (self.ansible_path)
         self.local_package_path = self.configs[u'local_package_path']
     
@@ -3683,6 +3684,34 @@ class BeehiveController(AnsibleController):
         self.ansible_playbook(u'docs', run_data, playbook=self.beehive_doc_playbook)
 
 
+class BeehiveDocController(AnsibleController):
+    class Meta:
+        label = 'docs'
+        description = "Beehive document management"
+
+    @expose()
+    @check_error
+    def deploy(self):
+        """Make e deploy beehive documentation
+        """
+        run_data = {
+            u'tags': [u'doc'],
+            u'local_package_path': self.local_package_path
+        }
+        self.ansible_playbook(u'docs', run_data, playbook=self.doc_playbook)
+
+    @expose()
+    @check_error
+    def deploy_api(self):
+        """Make e deploy beehive api documentation
+        """
+        run_data = {
+            u'tags': [u'apidoc'],
+            u'local_package_path': self.local_package_path
+        }
+        self.ansible_playbook(u'docs', run_data, playbook=self.doc_playbook)
+
+
 platform_controller_handlers = [
     PlatformController,
     NginxController,
@@ -3698,4 +3727,5 @@ platform_controller_handlers = [
     NodeController,
     BeehiveController,
     BeehiveConsoleController,
+    BeehiveDocController,
 ]

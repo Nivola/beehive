@@ -9,7 +9,7 @@ import urllib
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController, check_error
 from re import match
-from beecell.simple import truncate
+from beecell.simple import truncate, getkey
 from beehive.manager.sections.business import SpecializedServiceControllerChild
 
 logger = logging.getLogger(__name__)
@@ -105,6 +105,26 @@ class DBServiceInstanceController(DBaaServiceControllerChild):
         if len(res.get(u'DBInstances')) > 0:
             resp = res.get(u'DBInstances')[0]
             self.result(resp, details=True)
+
+    @expose(aliases=[u'ssh <id> <user> [sshkey=..]'], aliases_only=True)
+    @check_error
+    def ssh(self):
+        """Opens ssh connection over provider instance
+        """
+        oid = self.get_arg(name=u'id')
+        user = self.get_arg(name=u'user')
+        data_search = {}
+        data_search[u'db-instance-id.N'] = self.split_arg(u'id')
+
+        uri = u'%s/databaseservices/instance/describedbinstances' % self.baseuri
+        res = self._call(uri, u'GET', data=urllib.urlencode(data_search, doseq=True))
+        res = res.get(u'DescribeDBInstancesResponse').get(u'DescribeDBInstancesResult')
+
+        if len(res.get(u'DBInstances')) > 0:
+            server = res.get(u'DBInstances')[0]
+            fixed_ip = getkey(server, u'Endpoint.Address')
+
+            self.ssh2node(host_ip=fixed_ip, user=user)
 
     @expose(aliases=[u'add <name> <account> <template> <subnet> <engine> <version> <security group> [field=..]'],
             aliases_only=True)
