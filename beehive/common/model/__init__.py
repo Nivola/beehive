@@ -778,6 +778,7 @@ class AbstractDbManager(object):
             tagrecord = session.query(PermTag).filter_by(value=tag).first()
 
         # create tag entity association
+        record = None
         try:
             record = PermTagEntity(tagrecord.id, entity, type)
             session.add(record)
@@ -785,7 +786,7 @@ class AbstractDbManager(object):
         except:
             self.logger.debug(u'Permtag %s entity %s association already exists' % (tag, entity))
         
-        return record
+        return tagrecord
     
     @transaction
     def delete_perm_tag(self, entity, etype, tags):

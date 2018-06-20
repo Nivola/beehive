@@ -207,6 +207,7 @@ class ApiManager(object):
 
         # proxy
         self.http_proxy = None
+        self.https_proxies = []
         self.tcp_proxy = None
 
         # stack uri reference
@@ -809,8 +810,9 @@ class ApiManager(object):
                 ##### http proxy configuration #####
                 try:
                     self.logger.info(u'Configure http proxy - CONFIGURE')
-                    conf = configurator.get(app=self.app_name, group=u'httpproxy')                    
-                    self.http_proxy = conf[0].value
+                    conf = configurator.get(app=self.app_name, group=u'httpproxy')
+                    proxy = conf[0].value
+                    self.http_proxy = proxy
                     self.logger.info(u'Setup http proxy: %s' % self.http_proxy)
                     self.logger.info(u'Configure http proxy - CONFIGURED')
                 except:
@@ -2138,7 +2140,7 @@ class ApiObject(object):
         """Publish an event to event queue.
         
         :param op: operation to audit
-        :param op: operation id to audit [optional]
+        :param opid: operation id to audit [optional]
         :param params: operation params [default={}]
         :param response: operation response. [default=True]
         :param exception: exceptione raised [optinal]
@@ -2146,11 +2148,15 @@ class ApiObject(object):
             ApiObject.ASYNC_OPERATION
         :param elapsed: elapsed time [default=0] 
         """
-        if opid is None: opid = operation.id
+        if opid is None:
+            opid = operation.id
         objid = u'*'
-        if self.objid is not None: objid = self.objid
-        if etype is None: etype = self.SYNC_OPERATION
-        if exception is not None: response = (False, escape(str(exception)))
+        if self.objid is not None:
+            objid = self.objid
+        if etype is None:
+            etype = self.SYNC_OPERATION
+        if exception is not None:
+            response = (False, escape(str(exception)))
         action = op.split(u'.')[-1]
         
         # remove object from args - it does not serialize in event

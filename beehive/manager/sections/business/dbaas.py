@@ -9,7 +9,7 @@ import urllib
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController, check_error
 from re import match
-from beecell.simple import truncate
+from beecell.simple import truncate, getkey
 from beehive.manager.sections.business import SpecializedServiceControllerChild
 
 logger = logging.getLogger(__name__)
@@ -106,6 +106,26 @@ class DBServiceInstanceController(DBaaServiceControllerChild):
             resp = res.get(u'DBInstances')[0]
             self.result(resp, details=True)
 
+    @expose(aliases=[u'ssh <id> <user> [sshkey=..]'], aliases_only=True)
+    @check_error
+    def ssh(self):
+        """Opens ssh connection over provider instance
+        """
+        oid = self.get_arg(name=u'id')
+        user = self.get_arg(name=u'user')
+        data_search = {}
+        data_search[u'db-instance-id.N'] = self.split_arg(u'id')
+
+        uri = u'%s/databaseservices/instance/describedbinstances' % self.baseuri
+        res = self._call(uri, u'GET', data=urllib.urlencode(data_search, doseq=True))
+        res = res.get(u'DescribeDBInstancesResponse').get(u'DescribeDBInstancesResult')
+
+        if len(res.get(u'DBInstances')) > 0:
+            server = res.get(u'DBInstances')[0]
+            fixed_ip = getkey(server, u'Endpoint.Address')
+
+            self.ssh2node(host_ip=fixed_ip, user=user)
+
     @expose(aliases=[u'add <name> <account> <template> <subnet> <engine> <version> <security group> [field=..]'],
             aliases_only=True)
     @check_error
@@ -116,10 +136,11 @@ class DBServiceInstanceController(DBaaServiceControllerChild):
         name = self.get_arg(name=u'name')
         account = self.get_account(self.get_arg(name=u'account'))
         template = self.get_service_def(self.get_arg(name=u'template'))
-        subnet = self.get_service_instance(self.get_arg(name=u'subnet'))
+        subnet = self.get_service_instance(self.get_arg(name=u'subnet'), account_id=account)
         engine = self.get_arg(name=u'engine')
         engine_version = self.get_arg(name=u'engine version')
-        sg = self.get_service_instance(self.get_arg(name=u'security group'))
+        sg = self.get_service_instance(self.get_arg(name=u'security group'), account_id=account)
+        admin_pwd = self.get_arg(name=u'MasterUserPassword', default=u'N!v0la12vr', keyvalue=True)
 
         data = {
             u'dbinstance': {
@@ -135,7 +156,7 @@ class DBServiceInstanceController(DBaaServiceControllerChild):
                 # u'DBName': self.get_arg(name=u'DBName', default=u'mydbname', keyvalue=True),
                 # u'AvailabilityZone': self.get_arg(name=u'AvailabilityZone', default=None, keyvalue=True),
                 # u'MasterUsername': self.get_arg(name=u'MasterUsername', default=u'root', keyvalue=True),
-                u'MasterUserPassword': self.get_arg(name=u'MasterUserPassword', default=u'N!v0la12vr', keyvalue=True),
+                u'MasterUserPassword': admin_pwd,
                 # u'Port': self.get_arg(name=u'Port', default=u'', keyvalue=True),
 
                 # u'SchemaName': u'schema name to use for a db instance postgres',

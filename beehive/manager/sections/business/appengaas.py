@@ -96,7 +96,7 @@ class AppEngineInstanceController(AppEngineServiceControllerChild):
         """Get app engine instance info
         """
         data_search = {}
-        data_search[u'InstanceId.N'] = self.split_arg(u'id')
+        data_search[u'InstanceId.N'] = self.get_arg(u'instance')
 
         uri = u'%s/appengineservices/instance/describeinstances' % self.baseuri
         res = self._call(uri, u'GET', data=urllib.urlencode(data_search, doseq=True))
@@ -105,6 +105,31 @@ class AppEngineInstanceController(AppEngineServiceControllerChild):
         if len(res.get(u'instancesSet')) > 0:
             resp = res.get(u'instancesSet')[0]
             self.result(resp, details=True)
+
+    @expose(aliases=[u'manage <id> <privateNodeIpAddress> <privateNodeUser>'], aliases_only=True)
+    @check_error
+    def manage(self):
+        """Get app engine instance info
+        """
+        appengine = self.get_arg(u'instance')
+        private_ip = self.get_arg(u'privateNodeIpAddress')
+        user = self.get_arg(u'privateNodeUser')
+
+        data_search = {}
+        data_search[u'InstanceId.N'] = appengine
+
+        uri = u'%s/appengineservices/instance/describeinstances' % self.baseuri
+        res = self._call(uri, u'GET', data=urllib.urlencode(data_search, doseq=True))
+        res = res.get(u'DescribeInstancesResponse')
+
+        if len(res.get(u'instancesSet')) > 0:
+            resp = res.get(u'instancesSet')[0]
+
+            private_ips = resp.get(u'privateIpAddress', [])
+            if private_ip in private_ips:
+                self.ssh2node(host_ip=private_ip, user=user)
+            else:
+                raise Exception(u'Node %s does not exist in appengine %s' % (private_ip, appengine))
 
     @expose(aliases=[u'add <name> <account> <template> <subnet> <security group> <farm name> [field=..]'],
             aliases_only=True)
@@ -148,7 +173,8 @@ class AppEngineInstanceController(AppEngineServiceControllerChild):
             data[u'instance'][u'PublicSubnetId'] = self.get_service_instance(public_subnet, account_id=account)
 
         uri = u'%s/appengineservices/instance/runinstances' % self.baseuri
-        res = self._call(uri, u'POST', data=data, timeout=600).get(u'RunInstanceResponse').get(u'instanceId')
+        res = self._call(uri, u'POST', data=data, timeout=600).get(u'RunInstanceResponse').get(u'instancesSet')[0]\
+            .get(u'instanceId')
         logger.info(u'Add app engine instance: %s' % truncate(res))
         res = {u'msg': u'Add app engine instance %s' % res}
         self.result(res, headers=[u'msg'])

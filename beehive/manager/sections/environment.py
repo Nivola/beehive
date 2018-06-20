@@ -7,7 +7,7 @@ import logging
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, check_error
 from re import match
-from beecell.simple import str2bool
+from beecell.simple import str2bool, random_password
 from cryptography.fernet import Fernet
 import urllib
 
@@ -90,6 +90,15 @@ class EnvController(BaseController):
             except:
                 raise Exception(u'verbosity must be an integer. Ex. 0, 1, 2, 3') 
         setattr(self.app._meta, key, value)
+
+    @expose(aliases=[u'generate-password <length>'], aliases_only=True)
+    @check_error
+    def generate_password(self):
+        """Generate password
+        """
+        length = self.get_arg(name=u'length')
+        pwd = random_password(length=int(length))
+        self.result({u'pwd': pwd}, headers=[u'pwd'])
 
     @expose()
     @check_error

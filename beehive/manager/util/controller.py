@@ -3,6 +3,7 @@ Created on Sep 22, 2017
 
 @author: darkbk
 '''
+import binascii
 import json
 import urllib
 
@@ -41,6 +42,7 @@ from tabulate import tabulate
 from time import sleep
 from cryptography.fernet import Fernet
 from base64 import b64decode
+import sh
 
 try:
     import asciitree
@@ -526,7 +528,7 @@ commands:
         """
         f = open(file_config, u'r')
         data = f.read()
-        extension=file_config[-4: ].lower()
+        extension = file_config[-4:].lower()
         if extension == 'json':
             data = json.loads(data)
         elif extension == 'yaml':
@@ -751,19 +753,21 @@ class ApiController(BaseController):
             if config[u'endpoint'] is None:
                 raise Exception(u'Auth endpoint is not configured')
 
-            # get user and password
-            user_env = os.environ.get(u'BEEHIVE_CMP_USER', None)
-            user_pwd_env = os.environ.get(u'BEEHIVE_CMP_USER_PWD', None)
-            user = config.get(u'user', user_env)
-            pwd = config.get(u'pwd', user_pwd_env)
+            user = config.get(u'user', None)
+            if user is not None:
+                pwd = config.get(u'pwd', None)
+            else:
+                domain = config.get(u'domain', u'local')
+                user = u'%s@%s' % (sh.id(u'-u', u'-n').rstrip(), domain)
+                pwd = None
 
-            client_config = config.get(u'oauth2-client', None)
+            # client_config = config.get(u'oauth2-client', None)
             self.client = BeehiveApiClient(config[u'endpoint'],
                                            config[u'authtype'],
                                            user,
                                            pwd,
                                            config[u'catalog'],
-                                           client_config=client_config,
+                                           client_config=self.app.oauth2_client,
                                            key=self.key)
 
             # get token
@@ -771,7 +775,14 @@ class ApiController(BaseController):
 
             if self.client.uid is None:
                 # create token
-                self.client.create_token()
+                try:
+                    self.client.create_token()
+                except BeehiveApiClientError as ex:
+                    if ex.code == 400:
+                        self.client.uid, self.client.seckey = u'', u''
+                        logger.warn(u'Authorization token can not be created')
+                    else:
+                        raise
 
                 # set token
                 self.save_token(self.client.uid, self.client.seckey)
@@ -857,7 +868,10 @@ class ApiController(BaseController):
         uri = u'/v1.0/gas/sshnodes'
         sshnode = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True)).get(u'sshnodes', [])
         if len(sshnode) == 0:
-            raise Exception(u'Host ip:%s name:%s not found' % (host_ip, host_name))
+            name = host_ip
+            if name is None:
+                name = host_name
+            raise Exception(u'Host %s not found in managed ssh nodes' % name)
         sshnode = sshnode[0]
 
         # get ssh user

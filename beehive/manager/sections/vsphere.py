@@ -247,6 +247,16 @@ class VspherePlatformFolderController(VspherePlatformControllerChild):
         logger.info(res)
         self.result(res, headers=self.headers)
 
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
+    def delete(self):
+        oid = self.get_arg(name=u'id')
+        obj = self.entity_class.get(oid)
+        task = self.entity_class.remove(obj)
+        self.wait_task(task)
+        res = {u'msg':u'Delete folder %s' % (oid)}
+        self.result(res, headers=[u'msg'])
+
 
 class VspherePlatformVappController(VspherePlatformControllerChild):
     headers = [u'id', u'parent', u'name', u'overallStatus']
@@ -538,18 +548,18 @@ class VspherePlatformNetworkDfwController(VspherePlatformNetworkChildController)
             if type(services) is not list: services = [services]
             self.result(services, headers=[u'protocol', u'subProtocol', u'destinationPort', u'protocolName'])
 
-    @expose(aliases=[u'section-delete <section>'], aliases_only=True)
+    @expose(aliases=[u'sections-delete <section>'], aliases_only=True)
     @check_error
-    def section_delete(self):
+    def sections_delete(self):
         section = self.get_arg(name=u'section')
         res = self.entity_class.delete_section(section)
         logger.info(res)
         res = {u'msg':u'Delete section %s' % (section)}
         self.result(res, headers=[u'msg'])
     
-    @expose(aliases=[u'rule-delete <section> <rule>'], aliases_only=True)
+    @expose(aliases=[u'rules-delete <section> <rule>'], aliases_only=True)
     @check_error
-    def rule_delete(self, section, rule):
+    def rules_delete(self, section, rule):
         section = self.get_arg(name=u'section')
         rule = self.get_arg(name=u'rule')
         res = self.entity_class.delete_rule(section, rule)

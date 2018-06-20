@@ -111,6 +111,7 @@ class AnsibleController(ApiController):
         self.nginx_playbook = u'%s/nginx.yml' % (self.ansible_path)
         self.beehive_playbook = u'%s/beehive.yml' % (self.ansible_path)
         self.beehive_doc_playbook = u'%s/beehive-doc.yml' % (self.ansible_path)
+        self.doc_playbook = u'%s/docs.yml' % (self.ansible_path)
         self.console_playbook = u'%s/console.yml' % (self.ansible_path)
         self.local_package_path = self.configs[u'local_package_path']
     
@@ -2541,54 +2542,68 @@ class BeehiveConsoleController(AnsibleController):
         label = 'console'
         description = "Beehive Console management"
 
-    @expose(aliases=[u'add-user <type> <sshuser> <cmpuser> <config>'], aliases_only=True)
-    @check_error
-    def add_user(self):
-        """Create new user in beehive console
-    - type: admin, user
-        """
-        type = self.get_arg(name=u'type')
-        sshuser = self.get_arg(name=u'sshuser')
-        cmpuser = self.get_arg(name=u'cmpuser')
-        config = self.get_arg(name=u'config')
-        run_data = {
-            u'tags': [u'useradd'],
-            u'sshuser': sshuser,
-            u'cmpuser': cmpuser,
-            u'config': config,
-        }
-        self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
+    # @expose(aliases=[u'add-user <type> <sshuser> <cmpuser> <config>'], aliases_only=True)
+    # @check_error
+    # def add_user(self):
+    #     """Create new user in beehive console
+    # - type: admin, user
+    #     """
+    #     type = self.get_arg(name=u'type')
+    #     sshuser = self.get_arg(name=u'sshuser')
+    #     cmpuser = self.get_arg(name=u'cmpuser')
+    #     config = self.get_arg(name=u'config')
+    #     run_data = {
+    #         u'tags': [u'useradd'],
+    #         u'sshuser': sshuser,
+    #         u'cmpuser': cmpuser,
+    #         u'config': config,
+    #     }
+    #     self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
+    #
+    # @expose(aliases=[u'del-user <type> <username>'], aliases_only=True)
+    # @check_error
+    # def del_user(self):
+    #     """Delete user from beehive console
+    #     """
+    #     type = self.get_arg(name=u'type')
+    #     username = self.get_arg(name=u'username')
+    #     run_data = {
+    #         u'tags': [u'userdel'],
+    #         u'username': username
+    #     }
+    #     self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
 
-    @expose(aliases=[u'del-user <type> <username>'], aliases_only=True)
+    @expose(aliases=[u'set-users <type> <sshusers> <config>'], aliases_only=True)
     @check_error
-    def del_user(self):
-        """Delete user from beehive console
-        """
-        type = self.get_arg(name=u'type')
-        username = self.get_arg(name=u'username')
-        run_data = {
-            u'tags': [u'userdel'],
-            u'username': username
-        }
-        self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
-
-    @expose(aliases=[u'set-user <type> <sshuser> <cmpuser> <config>'], aliases_only=True)
-    @check_error
-    def set_user(self):
-        """Set user configuration in beehive console
+    def set_users(self):
+        """Set users configuration in beehive console
     - type: admin, user
+    - sshusers: comma separated user list
         """
+        pattern = re.compile(r".*\.conf")
+        available_configs = [f[0:-5] for f in os.listdir(u'%s/../configs' % self.ansible_path)
+                             if pattern.match(f) is not None]
+        note = u'Available config are: ' + u', '.join(available_configs)
+
         type = self.get_arg(name=u'type')
-        sshuser = self.get_arg(name=u'sshuser')
-        cmpuser = self.get_arg(name=u'cmpuser')
-        config = self.get_arg(name=u'config')
-        run_data = {
-            u'tags': [u'userset'],
-            u'sshuser': sshuser,
-            u'cmpuser': cmpuser,
-            u'config': config,
-        }
-        self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
+        sshusers = self.get_arg(name=u'sshusers').split(u',')
+        # cmpuser = self.get_arg(name=u'cmpuser')
+        config = self.get_arg(name=u'config', note=note)
+
+        if type not in [u'user', u'admin']:
+            raise Exception(u'type can be only user or admin')
+
+        if config not in available_configs:
+            raise Exception(note)
+
+        # for sshuser in sshusers:
+        #     run_data = {
+        #         u'tags': [u'userset'],
+        #         u'sshuser': sshuser,
+        #         # u'cmpuser': cmpuser,
+        #         u'config': config,
+        #     }
+        #     self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
 
     @expose()
     @check_error
@@ -2798,7 +2813,6 @@ class BeehiveController(AnsibleController):
             clients.append(client)
         return clients
 
-
     @expose(aliases=[u'test  <config>'], aliases_only=True)
     @check_error
     def test(self):
@@ -2822,7 +2836,7 @@ class BeehiveController(AnsibleController):
         # get configs
         pattern = re.compile(r".*\.json|.*\.yaml")
         available_configs = [f[0:-5] for f in os.listdir(u'%s/../post-install' % self.ansible_path)
-                    if pattern.match(f) is not None ]
+                    if pattern.match(f) is not None]
         note = u'Available config are: ' + u', '.join(available_configs)
         # config_path = u'%s/../post-install/%s.json' % (self.ansible_path, self.get_arg(name=u'config', note=note))
         config_path = u'%s/../post-install/%s' % (self.ansible_path, self.get_arg(name=u'config', note=note))
@@ -3296,7 +3310,7 @@ class BeehiveController(AnsibleController):
         if apply.get(u'authority', False) is True:
             self.output(u'------ authority ------ ')
 
-            for obj in configs.get(u'authority', {}).get(u'orgs',[]):
+            for obj in configs.get(u'authority', {}).get(u'orgs', []):
                 try:
                     res = self._call(u'/v1.0/nws/organizations', u'POST', data={u'organization': obj})
                     logger.info(u'Add organization: %s' % res)
@@ -3380,7 +3394,10 @@ class BeehiveController(AnsibleController):
             for obj in configs.get(u'ssh', {}).get(u'keys', []):
                 try:
                     obj[u'priv_key'] = b64encode(self.load_file(obj[u'priv_key']))
-                    obj[u'pub_key'] = b64encode(self.load_file(obj[u'pub_key']))
+                    if obj[u'pub_key'] is not None:
+                        obj[u'pub_key'] = b64encode(self.load_file(obj[u'pub_key']))
+                    else:
+                        obj[u'pub_key'] = u''
                     res = self._call(u'/v1.0/gas/sshkeys', u'POST', data={u'sshkey': obj})
                     logger.info(u'Add sshkey: %s' % res)
                     self.output(u'Add sshkey: %s' % obj)
@@ -3538,6 +3555,8 @@ class BeehiveController(AnsibleController):
     - vassal: vassal
     - count: number of pings [optional]
         """
+        self.setup_cmp = False
+
         subsystem = self.get_arg(name=u'subsystem', default=None, keyvalue=True)
         vassal = self.get_arg(name=u'vassal', default=None, keyvalue=True)
         count = int(self.get_arg(name=u'count', keyvalue=True, default=1))
@@ -3618,7 +3637,6 @@ class BeehiveController(AnsibleController):
         for runner in runners:
             hosts.extend(self.get_hosts(runner, [group]))
         vars = runner.variable_manager.get_vars(runner.loader, host=hosts[0])
-        print host in hosts
         if host is None:
             print hosts
             print hosts[0].get_vars()
@@ -3635,6 +3653,8 @@ class BeehiveController(AnsibleController):
                 sys.stdout.flush()
 
             sh.ssh(u'%s@%s' % (ssh_user, host), u'-i', ssh_key, ssh_cmd, _out=ssh_interact, _out_bufsize=1)
+        else:
+            raise Exception(u'Host %s not found' % host)
                 
     '''def beehive_get_uwsgi_tree(self):
         """
@@ -3664,6 +3684,34 @@ class BeehiveController(AnsibleController):
         self.ansible_playbook(u'docs', run_data, playbook=self.beehive_doc_playbook)
 
 
+class BeehiveDocController(AnsibleController):
+    class Meta:
+        label = 'docs'
+        description = "Beehive document management"
+
+    @expose()
+    @check_error
+    def deploy(self):
+        """Make e deploy beehive documentation
+        """
+        run_data = {
+            u'tags': [u'doc'],
+            u'local_package_path': self.local_package_path
+        }
+        self.ansible_playbook(u'docs', run_data, playbook=self.doc_playbook)
+
+    @expose()
+    @check_error
+    def deploy_api(self):
+        """Make e deploy beehive api documentation
+        """
+        run_data = {
+            u'tags': [u'apidoc'],
+            u'local_package_path': self.local_package_path
+        }
+        self.ansible_playbook(u'docs', run_data, playbook=self.doc_playbook)
+
+
 platform_controller_handlers = [
     PlatformController,
     NginxController,
@@ -3679,4 +3727,5 @@ platform_controller_handlers = [
     NodeController,
     BeehiveController,
     BeehiveConsoleController,
+    BeehiveDocController,
 ]
