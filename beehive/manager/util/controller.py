@@ -422,7 +422,7 @@ commands:
             self.__format(data, space)
 
     @check_error
-    def result(self, data, other_headers=[], headers=None, key=None, fields=None, details=False, maxsize=50,
+    def result(self, data, other_headers=[], headers=None, key=None, fields=None, details=False, maxsize=60,
                key_separator=u'.', format=None, table_style=u'simple', transform={}, print_header=True):
         """Print result with a certain format
 
@@ -499,6 +499,11 @@ commands:
                     # maxsize = 100
 
                 if isinstance(data, dict) or isinstance(data, list):
+                    print self.app.pargs.truncate
+                    if self.app.pargs.notruncate is True:
+                        maxsize = 400
+                    if self.app.pargs.truncate is not None:
+                        maxsize = int(self.app.pargs.truncate)
                     if u'page' in orig_data:
                         print(u'Page: %s' % orig_data[u'page'])
                         print(u'Count: %s' % orig_data[u'count'])
