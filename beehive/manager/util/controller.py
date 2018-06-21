@@ -161,43 +161,43 @@ class BaseController(CementCmdBaseController):
         # get configs
         self.configs = self.app.config.get_section_dict(u'configs')
 
-    @property
-    def _help_text(self):
-        """Returns the help text displayed when '--help' is passed."""
-
-        cmd_txt = ''
-        for label in self._visible_commands:
-            cmd = self._dispatch_map[label]
-            if len(cmd['aliases']) > 0 and cmd['aliases_only']:
-                if len(cmd['aliases']) > 1:
-                    first = cmd['aliases'].pop(0)
-                    cmd_txt = cmd_txt + "  %s (aliases: %s)\n" % \
-                        (first, ', '.join(cmd['aliases']))
-                else:
-                    cmd_txt = cmd_txt + "  %s\n" % cmd['aliases'][0]
-            elif len(cmd['aliases']) > 0:
-                cmd_txt = cmd_txt + "  %s (aliases: %s)\n" % \
-                    (label, ', '.join(cmd['aliases']))
-            else:
-                cmd_txt = cmd_txt + "  %s\n" % label
-
-            if cmd['help']:
-                cmd_txt = cmd_txt + "    %s\n\n" % cmd['help']
-            else:
-                cmd_txt = cmd_txt + "\n"
-
-        if len(cmd_txt) > 0:
-            txt = '''%s
-
-commands:
-%s
-
-
-        ''' % (self._meta.description, cmd_txt)
-        else:
-            txt = self._meta.description
-
-        return textwrap.dedent(txt)        
+#     @property
+#     def _help_text(self):
+#         """Returns the help text displayed when '--help' is passed."""
+#
+#         cmd_txt = ''
+#         for label in self._visible_commands:
+#             cmd = self._dispatch_map[label]
+#             if len(cmd['aliases']) > 0 and cmd['aliases_only']:
+#                 if len(cmd['aliases']) > 1:
+#                     first = cmd['aliases'].pop(0)
+#                     cmd_txt = cmd_txt + "  %s (aliases: %s)\n" % \
+#                         (first, ', '.join(cmd['aliases']))
+#                 else:
+#                     cmd_txt = cmd_txt + "  %s\n" % cmd['aliases'][0]
+#             elif len(cmd['aliases']) > 0:
+#                 cmd_txt = cmd_txt + "  %s (aliases: %s)\n" % \
+#                     (label, ', '.join(cmd['aliases']))
+#             else:
+#                 cmd_txt = cmd_txt + "  %s\n" % label
+#
+#             if cmd['help']:
+#                 cmd_txt = cmd_txt + "    %s\n\n" % cmd['help']
+#             else:
+#                 cmd_txt = cmd_txt + "\n"
+#
+#         if len(cmd_txt) > 0:
+#             txt = '''%s
+#
+# commands:
+# %s
+#
+#
+#         ''' % (self._meta.description, cmd_txt)
+#         else:
+#             txt = self._meta.description
+#
+#         return textwrap.dedent(txt)
     
     def _get_config(self, config):
         val = getattr(self.app.pargs, config, None)

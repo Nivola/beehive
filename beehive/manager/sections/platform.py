@@ -3691,6 +3691,16 @@ class BeehiveDocController(AnsibleController):
 
     @expose()
     @check_error
+    def config(self):
+        """Update nginx configuration
+        """
+        run_data = {
+            u'tags': [u'config']
+        }
+        self.ansible_playbook(u'docs', run_data, playbook=self.doc_playbook)
+
+    @expose()
+    @check_error
     def deploy(self):
         """Make e deploy beehive documentation
         """
