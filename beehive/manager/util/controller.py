@@ -908,6 +908,16 @@ class ApiController(BaseController):
 
         # audit function
         def pre_login():
+#             data = (sshnode[u'id'], sshnode[u'name'], sshuser[u'username'], self.client.uid, time())
+            data = {
+                u'operation_name': u'login',
+                u'action_params':{
+                    u'user_oid':sshuser[u'id']
+                }
+            }
+            uri = u'/v1.0/gas/sshnodes/%s/action' % sshnode[u'id']
+            self.call(uri , u'PUT',  data=urllib.urlencode(data, doseq=True)) 
+#             print(u'pre login: %s %s %s %s %s' % data)
             pass
             # data = (sshnode[u'id'], sshnode[u'name'], sshuser[u'username'], self.client.uid, time())
             # print(u'pre login: %s %s %s %s %s' % data)
