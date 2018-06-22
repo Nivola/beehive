@@ -3416,6 +3416,7 @@ class BeehiveController(AnsibleController):
 
                 for user in obj.get(u'users', []):
                     try:
+                        user[u'name'] = u'%s-%s' % (obj[u'name'], user[u'username'])
                         user[u'node_oid'] = obj[u'name']
                         res = self._call(u'/v1.0/gas/sshusers', u'POST', data={u'sshuser': user})
                         logger.info(u'Add sshuser: %s' % res)

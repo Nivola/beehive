@@ -198,6 +198,21 @@ class SshNodeController(SshControllerChild):
         logger.info(u'Get sshnode perms: %s' % res)
         self.result(res, key=u'perms', headers=self.perm_headers)
 
+    @expose(aliases=[u'connect [id=..] [name=..] [ip=..] [user=..]'], aliases_only=True)
+    @check_error
+    def connect(self):
+        """Opens ssh connection to node
+        """
+        host_name = self.get_arg(name=u'name', default=None, keyvalue=True)
+        host_ip = self.get_arg(name=u'ip', default=None, keyvalue=True)
+        host_id = self.get_arg(name=u'id', default=None, keyvalue=True)
+        user = self.get_arg(name=u'user', default=None, keyvalue=True, required=True)
+
+        if host_name is None and host_ip is None and host_id is None:
+            raise Exception(u'At node ip address or name or id is required')
+
+        self.ssh2node(host_id=host_id, host_ip=host_ip, host_name=host_name, user=user)
+
 
 class SshUserController(SshControllerChild):
     class Meta:

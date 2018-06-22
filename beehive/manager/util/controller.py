@@ -774,7 +774,6 @@ class ApiController(BaseController):
                                            config[u'catalog'],
                                            client_config=self.app.oauth2_client,
                                            key=self.key)
-
             # get token
             self.client.uid, self.client.seckey = self.get_token()
 
@@ -850,7 +849,7 @@ class ApiController(BaseController):
 
         print(u'END')
 
-    def ssh2node(self, host_ip=None, host_name=None, user=None, key_file=None, key_string=None):
+    def ssh2node(self, host_id=None, host_ip=None, host_name=None, user=None, key_file=None, key_string=None):
         """ssh to a node
 
         :param host: host ip address
@@ -866,18 +865,24 @@ class ApiController(BaseController):
         # if group_oid is not None:
         #     data = {u'group_oid': group_oid}
         data = {}
+        uri = u'/v1.0/gas/sshnodes'
         if host_ip is not None:
             data[u'ip_address'] = host_ip
         elif host_name is not None:
             data[u'name'] = host_name
-        uri = u'/v1.0/gas/sshnodes'
-        sshnode = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True)).get(u'sshnodes', [])
-        if len(sshnode) == 0:
-            name = host_ip
-            if name is None:
-                name = host_name
-            raise Exception(u'Host %s not found in managed ssh nodes' % name)
-        sshnode = sshnode[0]
+        elif host_id is not None:
+            uri = u'/v1.0/gas/sshnodes/%s' % host_id
+        sshnode = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True))
+        if host_id is not None:
+            sshnode = sshnode.get(u'sshnode', None)
+        else:
+            sshnode = sshnode.get(u'sshnodes', [])
+            if len(sshnode) == 0:
+                name = host_ip
+                if name is None:
+                    name = host_name
+                raise Exception(u'Host %s not found in managed ssh nodes' % name)
+            sshnode = sshnode[0]
 
         # get ssh user
         data = {
@@ -903,12 +908,14 @@ class ApiController(BaseController):
 
         # audit function
         def pre_login():
-            data = (sshnode[u'id'], sshnode[u'name'], sshuser[u'username'], self.client.uid, time())
-            print(u'pre login: %s %s %s %s %s' % data)
+            pass
+            # data = (sshnode[u'id'], sshnode[u'name'], sshuser[u'username'], self.client.uid, time())
+            # print(u'pre login: %s %s %s %s %s' % data)
 
         def post_logout():
-            data = (sshnode[u'id'], sshnode[u'name'], sshuser[u'username'], self.client.uid, time())
-            print(u'post logout: %s %s %s %s %s' % data)
+            pass
+            # data = (sshnode[u'id'], sshnode[u'name'], sshuser[u'username'], self.client.uid, time())
+            # print(u'post logout: %s %s %s %s %s' % data)
 
         client = ParamikoShell(sshnode[u'ip_address'], user, keyfile=key_file, keystring=key_string,
                                pre_login=pre_login, post_logout=post_logout)
