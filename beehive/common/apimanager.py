@@ -3097,7 +3097,7 @@ class ApiView(FlaskView):
                     self.logger.error(parsed.errors)
                     raise ApiManagerError(parsed.errors, code=400)
                 data = parsed.data
-                self.logger.debug(u'Query/data after schema validation: %s' % data)
+                self.logger.debug(u'Query/data after schema validation: %s' % truncate(data))
         
             # dispatch request
             meth = getattr(self, request.method.lower(), None)
