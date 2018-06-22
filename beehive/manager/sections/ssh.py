@@ -114,7 +114,7 @@ class SshNodeController(SshControllerChild):
         ip_address = self.get_arg(name=u'ip_address', keyvalue=True, default=None)
         data = {}
         if group_oid is not None:
-            data = {u'group_oid': group_oid}
+            data = {u'group_id': group_oid}
         if ip_address is not None:
             data = {u'ip_address': ip_address}
 
