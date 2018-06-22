@@ -37,12 +37,6 @@ from datetime import datetime as dt
 from pysnmp.entity.rfc3413.oneliner import cmdgen
 from pysnmp.proto.rfc1902 import Integer, IpAddress, OctetString
 
-import dns.query
-import dns.tsigkeyring
-import dns.update
-import dns.reversename
-import dns.resolver
-
 
 logger = getLogger(__name__)
 

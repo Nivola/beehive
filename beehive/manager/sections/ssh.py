@@ -121,8 +121,8 @@ class SshNodeController(SshControllerChild):
         uri = u'%s/sshnodes' % self.baseuri
         res = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True))
         self.result(res, key=u'sshnodes',
-                    headers=[u'id', u'uuid', u'name', u'date'],
-                    fields=[u'id', u'uuid', u'name', u'date.creation'])
+                    headers=[u'id', u'name', u'desc', u'ip_address', u'date'],
+                    fields=[u'uuid', u'name', u'desc', u'ip_address', u'date.creation'])
      
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
