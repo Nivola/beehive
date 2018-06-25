@@ -13,7 +13,7 @@ import textwrap
 import sys
 
 from beecell.paramiko_shell.shell import ParamikoShell
-from beecell.simple import truncate, str2bool
+from beecell.simple import truncate, str2bool, id_gen
 from cement.core.controller import CementBaseController, expose
 from functools import wraps
 import logging
@@ -906,26 +906,42 @@ class ApiController(BaseController):
             priv_key = sshkey.get(u'priv_key')
             key_string = b64decode(priv_key)
 
+        ssh_session_id = id_gen()
+        start_time = time()
+
         # audit function
         def pre_login():
-#             data = (sshnode[u'id'], sshnode[u'name'], sshuser[u'username'], self.client.uid, time())
             data = {
-                u'operation_name': u'login',
-                u'action_params':{
-                    u'user_oid':sshuser[u'id']
+                u'action': u'login',
+                u'action_id': ssh_session_id,
+                u'params': {
+                    u'user': {
+                        u'key': sshkey[u'uuid'],
+                        u'name': sshuser[u'username']
+                    }
                 }
             }
             uri = u'/v1.0/gas/sshnodes/%s/action' % sshnode[u'id']
-            self.call(uri , u'PUT',  data=urllib.urlencode(data, doseq=True)) 
-#             print(u'pre login: %s %s %s %s %s' % data)
-            pass
-            # data = (sshnode[u'id'], sshnode[u'name'], sshuser[u'username'], self.client.uid, time())
-            # print(u'pre login: %s %s %s %s %s' % data)
+            action = self._call(uri, u'PUT',  data=data)
+            logger.debug(u'Send action: %s' % action)
 
         def post_logout():
-            pass
-            # data = (sshnode[u'id'], sshnode[u'name'], sshuser[u'username'], self.client.uid, time())
-            # print(u'post logout: %s %s %s %s %s' % data)
+            elapsed = round(time() - start_time, 2)
+
+            data = {
+                u'action': u'logout',
+                u'action_id': ssh_session_id,
+                u'params': {
+                    u'user': {
+                        u'key': sshkey[u'uuid'],
+                        u'name': sshuser[u'username']
+                    },
+                    u'elapsed': elapsed
+                }
+            }
+            uri = u'/v1.0/gas/sshnodes/%s/action' % sshnode[u'id']
+            action = self._call(uri, u'PUT', data=data)
+            logger.debug(u'Send action: %s' % action)
 
         client = ParamikoShell(sshnode[u'ip_address'], user, keyfile=key_file, keystring=key_string,
                                pre_login=pre_login, post_logout=post_logout)

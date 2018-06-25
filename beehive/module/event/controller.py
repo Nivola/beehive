@@ -1,8 +1,8 @@
-'''
+"""
 Created on Dec 31, 2014
 
 @author: darkbk
-'''
+"""
 from beecell.perf import watch
 from beecell.simple import str2uni, id_gen, truncate, format_date
 import ujson as json
@@ -11,6 +11,7 @@ from beehive.common.apimanager import ApiController, ApiManagerError,\
 from beehive.module.event.model import EventDbManager
 from beecell.db import QueryError
 from beehive.common.data import trace
+
 
 class EventController(ApiController):
     """Event Module controller.
@@ -33,17 +34,16 @@ class EventController(ApiController):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # verify base permissions
-        self.check_authorization(GenericEvent.objtype, GenericEvent.objdef, 
-                                 u'*', u'view')        
+        self.check_authorization(GenericEvent.objtype, GenericEvent.objdef, u'*', u'view')
         
         # get entity
         entity = self.event_manager.get_event(oid)
+        obj = BaseEvent(entity)
         
         # verify event specific permissions
-        self.check_authorization(entity.objtype, entity.objdef, 
-                                 entity.objid, u'view')          
+        self.check_authorization(entity.objtype, entity.objdef, entity.objid, u'view')
         
-        return entity
+        return obj
     
     @trace(entity=u'GenericEvent', op=u'view')
     def get_events(self, page=0, size=10, order=u'DESC', field=u'id', *args, **kvargs):
@@ -146,12 +146,14 @@ class EventController(ApiController):
             
         self.logger.debug(u'Get event entity definitions: %s' % res)
         return res
-    
+
+
 class GenericEvent(ApiObject):
     objtype = u'event'
     objdef = u'GenericEvent'
     objdesc = u'Generic Event'
-    
+
+
 class BaseEvent(object):
     def __init__(self, event):
         self.event = event
@@ -162,23 +164,22 @@ class BaseEvent(object):
         data = None
         try:
             data = json.loads(self.event.data)
-        except  Exception as ex:
+        except Exception as ex:
             self.logger.warn(u'Can not parse event %s data' % self.event.id)
                             
-        obj = {u'id':self.event.id,
-               u'event_id':self.event.event_id,
-               u'type':self.event.type,
-               u'objid':self.event.objid,
-               u'objdef':self.event.objdef,
-               u'objtype':self.event.objtype,
-               u'date':format_date(self.event.creation),
-               u'data':data,
-               u'source':json.loads(self.event.source),
-               u'dest':json.loads(self.event.dest)}        
+        obj = {u'id': self.event.id,
+               u'event_id': self.event.event_id,
+               u'type': self.event.type,
+               u'objid': self.event.objid,
+               u'objdef': self.event.objdef,
+               u'objtype': self.event.objtype,
+               u'date': format_date(self.event.creation),
+               u'data': data,
+               u'source': json.loads(self.event.source),
+               u'dest': json.loads(self.event.dest)}
         return obj
     
     def detail(self):
         """
         """
         return self.info()
-       

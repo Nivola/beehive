@@ -2144,8 +2144,7 @@ class ApiObject(object):
         :param params: operation params [default={}]
         :param response: operation response. [default=True]
         :param exception: exceptione raised [optinal]
-        :param etype: event type. Can be ApiObject.SYNC_OPERATION, 
-            ApiObject.ASYNC_OPERATION
+        :param etype: event type. Can be ApiObject.SYNC_OPERATION, ApiObject.ASYNC_OPERATION
         :param elapsed: elapsed time [default=0] 
         """
         if opid is None:
@@ -2179,18 +2178,18 @@ class ApiObject(object):
         }
 
         source = {
-            u'user':operation.user[0],
-            u'ip':operation.user[1],
-            u'identity':operation.user[2]
+            u'user': operation.user[0],
+            u'ip': operation.user[1],
+            u'identity': operation.user[2]
         }
         
         dest = {
-            u'ip':self.controller.module.api_manager.server_name,
-            u'port':self.controller.module.api_manager.http_socket,
-            u'objid':objid, 
-            u'objtype':self.objtype,
-            u'objdef':self.objdef,
-            u'action':action
+            u'ip': self.controller.module.api_manager.server_name,
+            u'port': self.controller.module.api_manager.http_socket,
+            u'objid': objid,
+            u'objtype': self.objtype,
+            u'objdef': self.objdef,
+            u'action': action
         }      
         
         # send event
@@ -2554,6 +2553,10 @@ class ApiViewResponse(ApiObject):
     objtype = u'api'
     objdef = u'Response'
     objdesc = u'Api Response'
+
+    api_exclusions_list = [
+        u'/v1.0/server/ping'
+    ]
     
     def __init__(self, *args, **kvargs):
         ApiObject.__init__(self, *args, **kvargs)
@@ -2636,7 +2639,7 @@ class ApiViewResponse(ApiObject):
         #else:
         #    action = u'use'
         elapsed = api.pop(u'elapsed')
-        
+
         # send event
         data = {
             u'opid': operation.id,
@@ -2663,8 +2666,9 @@ class ApiViewResponse(ApiObject):
         
         # send event
         try:
-            client = self.controller.module.api_manager.event_producer
-            client.send(self.API_OPERATION, data, source, dest)
+            if api not in self.api_exclusions_list:
+                client = self.controller.module.api_manager.event_producer
+                client.send(self.API_OPERATION, data, source, dest)
         except Exception as ex:
             self.logger.warning(u'Event can not be published. Event producer is not configured - %s' % ex)
 
