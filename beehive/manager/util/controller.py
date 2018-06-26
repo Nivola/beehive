@@ -499,7 +499,6 @@ class BaseController(CementCmdBaseController):
                     # maxsize = 100
 
                 if isinstance(data, dict) or isinstance(data, list):
-                    print self.app.pargs.truncate
                     if self.app.pargs.notruncate is True:
                         maxsize = 400
                     if self.app.pargs.truncate is not None:
@@ -758,19 +757,36 @@ class ApiController(BaseController):
             if config[u'endpoint'] is None:
                 raise Exception(u'Auth endpoint is not configured')
 
+            authtype = config[u'authtype']
+
             user = config.get(u'user', None)
-            if user is not None:
+            pwd = None
+            secret = None
+            if user is None:
+                raise Exception(u'CMP User must be specified')
+
+            if authtype == u'keyauth':
                 pwd = config.get(u'pwd', None)
-            else:
-                domain = config.get(u'domain', u'local')
-                user = u'%s@%s' % (sh.id(u'-u', u'-n').rstrip(), domain)
-                pwd = None
+                if pwd is None:
+                    raise Exception(u'CMP User password must be specified')
+            elif authtype == u'oauth2':
+                secret = config.get(u'secret', None)
+                if secret is None:
+                    raise Exception(u'CMP User secret must be specified')
+
+            # if user is not None:
+            #     pwd = config.get(u'pwd', None)
+            # else:
+            #     domain = config.get(u'domain', u'local')
+            #     user = u'%s@%s' % (sh.id(u'-u', u'-n').rstrip(), domain)
+            #     pwd = None
 
             # client_config = config.get(u'oauth2-client', None)
             self.client = BeehiveApiClient(config[u'endpoint'],
-                                           config[u'authtype'],
+                                           authtype,
                                            user,
                                            pwd,
+                                           secret,
                                            config[u'catalog'],
                                            client_config=self.app.oauth2_client,
                                            key=self.key)

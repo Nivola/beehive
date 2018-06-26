@@ -2555,7 +2555,7 @@ class ApiViewResponse(ApiObject):
     objdesc = u'Api Response'
 
     api_exclusions_list = [
-        u'/v1.0/server/ping'
+        {u'path': u'/v1.0/server/ping', u'method': u'GET'},
     ]
     
     def __init__(self, *args, **kvargs):

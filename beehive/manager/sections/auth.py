@@ -130,18 +130,22 @@ class TokenController(AuthControllerChild):
         res = {u'msg':u'Delete token %s' % value}
         self.result(res, headers=[u'msg'])
 
-    @expose(aliases=[u'create <user> [pwd=..] [login-ip=..] [client-id=..] [type=..]'], aliases_only=True)
+    @expose(aliases=[u'create [user=..] [pwd=..] [login-ip=..] [client=..] [type=..] [sub=..]'], aliases_only=True)
     @check_error
     def create(self):
         """Create keyauth token
     - type: can be keyauth, oauth2, simplehttp. [dafault=keyauth]
         - oauth2: create a token using a jwt oauth2 client
+
+    Ex.
+        create client-id=client1 type=oauth2 sub=client1
         """
-        user = self.get_arg(name=u'user')
+        user = self.get_arg(name=u'user', default=None, keyvalue=True)
         pwd = self.get_arg(name=u'pwd', default=None, keyvalue=True)
-        client_id = self.get_arg(name=u'client-id', default=None, keyvalue=True)
+        client_id = self.get_arg(name=u'client', default=None, keyvalue=True)
         login_ip = self.get_arg(name=u'login-ip', default=sh.hostname().stdout.rstrip(), keyvalue=True)
         auth_type = self.get_arg(name=u'type', default=u'keyauth', keyvalue=True)
+        sub = self.get_arg(name=u'sub', default=None, keyvalue=True)
 
         if auth_type == u'keyauth':
             data = {u'user': user, u'password': pwd, u'login-ip': login_ip}
@@ -169,12 +173,13 @@ class TokenController(AuthControllerChild):
             now = datetime.utcnow()
             claims = {
                 u'iss': client_email,
-                u'sub': user,
                 u'aud': client_token_uri,
                 u'exp': now + timedelta(seconds=60),
                 u'iat': now,
                 u'nbf': now
             }
+            if sub is not None:
+                claims[u'sub'] = sub
             # priv_key = RSA.importKey(private_key)
             encoded = jwt.encode(claims, private_key, algorithm=u'RS512')
             res = client.prepare_request_body(assertion=encoded, client_id=client_id, scope=client_scope)
@@ -273,8 +278,7 @@ class UserController(AuthControllerChild):
         uri = u'%s/users/%s' % (self.baseuri, value)        
         res = self._call(uri, u'GET')
         logger.info(res)
-        self.result(res, key=u'user', headers=self.user_headers, 
-                    details=True)
+        self.result(res, key=u'user', headers=self.user_headers, details=True)
     
     @expose(aliases=[u'update <id> [name=<name>] [desc=<desc>] [password=<password>] [active=<active>]'],
             aliases_only=True)

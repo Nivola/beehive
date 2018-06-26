@@ -264,13 +264,12 @@ class AuthController(BaseAuthController):
             
             return users, total
 
-        res, total = self.get_paginated_entities(User, get_entities, 
-                                                *args, **kvargs)
+        res, total = self.get_paginated_entities(User, get_entities, *args, **kvargs)
         return res, total
 
     @trace(entity=u'User', op=u'insert')
-    def add_user(self, name=None, storetype=None, active=True, password=None, 
-                 desc=u'', expiry_date=None, base=False, system=False):
+    def add_user(self, name=None, storetype=None, active=True, password=None, desc=u'', expiry_date=None, base=False,
+                 system=False):
         """Add new user.
 
         :param name: name of the user
@@ -1007,18 +1006,26 @@ class User(BaseUser):
     objdesc = u'System users'
     objuri = u'auth/users'
     
-    def __init__(self, controller, oid=None, objid=None, name=None, desc=None, 
-                 model=None, active=True):
-        BaseUser.__init__(self, controller, oid=oid, objid=objid, name=name, 
-                            desc=desc, active=active, model=model)
+    def __init__(self, controller, oid=None, objid=None, name=None, desc=None, model=None, active=True):
+        BaseUser.__init__(self, controller, oid=oid, objid=objid, name=name, desc=desc, active=active, model=model)
         
         self.update_object = self.manager.update_user
         self.delete_object = self.manager.remove_user
 
+    def detail(self):
+        """Get object extended info
+
+        :return: Dictionary with object detail.
+        :rtype: dict
+        :raises ApiManagerError: raise :class:`.ApiManagerError`
+        """
+        info = BaseUser.detail(self)
+        info[u'secret'] = self.model.secret
+        return info
+
     @trace(op=u'attribs-get.update')
     def get_attribs(self):
-        attrib = [{u'name':a.name, u'value':a.value, u'desc':a.desc}
-                   for a in self.model.attrib]
+        attrib = [{u'name': a.name, u'value': a.value, u'desc': a.desc} for a in self.model.attrib]
         self.logger.debug(u'User %s attributes: %s' % (self.name, attrib))
         return attrib
     
@@ -1227,7 +1234,8 @@ class User(BaseUser):
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex)
-        
+
+
 class Group(AuthObject):
     objdef = u'Group'
     objdesc = u'System groups'

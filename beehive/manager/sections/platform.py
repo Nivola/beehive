@@ -2536,7 +2536,7 @@ class NodeController(AnsibleController):
 
 
 class BeehiveConsoleController(AnsibleController):
-    setup_cmp = False
+    # setup_cmp = False
 
     class Meta:
         label = 'console'
@@ -2573,21 +2573,22 @@ class BeehiveConsoleController(AnsibleController):
     #     }
     #     self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
 
-    @expose(aliases=[u'set-users <type> <sshusers> <config>'], aliases_only=True)
+    @expose(aliases=[u'set-user <type> <sshuser> <cmpuser> <config>'], aliases_only=True)
     @check_error
-    def set_users(self):
-        """Set users configuration in beehive console
+    def set_user(self):
+        """Set user configuration in beehive console
     - type: admin, user
-    - sshusers: comma separated user list
+    - sshuser: user used to login in console
+    - cmpuser: user user to login in beehive
         """
         pattern = re.compile(r".*\.conf")
         available_configs = [f[0:-5] for f in os.listdir(u'%s/../configs' % self.ansible_path)
                              if pattern.match(f) is not None]
-        note = u'Available config are: ' + u', '.join(available_configs)
+        note = u'Available configs are: ' + u', '.join(available_configs)
 
         type = self.get_arg(name=u'type')
-        sshusers = self.get_arg(name=u'sshusers').split(u',')
-        # cmpuser = self.get_arg(name=u'cmpuser')
+        sshuser = self.get_arg(name=u'sshuser')
+        cmpuser = self.get_arg(name=u'cmpuser')
         config = self.get_arg(name=u'config', note=note)
 
         if type not in [u'user', u'admin']:
@@ -2596,14 +2597,23 @@ class BeehiveConsoleController(AnsibleController):
         if config not in available_configs:
             raise Exception(note)
 
-        # for sshuser in sshusers:
-        #     run_data = {
-        #         u'tags': [u'userset'],
-        #         u'sshuser': sshuser,
-        #         # u'cmpuser': cmpuser,
-        #         u'config': config,
-        #     }
-        #     self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
+        # get auth user
+        subsystem = self.subsystem
+        self.subsystem = u'auth'
+        uri = u'/v1.0/nas/users/%s' % cmpuser
+        user = self._call(uri, u'GET')
+        self.subsystem = subsystem
+
+        secret = user.get(u'user').get(u'secret')
+
+        run_data = {
+            u'tags': [u'userset'],
+            u'sshuser': sshuser,
+            u'cmpuser': cmpuser,
+            u'cmpuser_secret': secret,
+            u'config': config,
+        }
+        self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
 
     @expose()
     @check_error

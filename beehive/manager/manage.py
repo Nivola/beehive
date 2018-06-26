@@ -138,7 +138,7 @@ default_handlers = [
 def config_cli(app):
     # get configs
     configs = app.config.get_section_dict(u'configs')
-    envs = u', '.join(configs[u'environments'].keys())
+    envs = u', '.join(configs.get(u'environments', {}).keys())
     formats = u', '.join(BaseController.Meta.formats)
     
     if app.loop is False:
