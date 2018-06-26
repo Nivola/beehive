@@ -103,7 +103,7 @@ class AnsibleController(ApiController):
 
         self.baseuri = u'/v1.0/resource'
         self.subsystem = u'resource'
-        self.ansible_path = self.configs[u'ansible_path']
+        self.ansible_path = self.configs.get(u'ansible_path', None)
         # self.verbosity = self.app.pargs.verbosity
         self.main_playbook = u'%s/site.yml' % (self.ansible_path)
         self.create_playbook = u'%s/server.yml' % (self.ansible_path)
