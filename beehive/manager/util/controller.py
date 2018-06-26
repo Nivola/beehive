@@ -731,11 +731,10 @@ class ApiController(BaseController):
         BaseController._setup(self, base_app)
     
     @check_error    
-    def split_arg(self, key, splitWith=u','):
-        
+    def split_arg(self, key, default=None, keyvalue=True, required=False, splitWith=u',',):
         splitList = []
         
-        values = self.get_arg(name=key, default=None, keyvalue=True)     
+        values = self.get_arg(name=key, default=default, keyvalue=keyvalue, required=required)     
         if values is not None:
             for value in values.split(splitWith):
                 splitList.append(value) 

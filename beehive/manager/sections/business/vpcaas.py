@@ -88,7 +88,7 @@ class ImageServiceController(VPCaaServiceControllerChild):
             u'sort': {u'field': u'id', u'order': u'asc'},
             u'instances': res.get(u'imagesSet')
         }
-
+        
         headers = [u'id', u'name', u'state', u'type', u'account', u'platform']
         fields = [u'imageId', u'name', u'imageState', u'imageType', u'imageOwnerAlias', u'platform']
         self.result(resp, key=u'instances', headers=headers, fields=fields, maxsize=40)
@@ -830,11 +830,108 @@ class SGroupServiceController(VPCaaServiceControllerChild):
         self.result(res, headers=[u'msg'])
 
 
+class TagServiceController(VPCaaServiceControllerChild):
+    class Meta:
+        label = 'compute_tags'
+        description = "Tags service management"
+
+    @expose(aliases=[u'list [field=..]'], aliases_only=True)
+    @check_error
+    def list(self):
+        """List resource by tags
+    - ids: comma separated list of service instance ids
+    - types: comma separated list of service instance types 
+    - tags: comma separated list of tag keys
+#     - accounts: comma separated list of accounts
+    - size: maximum number of results to return
+    - page: next page token 
+        """
+        data_search = {}
+        data_search[u'resource-id.N'] = self.split_arg(u'ids', keyvalue=True)
+        data_search[u'resource-type.N'] = self.split_arg(u'types', keyvalue=True)  
+        data_search[u'key.N'] = self.split_arg(u'tags', keyvalue=True)  
+# #         data_search[u'owner-id.N'] = self.split_arg(u'accounts')
+        data_search[u'MaxResults'] = self.get_arg(name=u'size', default=10, keyvalue=True)
+        data_search[u'NextToken'] = self.get_arg(name=u'page', default=0, keyvalue=True)
+
+        uri = u'%s/computeservices/tag/describetags' % self.baseuri
+        res = self._call(uri, u'GET', data=urllib.urlencode(data_search, doseq=True))
+        res = res.get(u'DescribeTagsResponse')
+        page = data_search[u'NextToken']
+        resp = {
+            u'count': len(res.get(u'tagSet')),
+            u'page': page,
+            # TODO MANEGEMENT
+            u'total': res.get(u'nvl-tagTotal', 0),
+            u'sort': {u'field': u'resourceId', u'order': u'asc'},
+            u'instances': res.get(u'tagSet')
+        }
+
+        headers = [u'id', u'type', u'tag']
+        fields = [u'resourceId', u'resourceType', u'key']
+        self.result(resp, key=u'instances', headers=headers, fields=fields, maxsize=40)
+
+    @expose(aliases=[u'add <ids> <tags> <account>'], aliases_only=True)
+    @check_error
+    def add(self):
+        """add a tag to a resource
+    - ids: comma separated list of service instance ids
+    - tags: comma separated list of tag keys 
+    - account: owner of instance
+        """
+        data = {}
+        data[u'Tag.N'] = []
+        data[u'ResourceId.N'] = self.split_arg(key=u'ids', required=True)
+        
+        tags = self.split_arg(key=u'tags', keyvalue=True, required=True)
+        for tag in tags:
+            tag_dict = {}
+            tag_dict[u'Key'] = tag
+            data[u'Tag.N'].append(tag_dict)  
+              
+        data[u'owner-id'] = self.get_account(self.get_arg(name=u'account', keyvalue=True, required=True))
+
+        uri = u'%s/computeservices/tag/createtags' % self.baseuri
+        res = self._call(uri, u'POST', data={u'tags': data}, timeout=600)
+        logger.info(u'Add tags to a resource: %s' % res)
+        res = res.get(u'CreateTagsResponse').get(u'return')
+        res = {u'msg': u'Add tag params=%s res=%s' % (data, res)}
+        self.result(res, headers=[u'msg'])
+
+
+    @expose(aliases=[u'delete <ids>'], aliases_only=True)
+    @check_error
+    def delete(self):
+        """delete tag for a resource
+    - ids: comma separated list of service instance ids
+    - tags: comma separated list of tag keys 
+    - account: owner of instance
+        """
+        data = {}
+        data[u'ResourceId.N'] = self.split_arg(key=u'ids', required=True)
+
+        tags = self.split_arg(key=u'tags', keyvalue=True, required=False)
+        if len(tags) > 0:
+            data[u'Tag.N'] = []
+            for tag in tags:
+                tag_dict = {}
+                tag_dict[u'Key'] = tag
+                data[u'Tag.N'].append(tag_dict)
+
+        uri = u'%s/computeservices/tag/deletetags' % self.baseuri
+        res = self._call(uri, u'DELETE', data={u'tags': data}, timeout=600)
+        logger.info(u'Delete tags to resource: %s' % res)
+        res = res.get(u'DeleteTagsResponse', {}).get(u'return')
+        resp= {u'msg': u'Delete tag params=%s res=%s' % (data, res)}
+        self.result(resp, headers=[u'msg'])
+
+
 vpcaas_controller_handlers = [
     VPCaaServiceController,    
     VMServiceController,
     ImageServiceController,
     VpcServiceController,
     SubnetServiceController,
-    SGroupServiceController
+    SGroupServiceController,
+    TagServiceController
 ] 
