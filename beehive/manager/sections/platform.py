@@ -103,7 +103,7 @@ class AnsibleController(ApiController):
 
         self.baseuri = u'/v1.0/resource'
         self.subsystem = u'resource'
-        self.ansible_path = self.configs[u'ansible_path']
+        self.ansible_path = self.configs.get(u'ansible_path', None)
         # self.verbosity = self.app.pargs.verbosity
         self.main_playbook = u'%s/site.yml' % (self.ansible_path)
         self.create_playbook = u'%s/server.yml' % (self.ansible_path)
@@ -111,6 +111,7 @@ class AnsibleController(ApiController):
         self.nginx_playbook = u'%s/nginx.yml' % (self.ansible_path)
         self.beehive_playbook = u'%s/beehive.yml' % (self.ansible_path)
         self.beehive_doc_playbook = u'%s/beehive-doc.yml' % (self.ansible_path)
+        self.doc_playbook = u'%s/docs.yml' % (self.ansible_path)
         self.console_playbook = u'%s/console.yml' % (self.ansible_path)
         self.local_package_path = self.configs[u'local_package_path']
     
@@ -2535,7 +2536,7 @@ class NodeController(AnsibleController):
 
 
 class BeehiveConsoleController(AnsibleController):
-    setup_cmp = False
+    # setup_cmp = False
 
     class Meta:
         label = 'console'
@@ -2572,26 +2573,47 @@ class BeehiveConsoleController(AnsibleController):
     #     }
     #     self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
 
-    @expose(aliases=[u'set-user <type> <sshusers> <config>'], aliases_only=True)
+    @expose(aliases=[u'set-user <type> <sshuser> <cmpuser> <config>'], aliases_only=True)
     @check_error
-    def set_users(self):
-        """Set users configuration in beehive console
+    def set_user(self):
+        """Set user configuration in beehive console
     - type: admin, user
-    - sshusers: comma separated user list
+    - sshuser: user used to login in console
+    - cmpuser: user user to login in beehive
         """
-        type = self.get_arg(name=u'type')
-        sshusers = self.get_arg(name=u'sshusers').split(u',')
-        # cmpuser = self.get_arg(name=u'cmpuser')
-        config = self.get_arg(name=u'config')
+        pattern = re.compile(r".*\.conf")
+        available_configs = [f[0:-5] for f in os.listdir(u'%s/../configs' % self.ansible_path)
+                             if pattern.match(f) is not None]
+        note = u'Available configs are: ' + u', '.join(available_configs)
 
-        for sshuser in sshusers:
-            run_data = {
-                u'tags': [u'userset'],
-                u'sshuser': sshuser,
-                # u'cmpuser': cmpuser,
-                u'config': config,
-            }
-            self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
+        type = self.get_arg(name=u'type')
+        sshuser = self.get_arg(name=u'sshuser')
+        cmpuser = self.get_arg(name=u'cmpuser')
+        config = self.get_arg(name=u'config', note=note)
+
+        if type not in [u'user', u'admin']:
+            raise Exception(u'type can be only user or admin')
+
+        if config not in available_configs:
+            raise Exception(note)
+
+        # get auth user
+        subsystem = self.subsystem
+        self.subsystem = u'auth'
+        uri = u'/v1.0/nas/users/%s' % cmpuser
+        user = self._call(uri, u'GET')
+        self.subsystem = subsystem
+
+        secret = user.get(u'user').get(u'secret')
+
+        run_data = {
+            u'tags': [u'userset'],
+            u'sshuser': sshuser,
+            u'cmpuser': cmpuser,
+            u'cmpuser_secret': secret,
+            u'config': config,
+        }
+        self.ansible_playbook(u'%s-console' % type, run_data, playbook=self.console_playbook)
 
     @expose()
     @check_error
@@ -2801,7 +2823,6 @@ class BeehiveController(AnsibleController):
             clients.append(client)
         return clients
 
-
     @expose(aliases=[u'test  <config>'], aliases_only=True)
     @check_error
     def test(self):
@@ -2825,7 +2846,7 @@ class BeehiveController(AnsibleController):
         # get configs
         pattern = re.compile(r".*\.json|.*\.yaml")
         available_configs = [f[0:-5] for f in os.listdir(u'%s/../post-install' % self.ansible_path)
-                    if pattern.match(f) is not None ]
+                    if pattern.match(f) is not None]
         note = u'Available config are: ' + u', '.join(available_configs)
         # config_path = u'%s/../post-install/%s.json' % (self.ansible_path, self.get_arg(name=u'config', note=note))
         config_path = u'%s/../post-install/%s' % (self.ansible_path, self.get_arg(name=u'config', note=note))
@@ -3299,7 +3320,7 @@ class BeehiveController(AnsibleController):
         if apply.get(u'authority', False) is True:
             self.output(u'------ authority ------ ')
 
-            for obj in configs.get(u'authority', {}).get(u'orgs',[]):
+            for obj in configs.get(u'authority', {}).get(u'orgs', []):
                 try:
                     res = self._call(u'/v1.0/nws/organizations', u'POST', data={u'organization': obj})
                     logger.info(u'Add organization: %s' % res)
@@ -3405,6 +3426,7 @@ class BeehiveController(AnsibleController):
 
                 for user in obj.get(u'users', []):
                     try:
+                        user[u'name'] = u'%s-%s' % (obj[u'name'], user[u'username'])
                         user[u'node_oid'] = obj[u'name']
                         res = self._call(u'/v1.0/gas/sshusers', u'POST', data={u'sshuser': user})
                         logger.info(u'Add sshuser: %s' % res)
@@ -3544,6 +3566,8 @@ class BeehiveController(AnsibleController):
     - vassal: vassal
     - count: number of pings [optional]
         """
+        self.setup_cmp = False
+
         subsystem = self.get_arg(name=u'subsystem', default=None, keyvalue=True)
         vassal = self.get_arg(name=u'vassal', default=None, keyvalue=True)
         count = int(self.get_arg(name=u'count', keyvalue=True, default=1))
@@ -3624,7 +3648,6 @@ class BeehiveController(AnsibleController):
         for runner in runners:
             hosts.extend(self.get_hosts(runner, [group]))
         vars = runner.variable_manager.get_vars(runner.loader, host=hosts[0])
-        print host in hosts
         if host is None:
             print hosts
             print hosts[0].get_vars()
@@ -3641,6 +3664,8 @@ class BeehiveController(AnsibleController):
                 sys.stdout.flush()
 
             sh.ssh(u'%s@%s' % (ssh_user, host), u'-i', ssh_key, ssh_cmd, _out=ssh_interact, _out_bufsize=1)
+        else:
+            raise Exception(u'Host %s not found' % host)
                 
     '''def beehive_get_uwsgi_tree(self):
         """
@@ -3670,6 +3695,218 @@ class BeehiveController(AnsibleController):
         self.ansible_playbook(u'docs', run_data, playbook=self.beehive_doc_playbook)
 
 
+class BeehiveDocController(AnsibleController):
+    class Meta:
+        label = 'docs'
+        description = "Beehive document management"
+
+    @expose()
+    @check_error
+    def config(self):
+        """Update nginx configuration
+        """
+        run_data = {
+            u'tags': [u'config']
+        }
+        self.ansible_playbook(u'docs', run_data, playbook=self.doc_playbook)
+
+    @expose()
+    @check_error
+    def deploy(self):
+        """Make e deploy beehive documentation
+        """
+        run_data = {
+            u'tags': [u'doc'],
+            u'local_package_path': self.local_package_path
+        }
+        self.ansible_playbook(u'docs', run_data, playbook=self.doc_playbook)
+
+    @expose()
+    @check_error
+    def deploy_api(self):
+        """Make e deploy beehive api documentation
+        """
+        run_data = {
+            u'tags': [u'apidoc'],
+            u'local_package_path': self.local_package_path
+        }
+        self.ansible_playbook(u'docs', run_data, playbook=self.doc_playbook)
+
+
+class DnsController(AnsibleController):
+    paramdns = None  # type: object
+    setup_cmp = False
+
+    class Meta:
+        label = 'dns'
+        description = "Dns management"
+#        "add", "delete"
+
+    @check_error
+    def _ext_parse_args(self):
+        BaseController._ext_parse_args(self)
+        self.paramdns = self.configs[u'environments'][self.env][u'orchestrators'].get(u'dns')
+
+#        print "parametri dns: ", paramdns
+#        print "key: ",paramdns["internal"].get("key")
+
+#        label = self.app.pargs.orchestrator
+#        if label is None:
+#            label = orchestrators.keys()[0]
+#            # raise Exception(u'Openstack platform label must be specified. Valid label are: %s' %
+#            #                 u', '.join(orchestrators.keys()))
+#        if label not in orchestrators:
+#            raise Exception(u'Valid label are: %s' % u', '.join(orchestrators.keys()))
+#        conf = orchestrators.get(label)
+#        print "conf : ",conf
+#        project = self.app.pargs.project
+#        if project is None:
+#            project = conf.get(u'project')
+#        self.client = OpenstackManager(conf.get(u'uri'), default_region=conf.get(u'region'))
+#        self.client.authorize(conf.get(u'user'), conf.get(u'pwd'), project=project, domain=conf.get(u'domain'),
+#                              key=self.key)
+
+    @expose(aliases=[u'add <lato> <ttl> <reverse> <hostname> <tiporec> <ip> <alias>'], aliases_only=True)
+    @check_error
+    def add(self):
+        """
+        -  lato=<valore> default="internal", valori accettabili: "internal", "external"
+        -  key=<chiave della zona>
+        -  ttl=<valore>  default=86400
+        -  reverse=<boolean> default=yes
+        -  hostname=<FQDN>
+        -  tiporec=<value> default="A",   valori accettati: "A","CNAME"
+        -  ip=<value>, valore dell'ip da risolvere
+        -  alias=<value>, valore dell'alias gia' esistente (senza dominio)
+
+        """
+        lato = self.get_arg(name=u'lato', keyvalue=True, default="internal")
+     #   print self.paramdns
+        key = self.paramdns[lato].get("key")
+        server = self.paramdns[lato].get("serverdns")
+
+     #   server = self.get_arg(name=u'server', keyvalue=True, default="10.103.48.1")
+     #   key = self.get_arg(name=u'key', keyvalue=True, required=True)
+     #   key = "hLW9uJtEtp3ZKQAsHlO9sDIgVkz+sS3K1uOzPtLPAEEyU6SMAa1YxtJ1jbClKAlU2AWqKasgJu2YhkLbJd4Evg=="
+     #   print "key: ", key
+        ttl = self.get_arg(name=u'ttl', keyvalue=True, default="86400")
+        reverse = self.get_arg(name=u'reverse', keyvalue=True, default="yes")
+        hostname = self.get_arg(name=u'hostname', keyvalue=True, required=True)
+        tiporec = self.get_arg(name=u'tiporec', keyvalue=True, default="A")
+        ip = self.get_arg(name=u'ip', keyvalue=True, required=True)
+        alias = self.get_arg(name=u'alias', keyvalue=True)
+
+        '''
+        print "lato: ", lato
+        print "server", server
+        print "key: ", key
+        print "ttl: ", ttl
+        print "reverse: ", reverse
+        print "hostname: ", hostname
+        print "ip: ", ip
+        print "tiporec: ", tiporec
+        print "alias: ", alias
+        '''
+
+        if reverse == "yes":
+            doptr=True
+        else:
+            doptr=False
+
+        if lato == "internal" or lato == "external":
+            pass
+        else:
+            print "lato non corretto", lato, " valori ammessi: 'internal', 'external', Null"
+            sys.exit()
+#            res = session.query(Environment_DNS).filter(Environment_DNS.name_host == hostname, \
+#                                                    Environment_DNS.data_canc == "").first()
+#        if res:
+#            print "Nome host gia' presente nel DB"
+#            sys.exit()
+#
+#        initialize1 = Environment_DNS(name_host=hostname,
+#                                      ip_host=ip,
+#                                      data_reg=time.strftime("%d%m%Y %H:%M"),
+#                                      data_canc="")
+#        session.add(initialize1)
+
+        '''
+        eseguo l'operazione sul DNS
+        '''
+        doUpdateCli("add", tiporec, server, key, None, ttl, doptr, ip, hostname, alias)
+
+        '''
+        committo l'operazione sul db
+        '''
+
+#        session.commit()
+
+
+        return()
+
+    @expose(aliases=[u'delete <lato> <ttl> <reverse> <hostname> <tiporec> <ip> <alias>'], aliases_only=True)
+    @check_error
+    def delete(self):
+        """
+        -  server=<ip server>
+        -  key=<chiave della zona>
+        -  ttl=<valore>  default=86400
+        -  reverse=<boolean> default=yes
+
+        -  hostname=<FQDN>
+        -  tiporec=<value> default="A",   valori accettati: "A","CNAME"
+        -  ip=<value>, valore dell'ip da risolvere
+        -  alias=<value>, valore dell'alias gia' esistente (senza dominio)
+
+        """
+        lato = self.get_arg(name=u'lato', keyvalue=True, default="internal")
+ #       print self.paramdns
+        key = self.paramdns["internal"].get("key")
+        server = self.paramdns["internal"].get("serverdns")
+
+        ttl = self.get_arg(name=u'ttl', keyvalue=True, default="86400")
+        reverse = self.get_arg(name=u'reverse', keyvalue=True, default="yes")
+        hostname = self.get_arg(name=u'hostname', keyvalue=True, required=True)
+        tiporec = self.get_arg(name=u'tiporec', keyvalue=True, default="A")
+        ip = self.get_arg(name=u'ip', keyvalue=True, required=True)
+        alias = self.get_arg(name=u'alias', keyvalue=True, default="yes")
+
+        '''
+        print "server: ", server
+        print "key: ", key
+        print "ttl: ", ttl
+        print "reverse: ", reverse
+        print "hostname: ", hostname
+        print "ip: ", ip
+        print "tiporec: ", tiporec
+        print "alias: ", alias
+        '''
+#        res = session.query(Environment_DNS).filter(Environment_DNS.name_host == search_name, \
+#                                                    Environment_DNS.data_canc == "").first()
+#        if not res:
+#            print "Nome host non presente nel DB"
+#            sys.exit()
+#        q_id = res.id
+        #  print "data canc--->>",res.data_canc
+        #  print q_id
+#        session.query(Environment_DNS).filter(Environment_DNS.id == q_id).update(
+#            {"data_canc": time.strftime("%d%m%Y %H:%M")})
+
+        '''
+        eseguo l'operazione sul DNS
+        '''
+        doUpdateCli("delete", tiporec, server, key, "", ttl, doptr, ip, hostname, alias)
+
+        '''
+        committo l'operazione sul db
+        '''
+ #       session.commit()
+
+        return()
+
+
+
+
 platform_controller_handlers = [
     PlatformController,
     NginxController,
@@ -3685,4 +3922,5 @@ platform_controller_handlers = [
     NodeController,
     BeehiveController,
     BeehiveConsoleController,
+    BeehiveDocController,
 ]

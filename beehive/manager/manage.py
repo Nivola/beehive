@@ -138,7 +138,7 @@ default_handlers = [
 def config_cli(app):
     # get configs
     configs = app.config.get_section_dict(u'configs')
-    envs = u', '.join(configs[u'environments'].keys())
+    envs = u', '.join(configs.get(u'environments', {}).keys())
     formats = u', '.join(BaseController.Meta.formats)
     
     if app.loop is False:
@@ -158,6 +158,10 @@ def config_cli(app):
                               help='response colered. Can be true or false. [default=true]')
         app.args.add_argument('--verbosity', action='store', dest='verbosity', help='ansible verbosity')
         app.args.add_argument('--cmds', dest='cmds', action='store_true', help='list available commands')
+        app.args.add_argument('--notruncate', dest='notruncate', action='store_true',
+                              help='disable long string truncation')
+        app.args.add_argument('--truncate', dest='truncate', action='store',
+                              help='set max length of long string')
     # else:
     #    app.args.add_argument('version', action='version', version=BANNER)
 

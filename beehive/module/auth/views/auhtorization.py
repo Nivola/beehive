@@ -280,9 +280,12 @@ class ListUsers(SwaggerApiView):
         return self.format_paginated_response(res, u'users', total, **data)
 
 
-## get
+class GetUserParamsResponseSchema(ApiObjectResponseSchema):
+    secret = fields.String(required=True, default=u'test', example=u'test')
+
+
 class GetUserResponseSchema(Schema):
-    user = fields.Nested(ApiObjectResponseSchema, required=True, allow_none=True)
+    user = fields.Nested(GetUserParamsResponseSchema, required=True, allow_none=True)
 
 
 class GetUser(SwaggerApiView):
@@ -304,11 +307,8 @@ class GetUser(SwaggerApiView):
         Call this api to get user by id, uuid or name
         """
         obj = controller.get_user(oid)
-        res = obj.info()
-        #res[u'perms'] = obj.get_permissions()
-        #res[u'groups'] = obj.get_groups()
-        #res[u'roles'] = obj.get_roles()        
-        resp = {u'user':res} 
+        res = obj.detail()
+        resp = {u'user': res}
         return resp
 
 

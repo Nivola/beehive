@@ -1053,6 +1053,74 @@ class AccountController(AuthorityControllerChild):
         ConnectionHelper.get_service_instances(self, data)
 
 
+class AccountTemplateController(AuthorityControllerChild):
+    class Meta:
+        label = u'templates'
+        # aliases = ['account-templates']
+        # aliases_only = True
+
+        description = "Account Templates management"
+
+    @expose()
+    @check_error
+    def list(self):
+        """List all accounts templates
+        """
+        # data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
+        uri = u'%s/accounttemplates' % self.baseuri
+        res = self._call(uri, u'GET')
+        logger.info(res)
+        headers = [u"id", u"uuid", u"name", u"desc", u"is_default", u"default_service_types", u"services"]
+        fields = [u"id", u"uuid", u"name", u"desc", u"is_default", u"default_service_types", u"services"]
+        self.result(res, key=u'accounts_templates', headers=headers, fields=fields, maxsize=40)
+
+    @expose(aliases=[u'add <name>'], aliases_only=True)
+    @check_error
+    def add(self):
+        """Add account template <name>
+        if name has is like @<name> then  name shal be a configuration file
+        in json or yaml format.
+        - field: can be desc, is_default, default_service_types, services
+        """
+        name = self.get_arg(name=u'name')
+
+        if name.find(u'@') == 0:
+            params = self.load_config(name[1:len(name)])
+            name = params.get(u'name', 'anonimo')
+        else:
+            params = self.get_query_params(*self.app.pargs.extra_arguments)
+
+        data = {
+            u'account_template': {
+                u'name': name,
+                u'desc': params.get(u'desc', None),
+                u'is_default': params.get(u'is_default', False),
+                u'version': params.get(u'version', '1.0'),
+                u'default_service_types': params.get(u'default_service_types', []),
+                u'services': params.get(u'services', None),
+            }
+        }
+
+        uri = u'%s/accounttemplates' % self.baseuri
+        res = self._call(uri, u'POST', data=data, timeout=600)
+        logger.info(u'Add account templatew: %s' % truncate(res))
+        res = {u'msg': u'Add account template %s' % res[u'uuid']}
+        self.result(res, headers=[u'msg'])
+
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
+    def delete(self):
+        """Delete account template
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'%s/accounttemplates/%s' % (self.baseuri, value)
+        res = self._call(uri, u'DELETE')
+        logger.info(res)
+        res = {u'msg': u'Delete account tempate %s' % value}
+        self.result(res, headers=[u'msg'])
+
+
+
 class SubwalletController(AuthorityControllerChild):
     class Meta:
         label = 'subwallets'
@@ -1464,6 +1532,7 @@ authority_controller_handlers = [
     PriceListController,
     DivisionController,
     AccountController,
+    AccountTemplateController,
     SubwalletController,
     WalletController,
     AgreementController,

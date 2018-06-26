@@ -868,7 +868,7 @@ class VspherePlatformServerController(VspherePlatformControllerChild):
         for o in objs:
             res.append(self.entity_class.info(o))
         logger.info(res)
-        self.result(res, headers=self.headers, maxsize=30)
+        self.result(res, headers=self.headers, maxsize=60)
         
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error

@@ -207,6 +207,7 @@ class ApiManager(object):
 
         # proxy
         self.http_proxy = None
+        self.https_proxies = []
         self.tcp_proxy = None
 
         # stack uri reference
@@ -809,8 +810,9 @@ class ApiManager(object):
                 ##### http proxy configuration #####
                 try:
                     self.logger.info(u'Configure http proxy - CONFIGURE')
-                    conf = configurator.get(app=self.app_name, group=u'httpproxy')                    
-                    self.http_proxy = conf[0].value
+                    conf = configurator.get(app=self.app_name, group=u'httpproxy')
+                    proxy = conf[0].value
+                    self.http_proxy = proxy
                     self.logger.info(u'Setup http proxy: %s' % self.http_proxy)
                     self.logger.info(u'Configure http proxy - CONFIGURED')
                 except:
@@ -2138,19 +2140,22 @@ class ApiObject(object):
         """Publish an event to event queue.
         
         :param op: operation to audit
-        :param op: operation id to audit [optional]
+        :param opid: operation id to audit [optional]
         :param params: operation params [default={}]
         :param response: operation response. [default=True]
         :param exception: exceptione raised [optinal]
-        :param etype: event type. Can be ApiObject.SYNC_OPERATION, 
-            ApiObject.ASYNC_OPERATION
+        :param etype: event type. Can be ApiObject.SYNC_OPERATION, ApiObject.ASYNC_OPERATION
         :param elapsed: elapsed time [default=0] 
         """
-        if opid is None: opid = operation.id
+        if opid is None:
+            opid = operation.id
         objid = u'*'
-        if self.objid is not None: objid = self.objid
-        if etype is None: etype = self.SYNC_OPERATION
-        if exception is not None: response = (False, escape(str(exception)))
+        if self.objid is not None:
+            objid = self.objid
+        if etype is None:
+            etype = self.SYNC_OPERATION
+        if exception is not None:
+            response = (False, escape(str(exception)))
         action = op.split(u'.')[-1]
         
         # remove object from args - it does not serialize in event
@@ -2173,18 +2178,18 @@ class ApiObject(object):
         }
 
         source = {
-            u'user':operation.user[0],
-            u'ip':operation.user[1],
-            u'identity':operation.user[2]
+            u'user': operation.user[0],
+            u'ip': operation.user[1],
+            u'identity': operation.user[2]
         }
         
         dest = {
-            u'ip':self.controller.module.api_manager.server_name,
-            u'port':self.controller.module.api_manager.http_socket,
-            u'objid':objid, 
-            u'objtype':self.objtype,
-            u'objdef':self.objdef,
-            u'action':action
+            u'ip': self.controller.module.api_manager.server_name,
+            u'port': self.controller.module.api_manager.http_socket,
+            u'objid': objid,
+            u'objtype': self.objtype,
+            u'objdef': self.objdef,
+            u'action': action
         }      
         
         # send event
@@ -2548,6 +2553,10 @@ class ApiViewResponse(ApiObject):
     objtype = u'api'
     objdef = u'Response'
     objdesc = u'Api Response'
+
+    api_exclusions_list = [
+        {u'path': u'/v1.0/server/ping', u'method': u'GET'},
+    ]
     
     def __init__(self, *args, **kvargs):
         ApiObject.__init__(self, *args, **kvargs)
@@ -2630,7 +2639,7 @@ class ApiViewResponse(ApiObject):
         #else:
         #    action = u'use'
         elapsed = api.pop(u'elapsed')
-        
+
         # send event
         data = {
             u'opid': operation.id,
@@ -2657,8 +2666,9 @@ class ApiViewResponse(ApiObject):
         
         # send event
         try:
-            client = self.controller.module.api_manager.event_producer
-            client.send(self.API_OPERATION, data, source, dest)
+            if api not in self.api_exclusions_list:
+                client = self.controller.module.api_manager.event_producer
+                client.send(self.API_OPERATION, data, source, dest)
         except Exception as ex:
             self.logger.warning(u'Event can not be published. Event producer is not configured - %s' % ex)
 
@@ -3091,7 +3101,7 @@ class ApiView(FlaskView):
                     self.logger.error(parsed.errors)
                     raise ApiManagerError(parsed.errors, code=400)
                 data = parsed.data
-                self.logger.debug(u'Query/data after schema validation: %s' % data)
+                self.logger.debug(u'Query/data after schema validation: %s' % truncate(data))
         
             # dispatch request
             meth = getattr(self, request.method.lower(), None)

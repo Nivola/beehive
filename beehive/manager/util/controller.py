@@ -13,7 +13,7 @@ import textwrap
 import sys
 
 from beecell.paramiko_shell.shell import ParamikoShell
-from beecell.simple import truncate, str2bool
+from beecell.simple import truncate, str2bool, id_gen
 from cement.core.controller import CementBaseController, expose
 from functools import wraps
 import logging
@@ -161,43 +161,43 @@ class BaseController(CementCmdBaseController):
         # get configs
         self.configs = self.app.config.get_section_dict(u'configs')
 
-    @property
-    def _help_text(self):
-        """Returns the help text displayed when '--help' is passed."""
-
-        cmd_txt = ''
-        for label in self._visible_commands:
-            cmd = self._dispatch_map[label]
-            if len(cmd['aliases']) > 0 and cmd['aliases_only']:
-                if len(cmd['aliases']) > 1:
-                    first = cmd['aliases'].pop(0)
-                    cmd_txt = cmd_txt + "  %s (aliases: %s)\n" % \
-                        (first, ', '.join(cmd['aliases']))
-                else:
-                    cmd_txt = cmd_txt + "  %s\n" % cmd['aliases'][0]
-            elif len(cmd['aliases']) > 0:
-                cmd_txt = cmd_txt + "  %s (aliases: %s)\n" % \
-                    (label, ', '.join(cmd['aliases']))
-            else:
-                cmd_txt = cmd_txt + "  %s\n" % label
-
-            if cmd['help']:
-                cmd_txt = cmd_txt + "    %s\n\n" % cmd['help']
-            else:
-                cmd_txt = cmd_txt + "\n"
-
-        if len(cmd_txt) > 0:
-            txt = '''%s
-
-commands:
-%s
-
-
-        ''' % (self._meta.description, cmd_txt)
-        else:
-            txt = self._meta.description
-
-        return textwrap.dedent(txt)        
+#     @property
+#     def _help_text(self):
+#         """Returns the help text displayed when '--help' is passed."""
+#
+#         cmd_txt = ''
+#         for label in self._visible_commands:
+#             cmd = self._dispatch_map[label]
+#             if len(cmd['aliases']) > 0 and cmd['aliases_only']:
+#                 if len(cmd['aliases']) > 1:
+#                     first = cmd['aliases'].pop(0)
+#                     cmd_txt = cmd_txt + "  %s (aliases: %s)\n" % \
+#                         (first, ', '.join(cmd['aliases']))
+#                 else:
+#                     cmd_txt = cmd_txt + "  %s\n" % cmd['aliases'][0]
+#             elif len(cmd['aliases']) > 0:
+#                 cmd_txt = cmd_txt + "  %s (aliases: %s)\n" % \
+#                     (label, ', '.join(cmd['aliases']))
+#             else:
+#                 cmd_txt = cmd_txt + "  %s\n" % label
+#
+#             if cmd['help']:
+#                 cmd_txt = cmd_txt + "    %s\n\n" % cmd['help']
+#             else:
+#                 cmd_txt = cmd_txt + "\n"
+#
+#         if len(cmd_txt) > 0:
+#             txt = '''%s
+#
+# commands:
+# %s
+#
+#
+#         ''' % (self._meta.description, cmd_txt)
+#         else:
+#             txt = self._meta.description
+#
+#         return textwrap.dedent(txt)
     
     def _get_config(self, config):
         val = getattr(self.app.pargs, config, None)
@@ -422,7 +422,7 @@ commands:
             self.__format(data, space)
 
     @check_error
-    def result(self, data, other_headers=[], headers=None, key=None, fields=None, details=False, maxsize=50,
+    def result(self, data, other_headers=[], headers=None, key=None, fields=None, details=False, maxsize=60,
                key_separator=u'.', format=None, table_style=u'simple', transform={}, print_header=True):
         """Print result with a certain format
 
@@ -499,6 +499,10 @@ commands:
                     # maxsize = 100
 
                 if isinstance(data, dict) or isinstance(data, list):
+                    if self.app.pargs.notruncate is True:
+                        maxsize = 400
+                    if self.app.pargs.truncate is not None:
+                        maxsize = int(self.app.pargs.truncate)
                     if u'page' in orig_data:
                         print(u'Page: %s' % orig_data[u'page'])
                         print(u'Count: %s' % orig_data[u'count'])
@@ -752,39 +756,52 @@ class ApiController(BaseController):
             if config[u'endpoint'] is None:
                 raise Exception(u'Auth endpoint is not configured')
 
-            # get user and password
-            # user_env = os.environ.get(u'BEEHIVE_CMP_USER', None)
-            # user_trust = str2bool(os.environ.get(u'BEEHIVE_CMP_USER_TRUST', False))
-            # user_pwd_env = os.environ.get(u'BEEHIVE_CMP_USER_PWD', None)
-            # user = config.get(u'user', user_env)
-            # pwd = config.get(u'pwd', user_pwd_env)
-
-            # user_shell_env = os.environ.get(u'USER')
-            # user_cmp_env = os.environ.get(u'BEEHIVE_CMP_USER', user_shell_env)
+            authtype = config[u'authtype']
 
             user = config.get(u'user', None)
-            if user is not None:
+            pwd = None
+            secret = None
+            if user is None:
+                raise Exception(u'CMP User must be specified')
+
+            if authtype == u'keyauth':
                 pwd = config.get(u'pwd', None)
-            else:
-                domain = config.get(u'domain', u'local')
-                user = u'%s@%s' % (sh.id(u'-u', u'-n').rstrip(), domain)
-                pwd = None
+                if pwd is None:
+                    raise Exception(u'CMP User password must be specified')
+            elif authtype == u'oauth2':
+                secret = config.get(u'secret', None)
+                if secret is None:
+                    raise Exception(u'CMP User secret must be specified')
+
+            # if user is not None:
+            #     pwd = config.get(u'pwd', None)
+            # else:
+            #     domain = config.get(u'domain', u'local')
+            #     user = u'%s@%s' % (sh.id(u'-u', u'-n').rstrip(), domain)
+            #     pwd = None
 
             # client_config = config.get(u'oauth2-client', None)
             self.client = BeehiveApiClient(config[u'endpoint'],
-                                           config[u'authtype'],
+                                           authtype,
                                            user,
                                            pwd,
+                                           secret,
                                            config[u'catalog'],
                                            client_config=self.app.oauth2_client,
                                            key=self.key)
-
             # get token
             self.client.uid, self.client.seckey = self.get_token()
 
             if self.client.uid is None:
                 # create token
-                self.client.create_token()
+                try:
+                    self.client.create_token()
+                except BeehiveApiClientError as ex:
+                    if ex.code == 400:
+                        self.client.uid, self.client.seckey = u'', u''
+                        logger.warn(u'Authorization token can not be created')
+                    else:
+                        raise
 
                 # set token
                 self.save_token(self.client.uid, self.client.seckey)
@@ -847,7 +864,7 @@ class ApiController(BaseController):
 
         print(u'END')
 
-    def ssh2node(self, host_ip=None, host_name=None, user=None, key_file=None, key_string=None):
+    def ssh2node(self, host_id=None, host_ip=None, host_name=None, user=None, key_file=None, key_string=None):
         """ssh to a node
 
         :param host: host ip address
@@ -863,18 +880,24 @@ class ApiController(BaseController):
         # if group_oid is not None:
         #     data = {u'group_oid': group_oid}
         data = {}
+        uri = u'/v1.0/gas/sshnodes'
         if host_ip is not None:
             data[u'ip_address'] = host_ip
         elif host_name is not None:
             data[u'name'] = host_name
-        uri = u'/v1.0/gas/sshnodes'
-        sshnode = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True)).get(u'sshnodes', [])
-        if len(sshnode) == 0:
-            name = host_ip
-            if name is None:
-                name = host_name
-            raise Exception(u'Host %s not found in managed ssh nodes' % name)
-        sshnode = sshnode[0]
+        elif host_id is not None:
+            uri = u'/v1.0/gas/sshnodes/%s' % host_id
+        sshnode = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True))
+        if host_id is not None:
+            sshnode = sshnode.get(u'sshnode', None)
+        else:
+            sshnode = sshnode.get(u'sshnodes', [])
+            if len(sshnode) == 0:
+                name = host_ip
+                if name is None:
+                    name = host_name
+                raise Exception(u'Host %s not found in managed ssh nodes' % name)
+            sshnode = sshnode[0]
 
         # get ssh user
         data = {
@@ -898,14 +921,42 @@ class ApiController(BaseController):
             priv_key = sshkey.get(u'priv_key')
             key_string = b64decode(priv_key)
 
+        ssh_session_id = id_gen()
+        start_time = time()
+
         # audit function
         def pre_login():
-            data = (sshnode[u'id'], sshnode[u'name'], sshuser[u'username'], self.client.uid, time())
-            print(u'pre login: %s %s %s %s %s' % data)
+            data = {
+                u'action': u'login',
+                u'action_id': ssh_session_id,
+                u'params': {
+                    u'user': {
+                        u'key': sshkey[u'uuid'],
+                        u'name': sshuser[u'username']
+                    }
+                }
+            }
+            uri = u'/v1.0/gas/sshnodes/%s/action' % sshnode[u'id']
+            action = self._call(uri, u'PUT',  data=data)
+            logger.debug(u'Send action: %s' % action)
 
         def post_logout():
-            data = (sshnode[u'id'], sshnode[u'name'], sshuser[u'username'], self.client.uid, time())
-            print(u'post logout: %s %s %s %s %s' % data)
+            elapsed = round(time() - start_time, 2)
+
+            data = {
+                u'action': u'logout',
+                u'action_id': ssh_session_id,
+                u'params': {
+                    u'user': {
+                        u'key': sshkey[u'uuid'],
+                        u'name': sshuser[u'username']
+                    },
+                    u'elapsed': elapsed
+                }
+            }
+            uri = u'/v1.0/gas/sshnodes/%s/action' % sshnode[u'id']
+            action = self._call(uri, u'PUT', data=data)
+            logger.debug(u'Send action: %s' % action)
 
         client = ParamikoShell(sshnode[u'ip_address'], user, keyfile=key_file, keystring=key_string,
                                pre_login=pre_login, post_logout=post_logout)

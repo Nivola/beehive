@@ -285,8 +285,7 @@ class BaseAuthController(ApiController):
         except Exception as ex:
             self.logger.error(u'No identities found: %s' % ex)
             raise ApiManagerError(u'No identities found')
-        
-        #User(self).send_event(u'identity.view', params={}) 
+
         self.logger.debug(u'Get identities from redis: %s' % truncate(res))
         return res    
     
@@ -340,7 +339,7 @@ class BaseAuthController(ApiController):
         except ApiManagerError as ex:
             raise ApiManagerError(ex.value, code=ex.code)
     
-    @trace(entity=u'Token', op=u'login.check.insert')
+    @trace(entity=u'Token', op=u'user.check.insert')
     def check_login_user(self, name, domain, password, login_ip):
         """Simple http authentication login.
         
@@ -404,11 +403,12 @@ class BaseAuthController(ApiController):
         return user, dbuser_attribs
 
     @trace(entity=u'Token', op=u'login.check.insert')
-    def check_base_login(self, name, domain, login_ip, dbuser, dbuser_attribs):
+    def check_base_login(self, name, domain, secret, login_ip, dbuser, dbuser_attribs):
         """Base check login.
 
         :param name: user name
         :param domain: user authentication domain
+        :param secret: user secret
         :param login_ip: user login_ip
         :param dbuser: database user instance
         :param dbuser_attribs: user attributes as dict
@@ -418,9 +418,14 @@ class BaseAuthController(ApiController):
         # login user
         try:
             user = self.module.authentication_manager.check(dbuser.uuid, name, domain, login_ip)
-        except (AuthError) as ex:
+        except AuthError as ex:
             self.logger.error(ex.desc)
             raise ApiManagerError(ex.desc, code=401)
+
+        if secret is not None and dbuser.secret != secret:
+            self.logger.error(u'User secret is wrong')
+            raise ApiManagerError(u'User secret is wrong', code=401)
+        self.logger.debug(u'User %s secret is correct' % dbuser.uuid)
 
         self.logger.info(u'Login user: %s' % user)
 
@@ -433,7 +438,7 @@ class BaseAuthController(ApiController):
             # set user roles
             self.__set_user_roles(dbuser, user)
         except QueryError as ex:
-            self.logger.error(ex.desc)
+            self.logger.error(ex.desc, exc_info=1)
             raise ApiManagerError(ex.desc, code=401)
 
         return user, dbuser_attribs
@@ -444,11 +449,9 @@ class BaseAuthController(ApiController):
     
     def __set_user_perms(self, dbuser, user):
         """Set user permissions """
-        #perms = self.auth_manager.get_user_permissions2(dbuser)
         perms = self.auth_manager.get_login_permissions(dbuser)
         compress_perms = binascii.b2a_base64(compress(json.dumps(perms)))
         user.set_perms(compress_perms)
-        #user.set_perms(perms)
     
     def __set_user_roles(self, dbuser, user):
         """Set user roles """    
@@ -768,15 +771,17 @@ class BaseAuthController(ApiController):
             raise ApiManagerError(ex, code=400)        
 
         return res    
-    
+
+
 class AuthObject(ApiInternalObject):
     pass
-    
+
+
 class User(AuthObject):
     objdef = u'User'
     objdesc = u'System users'
-    
+
+
 class Token(AuthObject):
     objdef = u'Token'
     objdesc = u'Authorization Token'
-        

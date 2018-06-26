@@ -299,38 +299,40 @@ class VMServiceController(VPCaaServiceControllerChild):
             .get(u'reservationSet')[0].get(u'instancesSet')[0]
         fixed_ip = getkey(server, u'privateIpAddress')
 
-        # code to ssh module
-        self.subsystem = u'ssh'
+        self.ssh2node(host_ip=fixed_ip, user=user)
 
-        # get ssh node
-        # if group_oid is not None:
-        #     data = {u'group_oid': group_oid}
-        data = {u'ip_address': fixed_ip}
-        uri = u'/v1.0/gas/sshnodes'
-        sshnode = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True)).get(u'sshnodes', [])[0]
-        #print sshnode
-
-        # get ssh user
-        data = {
-            u'node_oid': sshnode[u'id'],
-            u'username': user
-        }
-        uri = u'/v1.0/gas/sshusers'
-        sshuser = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True)).get(u'sshusers', [])[0]
-        #print sshuser
-
-        # get ssh ksy
-        data = {
-            u'user_oid': sshuser[u'id']
-        }
-        uri = u'/v1.0/gas/sshkeys'
-        sshkey = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True)).get(u'sshkeys', [])[0]
-        #print sshkey
-
-        priv_key = sshkey.get(u'priv_key')
-        priv_key = b64decode(priv_key)
-        client = ParamikoShell(fixed_ip, user, keyfile=key_file, keystring=priv_key)
-        client.run()
+        # # code to ssh module
+        # self.subsystem = u'ssh'
+        #
+        # # get ssh node
+        # # if group_oid is not None:
+        # #     data = {u'group_oid': group_oid}
+        # data = {u'ip_address': fixed_ip}
+        # uri = u'/v1.0/gas/sshnodes'
+        # sshnode = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True)).get(u'sshnodes', [])[0]
+        # #print sshnode
+        #
+        # # get ssh user
+        # data = {
+        #     u'node_oid': sshnode[u'id'],
+        #     u'username': user
+        # }
+        # uri = u'/v1.0/gas/sshusers'
+        # sshuser = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True)).get(u'sshusers', [])[0]
+        # #print sshuser
+        #
+        # # get ssh ksy
+        # data = {
+        #     u'user_oid': sshuser[u'id']
+        # }
+        # uri = u'/v1.0/gas/sshkeys'
+        # sshkey = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True)).get(u'sshkeys', [])[0]
+        # #print sshkey
+        #
+        # priv_key = sshkey.get(u'priv_key')
+        # priv_key = b64decode(priv_key)
+        # client = ParamikoShell(fixed_ip, user, keyfile=key_file, keystring=priv_key)
+        # client.run()
 
         self.subsystem = u'service'
 
