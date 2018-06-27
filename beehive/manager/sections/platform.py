@@ -1976,7 +1976,6 @@ class NodeController(AnsibleController):
     - group: ansible group
         """
         group = self.get_arg(default=u'all')
-
         run_data = {
             u'tags': [u'yum-update']
         }
@@ -3431,6 +3430,15 @@ class BeehiveController(AnsibleController):
                         res = self._call(u'/v1.0/gas/sshusers', u'POST', data={u'sshuser': user})
                         logger.info(u'Add sshuser: %s' % res)
                         self.output(u'Add sshuser: %s' % obj)
+                    except Exception as ex:
+                        self.error(ex)
+                        self.app.error = False
+
+                for group in obj.get(u'other_groups', []):
+                    try:
+                        res = self._call(u'/v1.0/gas/sshgroups/%s/sshnode' % group, u'PUT', data={u'sshnode': obj[u'name']})
+                        logger.info(u'Add node %s to group %s' % (obj[u'name'], group))
+                        self.output(u'Add node %s to group %s' % (obj[u'name'], group))
                     except Exception as ex:
                         self.error(ex)
                         self.app.error = False

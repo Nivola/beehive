@@ -708,6 +708,23 @@ class BaseController(CementCmdBaseController):
                 raise Exception(u'Param %s is required. %s' % (name, note))
         return arg
 
+    def get_list_default_arg(self):
+        """Get default arguments for list. size, page, field, order
+
+        :return:
+        """
+        size = self.get_arg(name=u'size', keyvalue=True, default=10)
+        page = self.get_arg(name=u'page', keyvalue=True, default=0)
+        field = self.get_arg(name=u'field', keyvalue=True, default=u'id')
+        order = self.get_arg(name=u'order', keyvalue=True, default=u'ASC')
+        data = {
+            u'size': size,
+            u'page': page,
+            u'field': field,
+            u'order': order
+        }
+        return data
+
     def decrypt(self, data):
         """Decrypt data with symmetric encryption
         """
