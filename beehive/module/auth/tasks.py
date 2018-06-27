@@ -50,7 +50,7 @@ class AuthJobTask(JobTask):
     def __init__(self, *args, **kwargs):
         JobTask.__init__(self, *args, **kwargs)
         
-        self.apiclient = BeehiveApiClient([], None, None, None)
+        self.apiclient = BeehiveApiClient([], None, None, None, None)
 
     def get_endpoints(self, oid=None):
         """Get all endpoints

@@ -894,7 +894,8 @@ class ApiManager(object):
         """
         self.api_client = ApiClient(self.endpoints, 
                                     self.auth_user[u'name'], 
-                                    self.auth_user[u'pwd'], 
+                                    self.auth_user[u'pwd'],
+                                    None,
                                     catalog_id=self.catalog)        
     
     def register_catalog_old(self):
@@ -3222,6 +3223,16 @@ class GetApiObjectRequestSchema(Schema):
     oid = fields.String(required=True, description=u'id, uuid or name', context=u'path')
 
 
+class ApiObjectRequestFiltersSchema(Schema):
+    filter_expired = fields.Boolean(required=False, context=u'query', missing=False)
+    filter_creation_date_start = fields.DateTime(required=False, context=u'query')
+    filter_creation_date_stop = fields.DateTime(required=False, context=u'query')
+    filter_modification_date_start = fields.DateTime(required=False, context=u'query')
+    filter_modification_date_stop = fields.DateTime(required=False, context=u'query')
+    filter_expiry_date_start = fields.DateTime(required=False, context=u'query')
+    filter_expiry_date_stop = fields.DateTime(required=False, context=u'query')
+
+
 class ApiObjectPermsRequestSchema(PaginatedRequestQuerySchema, GetApiObjectRequestSchema):
     pass   
 
@@ -3356,8 +3367,8 @@ class SwaggerApiView(ApiView, SwaggerView):
 
 class ApiClient(BeehiveApiClient):
     """ """
-    def __init__(self, auth_endpoints, user, pwd, catalog_id=None, authtype=u'keyauth'):
-        BeehiveApiClient.__init__(self, auth_endpoints, authtype, user, pwd, catalog_id)
+    def __init__(self, auth_endpoints, user, pwd, secret, catalog_id=None, authtype=u'keyauth'):
+        BeehiveApiClient.__init__(self, auth_endpoints, authtype, user, pwd, secret, catalog_id)
     
     def admin_request(self, subsystem, path, method, data=u'', other_headers=None, silent=False):
         """Make api request using module internal admin user credentials.

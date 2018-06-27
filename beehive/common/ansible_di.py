@@ -50,6 +50,7 @@ config = {
 client = BeehiveApiClient(config[u'endpoint'], 
                           config[u'user'], 
                           config[u'pwd'],
+                          None,
                           config[u'catalog'])
 
 uri = u'/v1.0/providers/%s/instances/' % config[u'provider']
