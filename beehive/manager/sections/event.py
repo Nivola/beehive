@@ -116,10 +116,11 @@ class EventInternalController(EventControllerChild):
         logger.info(u'Get events: %s' % truncate(res))
         self.result(res, key=u'events', headers=self.headers)
 
-    @expose(aliases=[u'get <id>'], aliases_only=True)
+    @expose(aliases=[u'get <eventid>'], aliases_only=True)
     @check_error
-    def get(self, oid):
+    def get(self):
         """Get event by id"""
+        oid = self.get_arg(name=u'event-id')
         uri = u'%s/%s' % (self.baseuri, oid)
         res = self._call(uri, u'GET')
         logger.info(u'Get event: %s' % truncate(res))

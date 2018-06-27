@@ -1855,9 +1855,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         
         # get all user roles
         roles = []
-        user_roles = session.query(Role)\
-                            .join(RoleUser)\
-                            .filter(RoleUser.user_id == user.id).all()      
+        user_roles = session.query(Role).join(RoleUser).filter(RoleUser.user_id == user.id).all()
         for role in user_roles:
             roles.append(role.name)
         for group in user.group:
@@ -1875,12 +1873,10 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
                u't1.type_id=t2.id and t6.role_id = t5.id and',
                u't6.permission_id=t4.id and t5.name IN :role_name']
 
-        columns = [u'id', u'oid', u'objtype', u'objdef', u'objid', u'aid', 
-                   u'action']
-        perms = session.query(*columns).\
-                from_statement(text(" ".join(sql))).\
-                params(role_name=roles).all()
-
+        columns = [u'id', u'oid', u'objtype', u'objdef', u'objid', u'aid', u'action']
+        query = session.query(*columns).from_statement(text(" ".join(sql))).params(role_name=roles)
+        self.print_query(self.get_login_permissions, query, inspect.getargvalues(inspect.currentframe()))
+        perms = query.all()
         self.logger.debug(u'Get user %s perms: %s' % (user, truncate(perms)))
         return perms
     

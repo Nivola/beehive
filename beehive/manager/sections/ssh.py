@@ -104,25 +104,25 @@ class SshNodeController(SshControllerChild):
         aliases_only = True
         description = "Ssh nodes management"
          
-    @expose(aliases=[u'list [group=..] [ip_address=..]'], aliases_only=True)
+    @expose(aliases=[u'list [group=..] [ip_address=..] [field=value]'], aliases_only=True)
     @check_error
     def list(self):
         """List all sshnode
-            - group_oid
+    - field can be: group_id, ip_address, page, size, id, order
         """
-        group_oid = self.get_arg(name=u'group', keyvalue=True, default=None)
-        ip_address = self.get_arg(name=u'ip_address', keyvalue=True, default=None)
-        data = {}
-        if group_oid is not None:
-            data = {u'group_oid': group_oid}
-        if ip_address is not None:
-            data = {u'ip_address': ip_address}
-
+        # group_oid = self.get_arg(name=u'group', keyvalue=True, default=None)
+        # ip_address = self.get_arg(name=u'ip_address', keyvalue=True, default=None)
+        # data = self.app.kvargs
+        # if group_oid is not None:
+        #     data = {u'group_id': group_oid}
+        # if ip_address is not None:
+        #     data = {u'ip_address': ip_address}
+        data = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
         uri = u'%s/sshnodes' % self.baseuri
-        res = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True))
+        res = self._call(uri, u'GET', data=data)
         self.result(res, key=u'sshnodes',
-                    headers=[u'id', u'uuid', u'name', u'date'],
-                    fields=[u'id', u'uuid', u'name', u'date.creation'])
+                    headers=[u'id', u'name', u'desc', u'ip_address', u'date'],
+                    fields=[u'uuid', u'name', u'desc', u'ip_address', u'date.creation'])
      
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -141,8 +141,8 @@ class SshNodeController(SshControllerChild):
         res = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True)).get(u'sshusers')
         self.output(u'Node users:')
         self.result(res,
-                    headers=[u'id', u'uuid', u'name', u'date'],
-                    fields=[u'id', u'uuid', u'name', u'date.creation'])
+                    headers=[u'id', u'name', u'date'],
+                    fields=[u'uuid', u'username', u'date.creation'])
          
     @expose(aliases=[u'add <name> <group_oid> <node_type> <ip_address> [desc=..] [attribute=..]'], aliases_only=True)
     @check_error
@@ -198,6 +198,21 @@ class SshNodeController(SshControllerChild):
         logger.info(u'Get sshnode perms: %s' % res)
         self.result(res, key=u'perms', headers=self.perm_headers)
 
+    @expose(aliases=[u'connect [id=..] [name=..] [ip=..] [user=..]'], aliases_only=True)
+    @check_error
+    def connect(self):
+        """Opens ssh connection to node
+        """
+        host_name = self.get_arg(name=u'name', default=None, keyvalue=True)
+        host_ip = self.get_arg(name=u'ip', default=None, keyvalue=True)
+        host_id = self.get_arg(name=u'id', default=None, keyvalue=True)
+        user = self.get_arg(name=u'user', default=None, keyvalue=True, required=True)
+
+        if host_name is None and host_ip is None and host_id is None:
+            raise Exception(u'At node ip address or name or id is required')
+
+        self.ssh2node(host_id=host_id, host_ip=host_ip, host_name=host_name, user=user)
+
 
 class SshUserController(SshControllerChild):
     class Meta:
@@ -206,13 +221,13 @@ class SshUserController(SshControllerChild):
         aliases_only = True
         description = "Ssh users management"  
          
-    @expose(aliases=[u'list <node_oid> [username=..]'], aliases_only=True)
+    @expose(aliases=[u'list <node> [username=..]'], aliases_only=True)
     @check_error
     def list(self):
         """List all sshuser
             - node_oid
         """
-        node_oid = self.get_arg(name=u'node_oid')
+        node_oid = self.get_arg(name=u'node')
         username = self.get_arg(name=u'username', keyvalue=True, default=None)
         data = {
             u'node_oid': node_oid
@@ -223,8 +238,8 @@ class SshUserController(SshControllerChild):
         uri = u'%s/sshusers' % self.baseuri
         res = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True))
         self.result(res, key=u'sshusers',
-                    headers=[u'id', u'uuid', u'name', u'date', u'node'],
-                    fields=[u'id', u'uuid', u'name', u'date.creation', u'node_oid'])
+                    headers=[u'id', u'name', u'date', u'node'],
+                    fields=[u'uuid', u'username', u'date.creation', u'node_oid'])
      
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error

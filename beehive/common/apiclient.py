@@ -53,7 +53,7 @@ class BeehiveApiClient(object):
     
     
     """
-    def __init__(self, auth_endpoints, authtype, user, pwd, catalog_id=None, client_config=None, key=None):
+    def __init__(self, auth_endpoints, authtype, user, pwd, secret, catalog_id=None, client_config=None, key=None):
         self.logger = getLogger(self.__class__.__module__ + u'.' + self.__class__.__name__)
 
         # check password is encrypted
@@ -72,6 +72,7 @@ class BeehiveApiClient(object):
         self.api_authtype = authtype # can be: simplehttp, oauth2, keyauth
         self.api_user = user
         self.api_user_pwd = pwd
+        self.api_user_secret = secret
         self.api_client_config = client_config
         
         self.catalog_id = catalog_id
@@ -537,7 +538,7 @@ class BeehiveApiClient(object):
         
         return res
 
-    def create_token(self, api_user=None, api_user_pwd=None, login_ip=None):
+    def create_token(self, api_user=None, api_user_pwd=None, api_user_secret=None, login_ip=None):
         """Login module internal user
         
         :raise BeehiveApiClientError:s
@@ -547,6 +548,8 @@ class BeehiveApiClient(object):
             api_user = self.api_user
         if api_user_pwd is None:
             api_user_pwd = self.api_user_pwd
+        if api_user_secret is None:
+            api_user_secret = self.api_user_secret
         
         if self.api_authtype == u'keyauth':
             data = {u'user': api_user, u'password': api_user_pwd}
@@ -566,9 +569,9 @@ class BeehiveApiClient(object):
             private_key = binascii.a2b_base64(self.api_client_config[u'private_key'])
             # client_token_uri = u'%s/v1.0/oauth2/token' % self.main_endpoint
             client_token_uri = self.api_client_config[u'token_uri']
+            sub = u'%s:%s' % (api_user, api_user_secret)
 
-            res = JWTClient.create_token(client_id, client_email, client_scope, private_key, client_token_uri,
-                                         api_user)
+            res = JWTClient.create_token(client_id, client_email, client_scope, private_key, client_token_uri, sub)
             self.uid = res[u'access_token']
             self.seckey = u''
         
