@@ -53,7 +53,7 @@ class BeehiveApiClient(object):
     
     
     """
-    def __init__(self, auth_endpoints, authtype, user, pwd, secret, catalog_id=None, client_config=None, key=None):
+    def __init__(self, auth_endpoints, authtype, user, pwd, secret=None, catalog_id=None, client_config=None, key=None):
         self.logger = getLogger(self.__class__.__module__ + u'.' + self.__class__.__name__)
 
         # check password is encrypted
