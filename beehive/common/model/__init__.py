@@ -881,7 +881,7 @@ class AbstractDbManager(object):
                 entity.modication_date = datetime.today()
         
         session = self.get_session()
-        session.bulk_save_objects(entities, )
+        session.bulk_save_objects(entities)
         session.flush()
         self.logger.info(u'Bulk updated')
         return entities   
