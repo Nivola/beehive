@@ -378,6 +378,7 @@ class BeehiveHelper(object):
                                       u'keyauth',
                                       api_config[u'user'], 
                                       api_config[u'pwd'],
+                                      None,
                                       api_config[u'catalog'])
             
             if update is False:

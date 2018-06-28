@@ -49,8 +49,7 @@ class BeehiveApiClientTestCase(BeehiveTestCase):
         self.ip = user.get(u'ip')
         self.catalog_id = user.get(u'catalog')
         authtype = user.get(u'auth')
-        self.client = BeehiveApiClient(endpoints, authtype, self.user_name, 
-                                       self.pwd, self.catalog_id)
+        self.client = BeehiveApiClient(endpoints, authtype, self.user_name, self.pwd, None, self.catalog_id)
         if uid is not None:
             self.client.uid = uid
             self.client.seckey = seckey

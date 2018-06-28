@@ -118,7 +118,7 @@ class BeehiveTestCase(unittest.TestCase):
         self.users = cfg.get(u'users')
         
         # create auth client
-        self.auth_client = BeehiveApiClient([], u'keyauth', None, u'')
+        self.auth_client = BeehiveApiClient([], u'keyauth', None, u'', None)
         
         # create api endpoint
         self.api = {}
