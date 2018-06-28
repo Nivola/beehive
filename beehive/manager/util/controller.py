@@ -716,7 +716,7 @@ class BaseController(CementCmdBaseController):
         size = self.get_arg(name=u'size', keyvalue=True, default=10)
         page = self.get_arg(name=u'page', keyvalue=True, default=0)
         field = self.get_arg(name=u'field', keyvalue=True, default=u'id')
-        order = self.get_arg(name=u'order', keyvalue=True, default=u'ASC')
+        order = self.get_arg(name=u'order', keyvalue=True, default=u'DESC')
         data = {
             u'size': size,
             u'page': page,

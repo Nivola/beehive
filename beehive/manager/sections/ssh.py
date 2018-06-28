@@ -84,7 +84,19 @@ class SshGroupController(SshControllerChild):
         logger.info(res)
         msg = {u'msg': res}
         self.result(msg, headers=[u'msg'], maxsize=200)
-         
+
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
+    def delete(self):
+        """Delete sshgroup by value or id
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'%s/sshgroups/%s' % (self.baseuri, value)
+        res = self._call(uri, u'DELETE')
+        logger.info(u'Delete sshgroup %s' % value)
+        msg = {u'msg': u'Delete sshgroup %s' % value}
+        self.result(msg, headers=[u'msg'])
+
     @expose(aliases=[u'perms <id>'], aliases_only=True)
     @check_error
     def perms(self):
@@ -178,16 +190,6 @@ class SshNodeController(SshControllerChild):
             self.result(users, headers=[u'id', u'name'])
         else:
             self.result(res, details=True)
-
-        # data = {
-        #     u'node': value
-        # }
-        # uri = u'%s/sshusers' % self.baseuri
-        # res = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True)).get(u'sshusers')
-        # self.output(u'Node users:')
-        # self.result(res,
-        #             headers=[u'id', u'name', u'date'],
-        #             fields=[u'uuid', u'username', u'date.creation'])
          
     @expose(aliases=[u'add <name> <group_oid> <node_type> <ip_address> [desc=..] [attribute=..]'], aliases_only=True)
     @check_error
@@ -257,6 +259,28 @@ class SshNodeController(SshControllerChild):
             raise Exception(u'At node ip address or name or id is required')
 
         self.ssh2node(host_id=host_id, host_ip=host_ip, host_name=host_name, user=user)
+
+    @expose(aliases=[u'list [node=..] [field=..]'], aliases_only=True)
+    @check_error
+    def actions(self):
+        """List sshnode actions
+    - field can be: group_id, ip_address, page, size, id, order
+        """
+        node = self.get_arg(name=u'node', keyvalue=True, default=u'*')
+        datefrom = self.get_arg(name=u'datefrom', keyvalue=True, default=None)
+        dateto = self.get_arg(name=u'dateto', keyvalue=True, default=None)
+        data = self.get_list_default_arg()
+        if datefrom is not None:
+            data[u'datefrom'] = datefrom
+        if dateto is not None:
+            data[u'dateto'] = dateto
+        uri = u'%s/sshnodes/%s/actions' % (self.baseuri, node)
+        res = self._call(uri, u'GET', data=urllib.urlencode(data))
+        self.result(res, key=u'actions',
+                    headers=[u'id', u'date', u'user', u'user-ip', u'action-id', u'action', u'elapsed', u'node-name',
+                             u'node-user'],
+                    fields=[u'id', u'date', u'user.user', u'user.ip', u'action_id', u'action', u'elapsed', u'node_name',
+                            u'node_user.name'],)
 
 
 class SshUserController(SshControllerChild):

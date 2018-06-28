@@ -73,7 +73,9 @@ class EventController(ApiController):
         res = []
         
         # verify permissions
-        objs = self.can(u'use')
+        objtype = kvargs.get(u'objtype', None)
+        definition = kvargs.get(u'objdef', None)
+        objs = self.can(u'use', objtype=objtype, definition=definition)
 
         # create permission tags
         tags = []

@@ -3658,7 +3658,6 @@ class BeehiveController(AnsibleController):
         vars = runner.variable_manager.get_vars(runner.loader, host=hosts[0])
         if host is None:
             print hosts
-            print hosts[0].get_vars()
         elif host in [h.name for h in hosts]:
             ssh_key = vars.get(u'ansible_ssh_private_key_file').replace(u'{{ inventory_dir }}',
                                                                         vars.get(u'inventory_dir'))
