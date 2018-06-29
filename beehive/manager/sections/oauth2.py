@@ -1,12 +1,14 @@
-'''
+"""
 Created on Oct 27, 2017
 
 @author: darkbk
-'''
+"""
 import logging
 from cement.core.controller import expose
 from beehive.manager.util.controller import BaseController, ApiController, check_error
-from re import match
+from oauthlib.oauth2.rfc6749.clients.backend_application import BackendApplicationClient
+from oauthlib.oauth2.rfc6749.clients.legacy_application import LegacyApplicationClient
+from requests_oauthlib.oauth2_session import OAuth2Session
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +23,7 @@ class Oauth2Controller(BaseController):
 
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
-        
+
     #
     # sessions
     #
@@ -76,19 +78,68 @@ class Oauth2ControllerChild(ApiController):
     obj_headers = [u'id', u'objid', u'subsystem', u'type', u'desc']
     type_headers = [u'id', u'subsystem', u'type']
     act_headers = [u'id', u'value']
-    perm_headers = [u'id', u'oid', u'objid', u'subsystem', u'type', 
-                         u'aid', u'action']
-    user_headers = [u'id', u'uuid', u'name', u'active', 
-                         u'date.creation', u'date.modified', u'date.expiry']
-    role_headers = [u'id', u'uuid', u'name', u'active', 
-                         u'date.creation', u'date.modified', u'date.expiry']
-    group_headers = [u'id', u'uuid', u'name', u'active', 
-                          u'date.creation', u'date.modified', u'date.expiry']    
+    perm_headers = [u'id', u'oid', u'objid', u'subsystem', u'type', u'aid', u'action']
+    user_headers = [u'id', u'uuid', u'name', u'active', u'date.creation', u'date.modified', u'date.expiry']
+    role_headers = [u'id', u'uuid', u'name', u'active', u'date.creation', u'date.modified', u'date.expiry']
+    group_headers = [u'id', u'uuid', u'name', u'active', u'date.creation', u'date.modified', u'date.expiry']
     token_headers = [u'token', u'type', u'user', u'ip', u'ttl', u'timestamp']
     
     class Meta:
         stacked_on = 'oauth2'
         stacked_type = 'nested'   
+
+
+class Oauth2TokenController(Oauth2ControllerChild):
+    class Meta:
+        label = 'oauth2.tokens'
+        aliases = ['tokens']
+        aliases_only = True
+        description = "Token management"
+
+    @expose(aliases=[u'create <client> [user=..] [pwd=..] [secret=..]'], aliases_only=True)
+    @check_error
+    def create(self):
+        """Create oauth2 access token using resource_owner or client_credentials grant. Fro resource_owner grant
+        specify user and pwd. For client_credentials specify client secret.
+
+    Ex.
+        create client-id=client1 type=oauth2 sub=client1
+        """
+        client_id = self.get_arg(name=u'client')
+        user = self.get_arg(name=u'user', default=None, keyvalue=True)
+        pwd = self.get_arg(name=u'pwd', default=None, keyvalue=True)
+        client_secret = self.get_arg(name=u'secret', default=None, keyvalue=True)
+
+        # get client
+        uri = u'/v1.0/oauth2/clients/%s' % client_id
+        client = self._call(uri, u'GET').get(u'client')
+
+        client_id = client[u'uuid']
+        client_scope = client[u'scopes']
+        client_token_uri = client[u'token_uri']
+        auth_type = u''
+
+        if user is not None and pwd is not None:
+            auth_type = u'resource_owner'
+            client = LegacyApplicationClient(client_id=client_id)
+            oauth = OAuth2Session(client=client)
+            token = oauth.fetch_token(token_url=client_token_uri,
+                                      username=user,
+                                      password=pwd,
+                                      client_id=client_id,
+                                      verify=False)
+        elif client_secret is not None:
+            auth_type = u'client_credentials'
+            client = BackendApplicationClient(client_id=client_id)
+            oauth = OAuth2Session(client=client)
+            token = oauth.fetch_token(token_url=client_token_uri,
+                                      client_id=client_id,
+                                      client_secret=client_secret,
+                                      verify=False)
+
+        logger.debug(u'Get %s token: %s' % (auth_type, token))
+        res = {u'msg': u'Get token %s' % token}
+        self.result(res, headers=[u'msg'], maxsize=200)
 
 
 class Oauth2SessionController(Oauth2ControllerChild):
@@ -150,8 +201,7 @@ class Oauth2SessionController(Oauth2ControllerChild):
 
 
 class AuthorizationCodeController(Oauth2ControllerChild):
-    authorization_code_headers = [u'id', u'code', u'expires_at', u'client', 
-                                  u'user', u'scope', u'expired']
+    authorization_code_headers = [u'id', u'code', u'expires_at', u'client', u'user', u'scope', u'expired']
 
     class Meta:
         label = 'authorization_codes'
@@ -337,6 +387,7 @@ class ScopeController(Oauth2ControllerChild):
 oauth2_controller_handlers = [
     Oauth2Controller,
     Oauth2SessionController,
+    Oauth2TokenController,
     ClientController,
     ScopeController,
     AuthorizationCodeController

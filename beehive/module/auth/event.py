@@ -47,12 +47,8 @@ class AuthEventHandler(EventHandler):
                     u'identity': source.get(u'identity'),
                     u'response': data.get(u'response'),
                     u'elapsed': data.get(u'elapsed'),
+                    u'op': u'%s %s' % (route.get(u'method'), route.get(u'path'))
                 }
-                if route.get(u'method') == u'POST':
-                    log[u'op'] = u'token.create'
-                    self.logger2.info(tmpl % log)
-                    # self.logger.debug(tmpl % log)
-                elif route.get(u'method') == u'DELETE':
-                    log[u'op'] = u'token.delete'
+                if route.get(u'method') in [u'POST', u'DELETE']:
                     self.logger2.info(tmpl % log)
                     # self.logger.debug(tmpl % log)
