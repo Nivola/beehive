@@ -54,6 +54,7 @@ from beehive.manager.sections.provider import provider_controller_handlers
 from beehive.manager.sections.graphite import graphite_controller_handlers
 from beehive.manager.sections.example import example_controller_handlers
 from beehive.manager.sections.veeam import veeam_controller_handlers
+from beehive.manager.sections.trilio import trilio_controller_handlers
 from beehive.manager.sections.ssh import ssh_controller_handlers
 from beecell.cement_cmd.foundation import CementCmd, CementCmdBaseController
 
@@ -131,7 +132,8 @@ default_handlers = [
     provider_controller_handlers,
     graphite_controller_handlers,
     example_controller_handlers,
-    veeam_controller_handlers
+    veeam_controller_handlers,
+    trilio_controller_handlers
 ]
 
 
