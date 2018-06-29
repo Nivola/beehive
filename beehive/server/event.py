@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-'''
+"""
 Created on Oct 13, 2014
 
 @author: darkbk
@@ -12,7 +12,7 @@ Options:
   -v, --version            Print version and exit
   -c, --command=CMD        Command: start, stop, reload, trace
                            Require args = service name
-'''
+"""
 import sys, os
 import ConfigParser
 from collections import OrderedDict
@@ -34,10 +34,10 @@ if __name__ == u'__main__':
     config = ConfigParser.RawConfigParser(dict_type=MultiOrderedDict)
     config.read(config_file)
 
-    params = {i[0]:i[1] for i in config.items(u'uwsgi')}
-    #params['task_module'] = params['task_module'].split('\n')
+    params = {i[0]: i[1] for i in config.items(u'uwsgi')}
+    # params['task_module'] = params['task_module'].split('\n')
     params[u'api_module'] = params[u'api_module'].split(u'\n')
-    #params['api_plugin'] = params['api_plugin'].split('\n')
+    params[u'event_handler'] = params[u'event_handler'].split(u'\n')
 
     activate_this = u'%s/bin/activate_this.py' % virtualenv
     execfile(activate_this, dict(__file__=activate_this))

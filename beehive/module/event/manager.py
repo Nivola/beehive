@@ -1,12 +1,12 @@
-'''
+"""
 Created on jan 25, 2017
 
 @author: darkbk
-'''
+"""
 import logging
 from datetime import datetime
 from copy import deepcopy
-from beecell.simple import id_gen, obscure_data
+from beecell.simple import id_gen, obscure_data, import_class
 from beecell.logger.helper import LoggerHelper
 from signal import signal
 from signal import SIGHUP, SIGABRT, SIGILL, SIGINT, SIGSEGV, SIGTERM, SIGQUIT
@@ -20,12 +20,22 @@ from beehive.common.data import operation
 from beecell.db import TransactionError
 from beehive.common.apimanager import ApiManager, ApiObject
 
-class EventConsumerError(Exception): pass
+
+class EventConsumerError(Exception):
+    pass
+
 
 class EventConsumerRedis(ConsumerMixin):
-    def __init__(self, connection, api_manager):
-        self.logger = logging.getLogger(self.__class__.__module__+ \
-                                        '.'+self.__class__.__name__)
+    """Event consumer from redis queue
+
+    :param connection: redis connection
+    :param api_manager: ApiManager instance
+    :param event_handlers: list of event handlers used when event is received. An event handler is a class that extend
+        EventHandler and define a callback method.
+    """
+
+    def __init__(self, connection, api_manager, event_handlers=[]):
+        self.logger = logging.getLogger(self.__class__.__module__ + u'.' + self.__class__.__name__)
         
         self.connection = connection
         self.api_manager = api_manager
@@ -33,6 +43,11 @@ class EventConsumerRedis(ConsumerMixin):
         self._continue = None
         self.id = id_gen()
         self.manager = EventDbManager()
+
+        self.event_handlers = []
+        for event_handler in event_handlers:
+            handler = import_class(event_handler)
+            self.event_handlers.append(handler(self.api_manager))
         
         self.redis_uri = self.api_manager.redis_event_uri
         self.redis_exchange = self.api_manager.redis_event_exchange
@@ -57,6 +72,10 @@ class EventConsumerRedis(ConsumerMixin):
         self.log_event(event, message)
         self.store_event(event, message)
         self.publish_event_to_subscriber(event, message)
+
+        # run additional event handler
+        for event_handler in self.event_handlers:
+            event_handler.callback(event, message)
  
     def log_event(self, event, message):
         """Log received event
@@ -154,6 +173,7 @@ def start_event_consumer(params, log_path=None):
     logname = u'%s/%s.event.consumer' % (log_path, params[u'api_id'])
     logger_file = u'%s.log' % logname
     loggers = [logger,
+               logging.getLogger(u'beehive.common.event'),
                logging.getLogger(u'beehive.module.event.model')]
     LoggerHelper.rotatingfile_handler(loggers, logger_level, logger_file)
 
@@ -161,6 +181,9 @@ def start_event_consumer(params, log_path=None):
     loggers = [logging.getLogger(u'beecell.perf')]
     logger_file = u'%s/%s.watch' % (log_path, params[u'api_id'])
     LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, logger_file, frmt=u'%(asctime)s - %(message)s')
+
+    # get event handlers
+    event_handlers = params.pop(u'event_handler', [])
 
     # setup api manager
     api_manager = ApiManager(params)
@@ -175,8 +198,9 @@ def start_event_consumer(params, log_path=None):
     
     with Connection(api_manager.redis_event_uri) as conn:
         try:
-            worker = EventConsumerRedis(conn, api_manager)
+            worker = EventConsumerRedis(conn, api_manager, event_handlers=event_handlers)
             logger.info(u'Start event consumer')
+            logger.debug(u'Event handlers: %s' % event_handlers)
             logger.debug(u'Active worker: %s' % worker)
             logger.debug(u'Use redis connection: %s' % conn)
             worker.run()
