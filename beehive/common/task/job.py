@@ -563,8 +563,7 @@ def job(entity_class=None, name=None, module=None, delta=2):
     
     Example::
     
-        @job(entity_class=OpenstackSecurityGroup, name='insert',
-             module='ResourceModule', delta=5)
+        @job(entity_class=OpenstackSecurityGroup, name='insert', module='ResourceModule', delta=5)
         def func(self, objid, *args, **kwargs):
             pass
 
@@ -579,10 +578,11 @@ def job(entity_class=None, name=None, module=None, delta=2):
         @wraps(fn)
         def decorated_view(task, objid, *args, **kwargs):
             # setup correct user
+            user_data = args[0]
             try:
-                user = get_value(kwargs, u'user', u'task_manager')
-                server = get_value(kwargs, u'server', u'127.0.0.1')
-                identity = get_value(kwargs, u'identity', u'')
+                user = user_data.pop(u'user', u'task_manager')
+                server = user_data.pop(u'server', u'127.0.0.1')
+                identity = user_data.pop(u'identity', u'')
             except:
                 logger.warn(u'Can not get request user', exc_info=1)
                 user = u'task_manager'
@@ -607,6 +607,10 @@ def job(entity_class=None, name=None, module=None, delta=2):
             task_local.opid = task.request.id
             task_local.delta = delta
             task_local.user = operation.user
+
+            logger.warn(args)
+            logger.warn(kwargs)
+            logger.warn(task_local.user)
             
             # record PENDING task and set start-time
             status = u'STARTED'

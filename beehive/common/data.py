@@ -356,12 +356,12 @@ def query(fn):
     return query_inner
 
 
-def trace(entity=None, op=u'view'):
+def trace(entity=None, op=u'view', noargs=False):
     """Use this decorator to send an event after function execution.
     
     :param entity: beehive authorized entity [optional]
-    :param op: operation. Can be <operation>.view|insert|update|delete|use|*
-        <operation>. is optional
+    :param op: operation. Can be <operation>.view|insert|update|delete|use|* <operation>. is optional
+    :param noargs: if True do not trace command args and kvargs [default=False]
     
     Example::
     
@@ -391,13 +391,20 @@ def trace(entity=None, op=u'view'):
             
                 # calculate elasped time
                 elapsed = round(time() - start, 4)
-                get_entity(entity).send_event(op, args=args, params=kwargs, elapsed=elapsed)
+                if noargs is True:
+                    get_entity(entity).send_event(op, args=[], params={}, elapsed=elapsed)
+                else:
+                    get_entity(entity).send_event(op, args=args, params=kwargs, elapsed=elapsed)
             except Exception as ex:
                 logger.error(ex)
                 # calculate elasped time
                 elapsed = round(time() - start, 4)
-                ex_escaped = escape(str(ex.message))
-                get_entity(entity).send_event(op, args=args, params=kwargs, exception=ex_escaped, elapsed=elapsed)
+                # ex_escaped = escape(str(ex.message))
+                ex_escaped = str(ex.message)
+                if noargs is True:
+                    get_entity(entity).send_event(op, args=[], params={}, exception=ex_escaped, elapsed=elapsed)
+                else:
+                    get_entity(entity).send_event(op, args=args, params=kwargs, exception=ex_escaped, elapsed=elapsed)
                 raise
             return ret
         return decorated

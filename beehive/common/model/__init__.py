@@ -422,7 +422,7 @@ class PaginatedQueryGenerator(object):
         query = self.session.query(*entities).from_statement(stmp).params(tags=tags, **kvargs)
         self.logger.debug2(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
         self.logger.debug2(u'kvargs: %s' % truncate(kvargs))
-        self.logger.debug2(u'tags: %s' % tags)
+        self.logger.debug2(u'tags: %s' % truncate(tags))
         res = query.all()
         
         if self.size == 0:

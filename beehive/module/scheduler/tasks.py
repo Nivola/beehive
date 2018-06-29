@@ -39,7 +39,7 @@ def jobtest_inner(self, objid, params):
 
 
 @task_manager.task(bind=True, base=Job)
-@job(entity_class=TaskManager, name=u'insert', delta=1)
+@job(entity_class=TaskManager, name=u'test.insert', delta=1)
 def jobtest(self, objid, params):
     """Test job
     
@@ -52,6 +52,7 @@ def jobtest(self, objid, params):
     """
     ops = self.get_options()
     self.set_shared_data(params)
+    logger.warn(params)
 
     g1 = []
     for i in range(0, len(params[u'numbers'])):
@@ -65,9 +66,9 @@ def jobtest(self, objid, params):
 
     j = Job.create([
         end_task,
-        jobtest_task2,
-        jobtest_task1,
-        g1,
+        # jobtest_task2,
+        # jobtest_task1,
+        # g1,
         jobtest_task0,
         start_task
     ], ops)

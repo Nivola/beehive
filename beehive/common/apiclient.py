@@ -16,7 +16,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 from Crypto.Random import atfork
 import binascii
-from beecell.simple import truncate, id_gen, check_vault
+from beecell.simple import truncate, id_gen, check_vault, obscure_data
 from socket import gethostname
 from itertools import repeat
 from multiprocessing import current_process
