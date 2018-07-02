@@ -7,7 +7,7 @@ import logging
 from datetime import datetime
 import ujson as json
 from beecell.logger import LoggerHelper
-from beecell.simple import format_date
+from beecell.simple import format_date, truncate
 from beehive.common.event import EventHandler
 
 
@@ -49,7 +49,7 @@ class ApiEventHandler(EventHandler):
                 u'elapsed': data.get(u'elapsed'),
                 u'method': route.get(u'method'),
                 u'path': route.get(u'path'),
-                u'params': json.dumps(data.get(u'params'))
+                u'params': truncate(json.dumps(data.get(u'params')))
             }
             self.logger2.info(tmpl % log)
             # self.logger.debug(tmpl % log)

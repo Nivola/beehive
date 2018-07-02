@@ -667,7 +667,7 @@ class AbstractDbManager(object):
         session.add(record)
         session.flush()
         
-        self.logger.debug(u'Add %s: %s' % (entityclass.__name__, record))
+        self.logger.debug(u'Add %s: %s' % (entityclass.__name__, truncate(record)))
         return record
     
     @transaction

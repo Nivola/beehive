@@ -6,7 +6,7 @@ Created on jan 25, 2017
 import logging
 from datetime import datetime
 from copy import deepcopy
-from beecell.simple import id_gen, obscure_data, import_class
+from beecell.simple import id_gen, obscure_data, import_class, truncate
 from beecell.logger.helper import LoggerHelper
 from signal import signal
 from signal import SIGHUP, SIGABRT, SIGILL, SIGINT, SIGSEGV, SIGTERM, SIGQUIT
@@ -69,6 +69,7 @@ class EventConsumerRedis(ConsumerMixin):
 
     def callback(self, event, message):
         event[u'data'] = obscure_data(event[u'data'])
+        # event[u'data'][u'params'] = truncate(event[u'data'][u'params'], 4000)
         self.log_event(event, message)
         self.store_event(event, message)
         self.publish_event_to_subscriber(event, message)
@@ -84,7 +85,7 @@ class EventConsumerRedis(ConsumerMixin):
         :raise EventConsumerError:
         """
         message.ack()        
-        self.logger.info(u'Consume event : %s' % event)
+        self.logger.info(u'Consume event : %s' % truncate(event))
  
     def store_event(self, event, message):
         """Store event in db.
@@ -115,7 +116,7 @@ class EventConsumerRedis(ConsumerMixin):
             self.manager.add(sevent[u'id'], etype, objid, objdef, module, creation, sevent[u'data'], event[u'source'],
                              dest)
             
-            self.logger.debug(u'Store event : %s' % sevent)
+            self.logger.debug(u'Store event : %s' % truncate(sevent))
         except (TransactionError, Exception) as ex:
             self.logger.error(u'Error storing event : %s' % ex, exc_info=True)
             raise EventConsumerError(ex)
@@ -151,7 +152,7 @@ class EventConsumerRedis(ConsumerMixin):
                              expiration=60,
                              delivery_mode=1)
             producer.release()
-            self.logger.debug(u'Publish event %s to exchenge %s' % (event_id, self.exchange_sub))
+            self.logger.debug(u'Publish event %s to exchange %s' % (event_id, self.exchange_sub))
         except exceptions.ConnectionLimitExceeded as ex:
             self.logger.error(u'Event %s can not be published: %s' % (event_id, ex), exc_info=1)
         except Exception as ex:

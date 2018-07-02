@@ -9,7 +9,7 @@ import logging
 import redis
 #import zmq.green as zmq
 import gevent
-from beecell.simple import str2uni, id_gen, parse_redis_uri
+from beecell.simple import str2uni, id_gen, parse_redis_uri, truncate
 
 from kombu.mixins import ConsumerMixin
 from kombu.pools import producers
@@ -231,7 +231,7 @@ class EventProducerRedis(EventProducer):
             message = event.json()
             # publish message to redis
             self.redis_manager.publish(self.redis_exchange, message)
-            self.logger.debug(u'Send event %s : %s' % (event.id, message))
+            self.logger.debug(u'Send event %s : %s' % (event.id, truncate(message)))
         except redis.PubSubError as ex:
             self.logger.error(u'Event can not be send: %s' % ex, exc_info=1)
         except Exception as ex:
