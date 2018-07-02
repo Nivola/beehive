@@ -29,11 +29,9 @@ class CreateView(DDLElement):
         self.name = name
         self.selectable = selectable
 
-
 class DropView(DDLElement):
     def __init__(self, name):
         self.name = name
-
 
 @compiler.compiles(CreateView)
 def compile_create_view(element, compiler, **kw):
@@ -41,19 +39,33 @@ def compile_create_view(element, compiler, **kw):
         element.name, 
         compiler.sql_compiler.process(element.selectable))
 
-
 @compiler.compiles(DropView)
 def compile_drop_view(element, compiler, **kw):
     return "DROP VIEW IF EXISTS %s" % (element.name)
 
 
-def view(name, metadata, selectable):
+# class CreateSQLView(DDLElement):
+#     def __init__(self, name, sql_view):
+#         self.name = name
+#         self.sql_view = sql_view
+#         
+# @compiler.compiles(CreateSQLView)
+# def compile_create_sql_view(element, compiler, **kw):
+#     return "CREATE OR REPLACE VIEW %s AS %s" % (
+#         element.name, 
+#         element.sql_view)
+
+def view(name, metadata, selectable=None, sql=None):
     t = table(name)
 
     for c in selectable.c:
         c._make_proxy(t)
 
+#     if sql is not None:
+#         CreateSQLView(name, sql).execute_at('after-create', metadata)
+#     else:
     CreateView(name, selectable).execute_at('after-create', metadata)
+    
     DropView(name).execute_at('before-drop', metadata)
     return t
 
