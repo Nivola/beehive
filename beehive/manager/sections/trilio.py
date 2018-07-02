@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 #
-# veeam native platform
+# trilio native platform
 #
 class TrilioPlatformController(BaseController):
     class Meta:
@@ -72,7 +72,9 @@ class TrilioPlatformControllerChild(BaseController):
         #print ("sono qui !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1111")
         #print (self.key)
         #print (conn)
-        self.util = TrilioManager(conn, self.key)
+        #print("sono in beehive")
+        self.trilio = TrilioManager(conn, self.key)
+
         self.uri = conf.get(u'uri')
 
 
@@ -95,7 +97,7 @@ class TrilioPlatformConfigController(TrilioPlatformControllerChild):
         <project_id> = Openstack project id"""
 
         href = self.get_arg(name=u'project_id')
-        res = self.util.get_global_job_scheduler(href)
+        res = self.trilio.get_global_job_scheduler(href)
 
         if res[u'status'] == "OK":
             if int(res['data']['global_job_scheduler']):
@@ -114,9 +116,28 @@ class TrilioPlatformConfigController(TrilioPlatformControllerChild):
 
         self.result(msg, headers=[u'status',u'global_job_scheduler'], fields=[u'status',u'global_job_scheduler'])
 
+    @expose(aliases=[u'enableGlobalJobScheduler  <project_id>'], aliases_only=True)
+    @check_error
+    def enableGlobalJobScheduler(self):
+        """TO DO: This command will ENABLE the Cloud Wide TrilioVault Job Scheduler
+        <project_id> = Openstack project id"""
+
+        href = self.get_arg(name=u'project_id')
+        # TO DO
+
+
+    @expose(aliases=[u'disableGlobalJobScheduler  <project_id>'], aliases_only=True)
+    @check_error
+    def disableGlobalJobScheduler(self):
+        """TO DO: This command will DISABLE the Cloud Wide TrilioVault Job Scheduler
+        <project_id> = Openstack project id"""
+
+        href = self.get_arg(name=u'project_id')
+        # TO DO
+
 
 class TrilioPlatformJobController(TrilioPlatformControllerChild):
-    headers = [u'id', u'name', u'domain_id']
+    #headers = [u'id', u'name', u'domain_id']
 
     class Meta:
         label = 'trilio.platform.job'
@@ -127,61 +148,157 @@ class TrilioPlatformJobController(TrilioPlatformControllerChild):
     def _ext_parse_args(self):
         TrilioPlatformControllerChild._ext_parse_args(self)
 
-
-
-    @expose()
+    @expose(aliases=[u'list <project_id>'], aliases_only=True)
     @check_error
-    def cmd1(self):
-        """This is an example command
-        """
-        self.app.print_output(u'I am cmd1')
-    
-    @expose(aliases=[u'cmd2 <arg1> [arg2=value]'], aliases_only=True)
+    def list(self):
+        """This command will display all the workloads of the specified openstack tenant;
+        <project_id>  unique identifier of openstack project or tenant;"""
+
+        project_id = self.get_arg(name=u'project_id')
+
+        res = self.trilio.workloads.get_workloads(project_id)
+
+        if res[u'status'] == 'OK':
+            msg = res[u'data']
+
+        else:
+            msg = {u'id': u'#####', u'name': u'', u'description': res[u'data'], u'created_at': u''}
+
+        self.result(msg, headers=[u'id', u'name', u'description', u'status', u'created_at'],
+                    fields=[u'id', u'name', u'description', u'status', u'created_at'])
+
+    @expose(aliases=[u'show <project_id> <workload_id>'], aliases_only=True)
     @check_error
-    def cmd2(self):
-        """This is another example command
-        """
-        arg1 = self.get_arg(name=u'arg1')
-        arg2 = self.get_arg(name=u'arg2', default=u'arg2_val', keyvalue=True)
-        res = [
-            {u'k': u'arg1', u'v': arg1},
-            {u'k': u'arg2', u'v': arg2},
-        ]
-        self.result(res, headers=[u'key', u'value'], fields=[u'k', u'v'])
+    def show(self):
+        """This command will Show the details of the workload_id in a specified openstack tenant;
+        <project_id>  unique identifier of openstack project or tenant;
+        <workload_id> unique identifier of trilio workload """
 
-    @expose()
+        project_id = self.get_arg(name=u'project_id')
+        workload_id = self.get_arg(name=u'workload_id')
+
+        res = self.trilio.workloads.show_workload(project_id, workload_id)
+        res_snaps = self.trilio.snapshots.check_last_snapshot(project_id, workload_id)
+
+        if res_snaps[u'status'] == 'OK':
+            last_snapshot_status = res_snaps[u'data'][u'status']
+            last_snapshot_type = res_snaps[u'data'][u'snapshot_type']
+            last_snapshot_created_at = res_snaps[u'data'][u'created_at']
+        else:
+            last_snapshot_status = '-'
+            last_snapshot_type = '-'
+            last_snapshot_created_at = '-'
+
+        if res[u'status'] == 'OK':
+            msg = {u'id': res['data']['id'], u'name': res['data']['name'],
+                   u'workload_type_id': res['data']['workload_type_id'],
+                   u'instances': len(res['data']['instances']),
+                   u'storage_usage': res['data']['storage_usage']['usage'],
+                   u'snapshot_number': res['data']['storage_usage']['full']['snap_count'] +
+                                       res['data']['storage_usage']['incremental']['snap_count'],
+                   u'schedule_enabled': res['data']['jobschedule']['enabled'],
+                   u'last_snapshot_status': last_snapshot_status,
+                   u'last_snapshot_type': last_snapshot_type,
+                   u'last_snapshot_created_at': last_snapshot_created_at,
+                   u'retention_policy_value': res['data']['jobschedule']['retention_policy_value'],
+                   u'job_interval': res['data']['jobschedule']['interval'],
+                   u'nextrun': res['data']['jobschedule']['nextrun']}
+
+        else:
+            msg = {u'id': u'#####', u'name': u'', u'description': res[u'data'], u'created_at': u''}
+
+        self.result(msg, headers=[u'name', u'workload_type_id', u'VMs', u'storage usage \r\n(Bytes)', u'snapshot #',
+                                  u'last snapshot\r\nstatus', u'scheduled', u'retention \r\npolicy', u'job_interval', u'nextrun \r\n(sec.)'],
+                    fields=[u'name', u'workload_type_id', u'instances', u'storage_usage', u'snapshot_number',
+                            u'last_snapshot_status', u'schedule_enabled', u'retention_policy_value', u'job_interval', u'nextrun'])
+
+
+class TrilioPlatformSnapshotController(TrilioPlatformControllerChild):
+
+    class Meta:
+        label = 'trilio.platform.snapshot'
+        aliases = ['snapshot']
+        aliases_only = True
+        description = "trilio Backup snapshot management"
+
+    def _ext_parse_args(self):
+        TrilioPlatformControllerChild._ext_parse_args(self)
+
+    @expose(aliases=[u'list <project_id> <workload_id>'], aliases_only=True)
     @check_error
-    def prova(self):
-        """This is an example command
-        """
-        self.app.print_output(u'I am cmd1')
-        res=self.util.jobs.get_backups_status()
+    def list(self):
+        """This command will display all the snapshots of the specified workload;
+        <project_id>  unique identifier of openstack project or tenant;
+        <workload_id> unique identifier of trilio workload """
 
-    @expose(aliases=[u'status <UID>'], aliases_only=True)
+        project_id = self.get_arg(name=u'project_id')
+        workload_id = self.get_arg(name=u'workload_id')
+        res = self.trilio.snapshots.get_snapshots(project_id, workload_id)
+        self.result(res[u'data'], headers=[u'created_at', u'status', u'name', u'snapshot type', u'id'],
+                    fields=[u'created_at', u'status', u'name', u'snapshot_type', u'id'])
+
+    @expose(aliases=[u'show <project_id> <snapshot_id>'], aliases_only=True)
     @check_error
-    def status(self):
-        """This command will list all the status of the backup job identified by UID
-        """
-        uid = self.get_arg(name=u'UID')
+    def show(self):
+        """This command will display the datails of the shapshot ;
+        <project_id>  unique identifier of openstack project or tenant;
+        <snapshot_id> unique identifier of snapshot """
 
-        urn, veeam, job, obj32 = uid.split(':')
-        href= self.uri + '/api/jobs/'+obj32 + '/backupSessions'
+        project_id = self.get_arg(name=u'project_id')
+        snapshot_id = self.get_arg(name=u'snapshot_id')
+        res = self.trilio.snapshots.show_snapshot(project_id, snapshot_id)
+        self.result(res[u'data'], headers=[u'id', u'name', u'progress_percent', u'created at', u'size (Byte)', u'snapshot_type', u'status',
+                                           u'time_taken (sec)'],
+                    fields=[u'id', u'name', u'progress_percent', u'created_at', u'size', u'snapshot_type', u'status',
+                            u'time_taken'])
 
-        res = self.util.jobs.get_job_props(href)
-        sessioni = len(res['data']['BackupJobSessions']['BackupJobSession'])
+    @expose(aliases=[u'check <project_id> <snapshot_id>'], aliases_only=True)
+    @check_error
+    def check(self):
+        """This command will display the status of the shapshot ;
+        <project_id>  unique identifier of openstack project or tenant;
+        <snapshot_id> unique identifier of snapshot """
 
-        Data="2000-01-01T00:00:00"
-        i=0
-        for element in res['data']['BackupJobSessions']['BackupJobSession']:
-            if (element[u'CreationTimeUTC'] > Data):
-                Data=element[u'CreationTimeUTC']
-                indice = i
-            i=i+1
+        project_id = self.get_arg(name=u'project_id')
+        snapshot_id = self.get_arg(name=u'snapshot_id')
+        res = self.trilio.snapshots.check_snapshot(project_id, snapshot_id)
 
+        if res[u'status'] == 'OK':
+            msg = {u'status': res[u'status'], u'status_code': str(res[u'status_code']),
+                   u'snapshot_status': res[u'data'][u'status']}
+        else:
+            msg = {u'status': res[u'status'], u'status_code': str(res[u'status_code']),
+                   u'snapshot_status': '#####', u'data': res['data']}
 
-        # TO DO: gestire l'errore con status diverso da OK
-        self.result(res['data']['BackupJobSessions']['BackupJobSession'][indice], headers=[u'Job Name',u'Job UID',u'Result',u'State',u'CreationTimeUTC',u'EndTimeUTC'],
-                    fields=[ u'JobName',u'JobUid',u'Result',u'State',u'CreationTimeUTC',u'EndTimeUTC'])
+        self.result(msg, headers=[u'status code', u'snapshot status'], fields=[u'status_code', u'snapshot_status'])
+
+    @expose(aliases=[u'check-last <project_id> <workload_id>'], aliases_only=True)
+    @check_error
+    def check_last(self):
+        """This command will display the snapshot status of the last snapshot found ;
+        <project_id>  unique identifier of openstack project or tenant;
+        <snapshot_id> unique identifier of trilio workload """
+
+        project_id = self.get_arg(name=u'project_id')
+        workload_id = self.get_arg(name=u'workload_id')
+        res= self.trilio.snapshots.check_last_snapshot(project_id, workload_id)
+
+        if res[u'status'] == 'OK':
+
+            msg = {u'status': res[u'status'], u'status_code': str(res[u'status_code']),
+                   u'snapshot_status': res[u'data'][u'status'],
+                   u'name':res[u'data'][u'name'], u'created_at':res[u'data'][u'created_at'],
+                   u'snapshot_type': res[u'data'][u'snapshot_type'], u'host': res[u'data'][u'host'],
+                   u'workload_id': res[u'data'][u'workload_id'], u'id': res[u'data'][u'id'],
+                   u'description': res[u'data'][u'description']}
+
+        else:
+
+            msg = {u'status': res[u'status'], u'status_code': str(res[u'status_code']),
+                   u'snapshot_status': '#####', u'data': res['data']}
+
+        self.result(msg, headers=[u'status code', u'snapshot status', u'created at', u'snapshot id'],
+                    fields=[u'status_code', u'snapshot_status', u'created_at', u'id'])
 
 
 
@@ -189,4 +306,5 @@ class TrilioPlatformJobController(TrilioPlatformControllerChild):
 trilio_controller_handlers = [
     TrilioPlatformController,
     TrilioPlatformConfigController,
-    TrilioPlatformJobController ]
+    TrilioPlatformJobController,
+    TrilioPlatformSnapshotController]
