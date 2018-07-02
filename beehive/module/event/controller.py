@@ -82,7 +82,7 @@ class EventController(ApiController):
         for objdef, perms in objs.items():
             for perm in perms:
                 tags.append(self.event_manager.hash_from_permission(objdef, perm))
-        self.logger.debug(u'Permission tags to apply: %s' % tags)
+        self.logger.debug(u'Permission tags to apply: %s' % truncate(tags))
                 
         try:
             entities, total = self.event_manager.get_events(tags=tags, page=page, size=size, order=order, field=field,

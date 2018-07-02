@@ -133,7 +133,7 @@ class TokenController(AuthControllerChild):
     @expose(aliases=[u'create [user=..] [pwd=..] [login-ip=..] [client=..] [type=..] [sub=..]'], aliases_only=True)
     @check_error
     def create(self):
-        """Create keyauth token
+        """Create keyauth or oauth2 jwt token
     - type: can be keyauth, oauth2, simplehttp. [dafault=keyauth]
         - oauth2: create a token using a jwt oauth2 client
 

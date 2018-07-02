@@ -264,8 +264,7 @@ class EventDbManager(AbstractDbManager):
         return count, res
         '''
 
-    def add(self, eventid, etype, objid, objdef, objtype, creation, data, 
-            source, dest):
+    def add(self, eventid, etype, objid, objdef, objtype, creation, data, source, dest):
         """Add new event.
         
         :param eventid: event id
@@ -280,8 +279,9 @@ class EventDbManager(AbstractDbManager):
         :raise TransactionError: if transaction return error
         """
         # add event
+        data = truncate(json.dumps(data))
         res = self.add_entity(DbEvent, eventid, etype, objid, objdef, objtype, 
-                              creation, json.dumps(data), json.dumps(source), 
+                              creation, data, json.dumps(source),
                               json.dumps(dest))
         
         # add permtag
@@ -293,5 +293,3 @@ class EventDbManager(AbstractDbManager):
             self.add_perm_tag(tag, perm, res.id, u'event')
         
         return res
-        
-    

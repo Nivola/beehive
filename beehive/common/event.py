@@ -1,15 +1,15 @@
-'''
+"""
 Created on May 24, 2015
 
 @author: darkbk
-'''
+"""
 import json
 import time
 import logging
 import redis
 #import zmq.green as zmq
 import gevent
-from beecell.simple import str2uni, id_gen, parse_redis_uri
+from beecell.simple import str2uni, id_gen, parse_redis_uri, truncate
 
 from kombu.mixins import ConsumerMixin
 from kombu.pools import producers
@@ -18,6 +18,7 @@ from kombu import Connection, exceptions
 from signal import *
 import pprint
 from beecell.db.manager import RedisManager
+
 
 class ComplexEncoder(json.JSONEncoder):
     def default(self, o):
@@ -29,18 +30,20 @@ class ComplexEncoder(json.JSONEncoder):
         # Let the base class default method raise the TypeError
         return json.JSONEncoder.default(self, o)
 
+
 def _dumps(s):
     return json.dumps(s, cls=ComplexEncoder)
+
 
 """Register a custom encoder/decoder for JSON serialization."""
 from kombu import serialization
 from kombu.utils import json as _json
 
-serialization.register('json', _dumps, _json.loads,
-                       content_type='application/json',
-                       content_encoding='utf-8')
+serialization.register('json', _dumps, _json.loads, content_type='application/json', content_encoding='utf-8')
+
 
 logger = logging.getLogger(__name__)
+
 
 class Event(object):
     """Event.
@@ -123,12 +126,20 @@ class Event(object):
         return json.dumps(msg)
 
 
+class EventHandler(object):
+    def __init__(self, api_manager):
+        self.logger = logging.getLogger(u'beehive.common.event.EventHandler')
+        self.api_manager = api_manager
+
+    def callback(self, event, message):
+        pass
+
+
 class EventProducer(object):
     def __init__(self):
         """Abstract event producer.
         """
-        self.logger = logging.getLogger(self.__class__.__module__+ \
-                                        '.'+self.__class__.__name__)
+        self.logger = logging.getLogger(self.__class__.__module__+u'.'+self.__class__.__name__)
     
     def _send(self, event_type, data, source, dest):
         raise NotImplementedError()
@@ -220,11 +231,12 @@ class EventProducerRedis(EventProducer):
             message = event.json()
             # publish message to redis
             self.redis_manager.publish(self.redis_exchange, message)
-            self.logger.debug(u'Send event %s : %s' % (event.id, message))
+            self.logger.debug(u'Send event %s : %s' % (event.id, truncate(message)))
         except redis.PubSubError as ex:
             self.logger.error(u'Event can not be send: %s' % ex, exc_info=1)
         except Exception as ex:
             self.logger.error(u'Event can not be encoded: %s' % ex, exc_info=1) 
+
 
 class EventProducerZmq(EventProducer):
     def __init__(self, host, port):
@@ -274,6 +286,7 @@ class EventProducerZmq(EventProducer):
             if context is not None:
                 context.term()
 
+
 class SimpleEventConsumer(object):
     def __init__(self, redis_uri, redis_exchange):
         self.logger = logging.getLogger(self.__class__.__module__+ \
@@ -310,9 +323,9 @@ class SimpleEventConsumer(object):
             except (gevent.Greenlet.GreenletExit, Exception) as ex:
                 self.logger.error(u'Error receiving message: %s', exc_info=1)                 
                     
-        self.logger.info(u'Stop event consumer on redis channel %s:%s' % 
-                         (self.redis_uri, self.redis_exchange))                       
-                
+        self.logger.info(u'Stop event consumer on redis channel %s:%s' % (self.redis_uri, self.redis_exchange))
+
+
 class SimpleEventConsumerKombu(ConsumerMixin):
     def __init__(self, connection, redis_exchange):
         self.logger = logging.getLogger(self.__class__.__module__+ \

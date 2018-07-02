@@ -90,7 +90,7 @@ class AuthenticationManager(object):
         # set user ip address
         auth_user.current_login_ip = ipaddr
         
-        self.logger.debug(u'Login user: %s' % (username))
+        self.logger.debug(u'Login user: %s' % username)
         return auth_user
 
     def refresh(self, uid, username, domain):
@@ -114,7 +114,7 @@ class AuthenticationManager(object):
         username = u'%s@%s' % (username, domain)
         auth_user = auth_provider.refresh(username, uid)
         
-        self.logger.debug(u'Login user: %s' % (username))
+        self.logger.debug(u'Login user: %s' % username)
         return auth_user   
 
 
@@ -174,7 +174,7 @@ class BaseAuthController(ApiController):
     #
     # identity manipulation methods
     #
-    @trace(entity=u'Token', op=u'insert')
+    @trace(entity=u'Token', op=u'insert', noargs=True)
     def set_identity(self, uid, identity, expire=True, expire_time=None):
         """Set beehive identity with token uid
         
@@ -292,7 +292,7 @@ class BaseAuthController(ApiController):
     #
     # base inner login
     #
-    @trace(entity=u'Token', op=u'login.params.insert')
+    @trace(entity=u'Token', op=u'login.params.insert', noargs=True)
     def validate_login_params(self, name, domain, password, login_ip):
         """Validate main login params.
         
@@ -339,7 +339,7 @@ class BaseAuthController(ApiController):
         except ApiManagerError as ex:
             raise ApiManagerError(ex.value, code=ex.code)
     
-    @trace(entity=u'Token', op=u'user.check.insert')
+    @trace(entity=u'Token', op=u'user.check.insert', noargs=True)
     def check_login_user(self, name, domain, password, login_ip):
         """Simple http authentication login.
         
@@ -366,7 +366,7 @@ class BaseAuthController(ApiController):
         
         return dbuser, dbuser_attribs   
     
-    @trace(entity=u'Token', op=u'login.base.insert')
+    @trace(entity=u'Token', op=u'login.base.insert', noargs=True)
     def base_login(self, name, domain, password, login_ip, dbuser, dbuser_attribs):
         """Base login.
         
@@ -402,7 +402,7 @@ class BaseAuthController(ApiController):
         
         return user, dbuser_attribs
 
-    @trace(entity=u'Token', op=u'login.check.insert')
+    @trace(entity=u'Token', op=u'login.check.insert', noargs=True)
     def check_base_login(self, name, domain, secret, login_ip, dbuser, dbuser_attribs):
         """Base check login.
 
@@ -461,7 +461,7 @@ class BaseAuthController(ApiController):
     #
     # simple http login
     #
-    @trace(entity=u'Token', op=u'login.simple.insert')
+    @trace(entity=u'Token', op=u'login.simple.insert', noargs=True)
     def simple_http_login(self, name, domain, password, login_ip):
         """Simple http authentication login
         
@@ -616,7 +616,7 @@ class BaseAuthController(ApiController):
         
         return res    
     
-    @trace(entity=u'Token', op=u'login.keyauth.insert')
+    @trace(entity=u'Token', op=u'login.keyauth.insert', noargs=True)
     def create_keyauth_token(self, user=None, password=None, login_ip=None):
         """Create asymmetric keys authentication token
         
@@ -655,7 +655,7 @@ class BaseAuthController(ApiController):
 
         return res    
     
-    @trace(entity=u'Token', op=u'login.keyauth.insert')
+    @trace(entity=u'Token', op=u'login.keyauth.insert', noargs=True)
     def login(self, name, domain, password, login_ip):
         """Asymmetric keys authentication login
         
@@ -666,12 +666,12 @@ class BaseAuthController(ApiController):
         :return: True
         :raise ApiManagerError:
         """
-        opts = {
-            u'name': name,
-            u'domain': domain,
-            u'password': u'xxxxxxx',
-            u'login_ip': login_ip
-        }        
+        # opts = {
+        #     u'name': name,
+        #     u'domain': domain,
+        #     u'password': u'xxxxxxx',
+        #     u'login_ip': login_ip
+        # }
         
         # validate input params
         try:
