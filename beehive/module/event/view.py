@@ -34,6 +34,10 @@ class ListEventsRequestSchema(PaginatedRequestQuerySchema):
     source = fields.String(default=u'{}', context=u'query')
     dest = fields.String(default=u'{}', context=u'query')
     data = fields.String(default=u'{}', context=u'query')
+    field = fields.String(validate=OneOf([u'id', u'uuid', u'objid', u'name'],
+                                         error=u'Field can be id, uuid, objid, name'),
+                          description=u'enitities list order field. Ex. id, uuid, name',
+                          default=u'id', example=u'id', missing=u'id', context=u'query')
 
 
 class EventsParamsResponseSchema(Schema):

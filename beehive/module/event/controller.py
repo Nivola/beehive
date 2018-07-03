@@ -3,6 +3,8 @@ Created on Dec 31, 2014
 
 @author: darkbk
 """
+import logging
+
 from beecell.perf import watch
 from beecell.simple import str2uni, id_gen, truncate, format_date
 import ujson as json
@@ -158,12 +160,14 @@ class GenericEvent(ApiObject):
 
 class BaseEvent(object):
     def __init__(self, event):
+        self.logger = logging.getLogger(self.__class__.__module__+u'.'+self.__class__.__name__)
+
         self.event = event
     
     def info(self):
         """
         """
-        data = None
+        data = {}
         try:
             data = json.loads(self.event.data)
         except Exception as ex:

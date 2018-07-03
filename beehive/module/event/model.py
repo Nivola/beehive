@@ -279,9 +279,8 @@ class EventDbManager(AbstractDbManager):
         :raise TransactionError: if transaction return error
         """
         # add event
-        data = truncate(json.dumps(data))
-        res = self.add_entity(DbEvent, eventid, etype, objid, objdef, objtype, 
-                              creation, data, json.dumps(source),
+        data = truncate(json.dumps(data), size=4000)
+        res = self.add_entity(DbEvent, eventid, etype, objid, objdef, objtype, creation, data, json.dumps(source),
                               json.dumps(dest))
         
         # add permtag
