@@ -1614,37 +1614,31 @@ class ServiceMetricsController(ServiceControllerChild):
         self.result(res, key=u'metric', 
                     headers=[u'id', u'day',           u'num',        u'type',        u'value', u'platform', u'instance',             u'job_id'],
                     fields= [u'id', u'date.creation', u'metric_num', u'metric_type', u'value', u'platform', u'service_instance_id',  u'job_id'])
+    
+    @expose(aliases=[u'acquire [field=..]'], aliases_only=True)
+    @check_error
+    def acquire(self):
+        """ Acquire metric
+    - field: can be account_oid, metric_type_id, instance_oid
+        """
+        account_oid = self.get_arg(name=u'account_oid', keyvalue=True)
+        metric_type_id = self.get_arg(name=u'metric_type_id', keyvalue=True)
+        instance_oid = self.get_arg(name=u'instance_oid', keyvalue=True)
+        
+        data = {
+            u'acquire_metric':{
+                u'metric_type_id': metric_type_id,
+                u'account_oid': account_oid,
+                u'service_instance_oid': instance_oid
+            }
+        }
+       
+        uri = u'%s/services/metrics/acquire' % self.baseuri
+        res = self._call(uri, u'POST', data=data)
+        logger.info(u'Acquire metric : %s' % truncate(res))
+        res = {u'msg': u'Acquire metric task %s' % res}
+        self.result(res, headers=[u'msg'])
 
-
-#     @expose(aliases=[u'perms <id>'], aliases_only=True)
-#     @check_error
-#     def perms(self):
-#         """Get service catalog permissions by value id or uuid
-#         """
-#         value = self.get_arg(name=u'id')
-#         data = urllib.urlencode(self.app.kvargs)
-#         uri = u'%s/services/metrics/%s/perms' % (self.baseuri, value)
-#         res = self._call(uri, u'GET', data=data)
-#         logger.info(u'Get service catalog perms: %s' % truncate(res))
-#         self.result(res, key=u'perms', headers=self.perm_headers)
-# 
-#     @expose(aliases=[u'update <oid> [field=value]'], aliases_only=True)
-#     @check_error
-#     def update(self):
-#         """Update service catalog
-#         - oid: id or uuid of the catalog
-#         - field: can be name, version, desc, active
-#         """
-#         oid = self.get_arg(name=u'oid')
-#         params = self.get_query_params(*self.app.pargs.extra_arguments)
-#         data = {
-#             u'catalog': params
-#         }
-#         uri = u'%s/services/metrics/%s' % (self.baseuri, oid)
-#         self._call(uri, u'PUT', data=data)
-#         logger.info(u'Update service catalog %s with data %s' % (oid, params))
-#         res = {u'msg': u'Update service catalog %s with data %s' % (oid, params)}
-#         self.result(res, headers=[u'msg'])
 
 
 class ServiceMetricCostsController(ServiceControllerChild):
@@ -1658,7 +1652,7 @@ class ServiceMetricCostsController(ServiceControllerChild):
     @check_error
     def list(self):
         """List all service metric by field:
-            id, type, num, platform, u'instance', u'account',  u'job_id', pricelist, date_start, date_end
+            id, type, num, u'instance', u'account',  u'job_id', pricelist, date_start, date_end
         """
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         # = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
@@ -1667,7 +1661,6 @@ class ServiceMetricCostsController(ServiceControllerChild):
             u'id':u'id', 
             u'type': u'metric_type_name',
             u'num': u'metric_num',
-            u'platform': u'platform_name',
             u'instance': u'instance_oid',
             u'account': u'account_oid',
             u'job_id': u'job_id',
@@ -1691,8 +1684,8 @@ class ServiceMetricCostsController(ServiceControllerChild):
         res = self._call(uri, u'GET', data=urlencode(data))
         
         self.result(res, key=u'metric_cost', 
-                    headers=[u'id'       , u'eval_date'      , u'type'     , u'value', u'num'       , u'platform'     , u'instance'   , u'account',    u'job_id', u'price'        , u'price_iva', u'pricelist'   , u'time_unit'],
-                    fields= [u'metric_id', u'extraction_date', u'type_name', u'value', u'metric_num', u'platform_name', u'instance_id', u'account_id', u'job_id', u'price_not_iva', u'price_iva', u'pricelist_id', u'time_unit'])
+                    headers=[u'id'       , u'eval_date'      , u'type'     , u'value', u'num'       , u'instance'   , u'account',    u'job_id', u'price'        , u'price_iva', u'pricelist'   , u'time_unit'],
+                    fields= [u'metric_id', u'extraction_date', u'type_name', u'value', u'metric_num', u'instance_id', u'account_id', u'job_id', u'price_not_iva', u'price_iva', u'pricelist_id', u'time_unit'])
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -1723,12 +1716,10 @@ class ServiceAggregateCostsController(ServiceControllerChild):
             day, id, value, metric_num, platform, u'instance', u'metric_type',  u'job_id'
         """
         params = self.get_query_params(*self.app.pargs.extra_arguments)
-        # = self.format_http_get_query_params(*self.app.pargs.extra_arguments)
         
         header_field = {
             u'id':u'id', 
             u'type_id': u'metric_type_id',
-#             u'platform_id': u'platform_id',
             u'instance': u'instance_oid',
             u'aggr_type': u'aggregation_type',
             u'period': u'period',
@@ -1766,19 +1757,18 @@ class ServiceAggregateCostsController(ServiceControllerChild):
                     headers=[u'id', u'type_id', u'cost'        , u'cost_iva', u'instance',            u'aggr_type'       , u'period', u'job_id', u'date'],
                     fields= [u'id', u'type_id', u'cost_not_iva', u'cost_iva', u'service_instance_id', u'aggregation_type', u'period', u'job_id', u'evaluation_date'])
 
-    @expose(aliases=[u'add <metric_type_id> <cost_iva> <cost_not_iva> <instance_oid> <aggregation_type> <period> <job_id> [field=..]'],
+    @expose(aliases=[u'add <metric_type_id> <cost_iva> <cost_not_iva> <instance_oid> <aggr_type> <period> <job_id> [field=..]'],
             aliases_only=True)
     @check_error
     def add(self):
         """Add aggregate cost 
     - field: can be date
         """
-#         platform_id = self.get_arg(name=u'platform_id')
         metric_type_id = self.get_arg(name=u'metric_type_id')
         cost_iva = self.get_arg(name=u'cost_iva')
         cost_not_iva = self.get_arg(name=u'cost_not_iva')
         instance_oid = self.get_arg(name=u'instance_oid')
-        aggregation_type = self.get_arg(name=u'aggregation_type')
+        aggregation_type = self.get_arg(name=u'aggr_type')
         period = self.get_arg(name=u'period')
         job_id = self.get_arg(name=u'job_id', keyvalue=True)
         evaluation_date = self.get_arg(name=u'date', default=format_date(datetime.today()), keyvalue=True)
@@ -1803,7 +1793,7 @@ class ServiceAggregateCostsController(ServiceControllerChild):
         res = {u'msg': u'Add ggregate cost %s' % res}
         self.result(res, headers=[u'msg'])
         
-    @expose(aliases=[u'batch_delete [batch=..]'], aliases_only=True)
+    @expose(aliases=[u'batch_delete [field=..]'], aliases_only=True)
     @check_error
     def batch_delete(self):
         """Batch Delete aggregate costs
@@ -1812,8 +1802,7 @@ class ServiceAggregateCostsController(ServiceControllerChild):
         """
 #         value = self.get_arg(name=u'id')
         data = {
-            u'aggregate_cost':{
-#                 u'platform_id':self.get_arg(name=u'platform_id', keyvalue=True),  
+            u'aggregate_cost':{ 
                 u'metric_type_id': self.get_arg(name=u'type_id', keyvalue=True), 
                 u'service_instance_id': self.get_arg(name=u'instance', keyvalue=True), 
                 u'aggregation_type': self.get_arg(name=u'aggr_type', keyvalue=True),
@@ -1829,6 +1818,37 @@ class ServiceAggregateCostsController(ServiceControllerChild):
         res = self._call(uri, u'DELETE', data=data)
         logger.info(res)
         res = {u'msg': u'Delete n. %s aggregation costs' % res.get(u'deleted')}
+        self.result(res, headers=[u'msg'])
+    
+    
+    @expose(aliases=[u'aggregate aggr_type period [field=..]'], aliases_only=True)
+    @check_error
+    def aggregate(self):
+        """Generate Aggregate cost with aggr_type={\'daily\', \'monthly\'} period={\'yyyy-mm-dd\', \'yyyy-mm\'}
+    - field: can be account_oid, metric_type_id, instance_oid, overwrite
+        """
+        aggregation_type = self.get_arg(name=u'aggr_type')
+        period = self.get_arg(name=u'period')
+        account_oid = self.get_arg(name=u'account_oid', keyvalue=True)
+        metric_type_id = self.get_arg(name=u'metric_type_id', keyvalue=True)
+        overwrite = self.get_arg(name=u'overwrite', keyvalue=True)
+        instance_oid = self.get_arg(name=u'instance_oid', keyvalue=True)
+        
+        data = {
+            u'aggregate_cost':{
+                u'aggregation_type': aggregation_type,
+                u'period': period,
+                u'metric_type_id': metric_type_id,
+                u'account_oid': account_oid,
+                u'service_instance_oid': instance_oid,
+                u'overwrite': overwrite
+            }
+        }
+       
+        uri = u'%s/services/aggregatecosts/generate' % self.baseuri
+        res = self._call(uri, u'POST', data=data)
+        logger.info(u'Aggregate cost: %s' % truncate(res))
+        res = {u'msg': u'Aggregate task %s' % res}
         self.result(res, headers=[u'msg'])
     
 service_controller_handlers = [
