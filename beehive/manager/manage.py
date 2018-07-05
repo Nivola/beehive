@@ -210,6 +210,7 @@ class CliManager(CementCmd):
             u'requests',
             u'urllib3',
             u'ansible',
+            u'requests_oauthlib'
         ]
 
         config_defaults = {
@@ -244,6 +245,8 @@ class CliManager(CementCmd):
         color = True
         format = u'text'
         verbosity = 0
+        notruncate = False
+        truncate = 50
 
     def configure(self):
         """Configure app

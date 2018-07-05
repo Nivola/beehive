@@ -223,6 +223,8 @@ class BaseController(CementCmdBaseController):
         self.verbosity = getattr(self.app.pargs, u'verbosity', None)
         self.key = getattr(self.app.pargs, u'key', None)
         self.vault = getattr(self.app.pargs, u'vault', None)
+        self.notruncate = getattr(self.app.pargs, u'notruncate', None)
+        self.truncate = getattr(self.app.pargs, u'truncate', None)
 
         if self.format is None:
             self.format = self.app._meta.format
@@ -232,7 +234,7 @@ class BaseController(CementCmdBaseController):
             setattr(self.app._parsed_args, u'color', self.color)
         if self.verbosity is None:
             self.verbosity = self.app._meta.verbosity
-            setattr(self.app._parsed_args, u'verbosity', self.verbosity)            
+            setattr(self.app._parsed_args, u'verbosity', self.verbosity)
         if self.env is None:
             if self.app._meta.env is not None:
                 self.env = self.app._meta.env
@@ -243,6 +245,13 @@ class BaseController(CementCmdBaseController):
             raise Exception(u'Platform environment %s does not exist. Select from: %s' % (self.env, envs))
         if self.envs is not None:
             self.envs = self.envs.split(u',')
+
+        if self.notruncate is True:
+            self.notruncate = self.app._meta.notruncate
+            setattr(self.app._parsed_args, u'notruncate', self.notruncate)
+        if self.truncate is not None:
+            self.truncate = self.app._meta.truncate
+            setattr(self.app._parsed_args, u'truncate', self.truncate)
 
         # fernet key
         if self.key is None:
@@ -499,10 +508,10 @@ class BaseController(CementCmdBaseController):
                     # maxsize = 100
 
                 if isinstance(data, dict) or isinstance(data, list):
-                    if self.app.pargs.notruncate is True:
+                    if self.notruncate is True:
                         maxsize = 400
-                    if self.app.pargs.truncate is not None:
-                        maxsize = int(self.app.pargs.truncate)
+                    if self.truncate is not None:
+                        maxsize = int(self.truncate)
                     if u'page' in orig_data:
                         print(u'Page: %s' % orig_data[u'page'])
                         print(u'Count: %s' % orig_data[u'count'])
@@ -737,7 +746,7 @@ class BaseController(CementCmdBaseController):
     def default(self):
         """Default controller command
         """
-        if self.app.pargs.cmds is True:
+        if getattr(self.app.pargs, u'cmds', False) is True:
             self.app.print_cmd_list()
         else:
             self.app.print_help()

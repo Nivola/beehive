@@ -260,7 +260,7 @@ class SshNodeController(SshControllerChild):
 
         self.ssh2node(host_id=host_id, host_ip=host_ip, host_name=host_name, user=user)
 
-    @expose(aliases=[u'list [node=..] [field=..]'], aliases_only=True)
+    @expose(aliases=[u'actions [node=..] [field=..]'], aliases_only=True)
     @check_error
     def actions(self):
         """List sshnode actions

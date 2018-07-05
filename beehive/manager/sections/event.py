@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class EventController(BaseController):
     class Meta:
-        label = 'audit'
+        label = 'cep'
         stacked_on = 'base'
         stacked_type = 'nested'
         description = "Event Service management"
@@ -36,7 +36,7 @@ class EventControllerChild(ApiController):
                    u'date.creation', u'date.modified']
     
     class Meta:
-        stacked_on = 'audit'
+        stacked_on = 'cep'
         stacked_type = 'nested'
         
         
