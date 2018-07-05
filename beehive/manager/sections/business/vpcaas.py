@@ -74,6 +74,7 @@ class ImageServiceController(VPCaaServiceControllerChild):
         data_search = {}
         data_search[u'owner-id.N'] = self.split_arg(u'accounts')
         data_search[u'image-id.N'] = self.split_arg(u'ids')
+        data_search[u'tag-key.N'] = self.split_arg(u'tags')
         data_search[u'Nvl-MaxResults'] = self.get_arg(name=u'size', default=10, keyvalue=True)
         data_search[u'Nvl-NextToken'] = self.get_arg(name=u'page', default=0, keyvalue=True)
 
@@ -883,15 +884,15 @@ class TagServiceController(VPCaaServiceControllerChild):
         """
         data = {}
         data[u'Tag.N'] = []
-        data[u'ResourceId.N'] = self.split_arg(key=u'ids', required=True)
+        data[u'ResourceId.N'] = self.split_arg(key=u'ids', keyvalue=False, required=True)
         
-        tags = self.split_arg(key=u'tags', keyvalue=True, required=True)
+        tags = self.split_arg(key=u'tags', keyvalue=False, required=True)
         for tag in tags:
             tag_dict = {}
             tag_dict[u'Key'] = tag
             data[u'Tag.N'].append(tag_dict)  
               
-        data[u'owner-id'] = self.get_account(self.get_arg(name=u'account', keyvalue=True, required=True))
+        data[u'owner-id'] = self.get_account(self.get_arg(name=u'account', keyvalue=False, required=True))
 
         uri = u'%s/computeservices/tag/createtags' % self.baseuri
         res = self._call(uri, u'POST', data={u'tags': data}, timeout=600)
@@ -901,18 +902,17 @@ class TagServiceController(VPCaaServiceControllerChild):
         self.result(res, headers=[u'msg'])
 
 
-    @expose(aliases=[u'delete <ids>'], aliases_only=True)
+    @expose(aliases=[u'delete <ids> [tags=..]'], aliases_only=True)
     @check_error
     def delete(self):
         """delete tag for a resource
     - ids: comma separated list of service instance ids
     - tags: comma separated list of tag keys 
-    - account: owner of instance
         """
         data = {}
         data[u'ResourceId.N'] = self.split_arg(key=u'ids', required=True)
 
-        tags = self.split_arg(key=u'tags', keyvalue=True, required=False)
+        tags = self.split_arg(key=u'tags', keyvalue=False, required=False)
         if len(tags) > 0:
             data[u'Tag.N'] = []
             for tag in tags:
