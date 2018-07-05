@@ -620,7 +620,7 @@ class RedisClutserController(RedisController):
             headers = []
             cluster_nodes = []
             redis_uri = u'redis-cluster://'
-            for host in hosts:
+            for host in hosts[0:1]:
                 cluster_nodes.append(u'%s:%s' % (str(host), u'6379'))
             redis_uri += u','.join(cluster_nodes)
             server = RedisManager(redis_uri)
