@@ -927,13 +927,14 @@ class ApiController(BaseController):
 
         # get ssh user
         data = {
-            u'node_oid': sshnode[u'id'],
+            u'node': sshnode[u'id'],
             u'username': user
         }
         uri = u'/v1.0/gas/sshusers'
         sshuser = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True)).get(u'sshusers', [])
         if len(sshuser) == 0:
             raise Exception(u'Host %s user %s not found' % (sshnode[u'name'], user))
+
         sshuser = sshuser[0]
 
         # get ssh ksy
