@@ -113,7 +113,7 @@ class AnsibleController(ApiController):
         self.beehive_doc_playbook = u'%s/beehive-doc.yml' % (self.ansible_path)
         self.doc_playbook = u'%s/docs.yml' % (self.ansible_path)
         self.console_playbook = u'%s/console.yml' % (self.ansible_path)
-        self.local_package_path = self.configs[u'local_package_path']
+        self.local_package_path = self.configs.get(u'local_package_path', u'')
     
     def _ext_parse_args(self):
         BaseController._ext_parse_args(self)
