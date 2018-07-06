@@ -325,7 +325,7 @@ class SpecializedServiceControllerChild(ApiController):
     def _setup(self, base_app):
         BaseController._setup(self, base_app)
 
-        self.ansible_path = self.configs[u'ansible_path']
+        self.ansible_path = self.configs.get(u'ansible_path', u'')
         self.console_playbook = u'%s/console-user.yml' % self.ansible_path
 
     def is_name(self, oid):
