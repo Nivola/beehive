@@ -1278,13 +1278,6 @@ class ServiceInstanteCostController(ServiceControllerChild):
         description = "Service instance instante cost management"
 
 
-# TODO cli commands to manage  ServiceAggregateCost     
-class ServiceAggregateCostController(ServiceControllerChild):
-    class Meta:
-        label = 'instances.aggregatecosts'
-        description = "Service instance aggregate cost management"
-
-
 class ServiceLinkController(ServiceControllerChild):
     fields = [u'id', u'name', u'active', u'details.type', u'details.start_service.id', u'details.end_service.id',
               u'details.attributes', u'date.creation', u'date.modified']
@@ -1573,7 +1566,7 @@ class ServiceMetricsController(ServiceControllerChild):
     @check_error
     def list(self):
         """List all service metric by field:
-            day, id, value, metric_num, platform, u'instance', u'metric_type',  u'job_id'
+            day, id, value, metric_num, u'instance', u'metric_type',  u'job_id'
         """
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         
@@ -1583,12 +1576,10 @@ class ServiceMetricsController(ServiceControllerChild):
             u'num': u'metric_num',
             u'type': u'metric_type',
             u'value': u'value',
-            u'platform': u'platform',
             u'instance': u'service_instance_id',
             u'job_id': u'job_id'
         }
         data = self.get_query_params(*self.app.pargs.extra_arguments)
-        print data
         for k in header_field:
             par = params.get(k, None)
             if par is not None:
@@ -1599,8 +1590,8 @@ class ServiceMetricsController(ServiceControllerChild):
         res = self._call(uri, u'GET', data=urlencode(data))
         logger.info(res)
         self.result(res, key=u'metrics', 
-                    headers=[u'id', u'date',          u'num',        u'type',        u'value', u'platform', u'instance',             u'job_id'],
-                    fields= [u'id', u'date.creation', u'metric_num', u'metric_type', u'value', u'platform', u'service_instance_id',  u'job_id'])
+                    headers=[u'id', u'date',          u'num',        u'type',        u'value', u'instance',             u'job_id'],
+                    fields= [u'id', u'date.creation', u'metric_num', u'metric_type', u'value', u'service_instance_id',  u'job_id'])
 
     @expose(aliases=[u'get <id>'], aliases_only=True)
     @check_error
@@ -1637,7 +1628,7 @@ class ServiceMetricsController(ServiceControllerChild):
         res = self._call(uri, u'POST', data=data)
         logger.info(u'Acquire metric : %s' % truncate(res))
         res = {u'msg': u'Acquire metric task %s' % res}
-        self.result(res, headers=[u'msg'])
+        self.result(res, headers=[u'msg'], maxsize=80)
 
 
 
@@ -1849,7 +1840,7 @@ class ServiceAggregateCostsController(ServiceControllerChild):
         res = self._call(uri, u'POST', data=data)
         logger.info(u'Aggregate cost: %s' % truncate(res))
         res = {u'msg': u'Aggregate task %s' % res}
-        self.result(res, headers=[u'msg'])
+        self.result(res, headers=[u'msg'], maxsize=80)
     
 service_controller_handlers = [
     ServiceController,
