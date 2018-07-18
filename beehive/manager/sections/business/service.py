@@ -1839,6 +1839,175 @@ class ServiceAggregateCostsController(ServiceControllerChild):
         logger.info(u'Aggregate cost: %s' % truncate(res))
         res = {u'msg': u'Aggregate task %s' % res}
         self.result(res, headers=[u'msg'], maxsize=80)
+
+
+class ServiceJobSchedulerController(ServiceControllerChild):
+    class Meta:
+        label = 'service.job_schedule'
+        aliases = ['job_schedule']
+        aliases_only = True
+        description = "Service Job Schedule management"
+    
+    @expose(aliases=[u'list [field=value]'], aliases_only=True)
+    @check_error
+    def list(self):
+        """List all service job schedule:
+            day, id, value, metric_num, u'instance', u'metric_type',  u'job_id'
+        """
+        params = self.get_query_params(*self.app.pargs.extra_arguments)
+        
+        header_field = {
+            u'id': u'id',
+            u'name ':u'name', 
+            u'job_name': u'job_name',
+            u'job_params': u'job_params',
+            u'schedule_type': u'schedule_type',
+            u'schedule_params': u'schedule_params',
+            u'retry_policy': u'retry_policy'
+        }
+        data = {}
+        for k in header_field:
+            par = params.get(k, None)
+            if par is not None:
+                data[header_field[k]] = par
+                
+        uri = u'%s/services/job_schedules' % self.baseuri
+        res = self._call(uri, u'GET', data=urlencode(data))
+        self.result(res, key=u'job_schedule', 
+                    headers=[u'id', u'name',  u'job name', u'type'],
+                    fields= [u'id', u'name',  u'job_name', u'schedule_type'])
+
+    @expose(aliases=[u'get <id>'], aliases_only=True)
+    @check_error
+    def get(self):
+        """Get service job schedule by id or uuid
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'%s/services/job_schedules/%s' % (self.baseuri, value)
+        res = self._call(uri, u'GET')
+        logger.info(res)
+
+        self.result(res, key=u'job_schedule', 
+                    headers=[u'id', u'name',  u'job name', u'type' ],
+                    fields= [u'id', u'name',  u'job_name', u'schedule_type'])
+
+    @expose(aliases=[u'add <name> <job_name> <schedule_type> [field=..]'],
+            aliases_only=True)
+    @check_error
+    def add(self):
+        """Add service job schedule 
+    - field: can be desc, job_params, schedule_params, retry_policy
+        """
+        
+        name = self.get_arg(name=u'name', required=True)
+        job_name = self.get_arg(name=u'job_name', required=True)
+        schedule_type = self.get_arg(name=u'schedule_type', required=True)
+        
+        desc = self.get_arg(name=u'desc', required=False, default=name)
+        job_params = self.get_arg(name=u'job_params', required=False, default={})
+        schedule_params = self.get_arg(name=u'schedule_params', required=False, default={})
+        retry_policy = self.get_arg(name=u'retry_policy', required=False, default={})
+        
+        data = {
+            u'job_schedule':{
+                u'name': name,
+                u'desc': desc,
+                u'job_name': job_name,
+                u'job_params': job_params,
+                u'schedule_type': schedule_type,
+                u'schedule_params': schedule_params,
+                u'retry_policy': retry_policy
+            }
+        }
+        
+        uri = u'%s/services/job_schedules' % self.baseuri
+        res = self._call(uri, u'POST', data=data)
+        logger.info(u'Add job schedule : %s' % truncate(res))
+        res = {u'msg': u'Add job schedule %s' % res}
+        self.result(res, headers=[u'msg'], maxsize=90)
+    
+    @expose(aliases=[u'update oid [field=..]'],
+            aliases_only=True)
+    @check_error
+    def update(self):
+        """Update service job schedule 
+    - field: can be name, desc, job_name, schedule_type, job_params, schedule_params, retry_policy
+        """
+        oid = self.get_arg(name=u'oid', required = True)
+        
+        name = self.get_arg(name=u'name', required=False, default=None, keyvalue=True)
+        job_name = self.get_arg(name=u'job_name', required=False, default=None, keyvalue=True)
+        schedule_type = self.get_arg(name=u'schedule_type', required=False, default=None, keyvalue=True)
+        desc = self.get_arg(name=u'desc', required=False, default=None, keyvalue=True)
+        job_params = self.get_arg(name=u'job_params', required=False, default=None, keyvalue=True)
+        schedule_params = self.get_arg(name=u'schedule_params', required=False, default=None, keyvalue=True)
+        retry_policy = self.get_arg(name=u'retry_policy', required=False, default=None, keyvalue=True)
+        
+        data = {
+            u'job_schedule':{
+                u'name': name,
+                u'desc': desc,
+                u'job_name': job_name,
+                u'job_params': job_params,
+                u'schedule_type': schedule_type,
+                u'schedule_params': schedule_params,
+                u'retry_policy': retry_policy
+            }
+        }
+        
+        print data
+        
+        uri = u'%s/services/job_schedules/%s' % ( self.baseuri, oid)
+        res = self._call(uri, u'PUT', data=data)
+        logger.info(u'Update job schedule : %s' % truncate(res))
+        res = {u'msg': u'Update job schedule %s' % res}
+        self.result(res, headers=[u'msg'], maxsize=90)
+        
+    @expose(aliases=[u'delete <oid> '], aliases_only=True)
+    @check_error
+    def delete(self):
+        """Delete Job Schedule 
+        """   
+        
+        oid = self.get_arg(name=u'oid')
+       
+        uri = u'%s/services/job_schedules/%s' % (self.baseuri, oid)
+        res = self._call(uri, u'DELETE')
+        logger.info(u'Job schedule delete: %s' % (truncate(res)))
+        res = {u'msg': u'Delete job_schedule %s ' % ( res)}
+        self.result(res, headers=[u'msg'], maxsize=80)
+        
+    @expose(aliases=[u'start <oid>'], aliases_only=True)
+    @check_error
+    def start(self):
+        """Start job Schedule 
+        """
+        self.exec_schedule_cmd(u'start')
+    
+    
+    @expose(aliases=[u'stop <oid> '], aliases_only=True)
+    @check_error
+    def stop(self):
+        """Stop Job Schedule 
+        """
+        self.exec_schedule_cmd(u'stop')
+        
+    
+    @expose(aliases=[u'restart <oid> '], aliases_only=True)
+    @check_error
+    def restart(self):
+        """Restart Job Schedule 
+        """   
+        self.exec_schedule_cmd(u'restart')
+    
+    def exec_schedule_cmd(self, cmd):
+        oid = self.get_arg(name=u'oid')
+       
+        uri = u'%s/services/job_schedules/%s/%s' % (self.baseuri, oid, cmd)
+        res = self._call(uri, u'PUT')
+        logger.info(u'Job schedule %s: %s' % (cmd,truncate(res)))
+        res = {u'msg': u'exec %s job_schedule %s ' % (cmd, res)}
+        self.result(res, headers=[u'msg'], maxsize=80)
     
 service_controller_handlers = [
     ServiceController,
@@ -1862,6 +2031,7 @@ service_controller_handlers = [
     ServiceTagController,
     ServiceMetricsController,
     ServiceMetricCostsController,
-    ServiceAggregateCostsController
+    ServiceAggregateCostsController,
+    ServiceJobSchedulerController
 ]
 
