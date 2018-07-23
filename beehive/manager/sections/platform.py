@@ -1975,7 +1975,7 @@ class NodeController(AnsibleController):
         """Update system package on beehive console
     - group: ansible group
         """
-        group = self.get_arg(default=u'all')
+        group = self.get_arg(name=u'group')
         run_data = {
             u'tags': [u'yum-update']
         }
@@ -1987,7 +1987,7 @@ class NodeController(AnsibleController):
         """Configure nodes hosts local resolution
     - group: ansible group
         """
-        group = self.get_arg(default=u'all')
+        group = self.get_arg(name=u'group')
         run_data = {
             u'tags': [u'hosts']
         }
@@ -2000,7 +2000,7 @@ class NodeController(AnsibleController):
     - group: ansible group
     - cmd: shell command
         """
-        group = self.get_arg(default=u'all')
+        group = self.get_arg(name=u'group')
 
         run_data = {
             u'tags': [u'node-reboot']
@@ -2607,7 +2607,7 @@ class BeehiveConsoleController(AnsibleController):
 
         run_data = {
             u'tags': [u'userset'],
-            u'sshuser': sshuser,
+            u'sshuser': str(sshuser),
             u'cmpuser': cmpuser,
             u'cmpuser_secret': secret,
             u'config': config,
