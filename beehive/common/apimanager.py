@@ -2156,7 +2156,8 @@ class ApiObject(object):
         if etype is None:
             etype = self.SYNC_OPERATION
         if exception is not None:
-            response = (False, escape(str(exception)))
+            # response = (False, escape(str(exception)))
+            response = (False, str(exception))
         action = op.split(u'.')[-1]
         
         # remove object from args - it does not serialize in event

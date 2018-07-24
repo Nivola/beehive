@@ -278,9 +278,9 @@ class SshNodeController(SshControllerChild):
         res = self._call(uri, u'GET', data=urllib.urlencode(data))
         self.result(res, key=u'actions',
                     headers=[u'id', u'date', u'user', u'user-ip', u'action-id', u'action', u'elapsed', u'node-name',
-                             u'node-user'],
+                             u'node-user', u'status'],
                     fields=[u'id', u'date', u'user.user', u'user.ip', u'action_id', u'action', u'elapsed', u'node_name',
-                            u'node_user.name'],)
+                            u'node_user.name', u'status'])
 
 
 class SshUserController(SshControllerChild):

@@ -3516,22 +3516,35 @@ class BeehiveController(AnsibleController):
         details = self.get_arg(default=u'')         
         self.get_emperor_blacklist(details, u'beehive')    
     
-    @expose(aliases=[u'instance-sync <subsystem> <vassal>'], aliases_only=True)
+    @expose(aliases=[u'instance-sync <subsystem> <vassal> [pkgs=..]'], aliases_only=True)
     @check_error
     def instance_sync(self):
         """Sync beehive package an all nodes with local git repository and
         restart instances
     - subsystem: subsystem
     - vassal: vassal
+    - pkgs: list of comma separated git projects
         """
         subsystem = self.get_arg(name=u'subsystem')
         vassal = self.get_arg(name=u'vassal')
+        git_packages = self.get_arg(default=u'', keyvalue=True, name=u'pkgs').split(u',')
         run_data = {
             u'local_package_path': self.local_package_path,
             u'subsystem': subsystem,
             u'vassal': u'%s-%s' % (subsystem, vassal),
             u'tags': [u'sync-dev']
-        }        
+        }
+        if len(git_packages) > 0:
+            run_data[u'git_packages'] = []
+            for git_package in git_packages:
+                run_data[u'git_packages'].append(
+                    {
+                        u'uri': u'https://{{ git_user }}:{{ git_pwd }}@{{ git_host }}/1362',
+                        u'prj': git_package,
+                        u'pkg': git_package.replace(u'-', u'_')
+                    }
+                )
+
         self.ansible_playbook(u'beehive', run_data, playbook=self.beehive_playbook)
     
     @expose(aliases=[u'instance-deploy <subsystem> <vassal>'], aliases_only=True)
