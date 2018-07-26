@@ -353,7 +353,19 @@ class SshUserController(SshControllerChild):
         logger.info(res)
         msg = {u'msg': res}
         self.result(msg, headers=[u'msg'], maxsize=200)
-         
+
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
+    def delete(self):
+        """Delete ssh user by id, uuid or name
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'%s/sshusers/%s' % (self.baseuri, value)
+        res = self._call(uri, u'DELETE', data=u'')
+        logger.info(u'Delete sshuser: %s' % res)
+        msg = {u'msg': u'Delete sshuser: %s' % value}
+        self.result(msg, headers=[u'msg'])
+
     @expose(aliases=[u'perms <id>'], aliases_only=True)
     @check_error
     def perms(self):

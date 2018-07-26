@@ -6,6 +6,8 @@ Created on jan 25, 2017
 import logging
 from datetime import datetime
 from copy import deepcopy
+from re import match
+
 from beecell.simple import id_gen, obscure_data, import_class, truncate
 from beecell.logger.helper import LoggerHelper
 from signal import signal
@@ -56,7 +58,6 @@ class EventConsumerRedis(ConsumerMixin):
         self.queue_name = u'%s.queue' % self.redis_exchange   
         self.routing_key = u'%s.key' % self.redis_exchange
         self.queue = Queue(self.queue_name, self.exchange, routing_key=self.routing_key, delivery_mode=1, durable=False)
-        
         self.event_producer = EventProducerRedis(self.redis_uri, self.redis_exchange+u'.sub', framework=u'simple')
         self.conn = Connection(self.redis_uri)
  

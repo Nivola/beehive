@@ -18,6 +18,7 @@ from celery._state import get_current_task
 import celery.signals
 from kombu import Exchange, Queue
 from beehive.common.apimanager import ApiManager
+from re import match
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,11 @@ def configure_task_manager(broker_url, result_backend, tasks=[], expire=60*60*24
     :param tasks: list of tasks module. Ex.
                   ['beehive.module.scheduler.tasks', 'beehive.module.service.plugins.filesharing',]
     """
+    # # get redis password
+    # redis_password = None
+    # if result_backend.find(u'@') > 0:
+    #     redis_password = match(r"redis:\/\/([\w\W\d]*)@.", result_backend).groups()[0]
+
     task_manager.conf.update(
         BROKER_URL=broker_url,
         TASK_DEFAULT_QUEUE=task_queue,

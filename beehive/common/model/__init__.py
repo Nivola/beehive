@@ -112,7 +112,7 @@ class BaseEntity(AuditData):
         AuditData.__init__(self)
         
     @staticmethod   
-    def get_base_entity_sqlfilters( *args, **kvargs):
+    def get_base_entity_sqlfilters(*args, **kvargs):
          
         filters=[]
         # id is unique

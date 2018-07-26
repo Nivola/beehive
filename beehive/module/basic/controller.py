@@ -1,8 +1,8 @@
-'''
+"""
 Created on Apr 1, 2016
 
 @author: darkbk
-'''
+"""
 from beecell.auth import extract
 #from beecell.perf import watch
 from beecell.simple import str2uni, id_gen, truncate
@@ -15,6 +15,7 @@ from beecell.db import TransactionError, QueryError
 from beehive.common.model.authorization import AuthDbManager
 from beehive.common.controller.authorization import BaseAuthController
 
+
 class BasicController(BaseAuthController):
     """Basic Module controller.
     """
@@ -25,7 +26,6 @@ class BasicController(BaseAuthController):
         
         self.resource = UwsgiManager()
         self.child_classes = [ApiViewResponse]
-        self.logger.warn(self.child_classes)
 
     #
     # server info

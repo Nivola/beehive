@@ -1,8 +1,8 @@
-'''
+"""
 Created on Jan 27, 2017
 
 @author: darkbk
-'''
+"""
 from logging import getLogger
 import gevent
 from kombu.pools import producers
@@ -10,6 +10,7 @@ from kombu import Connection, exceptions
 from kombu import Exchange, Queue
 from beehive.module.catalog.common import CatalogEndpoint
 from beecell.db.manager import RedisManager
+from re import match
 
     
 class CatalogProducer(object):
@@ -57,10 +58,8 @@ class CatalogProducerRedis(CatalogProducer):
         
         self.redis_uri = redis_uri
         self.redis_channel = redis_channel
-        
         self.conn = Connection(redis_uri)
-        self.exchange = Exchange(self.redis_channel, type=u'direct',
-                                 delivery_mode=1)
+        self.exchange = Exchange(self.redis_channel, type=u'direct', delivery_mode=1)
         self.routing_key = u'%s.key' % self.redis_channel
         
         self.queue = Queue(self.redis_channel, exchange=self.exchange)

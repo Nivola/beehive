@@ -925,6 +925,7 @@ class TaskManager(ApiObject):
         params.update(self.get_user())
         task = signature(u'beehive.module.scheduler.tasks.jobtest', (self.objid, params), app=task_manager,
                          queue=self.celery_broker_queue)
+        self.logger.warn(task)
         job = task.apply_async()
         self.logger.debug(u'Run job test: %s' % job)
         self.logger.debug(u'Run job test: %s' % signature)
