@@ -1852,7 +1852,7 @@ class ServiceJobSchedulerController(ServiceControllerChild):
     @check_error
     def list(self):
         """List all service job schedule:
-            day, id, value, metric_num, u'instance', u'metric_type',  u'job_id'
+            id, name, job_name, u'type', u'metric_type',  u'job_id'
         """
         params = self.get_query_params(*self.app.pargs.extra_arguments)
         
@@ -1860,10 +1860,7 @@ class ServiceJobSchedulerController(ServiceControllerChild):
             u'id': u'id',
             u'name ':u'name', 
             u'job_name': u'job_name',
-            u'job_params': u'job_params',
-            u'schedule_type': u'schedule_type',
-            u'schedule_params': u'schedule_params',
-            u'retry_policy': u'retry_policy'
+            u'type': u'schedule_type'
         }
         data = {}
         for k in header_field:
@@ -1896,7 +1893,7 @@ class ServiceJobSchedulerController(ServiceControllerChild):
     @check_error
     def add(self):
         """Add service job schedule 
-    - field: can be desc, job_params, schedule_params, retry_policy
+    - field: can be desc, options, schedule_params, retry_policy
         """
         
         name = self.get_arg(name=u'name', required=True)
@@ -1904,19 +1901,27 @@ class ServiceJobSchedulerController(ServiceControllerChild):
         schedule_type = self.get_arg(name=u'schedule_type', required=True)
         
         desc = self.get_arg(name=u'desc', required=False, default=name)
-        job_params = self.get_arg(name=u'job_params', required=False, default={})
+        job_options = self.get_arg(name=u'options', required=False, default={})
         schedule_params = self.get_arg(name=u'schedule_params', required=False, default={})
+        relative = self.get_arg(name=u'relative', required=False, default=False)
+        retry = self.get_arg(name=u'retry', required=False, default=False)
         retry_policy = self.get_arg(name=u'retry_policy', required=False, default={})
+        job_args = self.get_arg(name=u'args', required=False, default=[])
+        job_kvargs = self.get_arg(name=u'kvargs', required=False, default={})
         
         data = {
             u'job_schedule':{
                 u'name': name,
                 u'desc': desc,
                 u'job_name': job_name,
-                u'job_params': job_params,
+                u'job_options': job_options,
                 u'schedule_type': schedule_type,
                 u'schedule_params': schedule_params,
-                u'retry_policy': retry_policy
+                u'relative': relative,
+                u'retry': retry,
+                u'retry_policy': retry_policy,
+                u'job_args': job_args,
+                u'job_kvargs': job_kvargs
             }
         }
         
