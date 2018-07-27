@@ -762,9 +762,7 @@ class ApiManager(object):
                     self.monitor_producer = MonitorProducerRedis(
                                                         self.redis_monitor_uri, 
                                                         self.redis_monitor_channel)
-                    self.logger.info(u'Configure queue %s on %s' % 
-                                     (self.redis_monitor_channel, 
-                                      self.redis_monitor_uri))                    
+                    self.logger.info(u'Configure queue %s on %s' % (self.redis_monitor_channel, self.redis_monitor_uri))
                     self.logger.info(u'Configure monitor queue - CONFIGURED')
                 except Exception as ex:
                     self.logger.warning(u'Configure monitor queue - NOT CONFIGURED')                
@@ -773,9 +771,7 @@ class ApiManager(object):
                 ##### catalog queue configuration #####
                 try:
                     self.logger.info(u'Configure catalog queue - CONFIGURE')
-                    conf = configurator.get(app=self.app_name, 
-                                            group=u'queue', 
-                                            name=u'queue.catalog')
+                    conf = configurator.get(app=self.app_name, group=u'queue', name=u'queue.catalog')
     
                     # setup catalog producer
                     conf = json.loads(conf[0].value)
@@ -785,16 +781,13 @@ class ApiManager(object):
                         
                     # create instance of catalog producer
                     from beehive.module.catalog.producer import CatalogProducerRedis
-                    self.catalog_producer = CatalogProducerRedis(
-                                                        self.redis_catalog_uri, 
-                                                        self.redis_catalog_channel)
-                    self.logger.info(u'Configure queue %s on %s' % 
-                                     (self.redis_catalog_channel, 
-                                      self.redis_catalog_uri))                    
+                    self.catalog_producer = CatalogProducerRedis(self.redis_catalog_uri, self.redis_catalog_channel)
+                    self.logger.info(u'Configure queue %s on %s' % (self.redis_catalog_channel, self.redis_catalog_uri))
                     self.logger.info(u'Configure catalog queue - CONFIGURED')
                 except Exception as ex:
                     self.logger.warning(u'Configure catalog queue - NOT CONFIGURED')
-                ##### catalog queue configuration #####          
+                    self.logger.warning(u'', exc_info=1)
+                ##### catalog queue configuration #####
         
                 ##### tcp proxy configuration #####
                 try:
@@ -805,7 +798,7 @@ class ApiManager(object):
                     self.logger.info(u'Configure tcp proxy - CONFIGURED')
                 except:
                     self.logger.warning(u'Configure tcp proxy - NOT CONFIGURED') 
-                ##### tcp proxy configuration #####        
+                ##### tcp proxy configuration #####
     
                 ##### http proxy configuration #####
                 try:
@@ -2156,7 +2149,8 @@ class ApiObject(object):
         if etype is None:
             etype = self.SYNC_OPERATION
         if exception is not None:
-            response = (False, escape(str(exception)))
+            # response = (False, escape(str(exception)))
+            response = (False, str(exception))
         action = op.split(u'.')[-1]
         
         # remove object from args - it does not serialize in event
@@ -3046,6 +3040,7 @@ class ApiView(FlaskView):
         
         timeout = gevent.Timeout(module.api_manager.api_timeout)
         timeout.start()
+        self.logger.warn(u'Set request timeout to: %s' % module.api_manager.api_timeout)
 
         start = time.time()
         dbsession = None

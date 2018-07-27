@@ -278,9 +278,9 @@ class SshNodeController(SshControllerChild):
         res = self._call(uri, u'GET', data=urllib.urlencode(data))
         self.result(res, key=u'actions',
                     headers=[u'id', u'date', u'user', u'user-ip', u'action-id', u'action', u'elapsed', u'node-name',
-                             u'node-user'],
+                             u'node-user', u'status'],
                     fields=[u'id', u'date', u'user.user', u'user.ip', u'action_id', u'action', u'elapsed', u'node_name',
-                            u'node_user.name'],)
+                            u'node_user.name', u'status'])
 
 
 class SshUserController(SshControllerChild):
@@ -353,7 +353,19 @@ class SshUserController(SshControllerChild):
         logger.info(res)
         msg = {u'msg': res}
         self.result(msg, headers=[u'msg'], maxsize=200)
-         
+
+    @expose(aliases=[u'delete <id>'], aliases_only=True)
+    @check_error
+    def delete(self):
+        """Delete ssh user by id, uuid or name
+        """
+        value = self.get_arg(name=u'id')
+        uri = u'%s/sshusers/%s' % (self.baseuri, value)
+        res = self._call(uri, u'DELETE', data=u'')
+        logger.info(u'Delete sshuser: %s' % res)
+        msg = {u'msg': u'Delete sshuser: %s' % value}
+        self.result(msg, headers=[u'msg'])
+
     @expose(aliases=[u'perms <id>'], aliases_only=True)
     @check_error
     def perms(self):
