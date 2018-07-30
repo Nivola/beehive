@@ -3527,23 +3527,23 @@ class BeehiveController(AnsibleController):
         """
         subsystem = self.get_arg(name=u'subsystem')
         vassal = self.get_arg(name=u'vassal')
-        git_packages = self.get_arg(default=u'', keyvalue=True, name=u'pkgs').split(u',')
+        git_packages = self.get_arg(default=None, keyvalue=True, name=u'pkgs')
         run_data = {
             u'local_package_path': self.local_package_path,
             u'subsystem': subsystem,
             u'vassal': u'%s-%s' % (subsystem, vassal),
             u'tags': [u'sync-dev']
         }
-        if len(git_packages) > 0:
+        if git_packages is not None:
+            git_packages = git_packages.split(u',')
             run_data[u'git_packages'] = []
             for git_package in git_packages:
-                run_data[u'git_packages'].append(
-                    {
-                        u'uri': u'https://{{ git_user }}:{{ git_pwd }}@{{ git_host }}/1362',
-                        u'prj': git_package,
-                        u'pkg': git_package.replace(u'-', u'_')
-                    }
-                )
+                pkg = {
+                    u'uri': u'https://{{ git_user }}:{{ git_pwd }}@{{ git_host }}/1362',
+                    u'prj': git_package,
+                    u'pkg': git_package.replace(u'-', u'_')
+                }
+                run_data[u'git_packages'].append(pkg)
 
         self.ansible_playbook(u'beehive', run_data, playbook=self.beehive_playbook)
     

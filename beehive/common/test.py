@@ -67,7 +67,6 @@ class BeehiveTestCase(unittest.TestCase):
     pp = pprint.PrettyPrinter(width=200)
     logging.addLevelName(60, u'TESTPLAN')
     logging.addLevelName(70, u'TEST')
-    validatation_active = False
 
     # module = u'resource'
     # module_prefix = u'nrs'
@@ -133,6 +132,7 @@ class BeehiveTestCase(unittest.TestCase):
 
         # endpoints
         self.endpoints = cfg.get(u'endpoints')
+        self.swagger_endpoints = cfg.get(u'swagger')
             
         # redis connection
         if cfg.get(u'redis') is not None:
@@ -243,7 +243,7 @@ class BeehiveTestCase(unittest.TestCase):
     def create_keyauth_token(self, user, pwd):
         global token, seckey
         data = {u'user': user, u'password': pwd}
-        headers = {u'Content-Type':u'application/json'}
+        headers = {u'Content-Type': u'application/json'}
         endpoint = self.endpoints[u'auth']
         uri = u'/v1.0/nas/keyauth/token'
         response = requests.request(u'post', endpoint + uri, data=json.dumps(data), headers=headers, timeout=5,
@@ -254,14 +254,14 @@ class BeehiveTestCase(unittest.TestCase):
 
     def validate_swagger_schema(self, endpoint):
         start = time.time()
-        schema_uri = u'%s/apispec_1.json' % endpoint
-        schema = load(schema_uri)
-        logger.info(u'Load swagger schema from %s: %ss' % (endpoint, 
-                                                           time.time()-start))
+        schema_uri = endpoint
+        response = requests.request(u'GET', schema_uri, timeout=5, verify=False)
+        schema = load(response.text)
+        logger.info(u'Load swagger schema from %s: %ss' % (endpoint, time.time()-start))
         return schema    
     
     def get_schema(self, subsystem, endpoint):
-        if self.validatation_active is True or self.validation_active is True:
+        if self.validation_active is True:
             schema = self.schema.get(subsystem, None)
             if schema is None:
                 self.logger.info(u'Load swagger schema from %s' % endpoint)
@@ -272,7 +272,7 @@ class BeehiveTestCase(unittest.TestCase):
     
     def validate_response(self, resp_content_type, schema, path, method, response, runlog):
         validate = True
-        if self.validatation_active is True or self.validation_active is True:
+        if self.validation_active is True:
             # validate with swagger schema
             if resp_content_type.find(u'application/json') >= 0:
                 validator = ApiValidator(schema, path, method)
@@ -306,8 +306,9 @@ class BeehiveTestCase(unittest.TestCase):
                 headers = {}
     
             endpoint = self.endpoints[subsystem]
+            swagger_endpoint = self.swagger_endpoints[subsystem]
             # schema = self.schema[subsystem]
-            schema = self.get_schema(subsystem, endpoint)
+            schema = self.get_schema(subsystem, swagger_endpoint)
             if u'Content-Type' not in headers:
                 headers[u'Content-Type'] = u'application/json'            
 

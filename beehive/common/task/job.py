@@ -306,8 +306,7 @@ class JobTask(AbstractJob):
     #
     # api
     #
-    def api_admin_request(self, module, path, method, data=u'', 
-                          other_headers=None):
+    def api_admin_request(self, module, path, method, data=u'', other_headers=None):
         if isinstance(data, dict):
             data = json.dumps(data)
         return self.app.api_manager.api_client.admin_request(module, path, method, data, other_headers, silent=True)
