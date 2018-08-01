@@ -394,7 +394,7 @@ class BeehiveApiClient(object):
         try:
             if parse is True and isinstance(data, dict) or isinstance(data, list):
                 data = json.dumps(data)
-            res = self.send_request(subsystem, path, method, data, self.uid, self.seckey, other_headers,
+            res = self.send_request(subsystem, path, method, data, other_headers=other_headers,
                                     timeout=timeout, silent=silent, print_curl=print_curl)
         except BeehiveApiClientError as ex:
             self.logger.error(u'Send request to %s using uid %s: %s, %s' % (path, self.uid, ex.value, ex.code))
