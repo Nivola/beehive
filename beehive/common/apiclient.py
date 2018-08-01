@@ -341,10 +341,17 @@ class BeehiveApiClient(object):
         :return:
         :raise BeehiveApiClientError:
         """
-        self.logger.warn(uid)
-        self.logger.warn(seckey)
+        # get endpoint
+        endpoint = self.endpoint(subsystem)
+        proto = endpoint[u'proto']
+        host = endpoint[u'host']
+        port = endpoint[u'port']
 
         # create sign
+        if uid is None and self.uid is not None:
+            uid = self.uid
+            seckey = self.seckey
+
         headers = {u'Accept': u'application/json'}
         if self.api_authtype == u'keyauth' and uid is not None:
             sign = self.sign_request(seckey, path)
@@ -359,10 +366,6 @@ class BeehiveApiClient(object):
             headers.update(other_headers)            
             
         # make request
-        endpoint = self.endpoint(subsystem)
-        proto = endpoint[u'proto']
-        host = endpoint[u'host']
-        port = endpoint[u'port']
         if method.upper() == u'GET':
             path = u'%s?%s' % (path, data)
         elif isinstance(data, dict) or isinstance(data, list):
@@ -401,7 +404,7 @@ class BeehiveApiClient(object):
                 self.uid = None
                 self.seckey = None
                 self.create_token()
-                res = self.send_request(subsystem, path, method, data, self.uid, self.seckey, other_headers,
+                res = self.send_request(subsystem, path, method, data, other_headers=other_headers,
                                         timeout=timeout, silent=silent)
             else:
                 raise
@@ -431,8 +434,7 @@ class BeehiveApiClient(object):
             host = endpoint[u'host']
             port = endpoint[u'port']
             try:
-                resp = self.http_client(proto, host, u'/v1.0/server/ping', u'GET',
-                                        port=port, data=u'', timeout=0.5)
+                resp = self.http_client(proto, host, u'/v1.0/server/ping', u'GET', port=port, data=u'', timeout=0.5)
                 if u'code' in resp:
                     return False
                 return True
