@@ -190,34 +190,6 @@ class BeehiveApiClient(object):
             self.logger.error(ex, exc_info=1)
             raise BeehiveApiClientError(u'Error signing data: %s' % data, code=401)
 
-    '''
-    @watch
-    def get_identity(self, uid):
-        """Get identity.
-
-        :param uid: identity id
-        :return: dictionary like
-        
-                 .. code-block:: python
-        
-                    {u'uid':..., 
-                     u'user':..., 
-                     u'timestamp':..., 
-                     u'pubkey':..., 
-                     u'seckey':...}
-
-        :raise BeehiveApiClientError: Error
-        """
-        identity = self.api_manager.redis_manager.get(self.prefix + uid)
-        if identity is not None:
-            data = pickle.loads(identity)
-            data['ttl'] = self.module.redis_manager.ttl(self.prefix + uid)
-            self.logger.debug('Get identity %s from redis: %s' % (uid, data))           
-            return data
-        else:
-            self.logger.error("Identity %s doen't exist or is expired" % uid)
-            raise BeehiveApiClientError("Identity %s doen't exist or is expired" % uid, code=1014)'''
-
     def http_client(self, proto, host, path, method, data=u'', headers={}, port=80, timeout=30, print_curl=False,
                     silent=False):
         """Http client. Usage:
@@ -369,6 +341,9 @@ class BeehiveApiClient(object):
         :return:
         :raise BeehiveApiClientError:
         """
+        self.logger.warn(uid)
+        self.logger.warn(seckey)
+
         # create sign
         headers = {u'Accept': u'application/json'}
         if self.api_authtype == u'keyauth' and uid is not None:
@@ -940,8 +915,9 @@ class BeehiveApiClient(object):
         return res
 
     def append_role_permission_list(self, role, perms):
-        """Append permission to role
+        """Append permissions to role
 
+        :param perms: list of {u'subsystem': objtype, u'type': objdef, u'objid': objid, u'action': objaction}
         :raise BeehiveApiClientError:
         """
         data = {
@@ -1143,6 +1119,44 @@ class BeehiveApiClient(object):
         uri = u'/v1.0/nas/users/%s' % oid
         res = self.invoke(u'auth', uri, u'PUT', data, parse=True, silent=True)
         self.logger.debug(u'Remove roles %s from user %s' % (roles, oid))
+        return res
+
+    def append_user_permissions(self, user, perms):
+        """Append permissions to user
+
+        :param perms: list of {u'subsystem': objtype, u'type': objdef, u'objid': objid, u'action': objaction}
+        :raise BeehiveApiClientError:
+        """
+        data = {
+            u'user': {
+                u'perms': {
+                    u'append': perms,
+                    u'remove': []
+                }
+            }
+        }
+        uri = u'/v1.0/nas/users/%s' % user
+        res = self.invoke(u'auth', uri, u'PUT', data, parse=True, silent=True)
+        self.logger.debug(u'Append permissions %s ' % truncate(perms))
+        return res
+
+    def remove_user_permissions(self, user, perms):
+        """Remove permissions from user
+
+        :param perms: list of {u'subsystem': objtype, u'type': objdef, u'objid': objid, u'action': objaction}
+        :raise BeehiveApiClientError:
+        """
+        data = {
+            u'user': {
+                u'perms': {
+                    u'append': [],
+                    u'remove': perms
+                }
+            }
+        }
+        uri = u'/v1.0/nas/users/%s' % user
+        res = self.invoke(u'auth', uri, u'PUT', data, parse=True, silent=True)
+        self.logger.debug(u'Append permissions %s ' % truncate(perms))
         return res
 
     #
