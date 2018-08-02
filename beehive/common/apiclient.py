@@ -83,7 +83,7 @@ class BeehiveApiClient(object):
         self.seckey = None
         self.filter = None
         
-        self.host = gethostname()
+        # self.host = gethostname()
         
         # auth reference - http://10.102.160.240:6060
         for endpoint in auth_endpoints:
@@ -503,10 +503,10 @@ class BeehiveApiClient(object):
             api_user_pwd = self.api_user_pwd
         
         data = {u'user': api_user, u'password': api_user_pwd}
-        if login_ip is None:
-            data[u'login-ip'] = self.host
-        else:
-            data[u'login-ip'] = login_ip
+        # if login_ip is None:
+        #     data[u'login-ip'] = self.host
+        # else:
+        #     data[u'login-ip'] = login_ip
         res = self.send_request(u'auth', u'/v1.0/nas/simplehttp/login', u'POST', data=json.dumps(data))
         self.logger.info(u'Login user %s: %s' % (self.api_user, res[u'uid']))
         self.uid = None
@@ -530,10 +530,10 @@ class BeehiveApiClient(object):
         
         if self.api_authtype == u'keyauth':
             data = {u'user': api_user, u'password': api_user_pwd}
-            if login_ip is None:
-                data[u'login-ip'] = self.host
-            else:
-                data[u'login-ip'] = login_ip
+            # if login_ip is None:
+            #     data[u'login-ip'] = self.host
+            # else:
+            #     data[u'login-ip'] = login_ip
             res = self.send_request(u'auth', u'/v1.0/nas/keyauth/token', u'POST', data=data)
             self.logger.info(u'Login user %s with token: %s' % (self.api_user, res[u'access_token']))
             self.uid = res[u'access_token']

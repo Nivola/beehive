@@ -1286,7 +1286,7 @@ class ApiController(object):
                                 (user, action, objtype, definition))      
         except Exception as ex:
             self.logger.error(ex, exc_info=True)
-            raise ApiManagerError(ex, code=401)
+            raise ApiManagerError(ex, code=403)
 
     def has_needs(self, needs, perms):
         """Verify if permissions overlap needs.
@@ -2776,8 +2776,7 @@ class ApiView(FlaskView):
             user_ip = get_remote_ip(request)
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(u'Error retrieving Authorization from http header', 
-                                  code=401)
+            raise ApiManagerError(u'Error retrieving Authorization from http header', code=401)
         return user, pwd, user_ip
     
     def get_current_identity(self):
@@ -3411,10 +3410,12 @@ class ApiClient(BeehiveApiClient):
         except BeehiveApiClientError as ex:
             self.logger.error('Send user request to %s using uid %s: %s' % (path, self.uid, ex.value))
             raise
+
+        return res
         
-        if res['status'] == 'error':
-            self.logger.error('Send user request to %s using uid %s: %s' % (path, self.uid, res['msg']))
-            raise ApiManagerError(res['msg'], code=res['code'])
-        else:
-            self.logger.info('Send user request to %s using uid %s: %s' % (path, self.uid, truncate(res)))
-            return res['response']    
+        # if res['status'] == 'error':
+        #     self.logger.error('Send user request to %s using uid %s: %s' % (path, self.uid, res['msg']))
+        #     raise ApiManagerError(res['msg'], code=res['code'])
+        # else:
+        #     self.logger.info('Send user request to %s using uid %s: %s' % (path, self.uid, truncate(res)))
+        #     return res['response']
