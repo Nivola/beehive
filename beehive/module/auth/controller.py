@@ -912,14 +912,14 @@ class Role(AuthObject):
             role_perms = []
             for i in perms:
                 role_perms.append({
-                    u'id':i.id, 
-                    u'oid':i.obj.id, 
-                    u'subsystem':i.obj.type.objtype, 
-                    u'type':i.obj.type.objdef,
-                    u'objid':i.obj.objid, 
-                    u'aid':i.action.id, 
-                    u'action':i.action.value,
-                    u'desc':i.obj.desc
+                    u'id': i.id,
+                    u'oid': i.obj.id,
+                    u'subsystem': i.obj.type.objtype,
+                    u'type': i.obj.type.objdef,
+                    u'objid': i.obj.objid,
+                    u'aid': i.action.id,
+                    u'action': i.action.value,
+                    u'desc': i.obj.desc
                 })                
             self.logger.debug(u'Get role %s permissions: %s' % (self.name, truncate(role_perms)))
             return role_perms, total
@@ -932,8 +932,7 @@ class Role(AuthObject):
         """Append permission to role
         
         :param name: Role name
-        :param perms: list of tuple ("id", "oid", "type", "definition", 
-                      "objid", "aid", "action")
+        :param perms: list of tuple ("id", "oid", "type", "definition", "objid", "aid", "action")
         :return: True if operation is successful, False otherwise
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
@@ -968,8 +967,7 @@ class Role(AuthObject):
         """Remove permission from role
         
         :param name: Role name
-        :param perms: list of tuple ("id", "oid", "type", "definition", 
-                      "objid", "aid", "action")
+        :param perms: list of tuple ("id", "oid", "type", "definition", "objid", "aid", "action")
         :return: True if operation is successful, False otherwise
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
@@ -988,9 +986,8 @@ class Role(AuthObject):
                                     
                 # perm as [subsystem, type, objid, action]
                 else:
-                    perms, total = self.manager.get_permissions(
-                            objid=perm[u'objid'], objtype=perm[u'subsystem'], 
-                            objdef=perm[u'type'], action=perm[u'action'], size=10)
+                    perms, total = self.manager.get_permissions(objid=perm[u'objid'], objtype=perm[u'subsystem'],
+                                                                objdef=perm[u'type'], action=perm[u'action'], size=10)
                     roleperms.extend(perms)  
             
             res = self.manager.remove_role_permission(self.model, roleperms)
@@ -1148,22 +1145,95 @@ class User(BaseUser):
             user_perms = []
             for i in perms:
                 user_perms.append({
-                    u'id':i.id, 
-                    u'oid':i.obj.id, 
-                    u'subsystem':i.obj.type.objtype, 
-                    u'type':i.obj.type.objdef,
-                    u'objid':i.obj.objid, 
-                    u'aid':i.action.id, 
-                    u'action':i.action.value,
-                    u'desc':i.obj.desc
+                    u'id': i.id,
+                    u'oid': i.obj.id,
+                    u'subsystem': i.obj.type.objtype,
+                    u'type': i.obj.type.objdef,
+                    u'objid': i.obj.objid,
+                    u'aid': i.action.id,
+                    u'action': i.action.value,
+                    u'desc': i.obj.desc
                 })                
-            self.logger.debug(u'Get user %s permissions: %s' % (
-                                        self.name, truncate(user_perms)))
+            self.logger.debug(u'Get user %s permissions: %s' % (self.name, truncate(user_perms)))
             return user_perms, total
         except QueryError as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex)
         return [], 0
+
+    @trace(op=u'perms.update')
+    def append_permissions(self, perms):
+        """Append permission to user internal role
+
+        :param perms: list of tuple ("id", "oid", "type", "definition", "objid", "aid", "action")
+        :return: True if operation is successful, False otherwise
+        :rtype: bool
+        :raises ApiManagerError: raise :class:`ApiManagerError`
+        """
+        # verify permissions
+        self.verify_permisssions(u'update')
+
+        # get internal user role
+        role = self.manager.get_entity(ModelRole, u'User%sRole' % self.oid, for_update=False)
+
+        try:
+            # get permissions
+            roleperms = []
+            for perm in perms:
+                # perm as permission_id
+                if u'id' in perm:
+                    perm = self.manager.get_permission(perm[u'id'])
+                    roleperms.append(perm)
+
+                # perm as [subsystem, type, objid, action]
+                else:
+                    perms, total = self.manager.get_permissions(objid=perm[u'objid'], objtype=perm[u'subsystem'],
+                                                                objdef=perm[u'type'], action=perm[u'action'], size=10)
+                    roleperms.extend(perms)
+
+            res = self.manager.append_role_permissions(role, roleperms)
+            self.logger.debug(u'Append user %s permission : %s' % (self.uuid, res))
+            return [str(p.id) for p in roleperms]
+        except QueryError as ex:
+            self.logger.error(ex, exc_info=1)
+            raise ApiManagerError(ex)
+
+    @trace(op=u'perms.update')
+    def remove_permissions(self, perms):
+        """Remove permission from user internal role
+
+        :param perms: list of tuple ("id", "oid", "type", "definition", "objid", "aid", "action")
+        :return: True if operation is successful, False otherwise
+        :rtype: bool
+        :raises ApiManagerError: raise :class:`ApiManagerError`
+        """
+        # verify permissions
+        self.verify_permisssions(u'update')
+
+        # get internal user role
+        role = self.manager.get_entity(ModelRole, u'User%sRole' % self.oid, for_update=False)
+
+        try:
+            # get permissions
+            roleperms = []
+            for perm in perms:
+                # perm as permission_id
+                if u'id' in perm:
+                    perm = self.manager.get_permission(perm[u'id'])
+                    roleperms.append(perm)
+
+                # perm as [subsystem, type, objid, action]
+                else:
+                    perms, total = self.manager.get_permissions(objid=perm[u'objid'], objtype=perm[u'subsystem'],
+                                                                objdef=perm[u'type'], action=perm[u'action'], size=10)
+                    roleperms.extend(perms)
+
+            res = self.manager.remove_role_permission(role, roleperms)
+            self.logger.debug(u'Remove user %s permission : %s' % (self.uuid, res))
+            return [str(p.id) for p in roleperms]
+        except QueryError as ex:
+            self.logger.error(ex, exc_info=1)
+            raise ApiManagerError(ex)
         
     @trace(op=u'perms.use')
     def can(self, action, objtype, definition=None, name=None, perms=None):
@@ -1206,26 +1276,22 @@ class User(BaseUser):
                 if definition is not None:
                     # verify object type, definition and action. If they match 
                     # objid to values list
-                    if (perm_objtype == objtype and
-                        perm_definition == definition and
-                        perm_action in [u'*', action]):
+                    if perm_objtype == objtype and perm_definition == definition and perm_action in [u'*', action]:
                         objids.append(perm_objid)
                 else:
-                    if (perm_objtype == objtype and
-                        perm_action in [u'*', action]):
+                    if perm_objtype == objtype and perm_action in [u'*', action]:
                         if perm_definition not in defs:
                             defs.append(perm_definition)
 
             # loop between object objids, compact objids and verify match
             if len(objids) > 0:
                 res = extract(objids)
-                self.logger.debug(u'User %s can %s objects {%s, %s, %s}' % 
+                self.logger.debug(u'User %s can %s objects {%s, %s, %s}' %
                                   (self.name, action, objtype, definition, res))
                 return res
             # loop between object definition
             elif len(defs) > 0:
-                self.logger.debug(u'User %s can %s objects {%s, %s}' % 
-                                  (self.name, action, objtype, defs))
+                self.logger.debug(u'User %s can %s objects {%s, %s}' % (self.name, action, objtype, defs))
                 return defs
             else:
                 raise Exception(u'User %s can not \'%s\' objects \'%s:%s\'' % 

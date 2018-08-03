@@ -548,7 +548,7 @@ class ApiManager(object):
                     self.logger.info(u'Configure oauth2 - CONFIGURED')
                 except:
                     self.logger.warning(u'Configure oauth2 - NOT CONFIGURED')
-                ##### oauth2 configuration #####                
+                ##### oauth2 configuration #####
                 
                 ##### redis configuration #####
                 self.logger.info(u'Configure redis - CONFIGURE')
@@ -848,14 +848,21 @@ class ApiManager(object):
                     #                                 name=u'catalog')[0].value
                     self.catalog = self.params[u'api_catalog']
                     self.logger.info(u'Get catalog: %s' % self.catalog)
-                    
+
+                    endpoint = self.params.get(u'api_endpoint', None)
+                    self.logger.info(u'Get api endpoint: %s' % endpoint)
+
                     # get auth endpoints
-                    try:
-                        endpoints = configurator.get(app=self.app_name, group=u'api', name=u'endpoints')[0].value
-                        self.endpoints = json.loads(endpoints)
-                    except:
-                        # auth subsystem instance
+                    # try:
+                    #     endpoints = configurator.get(app=self.app_name, group=u'api', name=u'endpoints')[0].value
+                    #     self.endpoints = json.loads(endpoints)
+                    # except:
+                    #     # auth subsystem instance
+                    #     self.endpoints = [self.app_uri]
+                    if endpoint is None:
                         self.endpoints = [self.app_uri]
+                    else:
+                        self.endpoints = [endpoint]
                     self.logger.info(u'Get auth endpoints: %s' % self.endpoints)                    
                     
                     # get auth system user
@@ -1279,7 +1286,7 @@ class ApiController(object):
                                 (user, action, objtype, definition))      
         except Exception as ex:
             self.logger.error(ex, exc_info=True)
-            raise ApiManagerError(ex, code=401)
+            raise ApiManagerError(ex, code=403)
 
     def has_needs(self, needs, perms):
         """Verify if permissions overlap needs.
@@ -2769,8 +2776,7 @@ class ApiView(FlaskView):
             user_ip = get_remote_ip(request)
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(u'Error retrieving Authorization from http header', 
-                                  code=401)
+            raise ApiManagerError(u'Error retrieving Authorization from http header', code=401)
         return user, pwd, user_ip
     
     def get_current_identity(self):
@@ -3200,10 +3206,10 @@ class ApiView(FlaskView):
 class PaginatedRequestQuerySchema(Schema):
     size = fields.Integer(default=10, example=10, missing=10, context=u'query',
                           description=u'enitities list page size',
-                          validate=Range(min=0, max=200, error=u'Size is out from range'))
+                          validate=Range(min=0, max=1001, error=u'Size is out from range'))
     page = fields.Integer(default=0, example=0, missing=0, context=u'query',
                           description=u'enitities list page selected',
-                          validate=Range(min=0, max=1000, error=u'Page is out from range'))
+                          validate=Range(min=0, max=1001, error=u'Page is out from range'))
     order = fields.String(validate=OneOf([u'ASC', u'asc', u'DESC', u'desc'],
                                          error=u'Order can be asc, ASC, desc, DESC'),
                           description=u'enitities list order: ASC or DESC',
@@ -3404,10 +3410,12 @@ class ApiClient(BeehiveApiClient):
         except BeehiveApiClientError as ex:
             self.logger.error('Send user request to %s using uid %s: %s' % (path, self.uid, ex.value))
             raise
+
+        return res
         
-        if res['status'] == 'error':
-            self.logger.error('Send user request to %s using uid %s: %s' % (path, self.uid, res['msg']))
-            raise ApiManagerError(res['msg'], code=res['code'])
-        else:
-            self.logger.info('Send user request to %s using uid %s: %s' % (path, self.uid, truncate(res)))
-            return res['response']    
+        # if res['status'] == 'error':
+        #     self.logger.error('Send user request to %s using uid %s: %s' % (path, self.uid, res['msg']))
+        #     raise ApiManagerError(res['msg'], code=res['code'])
+        # else:
+        #     self.logger.info('Send user request to %s using uid %s: %s' % (path, self.uid, truncate(res)))
+        #     return res['response']

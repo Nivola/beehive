@@ -83,7 +83,7 @@ class BeehiveApiClient(object):
         self.seckey = None
         self.filter = None
         
-        self.host = gethostname()
+        # self.host = gethostname()
         
         # auth reference - http://10.102.160.240:6060
         for endpoint in auth_endpoints:
@@ -189,34 +189,6 @@ class BeehiveApiClient(object):
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
             raise BeehiveApiClientError(u'Error signing data: %s' % data, code=401)
-
-    '''
-    @watch
-    def get_identity(self, uid):
-        """Get identity.
-
-        :param uid: identity id
-        :return: dictionary like
-        
-                 .. code-block:: python
-        
-                    {u'uid':..., 
-                     u'user':..., 
-                     u'timestamp':..., 
-                     u'pubkey':..., 
-                     u'seckey':...}
-
-        :raise BeehiveApiClientError: Error
-        """
-        identity = self.api_manager.redis_manager.get(self.prefix + uid)
-        if identity is not None:
-            data = pickle.loads(identity)
-            data['ttl'] = self.module.redis_manager.ttl(self.prefix + uid)
-            self.logger.debug('Get identity %s from redis: %s' % (uid, data))           
-            return data
-        else:
-            self.logger.error("Identity %s doen't exist or is expired" % uid)
-            raise BeehiveApiClientError("Identity %s doen't exist or is expired" % uid, code=1014)'''
 
     def http_client(self, proto, host, path, method, data=u'', headers={}, port=80, timeout=30, print_curl=False,
                     silent=False):
@@ -369,7 +341,17 @@ class BeehiveApiClient(object):
         :return:
         :raise BeehiveApiClientError:
         """
+        # get endpoint
+        endpoint = self.endpoint(subsystem)
+        proto = endpoint[u'proto']
+        host = endpoint[u'host']
+        port = endpoint[u'port']
+
         # create sign
+        if uid is None and self.uid is not None:
+            uid = self.uid
+            seckey = self.seckey
+
         headers = {u'Accept': u'application/json'}
         if self.api_authtype == u'keyauth' and uid is not None:
             sign = self.sign_request(seckey, path)
@@ -384,10 +366,6 @@ class BeehiveApiClient(object):
             headers.update(other_headers)            
             
         # make request
-        endpoint = self.endpoint(subsystem)
-        proto = endpoint[u'proto']
-        host = endpoint[u'host']
-        port = endpoint[u'port']
         if method.upper() == u'GET':
             path = u'%s?%s' % (path, data)
         elif isinstance(data, dict) or isinstance(data, list):
@@ -416,7 +394,7 @@ class BeehiveApiClient(object):
         try:
             if parse is True and isinstance(data, dict) or isinstance(data, list):
                 data = json.dumps(data)
-            res = self.send_request(subsystem, path, method, data, self.uid, self.seckey, other_headers,
+            res = self.send_request(subsystem, path, method, data, other_headers=other_headers,
                                     timeout=timeout, silent=silent, print_curl=print_curl)
         except BeehiveApiClientError as ex:
             self.logger.error(u'Send request to %s using uid %s: %s, %s' % (path, self.uid, ex.value, ex.code))
@@ -426,7 +404,7 @@ class BeehiveApiClient(object):
                 self.uid = None
                 self.seckey = None
                 self.create_token()
-                res = self.send_request(subsystem, path, method, data, self.uid, self.seckey, other_headers,
+                res = self.send_request(subsystem, path, method, data, other_headers=other_headers,
                                         timeout=timeout, silent=silent)
             else:
                 raise
@@ -456,8 +434,7 @@ class BeehiveApiClient(object):
             host = endpoint[u'host']
             port = endpoint[u'port']
             try:
-                resp = self.http_client(proto, host, u'/v1.0/server/ping', u'GET',
-                                        port=port, data=u'', timeout=0.5)
+                resp = self.http_client(proto, host, u'/v1.0/server/ping', u'GET', port=port, data=u'', timeout=0.5)
                 if u'code' in resp:
                     return False
                 return True
@@ -526,10 +503,10 @@ class BeehiveApiClient(object):
             api_user_pwd = self.api_user_pwd
         
         data = {u'user': api_user, u'password': api_user_pwd}
-        if login_ip is None:
-            data[u'login-ip'] = self.host
-        else:
-            data[u'login-ip'] = login_ip
+        # if login_ip is None:
+        #     data[u'login-ip'] = self.host
+        # else:
+        #     data[u'login-ip'] = login_ip
         res = self.send_request(u'auth', u'/v1.0/nas/simplehttp/login', u'POST', data=json.dumps(data))
         self.logger.info(u'Login user %s: %s' % (self.api_user, res[u'uid']))
         self.uid = None
@@ -553,10 +530,10 @@ class BeehiveApiClient(object):
         
         if self.api_authtype == u'keyauth':
             data = {u'user': api_user, u'password': api_user_pwd}
-            if login_ip is None:
-                data[u'login-ip'] = self.host
-            else:
-                data[u'login-ip'] = login_ip
+            # if login_ip is None:
+            #     data[u'login-ip'] = self.host
+            # else:
+            #     data[u'login-ip'] = login_ip
             res = self.send_request(u'auth', u'/v1.0/nas/keyauth/token', u'POST', data=data)
             self.logger.info(u'Login user %s with token: %s' % (self.api_user, res[u'access_token']))
             self.uid = res[u'access_token']
@@ -940,8 +917,9 @@ class BeehiveApiClient(object):
         return res
 
     def append_role_permission_list(self, role, perms):
-        """Append permission to role
+        """Append permissions to role
 
+        :param perms: list of {u'subsystem': objtype, u'type': objdef, u'objid': objid, u'action': objaction}
         :raise BeehiveApiClientError:
         """
         data = {
@@ -1143,6 +1121,44 @@ class BeehiveApiClient(object):
         uri = u'/v1.0/nas/users/%s' % oid
         res = self.invoke(u'auth', uri, u'PUT', data, parse=True, silent=True)
         self.logger.debug(u'Remove roles %s from user %s' % (roles, oid))
+        return res
+
+    def append_user_permissions(self, user, perms):
+        """Append permissions to user
+
+        :param perms: list of {u'subsystem': objtype, u'type': objdef, u'objid': objid, u'action': objaction}
+        :raise BeehiveApiClientError:
+        """
+        data = {
+            u'user': {
+                u'perms': {
+                    u'append': perms,
+                    u'remove': []
+                }
+            }
+        }
+        uri = u'/v1.0/nas/users/%s' % user
+        res = self.invoke(u'auth', uri, u'PUT', data, parse=True, silent=True)
+        self.logger.debug(u'Append permissions %s ' % truncate(perms))
+        return res
+
+    def remove_user_permissions(self, user, perms):
+        """Remove permissions from user
+
+        :param perms: list of {u'subsystem': objtype, u'type': objdef, u'objid': objid, u'action': objaction}
+        :raise BeehiveApiClientError:
+        """
+        data = {
+            u'user': {
+                u'perms': {
+                    u'append': [],
+                    u'remove': perms
+                }
+            }
+        }
+        uri = u'/v1.0/nas/users/%s' % user
+        res = self.invoke(u'auth', uri, u'PUT', data, parse=True, silent=True)
+        self.logger.debug(u'Append permissions %s ' % truncate(perms))
         return res
 
     #
