@@ -1,8 +1,8 @@
-'''
+"""
 Created on Jan 12, 2017
 
 @author: darkbk
-'''
+"""
 import ujson as json
 import json as sjson
 import httplib
@@ -390,6 +390,7 @@ class BeehiveApiClient(object):
         :return:
         :raise BeehiveApiClientError:
         """
+        start = time()
         self.logger.info(u'REQUEST: [%s] %s - uid=%s - data=%s' % (method, path, self.uid, truncate(data, size=50)))
         try:
             if parse is True and isinstance(data, dict) or isinstance(data, list):
@@ -397,7 +398,8 @@ class BeehiveApiClient(object):
             res = self.send_request(subsystem, path, method, data, other_headers=other_headers,
                                     timeout=timeout, silent=silent, print_curl=print_curl)
         except BeehiveApiClientError as ex:
-            self.logger.error(u'Send request to %s using uid %s: %s, %s' % (path, self.uid, ex.value, ex.code))
+            elapsed = time() - start
+            self.logger.error(u'RESPONSE: [%s] %s - res=%s - %s - %s' % (method, path, ex.value, ex.code, elapsed))
             # Request is not authorized
             if ex.code in [401]:
                 # try to get token and retry api call
@@ -409,7 +411,8 @@ class BeehiveApiClient(object):
             else:
                 raise
 
-        self.logger.info(u'RESPONSE: [%s] %s - res=%s' % (method, path, truncate(res, size=100)))
+        elapsed = time() - start
+        self.logger.info(u'RESPONSE: [%s] %s - res=%s - %s' % (method, path, truncate(res, size=100), elapsed))
 
         return res
     
@@ -1226,4 +1229,116 @@ class BeehiveApiClient(object):
         res = self.invoke(u'service', uri, u'POST', data={u'security_group': data}, timeout=600)
         self.logger.debug(u'Add security group: %s' % truncate(res))
         res = res.get(u'CreateSecurityGroupResponse').get(u'instancesSet')[0].get(u'groupId')
+        return res
+
+    #
+    # ssh module
+    #
+    def get_ssh_group(self, oid):
+        """Get ssh group
+
+        :param oid: ssh group id, uuid or name
+        :raise BeehiveApiClientError:
+        """
+        uri = u'/v1.0/gas/sshgroups/%s' % oid
+        res = self.invoke(u'ssh', uri, u'GET', u'', parse=True, silent=True)
+        res = res.get(u'sshgroup')
+        self.logger.debug(u'Get ssh group %s: %s' % (oid, truncate(res)))
+        return res
+
+    def add_ssh_group(self, name, desc, attribute):
+        """Add ssh group
+
+        :param name: ssh group name
+        :param desc: ssh group desc
+        :param attribute: ssh group attribute
+        :return: group uuid
+        :raise BeehiveApiClientError:
+        """
+        data = {
+            u'sshgroup': {
+                u'name': name,
+                u'desc': desc,
+                u'attribute': attribute
+            }
+        }
+        uri = u'/v1.0/gas/sshgroups'
+        res = self.invoke(u'ssh', uri, u'POST', data, parse=True, silent=True)
+        uuid = res.get(u'uuid')
+        self.logger.debug(u'Add ssh group %s: %s' % (name, uuid))
+        return uuid
+
+    def get_ssh_keys(self, oid=None):
+        """Get ssh keys
+
+        :param oid: ssh key id, uuid or name
+        :raise BeehiveApiClientError:
+        """
+        data = u''
+        if oid is not None:
+            try:
+                uri = u'/v1.0/gas/sshkeys/%s' % oid
+                res = self.invoke(u'ssh', uri, u'GET', data, parse=True, silent=True)
+            except BeehiveApiClientError as ex:
+                if ex.code == 404:
+                    res = []
+                else:
+                    raise
+            res = [res.get(u'sshkey')]
+        else:
+            uri = u'/v1.0/gas/sshkeys'
+            res = self.invoke(u'ssh', uri, u'GET', data, parse=True, silent=True)
+            res = res.get(u'sshkeys', [])
+
+        for item in res:
+            item.pop(u'__meta__')
+            item.pop(u'priv_key')
+
+        self.logger.debug(u'Get ssh keys %s: %s' % (oid, truncate(res)))
+        return res
+
+    def get_ssh_node(self, oid):
+        """Get ssh node
+
+        :param oid: ssh node id, uuid or name
+        :raise BeehiveApiClientError:
+        """
+        uri = u'/v1.0/gas/sshnodes/%s' % oid
+        res = self.invoke(u'ssh', uri, u'GET', u'', parse=True, silent=True)
+        res = res.get(u'sshnode')
+        self.logger.debug(u'Get ssh node %s: %s' % (oid, truncate(res)))
+        return res
+
+    def add_ssh_node(self, name, desc, attribute):
+        """Add ssh node
+
+        :param name: ssh node name
+        :param desc: ssh node desc
+        :param attribute: ssh node attribute
+        :return: node uuid
+        :raise BeehiveApiClientError:
+        """
+        data = {
+            u'sshnode': {
+                u'name': name,
+                u'desc': desc,
+                u'attribute': attribute
+            }
+        }
+        uri = u'/v1.0/gas/sshnodes'
+        res = self.invoke(u'ssh', uri, u'POST', data, parse=True, silent=True)
+        uuid = res.get(u'uuid')
+        self.logger.debug(u'Add ssh node %s: %s' % (name, uuid))
+        return uuid
+
+    def delete_ssh_node(self, oid):
+        """Delete ssh node
+
+        :param oid: ssh node id, uuid or name
+        :raise BeehiveApiClientError:
+        """
+        uri = u'/v1.0/gas/sshnodes/%s' % oid
+        res = self.invoke(u'ssh', uri, u'GET', u'', parse=True, silent=True)
+        res = res.get(u'sshnode')
+        self.logger.debug(u'Delete ssh node %s: %s' % (oid, res))
         return res

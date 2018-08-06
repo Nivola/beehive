@@ -1411,7 +1411,7 @@ class ApiController(object):
         except QueryError as ex:         
             self.logger.error(ex, exc_info=1)
             entity_name = entity_class.__name__
-            raise ApiManagerError(u'%s %s not found or name is not unique' % (entity_name, oid), code=400)
+            raise ApiManagerError(u'%s %s not found or name is not unique' % (entity_name, oid), code=404)
 
         if entity is None:
             entity_name = entity_class.__name__
