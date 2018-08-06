@@ -348,44 +348,6 @@ class GetUserAtributes(SwaggerApiView):
                 u'count':len(res)} 
         return resp
 
-
-## list roles
-class GetUserRolesParamResponseSchema(Schema):
-    id = fields.Integer(required=True)
-#     value = fields.String(required=True, default=u'test')
-#     desc = fields.String(required=True, default=u'test')
-
-
-class GetUserRolesResponseSchema(PaginatedResponseSchema):
-    roles = fields.Nested(ApiObjectResponseSchema, many=True, required=True, allow_none=True)
-
-
-class GetUserRoles(SwaggerApiView):
-    tags = [u'authorization']
-    definitions = {
-        u'GetUserRolesResponseSchema': GetUserRolesResponseSchema,
-    }
-    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
-    responses = SwaggerApiView.setResponses({
-        200: {
-            u'description': u'success',
-            u'schema': GetUserRolesResponseSchema
-        }
-    })     
-    
-    def get(self, controller, data, oid, *args, **kwargs):
-        """
-        Get user roles
-        Call this api to get user roles
-        """
-        user = controller.get_user(oid)
-        roles, total = controller.get_roles(user=user.oid)
-        
-        res = [r.info() for r in roles]
-
-        return self.format_paginated_response(res, u'roles', total, **data)
-
-
 ## create
 class CreateUserParamRequestSchema(BaseCreateRequestSchema, BaseCreateExtendedParamRequestSchema):
     password = fields.String(validate=Length(min=8, max=20), error=u'Password must be at least 8 characters')
@@ -1648,7 +1610,6 @@ class AuthorizationAPI(ApiView):
             (u'%s/users/<oid>/attributes' % module.base_path, u'POST', CreateUserAttribute, {}),
             (u'%s/users/<oid>/attributes/<aid>' % module.base_path, u'DELETE', DeleteUserAttribute, {}),
             (u'%s/users/<oid>' % module.base_path, u'DELETE', DeleteUser, {}),
-            (u'%s/users/<oid>/roles' % module.base_path, u'GET', GetUserRoles, {}),
 
             (u'%s/roles' % module.base_path, u'GET', ListRoles, {}),
             (u'%s/roles/<oid>' % module.base_path, u'GET', GetRole, {}),
