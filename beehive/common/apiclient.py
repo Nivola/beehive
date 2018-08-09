@@ -1268,6 +1268,17 @@ class BeehiveApiClient(object):
         self.logger.debug(u'Add ssh group %s: %s' % (name, uuid))
         return uuid
 
+    def delete_ssh_group(self, oid):
+        """Delete ssh group
+
+        :param oid: ssh group id, uuid or name
+        :raise BeehiveApiClientError:
+        """
+        uri = u'/v1.0/gas/sshgroups/%s' % oid
+        res = self.invoke(u'ssh', uri, u'DELETE', u'', parse=True, silent=True)
+        self.logger.debug(u'Delete ssh group %s: %s' % (oid, truncate(res)))
+        return res
+
     def get_ssh_keys(self, oid=None):
         """Get ssh keys
 
@@ -1279,12 +1290,12 @@ class BeehiveApiClient(object):
             try:
                 uri = u'/v1.0/gas/sshkeys/%s' % oid
                 res = self.invoke(u'ssh', uri, u'GET', data, parse=True, silent=True)
+                res = [res.get(u'sshkey')]
             except BeehiveApiClientError as ex:
-                if ex.code == 404:
-                    res = []
-                else:
-                    raise
-            res = [res.get(u'sshkey')]
+                # if ex.code == 404:
+                #     res = []
+                # else:
+                raise
         else:
             uri = u'/v1.0/gas/sshkeys'
             res = self.invoke(u'ssh', uri, u'GET', data, parse=True, silent=True)
@@ -1309,7 +1320,7 @@ class BeehiveApiClient(object):
         self.logger.debug(u'Get ssh node %s: %s' % (oid, truncate(res)))
         return res
 
-    def add_ssh_node(self, name, desc, attribute):
+    def add_ssh_node(self, name, desc, ip_address, group, user, key, attribute=u'', password=u''):
         """Add ssh node
 
         :param name: ssh node name
@@ -1322,13 +1333,29 @@ class BeehiveApiClient(object):
             u'sshnode': {
                 u'name': name,
                 u'desc': desc,
-                u'attribute': attribute
+                u'attribute': attribute,
+                u'group_oid': group,
+                u'node_type': u'user',
+                u'ip_address': ip_address
             }
         }
         uri = u'/v1.0/gas/sshnodes'
         res = self.invoke(u'ssh', uri, u'POST', data, parse=True, silent=True)
         uuid = res.get(u'uuid')
         self.logger.debug(u'Add ssh node %s: %s' % (name, uuid))
+
+        user = {
+            u'name': u'%s-%s' % (res.get(u'name'), user),
+            u'desc': user,
+            u'attribute': u'',
+            u'node_oid': uuid,
+            u'key_oid': key,
+            u'username': user,
+            u'password': password
+        }
+        uri = u'/v1.0/gas/sshusers'
+        node_user = self.invoke(u'ssh', uri, u'POST', data={u'sshuser': user})
+        self.logger.debug(u'Add ssh node %s user: %s' % (name, node_user.get(u'uuid')))
         return uuid
 
     def delete_ssh_node(self, oid):
@@ -1338,7 +1365,7 @@ class BeehiveApiClient(object):
         :raise BeehiveApiClientError:
         """
         uri = u'/v1.0/gas/sshnodes/%s' % oid
-        res = self.invoke(u'ssh', uri, u'GET', u'', parse=True, silent=True)
-        res = res.get(u'sshnode')
-        self.logger.debug(u'Delete ssh node %s: %s' % (oid, res))
-        return res
+        res = self.invoke(u'ssh', uri, u'DELETE', u'', parse=True, silent=True)
+        self.logger.debug(u'Delete ssh node %s' % oid)
+
+        return True
