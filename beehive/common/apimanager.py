@@ -1470,7 +1470,8 @@ class ApiController(object):
             self.logger.debug(u'Auhtorization disabled for command')
                 
         try:
-            entities, total = get_entities(tags=tags, page=page, size=size, order=order, field=field, *args, **kvargs)
+            entities, total = get_entities(tags=tags, page=page, size=size, order=order, field=field,
+                                           authorize=authorize, *args, **kvargs)
             
             for entity in entities:
                 obj = entity_class(self, oid=entity.id, objid=entity.objid, name=entity.name, active=entity.active,
