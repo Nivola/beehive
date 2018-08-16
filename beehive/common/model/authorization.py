@@ -1862,21 +1862,24 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             for role in group.role:
                 roles.append(role.name)
 
-        # get user permissions from user roles
-        sql = [u'SELECT t4.id as id, t1.id as oid, t1.objid as objid, ',
-               u't2.objtype as objtype, t2.objdef as objdef, ',
-               u't3.id as aid, t3.value as action',
-               u'FROM sysobject t1, sysobject_type t2,',
-               u'sysobject_action t3, sysobject_permission t4,',
-               u'role t5, role_permission t6',
-               u'WHERE t4.obj_id=t1.id and t4.action_id=t3.id and',
-               u't1.type_id=t2.id and t6.role_id = t5.id and',
-               u't6.permission_id=t4.id and t5.name IN :role_name']
+        perms = []
 
-        columns = [u'id', u'oid', u'objtype', u'objdef', u'objid', u'aid', u'action']
-        query = session.query(*columns).from_statement(text(" ".join(sql))).params(role_name=roles)
-        self.print_query(self.get_login_permissions, query, inspect.getargvalues(inspect.currentframe()))
-        perms = query.all()
+        if len(roles) > 0:
+            # get user permissions from user roles
+            sql = [u'SELECT t4.id as id, t1.id as oid, t1.objid as objid, ',
+                   u't2.objtype as objtype, t2.objdef as objdef, ',
+                   u't3.id as aid, t3.value as action',
+                   u'FROM sysobject t1, sysobject_type t2,',
+                   u'sysobject_action t3, sysobject_permission t4,',
+                   u'role t5, role_permission t6',
+                   u'WHERE t4.obj_id=t1.id and t4.action_id=t3.id and',
+                   u't1.type_id=t2.id and t6.role_id = t5.id and',
+                   u't6.permission_id=t4.id and t5.name IN :role_name']
+
+            columns = [u'id', u'oid', u'objtype', u'objdef', u'objid', u'aid', u'action']
+            query = session.query(*columns).from_statement(text(" ".join(sql))).params(role_name=roles)
+            self.print_query(self.get_login_permissions, query, inspect.getargvalues(inspect.currentframe()))
+            perms = query.all()
         self.logger.debug(u'Get user %s perms: %s' % (user, truncate(perms)))
         return perms
     
@@ -1890,8 +1893,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         :raises QueryError: raise :class:`QueryError`     
         """
         session = self.get_session()
-        roles = session.query(Role).join(RoleUser)\
-                       .filter(RoleUser.user_id == user.id).all()   
+        roles = session.query(Role).join(RoleUser).filter(RoleUser.user_id == user.id).all()
 
         self.logger.debug(u'Get user %s roles: %s' % (user, truncate(roles)))
         return roles
