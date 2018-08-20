@@ -1345,7 +1345,7 @@ class BeehiveApiClient(object):
         self.logger.debug(u'Add ssh node %s: %s' % (name, uuid))
 
         user = {
-            u'name': u'%s-%s' % (res.get(u'name'), user),
+            u'name': u'%s-%s' % (name, user),
             u'desc': user,
             u'attribute': u'',
             u'node_oid': uuid,

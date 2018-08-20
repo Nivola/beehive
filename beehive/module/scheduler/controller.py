@@ -228,10 +228,9 @@ class TaskManager(ApiObject):
         ApiObject.__init__(self, controller, oid='', name='', desc='', active='')
 
         self.objid = '*'
-
         try:
-            hostname = self.celery_broker_queue + u'@' + self.api_manager.server_name
-            self.control = task_manager.control.inspect([hostname])
+            self.hostname = self.celery_broker_queue + u'@' + self.api_manager.server_name
+            # self.control = task_manager.control.inspect([self.hostname])
             self.prefix = task_manager.conf.CELERY_REDIS_RESULT_KEY_PREFIX
             self.prefix_base = u'celery-task-meta'
         except:
@@ -254,14 +253,16 @@ class TaskManager(ApiObject):
         self.verify_permisssions(u'use')
         
         try:
-            res = Control(task_manager).ping(timeout=0.5)
+            control = task_manager.control
+            res = control.ping([self.hostname], timeout=1.0)
+            # res = Control(task_manager).ping(timeout=2)
             self.logger.debug('Ping task manager workers: %s' % res)
             resp = {}
             for item in res:
                 resp.update(item)
             return resp
         except Exception as ex:
-            self.logger.error(ex)
+            self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)        
         
     @trace(op=u'use')
@@ -275,7 +276,8 @@ class TaskManager(ApiObject):
         self.verify_permisssions(u'use')
         
         try:
-            res = self.control.stats()
+            control = task_manager.control.inspect([self.hostname], timeout=1.0)
+            res = control.stats()
             self.logger.debug('Get task manager workers stats: %s' % res)
             return res
         except Exception as ex:
@@ -293,7 +295,8 @@ class TaskManager(ApiObject):
         
         self.verify_permisssions(u'use')
         try:
-            res = self.control.report()
+            control = task_manager.control.inspect([self.hostname], timeout=1.0)
+            res = control.report()
             self.logger.debug('Get task manager report: %s' % res)
             return res
         except Exception as ex:
@@ -311,7 +314,8 @@ class TaskManager(ApiObject):
         self.verify_permisssions(u'use')
 
         try:
-            res = self.control.active_queues()
+            control = task_manager.control.inspect([self.hostname], timeout=1.0)
+            res = control.active_queues()
             self.logger.debug('Get task manager active queues: %s' % res)
             return res
         except Exception as ex:
@@ -329,7 +333,8 @@ class TaskManager(ApiObject):
         self.verify_permisssions(u'view')
         
         try:
-            res = self.control.registered()
+            control = task_manager.control.inspect([self.hostname], timeout=1.0)
+            res = control.registered()
             self.logger.debug(u'Get registered tasks: %s' % (res))
             return res
         except Exception as ex:
@@ -888,7 +893,8 @@ class TaskManager(ApiObject):
         self.verify_permisssions(u'view')        
         
         try:
-            res = self.control.active_queues()
+            control = task_manager.control.inspect([self.hostname])
+            res = control.active_queues()
             self.logger.debug('Get task manager active queue: %s' % (res))
             return res
         except Exception as ex:

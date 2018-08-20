@@ -73,6 +73,9 @@ def configure_task_manager(broker_url, result_backend, tasks=[], expire=60*60*24
 
     task_manager.conf.update(
         BROKER_URL=broker_url,
+        BROKER_POOL_LIMIT=20,
+        BROKER_HEARTBEAT=20,
+        BROKER_CONNECTION_MAX_RETRIES=10,
         TASK_DEFAULT_QUEUE=task_queue,
         TASK_DEFAULT_EXCHANGE=task_queue,
         TASK_DEAFAULT_ROUTING_KEY=task_queue,
@@ -95,14 +98,9 @@ def configure_task_manager(broker_url, result_backend, tasks=[], expire=60*60*24
         CELERYD_TASK_SOFT_TIME_LIMIT=1200,
         CELERYD_CONCURRENCY=100,
         CELERYD_POOL=u'beehive.common.task.task_pool:TaskPool',
-        # CELERYD_REDIRECT_STDOUTS_LEVEL=u'DEBUG',
-        # CELERY_SEND_TASK_SENT_EVENT=True,
-        #  CELERY_SEND_EVENTS=True,
-        #CELERY_EVENT_SERIALIZER='json',
         CELERYD_TASK_LOG_FORMAT=u'[%(asctime)s: %(levelname)s/%(processName)s] [%(task_name)s:%(task_id)s] '
                                 u'%(name)s:%(funcName)s:%(lineno)d - %(message)s',
-        WORKER_MAX_TASKS_PER_CHILD=100,
-        WORKER_DISABLE_RATE_LIMITS=True
+        CELERYD_MAX_TASKS_PER_CHILD=20
     )
 
     return task_manager
