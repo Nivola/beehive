@@ -171,7 +171,7 @@ class ApiManager(object):
         #self.process_event_producer = None
         
         # api listener
-        self.api_timeout = 600.0
+        self.api_timeout = float(self.params.get(u'api_timeout', 5.0))
         
         # api endpoints
         self.endpoints = {}
@@ -2836,6 +2836,7 @@ class ApiView(FlaskView):
 
         # select correct authentication filter
         authfilter = self.__get_auth_filter()
+        operation.token_type = authfilter
         self.logger.debug(u'Select authentication filter: "%s"' % authfilter)
         
         # get controller
@@ -3047,7 +3048,7 @@ class ApiView(FlaskView):
         
         timeout = gevent.Timeout(module.api_manager.api_timeout)
         timeout.start()
-        self.logger.warn(u'Set request timeout to: %s' % module.api_manager.api_timeout)
+        self.logger.debug2(u'Set response timeout to: %s' % module.api_manager.api_timeout)
 
         start = time.time()
         dbsession = None
@@ -3407,16 +3408,10 @@ class ApiClient(BeehiveApiClient):
             # get user logged uid and password
             uid = operation.user[2]
             seckey = operation.user[3]
-            res = self.send_request(module, path, method, data, uid, seckey, other_headers, silent=silent)
+            res = self.send_request(module, path, method, data, uid, seckey, other_headers, silent=silent,
+                                    api_authtype=operation.token_type)
         except BeehiveApiClientError as ex:
             self.logger.error('Send user request to %s using uid %s: %s' % (path, self.uid, ex.value))
             raise
 
         return res
-        
-        # if res['status'] == 'error':
-        #     self.logger.error('Send user request to %s using uid %s: %s' % (path, self.uid, res['msg']))
-        #     raise ApiManagerError(res['msg'], code=res['code'])
-        # else:
-        #     self.logger.info('Send user request to %s using uid %s: %s' % (path, self.uid, truncate(res)))
-        #     return res['response']

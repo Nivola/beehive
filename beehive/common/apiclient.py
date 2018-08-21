@@ -326,7 +326,7 @@ class BeehiveApiClient(object):
         return res
     
     def send_request(self, subsystem, path, method, data=u'', uid=None, seckey=None, other_headers=None, timeout=30,
-                     silent=False, print_curl=False):
+                     silent=False, print_curl=False, api_authtype=None):
         """Send api request
 
         :param subsystem:
@@ -352,13 +352,17 @@ class BeehiveApiClient(object):
             uid = self.uid
             seckey = self.seckey
 
+        # set auth type
+        if api_authtype is None:
+            api_authtype = self.api_authtype
+
         headers = {u'Accept': u'application/json'}
-        if self.api_authtype == u'keyauth' and uid is not None:
+        if api_authtype == u'keyauth' and uid is not None:
             sign = self.sign_request(seckey, path)
             headers.update({u'uid': uid, u'sign': sign})
-        elif self.api_authtype == u'oauth2' and uid is not None:
+        elif api_authtype == u'oauth2' and uid is not None:
             headers.update({u'Authorization': u'Bearer %s' % uid})
-        elif self.api_authtype == u'simplehttp':
+        elif api_authtype == u'simplehttp':
             auth = b64encode(u'%s:%s' % (self.api_user, self.api_user_pwd))
             headers.update({u'Authorization': u'Basic %s' % auth})
             

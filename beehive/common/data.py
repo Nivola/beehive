@@ -39,6 +39,7 @@ operation.id = None #: operation id in uuid4
 operation.session = None #: current database session
 operation.user = None #: logged user (username, userip, uid)
 operation.perms = None #: logged user permission
+operation.token_type = None #: token type released
 operation.transaction = None #: transaction id
 
 
