@@ -171,7 +171,7 @@ class ApiManager(object):
         #self.process_event_producer = None
         
         # api listener
-        self.api_timeout = 600.0
+        self.api_timeout = float(self.params.get(u'api_timeout', 5.0))
         
         # api endpoints
         self.endpoints = {}
@@ -548,7 +548,7 @@ class ApiManager(object):
                     self.logger.info(u'Configure oauth2 - CONFIGURED')
                 except:
                     self.logger.warning(u'Configure oauth2 - NOT CONFIGURED')
-                ##### oauth2 configuration #####                
+                ##### oauth2 configuration #####
                 
                 ##### redis configuration #####
                 self.logger.info(u'Configure redis - CONFIGURE')
@@ -762,9 +762,7 @@ class ApiManager(object):
                     self.monitor_producer = MonitorProducerRedis(
                                                         self.redis_monitor_uri, 
                                                         self.redis_monitor_channel)
-                    self.logger.info(u'Configure queue %s on %s' % 
-                                     (self.redis_monitor_channel, 
-                                      self.redis_monitor_uri))                    
+                    self.logger.info(u'Configure queue %s on %s' % (self.redis_monitor_channel, self.redis_monitor_uri))
                     self.logger.info(u'Configure monitor queue - CONFIGURED')
                 except Exception as ex:
                     self.logger.warning(u'Configure monitor queue - NOT CONFIGURED')                
@@ -773,9 +771,7 @@ class ApiManager(object):
                 ##### catalog queue configuration #####
                 try:
                     self.logger.info(u'Configure catalog queue - CONFIGURE')
-                    conf = configurator.get(app=self.app_name, 
-                                            group=u'queue', 
-                                            name=u'queue.catalog')
+                    conf = configurator.get(app=self.app_name, group=u'queue', name=u'queue.catalog')
     
                     # setup catalog producer
                     conf = json.loads(conf[0].value)
@@ -785,16 +781,13 @@ class ApiManager(object):
                         
                     # create instance of catalog producer
                     from beehive.module.catalog.producer import CatalogProducerRedis
-                    self.catalog_producer = CatalogProducerRedis(
-                                                        self.redis_catalog_uri, 
-                                                        self.redis_catalog_channel)
-                    self.logger.info(u'Configure queue %s on %s' % 
-                                     (self.redis_catalog_channel, 
-                                      self.redis_catalog_uri))                    
+                    self.catalog_producer = CatalogProducerRedis(self.redis_catalog_uri, self.redis_catalog_channel)
+                    self.logger.info(u'Configure queue %s on %s' % (self.redis_catalog_channel, self.redis_catalog_uri))
                     self.logger.info(u'Configure catalog queue - CONFIGURED')
                 except Exception as ex:
                     self.logger.warning(u'Configure catalog queue - NOT CONFIGURED')
-                ##### catalog queue configuration #####          
+                    self.logger.warning(u'', exc_info=1)
+                ##### catalog queue configuration #####
         
                 ##### tcp proxy configuration #####
                 try:
@@ -805,7 +798,7 @@ class ApiManager(object):
                     self.logger.info(u'Configure tcp proxy - CONFIGURED')
                 except:
                     self.logger.warning(u'Configure tcp proxy - NOT CONFIGURED') 
-                ##### tcp proxy configuration #####        
+                ##### tcp proxy configuration #####
     
                 ##### http proxy configuration #####
                 try:
@@ -855,14 +848,21 @@ class ApiManager(object):
                     #                                 name=u'catalog')[0].value
                     self.catalog = self.params[u'api_catalog']
                     self.logger.info(u'Get catalog: %s' % self.catalog)
-                    
+
+                    endpoint = self.params.get(u'api_endpoint', None)
+                    self.logger.info(u'Get api endpoint: %s' % endpoint)
+
                     # get auth endpoints
-                    try:
-                        endpoints = configurator.get(app=self.app_name, group=u'api', name=u'endpoints')[0].value
-                        self.endpoints = json.loads(endpoints)
-                    except:
-                        # auth subsystem instance
+                    # try:
+                    #     endpoints = configurator.get(app=self.app_name, group=u'api', name=u'endpoints')[0].value
+                    #     self.endpoints = json.loads(endpoints)
+                    # except:
+                    #     # auth subsystem instance
+                    #     self.endpoints = [self.app_uri]
+                    if endpoint is None:
                         self.endpoints = [self.app_uri]
+                    else:
+                        self.endpoints = [endpoint]
                     self.logger.info(u'Get auth endpoints: %s' % self.endpoints)                    
                     
                     # get auth system user
@@ -1286,7 +1286,7 @@ class ApiController(object):
                                 (user, action, objtype, definition))      
         except Exception as ex:
             self.logger.error(ex, exc_info=True)
-            raise ApiManagerError(ex, code=401)
+            raise ApiManagerError(ex, code=403)
 
     def has_needs(self, needs, perms):
         """Verify if permissions overlap needs.
@@ -1411,7 +1411,7 @@ class ApiController(object):
         except QueryError as ex:         
             self.logger.error(ex, exc_info=1)
             entity_name = entity_class.__name__
-            raise ApiManagerError(u'%s %s not found or name is not unique' % (entity_name, oid), code=400)
+            raise ApiManagerError(u'%s %s not found or name is not unique' % (entity_name, oid), code=404)
 
         if entity is None:
             entity_name = entity_class.__name__
@@ -1470,7 +1470,8 @@ class ApiController(object):
             self.logger.debug(u'Auhtorization disabled for command')
                 
         try:
-            entities, total = get_entities(tags=tags, page=page, size=size, order=order, field=field, *args, **kvargs)
+            entities, total = get_entities(tags=tags, page=page, size=size, order=order, field=field,
+                                           authorize=authorize, *args, **kvargs)
             
             for entity in entities:
                 obj = entity_class(self, oid=entity.id, objid=entity.objid, name=entity.name, active=entity.active,
@@ -2156,7 +2157,8 @@ class ApiObject(object):
         if etype is None:
             etype = self.SYNC_OPERATION
         if exception is not None:
-            response = (False, escape(str(exception)))
+            # response = (False, escape(str(exception)))
+            response = (False, str(exception))
         action = op.split(u'.')[-1]
         
         # remove object from args - it does not serialize in event
@@ -2775,8 +2777,7 @@ class ApiView(FlaskView):
             user_ip = get_remote_ip(request)
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(u'Error retrieving Authorization from http header', 
-                                  code=401)
+            raise ApiManagerError(u'Error retrieving Authorization from http header', code=401)
         return user, pwd, user_ip
     
     def get_current_identity(self):
@@ -2835,6 +2836,7 @@ class ApiView(FlaskView):
 
         # select correct authentication filter
         authfilter = self.__get_auth_filter()
+        operation.token_type = authfilter
         self.logger.debug(u'Select authentication filter: "%s"' % authfilter)
         
         # get controller
@@ -3046,6 +3048,7 @@ class ApiView(FlaskView):
         
         timeout = gevent.Timeout(module.api_manager.api_timeout)
         timeout.start()
+        self.logger.debug2(u'Set response timeout to: %s' % module.api_manager.api_timeout)
 
         start = time.time()
         dbsession = None
@@ -3205,10 +3208,10 @@ class ApiView(FlaskView):
 class PaginatedRequestQuerySchema(Schema):
     size = fields.Integer(default=10, example=10, missing=10, context=u'query',
                           description=u'enitities list page size',
-                          validate=Range(min=0, max=200, error=u'Size is out from range'))
+                          validate=Range(min=0, max=1001, error=u'Size is out from range'))
     page = fields.Integer(default=0, example=0, missing=0, context=u'query',
                           description=u'enitities list page selected',
-                          validate=Range(min=0, max=1000, error=u'Page is out from range'))
+                          validate=Range(min=0, max=1001, error=u'Page is out from range'))
     order = fields.String(validate=OneOf([u'ASC', u'asc', u'DESC', u'desc'],
                                          error=u'Order can be asc, ASC, desc, DESC'),
                           description=u'enitities list order: ASC or DESC',
@@ -3405,14 +3408,10 @@ class ApiClient(BeehiveApiClient):
             # get user logged uid and password
             uid = operation.user[2]
             seckey = operation.user[3]
-            res = self.send_request(module, path, method, data, uid, seckey, other_headers, silent=silent)
+            res = self.send_request(module, path, method, data, uid, seckey, other_headers, silent=silent,
+                                    api_authtype=operation.token_type)
         except BeehiveApiClientError as ex:
             self.logger.error('Send user request to %s using uid %s: %s' % (path, self.uid, ex.value))
             raise
-        
-        if res['status'] == 'error':
-            self.logger.error('Send user request to %s using uid %s: %s' % (path, self.uid, res['msg']))
-            raise ApiManagerError(res['msg'], code=res['code'])
-        else:
-            self.logger.info('Send user request to %s using uid %s: %s' % (path, self.uid, truncate(res)))
-            return res['response']    
+
+        return res

@@ -20,7 +20,7 @@ class SchedulerEntryResponseSchema(Schema):
     schedules = fields.List(fields.Dict(), required=True)
     args = fields.List(fields.String(default=u''), required=False, allow_none=True)
     kwargs = fields.Dict(required=False, default={}, allow_none=True)
-    last_run_at = fields.Integer(required=True, default=1459755371)
+    last_run_at = fields.DateTime(required=True)
     name = fields.String(required=True, default=u'discover')
     options = fields.Dict(required=True, default={})
     schedule = fields.String(required=True, default=u'<freq: 5.00 minutes>')

@@ -4,6 +4,7 @@ Created on May 15, 2017
 @author: darkbk
 '''
 import os
+import sys
 
 import gevent.monkey
 from beehive.common.apiclient import BeehiveApiClient
@@ -15,6 +16,11 @@ from beehive.common.log import ColorFormatter
 # import beecell.server.gevent_ssl
 from beecell.simple import truncate
 
+try:
+    from yaml import CLoader as Loader, CDumper as Dumper
+except ImportError:
+    from yaml import Loader, Dumper
+
 gevent.monkey.patch_all()
 
 import logging
@@ -22,6 +28,7 @@ import unittest
 import pprint
 import time
 import json
+import yaml
 import redis
 import re
 from beecell.logger import LoggerHelper
@@ -60,10 +67,13 @@ class BeehiveTestCase(unittest.TestCase):
     pp = pprint.PrettyPrinter(width=200)
     logging.addLevelName(60, u'TESTPLAN')
     logging.addLevelName(70, u'TEST')
-    validatation_active = False
-    validation_active = False
+
     # module = u'resource'
     # module_prefix = u'nrs'
+
+    main_config_file = None
+    spec_config_file = None
+    validation_active = False
 
     @classmethod
     def setUpClass(cls):
@@ -72,6 +82,13 @@ class BeehiveTestCase(unittest.TestCase):
             .log(60, u'#################### Testplan %s - START ####################' % cls.__name__)
         self = cls
 
+        print(u'Configurations:')
+        print(u'Main config file: %s' % cls.main_config_file)
+        print(u'Extra config file: %s' % cls.spec_config_file)
+        print(u'Validation active: %s' % cls.validation_active)
+        print(u'')
+        print(u'Tests:')
+
         # ssl
         path = os.path.dirname(__file__).replace(u'beehive/common', u'beehive/tests')
         pos = path.find(u'tests')
@@ -79,18 +96,33 @@ class BeehiveTestCase(unittest.TestCase):
         keyfile = None
         certfile = None
 
-        # load config
+        # load configs
         try:
-            # config = self.load_config(u'%s/params.json' % path)
             home = os.path.expanduser(u'~')
-            config = self.load_config(u'%s/beehive.json' % home)
-            logger.info(u'get beehive test configuration')
+            if self.main_config_file is None:
+                config_file = u'%s/beehive.yml' % home
+            else:
+                config_file = self.main_config_file
+            config = self.load_file(config_file)
+            logger.info(u'Get beehive test configuration')
         except Exception as ex:
-            raise Exception(u'Error loading config file beehive.json. Search in user home. %s' % ex)
-        
-        env = config.get(u'env')
-        current_schema = config.get(u'schema')
-        cfg = config.get(env)
+            raise Exception(u'Error loading config file. Search in user home. %s' % ex)
+
+        # load specific configs for a set of test
+        try:
+            if self.spec_config_file is not None:
+                config2 = self.load_file(self.spec_config_file)
+                config.update(config2)
+                logger.info(u'Get beehive test specific configuration')
+        except Exception as ex:
+            raise Exception(u'Error loading config file. Search in user home. %s' % ex)
+
+        # env = config.get(u'env', None)
+        # if env is None:
+        #     raise Exception(u'Test environment was not specified')
+        # current_schema = config.get(u'schema')
+        # cfg = config.get(env)
+        cfg = config
         self.test_config = config.get(u'configs', {})
         for key in self.test_config.get(u'resource').keys():
             if u'configs' in cfg.keys() and u'resource' in cfg.get(u'configs').keys():
@@ -100,6 +132,7 @@ class BeehiveTestCase(unittest.TestCase):
 
         # endpoints
         self.endpoints = cfg.get(u'endpoints')
+        self.swagger_endpoints = cfg.get(u'swagger')
             
         # redis connection
         if cfg.get(u'redis') is not None:
@@ -142,6 +175,17 @@ class BeehiveTestCase(unittest.TestCase):
         f = open(file_config, u'r')
         config = f.read()
         config = json.loads(config)
+        f.close()
+        return config
+
+    @classmethod
+    def load_file(cls, file_config):
+        f = open(file_config, u'r')
+        config = f.read()
+        if file_config.find(u'.json') > 0:
+            config = json.loads(config)
+        elif file_config.find(u'.yml') > 0:
+            config = yaml.load(config, Loader=Loader)
         f.close()
         return config
 
@@ -199,7 +243,7 @@ class BeehiveTestCase(unittest.TestCase):
     def create_keyauth_token(self, user, pwd):
         global token, seckey
         data = {u'user': user, u'password': pwd}
-        headers = {u'Content-Type':u'application/json'}
+        headers = {u'Content-Type': u'application/json'}
         endpoint = self.endpoints[u'auth']
         uri = u'/v1.0/nas/keyauth/token'
         response = requests.request(u'post', endpoint + uri, data=json.dumps(data), headers=headers, timeout=5,
@@ -210,14 +254,14 @@ class BeehiveTestCase(unittest.TestCase):
 
     def validate_swagger_schema(self, endpoint):
         start = time.time()
-        schema_uri = u'%s/apispec_1.json' % endpoint
-        schema = load(schema_uri)
-        logger.info(u'Load swagger schema from %s: %ss' % (endpoint, 
-                                                           time.time()-start))
+        schema_uri = endpoint
+        response = requests.request(u'GET', schema_uri, timeout=5, verify=False)
+        schema = load(response.text)
+        logger.info(u'Load swagger schema from %s: %ss' % (endpoint, time.time()-start))
         return schema    
     
     def get_schema(self, subsystem, endpoint):
-        if self.validatation_active is True or self.validation_active is True:
+        if self.validation_active is True:
             schema = self.schema.get(subsystem, None)
             if schema is None:
                 self.logger.info(u'Load swagger schema from %s' % endpoint)
@@ -228,7 +272,7 @@ class BeehiveTestCase(unittest.TestCase):
     
     def validate_response(self, resp_content_type, schema, path, method, response, runlog):
         validate = True
-        if self.validatation_active is True or self.validation_active is True:
+        if self.validation_active is True:
             # validate with swagger schema
             if resp_content_type.find(u'application/json') >= 0:
                 validator = ApiValidator(schema, path, method)
@@ -262,8 +306,9 @@ class BeehiveTestCase(unittest.TestCase):
                 headers = {}
     
             endpoint = self.endpoints[subsystem]
+            swagger_endpoint = self.swagger_endpoints[subsystem]
             # schema = self.schema[subsystem]
-            schema = self.get_schema(subsystem, endpoint)
+            schema = self.get_schema(subsystem, swagger_endpoint)
             if u'Content-Type' not in headers:
                 headers[u'Content-Type'] = u'application/json'            
 
@@ -529,10 +574,22 @@ class ColorFormatter(CeleryColorFormatter):
     }
 
 
-def runtest(testcase_class, tests):
-    log_file = u'/tmp/test.log'
-    watch_file = u'/tmp/test.watch'
-    run_file = u'/tmp/test.run'
+def runtest(testcase_class, tests, args={}):
+    """Run test. Accept as external input args:
+    -
+        main_config_file = None
+    spec_config_file = None
+    validation_active
+
+
+    :param testcase_class:
+    :param tests:
+    :return:
+    """
+    home = os.path.expanduser(u'~')
+    log_file = home + u'/test.log'
+    watch_file = home + u'/test.watch'
+    run_file = home + u'/test.run'
     
     logging.captureWarnings(True)    
     
@@ -556,7 +613,12 @@ def runtest(testcase_class, tests):
         logging.getLogger(u'beehive.test.run'),
     ]
     LoggerHelper.file_handler(loggers, logging.INFO, run_file, frmt=u'%(message)s', formatter=ColorFormatter)
-    
+
+    # read external params
+    testcase_class.main_config_file = args.get(u'config', None)
+    testcase_class.spec_config_file = args.get(u'extra-config', None)
+    testcase_class.validation_active = args.get(u'validate', False)
+
     # run test suite
     runner = unittest.TextTestRunner(verbosity=2)
     runner.run(unittest.TestSuite(map(testcase_class, tests)))

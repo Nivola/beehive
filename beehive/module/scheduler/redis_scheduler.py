@@ -11,6 +11,7 @@ from celery.schedules import maybe_schedule, crontab, schedule as interval
 from celery.five import items
 from kombu.utils import reprcall
 import redis_collections
+from beecell.simple import format_date
 #import pickle
 
 class RedisScheduleEntry(object):
@@ -112,7 +113,7 @@ class RedisScheduleEntry(object):
                'args':self.args,
                'kwargs':self.kwargs,
                'options':self.options,
-               'last_run_at':self.last_run_at,
+               'last_run_at':format_date(self.last_run_at),
                'total_run_count':self.total_run_count}
         return res
 

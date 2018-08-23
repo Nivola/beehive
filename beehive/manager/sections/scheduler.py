@@ -304,9 +304,8 @@ class ScheduleController(object):
         """Delete schedule by name
         """
         name = self.get_arg(name=u'name')
-        data = {u'name':name}
-        uri = u'%s/scheduler/entries' % self.baseuri
-        res = self._call(uri, u'DELETE', data=data)
+        uri = u'%s/scheduler/entries/%s' % (self.baseuri, name)
+        res = self._call(uri, u'DELETE')
         self.result({u'msg': u'Delete schedule %s' % name}, headers=[u'msg'])
 
 

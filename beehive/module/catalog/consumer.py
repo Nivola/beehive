@@ -3,6 +3,8 @@ Created on Jan 27, 2017
 
 @author: darkbk
 '''
+from re import match
+
 from beecell.simple import id_gen
 from beecell.logger.helper import LoggerHelper
 from signal import signal
@@ -19,7 +21,9 @@ from beehive.common.apimanager import ApiManager
 from beehive.module.catalog.model import Catalog as ModelCatalog, \
     CatalogEndpoint as ModelEndpoint
 
+
 class CatalogConsumerError(Exception): pass
+
 
 class CatalogConsumer(ConsumerMixin):
     def __init__(self, connection, api_manager):
@@ -63,8 +67,7 @@ class CatalogConsumer(ConsumerMixin):
                 self.logger.debug(u'Update endpoint : %s' % endpoint)
             except QueryError:
                 objid = u'%s//%s' % (catalog_obj.objid, id_gen())
-                res = self.manager.add_endpoint(objid, name, service, desc, 
-                                            catalog_obj.id, uri, active=True)
+                res = self.manager.add_endpoint(objid, name, service, desc, catalog_obj.id, uri, active=True)
                 controller = CatalogController(None)
                 # create object and permission
                 CatalogEndpoint(controller, oid=res.id).\
@@ -103,6 +106,7 @@ class CatalogConsumer(ConsumerMixin):
                 
         message.ack()
 
+
 class CatalogConsumerRedis(CatalogConsumer):
     def __init__(self, connection, api_manager):
         """Catalog consumer that create a zmq forwarder and a zmq subscriber.
@@ -119,12 +123,10 @@ class CatalogConsumerRedis(CatalogConsumer):
         self.redis_channel = self.api_manager.redis_catalog_channel
         
         # kombu channel
-        self.exchange = Exchange(self.redis_channel, type=u'direct',
-                                 delivery_mode=1)
+        self.exchange = Exchange(self.redis_channel, type=u'direct', delivery_mode=1)
         self.queue_name = u'%s.queue' % self.redis_channel
         self.routing_key = u'%s.key' % self.redis_channel
-        self.queue = Queue(self.queue_name, self.exchange,
-                           routing_key=self.routing_key)
+        self.queue = Queue(self.queue_name, self.exchange, routing_key=self.routing_key)
 
     def get_consumers(self, Consumer, channel):
         return [Consumer(queues=self.queue,
@@ -134,6 +136,7 @@ class CatalogConsumerRedis(CatalogConsumer):
 
     def decode_error(self, message, exc):
         self.logger.error(exc)
+
 
 def start_catalog_consumer(params, log_path=None):
     """Start catalog consumer
@@ -146,8 +149,7 @@ def start_catalog_consumer(params, log_path=None):
     
     logger_level = DEBUG
     if log_path is None:
-        log_path = u'/var/log/%s/%s' % (params[u'api_package'], 
-                                        params[u'api_env'])
+        log_path = u'/var/log/%s/%s' % (params[u'api_package'], params[u'api_env'])
     logname = u'%s/%s.catalog.consumer' % (log_path, params[u'api_id'])
     logger_file = u'%s.log' % logname
     loggers = [getLogger(), logger]
@@ -168,8 +170,8 @@ def start_catalog_consumer(params, log_path=None):
         worker.should_stop = True 
     
     for sig in (SIGHUP, SIGABRT, SIGILL, SIGINT, SIGSEGV, SIGTERM, SIGQUIT):
-        signal(sig, terminate)    
-    
+        signal(sig, terminate)
+
     with Connection(api_manager.redis_catalog_uri) as conn:
         try:
             worker = CatalogConsumerRedis(conn, api_manager)

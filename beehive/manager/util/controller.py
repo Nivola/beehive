@@ -910,11 +910,11 @@ class ApiController(BaseController):
         if host_ip is not None:
             data[u'ip_address'] = host_ip
         elif host_name is not None:
-            data[u'name'] = host_name
+            uri = u'/v1.0/gas/sshnodes/%s' % host_name
         elif host_id is not None:
             uri = u'/v1.0/gas/sshnodes/%s' % host_id
         sshnode = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True))
-        if host_id is not None:
+        if host_id is not None or host_name is not None:
             sshnode = sshnode.get(u'sshnode', None)
         else:
             sshnode = sshnode.get(u'sshnodes', [])
@@ -927,13 +927,14 @@ class ApiController(BaseController):
 
         # get ssh user
         data = {
-            u'node_oid': sshnode[u'id'],
+            u'node': sshnode[u'id'],
             u'username': user
         }
         uri = u'/v1.0/gas/sshusers'
         sshuser = self._call(uri, u'GET', data=urllib.urlencode(data, doseq=True)).get(u'sshusers', [])
         if len(sshuser) == 0:
             raise Exception(u'Host %s user %s not found' % (sshnode[u'name'], user))
+
         sshuser = sshuser[0]
 
         # get ssh ksy
@@ -966,12 +967,13 @@ class ApiController(BaseController):
             action = self._call(uri, u'PUT',  data=data)
             logger.debug(u'Send action: %s' % action)
 
-        def post_logout():
+        def post_logout(status):
             elapsed = round(time() - start_time, 2)
 
             data = {
                 u'action': u'logout',
                 u'action_id': ssh_session_id,
+                u'status': status,
                 u'params': {
                     u'user': {
                         u'key': sshkey[u'uuid'],

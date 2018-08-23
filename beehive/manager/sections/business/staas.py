@@ -230,10 +230,11 @@ class STaaServiceEFSController(STaaServiceControllerChild):
     @check_error
     def target_delete(self):
         """Delete mount target file system share instance
+            id: id or uuid of the file system share instance
         """
         uuid = self.get_arg(name=u'id')
-        uri = u'%s/storageservices/efs/deletefilesystem' % self.baseuri
-        res = self._call(uri, u'DELETE', data={u'FileSystemId': uuid})
+        uri = u'%s/storageservices/efs/deletemounttarget' % self.baseuri
+        res = self._call(uri, u'DELETE', data={u'Nvl-FileSystemId': uuid})
         # TODO MANAGEMENT RESPONSE
         logger.info(u'Delete storage efs share instance: %s' % res)
         res = {u'msg': u'Delete share file system instance %s' % uuid}

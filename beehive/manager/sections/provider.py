@@ -327,19 +327,19 @@ class ProviderComputeZoneController(ProviderControllerChild):
         logger.info(u'Quotas compute zone %s quotas classes: %s' % (oid, truncate(res)))
         self.result(res, headers=[u'quota', u'default', u'unit'])
 
-    @expose(aliases=[u'metric <id>'], aliases_only=True)
+    @expose(aliases=[u'metrics <id>'], aliases_only=True)
     @check_error
-    def metric(self):
-        """Get provider item
+    def metrics(self):
+        """Get provider metrics
         """
         oid = self.get_arg(name=u'id')
 
         uri = self.uri + u'/' + oid + u'/metrics'
-        res = self._call(uri, u'GET')
-        
-        self.result(res.get(u'compute_zone'), headers=[u'id', u'service_id',  u'date', u'key', u'value'],
-                    fields=[u'id', u'service_uuid', u'extraction_date', u'metrics.key', u'metrics.value'])
-        # TODO print di key e value delle metriche
+        res = self._call(uri, u'GET').get(u'compute_zone')
+        for item in res:
+            print(u'')
+            self.output(u'Resource %s %s' % (item.get(u'type'), item.get(u'uuid')))
+            self.result(item.get(u'metrics'), headers=[u'key', u'value'])
         
 
 class ProviderComputeFlavorController(ProviderControllerChild):

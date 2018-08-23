@@ -6,6 +6,8 @@ Created on May 24, 2015
 import json
 import time
 import logging
+from re import match
+
 import redis
 #import zmq.green as zmq
 import gevent
@@ -183,13 +185,12 @@ class EventProducerRedis(EventProducer):
         if framework == u'simple':
             # set redis manager
             res = parse_redis_uri(redis_uri)
-            self.redis_manager = redis.StrictRedis(
-                host=res[u'host'], port=int(res[u'port']), db=int(res[u'db']))        
+            self.redis_manager = redis.StrictRedis(host=res[u'host'], port=int(res[u'port']), db=int(res[u'db']),
+                                                   password=res[u'pwd'])
         
         elif framework == u'kombu':
             self.conn = Connection(redis_uri)
-            self.exchange = Exchange(self.redis_exchange, type=u'direct',
-                                     delivery_mode=1, durable=False)
+            self.exchange = Exchange(self.redis_exchange, type=u'direct', delivery_mode=1, durable=False)
             self.routing_key = u'%s.key' % self.redis_exchange
     
             self.queue_name = u'%s.temp' % self.redis_exchange 
@@ -308,8 +309,7 @@ class SimpleEventConsumer(object):
         channel = self.redis.pubsub()
         channel.subscribe(self.redis_exchange)
 
-        self.logger.info(u'Start event consumer on redis channel %s:%s' % 
-                        (self.redis_uri, self.redis_exchange))
+        self.logger.info(u'Start event consumer on redis channel %s:%s' % (self.redis_uri, self.redis_exchange))
         while True:
             try:
                 msg = channel.get_message()
@@ -337,12 +337,10 @@ class SimpleEventConsumerKombu(ConsumerMixin):
         self.redis_exchange = redis_exchange
         
         # kombu channel
-        self.exchange = Exchange(self.redis_exchange+u'.sub', type=u'topic',
-                                 delivery_mode=1)
+        self.exchange = Exchange(self.redis_exchange+u'.sub', type=u'topic', delivery_mode=1)
         self.queue_name = u'%s.queue.%s' % (self.redis_exchange, id_gen())   
         self.routing_key = u'%s.sub.key' % self.redis_exchange
-        self.queue = Queue(self.queue_name, self.exchange,
-                           routing_key=self.routing_key)        
+        self.queue = Queue(self.queue_name, self.exchange, routing_key=self.routing_key)
 
     def get_consumers(self, Consumer, channel):
         return [Consumer(queues=self.queue,
@@ -376,12 +374,9 @@ class SimpleEventConsumerKombu(ConsumerMixin):
         with Connection(event_redis_uri) as conn:
             try:
                 worker = SimpleEventConsumerKombu(conn, event_redis_exchange)
-                logger.info(u'Start event consumer on redis channel %s:%s' % 
-                                (event_redis_uri, event_redis_exchange))
+                logger.info(u'Start event consumer on redis channel %s:%s' % (event_redis_uri, event_redis_exchange))
                 worker.run()
             except KeyboardInterrupt:
-                logger.info(u'Stop event consumer on redis channel %s:%s' % 
-                                (event_redis_uri, event_redis_exchange))
+                logger.info(u'Stop event consumer on redis channel %s:%s' % (event_redis_uri, event_redis_exchange))
                 
-        logger.info(u'Stop event consumer on redis channel %s:%s' % 
-                        (event_redis_uri, event_redis_exchange))                
+        logger.info(u'Stop event consumer on redis channel %s:%s' % (event_redis_uri, event_redis_exchange))

@@ -113,7 +113,7 @@ class AnsibleController(ApiController):
         self.beehive_doc_playbook = u'%s/beehive-doc.yml' % (self.ansible_path)
         self.doc_playbook = u'%s/docs.yml' % (self.ansible_path)
         self.console_playbook = u'%s/console.yml' % (self.ansible_path)
-        self.local_package_path = self.configs[u'local_package_path']
+        self.local_package_path = self.configs.get(u'local_package_path', u'')
     
     def _ext_parse_args(self):
         BaseController._ext_parse_args(self)
@@ -1975,7 +1975,7 @@ class NodeController(AnsibleController):
         """Update system package on beehive console
     - group: ansible group
         """
-        group = self.get_arg(default=u'all')
+        group = self.get_arg(name=u'group')
         run_data = {
             u'tags': [u'yum-update']
         }
@@ -1987,7 +1987,7 @@ class NodeController(AnsibleController):
         """Configure nodes hosts local resolution
     - group: ansible group
         """
-        group = self.get_arg(default=u'all')
+        group = self.get_arg(name=u'group')
         run_data = {
             u'tags': [u'hosts']
         }
@@ -2000,7 +2000,7 @@ class NodeController(AnsibleController):
     - group: ansible group
     - cmd: shell command
         """
-        group = self.get_arg(default=u'all')
+        group = self.get_arg(name=u'group')
 
         run_data = {
             u'tags': [u'node-reboot']
@@ -2607,7 +2607,7 @@ class BeehiveConsoleController(AnsibleController):
 
         run_data = {
             u'tags': [u'userset'],
-            u'sshuser': sshuser,
+            u'sshuser': str(sshuser),
             u'cmpuser': cmpuser,
             u'cmpuser_secret': secret,
             u'config': config,
@@ -3516,22 +3516,35 @@ class BeehiveController(AnsibleController):
         details = self.get_arg(default=u'')         
         self.get_emperor_blacklist(details, u'beehive')    
     
-    @expose(aliases=[u'instance-sync <subsystem> <vassal>'], aliases_only=True)
+    @expose(aliases=[u'instance-sync <subsystem> <vassal> [pkgs=..]'], aliases_only=True)
     @check_error
     def instance_sync(self):
         """Sync beehive package an all nodes with local git repository and
         restart instances
     - subsystem: subsystem
     - vassal: vassal
+    - pkgs: list of comma separated git projects
         """
         subsystem = self.get_arg(name=u'subsystem')
         vassal = self.get_arg(name=u'vassal')
+        git_packages = self.get_arg(default=None, keyvalue=True, name=u'pkgs')
         run_data = {
             u'local_package_path': self.local_package_path,
             u'subsystem': subsystem,
             u'vassal': u'%s-%s' % (subsystem, vassal),
             u'tags': [u'sync-dev']
-        }        
+        }
+        if git_packages is not None:
+            git_packages = git_packages.split(u',')
+            run_data[u'git_packages'] = []
+            for git_package in git_packages:
+                pkg = {
+                    u'uri': u'https://{{ git_user }}:{{ git_pwd }}@{{ git_host }}/1362',
+                    u'prj': git_package,
+                    u'pkg': git_package.replace(u'-', u'_')
+                }
+                run_data[u'git_packages'].append(pkg)
+
         self.ansible_playbook(u'beehive', run_data, playbook=self.beehive_playbook)
     
     @expose(aliases=[u'instance-deploy <subsystem> <vassal>'], aliases_only=True)

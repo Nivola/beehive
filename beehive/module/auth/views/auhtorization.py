@@ -348,7 +348,6 @@ class GetUserAtributes(SwaggerApiView):
                 u'count':len(res)} 
         return resp
 
-
 ## create
 class CreateUserParamRequestSchema(BaseCreateRequestSchema, BaseCreateExtendedParamRequestSchema):
     password = fields.String(validate=Length(min=8, max=20), error=u'Password must be at least 8 characters')
@@ -392,16 +391,29 @@ class CreateUser(SwaggerApiView):
         Call this api to create a user               
         """
         resp = controller.add_user(**data.get(u'user'))
-        return ({u'uuid':resp}, 201)
+        return {u'uuid': resp}, 201
 
 
-## update
+class UpdateUserParamPermRequestSchema(Schema):
+    type = fields.String()
+    subsystem = fields.String()
+    objid = fields.String()
+    action = fields.String()
+    id = fields.Integer()
+
+
+class UpdateUserParamPermsRequestSchema(Schema):
+    append = fields.Nested(UpdateUserParamPermRequestSchema, many=True, allow_none=True)
+    remove = fields.Nested(UpdateUserParamPermRequestSchema, many=True, allow_none=True)
+
+
 class UpdateUserParamRoleRequestSchema(Schema):
     append = fields.List(fields.List(fields.String()))
     remove = fields.List(fields.String())
 
 
 class UpdateUserParamRequestSchema(BaseUpdateRequestSchema):
+    perms = fields.Nested(UpdateUserParamPermsRequestSchema, allow_none=True)
     roles = fields.Nested(UpdateUserParamRoleRequestSchema, allow_none=True)
     password = fields.String(validate=Length(min=8, max=20), error=u'Password must be at least 8 characters')
     
@@ -423,13 +435,15 @@ class UpdateUserResponseSchema(Schema):
     update = fields.String(default=u'6d960236-d280-46d2-817d-f3ce8f0aeff7', required=True)
     role_append = fields.List(fields.String, dump_to=u'role_append', required=True)
     role_remove = fields.List(fields.String, dump_to=u'role_remove', required=True)
+    perm_append = fields.List(fields.String, dump_to=u'perm_append', required=True)
+    perm_remove = fields.List(fields.String, dump_to=u'perm_remove', required=True)
 
 
 class UpdateUser(SwaggerApiView):
     tags = [u'authorization']
     definitions = {
-        u'UpdateUserRequestSchema':UpdateUserRequestSchema,
-        u'UpdateUserResponseSchema':UpdateUserResponseSchema
+        u'UpdateUserRequestSchema': UpdateUserRequestSchema,
+        u'UpdateUserResponseSchema': UpdateUserResponseSchema
     }
     parameters = SwaggerHelper().get_parameters(UpdateUserBodyRequestSchema)
     parameters_schema = UpdateUserRequestSchema
@@ -447,9 +461,10 @@ class UpdateUser(SwaggerApiView):
         """
         data = data.get(u'user')
         role = data.pop(u'roles', None)
+        role_perm = data.pop(u'perms', None)
         user = controller.get_user(oid)
         
-        resp = {u'update':None, u'role_append':[], u'role_remove':[]}
+        resp = {u'update': None, u'role_append': [], u'role_remove': [], u'perm_append': [], u'perm_remove': []}
         
         # append, remove role
         if role is not None:
@@ -464,14 +479,31 @@ class UpdateUser(SwaggerApiView):
                 for role in role.get(u'remove'):
                     res = user.remove_role(role)
                     resp[u'role_remove'].append(res)
-        
+
+        # append, remove perms
+        if role_perm is not None:
+            # append role
+            if u'append' in role_perm:
+                perms = []
+                for perm in role_perm.get(u'append'):
+                    perms.append(perm)
+                res = user.append_permissions(perms)
+                resp[u'perm_append'] = res
+
+            # remove role
+            if u'remove' in role_perm:
+                perms = []
+                for perm in role_perm.get(u'remove'):
+                    perms.append(perm)
+                res = user.remove_permissions(perms)
+                resp[u'perm_remove'] = res
+
         # update user
         res = user.update(**data)
         resp[u'update'] = res
         return resp
 
 
-## create attributes
 class UserAttribSchemaCreateParam(Schema):
     name = fields.String(required=True)
     new_name = fields.String()
@@ -662,13 +694,13 @@ class CreateRole(SwaggerApiView):
         return ({u'uuid':resp}, 201)
 
 
-## update
 class UpdateRoleParamPermDescRequestSchema(Schema):
     type = fields.String()
     subsystem = fields.String()
     objid = fields.String()
     action = fields.String()
     id = fields.Integer()
+
 
 class UpdateRoleParamPermRequestSchema(Schema):
     append = fields.Nested(UpdateRoleParamPermDescRequestSchema, many=True, allow_none=True)
@@ -717,7 +749,7 @@ class UpdateRole(SwaggerApiView):
         role_perm = data.pop(u'perms', None)
         role = controller.get_role(oid)
         
-        resp = {u'update':None, u'perm_append':[], u'perm_remove':[]}
+        resp = {u'update': None, u'perm_append': [], u'perm_remove': []}
         
         # append, remove role
         if role_perm is not None:
@@ -742,7 +774,7 @@ class UpdateRole(SwaggerApiView):
         resp[u'update'] = res
         return resp
 
-## delete
+
 class DeleteRole(SwaggerApiView):
     tags = [u'authorization']
     definitions = {}
@@ -1454,10 +1486,10 @@ class ListObjectActions(ApiView):
                 u'count':len(res)} 
         return resp    
 
+
 #
 # object perms
 #
-## list
 class ListObjectPermsRequestSchema(PaginatedRequestQuerySchema):
     field = fields.String(validate=OneOf([u'subsystem', u'type', u'id', 
                           u'objid', u'aid', u'action'],

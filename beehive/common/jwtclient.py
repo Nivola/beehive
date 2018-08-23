@@ -44,8 +44,7 @@ class JWTClient(Client):
         """Add the client credentials to the request body.
         """
         grant_type = GrantType.JWT_BEARER
-        return prepare_token_request(grant_type, body=body,
-                                     scope=scope, **kwargs)
+        return prepare_token_request(grant_type, body=body, scope=scope, **kwargs)
         
     def parse_request_body_response(self, body, scope=None, **kwargs):
         self.token = self.__parse_token_response(body, scope=scope)

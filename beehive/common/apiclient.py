@@ -1,8 +1,8 @@
-'''
+"""
 Created on Jan 12, 2017
 
 @author: darkbk
-'''
+"""
 import ujson as json
 import json as sjson
 import httplib
@@ -83,7 +83,7 @@ class BeehiveApiClient(object):
         self.seckey = None
         self.filter = None
         
-        self.host = gethostname()
+        # self.host = gethostname()
         
         # auth reference - http://10.102.160.240:6060
         for endpoint in auth_endpoints:
@@ -189,34 +189,6 @@ class BeehiveApiClient(object):
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
             raise BeehiveApiClientError(u'Error signing data: %s' % data, code=401)
-
-    '''
-    @watch
-    def get_identity(self, uid):
-        """Get identity.
-
-        :param uid: identity id
-        :return: dictionary like
-        
-                 .. code-block:: python
-        
-                    {u'uid':..., 
-                     u'user':..., 
-                     u'timestamp':..., 
-                     u'pubkey':..., 
-                     u'seckey':...}
-
-        :raise BeehiveApiClientError: Error
-        """
-        identity = self.api_manager.redis_manager.get(self.prefix + uid)
-        if identity is not None:
-            data = pickle.loads(identity)
-            data['ttl'] = self.module.redis_manager.ttl(self.prefix + uid)
-            self.logger.debug('Get identity %s from redis: %s' % (uid, data))           
-            return data
-        else:
-            self.logger.error("Identity %s doen't exist or is expired" % uid)
-            raise BeehiveApiClientError("Identity %s doen't exist or is expired" % uid, code=1014)'''
 
     def http_client(self, proto, host, path, method, data=u'', headers={}, port=80, timeout=30, print_curl=False,
                     silent=False):
@@ -354,7 +326,7 @@ class BeehiveApiClient(object):
         return res
     
     def send_request(self, subsystem, path, method, data=u'', uid=None, seckey=None, other_headers=None, timeout=30,
-                     silent=False, print_curl=False):
+                     silent=False, print_curl=False, api_authtype=None):
         """Send api request
 
         :param subsystem:
@@ -369,14 +341,28 @@ class BeehiveApiClient(object):
         :return:
         :raise BeehiveApiClientError:
         """
+        # get endpoint
+        endpoint = self.endpoint(subsystem)
+        proto = endpoint[u'proto']
+        host = endpoint[u'host']
+        port = endpoint[u'port']
+
         # create sign
+        if uid is None and self.uid is not None:
+            uid = self.uid
+            seckey = self.seckey
+
+        # set auth type
+        if api_authtype is None:
+            api_authtype = self.api_authtype
+
         headers = {u'Accept': u'application/json'}
-        if self.api_authtype == u'keyauth' and uid is not None:
+        if api_authtype == u'keyauth' and uid is not None:
             sign = self.sign_request(seckey, path)
             headers.update({u'uid': uid, u'sign': sign})
-        elif self.api_authtype == u'oauth2' and uid is not None:
+        elif api_authtype == u'oauth2' and uid is not None:
             headers.update({u'Authorization': u'Bearer %s' % uid})
-        elif self.api_authtype == u'simplehttp':
+        elif api_authtype == u'simplehttp':
             auth = b64encode(u'%s:%s' % (self.api_user, self.api_user_pwd))
             headers.update({u'Authorization': u'Basic %s' % auth})
             
@@ -384,10 +370,6 @@ class BeehiveApiClient(object):
             headers.update(other_headers)            
             
         # make request
-        endpoint = self.endpoint(subsystem)
-        proto = endpoint[u'proto']
-        host = endpoint[u'host']
-        port = endpoint[u'port']
         if method.upper() == u'GET':
             path = u'%s?%s' % (path, data)
         elif isinstance(data, dict) or isinstance(data, list):
@@ -412,26 +394,29 @@ class BeehiveApiClient(object):
         :return:
         :raise BeehiveApiClientError:
         """
+        start = time()
         self.logger.info(u'REQUEST: [%s] %s - uid=%s - data=%s' % (method, path, self.uid, truncate(data, size=50)))
         try:
             if parse is True and isinstance(data, dict) or isinstance(data, list):
                 data = json.dumps(data)
-            res = self.send_request(subsystem, path, method, data, self.uid, self.seckey, other_headers,
+            res = self.send_request(subsystem, path, method, data, other_headers=other_headers,
                                     timeout=timeout, silent=silent, print_curl=print_curl)
         except BeehiveApiClientError as ex:
-            self.logger.error(u'Send request to %s using uid %s: %s, %s' % (path, self.uid, ex.value, ex.code))
+            elapsed = time() - start
+            self.logger.error(u'RESPONSE: [%s] %s - res=%s - %s - %s' % (method, path, ex.value, ex.code, elapsed))
             # Request is not authorized
             if ex.code in [401]:
                 # try to get token and retry api call
                 self.uid = None
                 self.seckey = None
                 self.create_token()
-                res = self.send_request(subsystem, path, method, data, self.uid, self.seckey, other_headers,
+                res = self.send_request(subsystem, path, method, data, other_headers=other_headers,
                                         timeout=timeout, silent=silent)
             else:
                 raise
 
-        self.logger.info(u'RESPONSE: [%s] %s - res=%s' % (method, path, truncate(res, size=100)))
+        elapsed = time() - start
+        self.logger.info(u'RESPONSE: [%s] %s - res=%s - %s' % (method, path, truncate(res, size=100), elapsed))
 
         return res
     
@@ -456,8 +441,7 @@ class BeehiveApiClient(object):
             host = endpoint[u'host']
             port = endpoint[u'port']
             try:
-                resp = self.http_client(proto, host, u'/v1.0/server/ping', u'GET',
-                                        port=port, data=u'', timeout=0.5)
+                resp = self.http_client(proto, host, u'/v1.0/server/ping', u'GET', port=port, data=u'', timeout=0.5)
                 if u'code' in resp:
                     return False
                 return True
@@ -526,10 +510,10 @@ class BeehiveApiClient(object):
             api_user_pwd = self.api_user_pwd
         
         data = {u'user': api_user, u'password': api_user_pwd}
-        if login_ip is None:
-            data[u'login-ip'] = self.host
-        else:
-            data[u'login-ip'] = login_ip
+        # if login_ip is None:
+        #     data[u'login-ip'] = self.host
+        # else:
+        #     data[u'login-ip'] = login_ip
         res = self.send_request(u'auth', u'/v1.0/nas/simplehttp/login', u'POST', data=json.dumps(data))
         self.logger.info(u'Login user %s: %s' % (self.api_user, res[u'uid']))
         self.uid = None
@@ -553,10 +537,10 @@ class BeehiveApiClient(object):
         
         if self.api_authtype == u'keyauth':
             data = {u'user': api_user, u'password': api_user_pwd}
-            if login_ip is None:
-                data[u'login-ip'] = self.host
-            else:
-                data[u'login-ip'] = login_ip
+            # if login_ip is None:
+            #     data[u'login-ip'] = self.host
+            # else:
+            #     data[u'login-ip'] = login_ip
             res = self.send_request(u'auth', u'/v1.0/nas/keyauth/token', u'POST', data=data)
             self.logger.info(u'Login user %s with token: %s' % (self.api_user, res[u'access_token']))
             self.uid = res[u'access_token']
@@ -940,8 +924,9 @@ class BeehiveApiClient(object):
         return res
 
     def append_role_permission_list(self, role, perms):
-        """Append permission to role
+        """Append permissions to role
 
+        :param perms: list of {u'subsystem': objtype, u'type': objdef, u'objid': objid, u'action': objaction}
         :raise BeehiveApiClientError:
         """
         data = {
@@ -1145,6 +1130,44 @@ class BeehiveApiClient(object):
         self.logger.debug(u'Remove roles %s from user %s' % (roles, oid))
         return res
 
+    def append_user_permissions(self, user, perms):
+        """Append permissions to user
+
+        :param perms: list of {u'subsystem': objtype, u'type': objdef, u'objid': objid, u'action': objaction}
+        :raise BeehiveApiClientError:
+        """
+        data = {
+            u'user': {
+                u'perms': {
+                    u'append': perms,
+                    u'remove': []
+                }
+            }
+        }
+        uri = u'/v1.0/nas/users/%s' % user
+        res = self.invoke(u'auth', uri, u'PUT', data, parse=True, silent=True)
+        self.logger.debug(u'Append permissions %s ' % truncate(perms))
+        return res
+
+    def remove_user_permissions(self, user, perms):
+        """Remove permissions from user
+
+        :param perms: list of {u'subsystem': objtype, u'type': objdef, u'objid': objid, u'action': objaction}
+        :raise BeehiveApiClientError:
+        """
+        data = {
+            u'user': {
+                u'perms': {
+                    u'append': [],
+                    u'remove': perms
+                }
+            }
+        }
+        uri = u'/v1.0/nas/users/%s' % user
+        res = self.invoke(u'auth', uri, u'PUT', data, parse=True, silent=True)
+        self.logger.debug(u'Append permissions %s ' % truncate(perms))
+        return res
+
     #
     # services
     #
@@ -1211,3 +1234,142 @@ class BeehiveApiClient(object):
         self.logger.debug(u'Add security group: %s' % truncate(res))
         res = res.get(u'CreateSecurityGroupResponse').get(u'instancesSet')[0].get(u'groupId')
         return res
+
+    #
+    # ssh module
+    #
+    def get_ssh_group(self, oid):
+        """Get ssh group
+
+        :param oid: ssh group id, uuid or name
+        :raise BeehiveApiClientError:
+        """
+        uri = u'/v1.0/gas/sshgroups/%s' % oid
+        res = self.invoke(u'ssh', uri, u'GET', u'', parse=True, silent=True)
+        res = res.get(u'sshgroup')
+        self.logger.debug(u'Get ssh group %s: %s' % (oid, truncate(res)))
+        return res
+
+    def add_ssh_group(self, name, desc, attribute):
+        """Add ssh group
+
+        :param name: ssh group name
+        :param desc: ssh group desc
+        :param attribute: ssh group attribute
+        :return: group uuid
+        :raise BeehiveApiClientError:
+        """
+        data = {
+            u'sshgroup': {
+                u'name': name,
+                u'desc': desc,
+                u'attribute': attribute
+            }
+        }
+        uri = u'/v1.0/gas/sshgroups'
+        res = self.invoke(u'ssh', uri, u'POST', data, parse=True, silent=True)
+        uuid = res.get(u'uuid')
+        self.logger.debug(u'Add ssh group %s: %s' % (name, uuid))
+        return uuid
+
+    def delete_ssh_group(self, oid):
+        """Delete ssh group
+
+        :param oid: ssh group id, uuid or name
+        :raise BeehiveApiClientError:
+        """
+        uri = u'/v1.0/gas/sshgroups/%s' % oid
+        res = self.invoke(u'ssh', uri, u'DELETE', u'', parse=True, silent=True)
+        self.logger.debug(u'Delete ssh group %s: %s' % (oid, truncate(res)))
+        return res
+
+    def get_ssh_keys(self, oid=None):
+        """Get ssh keys
+
+        :param oid: ssh key id, uuid or name
+        :raise BeehiveApiClientError:
+        """
+        data = u''
+        if oid is not None:
+            try:
+                uri = u'/v1.0/gas/sshkeys/%s' % oid
+                res = self.invoke(u'ssh', uri, u'GET', data, parse=True, silent=True)
+                res = [res.get(u'sshkey')]
+            except BeehiveApiClientError as ex:
+                # if ex.code == 404:
+                #     res = []
+                # else:
+                raise
+        else:
+            uri = u'/v1.0/gas/sshkeys'
+            res = self.invoke(u'ssh', uri, u'GET', data, parse=True, silent=True)
+            res = res.get(u'sshkeys', [])
+
+        for item in res:
+            item.pop(u'__meta__')
+            item.pop(u'priv_key')
+
+        self.logger.debug(u'Get ssh keys %s: %s' % (oid, truncate(res)))
+        return res
+
+    def get_ssh_node(self, oid):
+        """Get ssh node
+
+        :param oid: ssh node id, uuid or name
+        :raise BeehiveApiClientError:
+        """
+        uri = u'/v1.0/gas/sshnodes/%s' % oid
+        res = self.invoke(u'ssh', uri, u'GET', u'', parse=True, silent=True)
+        res = res.get(u'sshnode')
+        self.logger.debug(u'Get ssh node %s: %s' % (oid, truncate(res)))
+        return res
+
+    def add_ssh_node(self, name, desc, ip_address, group, user, key, attribute=u'', password=u''):
+        """Add ssh node
+
+        :param name: ssh node name
+        :param desc: ssh node desc
+        :param attribute: ssh node attribute
+        :return: node uuid
+        :raise BeehiveApiClientError:
+        """
+        data = {
+            u'sshnode': {
+                u'name': name,
+                u'desc': desc,
+                u'attribute': attribute,
+                u'group_oid': group,
+                u'node_type': u'user',
+                u'ip_address': ip_address
+            }
+        }
+        uri = u'/v1.0/gas/sshnodes'
+        res = self.invoke(u'ssh', uri, u'POST', data, parse=True, silent=True)
+        uuid = res.get(u'uuid')
+        self.logger.debug(u'Add ssh node %s: %s' % (name, uuid))
+
+        user = {
+            u'name': u'%s-%s' % (name, user),
+            u'desc': user,
+            u'attribute': u'',
+            u'node_oid': uuid,
+            u'key_oid': key,
+            u'username': user,
+            u'password': password
+        }
+        uri = u'/v1.0/gas/sshusers'
+        node_user = self.invoke(u'ssh', uri, u'POST', data={u'sshuser': user})
+        self.logger.debug(u'Add ssh node %s user: %s' % (name, node_user.get(u'uuid')))
+        return uuid
+
+    def delete_ssh_node(self, oid):
+        """Delete ssh node
+
+        :param oid: ssh node id, uuid or name
+        :raise BeehiveApiClientError:
+        """
+        uri = u'/v1.0/gas/sshnodes/%s' % oid
+        res = self.invoke(u'ssh', uri, u'DELETE', u'', parse=True, silent=True)
+        self.logger.debug(u'Delete ssh node %s' % oid)
+
+        return True

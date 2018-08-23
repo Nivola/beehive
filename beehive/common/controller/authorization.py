@@ -1,8 +1,8 @@
-'''
+"""
 Created on Jun 8, 2017
 
 @author: darkbk
-'''
+"""
 import binascii
 import pickle
 import ujson as json
