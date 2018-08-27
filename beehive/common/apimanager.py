@@ -542,8 +542,9 @@ class ApiManager(object):
                 ##### oauth2 configuration #####
                 self.logger.info(u'Configure oauth2 - CONFIGURE')
                 try:
-                    self.oauth2_endpoint = configurator.get(
-                        app=self.app_name, group=u'oauth2', name=u'endpoint')[0].value
+                    self.oauth2_endpoint = self.params.get(u'oauth2_endpoint')
+                    # self.oauth2_endpoint = configurator.get(
+                    #     app=self.app_name, group=u'oauth2', name=u'endpoint')[0].value
                     self.logger.info(u'Setup oauth2 endpoint: %s' % self.oauth2_endpoint)
                     self.logger.info(u'Configure oauth2 - CONFIGURED')
                 except:
