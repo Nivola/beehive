@@ -14,7 +14,7 @@ from beehive.common.log import ColorFormatter
 # os.environ['GEVENT_RESOLVER'] = 'ares'
 # os.environ['GEVENTARES_SERVERS'] = 'ares'
 # import beecell.server.gevent_ssl
-from beecell.simple import truncate
+from beecell.simple import truncate, str2bool
 
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -82,13 +82,6 @@ class BeehiveTestCase(unittest.TestCase):
             .log(60, u'#################### Testplan %s - START ####################' % cls.__name__)
         self = cls
 
-        print(u'Configurations:')
-        print(u'Main config file: %s' % cls.main_config_file)
-        print(u'Extra config file: %s' % cls.spec_config_file)
-        print(u'Validation active: %s' % cls.validation_active)
-        print(u'')
-        print(u'Tests:')
-
         # ssl
         path = os.path.dirname(__file__).replace(u'beehive/common', u'beehive/tests')
         pos = path.find(u'tests')
@@ -101,6 +94,7 @@ class BeehiveTestCase(unittest.TestCase):
             home = os.path.expanduser(u'~')
             if self.main_config_file is None:
                 config_file = u'%s/beehive.yml' % home
+                self.main_config_file = config_file
             else:
                 config_file = self.main_config_file
             config = self.load_file(config_file)
@@ -116,6 +110,13 @@ class BeehiveTestCase(unittest.TestCase):
                 logger.info(u'Get beehive test specific configuration')
         except Exception as ex:
             raise Exception(u'Error loading config file. Search in user home. %s' % ex)
+
+        print(u'Configurations:')
+        print(u'Main config file: %s' % cls.main_config_file)
+        print(u'Extra config file: %s' % cls.spec_config_file)
+        print(u'Validation active: %s' % cls.validation_active)
+        print(u'')
+        print(u'Tests:')
 
         # env = config.get(u'env', None)
         # if env is None:
@@ -618,6 +619,15 @@ def runtest(testcase_class, tests, args={}):
     testcase_class.main_config_file = args.get(u'config', None)
     testcase_class.spec_config_file = args.get(u'extra-config', None)
     testcase_class.validation_active = args.get(u'validate', False)
+
+    try:
+        testcase_class.spec_config_file = sys.argv[1]
+    except:
+        pass
+    try:
+        testcase_class.validation_active = str2bool(sys.argv[2])
+    except:
+        pass
 
     # run test suite
     runner = unittest.TextTestRunner(verbosity=2)

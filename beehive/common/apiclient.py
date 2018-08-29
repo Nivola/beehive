@@ -7,7 +7,7 @@ import ujson as json
 import json as sjson
 import httplib
 import ssl
-from urllib import urlencode
+from urllib import urlencode, quote
 from time import time
 from logging import getLogger
 from beecell.perf import watch
@@ -1244,7 +1244,7 @@ class BeehiveApiClient(object):
         :param oid: ssh group id, uuid or name
         :raise BeehiveApiClientError:
         """
-        uri = u'/v1.0/gas/sshgroups/%s' % oid
+        uri = u'/v1.0/gas/sshgroups/%s' % quote(oid)
         res = self.invoke(u'ssh', uri, u'GET', u'', parse=True, silent=True)
         res = res.get(u'sshgroup')
         self.logger.debug(u'Get ssh group %s: %s' % (oid, truncate(res)))
