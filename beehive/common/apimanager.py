@@ -119,8 +119,7 @@ class ApiManager(object):
     # logger = logging.getLogger('gibbon.cloudapi')
     
     def __init__(self, params, app=None, hostname=None):
-        self.logger = logging.getLogger(self.__class__.__module__+ \
-                                        u'.'+self.__class__.__name__)
+        self.logger = logging.getLogger(self.__class__.__module__+ u'.' + self.__class__.__name__)
         
         # configuration params
         self.params = params       
@@ -171,7 +170,7 @@ class ApiManager(object):
         #self.process_event_producer = None
         
         # api listener
-        self.api_timeout = float(self.params.get(u'api_timeout', 5.0))
+        self.api_timeout = float(self.params.get(u'api_timeout', 10.0))
         
         # api endpoints
         self.endpoints = {}
@@ -187,7 +186,7 @@ class ApiManager(object):
         # database manager
         self.db_manager = None
         database_uri = self.params.get(u'database_uri', None)
-        if database_uri != None:
+        if database_uri is not None:
             self.create_pool_engine((database_uri, 5, 10, 10, 1800))
         
         # send mail

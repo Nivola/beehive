@@ -706,6 +706,7 @@ class AbstractDbManager(object):
         entity = query
         kvargs[u'modification_date'] = datetime.today()
         res = entity.update(kvargs)
+        session.flush()
             
         self.logger.debug(u'Update %s %s with data: %s' % (entityclass.__name__, oid, kvargs))
         return oid

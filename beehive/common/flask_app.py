@@ -105,8 +105,6 @@ class BeehiveApp(Flask):
     def del_configurations(self):
         del self.db_uri
         del self.tcp_proxy
-        #del self.orchestrators
-        #self.orchestrators = OrchestratorManager()
 
     def setup_loggers(self):
         """ """

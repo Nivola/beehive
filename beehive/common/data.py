@@ -414,3 +414,83 @@ def trace(entity=None, op=u'view', noargs=False):
             return ret
         return decorated
     return wrapper
+
+
+def maybe_run_batch_greenlet(controller, batch, timeout=600):
+    """Use this decorator to run a parallel greenlet if batch is True.
+
+    :param controller: controller instance
+    :param batch: if True run a new greenlet
+    :param timeout: greenlet timeout
+
+    Example::
+
+        @maybe_run_batch_greenlet(True)
+        def action(*args, **kwargs):
+            ....
+    """
+    def wrapper(fn):
+        @wraps(fn)
+        def decorated(*args, **kwargs):
+            # get start time
+            start = time()
+
+            logger = controller.logger
+
+            logger.info(u'Outer %s - START' % fn.__name__)
+
+            # execute inner function
+            try:
+                # encapsulate method
+                def inner_fn(user, perms, opid, *args, **kwargs):
+                    # get start time
+                    start_inner = time()
+
+                    logger.info(u'Inner %s - START' % fn.__name__)
+
+                    try:
+                        # set local thread operation
+                        operation.user = user
+                        operation.perms = perms
+                        operation.id = opid
+                        operation.transaction = None
+
+                        # open db session
+                        controller.get_session()
+
+                        fn(*args, **kwargs)
+                        # calculate elasped time
+                        elapsed_inner = round(time() - start_inner, 4)
+                        logger.info(u'Inner %s - STOP - %s' % (fn.__name__, elapsed_inner))
+                        return True
+                    except:
+                        # calculate elasped time
+                        elapsed_inner = round(time() - start_inner, 4)
+                        logger.error(u'', exc_info=1)
+                        logger.error(u'Inner %s - ERROR - %s' % (fn.__name__, elapsed_inner))
+                    finally:
+                        controller.release_session()
+
+                    return False
+
+                user = operation.user
+                perms = operation.perms
+                opid = operation.id
+                res = gevent.spawn(inner_fn, user, perms, opid, *args, **kwargs)
+                if batch is True:
+                    logger.debug(u'Start batch operation: %s' % res)
+                else:
+                    gevent.joinall([res], timeout=timeout)
+
+                # calculate elasped time
+                elapsed = round(time() - start, 4)
+                logger.info(u'Outer %s - STOP - %s' % (fn.__name__, elapsed))
+            except:
+                # calculate elasped time
+                elapsed = round(time() - start, 4)
+                logger.error(u'', exc_info=1)
+                logger.error(u'Outer %s - ERROR - %s' % (fn.__name__, elapsed))
+                raise
+            return True
+        return decorated
+    return wrapper

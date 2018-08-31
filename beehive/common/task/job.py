@@ -209,6 +209,10 @@ class AbstractJob(BaseTask):
             return None
 
         params = self.get_shared_data()
+        # if job is finished exit to avoid wrong status change
+        if params.get(u'is-finished', False) is True:
+            return None
+
         if u'start-time' not in params.keys():
             params[u'start-time'] = job.get(u'start_time')
             self.set_shared_data(params)
@@ -216,13 +220,17 @@ class AbstractJob(BaseTask):
         # set result if status is SUCCESS
         retval = None
         if status == u'SUCCESS':
+            # set flag for SUCCESS job
+            params[u'is-finished'] = True
+            self.set_shared_data(params)
+
             if u'result' in params:
                 retval = params[u'result']
             # remove shared area
-            self.remove_shared_area()
+            # self.remove_shared_area()
             
             # remove stack
-            self.remove_stack()
+            # self.remove_stack()
 
         # store job data
         msg = None
