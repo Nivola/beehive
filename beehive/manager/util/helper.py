@@ -155,7 +155,8 @@ class BeehiveHelper(object):
                       u'redis_identity_uri': config[u'redis_identity_uri'],
                       u'api_module': config[u'api_modules'],
                       u'api_plugin': config[u'api_plugins'],
-                      u'api_catalog': config[u'api_catalog']}
+                      u'api_catalog': config[u'api_catalog'],
+                      u'api_endpoint': config[u'api_endpoint']}
             manager = ApiManager(params)
             manager.configure()
             manager.register_modules()

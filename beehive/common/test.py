@@ -98,7 +98,7 @@ class BeehiveTestCase(unittest.TestCase):
             else:
                 config_file = self.main_config_file
             config = self.load_file(config_file)
-            logger.info(u'Get beehive test configuration')
+            logger.info(u'Get beehive test configuration: %s' % config_file)
         except Exception as ex:
             raise Exception(u'Error loading config file. Search in user home. %s' % ex)
 
@@ -107,9 +107,11 @@ class BeehiveTestCase(unittest.TestCase):
             if self.spec_config_file is not None:
                 config2 = self.load_file(self.spec_config_file)
                 config.update(config2)
-                logger.info(u'Get beehive test specific configuration')
+                logger.info(u'Get beehive test specific configuration: %s' % self.spec_config_file)
         except Exception as ex:
             raise Exception(u'Error loading config file. Search in user home. %s' % ex)
+
+        logger.info(u'Validation active: %s' % cls.validation_active)
 
         print(u'Configurations:')
         print(u'Main config file: %s' % cls.main_config_file)
@@ -134,6 +136,7 @@ class BeehiveTestCase(unittest.TestCase):
         # endpoints
         self.endpoints = cfg.get(u'endpoints')
         self.swagger_endpoints = cfg.get(u'swagger')
+        logger.info(u'Endpoints: %s' % self.endpoints)
             
         # redis connection
         if cfg.get(u'redis') is not None:
@@ -287,9 +290,9 @@ class BeehiveTestCase(unittest.TestCase):
         return validate
     
     def call(self, subsystem, path, method, params=None, headers=None, user=None, pwd=None, auth=None, data=None,
-             query=None, runlog=True, timeout=10, oauth2_token=None, *args, **kvargs):
+             query=None, runlog=True, timeout=10, oauth2_token=None, response_size=400, *args, **kvargs):
         global token, seckey
-        
+
         start = time.time()
         validate = False
         res = None
@@ -324,7 +327,7 @@ class BeehiveTestCase(unittest.TestCase):
                     logger.debug(u'Create keyauth token: %s - %s' % (token, time.time()-start))
                 sign = self.auth_client.sign_request(seckey, uri)
                 headers.update({u'uid': token, u'sign': sign})
-            
+
             if runlog is True:
                 self.runlogger.info(u'request endpoint: %s' % endpoint)
                 self.runlogger.info(u'request path:     %s' % uri)
@@ -431,7 +434,7 @@ class BeehiveTestCase(unittest.TestCase):
                     res = response.text
             
             if runlog is True:
-                self.runlogger.info(u'response data:    %s' % truncate(response.text))
+                self.runlogger.info(u'response data:    %s' % truncate(response.text, size=response_size))
             
             # validate with swagger schema
             validate = self.validate_response(resp_content_type, schema, path, method, response, runlog)
@@ -592,8 +595,18 @@ def runtest(testcase_class, tests, args={}):
     watch_file = home + u'/test.watch'
     run_file = home + u'/test.run'
     
-    logging.captureWarnings(True)    
-    
+    logging.captureWarnings(True)
+
+    loggers = [
+        logging.getLogger(u'beecell.perf'),
+    ]
+    LoggerHelper.file_handler(loggers, logging.DEBUG, watch_file, frmt=u'%(message)s', formatter=ColorFormatter)
+
+    loggers = [
+        logging.getLogger(u'beehive.test.run'),
+    ]
+    LoggerHelper.file_handler(loggers, logging.INFO, run_file, frmt=u'%(message)s', formatter=ColorFormatter)
+
     # setting logger
     # frmt = "%(asctime)s - %(levelname)s - %(process)s:%(thread)s - %(message)s"
     frmt = u'%(asctime)s - %(levelname)s - %(message)s'
@@ -605,15 +618,6 @@ def runtest(testcase_class, tests, args={}):
         logging.getLogger(u'beehive_service'),
     ]
     LoggerHelper.file_handler(loggers, logging.DEBUG, log_file, frmt=frmt, formatter=ColorFormatter)
-    loggers = [
-        logging.getLogger(u'beecell.perf'),
-    ]
-    LoggerHelper.file_handler(loggers, logging.DEBUG, watch_file, frmt=u'%(message)s', formatter=ColorFormatter)
-    
-    loggers = [
-        logging.getLogger(u'beehive.test.run'),
-    ]
-    LoggerHelper.file_handler(loggers, logging.INFO, run_file, frmt=u'%(message)s', formatter=ColorFormatter)
 
     # read external params
     testcase_class.main_config_file = args.get(u'config', None)
