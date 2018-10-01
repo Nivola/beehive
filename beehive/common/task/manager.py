@@ -76,9 +76,9 @@ def configure_task_manager(broker_url, result_backend, tasks=[], expire=60*60*24
         BROKER_POOL_LIMIT=20,
         BROKER_HEARTBEAT=20,
         BROKER_CONNECTION_MAX_RETRIES=10,
-        TASK_DEFAULT_QUEUE=task_queue,
-        TASK_DEFAULT_EXCHANGE=task_queue,
-        TASK_DEAFAULT_ROUTING_KEY=task_queue,
+        # TASK_DEFAULT_QUEUE=task_queue,
+        # TASK_DEFAULT_EXCHANGE=task_queue,
+        # TASK_DEAFAULT_ROUTING_KEY=task_queue,
         CELERY_QUEUES=(Queue(task_queue, Exchange(task_queue), routing_key=task_queue),),
         CELERY_RESULT_BACKEND=result_backend,
         CELERY_REDIS_RESULT_KEY_PREFIX=u'%s.celery-task-meta2-' % task_queue,
@@ -106,7 +106,7 @@ def configure_task_manager(broker_url, result_backend, tasks=[], expire=60*60*24
     return task_manager
 
 
-def configure_task_scheduler(broker_url, schedule_backend, tasks=[]):
+def configure_task_scheduler(broker_url, schedule_backend, tasks=[], task_queue=None):
     """
     :param broker_url: url of the broker
     :param schedule_backend: url of the schedule backend where schedule entries 
@@ -115,20 +115,26 @@ def configure_task_scheduler(broker_url, schedule_backend, tasks=[]):
                   ['beehive.module.scheduler.tasks', 'beehive.module.service.plugins.filesharing',]
     """
     task_scheduler.conf.update(
+        CELERY_TASK_DEFAULT_QUEUE=task_queue,
+        # CELERY_TASK_DEFAULT_EXCHANGE=task_queue,
+        # CELERY_TASK_DEAFAULT_ROUTING_KEY=task_queue,
         BROKER_URL=broker_url,
         CELERY_SCHEDULE_BACKEND=schedule_backend,
+        CELERYBEAT_SCHEDULE_FILENAME=u'/tmp/celerybeat-schedule',
         CELERY_REDIS_SCHEDULER_KEY_PREFIX=u'celery-schedule',        
         CELERY_TASK_SERIALIZER=u'json',
         CELERY_ACCEPT_CONTENT=[u'json'],  # Ignore other content
         CELERY_RESULT_SERIALIZER=u'json',
         CELERY_TIMEZONE=u'Europe/Rome',
         CELERY_ENABLE_UTC=True,
-        #CELERY_IMPORTS=tasks,
+        # CELERY_IMPORTS=tasks,
+        CELERYBEAT_MAX_LOOP_INTERVAL=5,
         CELERYBEAT_SCHEDULE={
-            u'test-every-600-seconds': {
-                u'task': u'tasks.test',
-                u'schedule': timedelta(seconds=600),
-                u'args': ()
+            u'test-every-10-seconds': {
+                u'task': u'beehive.module.scheduler.tasks.test',
+                u'schedule': timedelta(seconds=10),
+                u'args': (u'*', {}),
+                u'options': {u'queue': task_queue}
             },
         }
     )
@@ -224,20 +230,19 @@ def start_scheduler(params):
     api_manager = ApiManager(params)
     api_manager.configure()
     api_manager.register_modules()
-    #worker = ProcessEventConsumerRedis(api_manager)
-    #from beehive.module.tasks import task_manager
+    # worker = ProcessEventConsumerRedis(api_manager)
+    # from beehive.module.tasks import task_manager
     task_scheduler.api_manager = api_manager
     
-    configure_task_scheduler(params[u'broker_url'], params[u'result_backend'])
+    configure_task_scheduler(params[u'broker_url'], params[u'result_backend'], task_queue=params[u'broker_queue'])
 
-    #from beehive.module.scheduler.scheduler import RedisScheduler
+    # from beehive.module.scheduler.scheduler import RedisScheduler
     from beehive.module.scheduler.redis_scheduler import RedisScheduler
 
     beat = task_scheduler.Beat(loglevel=logging.getLevelName(logger_level), 
                                logfile='%s/%s.scheduler.log' % (log_path, params['api_id']),
                                pidfile='%s/%s.scheduler.pid' % (run_path, params['api_id']),
                                scheduler_cls=RedisScheduler)
-
     
     def terminate(*args):
         #run_command(['celery', 'multi', 'stopwait', 'worker1', 
