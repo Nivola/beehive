@@ -136,6 +136,28 @@ class TrilioPlatformConfigController(TrilioPlatformControllerChild):
         href = self.get_arg(name=u'project_id')
         # TO DO
 
+    @expose(aliases=[u'listOsTenants'], aliases_only=True)
+    @check_error
+    def list_os_tenants(self):
+        """This command will display all the tenants/projects present in openstack """
+
+        res = self.trilio.get_openstack_tenants()
+        project = (res['data']['projects'])
+        self.result(project, headers=[u'id', u'name', u'Description', u'enabled'],
+                    fields=[u'id', u'name', u'description', u'enabled'])
+
+    @expose(aliases=[u'get-all-workloads'], aliases_only=True)
+    @check_error
+    def get_all_workload(self):
+        """This command will display ALL the workloads in the whole openstack environment """
+
+        res = self.trilio.get_all_workloads()
+        self.result(res['data'], headers=[u'Workload id', u'Workload name', u'Description', u'Project Name', u'status',
+                                          u'Last\r\nSnapshot status', u'Last\r\nsnapshot date', u'Snapshot\r\ntype'],
+                    fields=[u'id', u'name', u'description', u'project_name', u'status', u'snap_status', u'snap_date',
+                            u'snap_type'])
+
+
 
 class TrilioPlatformJobController(TrilioPlatformControllerChild):
     #headers = [u'id', u'name', u'domain_id']
@@ -259,8 +281,8 @@ class TrilioPlatformSnapshotController(TrilioPlatformControllerChild):
         tenant_name = self.get_arg(name=u'tenant_name')
         snapshot_id = self.get_arg(name=u'snapshot_id')
         res = self.trilio.snapshots.show_snapshot(project_id, tenant_name,snapshot_id)
-        self.result(res[u'data'], headers=[u'id', u'name', u'progress_percent', u'created at', u'size (Byte)', u'snapshot_type', u'status',
-                                           u'time_taken (sec)'],
+        self.result(res[u'data'], headers=[u'id', u'name', u'progress_percent', u'created at', u'size (Byte)',
+                                           u'snapshot_type', u'status', u'time_taken (sec)'],
                     fields=[u'id', u'name', u'progress_percent', u'created_at', u'size', u'snapshot_type', u'status',
                             u'time_taken'])
 
