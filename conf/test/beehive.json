@@ -791,7 +791,7 @@
                     "db_root_password": "N!v0la12vr",
                     "key_name": "opstkcsi",
                     "engine": "mysql",
-                    "engine": "5.7"
+                    "version": "5.7"
                 }
             }
         },

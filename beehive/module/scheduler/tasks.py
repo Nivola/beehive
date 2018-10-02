@@ -52,7 +52,6 @@ def jobtest(self, objid, params):
     """
     ops = self.get_options()
     self.set_shared_data(params)
-    logger.warn(params)
 
     g1 = []
     for i in range(0, len(params[u'numbers'])):
@@ -224,3 +223,14 @@ def jobtest_task4(self, options):
 
     logger.warn(u'hello')
     return res
+
+
+@task_manager.task(bind=True, base=Job)
+@job(entity_class=TaskManager, name=u'test.insert')
+def test(self, objid, params):
+    """Test job
+    """
+    ops = self.get_options()
+    self.set_shared_data(params)
+    logger.warn(u'$$$$$$$$$$$$$$$$$ hello $$$$$$$$$$$$$$$$$')
+    return True
