@@ -76,9 +76,9 @@ def configure_task_manager(broker_url, result_backend, tasks=[], expire=60*60*24
         BROKER_POOL_LIMIT=20,
         BROKER_HEARTBEAT=20,
         BROKER_CONNECTION_MAX_RETRIES=10,
-        # TASK_DEFAULT_QUEUE=task_queue,
-        # TASK_DEFAULT_EXCHANGE=task_queue,
-        # TASK_DEAFAULT_ROUTING_KEY=task_queue,
+        TASK_DEFAULT_QUEUE=task_queue,
+        TASK_DEFAULT_EXCHANGE=task_queue,
+        TASK_DEAFAULT_ROUTING_KEY=task_queue,
         CELERY_QUEUES=(Queue(task_queue, Exchange(task_queue), routing_key=task_queue),),
         CELERY_RESULT_BACKEND=result_backend,
         CELERY_REDIS_RESULT_KEY_PREFIX=u'%s.celery-task-meta2-' % task_queue,
@@ -120,8 +120,9 @@ def configure_task_scheduler(broker_url, schedule_backend, tasks=[], task_queue=
         # CELERY_TASK_DEAFAULT_ROUTING_KEY=task_queue,
         BROKER_URL=broker_url,
         CELERY_SCHEDULE_BACKEND=schedule_backend,
-        CELERYBEAT_SCHEDULE_FILENAME=u'/tmp/celerybeat-schedule',
-        CELERY_REDIS_SCHEDULER_KEY_PREFIX=u'celery-schedule',        
+        # CELERYBEAT_SCHEDULE_FILENAME=u'/tmp/celerybeat-schedule',
+        # CELERY_REDIS_SCHEDULER_KEY_PREFIX=u'celery-schedule',
+        CELERY_REDIS_SCHEDULER_KEY_PREFIX=task_queue + u'.schedule',
         CELERY_TASK_SERIALIZER=u'json',
         CELERY_ACCEPT_CONTENT=[u'json'],  # Ignore other content
         CELERY_RESULT_SERIALIZER=u'json',
@@ -130,12 +131,12 @@ def configure_task_scheduler(broker_url, schedule_backend, tasks=[], task_queue=
         # CELERY_IMPORTS=tasks,
         CELERYBEAT_MAX_LOOP_INTERVAL=5,
         CELERYBEAT_SCHEDULE={
-            u'test-every-10-seconds': {
-                u'task': u'beehive.module.scheduler.tasks.test',
-                u'schedule': timedelta(seconds=10),
-                u'args': (u'*', {}),
-                u'options': {u'queue': task_queue}
-            },
+            # u'test-every-30-minutes': {
+            #     u'task': u'beehive.module.scheduler.tasks.test',
+            #     u'schedule': timedelta(minutes=30),
+            #     u'args': (u'*', {}),
+            #     u'options': {u'queue': task_queue}
+            # },
         }
     )
     return task_scheduler
@@ -174,7 +175,7 @@ def start_task_manager(params):
     loggers = [
        logging.getLogger(u'beecell.perf')]
     LoggerHelper.rotatingfile_handler(loggers, logger_level, u'%s/%s.watch' % (log_path, params[u'api_id']),
-                                     frmt=u'%(asctime)s - %(message)s')
+                                      frmt=u'%(asctime)s - %(message)s')
 
     api_manager = ApiManager(params, hostname=gethostname())
     api_manager.configure()

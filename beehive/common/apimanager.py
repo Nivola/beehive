@@ -621,9 +621,9 @@ class ApiManager(object):
                     # scheduler
                     broker_url = self.params[u'broker_url']
                     schedule_backend = self.params[u'result_backend']
-                    internal_schedule_backend = self.params[u'redis_celery_uri']
-                    configure_task_scheduler(broker_url, schedule_backend)
-                    self.redis_scheduler = RedisManager(internal_schedule_backend)
+                    # internal_schedule_backend = self.params[u'redis_celery_uri']
+                    configure_task_scheduler(broker_url, schedule_backend, task_queue=self.params[u'broker_queue'])
+                    self.redis_scheduler = RedisManager(schedule_backend)
     
                     self.logger.info(u'Configure scheduler reference - CONFIGURED')
                 except:
@@ -868,7 +868,7 @@ class ApiManager(object):
                     # get auth system user
                     auth_user = configurator.get(app=self.app_name, group=u'api', name=u'user')[0].value
                     self.auth_user = json.loads(auth_user)
-                    self.logger.info(u'Get auth user: %s' % self.auth_user)
+                    self.logger.info(u'Get auth user: %s' % self.auth_user.get(u'name', None))
 
                     # configure api client
                     self.configure_api_client()                   

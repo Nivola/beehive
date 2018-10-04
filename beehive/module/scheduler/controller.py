@@ -15,7 +15,7 @@ from celery.result import AsyncResult
 from networkx import DiGraph
 from networkx.readwrite import json_graph
 from beehive.common.apimanager import ApiController, ApiObject, ApiManagerError
-from beehive.module.scheduler.redis_scheduler import RedisScheduleEntry
+from beehive.module.scheduler.redis_scheduler import RedisScheduleEntry, RedisScheduler
 from beehive.common.task.manager import task_scheduler, task_manager
 from time import time
 from functools import wraps
@@ -62,18 +62,55 @@ class Scheduler(ApiObject):
     def __init__(self, controller):
         ApiObject.__init__(self, controller, oid='', name='', desc='', active='')
         try:
-            self._prefix = task_scheduler.conf.CELERY_REDIS_SCHEDULER_KEY_PREFIX
-            self._redis = self.controller.redis_scheduler.conn
-            self._pickler = pickle
+            # self._prefix = task_scheduler.conf.CELERY_REDIS_SCHEDULER_KEY_PREFIX
+            # # self._redis = task_scheduler.conf.CELERY_SCHEDULE_BACKEND
+            # self._redis = self.controller.redis_scheduler.conn
+            # self._pickler = pickle
+            # self.objid = '*'
+            # # create or get dictionary from redis
+            # self.redis_entries = Dict(key=self._prefix, redis=self._redis)
+
             self.objid = '*'
-            # create or get dictionary from redis
-            self.redis_entries = Dict(key=self._prefix, redis=self._redis)
+            self.scheduler = RedisScheduler(task_scheduler, lazy=True)
+            self.scheduler.set_redis(self.controller.redis_scheduler)
         except:
             self.logger.warn(u'', exc_info=1)
 
     @trace(op=u'schedule.insert')
-    def create_update_entry(self, name, task, schedule, args=None, kwargs=None, 
-                            options=None, relative=None):
+    def create_update_entry(self, name, task, schedule, args=None, kwargs=None, options={}, relative=None):
+        """Create scheduler entry.
+
+        :param name: entry name
+        """
+        self.verify_permisssions(u'insert')
+
+        try:
+            # new entry
+            entry = {
+                u'name': name,
+                u'task': task,
+                u'schedule': schedule,
+                u'options': options
+            }
+
+            if args is not None:
+                entry[u'args'] = args
+            if kwargs is not None:
+                entry[u'kwargs'] = kwargs
+            if relative is not None:
+                entry[u'relative'] = relative
+
+            # insert entry in redis
+            res = self.scheduler.write_schedule(entry)
+
+            self.logger.info(u'Create scheduler entry: %s' % entry)
+            return {u'schedule': name}
+        except Exception as ex:
+            self.logger.error(ex)
+            raise ApiManagerError(ex, code=400)
+
+    @trace(op=u'schedule.insert')
+    def create_update_entry2(self, name, task, schedule, args=None, kwargs=None, options=None, relative=None):
         """Create scheduler entry.
         
         :param name: entry name
@@ -134,8 +171,9 @@ class Scheduler(ApiObject):
             entry = {
                 'task': task,
                 'schedule': schedule,
+                'options': {u'queue': task_scheduler.conf.CELERY_TASK_DEFAULT_QUEUE}
             }
-            
+
             if args is not None:
                 entry['args'] = args
             if options is not None:
@@ -146,13 +184,12 @@ class Scheduler(ApiObject):
                 entry['relative'] = relative
                 
             # insert entry in redis
-            self.redis_entries[name] = RedisScheduleEntry(**dict(entry, name=name, 
-                                                                 app=task_scheduler))
+            self.redis_entries[name] = RedisScheduleEntry(**dict(entry, name=name, app=task_scheduler))
             
             self.logger.info("Create scheduler entry: %s" % entry)
-            return {u'schedule':name}
+            return {u'schedule': name}
         except Exception as ex:
-            self.logger.error(ex)
+            self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
         
     @trace(op=u'schedules.view')
@@ -167,19 +204,57 @@ class Scheduler(ApiObject):
         self.verify_permisssions(u'view')
         
         try:
+            entries = self.scheduler.read_schedule(name)
+            self.logger.info(u'Get scheduler entries: %s' % entries)
+            return entries
+        except Exception as ex:
+            self.logger.error(ex, exc_info=1)
+            raise ApiManagerError(ex, code=404)
+
+    @trace(op=u'schedules.view')
+    def get_entries2(self, name=None):
+        """Get scheduler entries.
+
+        :param name: entry name
+        :return: list of (name, entry data) pairs.
+        :rtype: list
+        :raises ApiManagerError: raise :class:`.ApiManagerError`
+        """
+        self.verify_permisssions(u'view')
+
+        try:
             if name is not None:
                 entries = [(name, self.redis_entries.get(name))]
             else:
                 entries = self.redis_entries.items()
-            
-            self.logger.info("Get scheduler entries: %s" % entries)
+            self.logger.warn(self.redis_entries)
+            self.logger.info(u'Get scheduler entries: %s' % entries)
             return entries
         except Exception as ex:
-            self.logger.error(ex)
+            self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=404)
-        
+
     @trace(op=u'schedule.delete')
     def remove_entry(self, name):
+        """Remove scheduler entry.
+
+        :param name: entry name
+        :return:
+        :rtype:
+        :raises ApiManagerError: raise :class:`.ApiManagerError`
+        """
+        self.verify_permisssions(u'delete')
+
+        try:
+            res = self.scheduler.delete_schedule(name)
+            self.logger.info(u'Remove scheduler entry: %s' % name)
+            return True
+        except Exception as ex:
+            self.logger.error(ex, exc_info=1)
+            raise ApiManagerError(ex, code=400)
+
+    @trace(op=u'schedule.delete')
+    def remove_entry2(self, name):
         """Remove scheduler entry.
         
         :param name: entry name
@@ -190,8 +265,10 @@ class Scheduler(ApiObject):
         self.verify_permisssions(u'delete')
         
         try:
+            self.logger.warn(self.redis_entries)
             del self.redis_entries[name]
-            self.logger.info("Remove scheduler entry: %s" % name)
+            self.logger.warn(self.redis_entries)
+            self.logger.info(u'Remove scheduler entry: %s' % name)
             return True
         except Exception as ex:
             self.logger.error(ex)
@@ -210,7 +287,7 @@ class Scheduler(ApiObject):
         
         try:
             res = self.redis_entries.clear()
-            self.logger.info("Remove all scheduler entries")
+            self.logger.info(u'Remove all scheduler entries')
             return True
         except Exception as ex:
             self.logger.error(ex)
@@ -355,18 +432,23 @@ class TaskManager(ApiObject):
             res = []
             manager = self.controller.redis_taskmanager
             keys = manager.inspect(pattern=self.prefix+u'*', debug=False)
+            self.logger.debug(u'Get %s keys form redis' % len(keys))
+            self.logger.debug(u'Get %s keys form redis' % keys)
             if details is False:
                 for key in keys:
-                    key = key[0].lstrip(self.prefix+'-')
+                    key = key[0].lstrip(self.prefix+u'-')
                     res.append(key)
             else:
                 data = manager.query(keys, ttl=True)
                 for key, item in data.iteritems():
-                    val = json.loads(item[0])
+                    try:
+                        val = json.loads(item[0])
+                    except:
+                        val = {}
                     ttl = item[1]
                     
-                    tasktype = val[u'type']
-                    val.pop(u'trace')
+                    tasktype = val.get(u'type', None)
+                    val.pop(u'trace', None)
                     
                     # add time to live
                     val[u'ttl'] = ttl

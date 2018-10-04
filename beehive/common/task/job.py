@@ -614,10 +614,6 @@ def job(entity_class=None, name=None, module=None, delta=2):
             task_local.opid = task.request.id
             task_local.delta = delta
             task_local.user = operation.user
-
-            logger.warn(args)
-            logger.warn(kwargs)
-            logger.warn(task_local.user)
             
             # record PENDING task and set start-time
             status = u'STARTED'

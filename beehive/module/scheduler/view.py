@@ -51,10 +51,10 @@ class GetSchedulerEntries(TaskApiView):
         """
         scheduler = controller.get_scheduler()
         data = scheduler.get_entries()
-        res = [i[1].info() for i in data]
+        res = [i.info() for i in data]
         resp = {
-            u'schedules':res,
-            u'count':len(res)
+            u'schedules': res,
+            u'count': len(res)
         }
         return resp
 
@@ -83,7 +83,7 @@ class GetSchedulerEntry(TaskApiView):
         else:
             raise ApiManagerError(u'Scheduler entry %s not found' % oid, code=404)
         resp = {
-            u'schedule':res
+            u'schedule': res
         }
         return resp
 
@@ -136,7 +136,7 @@ class CreateSchedulerEntry(TaskApiView):
         task = get_value(data, u'task', None, exception=True)
         args = get_value(data, u'args', None)
         kwargs = get_value(data, u'kwargs', None)
-        options = get_value(data, u'options', None)
+        options = get_value(data, u'options', {})
         relative = get_value(data, u'relative', None)
         
         # get schedule
@@ -145,11 +145,10 @@ class CreateSchedulerEntry(TaskApiView):
         resp = scheduler.create_update_entry(name, task, schedule, 
                                              args=args, kwargs=kwargs,
                                              options=options, 
-                                             relative=relative)        
-        return (resp, 202)
+                                             relative=relative)
+        return {u'name': name}, 202
 
 
-## delete
 class DeleteSchedulerEntry(TaskApiView):
     definitions = {}
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
