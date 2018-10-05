@@ -128,18 +128,20 @@ class Role(Base, BaseEntity):
                               backref=backref(u'role', lazy=u'dynamic'))
     user = relationship(u'RoleUser', back_populates=u'role')
     group = relationship(u'RoleGroup', back_populates=u'role')
+    alias = Column(String(100))
     template = Column(Integer())
 
     def __init__(self, objid, name, permission, desc=u'', active=True):
         BaseEntity.__init__(self, objid, name, desc, active)
         
         self.permission = permission
+        self.alias = u''
 
 
 # Systems roles
 class UserAttribute(Base):
     __tablename__ = u'user_attribute'
-    __table_args__ = {u'mysql_engine':u'InnoDB'}
+    __table_args__ = {u'mysql_engine': u'InnoDB'}
         
     id = Column(Integer(), primary_key=True)    
     name = Column(String(30))
@@ -173,6 +175,7 @@ class User(Base, BaseEntity):
     secret = Column(String(150))
     role = relationship(u'RoleUser', back_populates=u'user')
     attrib = relationship(u'UserAttribute')
+    last_login = Column(DateTime())
 
     def __init__(self, objid, name, active=True, password=None, 
                  desc=u'', expiry_date=None):
@@ -200,6 +203,7 @@ class User(Base, BaseEntity):
             self.password = bcrypt.hashpw(str(password), bcrypt.gensalt(14))
 
         self.secret = random_password(length=100)
+        self.last_login = None
 
     def _check_password(self, password):
         # verifying the password
