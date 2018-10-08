@@ -211,6 +211,11 @@ class User(Base, BaseEntity):
         # res = sha256_crypt.verify(password, self.password)
         return res
 
+    def _check_secret(self, secret):
+        # verifying the secret
+        res = (secret == self.secret)
+        return res
+
 
 class Group(Base, BaseEntity):
     __tablename__ = u'group'
@@ -1914,8 +1919,22 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         """
         # verifying the password
         res = user._check_password(password)
-        
         self.logger.debug(u'Verify user %s password: %s' % (user, res))
+        return res
+
+    @query
+    def verify_user_secret(self, user, secret):
+        """Verify user secret.
+
+        :param user: Orm User instance
+        :param secret: Secret to verify
+        :return: True if secret is correct, False otherwise.
+        :rtype: bool
+        :raises QueryError: raise :class:`QueryError`
+        """
+        # verifying the secret
+        res = user._check_secret(secret)
+        self.logger.debug(u'Verify user %s secret: %s' % (user, res))
         return res
 
     @transaction

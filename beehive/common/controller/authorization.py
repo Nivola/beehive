@@ -117,6 +117,11 @@ class AuthenticationManager(object):
         self.logger.debug(u'Login user: %s' % username)
         return auth_user   
 
+    def get_user_class(self, domain):
+        """Return authentication provider user class"""
+        auth_provider = self.auth_providers[domain]
+        return auth_provider.user_class
+
 
 class BaseAuthController(ApiController):
     """Auth Module base controller.
@@ -400,6 +405,50 @@ class BaseAuthController(ApiController):
             self.logger.error(ex.desc)
             raise ApiManagerError(ex.desc, code=401)
         
+        return user, dbuser_attribs
+
+    @trace(entity=u'Token', op=u'login.base.insert', noargs=True)
+    def extended_login(self, name, domain, password, login_ip, dbuser, dbuser_attribs):
+        """Extended login. Like base login but if password check fails make secret check using password.
+
+        :param name: user name
+        :param domain: user authentication domain
+        :param password: user password
+        :param login_ip: user login_ip
+        :param dbuser: database user instance
+        :param dbuser_attribs: user attributes as dict
+        :return: SystemUser instance, user attributes as dict
+        :raise ApiManagerError:
+        """
+        # login user
+        try:
+            user = self.module.authentication_manager.login(name, password, domain, login_ip)
+        except AuthError as ex:
+            self.logger.warn(ex.desc)
+
+            # check secret
+            res = self.auth_manager.verify_user_secret(dbuser, password)
+
+            user_class = self.module.authentication_manager.get_user_class(domain)
+            user = user_class(dbuser.uuid, domain, password, True)
+
+            if res is False:
+                raise ApiManagerError(ex.desc, code=401)
+
+        self.logger.info(u'Login user: %s' % user)
+
+        # append attributes, roles and perms to SystemUser
+        try:
+            # set user attributes
+            # self.__set_user_attribs(user, dbuser_attribs)
+            # set user permission
+            self.__set_user_perms(dbuser, user)
+            # set user roles
+            self.__set_user_roles(dbuser, user)
+        except QueryError as ex:
+            self.logger.error(ex.desc)
+            raise ApiManagerError(ex.desc, code=401)
+
         return user, dbuser_attribs
 
     @trace(entity=u'Token', op=u'login.check.insert', noargs=True)
