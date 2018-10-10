@@ -2042,8 +2042,27 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         user.update({u'active':False})
         res = [u.id for u in user.all()]
         self.logger.debug(u'Disable exipred users: %s' % (res))
-        return res    
-        
+        return res
+
+    @transaction
+    def set_user_last_login(self, oid):
+        """Set user last login date.
+
+        :param oid: user id, name or uuid
+        :param last_login: last_login date
+        :return: True if operation is successful, False otherwise
+        :rtype: bool
+        :raises TransactionError: raise :class:`TransactionError`
+        """
+        session = self.get_session()
+        date = datetime.datetime.today()
+        user = self.get_user(oid)
+        res = self.update_entity(User, oid=user.id, last_login=date)
+        self.logger.debug(u'Update user %s last login date: %s' % (oid, date))
+        return res
+
+    expiry_date = datetime.datetime.today()
+
     @transaction
     def append_user_role(self, user, role, expiry_date=None):
         """Append a role to an user

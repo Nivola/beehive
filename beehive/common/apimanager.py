@@ -980,8 +980,8 @@ class ApiModule(object):
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
-        res = {u'name':self.name, 
-               u'api':self.api_routes}
+        res = {u'name' :self.name,
+               u'api': self.api_routes}
         return res
     
     @property

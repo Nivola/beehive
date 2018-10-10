@@ -290,8 +290,7 @@ class EventProducerZmq(EventProducer):
 
 class SimpleEventConsumer(object):
     def __init__(self, redis_uri, redis_exchange):
-        self.logger = logging.getLogger(self.__class__.__module__+ \
-                                        u'.'+self.__class__.__name__)
+        self.logger = logging.getLogger(self.__class__.__module__+ u'.' + self.__class__.__name__)
         
         self.redis_uri = redis_uri
         self.redis_exchange = redis_exchange     

@@ -1009,6 +1009,19 @@ class User(BaseUser):
         self.update_object = self.manager.update_user
         self.delete_object = self.manager.remove_user
 
+    def info(self):
+        """Get object info
+
+        :return: Dictionary with object info.
+        :rtype: dict
+        :raises ApiManagerError: raise :class:`.ApiManagerError`
+        """
+        info = BaseUser.info(self)
+        if self.model.last_login is not None:
+            info[u'date'][u'last_login'] = format_date(self.model.last_login)
+
+        return info
+
     def detail(self):
         """Get object extended info
 
@@ -1018,6 +1031,9 @@ class User(BaseUser):
         """
         info = BaseUser.detail(self)
         info[u'secret'] = self.model.secret
+        if self.model.last_login is not None:
+            info[u'date'][u'last_login'] = format_date(self.model.last_login)
+
         return info
 
     @trace(op=u'attribs-get.update')

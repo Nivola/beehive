@@ -369,8 +369,16 @@ class BaseAuthController(ApiController):
         
         self.logger.debug(u'User %s exists' % user_name)
         
-        return dbuser, dbuser_attribs   
-    
+        return dbuser, dbuser_attribs
+
+    @trace(entity=u'Token', op=u'login.lastlogin.insert', noargs=True)
+    def set_user_last_login(self, name, domain):
+        user = u'%s@%s' % (name, domain)
+        try:
+            self.auth_manager.set_user_last_login(user)
+        except:
+            self.logger.warn(u'User %s last login date can not be updated' % user, exc_info=1)
+
     @trace(entity=u'Token', op=u'login.base.insert', noargs=True)
     def base_login(self, name, domain, password, login_ip, dbuser, dbuser_attribs):
         """Base login.
@@ -392,6 +400,8 @@ class BaseAuthController(ApiController):
             raise ApiManagerError(ex.desc, code=401)
         
         self.logger.info(u'Login user: %s' % user)
+
+        self.set_user_last_login(name, domain)
         
         # append attributes, roles and perms to SystemUser
         try:
@@ -407,7 +417,7 @@ class BaseAuthController(ApiController):
         
         return user, dbuser_attribs
 
-    @trace(entity=u'Token', op=u'login.base.insert', noargs=True)
+    @trace(entity=u'Token', op=u'login.extended.insert', noargs=True)
     def extended_login(self, name, domain, password, login_ip, dbuser, dbuser_attribs):
         """Extended login. Like base login but if password check fails make secret check using password.
 
@@ -436,6 +446,8 @@ class BaseAuthController(ApiController):
                 raise ApiManagerError(ex.desc, code=401)
 
         self.logger.info(u'Login user: %s' % user)
+
+        self.set_user_last_login(name, domain)
 
         # append attributes, roles and perms to SystemUser
         try:
@@ -477,6 +489,8 @@ class BaseAuthController(ApiController):
         self.logger.debug(u'User %s secret is correct' % dbuser.uuid)
 
         self.logger.info(u'Login user: %s' % user)
+
+        self.set_user_last_login(name, domain)
 
         # append attributes, roles and perms to SystemUser
         try:
