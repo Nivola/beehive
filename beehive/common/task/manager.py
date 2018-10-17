@@ -59,7 +59,7 @@ def on_celery_setup_logging(**args):
 
 
 def configure_task_manager(broker_url, result_backend, tasks=[], expire=60*60*24, task_queue=u'celery',
-                           logger_file=None):
+                           logger_file=None, time_limit=1200):
     """
     :param broker_url: url of the broker
     :param result_backend: url of the result backend
@@ -94,8 +94,8 @@ def configure_task_manager(broker_url, result_backend, tasks=[], expire=60*60*24
         CELERY_DISABLE_RATE_LIMITS=True,
         CELERY_TRACK_STARTED=True,
         CELERY_CHORD_PROPAGATES=True,
-        CELERYD_TASK_TIME_LIMIT=1200,
-        CELERYD_TASK_SOFT_TIME_LIMIT=1200,
+        CELERYD_TASK_TIME_LIMIT=time_limit,
+        CELERYD_TASK_SOFT_TIME_LIMIT=time_limit,
         CELERYD_CONCURRENCY=100,
         CELERYD_POOL=u'beehive.common.task.task_pool:TaskPool',
         CELERYD_TASK_LOG_FORMAT=u'[%(asctime)s: %(levelname)s/%(processName)s] [%(task_name)s:%(task_id)s] '
@@ -185,7 +185,8 @@ def start_task_manager(params):
     logger_file = '%s/%s.log' % (log_path, logname)
 
     configure_task_manager(params[u'broker_url'], params[u'result_backend'], tasks=params[u'task_module'],
-                           expire=params[u'expire'], task_queue=params[u'broker_queue'], logger_file=logger_file)
+                           expire=params[u'expire'], task_queue=params[u'broker_queue'], logger_file=logger_file,
+                           time_limit=params[u'task_time_limit'])
 
     argv = [u'',
             u'--hostname='+params[u'broker_queue']+u'@%h',
