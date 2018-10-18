@@ -415,7 +415,8 @@ class UpdateUserParamRoleRequestSchema(Schema):
 class UpdateUserParamRequestSchema(BaseUpdateRequestSchema):
     perms = fields.Nested(UpdateUserParamPermsRequestSchema, allow_none=True)
     roles = fields.Nested(UpdateUserParamRoleRequestSchema, allow_none=True)
-    password = fields.String(validate=Length(min=8, max=20), error=u'Password must be at least 8 characters')
+    password = fields.String(validate=Length(min=8, max=20), allow_none=True,
+                             error=u'Password must be at least 8 characters')
     
     # @validates(u'name')
     # def validate_user(self, value):
