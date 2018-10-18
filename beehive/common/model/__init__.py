@@ -309,7 +309,7 @@ class PaginatedQueryGenerator(object):
             return u''
     
     @staticmethod
-    def create_sqlfilter(param, column=None, opLogical=u' AND', opComparison=u'='):
+    def create_sqlfilter(param, column=None, opLogical=u' AND', opComparison=u'=', alias=u't3'):
         """create sql where condition filter like 
             AND t3.<field>=:<field> 
         if <field> in kvargs and not None..
@@ -323,9 +323,10 @@ class PaginatedQueryGenerator(object):
             column = param
  
         if column is not None: 
-            return u' {opLogical} t3.{column}{opComparison}:{param}'.format(column=column, param=param,
+            return u' {opLogical} {alias}.{column}{opComparison}:{param}'.format(column=column, param=param,
                                                                             opLogical=opLogical,
-                                                                            opComparison=opComparison)
+                                                                            opComparison=opComparison,
+                                                                            alias=alias)
         else:
             return u''
 
@@ -403,7 +404,7 @@ class PaginatedQueryGenerator(object):
             table = u'`%s`' % self.entity.__tablename__
         stmp = stmp.format(table=table, fields=fields, field=self.field, order=self.order, start=self.start,
                            size=self.size)
-        # self.logger.debug(u'query: %s' % stmp)
+        self.logger.debug(u'query: %s' % stmp)
         return stmp
     
     def run(self, tags, *args, **kvargs):
