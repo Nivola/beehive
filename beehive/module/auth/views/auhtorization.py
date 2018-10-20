@@ -26,7 +26,9 @@ class BaseCreateRequestSchema(Schema):
 
 class BaseUpdateRequestSchema(Schema):
     name = fields.String(allow_none=True)
-    desc = fields.String(allow_none=True)    
+    desc = fields.String(allow_none=True)
+    active = fields.Boolean(context=u'query', allow_none=True)
+    expiry_date = fields.String(default=u'2099-12-31', allow_none=True)
 
 
 class BaseCreateExtendedParamRequestSchema(Schema):
@@ -248,6 +250,7 @@ class ListUsersRequestSchema(PaginatedRequestQuerySchema):
     role = fields.String(context=u'query')
     active = fields.Boolean(context=u'query')
     expiry_date = fields.String(load_from=u'expirydate', default=u'2099-12-31',context=u'query')
+    name = fields.String(context=u'query')
     names = fields.String(context=u'query')
 
 
@@ -358,7 +361,7 @@ class CreateUserParamRequestSchema(BaseCreateRequestSchema, BaseCreateExtendedPa
     
     @validates(u'name')
     def validate_user(self, value):
-        if not match(u'[a-zA-z0-9]+@[a-zA-z0-9]+', value):
+        if not match(u'[\w\W]+@[\w\W]+', value):
             raise ValidationError(u'User name syntax must be <name>@<domain>') 
 
 
@@ -417,6 +420,7 @@ class UpdateUserParamRequestSchema(BaseUpdateRequestSchema):
     roles = fields.Nested(UpdateUserParamRoleRequestSchema, allow_none=True)
     password = fields.String(validate=Length(min=8, max=20), allow_none=True,
                              error=u'Password must be at least 8 characters')
+
     
     # @validates(u'name')
     # def validate_user(self, value):
