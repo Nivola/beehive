@@ -633,7 +633,7 @@ def job(entity_class=None, name=None, module=None, delta=2):
     return wrapper
 
 
-def job_task(module=u''):
+def job_task(module=u'', synchronous=True):
     """Decorator used for workflow child task.
     
     Example::
@@ -669,9 +669,17 @@ def job_task(module=u''):
             operation.session = None
             operation.transaction = None
 
+            res = None
             # task.update(u'STARTED', start_time=time(), msg=u'Start %s:%s' % (task.name, task.request.id))
             task.update(u'STARTED', msg=u'Start %s:%s' % (task.name, task.request.id))
-            res = fn(task, params, *args, **kwargs)
+            if synchronous:
+                res = fn(task, params, *args, **kwargs)
+            else:
+                
+                try:
+                    res = fn(task, params, *args, **kwargs)
+                except Exception as e:
+                    task.update(u'STARTED', msg=u'Fail %s:%s caused by %s' % (task.name, task.request.id, e))
             return res
         return decorated_view
     return wrapper
