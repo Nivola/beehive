@@ -7,6 +7,7 @@ import ujson as json
 import json as sjson
 import httplib
 import ssl
+from copy import deepcopy
 from urllib import urlencode, quote
 from time import time
 from logging import getLogger
@@ -16,7 +17,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 from Crypto.Random import atfork
 import binascii
-from beecell.simple import truncate, id_gen, check_vault, obscure_data
+from beecell.simple import truncate, id_gen, check_vault, obscure_data, obscure_string
 from socket import gethostname
 from itertools import repeat
 from multiprocessing import current_process
@@ -224,10 +225,11 @@ class BeehiveApiClient(object):
             # append user agent
             headers[u'User-Agent'] = u'beehive/1.0'
 
-            if data.lower().find(u'password') < 0:
-                send_data = data
-            else:
-                send_data = u'xxxxxxx'
+            # if data.lower().find(u'password') < 0:
+            #     send_data = data
+            # else:
+            #     send_data = u'xxxxxxx'
+            send_data = obscure_string(data)
             if silent is False:
                 self.logger.debug(u'API Request: %s - Call: METHOD=%s, URI=%s://%s:%s%s, HEADERS=%s, DATA=%s' %
                                   (reqid, method, proto, host, port, path, headers, send_data))
@@ -395,7 +397,8 @@ class BeehiveApiClient(object):
         :raise BeehiveApiClientError:
         """
         start = time()
-        self.logger.info(u'REQUEST: [%s] %s - uid=%s - data=%s' % (method, path, self.uid, truncate(data, size=50)))
+        send_data = obscure_data(deepcopy(data))
+        self.logger.info(u'REQUEST: [%s] %s - uid=%s - data=%s' % (method, path, self.uid, send_data))
         try:
             if parse is True and isinstance(data, dict) or isinstance(data, list):
                 data = json.dumps(data)
