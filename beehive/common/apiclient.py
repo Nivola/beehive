@@ -376,6 +376,7 @@ class BeehiveApiClient(object):
             path = u'%s?%s' % (path, data)
         elif isinstance(data, dict) or isinstance(data, list):
             data = json.dumps(data)
+
         res = self.http_client(proto, host, path, method, port=port, data=data, headers=headers, timeout=timeout,
                                silent=silent, print_curl=print_curl)
         return res
@@ -1104,7 +1105,6 @@ class BeehiveApiClient(object):
         
         :raise BeehiveApiClientError:
         """
-        self.logger.warn(roles)
         data = {
             u'user': {
                 u'roles': {
@@ -1123,7 +1123,6 @@ class BeehiveApiClient(object):
 
         :raise BeehiveApiClientError:
         """
-        self.logger.warn(roles)
         data = {
             u'user': {
                 u'roles': {

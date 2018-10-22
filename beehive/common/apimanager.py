@@ -3034,8 +3034,10 @@ class ApiView(FlaskView):
                     self.logger.debug(u'Api request data: %s' % obscure_data(deepcopy(query_string)))
                 else:
                     data.update(kwargs)
+                    self.logger.warn(data)
                     parsed = self.parameters_schema().load(data)
                     self.logger.debug(u'Api request data: %s' % obscure_data(deepcopy(data)))
+
                 if len(parsed.errors.keys()) > 0:
                     self.logger.error(parsed.errors)
                     raise ApiManagerError(parsed.errors, code=400)
