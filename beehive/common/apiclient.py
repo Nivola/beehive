@@ -397,7 +397,10 @@ class BeehiveApiClient(object):
         :raise BeehiveApiClientError:
         """
         start = time()
-        send_data = obscure_data(deepcopy(data))
+        if isinstance(data, dict) or isinstance(data, list):
+            send_data = obscure_data(deepcopy(data))
+        else:
+            send_data = obscure_string(data)
         self.logger.info(u'REQUEST: [%s] %s - uid=%s - data=%s' % (method, path, self.uid, send_data))
         try:
             if parse is True and isinstance(data, dict) or isinstance(data, list):
