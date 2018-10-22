@@ -28,8 +28,8 @@ from beecell.logger.helper import LoggerHelper
 from beecell.db import TransactionError, QueryError
 from beecell.db.manager import MysqlManager, SqlManagerError, RedisManager
 from beecell.auth import extract
-from beecell.simple import str2uni, id_gen, import_class, truncate, get_class_name,\
-    parse_redis_uri, get_remote_ip, nround, str2bool, format_date
+from beecell.simple import str2uni, id_gen, import_class, truncate, get_class_name, \
+    parse_redis_uri, get_remote_ip, nround, str2bool, format_date, obscure_data
 from beecell.sendmail import Mailer
 from beehive.common.data import operation, trace
 from beecell.auth import AuthError, DatabaseAuth, LdapAuth, SystemUser
@@ -3005,11 +3005,7 @@ class ApiView(FlaskView):
                 request_data = uwsgi_util.chunked_read(5)
             else:
                 request_data = request.data
-            
-            self.logger.debug(u'Api request headers:%s' % headers)
-            self.logger.debug(u'Api request params: %s' % kwargs)
-            self.logger.debug(u'Api request data:%s' % request_data)
-            self.logger.debug(u'Api request query:%s' % query_string)
+
             self._get_response_mime_type()
             
             # open database session.
@@ -3026,6 +3022,8 @@ class ApiView(FlaskView):
                 data = json.loads(data)
             except (AttributeError, ValueError): 
                 data = request.values.to_dict()
+
+            self.logger.debug(u'Api request headers: %s' % headers)
                 
             # validate query/input data
             if self.parameters_schema is not None:
@@ -3033,15 +3031,19 @@ class ApiView(FlaskView):
                     # parsed = self.parameters_schema().load(request.args.to_dict())
                     query_string.update(kwargs)
                     parsed = self.parameters_schema().load(query_string)
+                    self.logger.debug(u'Api request data: %s' % obscure_data(deepcopy(query_string)))
                 else:
                     data.update(kwargs)
                     parsed = self.parameters_schema().load(data)
+                    self.logger.debug(u'Api request data: %s' % obscure_data(deepcopy(data)))
                 if len(parsed.errors.keys()) > 0:
                     self.logger.error(parsed.errors)
                     raise ApiManagerError(parsed.errors, code=400)
                 data = parsed.data
-                self.logger.debug(u'Query/data after schema validation: %s' % truncate(data))
-        
+                self.logger.debug(u'Api request data after validation: %s' % obscure_data(data))
+            else:
+                self.logger.debug(u'Api request data: %s' % obscure_data(deepcopy(data)))
+
             # dispatch request
             meth = getattr(self, request.method.lower(), None)
             if meth is None:
