@@ -399,6 +399,7 @@ class BeehiveApiClient(object):
         try:
             if parse is True and isinstance(data, dict) or isinstance(data, list):
                 data = json.dumps(data)
+
             res = self.send_request(subsystem, path, method, data, other_headers=other_headers,
                                     timeout=timeout, silent=silent, print_curl=print_curl)
         except BeehiveApiClientError as ex:

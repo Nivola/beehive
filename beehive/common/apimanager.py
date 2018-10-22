@@ -3006,8 +3006,10 @@ class ApiView(FlaskView):
             else:
                 request_data = request.data
             
-            self.logger.debug(u'Api request headers:%s, params: %s, data:%s, query:%s' %
-                              (headers, kwargs, request_data, query_string))
+            self.logger.debug(u'Api request headers:%s' % headers)
+            self.logger.debug(u'Api request params: %s' % kwargs)
+            self.logger.debug(u'Api request data:%s' % request_data)
+            self.logger.debug(u'Api request query:%s' % query_string)
             self._get_response_mime_type()
             
             # open database session.
