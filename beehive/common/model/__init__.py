@@ -391,6 +391,8 @@ class PaginatedQueryGenerator(object):
                 ])
             if self.size > 0:
                 sql.append(u'LIMIT {start},{size}')
+            elif self.size == -1:
+                sql.append(u'')
             else:
                 sql.append(u'LIMIT 1000')  # num rows - test
 
@@ -438,7 +440,7 @@ class PaginatedQueryGenerator(object):
         self.logger.debug2(u'tags: %s' % truncate(tags))
         res = query.all()
         
-        if self.size == 0:
+        if self.size == 0 or self.size == -1:
             total = len(res)
         
         self.logger.debug(u'Get %ss (total:%s): %s' % (self.entity.__tablename__, total, truncate(res)))
@@ -651,7 +653,9 @@ class AbstractDbManager(object):
         for item in select_fields:
             query.add_select_field(item)
         # set filters
-        query.add_filter_by_field(u'name', kvargs)
+        # query.add_filter_by_field(u'name', kvargs)
+        query.add_filter_by_field(u'name', kvargs,
+                                  custom_filter=u'AND t3.name like :name')
         query.add_filter_by_field(u'active', kvargs)
         query.add_filter_by_field(u'creation_date', kvargs)
         query.add_filter_by_field(u'modification_date', kvargs)

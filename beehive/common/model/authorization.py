@@ -1721,8 +1721,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         filters = []
         if u'expiry_date' in kvargs and kvargs.get(u'expiry_date') is not None:
             filters.append(u'AND expiry_date>=:expiry_date')
-        res, total = self.get_paginated_entities(User, filters=filters, 
-                                                 *args, **kvargs)     
+        res, total = self.get_paginated_entities(User, filters=filters, *args, **kvargs)
         
         return res, total
     
