@@ -18,10 +18,10 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func
 from sqlalchemy.sql import text
 from beecell.perf import watch
-from beecell.simple import truncate, id_gen, random_password
+from beecell.simple import truncate, id_gen, random_password, is_encrypted
 from beecell.db import ModelError, QueryError
 from uuid import uuid4
-from beehive.common.data import operation, query, transaction
+from beehive.common.data import operation, query, transaction, decrypt_data, encrypt_data
 from sqlalchemy.dialects import mysql
 
 Base = declarative_base()
@@ -177,8 +177,7 @@ class User(Base, BaseEntity):
     attrib = relationship(u'UserAttribute')
     last_login = Column(DateTime())
 
-    def __init__(self, objid, name, active=True, password=None, 
-                 desc=u'', expiry_date=None):
+    def __init__(self, objid, name, active=True, password=None, desc=u'', expiry_date=None):
         """Create new user
         
         :param objid: authorization id
@@ -186,8 +185,7 @@ class User(Base, BaseEntity):
         :param active: set if user is active [default=True]
         :param password: user password [optional]
         :param desc: user desc [default='']
-        :param expiry_date: user expiry date [default=365 days]. Set using a 
-                datetime object
+        :param expiry_date: user expiry date [default=365 days]. Set using a datetime object
         """
         BaseEntity.__init__(self, objid, name, desc, active)
         
@@ -201,14 +199,18 @@ class User(Base, BaseEntity):
             # generate new salt, and hash a password 
             # self.password = sha256_crypt.encrypt(password)
             self.password = bcrypt.hashpw(str(password), bcrypt.gensalt(14))
+            # self.password = encrypt_data(password)
 
         self.secret = random_password(length=100)
         self.last_login = None
 
     def _check_password(self, password):
         # verifying the password
-        res = bcrypt.checkpw(str(password), str(self.password))
-        # res = sha256_crypt.verify(password, self.password)
+        # res = bcrypt.checkpw(str(password), str(self.password))
+        if is_encrypted(self.password):
+            res = (decrypt_data(self.password) == password)
+        else:
+            res = bcrypt.checkpw(str(password), str(self.password))
         return res
 
     def _check_secret(self, secret):
@@ -1953,9 +1955,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         :return: :class:`User`
         :raises TransactionError: raise :class:`TransactionError`
         """
-        user = self.add_entity(User, objid, name, active=active, 
-                              password=password, desc=desc, 
-                              expiry_date=expiry_date)
+        user = self.add_entity(User, objid, name, active=active, password=password, desc=desc, expiry_date=expiry_date)
 
         # create user role
         if is_generic is True:
@@ -1985,14 +1985,13 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         :param active: set if user is active [optional]
         :param password: user password [optional]
         :param desc: user desc [optional]
-        :param expiry_date: user expiry date. Set using a datetime object 
-            [optional]
+        :param expiry_date: user expiry date. Set using a datetime object [optional]
         :raises TransactionError: raise :class:`TransactionError`
         """
         # generate new salt, and hash a password
         if u'password' in kvargs and kvargs[u'password'] != None:
-            kvargs[u'password'] = bcrypt.hashpw(str(kvargs[u'password']), 
-                                                bcrypt.gensalt(14))
+            kvargs[u'password'] = bcrypt.hashpw(str(kvargs[u'password']), bcrypt.gensalt(14))
+            # kvargs[u'password'] = self.password = encrypt_data(kvargs[u'password'])
         res = self.update_entity(User, *args, **kvargs)
         return res  
     

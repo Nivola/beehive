@@ -41,8 +41,37 @@ operation.user = None #: logged user (username, userip, uid)
 operation.perms = None #: logged user permission
 operation.token_type = None #: token type released
 operation.transaction = None #: transaction id
+operation.encryption_key = None #: _encryption_key used to encrypt and decrypt data
 
 
+#
+# encryption method
+#
+def encrypt_data(data):
+    """Encrypt data using a fernet key and a symmetric algorithm
+
+    :param data: data to encrypt
+    :return: encrypted data
+    """
+    res = encrypt_data(operation.encryption_key, data)
+    logger.debug(u'Encrypt data')
+    return res
+
+
+def decrypt_data(data):
+    """Decrypt data using a fernet key and a symmetric algorithm
+
+    :param data: data to decrypt
+    :return: decrypted data
+    """
+    res = decrypt_data(operation.encryption_key, data)
+    logger.debug(u'Decrypt data')
+    return res
+
+
+#
+# decorators
+#
 def core_transaction(fn, rollback_throwable, *args, **kwargs):
     start = time()
     stmp_id = id_gen()

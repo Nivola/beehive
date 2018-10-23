@@ -50,7 +50,7 @@ from re import escape
 from marshmallow.validate import OneOf, Range
 from copy import deepcopy
 from flask_session.sessions import RedisSessionInterface
-from cryptography.fernet import Fernet
+from beehive.common.data import encrypt_data, decrypt_data
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +138,10 @@ class ApiManager(object):
         except:
             self.app_uri = None
             self.uwsgi_uri = None
-        
+
+        # set encryption key
+        operation.encryption_key = self.app_fernet_key
+
         # swagger reference
         self.swagger = Swagger(self.app, template_file=u'swagger.yml')
         
@@ -1363,10 +1366,8 @@ class ApiController(object):
         :param data: data to encrypt
         :return: encrypted data
         """
-        cipher_suite = Fernet(self.api_manager.app_fernet_key)
-        cipher_data = cipher_suite.encrypt(str(data))
-        self.logger.debug(u'Encrypt data')
-        return u'$BEEHIVE_VAULT;AES128 | %s' % cipher_data
+        res = encrypt_data(data)
+        return res
 
     def decrypt_data(self, data):
         """Decrypt data using a fernet key and a symmetric algorithm
@@ -1374,14 +1375,8 @@ class ApiController(object):
         :param data: data to decrypt
         :return: decrypted data
         """
-        if data.find(u'$BEEHIVE_VAULT;AES128 | ') == 0:
-            data = data.replace(u'$BEEHIVE_VAULT;AES128 | ', u'')
-            cipher_suite = Fernet(self.api_manager.app_fernet_key)
-            cipher_data = cipher_suite.decrypt(str(data))
-            self.logger.debug(u'Decrypt data')
-        else:
-            cipher_data = data
-        return cipher_data
+        res = decrypt_data(data)
+        return res
 
     #
     # helper model get method
@@ -3034,7 +3029,6 @@ class ApiView(FlaskView):
                     self.logger.debug(u'Api request data: %s' % obscure_data(deepcopy(query_string)))
                 else:
                     data.update(kwargs)
-                    self.logger.warn(data)
                     parsed = self.parameters_schema().load(data)
                     self.logger.debug(u'Api request data: %s' % obscure_data(deepcopy(data)))
 
@@ -3042,7 +3036,7 @@ class ApiView(FlaskView):
                     self.logger.error(parsed.errors)
                     raise ApiManagerError(parsed.errors, code=400)
                 data = parsed.data
-                self.logger.debug(u'Api request data after validation: %s' % obscure_data(data))
+                self.logger.debug(u'Api request data after validation: %s' % obscure_data(deepcopy(data)))
             else:
                 self.logger.debug(u'Api request data: %s' % obscure_data(deepcopy(data)))
 

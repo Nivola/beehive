@@ -3,7 +3,7 @@ import logging
 from sqlalchemy import create_engine, exc
 from sqlalchemy.ext.declarative import declarative_base
 from beehive.common.data import operation, query, transaction
-from beecell.simple import truncate
+from beecell.simple import truncate, encrypt_data, decrypt_data
 from beecell.db import ModelError, QueryError
 from beecell.perf import watch
 from datetime import datetime
@@ -451,8 +451,7 @@ class AbstractDbManager(object):
     """Abstract db manager
     """
     def __init__(self, session=None):
-        self.logger = logging.getLogger(self.__class__.__module__+ \
-                                        u'.'+self.__class__.__name__)        
+        self.logger = logging.getLogger(self.__class__.__module__+  u'.' + self.__class__.__name__)
         
         self._session = session
 
@@ -493,7 +492,7 @@ class AbstractDbManager(object):
             del engine
         except exc.DBAPIError, e:
             raise Exception(e)
-    
+
     def print_stmp(self, stmp):
         """
         """
@@ -941,9 +940,7 @@ class AbstractDbManager(object):
         session.delete(entity)
         session.flush()
         logger.debug(u'Delete %s entity %s' % (entity.__class__.__name__, entity))
-        
-       
-        
+
     @staticmethod   
     def add_base_entity_filters(query, *args, **kvargs):
         
@@ -964,4 +961,4 @@ class AbstractDbManager(object):
         if u'active' in kvargs and kvargs.get(u'active') is not None:
             query = query.filter_by(active=kvargs.get(u'active')) 
             
-        return query  
+        return query

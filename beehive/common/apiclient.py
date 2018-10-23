@@ -542,7 +542,7 @@ class BeehiveApiClient(object):
             api_user_pwd = self.api_user_pwd
         if api_user_secret is None:
             api_user_secret = self.api_user_secret
-        
+
         if self.api_authtype == u'keyauth':
             data = {u'user': api_user, u'password': api_user_pwd}
             # if login_ip is None:
