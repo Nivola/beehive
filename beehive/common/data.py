@@ -9,6 +9,8 @@ from uuid import uuid4
 from sqlalchemy.exc import IntegrityError, DBAPIError, ArgumentError
 from beecell.simple import id_gen, truncate
 from beecell.simple import import_class
+from beecell.simple import encrypt_data as simple_encrypt_data
+from beecell.simple import decrypt_data as simple_decrypt_data
 from beecell.db import TransactionError, QueryError, ModelError
 from multiprocessing import current_process
 from threading import current_thread
@@ -53,7 +55,9 @@ def encrypt_data(data):
     :param data: data to encrypt
     :return: encrypted data
     """
-    res = encrypt_data(operation.encryption_key, data)
+    fenet = getattr(operation, "encryption_key", "NON DEFINITO")
+    logger.debug2("::::::::::::::Encrypt data %s" % fernet)
+    res = simple_encrypt_data(operation.encryption_key, data)
     logger.debug(u'Encrypt data')
     return res
 
@@ -64,7 +68,10 @@ def decrypt_data(data):
     :param data: data to decrypt
     :return: decrypted data
     """
-    res = decrypt_data(operation.encryption_key, data)
+    fenet = getattr(operation, "encryption_key", "NON DEFINITO")
+    logger.debug2("::::::::::::::Encrypt data %s" % fernet)
+    
+    res = simple_decrypt_data(operation.encryption_key, data)
     logger.debug(u'Decrypt data')
     return res
 
