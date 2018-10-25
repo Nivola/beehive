@@ -9,6 +9,8 @@ from uuid import uuid4
 from sqlalchemy.exc import IntegrityError, DBAPIError, ArgumentError
 from beecell.simple import id_gen, truncate
 from beecell.simple import import_class
+from beecell.simple import encrypt_data as simple_encrypt_data
+from beecell.simple import decrypt_data as simple_decrypt_data
 from beecell.db import TransactionError, QueryError, ModelError
 from multiprocessing import current_process
 from threading import current_thread
@@ -53,7 +55,9 @@ def encrypt_data(data):
     :param data: data to encrypt
     :return: encrypted data
     """
-    res = encrypt_data(operation.encryption_key, data)
+    # fernet = getattr(operation, "encryption_key", "NON DEFINITO")
+    # logger.debug2("::::::::::::::Encrypt data %s" % fernet)
+    res = simple_encrypt_data(operation.encryption_key, data)
     logger.debug(u'Encrypt data')
     return res
 
@@ -64,9 +68,46 @@ def decrypt_data(data):
     :param data: data to decrypt
     :return: decrypted data
     """
-    res = decrypt_data(operation.encryption_key, data)
+    # fernet = getattr(operation, "encryption_key", "NON DEFINITO")
+    # logger.debug2("::::::::::::::Encrypt data %s" % fernet)
+    
+    res = simple_decrypt_data(operation.encryption_key, data)
     logger.debug(u'Decrypt data')
     return res
+
+
+def get_operation_params():
+    "return a dictionary that contains the greenlet/thread parameter"
+    return {
+        "user" : operation.user,
+        "perms" : operation.perms,
+        "opid" : operation.id,
+        "transaction" : operation.transaction,
+        "encryption_key" : operation.encryption_key,
+    }
+
+def set_operation_params(param):
+    "set in the current greenlet/thread the parameter stored in param"
+    
+    val = param.get("user", "--")
+    if val != "--":
+        operation.user = val
+    
+    val = param.get("perms", "--")
+    if val != "--":
+        operation.perms = val
+    
+    val = param.get("opid", "--")
+    if val != "--":
+        operation.opid = val
+    
+    val = param.get("transaction", "--")
+    if val != "--":
+        operation.transaction = val
+    
+    val = param.get("encryption_key", "--")
+    if val != "--":
+        operation.encryption_key = val
 
 
 #
@@ -471,7 +512,8 @@ def maybe_run_batch_greenlet(controller, batch, timeout=600):
             # execute inner function
             try:
                 # encapsulate method
-                def inner_fn(user, perms, opid, *args, **kwargs):
+                # def inner_fn(user, perms, opid, encryption_key, *args, **kwargs):
+                def inner_fn(op_params, *args, **kwargs):
                     # get start time
                     start_inner = time()
 
@@ -479,9 +521,11 @@ def maybe_run_batch_greenlet(controller, batch, timeout=600):
 
                     try:
                         # set local thread operation
-                        operation.user = user
-                        operation.perms = perms
-                        operation.id = opid
+                        set_operation_params(op_params)
+                        # operation.user = user
+                        # operation.perms = perms
+                        # operation.id = opid
+                        # operation.encryption_key = encryption_key
                         operation.transaction = None
 
                         # open db session
@@ -502,10 +546,13 @@ def maybe_run_batch_greenlet(controller, batch, timeout=600):
 
                     return False
 
-                user = operation.user
-                perms = operation.perms
-                opid = operation.id
-                res = gevent.spawn(inner_fn, user, perms, opid, *args, **kwargs)
+                # user = operation.user
+                # perms = operation.perms
+                # opid = operation.id
+                # encryption_key = operation.encryption_key
+                op_params = get_operation_params()
+                # res = gevent.spawn(inner_fn, user, perms, opid, encryption_key, *args, **kwargs)
+                res = gevent.spawn(inner_fn, op_params, *args, **kwargs)
                 if batch is True:
                     logger.debug(u'Start batch operation: %s' % res)
                 else:

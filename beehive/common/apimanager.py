@@ -138,7 +138,7 @@ class ApiManager(object):
         except:
             self.app_uri = None
             self.uwsgi_uri = None
-
+        
         # set encryption key
         operation.encryption_key = self.app_fernet_key
 
@@ -2988,6 +2988,8 @@ class ApiView(FlaskView):
             operation.user = (u'guest', u'localhost', None)
             operation.id = request.headers.get(u'request-id', str(uuid4()))
             operation.transaction = None
+            operation.encryption_key = module.api_manager.app_fernet_key
+
             
             self.logger.info(u'Start new operation: %s' % operation.id)
             
