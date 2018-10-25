@@ -55,8 +55,8 @@ def encrypt_data(data):
     :param data: data to encrypt
     :return: encrypted data
     """
-    fenet = getattr(operation, "encryption_key", "NON DEFINITO")
-    logger.debug2("::::::::::::::Encrypt data %s" % fernet)
+    # fenet = getattr(operation, "encryption_key", "NON DEFINITO")
+    # logger.debug2("::::::::::::::Encrypt data %s" % fernet)
     res = simple_encrypt_data(operation.encryption_key, data)
     logger.debug(u'Encrypt data')
     return res
@@ -68,8 +68,8 @@ def decrypt_data(data):
     :param data: data to decrypt
     :return: decrypted data
     """
-    fenet = getattr(operation, "encryption_key", "NON DEFINITO")
-    logger.debug2("::::::::::::::Encrypt data %s" % fernet)
+    # fenet = getattr(operation, "encryption_key", "NON DEFINITO")
+    # logger.debug2("::::::::::::::Encrypt data %s" % fernet)
     
     res = simple_decrypt_data(operation.encryption_key, data)
     logger.debug(u'Decrypt data')
