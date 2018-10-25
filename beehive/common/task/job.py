@@ -600,6 +600,7 @@ def job(entity_class=None, name=None, module=None, delta=2):
             operation.user = (user, server, identity)
             operation.session = None
             operation.transaction = None 
+            operation.encryption_key = task.app.api_manager.app_fernet_key
             
             if entity_class.module is not None:
                 mod = task.app.api_manager.modules[entity_class.module]
@@ -668,6 +669,7 @@ def job_task(module=u'', synchronous=True):
             operation.user = params[6]
             operation.session = None
             operation.transaction = None
+            operation.encryption_key= task.app.api_manager.app_fernet_key
 
             res = None
             # task.update(u'STARTED', start_time=time(), msg=u'Start %s:%s' % (task.name, task.request.id))

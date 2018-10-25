@@ -1678,7 +1678,8 @@ class ApiObject(object):
         user = {
             u'user': operation.user[0],
             u'server': operation.user[1],
-            u'identity': operation.user[2]
+            u'identity': operation.user[2],
+            # u'encryption_key': operation.encryption_key,
         }
         return user
     
