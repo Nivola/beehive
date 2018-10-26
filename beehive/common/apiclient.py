@@ -85,12 +85,11 @@ class BeehiveApiClient(object):
         self.filter = None
         
         # self.host = gethostname()
-        
+
         # auth reference - http://10.102.160.240:6060
         for endpoint in auth_endpoints:
             self.endpoints[u'auth'].append([self.__parse_endpoint(endpoint), 0])
         self.logger.debug(u'Get main auth endpoints: %s' % self.endpoints[u'auth'])
-        
         # load catalog
         # self.load_catalog()
 
@@ -126,8 +125,7 @@ class BeehiveApiClient(object):
             try:
                 endpoints = self.endpoints[subsystem]
             except:
-                raise BeehiveApiClientError(u'Subsystem %s reference is empty' % 
-                                            subsystem, code=404)
+                raise BeehiveApiClientError(u'Subsystem %s reference is empty' % subsystem, code=404)
                 
         # order endpoint by lower weight
         endpoints = sorted(endpoints, key=lambda weight: weight[1])
