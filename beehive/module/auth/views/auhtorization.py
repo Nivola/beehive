@@ -70,7 +70,7 @@ class ListDomainsResponseSchema(Schema):
 
 
 class ListDomains(SwaggerApiView):
-    tags = [u'auth']
+    tags = [u'authorization']
     definitions = {
         u'ListDomainsResponseSchema': ListDomainsResponseSchema,
     }
@@ -120,7 +120,7 @@ class ListTokensResponseSchema(Schema):
 
 
 class ListTokens(SwaggerApiView):
-    tags = [u'auth']
+    tags = [u'authorization']
     definitions = {
         u'ListTokensResponseSchema': ListTokensResponseSchema,
     }
@@ -181,7 +181,7 @@ class GetTokenResponseSchema(Schema):
 
 
 class GetToken(SwaggerApiView):
-    tags = [u'auth']
+    tags = [u'authorization']
     definitions = {
         u'ListTokensResponseSchema': ListTokensResponseSchema,
     }
@@ -225,7 +225,7 @@ class LoginExists(ApiView):
 
 ## delete
 class DeleteToken(SwaggerApiView):
-    tags = [u'auth']
+    tags = [u'authorization']
     definitions = {}
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
     responses = SwaggerApiView.setResponses({
