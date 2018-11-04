@@ -242,9 +242,7 @@ class DeleteToken(SwaggerApiView):
         resp = controller.remove_identity(oid)
         return (resp, 204)
 
-#
-# user
-#
+
 class ListUsersRequestSchema(PaginatedRequestQuerySchema):
     group = fields.String(context=u'query')
     role = fields.String(context=u'query')
@@ -252,6 +250,7 @@ class ListUsersRequestSchema(PaginatedRequestQuerySchema):
     expiry_date = fields.String(load_from=u'expirydate', default=u'2099-12-31',context=u'query')
     name = fields.String(context=u'query')
     names = fields.String(context=u'query')
+    desc = fields.String(context=u'query')
 
 
 class ListUsersResponseSchema(PaginatedResponseSchema):

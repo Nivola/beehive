@@ -228,6 +228,8 @@ class AuthController(BaseAuthController):
         """Get users or single user.
 
         :param name: user name [optional]
+        :param names: user name list [optional]
+        :param desc: user desc [optional]
         :param role: role name, id or uuid [optional]
         :param group: group name, id or uuid [optional]
         :param active: user status [optional]
