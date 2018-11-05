@@ -389,7 +389,7 @@ class JobTask(AbstractJob):
                 status = job[u'status']
                 self.update(u'PROGRESS')
     
-            self.update(u'PROGRESS', msg=u'Job %s completed with %s' % (job_id, status))
+            self.update(status, msg=u'Job %s completed with %s' % (job_id, status))
             if status == u'FAILURE':
                 try:
                     trace = job[u'traceback'][-1]
@@ -599,12 +599,12 @@ def job(entity_class=None, name=None, module=None, delta=2):
             operation.perms = []
             operation.user = (user, server, identity)
             operation.session = None
-            operation.transaction = None 
+            operation.transaction = None
             operation.encryption_key = task.app.api_manager.app_fernet_key
             
             if entity_class.module is not None:
                 mod = task.app.api_manager.modules[entity_class.module]
-                task_local.controller = mod.get_controller()            
+                task_local.controller = mod.get_controller()
             elif module is not None:
                 mod = task.app.api_manager.modules[module]
                 task_local.controller = mod.get_controller()
@@ -681,7 +681,7 @@ def job_task(module=u'', synchronous=True):
                 try:
                     res = fn(task, params, *args, **kwargs)
                 except Exception as e:
-                    task.update(u'STARTED', msg=u'Fail %s:%s caused by %s' % (task.name, task.request.id, e))
+                    task.update(u'FAILURE', msg=u'Fail %s:%s caused by %s' % (task.name, task.request.id, e))
             return res
         return decorated_view
     return wrapper
