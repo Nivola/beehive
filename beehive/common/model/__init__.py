@@ -631,6 +631,7 @@ class AbstractDbManager(object):
         :param entity: entity
         :param tags: list of permission tags
         :param name: name [optional]
+        :param desc: desc [optional]
         :param names: name like [optional]
         :param active: active [optional]
         :param creation_date: creation_date [optional]
@@ -655,6 +656,8 @@ class AbstractDbManager(object):
         # query.add_filter_by_field(u'name', kvargs)
         query.add_filter_by_field(u'name', kvargs,
                                   custom_filter=u'AND t3.name like :name')
+        query.add_filter_by_field(u'desc', kvargs,
+                                  custom_filter=u'AND t3.desc like :desc')
         query.add_filter_by_field(u'active', kvargs)
         query.add_filter_by_field(u'creation_date', kvargs)
         query.add_filter_by_field(u'modification_date', kvargs)

@@ -70,7 +70,7 @@ class ListDomainsResponseSchema(Schema):
 
 
 class ListDomains(SwaggerApiView):
-    tags = [u'auth']
+    tags = [u'authorization']
     definitions = {
         u'ListDomainsResponseSchema': ListDomainsResponseSchema,
     }
@@ -120,7 +120,7 @@ class ListTokensResponseSchema(Schema):
 
 
 class ListTokens(SwaggerApiView):
-    tags = [u'auth']
+    tags = [u'authorization']
     definitions = {
         u'ListTokensResponseSchema': ListTokensResponseSchema,
     }
@@ -181,7 +181,7 @@ class GetTokenResponseSchema(Schema):
 
 
 class GetToken(SwaggerApiView):
-    tags = [u'auth']
+    tags = [u'authorization']
     definitions = {
         u'ListTokensResponseSchema': ListTokensResponseSchema,
     }
@@ -225,7 +225,7 @@ class LoginExists(ApiView):
 
 ## delete
 class DeleteToken(SwaggerApiView):
-    tags = [u'auth']
+    tags = [u'authorization']
     definitions = {}
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
     responses = SwaggerApiView.setResponses({
@@ -242,9 +242,7 @@ class DeleteToken(SwaggerApiView):
         resp = controller.remove_identity(oid)
         return (resp, 204)
 
-#
-# user
-#
+
 class ListUsersRequestSchema(PaginatedRequestQuerySchema):
     group = fields.String(context=u'query')
     role = fields.String(context=u'query')
@@ -252,6 +250,7 @@ class ListUsersRequestSchema(PaginatedRequestQuerySchema):
     expiry_date = fields.String(load_from=u'expirydate', default=u'2099-12-31',context=u'query')
     name = fields.String(context=u'query')
     names = fields.String(context=u'query')
+    desc = fields.String(context=u'query')
 
 
 class ListUsersResponseSchema(PaginatedResponseSchema):
