@@ -1623,20 +1623,13 @@ class ApiObject(object):
             self.uuid = self.model.uuid        
 
         # object uri
-        self.objuri = u'/%s/%s/%s' % (self.controller.version, self.objuri, 
-                                      self.uuid)
+        self.objuri = u'/%s/%s/%s' % (self.controller.version, self.objuri, self.uuid)
         
         # child classes
         self.child_classes = []
-        
-        #self.register = True
-        
+
         self._admin_role_prefix = u'admin'
-        
-        #self.event_class = make_event_class(
-        #    self.__class__.__module__+u'.'+self.__class__.__name__+u'Event',
-        #    self.event_ref_class, objdef=self.objdef, objdesc=self.objdesc)
-    
+
     def __repr__(self):
         return u'<%s id=%s objid=%s name=%s>' % (self.__class__.__module__+'.'+self.__class__.__name__, self.oid,
                                                  self.objid, self.name)
@@ -2302,8 +2295,6 @@ class ApiInternalObject(ApiObject):
     objtype = u'auth'
     objdef = u'abstract'
     objdesc = u'Authorization abstract object'
-    
-    #event_ref_class = ApiInternalEvent
     
     def __init__(self, *args, **kvargs):
         ApiObject.__init__(self, *args, **kvargs)

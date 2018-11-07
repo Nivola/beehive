@@ -52,9 +52,7 @@ class BaseUpdateMultiRequestSchema(Schema):
     append = fields.List(fields.String())
     remove = fields.List(fields.String())
 
-#
-# authentication domains
-#
+
 class ListDomainsRequestSchema(Schema):
     pass
 
@@ -100,7 +98,6 @@ class ListDomains(SwaggerApiView):
 #
 # identity
 #
-## list
 class ListTokensRequestSchema(Schema):
     pass
 
@@ -158,7 +155,6 @@ class ListTokens(SwaggerApiView):
         return resp
 
 
-## get
 class GetTokenUserResponseSchema(Schema):
     name = fields.String(required=True, example=u'admin@local', description=u'client login user')
     roles = fields.List(fields.String(example=u'admin@local'), required=True, description=u'client login user')
@@ -209,21 +205,7 @@ class GetToken(SwaggerApiView):
         resp = {u'token':res}
         return resp
 
-'''
-class TokenRefresh(ApiView):
-    def dispatch(self, controller, data, oid, *args, **kwargs):
-        uid, sign, data = self.get_current_identity()
-        # refresh user permisssions
-        res = controller.refresh_user(oid, sign, data)
-        resp = res      
-        return resp
 
-class LoginExists(ApiView):
-    def get(self, controller, data, oid, *args, **kwargs):
-        resp = controller.exist_identity(oid)
-        return {u'token':oid, u'exist':resp} '''
-
-## delete
 class DeleteToken(SwaggerApiView):
     tags = [u'authorization']
     definitions = {}
@@ -240,7 +222,7 @@ class DeleteToken(SwaggerApiView):
         Call this api to delete an authentication token     
         """        
         resp = controller.remove_identity(oid)
-        return (resp, 204)
+        return resp, 204
 
 
 class ListUsersRequestSchema(PaginatedRequestQuerySchema):
@@ -606,10 +588,15 @@ class ListRolesRequestSchema(PaginatedRequestQuerySchema):
     user = fields.String(context=u'query')
     group = fields.String(context=u'query')
     names = fields.String(context=u'query')
+    alias = fields.String(context=u'query')
+
+
+class ListRoleResponseSchema(ApiObjectResponseSchema):
+    alias = fields.String(required=True, default=u'test', example=u'test')
 
 
 class ListRolesResponseSchema(PaginatedResponseSchema):
-    roles = fields.Nested(ApiObjectResponseSchema, many=True, required=True, allow_none=True)
+    roles = fields.Nested(ListRoleResponseSchema, many=True, required=True, allow_none=True)
 
 
 class ListRoles(SwaggerApiView):
@@ -637,8 +624,12 @@ class ListRoles(SwaggerApiView):
         return self.format_paginated_response(res, u'roles', total, **data)
 
 
+class GetRoleItemResponseSchema(ApiObjectResponseSchema):
+    alias = fields.String(required=True, default=u'test', example=u'test')
+
+
 class GetRoleResponseSchema(Schema):
-    role = fields.Nested(ApiObjectResponseSchema, required=True, allow_none=True)
+    role = fields.Nested(GetRoleItemResponseSchema, required=True, allow_none=True)
 
 
 class GetRole(SwaggerApiView):
@@ -660,14 +651,17 @@ class GetRole(SwaggerApiView):
         Call this api to get a role
         """             
         obj = controller.get_role(oid)
-        res = obj.info()      
-        resp = {u'role':res} 
+        res = obj.info()
+        resp = {u'role': res}
         return resp
 
 
-## create
+class CreateRoleItemRequestSchema(BaseCreateRequestSchema):
+    alias = fields.String(required=False, description=u'Role alias')
+
+
 class CreateRoleRequestSchema(Schema):
-    role = fields.Nested(BaseCreateRequestSchema)
+    role = fields.Nested(CreateRoleItemRequestSchema)
 
 
 class CreateRoleBodyRequestSchema(Schema):
@@ -678,7 +672,7 @@ class CreateRole(SwaggerApiView):
     tags = [u'authorization']
     definitions = {
         u'CreateRoleRequestSchema': CreateRoleRequestSchema,
-        u'CrudApiObjectResponseSchema':CrudApiObjectResponseSchema
+        u'CrudApiObjectResponseSchema': CrudApiObjectResponseSchema
     }
     parameters = SwaggerHelper().get_parameters(CreateRoleBodyRequestSchema)
     parameters_schema = CreateRoleRequestSchema
@@ -695,7 +689,7 @@ class CreateRole(SwaggerApiView):
         Call this api to create a role
         """
         resp = controller.add_role(**data.get(u'role'))
-        return ({u'uuid':resp}, 201)
+        return {u'uuid': resp}, 201
 
 
 class UpdateRoleParamPermDescRequestSchema(Schema):
@@ -704,6 +698,7 @@ class UpdateRoleParamPermDescRequestSchema(Schema):
     objid = fields.String()
     action = fields.String()
     id = fields.Integer()
+    alias = fields.String()
 
 
 class UpdateRoleParamPermRequestSchema(Schema):

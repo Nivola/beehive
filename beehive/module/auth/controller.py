@@ -78,6 +78,7 @@ class AuthController(BaseAuthController):
         """Get roles.
 
         :param name: role name [optional]
+        :param alias: role alias [optional]
         :param user: user id [optional]
         :param group: group id [optional]
         :param permission: permission id [optional]           
@@ -122,15 +123,15 @@ class AuthController(BaseAuthController):
             
             return roles, total
         
-        res, total = self.get_paginated_entities(Role, get_entities, 
-                                                *args, **kvargs)
+        res, total = self.get_paginated_entities(Role, get_entities, *args, **kvargs)
         return res, total    
     
-    def add_base_role(self, name, desc=u''):
+    def add_base_role(self, name, desc=u'', alias=u''):
         """Add new role.
 
         :param name: name of the role
         :param desc: role desc. [Optional]
+        :param alias: role alias. [Optional]
         :return: True if role added correctly
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
@@ -140,30 +141,33 @@ class AuthController(BaseAuthController):
 
         try:
             objid = id_gen()
-            role = self.manager.add_role(objid, name, desc)
+            role = self.manager.add_role(objid, name, desc, alias)
             
             # add object and permission
             Role(self, oid=role.id).register_object([objid], desc=desc)
 
             self.logger.debug(u'Add new role: %s' % name)
             return role
-        except (TransactionError) as ex:       
+        except TransactionError as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
-        except (Exception) as ex:
+        except Exception as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
     
     @trace(entity=u'Role', op=u'insert')
-    def add_role(self, name=None, desc=u''):
+    def add_role(self, name=None, desc=u'', alias=u''):
         """Add role.
-        
+
+        :param name: name of the role
+        :param desc: role desc. [Optional]
+        :param alias: role alias. [Optional]
         :return: True if role added correctly
         :rtype: bool
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # add role
-        role = self.add_base_role(name, desc)        
+        role = self.add_base_role(name, desc, alias)
         return role.uuid
     
     @trace(entity=u'Role', op=u'admin.insert')
@@ -197,18 +201,6 @@ class AuthController(BaseAuthController):
         # add role
         role = self.add_base_role(u'Guest', u'Beehive guest role')        
         return role
-
-    '''
-    def add_app_role(self, name):
-        """Add role used by an app that want to connect to cloudapi 
-        to get configuration and make admin action.
-        
-        :param name: role name
-        :return: True if role added correctly
-        :rtype: bool
-        :raises ApiManagerError: raise :class:`ApiManagerError`
-        """
-        return self.add_role(name, u'Beehive app \'%s\' role' % name)'''
 
     #
     # user manipulation methods
@@ -888,10 +880,30 @@ class Role(AuthObject):
         
         self.update_object = self.manager.update_role
         self.delete_object = self.manager.remove_role
-        
-        #if self.model is not None:
-        #    self.uuid = self.model.uuid
+
         self.expiry_date = None
+
+    def info(self):
+        """Get object info
+
+        :return: Dictionary with object info.
+        :rtype: dict
+        :raises ApiManagerError: raise :class:`.ApiManagerError`
+        """
+        info = AuthObject.info(self)
+        info[u'alias'] = self.model.alias
+        return info
+
+    def detail(self):
+        """Get object extended info
+
+        :return: Dictionary with object detail.
+        :rtype: dict
+        :raises ApiManagerError: raise :class:`.ApiManagerError`
+        """
+        info = AuthObject.info(self)
+        info[u'alias'] = self.model.alias
+        return info
 
     @trace(op=u'perms.view')
     def get_permissions(self, page=0, size=10, order=u'DESC', field=u'id',**kvargs):

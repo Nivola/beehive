@@ -1150,6 +1150,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         
         :param tags: list of permission tags
         :param name: name [optional]
+        :param alias: alias [optional]
         :param names: name like [optional]
         :param active: active [optional]
         :param creation_date: creation_date [optional]
@@ -1165,6 +1166,8 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         filters = []
         if kvargs.get(u'names', None) is not None:
             filters.append(u'AND t3.name like :names')
+        if kvargs.get(u'alias', None) is not None:
+            filters.append(u'AND t3.alias like :alias')
         res, total = self.get_paginated_entities(Role, filters=filters, *args, **kvargs)
         
         return res, total
@@ -1240,18 +1243,18 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         res = query.run(tags, permn_id=perm, *args, **kvargs)
         return res         
         
-    def add_role(self, objid, name, desc):
+    def add_role(self, objid, name, desc, alias=u''):
         """Add a role.
         
         :param objid: role objid
         :param name: role name
-        :param permissions: list of permission
+        :param alias: role alias [optional]
         :param desc: role desc
         :return: True if operation is successful, False otherwise
         :rtype: bool
         :raises TransactionError: raise :class:`TransactionError`
         """
-        res = self.add_entity(Role, objid, name, [], desc=desc, active=True)
+        res = self.add_entity(Role, objid, name, [], desc=desc, active=True, alias=alias)
         return res
 
     def update_role(self, *args, **kvargs):
