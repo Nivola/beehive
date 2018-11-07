@@ -1285,8 +1285,8 @@ class ApiController(object):
             else:
                 if definition is None:
                     definition = u''
-                raise Exception(u'%s can not %s objects %s:%s' % 
-                                (user, action, objtype, definition))      
+                raise Exception(u"Identity %s can not '%s' objects '%s:%s'" %
+                                (operation.user[2], action, objtype, definition))
         except Exception as ex:
             self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=403)
@@ -1300,7 +1300,6 @@ class ApiController(object):
         :rtype: bool
         """
         if len(needs.intersection(perms)) > 0:
-            #self.logger.debug('Perms %s overlap needs %s' % (perms, needs))
             return True
         self.logger.warn('Perms %s do not overlap needs %s' % (perms, needs))
         return False
@@ -1347,15 +1346,10 @@ class ApiController(object):
             if res is False:
                 raise ApiManagerError('')
         except ApiManagerError:
-            msg = "Identity %s can not '%s' objects '%s:%s' '%s'" % (operation.user[2], action, objtype, objdef, objid)
+            msg = u"Identity %s can not '%s' objects '%s:%s.%s'" % (operation.user[2], action, objtype, objdef, objid)
             self.logger.error(msg)
             raise ApiManagerError(msg, code=403)
         return res
-
-    '''
-    def get_superadmin_permissions(self):
-        """ """
-        raise NotImplementedError()'''
 
     #
     # encryption method

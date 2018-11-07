@@ -131,11 +131,11 @@ class Role(Base, BaseEntity):
     alias = Column(String(100))
     template = Column(Integer())
 
-    def __init__(self, objid, name, permission, desc=u'', active=True):
+    def __init__(self, objid, name, permission, desc=u'', active=True, alias=u''):
         BaseEntity.__init__(self, objid, name, desc, active)
         
         self.permission = permission
-        self.alias = u''
+        self.alias = alias
 
 
 # Systems roles
@@ -1189,7 +1189,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         """
         session = self.get_session()
         sqlcount = [
-            "SELECT count(t4.id)",
+            "SELECT count(distinct t4.id)",
             "FROM sysobject t1, sysobject_type t2,",
             "sysobject_action t3, sysobject_permission t4,"
             "role t5, role_permission t6",
@@ -1205,10 +1205,11 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
                "role t5, role_permission t6",
                "WHERE t4.obj_id=t1.id and t4.action_id=t3.id and",
                "t1.type_id=t2.id and t6.role_id = t5.id and",
-               "t6.permission_id=t4.id and t5.name IN :role_names"]
+               "t6.permission_id=t4.id and t5.name IN :role_names GROUP BY t4.id"]
 
         # get total rows
-        total = session.execute(u' '.join(sqlcount), {u'role_names': names}).fetchone()[0]
+        query = session.execute(u' '.join(sqlcount), {u'role_names': names})
+        total = query.fetchone()[0]
 
         offset = size * page
         sql.append(u'ORDER BY %s %s' % (field, order))
@@ -1731,8 +1732,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         return res, total
     
     @query
-    def get_user_roles(self, tags=None, user_id=None, page=0, size=10, 
-            order=u'DESC', field=u'id', *args, **kvargs):
+    def get_user_roles(self, tags=None, user_id=None, page=0, size=10, order=u'DESC', field=u'id', *args, **kvargs):
         """Get roles of a user with expiry date of the association
         
         :param tags: list of permission tags
@@ -1816,7 +1816,6 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             perms, total = self.get_role_permissions(names=roles, page=page, 
                                                      size=size, order=order, 
                                                      field=field)
-
         self.logger.debug(u'Get user %s perms: %s' % (user.name, truncate(perms)))
         return perms, total
     

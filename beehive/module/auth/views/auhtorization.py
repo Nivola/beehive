@@ -235,8 +235,12 @@ class ListUsersRequestSchema(PaginatedRequestQuerySchema):
     desc = fields.String(context=u'query')
 
 
+class ListUserResponseSchema(ApiObjectResponseSchema):
+    secret = fields.String(required=True, example=u'tedwdsai93dja8wst')
+
+
 class ListUsersResponseSchema(PaginatedResponseSchema):
-    users = fields.Nested(ApiObjectResponseSchema, many=True, required=True, allow_none=True)
+    users = fields.Nested(ListUserResponseSchema, many=True, required=True, allow_none=True)
 
 
 class ListUsers(SwaggerApiView):

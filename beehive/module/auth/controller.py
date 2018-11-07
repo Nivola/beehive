@@ -141,7 +141,7 @@ class AuthController(BaseAuthController):
 
         try:
             objid = id_gen()
-            role = self.manager.add_role(objid, name, desc, alias)
+            role = self.manager.add_role(objid, name, desc, alias=alias)
             
             # add object and permission
             Role(self, oid=role.id).register_object([objid], desc=desc)
@@ -236,8 +236,8 @@ class AuthController(BaseAuthController):
         def get_entities(*args, **kvargs):
             # get filter field
             role = kvargs.get(u'role', None)
-            group = kvargs.get(u'group', None)
-            expiry_date = kvargs.get(u'expiry_date', None)             
+            expiry_date = kvargs.get(u'expiry_date', None)
+            group_id = kvargs.get(u'group_id', None)
             
             # search users by role
             if role is not None:
@@ -245,8 +245,7 @@ class AuthController(BaseAuthController):
                 users, total = self.manager.get_role_users(*args, **kvargs)
 
             # search users by group
-            elif group is not None:
-                kvargs[u'group_id'] = self.get_entity(Group, ModelGroup, group).oid
+            elif group_id is not None:
                 users, total = self.manager.get_group_users(*args, **kvargs)
             
             # get all users
@@ -257,6 +256,14 @@ class AuthController(BaseAuthController):
                 users, total = self.manager.get_users(*args, **kvargs)            
             
             return users, total
+
+        # check group filter
+        group = kvargs.get(u'group', None)
+
+        # search users by group
+        if group is not None:
+            kvargs[u'group_id'] = self.get_entity(Group, ModelGroup, group).oid
+            kvargs[u'authorize'] = False
 
         res, total = self.get_paginated_entities(User, get_entities, *args, **kvargs)
         return res, total
@@ -917,8 +924,7 @@ class Role(AuthObject):
         :rtype: dict
         :raises ApiManagerError: if query empty return error.
         """
-        self.controller.check_authorization(Objects.objtype, Objects.objdef, 
-                                            u'*', u'view')
+        self.controller.check_authorization(Objects.objtype, Objects.objdef, u'*', u'view')
         
         try:  
             perms, total = self.manager.get_role_permissions([self.name], page=page, size=size, order=order,
@@ -1031,6 +1037,7 @@ class User(BaseUser):
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
         info = BaseUser.info(self)
+        info[u'secret'] = self.model.secret
         if self.model.last_login is not None:
             info[u'date'][u'last_login'] = format_date(self.model.last_login)
 
