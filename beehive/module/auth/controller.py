@@ -206,15 +206,58 @@ class AuthController(BaseAuthController):
     # user manipulation methods
     #
     @trace(entity=u'User', op=u'view')
-    def get_user(self, oid):
+    def get_user(self, oid, action=u'view'):
         """Get single user.
 
         :param oid: entity model id or name or uuid         
         :return: User
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        return self.get_entity(User, ModelUser, oid)    
-    
+        entity_class = User
+        entity_name = User.__name__
+
+        try:
+            entity = self.manager.get_entity(ModelUser, oid, for_update=False)
+        except QueryError as ex:
+            self.logger.error(ex, exc_info=1)
+            raise ApiManagerError(u'%s %s not found or name is not unique' % (entity_name, oid), code=404)
+
+        if entity is None:
+            self.logger.warn(u'%s %s not found' % (entity_name, oid))
+            raise ApiManagerError(u'%s %s not found' % (entity_name, oid), code=404)
+
+        # check authorization
+        # - check identity has action over some groups that contain user
+        groups, tot = self.manager.get_user_groups(user_id=oid, size=-1, with_perm_tag=False)
+        groups_objids = [g.objid for g in groups]
+        perms_objids = self.can(action, objtype=entity_class.objtype,
+                                definition=Group.objdef).get(Group.objdef.lower(), [])
+        if len(set(groups_objids) & set(perms_objids)) == 0:
+            # - check identity has action over the user
+            self.check_authorization(entity_class.objtype, entity_class.objdef, entity.objid, action)
+
+        res = entity_class(self, oid=entity.id, objid=entity.objid, name=entity.name, active=entity.active,
+                           desc=entity.desc, model=entity)
+
+        # execute custom post_get
+        res.post_get()
+
+        self.logger.debug(u'Get %s : %s' % (entity_class.__name__, res))
+        return res
+
+    @trace(entity=u'User', op=u'view')
+    def get_user_secret(self, oid):
+        """Get user secret.
+
+        :param oid: entity model id or name or uuid
+        :return: User
+        :raises ApiManagerError: raise :class:`ApiManagerError`
+        """
+        user = self.get_user(oid, action=u'use')
+        secret = user.model.secret
+        self.logger.debug(u'Get user %s secret' % user.uuid)
+        return secret
+
     @trace(entity=u'User', op=u'view')
     def get_users(self, *args, **kvargs):
         """Get users or single user.
@@ -1037,7 +1080,7 @@ class User(BaseUser):
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
         info = BaseUser.info(self)
-        info[u'secret'] = self.model.secret
+        # info[u'secret'] = self.model.secret
         if self.model.last_login is not None:
             info[u'date'][u'last_login'] = format_date(self.model.last_login)
 
@@ -1051,7 +1094,7 @@ class User(BaseUser):
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
         info = BaseUser.detail(self)
-        info[u'secret'] = self.model.secret
+        # info[u'secret'] = self.model.secret
         if self.model.last_login is not None:
             info[u'date'][u'last_login'] = format_date(self.model.last_login)
 
@@ -1059,6 +1102,9 @@ class User(BaseUser):
 
     @trace(op=u'attribs-get.update')
     def get_attribs(self):
+        # verify permissions
+        self.verify_permisssions(u'use')
+
         attrib = [{u'name': a.name, u'value': a.value, u'desc': a.desc} for a in self.model.attrib]
         self.logger.debug(u'User %s attributes: %s' % (self.name, attrib))
         return attrib

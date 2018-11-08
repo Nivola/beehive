@@ -1226,7 +1226,7 @@ class ApiController(object):
                  
                  .. code-block:: python
                  
-                    {definition:[objid1, objid2, ..]}
+                    {objdef:[objid1, objid2, ..]}
                  
         :rtype: dict
         :raises ApiManagerError:
