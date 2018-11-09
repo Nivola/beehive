@@ -569,13 +569,15 @@ class ApiManager(object):
                 if parsed_uri[u'type'] == u'single':
                     self.redis_manager = redis.StrictRedis(
                         host=parsed_uri[u'host'], 
-                        port=parsed_uri[u'port'], 
+                        port=parsed_uri[u'port'],
+                        password=parsed_uri.get(u'pwd', None),
                         db=parsed_uri[u'db'],
                         socket_timeout=5,
                         socket_connect_timeout=5)
                 elif parsed_uri[u'type'] == u'cluster':
                     self.redis_manager = StrictRedisCluster(
-                        startup_nodes=parsed_uri[u'nodes'], 
+                        startup_nodes=parsed_uri[u'nodes'],
+                        password=parsed_uri.get(u'pwd', None),
                         decode_responses=True,
                         socket_timeout=5,
                         socket_connect_timeout=5)
@@ -598,8 +600,7 @@ class ApiManager(object):
                     i = self.app.session_interface
                     self.app.session_interface = RedisSessionInterface2(
                         i.redis, i.key_prefix, i.use_signer, i.permanent)
-                    self.logger.info(u'Setup redis session manager: %s' % 
-                                     self.app.session_interface)
+                    self.logger.info(u'Setup redis session manager: %s' % self.app.session_interface)
     
                 self.logger.info(u'Configure redis - CONFIGURED')  
                 ##### redis configuration #####

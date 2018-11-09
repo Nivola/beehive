@@ -54,8 +54,8 @@ role_template_policy = Table('role_template_policy', Base.metadata,
 class RoleUser(Base):
     __tablename__ = u'roles_users'
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey(u'user.id'), primary_key=True)
-    role_id = Column(Integer, ForeignKey(u'role.id'), primary_key=True)
+    user_id = Column(Integer, ForeignKey(u'user.id'))
+    role_id = Column(Integer, ForeignKey(u'role.id'))
     expiry_date = Column(DateTime())
     user = relationship(u'User', back_populates=u'role')
     role = relationship(u'Role', back_populates=u'user')
@@ -82,8 +82,8 @@ class RoleUser(Base):
 class RoleGroup(Base):
     __tablename__ = u'roles_groups'
     id = Column(Integer, primary_key=True)
-    group_id = Column(Integer, ForeignKey(u'group.id'), primary_key=True)
-    role_id = Column(Integer, ForeignKey(u'role.id'), primary_key=True)
+    group_id = Column(Integer, ForeignKey(u'group.id'))
+    role_id = Column(Integer, ForeignKey(u'role.id'))
     expiry_date = Column(DateTime())
     group = relationship(u'Group', back_populates=u'role')
     role = relationship(u'Role', back_populates=u'group')

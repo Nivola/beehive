@@ -131,12 +131,12 @@ def configure_task_scheduler(broker_url, schedule_backend, tasks=[], task_queue=
         # CELERY_IMPORTS=tasks,
         CELERYBEAT_MAX_LOOP_INTERVAL=5,
         CELERYBEAT_SCHEDULE={
-            # u'test-every-30-minutes': {
-            #     u'task': u'beehive.module.scheduler.tasks.test',
-            #     u'schedule': timedelta(minutes=30),
-            #     u'args': (u'*', {}),
-            #     u'options': {u'queue': task_queue}
-            # },
+            u'test-every-30-minutes': {
+                u'task': u'beehive.module.scheduler.tasks.test',
+                u'schedule': timedelta(minutes=30),
+                u'args': (u'*', {}),
+                u'options': {u'queue': task_queue}
+            },
         }
     )
     return task_scheduler
