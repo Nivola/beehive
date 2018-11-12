@@ -221,27 +221,19 @@ class BeehiveTestCase(unittest.TestCase):
         return result.get(key, None)
 
     def setUp(self):
-        logger.log(70, u'========== %s ==========' % self.id()[9:])
+        logger.log(70, u'========== %s ==========' % self.id()[8:])
         logging.getLogger(u'beehive.test.run').log(70, u'========== %s ==========' % self.id()[9:])
         self.start = time.time()
         
     def tearDown(self):
         elapsed = round(time.time() - self.start, 4)
-        logger.log(70, u'========== %s ========== : %ss' % (self.id()[9:], elapsed))
+        logger.log(70, u'========== %s ========== : %ss' % (self.id()[8:], elapsed))
         logging.getLogger(u'beehive.test.run').log(70, u'========== %s ========== : %ss' % (self.id()[9:], elapsed))
     
     def open_mysql_session(self, db_uri):
         engine = create_engine(db_uri)
-        
-        """
-        engine = create_engine(app.db_uri,
-                               pool_size=10, 
-                               max_overflow=10,
-                               pool_recycle=3600)
-        """
-        db_session = sessionmaker(bind=engine, 
-                                  autocommit=False, 
-                                  autoflush=False)
+        # engine = create_engine(app.db_uri, pool_size=10, max_overflow=10, pool_recycle=3600)
+        db_session = sessionmaker(bind=engine, autocommit=False, autoflush=False)
         return db_session
     
     def create_keyauth_token(self, user, pwd):
@@ -338,11 +330,11 @@ class BeehiveTestCase(unittest.TestCase):
                 self.runlogger.info(u'request query:    %s' % query)
                 self.runlogger.info(u'request data:     %s' % data)            
                 self.runlogger.info(u'request headers:  %s' % headers)
-            
+
             # execute request
             response = requests.request(method, endpoint + uri, auth=cred, params=query, data=data, headers=headers,
                                         timeout=timeout, verify=False)
-            self.runlogger.info(u'request url    :  %s' % response.url)
+            self.runlogger.info(u'request url:      %s' % response.url)
             
             if runlog is True:
                 self.runlogger.info(u'response headers: %s' % response.headers)
@@ -474,96 +466,6 @@ class BeehiveTestCase(unittest.TestCase):
             state = self.get_job_state(jobid)
         self.assertEqual(state, accepted_state)
 
-    '''
-    def invoke(self, api, path, method, data=u'', headers={}, filter=None,
-               auth_method=u'keyauth', credentials=None):
-        """Invoke api 
-    
-        """
-        global uid, seckey
-        base_headers =  {u'Accept':u'application/json'}
-        if auth_method == u'keyauth':
-            sign = self.auth_client.sign_request(seckey, path)
-            base_headers.update({u'uid':uid, u'sign':sign})
-        elif auth_method == u'simplehttp':
-            base_headers.update({
-                u'Authorization':u'Basic %s' % b64encode(credentials.encode(u'utf-8'))
-            })
-        
-        base_headers.update(headers)
-        if filter is not None:
-            if isinstance(filter, dict):
-                filter = urllib.urlencode(filter)
-            path = u'%s?%s' % (path, filter)
-        if isinstance(data, dict):
-            data = json.dumps(data)
-        
-        self.runlogger.info(u'path: %s' % path)
-        self.runlogger.info(u'method: %s' % method)
-        self.runlogger.info(u'data: %s' % data)
-        self.runlogger.info(u'headers: %s' % base_headers)
-        res = self.api[api].run_http_request2(path, method, data=data, 
-                                              headers=base_headers)
-        self.runlogger.info(u'res: %s' % res)
-        return res
-        #if res is not None:
-        #    return res[u'response']
-
-    def invoke_no_sign(self, api, path, method, data=u'', headers={}, filter=None):
-        """Invoke api without sign"""
-        base_headers =  {u'Accept':u'application/json'}
-        base_headers.update(headers)
-        if isinstance(data, dict):
-            data = json.dumps(data)
-        if filter is not None:
-            if isinstance(filter, dict):
-                filter = urllib.urlencode(filter)
-            path = u'%s?%s' % (path, filter)
-            
-        self.runlogger.info(u'path: %s' % path)
-        self.runlogger.info(u'method: %s' % method)
-        self.runlogger.info(u'data: %s' % data)
-        self.runlogger.info(u'headers: %s' % base_headers)
-        res = self.api[api].run_http_request2(path, method, data=data, 
-                                              headers=base_headers)
-        self.runlogger.info(u'res: %s' % res)
-        return res  '''
-
-    '''
-    #
-    # keyauth
-    #
-    def test_get_keyauth_token(self):
-        global uid, seckey
-        data = {u'user':self.user, 
-                u'password':self.pwd, 
-                u'login-ip':self.ip}
-        path = u'/v1.0/keyauth/login'
-        base_headers = {u'Accept':u'application/json'}
-        res = self.invoke_no_sign(u'auth', path, u'POST', data=data, 
-                                  headers=base_headers, filter=None)
-        print res
-        uid = res[u'access_token']
-        seckey = res[u'seckey']
-
-    #
-    # simplehttp
-    #
-    def test_simple_http_login(self):
-        global uid, seckey   
-        user = u'%s:%s' % (self.user, self.pwd)
-        path = u'/v1.0/simplehttp/login'
-        base_headers = {u'Accept':u'application/json',}
-        data = {u'user':self.user, 
-                u'password':self.pwd, 
-                u'login-ip':self.ip}
-        res = self.api[u'auth'].run_http_request2(path, u'POST', 
-                                                  data=json.dumps(data), 
-                                                  headers=base_headers)
-        res = res[u'response']
-        uid = None
-        seckey = None'''
-
 
 class ColorFormatter(CeleryColorFormatter):
     #: Loglevel -> Color mapping.
@@ -619,11 +521,6 @@ def runtest(testcase_class, tests, args={}):
     ]
     LoggerHelper.file_handler(loggers, logging.DEBUG, log_file, frmt=frmt, formatter=ColorFormatter)
 
-    # read external params
-    testcase_class.main_config_file = args.get(u'config', None)
-    testcase_class.spec_config_file = args.get(u'extra-config', None)
-    testcase_class.validation_active = args.get(u'validate', False)
-
     try:
         testcase_class.spec_config_file = sys.argv[1]
     except:
@@ -632,6 +529,11 @@ def runtest(testcase_class, tests, args={}):
         testcase_class.validation_active = str2bool(sys.argv[2])
     except:
         pass
+
+    # read external params
+    testcase_class.main_config_file = args.get(u'conf', None)
+    testcase_class.spec_config_file = args.get(u'exconf', None)
+    testcase_class.validation_active = args.get(u'validate', False)
 
     # run test suite
     runner = unittest.TextTestRunner(verbosity=2)

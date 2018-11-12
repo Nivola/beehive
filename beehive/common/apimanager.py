@@ -2977,7 +2977,6 @@ class ApiView(FlaskView):
             operation.transaction = None
             operation.encryption_key = module.api_manager.app_fernet_key
 
-            
             self.logger.info(u'Start new operation: %s' % operation.id)
             
             self.logger.info(u'Invoke api: %s [%s] - START' % (request.path, request.method))

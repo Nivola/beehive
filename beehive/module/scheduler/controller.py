@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-'''
+"""
 Created on Nov 14, 2015
 
 @author: darkbk
-'''
+"""
 import ujson as json
 from datetime import datetime, timedelta
 import pickle

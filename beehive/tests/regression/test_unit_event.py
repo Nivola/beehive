@@ -12,24 +12,26 @@ from beehive.tests.module.basic.view import BaseTestCase
 from beehive.tests.module.catalog.view import CatalogTestCase
 from beehive.tests.module.scheduler.view import SchedulerAPITestCase
 
-tests_base = [
-    u'test_ping',
-    u'test_info',
+
+tests_event = [
+    u'test_get_event_types',
+    u'test_get_event_entities',
+    u'test_get_events',
 ]
 
 
-class TestCase(BaseTestCase):
+class TestCase(EventTestCase):
     validation_active = False
 
     def setUp(self):
-        BaseTestCase.setUp(self)
-        self.module = u'auth'
-        self.module_prefix = u'nas'
+        EventTestCase.setUp(self)
+        self.module = u'event'
+        self.module_prefix = u'nes'
 
 
 tests = []
 for test_plans in [
-    tests_base
+    tests_event
 ]:
     tests.extend(test_plans)
 

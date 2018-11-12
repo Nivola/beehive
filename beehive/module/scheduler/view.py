@@ -1,8 +1,8 @@
-'''
+"""
 Created on Apr 2, 2026
 
 @author: darkbk
-'''
+"""
 from beecell.simple import get_value
 from beehive.common.apimanager import ApiView, ApiManagerError, SwaggerApiView, \
     GetApiObjectRequestSchema, CrudApiObjectJobResponseSchema, \
@@ -10,12 +10,11 @@ from beehive.common.apimanager import ApiView, ApiManagerError, SwaggerApiView, 
 from flasgger import fields, Schema
 from beecell.swagger import SwaggerHelper
 
+
 class TaskApiView(SwaggerApiView):
     tags = [u'scheduler']
 
-#
-# Scheduler
-#
+
 class SchedulerEntryResponseSchema(Schema):
     schedules = fields.List(fields.Dict(), required=True)
     args = fields.List(fields.String(default=u''), required=False, allow_none=True)
@@ -77,7 +76,7 @@ class GetSchedulerEntry(TaskApiView):
 
     def get(self, controller, data, oid, *args, **kwargs):
         scheduler = controller.get_scheduler()
-        data = scheduler.get_entries(name=oid)[0][1]
+        data = scheduler.get_entries(name=oid)[0]
         if data is not None:
             res = data.info()
         else:
@@ -537,11 +536,6 @@ class SchedulerAPI(ApiView):
     @staticmethod
     def register_api(module):
         rules = [
-            # (u'/scheduler/entries', u'GET', GetSchedulerEntries, {}),
-            # (u'/scheduler/entries/<oid>', u'GET', GetSchedulerEntry, {}),
-            # (u'/scheduler/entries', u'POST', CreateSchedulerEntry, {}),
-            # (u'/scheduler/entries/<oid>', u'DELETE', DeleteSchedulerEntry, {}),
-
             (u'%s/scheduler/entries' % module.base_path, u'GET', GetSchedulerEntries, {}),
             (u'%s/scheduler/entries/<oid>' % module.base_path, u'GET', GetSchedulerEntry, {}),
             (u'%s/scheduler/entries' % module.base_path, u'POST', CreateSchedulerEntry, {}),
@@ -557,19 +551,6 @@ class TaskAPI(ApiView):
     @staticmethod
     def register_api(module):
         rules = [
-            # (u'worker/ping', u'GET', ManagerPing, {}),
-            # (u'worker/stats', u'GET', ManagerStats, {}),
-            # (u'worker/report', u'GET', ManagerReport, {}),
-            # (u'worker/queues', u'GET', ManagerActiveQueues, {}),
-            # (u'worker/tasks', u'GET', GetAllTasks, {}),
-            # (u'worker/tasks/count', u'GET', GetTasksCount, {}),
-            # (u'worker/tasks/definitions', u'GET', GetTasksDefinition, {}),
-            # (u'worker/tasks/<oid>', u'GET', QueryTask, {}),
-            # (u'worker/tasks/<oid>/graph', u'GET', GetTaskGraph, {}),
-            # (u'worker/tasks', u'DELETE', PurgeAllTasks, {}),
-            # (u'worker/tasks/<oid>', u'DELETE', DeleteTask, {}),
-            # (u'worker/tasks/test', u'POST', RunJobTest, {}),
-
             (u'%s/worker/ping' % module.base_path, u'GET', ManagerPing, {}),
             (u'%s/worker/stats' % module.base_path, u'GET', ManagerStats, {}),
             (u'%s/worker/report' % module.base_path, u'GET', ManagerReport, {}),
