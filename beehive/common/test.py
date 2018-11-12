@@ -45,6 +45,7 @@ from requests.auth import HTTPBasicAuth
 from celery.utils.log import ColorFormatter as CeleryColorFormatter
 from celery.utils.term import colored
 from gevent import sleep
+from dict_recursive_update import recursive_update
 
 seckey = None
 token = None
@@ -106,7 +107,7 @@ class BeehiveTestCase(unittest.TestCase):
         try:
             if self.spec_config_file is not None:
                 config2 = self.load_file(self.spec_config_file)
-                config.update(config2)
+                recursive_update(config, config2)
                 logger.info(u'Get beehive test specific configuration: %s' % self.spec_config_file)
         except Exception as ex:
             raise Exception(u'Error loading config file. Search in user home. %s' % ex)
