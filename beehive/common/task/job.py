@@ -17,6 +17,8 @@ from traceback import format_tb
 from beehive.common.task.handler import TaskResult, task_local
 from gevent import sleep
 from functools import wraps
+from traceback import format_exc
+from billiard.einfo import ExceptionInfo
 
 logger = get_task_logger(__name__)
 
@@ -681,7 +683,12 @@ def job_task(module=u'', synchronous=True):
                 try:
                     res = fn(task, params, *args, **kwargs)
                 except Exception as e:
-                    task.update(u'FAILURE', msg=u'Fail %s:%s caused by %s' % (task.name, task.request.id, e))
+                    msg = u'Fail %s:%s caused by %s' % (task.name, task.request.id, e)
+                    logger.error(u'______test___________failure______')
+                    
+                    task.on_failure( e, task.request.id, args, kwargs, ExceptionInfo())
+                    logger.error(msg)
+                    
             return res
         return decorated_view
     return wrapper
