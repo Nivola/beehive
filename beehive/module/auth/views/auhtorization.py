@@ -233,6 +233,8 @@ class ListUsersRequestSchema(PaginatedRequestQuerySchema):
     name = fields.String(context=u'query')
     names = fields.String(context=u'query')
     desc = fields.String(context=u'query')
+    perms_N = fields.List(fields.String(example=u''), required=False, allow_none=True, context=u'query',
+                          collection_format=u'multi', load_from=u'perms.N', description=u'permissions list')
 
 
 class ListUserResponseSchema(ApiObjectResponseSchema):
@@ -623,6 +625,8 @@ class ListRolesRequestSchema(PaginatedRequestQuerySchema):
     group = fields.String(context=u'query')
     names = fields.String(context=u'query')
     alias = fields.String(context=u'query')
+    perms_N = fields.List(fields.String(example=u''), required=False, allow_none=True, context=u'query',
+                          collection_format=u'multi', load_from=u'perms.N', description=u'permissions list')
 
 
 class ListRoleResponseSchema(ApiObjectResponseSchema):

@@ -352,7 +352,7 @@ class PaginatedQueryGenerator(object):
         """
         fields = u', '.join(self.select_fields)
         if count is True:
-            fields = u'count(t3.id) as count'
+            fields = u'count(distinct t3.id) as count'
         
         sql = [u'SELECT {fields}', u'FROM {table} t3']
         if self.with_perm_tag is True:

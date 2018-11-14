@@ -812,7 +812,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
     
     @query
     def get_permission_by_id(self, object_id=None, action_id=None):
-        """Get system object permisssions filtered by object or action.
+        """Get system object permissions filtered by object or action.
         
         :param permission_id: System Object Permission id [optional]
         :param object_id: System Object id [optional]
@@ -1239,11 +1239,60 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         """
         session = self.get_session()
         query = PaginatedQueryGenerator(Role, session)
+        query.add_table(u'role_permission', u't4')
         query.add_filter(u'AND role_permission.permission_id=:perm_id')
         query.set_pagination(page=page, size=size, order=order, field=field)
         res = query.run(tags, permn_id=perm, *args, **kvargs)
-        return res         
-        
+        return res
+
+    @query
+    def get_permissions_roles(self, tags=None, perms=None, page=0, size=10, order=u'DESC', field=u'id',
+                              *args, **kvargs):
+        """Get roles related to some permissions.
+
+        :param perms: permission id list
+        :param page: roles list page to show [default=0]
+        :param size: number of roles to show in list per page [default=0]
+        :param order: sort order [default=DESC]
+        :param field: sort field [default=id]
+        :return: List of Role instances
+        :rtype: list of :class:`Role`
+        :raises QueryError: raise :class:`QueryError`
+        """
+        session = self.get_session()
+        query = PaginatedQueryGenerator(Role, session)
+        query.add_table(u'role_permission', u't4')
+        query.add_filter(u'AND t4.permission_id in :perm_ids')
+        query.add_filter(u'AND t4.role_id=t3.id')
+        query.set_pagination(page=page, size=size, order=order, field=field)
+        res = query.run(tags, permn_ids=perms, *args, **kvargs)
+        return res
+
+    @query
+    def get_permissions_users(self, tags=None, perms=None, page=0, size=10, order=u'DESC', field=u'id',
+                              *args, **kvargs):
+        """Get users related to some permissions.
+
+        :param perms: permission id list
+        :param page: roles list page to show [default=0]
+        :param size: number of roles to show in list per page [default=0]
+        :param order: sort order [default=DESC]
+        :param field: sort field [default=id]
+        :return: List of Role instances
+        :rtype: list of :class:`Role`
+        :raises QueryError: raise :class:`QueryError`
+        """
+        session = self.get_session()
+        query = PaginatedQueryGenerator(User, session)
+        query.add_table(u'role_permission', u't4')
+        query.add_table(u'roles_users', u't5')
+        query.add_filter(u'AND t4.permission_id in :perm_ids')
+        query.add_filter(u'AND t4.role_id=t5.role_id')
+        query.add_filter(u'AND t5.user_id=t3.id')
+        query.set_pagination(page=page, size=size, order=order, field=field)
+        res = query.run(tags, permn_ids=perms, *args, **kvargs)
+        return res
+
     def add_role(self, objid, name, desc, alias=u''):
         """Add a role.
         

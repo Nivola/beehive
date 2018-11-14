@@ -15,6 +15,7 @@ from beehive.common.data import trace
 from beehive.common.model.authorization import User as ModelUser, \
     Role as ModelRole, Group as ModelGroup, SysObject as ModelObject
 
+
 class AuthController(BaseAuthController):
     """Auth Module controller.
     
@@ -81,7 +82,7 @@ class AuthController(BaseAuthController):
         :param alias: role alias [optional]
         :param user: user id [optional]
         :param group: group id [optional]
-        :param permission: permission id [optional]           
+        :param perms_N: list of permissions like objtype,subsystem,objid,action [optional]
         :param page: users list page to show [default=0]
         :param size: number of users to show in list per page [default=0]
         :param order: sort order [default=DESC]
@@ -91,13 +92,14 @@ class AuthController(BaseAuthController):
         """
         def get_entities(*args, **kvargs):
             # get filter field
-            perm = kvargs.get(u'permission', None)
+            perms = kvargs.get(u'perms_N', None)
             group = kvargs.get(u'group', None)
             user = kvargs.get(u'user', None)             
             
-            # search roles by role TODO
-            if perm is not None:
-                roles, total = self.manager.get_permission_roles(perm=perm, *args, **kvargs)
+            # search roles by permissions
+            if perms is not None:
+                perms = [perm.split(u',') for perm in perms]
+                roles, total = self.objects.get_permissions_roles(perms=perms, *args, **kvargs)
 
             # search roles by user
             elif user is not None:
@@ -267,6 +269,7 @@ class AuthController(BaseAuthController):
         :param desc: user desc [optional]
         :param role: role name, id or uuid [optional]
         :param group: group name, id or uuid [optional]
+        :param perms_N: list of permissions like objtype,subsystem,objid,action [optional]
         :param active: user status [optional]
         :param expiry_date: user expiry date. Use gg-mm-yyyy [optional]
         :param page: users list page to show [default=0]
@@ -281,9 +284,15 @@ class AuthController(BaseAuthController):
             role = kvargs.get(u'role', None)
             expiry_date = kvargs.get(u'expiry_date', None)
             group_id = kvargs.get(u'group_id', None)
-            
+            perms = kvargs.get(u'perms_N', None)
+
+            # search users by permissions
+            if perms is not None:
+                perms = [perm.split(u',') for perm in perms]
+                users, total = self.objects.get_permissions_users(perms=perms, *args, **kvargs)
+
             # search users by role
-            if role is not None:
+            elif role is not None:
                 kvargs[u'role_id'] = self.get_entity(Role, ModelRole, role).oid
                 users, total = self.manager.get_role_users(*args, **kvargs)
 
@@ -464,8 +473,7 @@ class Objects(AuthObject):
     objuri = u'auth/objects'    
     
     def __init__(self, controller):
-        AuthObject.__init__(self, controller, oid=u'', name=u'', desc=u'', 
-                            active=True)
+        AuthObject.__init__(self, controller, oid=u'', name=u'', desc=u'', active=True)
         
         self.objid = u'*'
     
@@ -817,11 +825,14 @@ class Objects(AuthObject):
             return []'''
 
     @trace(op=u'perms.view')
-    def get_permission(self, oid):
+    def get_permission(self, oid=None, objid=None, objtype=None, objdef=None, action=None):
         """Get system object permisssion with roles.
-        TODO: manage permission and role query with a single model function
-        
-        :param oid: permission id
+
+        :param oid: permission id [optional]
+        :param objid: Total or partial objid [optional]
+        :param objtype: Object type [optional]
+        :param objdef: Object definition [optional]
+        :param action: Object action [optional]
         :return: dict with permission desc
         :raises ApiManagerError if query empty return error.
         """
@@ -829,23 +840,20 @@ class Objects(AuthObject):
         self.verify_permisssions(u'view')
         
         try:
-            p = self.manager.get_permission(oid)
-            '''try:
-                roles = [{u'id':r.id, 
-                          u'name':r.name, 
-                          u'desc':r.desc} for r in 
-                         self.manager.get_permission_roles(p)]
-            except:
-                roles = []'''
+            if oid is not None:
+                p = self.manager.get_permission(oid)
+            elif objid is not None or objtype is not None or objdef is not None:
+                pp, total = self.manager.get_permissions(objid=objid, objtype=objtype, objdef=objdef, action=action)
+                p = pp[0]
             res = {
-                u'id':p.id, 
-                u'oid':p.obj.id, 
-                u'subsystem':p.obj.type.objtype, 
-                u'type':p.obj.type.objdef,
-                u'objid':p.obj.objid, 
-                u'aid':p.action.id, 
-                u'action':p.action.value, 
-                u'desc':p.obj.desc,
+                u'id': p.id,
+                u'oid': p.obj.id,
+                u'subsystem': p.obj.type.objtype,
+                u'type': p.obj.type.objdef,
+                u'objid' :p.obj.objid,
+                u'aid': p.action.id,
+                u'action': p.action.value,
+                u'desc': p.obj.desc,
             }
             return res
         except QueryError as ex:         
@@ -901,14 +909,14 @@ class Objects(AuthObject):
                 
             for p in perms:
                 res.append({
-                    u'id':p.id, 
-                    u'oid':p.obj.id, 
-                    u'subsystem':p.obj.type.objtype, 
-                    u'type':p.obj.type.objdef,
-                    u'objid':p.obj.objid, 
-                    u'aid':p.action.id, 
-                    u'action':p.action.value, 
-                    u'desc':p.obj.desc
+                    u'id': p.id,
+                    u'oid': p.obj.id,
+                    u'subsystem': p.obj.type.objtype,
+                    u'type': p.obj.type.objdef,
+                    u'objid': p.obj.objid,
+                    u'aid': p.action.id,
+                    u'action': p.action.value,
+                    u'desc': p.obj.desc
                 })
                 
             self.logger.debug(u'Get permissions: %s' % len(res))      
@@ -916,6 +924,62 @@ class Objects(AuthObject):
         except QueryError as ex:
             self.logger.error(ex.desc, exc_info=1)
             return [], 0
+
+    @trace(op=u'perms.view')
+    def get_permissions_roles(self, perms, *args, **kvargs):
+        """List all roles associated to a set of permissions
+
+        :param perms: list of (subsystem, type, objid, action)
+        :return:
+        """
+        roles = []
+        total = 0
+
+        # verify permissions
+        self.verify_permisssions(u'view')
+
+        # get permissions id
+        perm_ids = []
+        for perm in perms:
+            try:
+                pp, total = self.manager.get_permissions(objid=perm[2], objtype=perm[0], objdef=perm[1], action=perm[3])
+                perm_ids.append(pp[0].id)
+            except:
+                self.logger.warn(u'Permission %s was not found' % perm)
+
+        if len(perm_ids) > 0:
+            roles, total = self.manager.get_permissions_roles(perm_ids=perm_ids, *args, **kvargs)
+
+        self.logger.debug(u'Permissions %s are used by roles: %s' % (perms, roles))
+        return roles, total
+
+    @trace(op=u'perms.view')
+    def get_permissions_users(self, perms, *args, **kvargs):
+        """List all users associated to a set of permissions
+
+        :param perms: list of (subsystem, type, objid, action)
+        :return:
+        """
+        users = []
+        total = 0
+
+        # verify permissions
+        self.verify_permisssions(u'view')
+
+        # get permissions id
+        perm_ids = []
+        for perm in perms:
+            try:
+                pp, total = self.manager.get_permissions(objid=perm[2], objtype=perm[0], objdef=perm[1], action=perm[3])
+                perm_ids.append(pp[0].id)
+            except:
+                self.logger.warn(u'Permission %s was not found' % perm)
+
+        if len(perm_ids) > 0:
+            users, total = self.manager.get_permissions_users(perm_ids=perm_ids, *args, **kvargs)
+
+        self.logger.debug(u'Permissions %s are used by users: %s' % (perms, users))
+        return users, total
 
 
 class Role(AuthObject):
