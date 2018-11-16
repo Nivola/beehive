@@ -342,9 +342,6 @@ class AuthController(BaseAuthController):
         
         try:
             objid = id_gen()
-            #if expiry_date is not None:
-            #    g, m, y = expiry_date.split(u'-')
-            #    expiry_date = datetime(int(y), int(m), int(g))
             user = self.manager.add_user(objid, name, active=active, 
                                          password=password, 
                                          desc=desc, 
@@ -363,10 +360,8 @@ class AuthController(BaseAuthController):
                 storetype = u'DBUSER'
             else:
                 systype = u'USER'
-            self.manager.set_user_attribute(user, u'store_type', storetype, 
-                                           u'Type of user store')
-            self.manager.set_user_attribute(user, u'sys_type', systype, 
-                                           u'Type of user')            
+            self.manager.set_user_attribute(user, u'store_type', storetype, u'Type of user store')
+            self.manager.set_user_attribute(user, u'sys_type', systype, u'Type of user')
             
             self.logger.debug(u'Add new user: %s' % name)
             return obj.uuid
@@ -398,6 +393,7 @@ class AuthController(BaseAuthController):
         :param name: group name [optional]
         :param role: role name, id or uuid [optional]
         :param user: user name, id or uuid [optional]
+        :param perms_N: list of permissions like objtype,subsystem,objid,action [optional]
         :param expiry_date: group expiry date. Use gg-mm-yyyy [optional]
         :param page: groups list page to show [default=0]
         :param size: number of groups to show in list per page [default=0]
@@ -411,10 +407,16 @@ class AuthController(BaseAuthController):
             # get filter field
             role = kvargs.get(u'role', None)
             user = kvargs.get(u'user', None)
-            expiry_date = kvargs.get(u'expiry_date', None)             
-            
+            perms = kvargs.get(u'perms_N', None)
+            expiry_date = kvargs.get(u'expiry_date', None)
+
+            # search groups by permissions
+            if perms is not None:
+                perms = [perm.split(u',') for perm in perms]
+                groups, total = self.objects.get_permissions_groups(perms=perms, *args, **kvargs)
+
             # search groups by role
-            if role:
+            elif role:
                 kvargs[u'role_id'] = self.get_entity(Role, ModelRole, role).oid
                 groups, total = self.manager.get_role_groups(*args, **kvargs)
 
@@ -470,7 +472,7 @@ class AuthController(BaseAuthController):
 class Objects(AuthObject):
     objdef = u'Objects'
     objdesc = u'Authorization objects'
-    objuri = u'auth/objects'    
+    objuri = u'nas/objects'
     
     def __init__(self, controller):
         AuthObject.__init__(self, controller, oid=u'', name=u'', desc=u'', active=True)
@@ -981,11 +983,39 @@ class Objects(AuthObject):
         self.logger.debug(u'Permissions %s are used by users: %s' % (perms, users))
         return users, total
 
+    @trace(op=u'perms.view')
+    def get_permissions_groups(self, perms, *args, **kvargs):
+        """List all groups associated to a set of permissions
+
+        :param perms: list of (subsystem, type, objid, action)
+        :return:
+        """
+        groups = []
+        total = 0
+
+        # verify permissions
+        self.verify_permisssions(u'view')
+
+        # get permissions id
+        perm_ids = []
+        for perm in perms:
+            try:
+                pp, total = self.manager.get_permissions(objid=perm[2], objtype=perm[0], objdef=perm[1], action=perm[3])
+                perm_ids.append(str(pp[0].id))
+            except:
+                self.logger.warn(u'Permission %s was not found' % perm)
+
+        if len(perm_ids) > 0:
+            groups, total = self.manager.get_permissions_groups(perms=perm_ids, *args, **kvargs)
+
+        self.logger.debug(u'Permissions %s are used by groups: %s' % (perms, groups))
+        return groups, total
+
 
 class Role(AuthObject):
     objdef = u'Role'
     objdesc = u'System roles'
-    objuri = u'auth/roles'
+    objuri = u'nas/roles'
     
     def __init__(self, controller, oid=None, objid=None, name=None, desc=None, 
                  model=None, active=True):
@@ -1128,7 +1158,7 @@ class Role(AuthObject):
 class User(BaseUser):
     objdef = u'User'
     objdesc = u'System users'
-    objuri = u'auth/users'
+    objuri = u'nas/users'
     
     def __init__(self, controller, oid=None, objid=None, name=None, desc=None, model=None, active=True):
         BaseUser.__init__(self, controller, oid=oid, objid=objid, name=name, desc=desc, active=active, model=model)
@@ -1452,85 +1482,14 @@ class User(BaseUser):
 class Group(AuthObject):
     objdef = u'Group'
     objdesc = u'System groups'
-    objuri = u'auth/groups'
+    objuri = u'nas/groups'
     
-    def __init__(self, controller, oid=None, objid=None, name=None, desc=None, 
-                 model=None, active=True):
-        AuthObject.__init__(self, controller, oid=oid, objid=objid, name=name, 
-                            desc=desc, active=active, model=model)
+    def __init__(self, controller, oid=None, objid=None, name=None, desc=None, model=None, active=True):
+        AuthObject.__init__(self, controller, oid=oid, objid=objid, name=name, desc=desc, active=active, model=model)
         
         self.update_object = self.manager.update_group
+        self.patch_object = self.manager.patch_group
         self.delete_object = self.manager.remove_group
-
-    '''
-    def info(self):
-        """Get group info
-        
-        :return: Dictionary with group info.
-        :rtype: dict        
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
-        """
-        # verify permissions
-        self.controller.check_authorization(self.objtype, self.objdef, 
-                                            self.objid, u'view')
-           
-        creation_date = str2uni(self.model.creation_date\
-                                .strftime(u'%d-%m-%Y %H:%M:%S'))
-        modification_date = str2uni(self.model.modification_date\
-                                    .strftime(u'%d-%m-%Y %H:%M:%S'))
-        #attrib = self.get_attribs()
-        return {
-            u'id':self.oid,
-            u'uuid':self.uuid,
-            u'type':self.objtype, 
-            u'definition':self.objdef, 
-            u'name':self.name, 
-            u'objid':self.objid, 
-            u'desc':self.desc,
-            u'active':self.active, 
-            u'date':{
-                u'creation':creation_date,
-                u'modified':modification_date
-            }
-        }'''
-
-    '''
-    @trace(op=u'delete')
-    def delete(self):
-        """Delete entity.
-        
-        :return: True if role deleted correctly
-        :rtype: bool
-        :raises ApiManagerError: raise :class:`ApiManagerError`
-        """
-        #params = {u'id':self.oid}
-        
-        if self.delete_object is None:
-            raise ApiManagerError(u'Delete is not supported for %s:%s' % 
-                                  (self.objtype, self.objdef))        
-        
-        # verify permissions
-        self.controller.check_authorization(self.objtype, self.objdef, 
-                                            self.objid, u'delete')
-                
-        try:
-            # remove associated roles
-            roles, total = self.manager.get_group_roles(group=self.model, size=1000)
-            for role in roles:
-                res = self.manager.remove_group_role(self.model, role)
-            
-            # delete user
-            res = self.delete_object(oid=self.oid)
-            # remove object and permissions
-            self.deregister_object([self.objid])
-            
-            self.logger.debug(u'Delete %s: %s' % (self.objdef, self.oid))
-            #self.send_event(u'delete', params=params)
-            return res
-        except TransactionError as ex:
-            #self.send_event(u'delete', params=params, exception=ex)         
-            self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=ex.code)'''
 
     @trace(op=u'roles-set.update')
     def append_role(self, role_id, expiry_date=None):
@@ -1553,14 +1512,11 @@ class Group(AuthObject):
             if expiry_date is not None:
                 y, m, d = expiry_date.split(u'-')
                 expiry_date_obj = datetime(int(y), int(m), int(d))          
-            res = self.manager.append_group_role(self.model, role.model, 
-                                                expiry_date=expiry_date_obj)
+            res = self.manager.append_group_role(self.model, role.model, expiry_date=expiry_date_obj)
             if res is True: 
-                self.logger.debug(u'Append role %s to group %s' % (
-                                            role, self.name))
+                self.logger.debug(u'Append role %s to group %s' % (role, self.name))
             else:
-                self.logger.debug(u'Role %s already linked with group %s' % (
-                                            role, self.name))
+                self.logger.debug(u'Role %s already linked with group %s' % (role, self.name))
             return role_id
         except (QueryError, TransactionError) as ex:
             self.logger.error(ex, exc_info=1)
@@ -1605,21 +1561,16 @@ class Group(AuthObject):
         user = self.controller.get_entity(User, ModelUser, user_id)
 
         # verify user permissions
-        self.controller.check_authorization(User.objtype, User.objdef, 
-                                            user.objid, u'view')
+        self.controller.check_authorization(User.objtype, User.objdef, user.objid, u'view')
 
         try:
             res = self.manager.append_group_user(self.model, user.model)
             if res is True: 
-                self.logger.debug(u'Append user %s to group %s' % (
-                                            user, self.name))
+                self.logger.debug(u'Append user %s to group %s' % (user, self.name))
             else:
-                self.logger.debug(u'User %s already linked with group %s' % (
-                                            user, self.name))
-            #self.send_event(u'user-set.update', params=opts)
+                self.logger.debug(u'User %s already linked with group %s' % (user, self.name))
             return user_id
         except (QueryError, TransactionError) as ex:
-            #self.send_event(u'user-set.update', params=opts, exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
@@ -1641,16 +1592,13 @@ class Group(AuthObject):
         try:
             res = self.manager.remove_group_user(self.model, user.model)
             self.logger.debug(u'Remove user %s from group %s' % (user, self.name))
-            #self.send_event(u'user-unset.update', params=opts)       
             return user_id
         except (QueryError, TransactionError) as ex:
-            #self.send_event(u'user-unset.update', params=opts, exception=ex)    
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
     @trace(op=u'perms.view')
-    def get_permissions(self, page=0, size=10, order=u'DESC', field=u'id',
-                        **kvargs):
+    def get_permissions(self, page=0, size=10, order=u'DESC', field=u'id', **kvargs):
         """Get groups permissions.
 
         :param page: perm list page to show [default=0]
@@ -1661,26 +1609,24 @@ class Group(AuthObject):
         :rtype: pands.Series
         :raises ApiManagerError: if query empty return error.
         """
-        self.controller.check_authorization(Objects.objtype, Objects.objdef, 
-                                            u'*', u'view')
+        self.controller.check_authorization(Objects.objtype, Objects.objdef, u'*', u'view')
                 
         try:  
-            perms, total = self.manager.get_group_permissions(self.model, 
-                            page=page, size=size, order=order, field=field)
+            perms, total = self.manager.get_group_permissions(self.model, page=page, size=size, order=order,
+                                                              field=field)
             group_perms = []
             for i in perms:
                 group_perms.append({
-                    u'id':i.id, 
-                    u'oid':i.obj.id, 
-                    u'subsystem':i.obj.type.objtype, 
-                    u'type':i.obj.type.objdef,
-                    u'objid':i.obj.objid, 
-                    u'aid':i.action.id, 
-                    u'action':i.action.value,
-                    u'desc':i.obj.desc
+                    u'id': i.id,
+                    u'oid': i.obj.id,
+                    u'subsystem': i.obj.type.objtype,
+                    u'type': i.obj.type.objdef,
+                    u'objid': i.obj.objid,
+                    u'aid': i.action.id,
+                    u'action': i.action.value,
+                    u'desc': i.obj.desc
                 })                
-            self.logger.debug(u'Get group %s permissions: %s' % (
-                                        self.name, truncate(group_perms)))
+            self.logger.debug(u'Get group %s permissions: %s' % (self.name, truncate(group_perms)))
             return group_perms, total
         except QueryError as ex:
             self.logger.error(ex, exc_info=1)
@@ -1728,20 +1674,17 @@ class Group(AuthObject):
                 if definition is not None:
                     # verify object type, definition and action. If they match 
                     # objid to values list
-                    if (perm_objtype == objtype and
-                        perm_definition == definition and
-                        perm_action in [u'*', action]):
+                    if (perm_objtype == objtype and perm_definition == definition and perm_action in [u'*', action]):
                         objids.append(perm_objid)
                 else:
-                    if (perm_objtype == objtype and
-                        perm_action in [u'*', action]):
+                    if (perm_objtype == objtype and perm_action in [u'*', action]):
                         if perm_definition not in defs:
                             defs.append(perm_definition)
 
             # loop between object objids, compact objids and verify match
             if len(objids) > 0:
                 res = extract(objids)
-                self.logger.debug(u'Group %s can %s objects {%s, %s, %s}' % 
+                self.logger.debug(u'Group %s can %s objects {%s, %s, %s}' %
                                   (self.name, action, objtype, definition, res))
                 return res
             # loop between object definition
@@ -1752,12 +1695,7 @@ class Group(AuthObject):
             else:
                 raise Exception(u'Group %s can not \'%s\' objects \'%s:%s\'' % 
                                 (self.name, action, objtype, definition))
-                
-            #self.send_event(u'can', params=opts)              
+
         except Exception as ex:
-            #self.send_event(u'can', params=opts, exception=ex)  
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex)
-           
-     
-        

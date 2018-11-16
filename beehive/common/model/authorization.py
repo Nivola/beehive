@@ -1275,7 +1275,6 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         res = query.run(tags, perms=perms, perms_string=perms_string, *args, **kvargs)
         return res
 
-
     @query
     def get_permissions_users(self, tags=None, perms=None, page=0, size=10, order=u'DESC', field=u'id',
                               *args, **kvargs):
@@ -1301,6 +1300,36 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
                         u'GROUP BY t1.id)'
 
         query = PaginatedQueryGenerator(User, session, custom_select=custom_select)
+        query.add_filter(u'AND t3.perms=:perms_string')
+        query.set_pagination(page=page, size=size, order=order, field=field)
+        res = query.run(tags, perms=perms, perms_string=perms_string, *args, **kvargs)
+        return res
+
+    @query
+    def get_permissions_groups(self, tags=None, perms=None, page=0, size=10, order=u'DESC', field=u'id',
+                               *args, **kvargs):
+        """Get groups related to some permissions.
+
+        :param perms: permission id list
+        :param page: roles list page to show [default=0]
+        :param size: number of roles to show in list per page [default=0]
+        :param order: sort order [default=DESC]
+        :param field: sort field [default=id]
+        :return: List of Role instances
+        :rtype: list of :class:`Role`
+        :raises QueryError: raise :class:`QueryError`
+        """
+        session = self.get_session()
+        perms = sorted(perms)
+        perms_string = u','.join(perms)
+
+        custom_select = u'(SELECT t1.*, GROUP_CONCAT(DISTINCT t2.permission_id ORDER BY t2.permission_id) as perms ' \
+                        u'FROM user t1, role_permission t2, roles_groups t3 ' \
+                        u'WHERE t2.role_id=t3.role_id AND t3.group_id=t1.id ' \
+                        u'and (t2.permission_id in :perms) ' \
+                        u'GROUP BY t1.id)'
+
+        query = PaginatedQueryGenerator(Group, session, custom_select=custom_select)
         query.add_filter(u'AND t3.perms=:perms_string')
         query.set_pagination(page=page, size=size, order=order, field=field)
         res = query.run(tags, perms=perms, perms_string=perms_string, *args, **kvargs)
@@ -1480,8 +1509,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             u'AND t3.id=t4.user_id',
             u'AND t4.group_id=:group_id'
         ]
-        res, total = self.get_paginated_entities(User, filters=filters,
-                                                 tables=tables, *args, **kvargs)
+        res, total = self.get_paginated_entities(User, filters=filters, tables=tables, *args, **kvargs)
         return res, total    
         
     def get_user_groups(self, *args, **kvargs):
@@ -1501,13 +1529,11 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             u'AND t3.id=t4.group_id',
             u'AND t4.user_id=:user_id'
         ]        
-        res, total = self.get_paginated_entities(Group, filters=filters, 
-                                                 tables=tables, *args, **kvargs)
+        res, total = self.get_paginated_entities(Group, filters=filters, tables=tables, *args, **kvargs)
         return res, total    
         
     @query
-    def get_group_permissions(self, group, page=0, size=10, order=u'DESC', 
-                             field=u'id', *args, **kvargs):
+    def get_group_permissions(self, group, page=0, size=10, order=u'DESC', field=u'id', *args, **kvargs):
         """Get group permissions.
         
         :param group: Orm Group instance
@@ -1526,9 +1552,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
 
         # get group roles
         roles = []
-        group_roles = session.query(Role)\
-                             .join(RoleGroup)\
-                             .filter(RoleGroup.group_id == group.id).all()      
+        group_roles = session.query(Role).join(RoleGroup).filter(RoleGroup.group_id == group.id).all()
         for role in group_roles:
             roles.append(role.name)   
     
@@ -1537,42 +1561,13 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             total = 0
             perms = []
         else:
-            perms, total = self.get_role_permissions(names=roles, page=page, 
-                                                     size=size, order=order, 
-                                                     field=field)
+            perms, total = self.get_role_permissions(names=roles, page=page, size=size, order=order, field=field)
 
         self.logger.debug(u'Get group %s perms : %s' % (group, truncate(perms)))
         return perms, total
     
-    '''
-    @query
-    def get_group_permissions2(self, group, *args, **kvargs):
-        """Get group permissions.
-        
-        :param group: Orm Group instance
-        :return: Pandas Series of SysObjectPermission
-        :rtype: list of tuple
-        :raises QueryError: raise :class:`QueryError`
-        """
-        session = self.get_session()
-        
-        if group is None:
-            raise ModelError(u'Group is not correct or does not exist')        
-        
-        # get all group roles
-        roles = []
-        for role in group.role:
-            roles.append(role.name)
-
-        # get group permissions from group roles
-        perms = self.get_role_permissions2(names=roles)
-        
-        self.logger.debug(u'Get group %s perms : %s' % (group, truncate(perms)))
-        return perms'''
-    
     @transaction
-    def add_group(self, objid, name, desc=u'', members=[], roles=[], 
-                  active=True, expiry_date=None):
+    def add_group(self, objid, name, desc=u'', members=[], roles=[], active=True, expiry_date=None):
         """Add group.
         
         :param objid: authorization id
@@ -1580,17 +1575,50 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         :param active: set if user is active [default=True]
         :param password: user password [optional]
         :param desc: user desc [default='']
-        :param expiry_date: user expiry date [default=365 days]. Set using a 
-                datetime object
+        :param expiry_date: user expiry date [default=365 days]. Set using a datetime object
         :param members: List with User instances. [Optional]
         :param roles: List with Role instances. [Optional]
         :return: :class:`Group`        
         :raises TransactionError: raise :class:`TransactionError`
         """
-        res = self.add_entity(Group, objid, name, member=members, role=roles, 
-                              desc=desc, active=active, expiry_date=expiry_date)
-        return res    
-        
+        group = self.add_entity(Group, objid, name, member=members, role=roles, desc=desc, active=active,
+                                expiry_date=expiry_date)
+
+        # create group role
+        objid = id_gen()
+        name = u'Group%sRole' % group.id
+        desc = u'Group %s private role' % name
+        expiry_date = datetime.datetime(2099, 12, 31)
+        role = self.add_role(objid, name, desc)
+
+        # append role to user
+        self.append_group_role(group, role, expiry_date=expiry_date)
+
+        return group
+
+    def patch_group(self, group):
+        """Patch group to the last configuration.
+
+        :param group: group object
+        :raises TransactionError: raise :class:`TransactionError`
+        """
+        name = u'Group%sRole' % group.id
+
+        try:
+            self.get_entity(Role, name)
+        except:
+            # create group role
+            objid = id_gen()
+            desc = u'Group %s private role' % name
+            expiry_date = datetime.datetime(2099, 12, 31)
+            role = self.add_role(objid, name, desc)
+
+            # append role to user
+            self.append_group_role(group, role, expiry_date=expiry_date)
+
+        self.logger.debug(u'Patch group %s' % group.uuid)
+        return True
+
     def update_group(self, *args, **kvargs):
         """Update group. Extend :function:`update_entity`
 
@@ -1603,7 +1631,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         :raises TransactionError: raise :class:`TransactionError`
         """
         res = self.update_entity(Group, *args, **kvargs)
-        return res  
+        return res
     
     def remove_group(self, *args, **kvargs):
         """Remove group.
@@ -1613,59 +1641,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         """
         res = self.remove_entity(Group, *args, **kvargs)
         return res   
-    
-    '''
-    @transaction
-    def update_group(self, oid=None, new_name=None, new_desc=None):
-        """Update a group.
-        
-        :param name: name of the group
-        :param new_name: new user name [optional]
-        :param desc: User description. [Optional]
-        :return: True if operation is successful, False otherwise
-        :rtype: bool
-        :raises TransactionError: raise :class:`TransactionError`
-        """
-        session = self.get_session() 
-        data = {}
-        if new_name is not None: 
-            data['name'] = new_name                
-        if new_description is not None: 
-            data['description'] = new_description
-                            
-        if len(data) > 0:
-            data['modification_date'] = datetime.datetime.today()
-            session.query(Group).filter_by(id=oid).update(data)
-        
-        self.logger.debug('Update group %s with data : %s' % (oid, data))
-        return True
-        
-    @transaction
-    def remove_group(self, group_id=None, name=None):
-        """Remove a group. Specify at least group id or group name.
-        
-        :param group_id: id of the group [optional]
-        :param name: name of group [optional]
-        :return: True if operation is successful, False otherwise
-        :rtype: bool
-        :raises TransactionError: raise :class:`TransactionError`
-        """
-        session = self.get_session()
-        if group_id is not None:  
-            group = session.query(Group).filter_by(id=group_id).first()
-        elif name is not None:
-            group = session.query(Group).filter_by(name=name).first()
-        
-        if not group:
-            self.logger.error('No group found')
-            raise ModelError('No group found')
-        
-        self.logger.debug('Remove group : %s' % (group))
-        # delete object type
-        session.delete(group)
-        
-        return True'''
-         
+
     @transaction
     def append_group_role(self, group, role, expiry_date=None):
         """Append a role to an group
@@ -1680,8 +1656,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         session = self.get_session()
         
         # append role to group if it doesn't already appended
-        ru = session.query(RoleGroup).filter_by(group_id=group.id)\
-                                    .filter_by(role_id=role.id)
+        ru = session.query(RoleGroup).filter_by(group_id=group.id).filter_by(role_id=role.id)
         if ru.first() is not None:
             self.logger.warn(u'Role %s already exists in group %s' % (role, group))
             return False
@@ -2003,8 +1978,8 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         return res
 
     @transaction
-    def add_user(self, objid, name, active=True, password=None, 
-                 desc=u'', expiry_date=None, is_generic=False, is_admin=False):
+    def add_user(self, objid, name, active=True, password=None, desc=u'', expiry_date=None, is_generic=False,
+                 is_admin=False):
         """Add user.
         
         :param objid: authorization id
@@ -2026,11 +2001,11 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             objid = id_gen()
             name = u'User%sRole' % user.id
             desc = u'User %s private role' % name
-            role = self.add_role(objid, name, desc)   
+            role = self.add_role(objid, name, desc)
 
             # append role to user
             expiry_date = datetime.datetime(2099, 12, 31)
-            self.append_user_role(user, role)
+            self.append_user_role(user, role, expiry_date=expiry_date)
             role = self.get_entity(Role, u'Guest')
             self.append_user_role(user, role, expiry_date=expiry_date)
             self.logger.debug(u'Create base user')

@@ -1041,7 +1041,7 @@ class BeehiveApiClient(object):
         :raise BeehiveApiClientError:
         """
         data = {
-            u'size': -1,
+            u'size': 1000,
             u'perms.N': perms
         }
         uri = u'/v1.0/nas/roles'

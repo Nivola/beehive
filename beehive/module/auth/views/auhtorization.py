@@ -438,12 +438,6 @@ class UpdateUserParamRequestSchema(BaseUpdateRequestSchema):
     password = fields.String(validate=Length(min=8, max=20), allow_none=True,
                              error=u'Password must be at least 8 characters')
 
-    
-    # @validates(u'name')
-    # def validate_user(self, value):
-    #     if not match(u'[a-zA-z0-9]+@[a-zA-z0-9]+', value):
-    #         raise ValidationError(u'User name syntax must be <name>@<domain>')
-
 
 class UpdateUserRequestSchema(Schema):
     user = fields.Nested(UpdateUserParamRequestSchema)
@@ -835,12 +829,13 @@ class DeleteRole(SwaggerApiView):
 #
 # group
 #
-## list
 class ListGroupsRequestSchema(PaginatedRequestQuerySchema):
     user = fields.String(context=u'query')
     role = fields.String(context=u'query')
     active = fields.Boolean(context=u'query')
     expiry_date = fields.String(load_from=u'expirydate', default=u'2099-12-31', context=u'query')
+    perms_N = fields.List(fields.String(example=u''), required=False, allow_none=True, context=u'query',
+                          collection_format=u'multi', load_from=u'perms.N', description=u'permissions list')
 
 
 class ListGroupsResponseSchema(PaginatedResponseSchema):
@@ -935,18 +930,22 @@ class CreateGroup(SwaggerApiView):
         Call this api to create a group
         """
         resp = controller.add_group(**data.get(u'group'))
-        return ({u'uuid':resp}, 201)   
+        return {u'uuid':resp}, 201
 
 
-## update
 class UpdateGroupParamRoleRequestSchema(Schema):
+    append = fields.List(fields.List(fields.String()))
+    remove = fields.List(fields.String())
+
+
+class UpdateGroupParamUserRequestSchema(Schema):
     append = fields.List(fields.String())
     remove = fields.List(fields.String())
 
 
 class UpdateGroupParamRequestSchema(BaseUpdateRequestSchema, BaseCreateExtendedParamRequestSchema):
     roles = fields.Nested(UpdateGroupParamRoleRequestSchema, allow_none=True)
-    users = fields.Nested(UpdateGroupParamRoleRequestSchema, allow_none=True)
+    users = fields.Nested(UpdateGroupParamUserRequestSchema, allow_none=True)
 
 
 class UpdateGroupRequestSchema(Schema):
@@ -991,16 +990,16 @@ class UpdateGroup(SwaggerApiView):
         
         group = controller.get_group(oid)
         
-        resp = {u'update':None,
-                u'role_append':[], u'role_remove':[], 
-                u'user_append':[], u'user_remove':[]}
+        resp = {u'update': None,
+                u'role_append': [], u'role_remove': [],
+                u'user_append': [], u'user_remove': []}
         
         # append, remove role
         if group_role is not None:
             # append role
             if u'append' in group_role:
-                for role in group_role.get(u'append'):
-                    res = group.append_role(role)
+                for role, expiry in group_role.get(u'append'):
+                    res = group.append_role(role, expiry_date=expiry)
                     resp[u'role_append'].append(res)
         
             # remove role
@@ -1028,7 +1027,27 @@ class UpdateGroup(SwaggerApiView):
         resp[u'update'] = res
         return resp
 
-## delete
+
+class PatchGroup(SwaggerApiView):
+    tags = [u'authorization']
+    definitions = {}
+    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
+    responses = SwaggerApiView.setResponses({
+        204: {
+            u'description': u'no response'
+        }
+    })
+
+    def patch(self, controller, data, oid, *args, **kwargs):
+        """
+        Delete group
+        Call this api to delete a group
+        """
+        group = controller.get_group(oid)
+        resp = group.patch()
+        return resp, 204
+
+
 class DeleteGroup(SwaggerApiView):
     tags = [u'authorization']
     definitions = {}
@@ -1046,7 +1065,7 @@ class DeleteGroup(SwaggerApiView):
         """                
         group = controller.get_group(oid)
         resp = group.delete()
-        return (resp, 204)
+        return resp, 204
 
 
 #
@@ -1659,6 +1678,7 @@ class AuthorizationAPI(ApiView):
             (u'%s/groups/<oid>' % module.base_path, u'GET', GetGroup, {}),
             (u'%s/groups' % module.base_path, u'POST', CreateGroup, {}),
             (u'%s/groups/<oid>' % module.base_path, u'PUT', UpdateGroup, {}),
+            (u'%s/groups/<oid>' % module.base_path, u'PATCH', PatchGroup, {}),
             (u'%s/groups/<oid>' % module.base_path, u'DELETE', DeleteGroup, {}),
 
             (u'%s/objects' % module.base_path, u'GET', ListObjects, {}),

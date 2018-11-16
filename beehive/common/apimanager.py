@@ -1588,11 +1588,13 @@ class ApiObject(object):
     objname = u'object'
     objdesc = u''
     
-    # set this to define db manger methdod used for update. If not set update 
-    # is not supported
+    # set this to define db manger methdod used for update. If not set update is not supported
     update_object = None
-    # set this to define db manger methdod used for delete. If not set delete 
-    # is not supported
+
+    # set this to define db manger methdod used for patch. If not set delete is not supported
+    patch_object = None
+
+    # set this to define db manger methdod used for delete. If not set delete is not supported
     delete_object = None
     
     register = True
@@ -1800,8 +1802,7 @@ class ApiObject(object):
         """Register object types, objects and permissions related to module.
         Call this function when initialize system first time.
         """
-        self.logger.info(u'Init api object %s.%s - START' % 
-                          (self.objtype, self.objdef))
+        self.logger.info(u'Init api object %s.%s - START' % (self.objtype, self.objdef))
         
         try:
             # call only once during db initialization
@@ -1810,18 +1811,11 @@ class ApiObject(object):
             
             # add object and permissions
             objs = self._get_value(self.objdef, [])
-            #self.rpc_client.add_object(self.objtype, self.objdef, objs)
-            self.api_client.add_object(self.objtype, self.objdef, objs, 
-                                       self.objdesc)
-            
-            # register event related to ApiObject
-            #self.event_class(self.controller).init_object()
-            
-            self.logger.info(u'Init api object %s.%s - STOP' % 
-                              (self.objtype, self.objdef))
+            self.api_client.add_object(self.objtype, self.objdef, objs, self.objdesc)
+
+            self.logger.info(u'Init api object %s.%s - STOP' % (self.objtype, self.objdef))
         except ApiManagerError as ex:
             self.logger.warn(ex.value)
-            #raise ApiManagerError(ex)
             
         # init child classes
         for child in self.child_classes:
@@ -1885,29 +1879,16 @@ class ApiObject(object):
         
         **Raise:** :class:`ApiManagerError` 
         """
-        self.logger.debug(u'Register api object: %s:%s %s - START' % 
-                          (self.objtype, self.objdef, objids))
+        self.logger.debug(u'Register api object: %s:%s %s - START' % (self.objtype, self.objdef, objids))
         
         # add object and permissions
-        #objs = self._get_value(self.objdef, objids)
-        #self.rpc_client.add_object(self.objtype, self.objdef, objs)
-        self.api_client.add_object(self.objtype, self.objdef, 
-                                   u'//'.join(objids), desc)
-        
-        # register event related to ApiObject
-        #self.event_class(self.controller).register_object(args, desc=desc)
+        self.api_client.add_object(self.objtype, self.objdef, u'//'.join(objids), desc)
         
         # register permission tags
         self.register_object_permtags(objids)
         
-        self.logger.debug(u'Register api object: %s:%s %s - STOP' % 
-                          (self.objtype, self.objdef, u'//'.join(objids)))
-        
-        # register child classes
-        #if objid == None:
-        #    objid = self.objid
-        #objid = objid + u'//*'
-        
+        self.logger.debug(u'Register api object: %s:%s %s - STOP' % (self.objtype, self.objdef, u'//'.join(objids)))
+
         objids.append(u'*')
         for child in self.child_classes:
             child(self.controller, oid=None).register_object(
@@ -1919,19 +1900,12 @@ class ApiObject(object):
         :param objids: objid split by //
         :param objid: parent objid
         """
-        self.logger.debug(u'Deregister api object %s:%s %s - START' %
-                          (self.objtype, self.objdef, objids))
+        self.logger.debug(u'Deregister api object %s:%s %s - START' % (self.objtype, self.objdef, objids))
         
         # deregister permission tags
         self.deregister_object_permtags()
         
-        # define objid
-        #if objid == None:
-        #    objid = self.objid
-        #objid = objid + u'//*'
-        
         # remove object and permissions
-        #objid = self._get_value(self.objdef, args)
         objid = u'//'.join(objids)
         self.api_client.remove_object(self.objtype, self.objdef, objid)        
         
@@ -1939,11 +1913,7 @@ class ApiObject(object):
         for child in self.child_classes:
             child(self.controller, oid=None).deregister_object(list(objids))
         
-        # deregister event related to ApiObject
-        #self.event_class(self.controller).deregister_object(args)            
-        
-        self.logger.debug(u'Deregister api object %s:%s %s - STOP' % 
-                          (self.objtype, self.objdef, objid))       
+        self.logger.debug(u'Deregister api object %s:%s %s - STOP' % (self.objtype, self.objdef, objid))
     
     def set_superadmin_permissions(self):
         """ """
@@ -1952,22 +1922,14 @@ class ApiObject(object):
     def set_admin_permissions(self, role, args):
         """ """
         # set main permissions
-        self.api_client.append_role_permissions(
-                role, self.objtype, self.objdef,
-                self._get_value(self.objdef, args), u'*')
-        #self.api_client.append_role_permissions(
-        #        role, u'event', self.objdef,
-        #        self._get_value(self.objdef, args), u'*')
+        self.api_client.append_role_permissions(role, self.objtype, self.objdef,
+                                                self._get_value(self.objdef, args), u'*')
         
     def set_viewer_permissions(self, role, args):
         """ """
         # set main permissions
-        self.api_client.append_role_permissions(
-                role, self.objtype, self.objdef,
-                self._get_value(self.objdef, args), u'view')
-        #self.api_client.append_role_permissions(
-        #        role, u'event', self.objdef,
-        #        self._get_value(self.objdef, args), u'view')
+        self.api_client.append_role_permissions(role, self.objtype, self.objdef,
+                                                self._get_value(self.objdef, args), u'view')
     
     def verify_permisssions(self, action, authorize=True):
         """Short method to verify permissions.
@@ -2058,8 +2020,8 @@ class ApiObject(object):
         return None    
     
     def pre_update(self, *args, **kvargs):
-        """Pre update function. This function is used in update method. Extend 
-        this function to manipulate and validate update input params. 
+        """Pre update function. This function is used in update method. Extend this function to manipulate and
+        validate update input params.
         
         **Parameters:**
         
@@ -2073,10 +2035,27 @@ class ApiObject(object):
         **Raise:** :class:`ApiManagerError`
         """        
         return kvargs
-    
+
+    def pre_patch(self, *args, **kvargs):
+        """Pre patch function. This function is used in update method. Extend this function to manipulate and
+        validate patch input params.
+
+        **Parameters:**
+
+            * **args** (:py:class:`list`): custom params
+            * **kvargs** (:py:class:`dict`): custom params
+
+        **Returns:**
+
+            kvargs
+
+        **Raise:** :class:`ApiManagerError`
+        """
+        return kvargs
+
     def pre_delete(self, *args, **kvargs):
-        """Pre delete function. This function is used in delete method. Extend 
-        this function to manipulate and validate delete input params. 
+        """Pre delete function. This function is used in delete method. Extend this function to manipulate and
+        validate delete input params.
         
         **Parameters:**
         
@@ -2232,6 +2211,41 @@ class ApiObject(object):
             res = self.update_object(oid=self.oid, *args, **kvargs)
             
             self.logger.debug(u'Update %s %s with data %s' % (self.objdef, self.oid, kvargs))
+            return self.uuid
+        except TransactionError as ex:
+            self.logger.error(ex, exc_info=1)
+            raise ApiManagerError(ex, code=ex.code)
+
+    @trace(op=u'update')
+    def patch(self, authorize=True, *args, **kvargs):
+        """Patch entity.
+
+        **Parameters:**
+
+            * **args** (:py:class:`list`): custom params
+            * **kvargs** (:py:class:`dict`): custom params
+            * **authorize** (:py:class:`bool`): if True check permissions for authorization
+
+        **Returns:**
+
+            entity uuid
+
+        **Raise:** :class:`ApiManagerError`
+        """
+        if self.patch_object is None:
+            raise ApiManagerError(u'Patch is not supported for %s:%s' % (self.objtype, self.objdef))
+
+        # verify permissions
+        self.verify_permisssions(u'update', authorize=authorize)
+
+        # custom action
+        if self.pre_patch is not None:
+            kvargs = self.pre_patch(**kvargs)
+
+        try:
+            self.patch_object(self.model)
+
+            self.logger.debug(u'Patch %s %s' % (self.objdef, self.oid))
             return self.uuid
         except TransactionError as ex:
             self.logger.error(ex, exc_info=1)
