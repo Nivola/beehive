@@ -1908,7 +1908,8 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         for role in user_roles:
             roles.append(role.name)
         for group in user.group:
-            for role in group.role:
+            group_roles = session.query(Role).join(RoleGroup).filter(RoleGroup.group_id == group.id).all()
+            for role in group_roles:
                 roles.append(role.name)
 
         perms = []
