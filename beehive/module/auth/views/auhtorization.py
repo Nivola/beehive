@@ -943,9 +943,23 @@ class UpdateGroupParamUserRequestSchema(Schema):
     remove = fields.List(fields.String())
 
 
+class UpdateGroupParamPermRequestSchema(Schema):
+    type = fields.String()
+    subsystem = fields.String()
+    objid = fields.String()
+    action = fields.String()
+    id = fields.Integer()
+
+
+class UpdateGroupParamPermsRequestSchema(Schema):
+    append = fields.Nested(UpdateGroupParamPermRequestSchema, many=True, allow_none=True)
+    remove = fields.Nested(UpdateGroupParamPermRequestSchema, many=True, allow_none=True)
+
+
 class UpdateGroupParamRequestSchema(BaseUpdateRequestSchema, BaseCreateExtendedParamRequestSchema):
     roles = fields.Nested(UpdateGroupParamRoleRequestSchema, allow_none=True)
     users = fields.Nested(UpdateGroupParamUserRequestSchema, allow_none=True)
+    perms = fields.Nested(UpdateGroupParamPermsRequestSchema, allow_none=True)
 
 
 class UpdateGroupRequestSchema(Schema):
@@ -962,6 +976,8 @@ class UpdateGroupResponseSchema(Schema):
     role_remove = fields.List(fields.String, dump_to=u'role_remove', required=True)
     user_append = fields.List(fields.String, dump_to=u'user_append', required=True)
     user_remove = fields.List(fields.String, dump_to=u'user_remove', required=True)
+    perm_append = fields.List(fields.String, dump_to=u'perm_append', required=True)
+    perm_remove = fields.List(fields.String, dump_to=u'perm_remove', required=True)
 
 
 class UpdateGroup(SwaggerApiView):
@@ -987,12 +1003,14 @@ class UpdateGroup(SwaggerApiView):
         data = data.get(u'group')
         group_role = data.pop(u'roles', None)
         group_user = data.pop(u'users', None)
-        
+        role_perm = data.pop(u'perms', None)
+
         group = controller.get_group(oid)
         
         resp = {u'update': None,
                 u'role_append': [], u'role_remove': [],
-                u'user_append': [], u'user_remove': []}
+                u'user_append': [], u'user_remove': [],
+                u'perm_append': [], u'perm_remove': []}
         
         # append, remove role
         if group_role is not None:
@@ -1007,7 +1025,25 @@ class UpdateGroup(SwaggerApiView):
                 for role in group_role.get(u'remove'):
                     res = group.remove_role(role)
                     resp[u'role_remove'].append(res)
-                    
+
+        # append, remove perms
+        if role_perm is not None:
+            # append role
+            if u'append' in role_perm:
+                perms = []
+                for perm in role_perm.get(u'append'):
+                    perms.append(perm)
+                res = group.append_permissions(perms)
+                resp[u'perm_append'] = res
+
+            # remove role
+            if u'remove' in role_perm:
+                perms = []
+                for perm in role_perm.get(u'remove'):
+                    perms.append(perm)
+                res = group.remove_permissions(perms)
+                resp[u'perm_remove'] = res
+
         # append, remove user
         if group_user is not None:
             # append user
@@ -1020,7 +1056,7 @@ class UpdateGroup(SwaggerApiView):
             if u'remove' in group_user:
                 for user in group_user.get(u'remove'):
                     res = group.remove_user(user)
-                    resp[u'user_remove'].append(res)                    
+                    resp[u'user_remove'].append(res)
         
         # update group
         res = group.update(**data)        

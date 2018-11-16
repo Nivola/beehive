@@ -1324,7 +1324,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         perms_string = u','.join(perms)
 
         custom_select = u'(SELECT t1.*, GROUP_CONCAT(DISTINCT t2.permission_id ORDER BY t2.permission_id) as perms ' \
-                        u'FROM user t1, role_permission t2, roles_groups t3 ' \
+                        u'FROM `group` t1, role_permission t2, roles_groups t3 ' \
                         u'WHERE t2.role_id=t3.role_id AND t3.group_id=t1.id ' \
                         u'and (t2.permission_id in :perms) ' \
                         u'GROUP BY t1.id)'
@@ -1834,25 +1834,22 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
 
         # get user roles
         roles = []
-        user_roles = session.query(Role)\
-                            .join(RoleUser)\
-                            .filter(RoleUser.user_id == user.id).all()      
+        user_roles = session.query(Role).join(RoleUser).filter(RoleUser.user_id == user.id).all()
         for role in user_roles:
             roles.append(role.name)
-            
+
         # get user roles from user groups
         for group in user.group:
-            for role in group.role:
-                roles.append(role.name)       
+            group_roles = session.query(Role).join(RoleGroup).filter(RoleGroup.group_id == group.id).all()
+            for role in group_roles:
+                roles.append(role.name)
 
         if len(roles) == 0:
             self.logger.warn(u'User %s has no roles associated' % user.id)
             total = 0
             perms = []
         else:
-            perms, total = self.get_role_permissions(names=roles, page=page, 
-                                                     size=size, order=order, 
-                                                     field=field)
+            perms, total = self.get_role_permissions(names=roles, page=page, size=size, order=order, field=field)
         self.logger.debug(u'Get user %s perms: %s' % (user.name, truncate(perms)))
         return perms, total
     

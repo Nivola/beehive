@@ -1632,7 +1632,81 @@ class Group(AuthObject):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex)
         return [], 0
-        
+
+    @trace(op=u'perms.update')
+    def append_permissions(self, perms):
+        """Append permission to group internal role
+
+        :param perms: list of tuple ("id", "oid", "type", "definition", "objid", "aid", "action")
+        :return: True if operation is successful, False otherwise
+        :rtype: bool
+        :raises ApiManagerError: raise :class:`ApiManagerError`
+        """
+        # verify permissions
+        self.verify_permisssions(u'update')
+
+        # get internal group role
+        role = self.manager.get_entity(ModelRole, u'Group%sRole' % self.oid, for_update=False)
+
+        try:
+            # get permissions
+            roleperms = []
+            for perm in perms:
+                # perm as permission_id
+                if u'id' in perm:
+                    perm = self.manager.get_permission(perm[u'id'])
+                    roleperms.append(perm)
+
+                # perm as [subsystem, type, objid, action]
+                else:
+                    perms, total = self.manager.get_permissions(objid=perm[u'objid'], objtype=perm[u'subsystem'],
+                                                                objdef=perm[u'type'], action=perm[u'action'], size=10)
+                    roleperms.extend(perms)
+
+            res = self.manager.append_role_permissions(role, roleperms)
+            self.logger.debug(u'Append group %s permission : %s' % (self.uuid, res))
+            return [str(p.id) for p in roleperms]
+        except QueryError as ex:
+            self.logger.error(ex, exc_info=1)
+            raise ApiManagerError(ex)
+
+    @trace(op=u'perms.update')
+    def remove_permissions(self, perms):
+        """Remove permission from group internal role
+
+        :param perms: list of tuple ("id", "oid", "type", "definition", "objid", "aid", "action")
+        :return: True if operation is successful, False otherwise
+        :rtype: bool
+        :raises ApiManagerError: raise :class:`ApiManagerError`
+        """
+        # verify permissions
+        self.verify_permisssions(u'update')
+
+        # get internal group role
+        role = self.manager.get_entity(ModelRole, u'Group%sRole' % self.oid, for_update=False)
+
+        try:
+            # get permissions
+            roleperms = []
+            for perm in perms:
+                # perm as permission_id
+                if u'id' in perm:
+                    perm = self.manager.get_permission(perm[u'id'])
+                    roleperms.append(perm)
+
+                # perm as [subsystem, type, objid, action]
+                else:
+                    perms, total = self.manager.get_permissions(objid=perm[u'objid'], objtype=perm[u'subsystem'],
+                                                                objdef=perm[u'type'], action=perm[u'action'], size=10)
+                    roleperms.extend(perms)
+
+            res = self.manager.remove_role_permission(role, roleperms)
+            self.logger.debug(u'Remove group %s permission : %s' % (self.uuid, res))
+            return [str(p.id) for p in roleperms]
+        except QueryError as ex:
+            self.logger.error(ex, exc_info=1)
+            raise ApiManagerError(ex)
+
     @trace(op=u'perms.use')
     def can(self, action, objtype, definition=None, name=None, perms=None):
         """Verify if  group can execute an action over a certain object type.
