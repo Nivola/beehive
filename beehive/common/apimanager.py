@@ -1475,7 +1475,7 @@ class ApiController(object):
             self.logger.debug(u'Get %s (total:%s): %s' % (entity_class.__name__, total, truncate(res)))
             return res, total
         except QueryError as ex:         
-            self.logger.warn(ex)
+            self.logger.warn(ex, exc_info=1)
             return [], 0
 
     def get_entities(self, entity_class, get_entities, authorize=True, *args, **kvargs):

@@ -1260,13 +1260,21 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         :raises QueryError: raise :class:`QueryError`
         """
         session = self.get_session()
-        query = PaginatedQueryGenerator(Role, session)
-        query.add_table(u'role_permission', u't4')
-        query.add_filter(u'AND t4.permission_id in :perm_ids')
-        query.add_filter(u'AND t4.role_id=t3.id')
+        perms = sorted(perms)
+        perms_string = u','.join(perms)
+
+        custom_select = u'(SELECT t1.*, GROUP_CONCAT(DISTINCT t2.permission_id ORDER BY t2.permission_id) as perms ' \
+                        u'FROM role t1, role_permission t2  ' \
+                        u'WHERE t2.role_id=t1.id ' \
+                        u'and (t2.permission_id in :perms) ' \
+                        u'GROUP BY t1.id)'
+
+        query = PaginatedQueryGenerator(Role, session, custom_select=custom_select)
+        query.add_filter(u'AND t3.perms=:perms_string')
         query.set_pagination(page=page, size=size, order=order, field=field)
-        res = query.run(tags, permn_ids=perms, *args, **kvargs)
+        res = query.run(tags, perms=perms, perms_string=perms_string, *args, **kvargs)
         return res
+
 
     @query
     def get_permissions_users(self, tags=None, perms=None, page=0, size=10, order=u'DESC', field=u'id',
@@ -1283,14 +1291,19 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         :raises QueryError: raise :class:`QueryError`
         """
         session = self.get_session()
-        query = PaginatedQueryGenerator(User, session)
-        query.add_table(u'role_permission', u't4')
-        query.add_table(u'roles_users', u't5')
-        query.add_filter(u'AND t4.permission_id in :perm_ids')
-        query.add_filter(u'AND t4.role_id=t5.role_id')
-        query.add_filter(u'AND t5.user_id=t3.id')
+        perms = sorted(perms)
+        perms_string = u','.join(perms)
+
+        custom_select = u'(SELECT t1.*, GROUP_CONCAT(DISTINCT t2.permission_id ORDER BY t2.permission_id) as perms ' \
+                        u'FROM user t1, role_permission t2, roles_users t3 ' \
+                        u'WHERE t2.role_id=t3.role_id AND t3.user_id=t1.id ' \
+                        u'and (t2.permission_id in :perms) ' \
+                        u'GROUP BY t1.id)'
+
+        query = PaginatedQueryGenerator(User, session, custom_select=custom_select)
+        query.add_filter(u'AND t3.perms=:perms_string')
         query.set_pagination(page=page, size=size, order=order, field=field)
-        res = query.run(tags, permn_ids=perms, *args, **kvargs)
+        res = query.run(tags, perms=perms, perms_string=perms_string, *args, **kvargs)
         return res
 
     def add_role(self, objid, name, desc, alias=u''):

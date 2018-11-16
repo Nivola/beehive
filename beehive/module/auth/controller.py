@@ -943,12 +943,12 @@ class Objects(AuthObject):
         for perm in perms:
             try:
                 pp, total = self.manager.get_permissions(objid=perm[2], objtype=perm[0], objdef=perm[1], action=perm[3])
-                perm_ids.append(pp[0].id)
+                perm_ids.append(str(pp[0].id))
             except:
                 self.logger.warn(u'Permission %s was not found' % perm)
 
         if len(perm_ids) > 0:
-            roles, total = self.manager.get_permissions_roles(perm_ids=perm_ids, *args, **kvargs)
+            roles, total = self.manager.get_permissions_roles(perms=perm_ids, *args, **kvargs)
 
         self.logger.debug(u'Permissions %s are used by roles: %s' % (perms, roles))
         return roles, total
@@ -971,12 +971,12 @@ class Objects(AuthObject):
         for perm in perms:
             try:
                 pp, total = self.manager.get_permissions(objid=perm[2], objtype=perm[0], objdef=perm[1], action=perm[3])
-                perm_ids.append(pp[0].id)
+                perm_ids.append(str(pp[0].id))
             except:
                 self.logger.warn(u'Permission %s was not found' % perm)
 
         if len(perm_ids) > 0:
-            users, total = self.manager.get_permissions_users(perm_ids=perm_ids, *args, **kvargs)
+            users, total = self.manager.get_permissions_users(perms=perm_ids, *args, **kvargs)
 
         self.logger.debug(u'Permissions %s are used by users: %s' % (perms, users))
         return users, total
