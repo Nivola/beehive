@@ -1064,6 +1064,7 @@ class ApiController(object):
                                         u'.'+self.__class__.__name__)
         
         self.module = module
+        self.version = u'v1.0'
 
         # base event_class. Change in every controller with ApiEvent subclass
         # self.event_class = ApiEvent
