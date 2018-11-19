@@ -1031,7 +1031,7 @@ class BeehiveApiClient(object):
         }
         uri = u'/v1.0/nas/users'
         res = self.invoke(u'auth', uri, u'GET', urlencode(data, doseq=True), parse=True, silent=True)
-        self.logger.debug(u'Permissions %s are used by users: %s' % (perms, res))
+        self.logger.debug(u'Permissions %s are used by users: %s' % (perms, truncate(res)))
         return res.get(u'users')
 
     def get_perms_roles(self, perms):
@@ -1046,7 +1046,7 @@ class BeehiveApiClient(object):
         }
         uri = u'/v1.0/nas/roles'
         res = self.invoke(u'auth', uri, u'GET', urlencode(data, doseq=True), parse=True, silent=True)
-        self.logger.debug(u'Permissions %s are used by roles: %s' % (perms, res))
+        self.logger.debug(u'Permissions %s are used by roles: %s' % (perms, truncate(res)))
         return res.get(u'roles')
 
     def add_user(self, name, password, desc):
@@ -1264,7 +1264,7 @@ class BeehiveApiClient(object):
         }
         uri = u'/v1.0/nas/groups'
         res = self.invoke(u'auth', uri, u'GET', urlencode(data, doseq=True), parse=True, silent=True)
-        self.logger.debug(u'Permissions %s are used by groups: %s' % (perms, res))
+        self.logger.debug(u'Permissions %s are used by groups: %s' % (perms, truncate(res)))
         return res.get(u'groups')
 
     def append_group_roles(self, oid, roles):
