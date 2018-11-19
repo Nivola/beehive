@@ -1190,24 +1190,24 @@ class BeehiveApiClient(object):
         self.logger.debug(u'Append user permissions %s ' % truncate(perms))
         return res
 
-    def append_role_permissions(self, user, perms):
-        """Append permissions to role
-
-        :param perms: list of {u'subsystem': objtype, u'type': objdef, u'objid': objid, u'action': objaction}
-        :raise BeehiveApiClientError:
-        """
-        data = {
-            u'role': {
-                u'perms': {
-                    u'append': perms,
-                    u'remove': []
-                }
-            }
-        }
-        uri = u'/v1.0/nas/roles/%s' % user
-        res = self.invoke(u'auth', uri, u'PUT', data, parse=True, silent=True)
-        self.logger.debug(u'Append role permissions %s ' % truncate(perms))
-        return res
+#     def append_role_permissions(self, user, perms):
+#         """Append permissions to role
+# 
+#         :param perms: list of {u'subsystem': objtype, u'type': objdef, u'objid': objid, u'action': objaction}
+#         :raise BeehiveApiClientError:
+#         """
+#         data = {
+#             u'role': {
+#                 u'perms': {
+#                     u'append': perms,
+#                     u'remove': []
+#                 }
+#             }
+#         }
+#         uri = u'/v1.0/nas/roles/%s' % user
+#         res = self.invoke(u'auth', uri, u'PUT', data, parse=True, silent=True)
+#         self.logger.debug(u'Append role permissions %s ' % truncate(perms))
+#         return res
 
     def remove_role_permissions(self, user, perms):
         """Remove permissions from role
