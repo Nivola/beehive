@@ -894,8 +894,7 @@ class BeehiveApiClient(object):
         :param objtype: objtype list comma separated
         :param objdef: objdef
         :param objid: objid
-        :param cascade: If true filter by objid and childs until 
-            objid+'//*//*//*//*//*//*'
+        :param cascade: If true filter by objid and childs until objid+'//*//*//*//*//*//*'
         :param kvargs: kvargs
         :raise BeehiveApiClientError:
         """
@@ -1019,18 +1018,37 @@ class BeehiveApiClient(object):
         res = self.invoke(u'auth', uri, u'GET', '', parse=True, silent=True)
         self.logger.debug(u'Get user: %s' % name)
         return res
-    
-    def get_user_perms(self, name):
-        """Get user permissions
-        
+
+    def get_perms_users(self, perms):
+        """Get users associated to some permissions
+
+        :param perms: list of permissions like (objtype, subsystem, objid, action)
         :raise BeehiveApiClientError:
         """
-        data = urlencode({u'user': name, u'size': 1000})
-        uri = u'/v1.0/nas/objects/perms'
-        res = self.invoke(u'auth', uri, u'GET', data, parse=True, silent=True)
-        self.logger.debug(u'Get user %s permission : %s' % (name, truncate(res)))
-        return res.get(u'perms', [])
-    
+        data = {
+            u'size': 1000,
+            u'perms.N': perms
+        }
+        uri = u'/v1.0/nas/users'
+        res = self.invoke(u'auth', uri, u'GET', urlencode(data, doseq=True), parse=True, silent=True)
+        self.logger.debug(u'Permissions %s are used by users: %s' % (perms, truncate(res)))
+        return res.get(u'users')
+
+    def get_perms_roles(self, perms):
+        """Get roles associated to some permissions
+
+        :param perms: list of permissions like (objtype, subsystem, objid, action)
+        :raise BeehiveApiClientError:
+        """
+        data = {
+            u'size': 1000,
+            u'perms.N': perms
+        }
+        uri = u'/v1.0/nas/roles'
+        res = self.invoke(u'auth', uri, u'GET', urlencode(data, doseq=True), parse=True, silent=True)
+        self.logger.debug(u'Permissions %s are used by roles: %s' % (perms, truncate(res)))
+        return res.get(u'roles')
+
     def add_user(self, name, password, desc):
         """Add user
         
@@ -1150,7 +1168,7 @@ class BeehiveApiClient(object):
         }
         uri = u'/v1.0/nas/users/%s' % user
         res = self.invoke(u'auth', uri, u'PUT', data, parse=True, silent=True)
-        self.logger.debug(u'Append permissions %s ' % truncate(perms))
+        self.logger.debug(u'Append user permissions %s ' % truncate(perms))
         return res
 
     def remove_user_permissions(self, user, perms):
@@ -1169,7 +1187,158 @@ class BeehiveApiClient(object):
         }
         uri = u'/v1.0/nas/users/%s' % user
         res = self.invoke(u'auth', uri, u'PUT', data, parse=True, silent=True)
-        self.logger.debug(u'Append permissions %s ' % truncate(perms))
+        self.logger.debug(u'Append user permissions %s ' % truncate(perms))
+        return res
+
+    def append_role_permissions(self, user, perms):
+        """Append permissions to role
+
+        :param perms: list of {u'subsystem': objtype, u'type': objdef, u'objid': objid, u'action': objaction}
+        :raise BeehiveApiClientError:
+        """
+        data = {
+            u'role': {
+                u'perms': {
+                    u'append': perms,
+                    u'remove': []
+                }
+            }
+        }
+        uri = u'/v1.0/nas/roles/%s' % user
+        res = self.invoke(u'auth', uri, u'PUT', data, parse=True, silent=True)
+        self.logger.debug(u'Append role permissions %s ' % truncate(perms))
+        return res
+
+    def remove_role_permissions(self, user, perms):
+        """Remove permissions from role
+
+        :param perms: list of {u'subsystem': objtype, u'type': objdef, u'objid': objid, u'action': objaction}
+        :raise BeehiveApiClientError:
+        """
+        data = {
+            u'role': {
+                u'perms': {
+                    u'append': [],
+                    u'remove': perms
+                }
+            }
+        }
+        uri = u'/v1.0/nas/roles/%s' % user
+        res = self.invoke(u'auth', uri, u'PUT', data, parse=True, silent=True)
+        self.logger.debug(u'Append role permissions %s ' % truncate(perms))
+        return res
+
+    #
+    # auth group
+    #
+    def get_groups(self, role=None):
+        """Get groups
+
+        :raise BeehiveApiClientError:
+        """
+        data = urlencode({u'role': role, u'size': 200})
+        uri = u'/v1.0/nas/groups'
+        res = self.invoke(u'auth', uri, u'GET', data, parse=True, silent=True).get(u'groups', [])
+        self.logger.debug(u'Get groups: %s' % truncate(res))
+        return res
+
+    def get_group(self, name):
+        """Get group
+
+        :raise BeehiveApiClientError:
+        """
+        uri = u'/v1.0/nas/groups/%s' % name
+        res = self.invoke(u'auth', uri, u'GET', '', parse=True, silent=True)
+        self.logger.debug(u'Get group: %s' % name)
+        return res
+
+    def get_perms_groups(self, perms):
+        """Get groups associated to some permissions
+
+        :param perms: list of permissions like (objtype, subsystem, objid, action)
+        :raise BeehiveApiClientError:
+        """
+        data = {
+            u'size': 1000,
+            u'perms.N': perms
+        }
+        uri = u'/v1.0/nas/groups'
+        res = self.invoke(u'auth', uri, u'GET', urlencode(data, doseq=True), parse=True, silent=True)
+        self.logger.debug(u'Permissions %s are used by groups: %s' % (perms, truncate(res)))
+        return res.get(u'groups')
+
+    def append_group_roles(self, oid, roles):
+        """Append roles to group
+
+        :raise BeehiveApiClientError:
+        """
+        data = {
+            u'group': {
+                u'roles': {
+                    u'append': roles,
+                    u'remove': []
+                },
+            }
+        }
+        uri = u'/v1.0/nas/groups/%s' % oid
+        res = self.invoke(u'auth', uri, u'PUT', data, parse=True, silent=True)
+        self.logger.debug(u'Append roles %s to group %s' % (roles, oid))
+        return res
+
+    def remove_group_roles(self, oid, roles):
+        """Remove roles from group
+
+        :raise BeehiveApiClientError:
+        """
+        data = {
+            u'group': {
+                u'roles': {
+                    u'append': [],
+                    u'remove': roles
+                },
+            }
+        }
+        uri = u'/v1.0/nas/groups/%s' % oid
+        res = self.invoke(u'auth', uri, u'PUT', data, parse=True, silent=True)
+        self.logger.debug(u'Remove roles %s from group %s' % (roles, oid))
+        return res
+
+    def append_group_permissions(self, group, perms):
+        """Append permissions to group
+
+        :param perms: list of {u'subsystem': objtype, u'type': objdef, u'objid': objid, u'action': objaction}
+        :raise BeehiveApiClientError:
+        """
+        data = {
+            u'group': {
+                u'perms': {
+                    u'append': perms,
+                    u'remove': []
+                }
+            }
+        }
+        uri = u'/v1.0/nas/groups/%s' % group
+        res = self.invoke(u'auth', uri, u'PUT', data, parse=True, silent=True)
+        self.logger.debug(u'Append group permissions %s ' % truncate(perms))
+        return res
+
+    def remove_group_permissions(self, group, perms):
+        """Remove permissions from group
+
+        :param perms: list of {u'subsystem': objtype, u'type': objdef, u'objid': objid, u'action': objaction}
+        :raise BeehiveApiClientError:
+        """
+        data = {
+            u'group': {
+                u'perms': {
+                    u'append': [],
+                    u'remove': perms
+                }
+            }
+        }
+        uri = u'/v1.0/nas/groups/%s' % group
+        res = self.invoke(u'auth', uri, u'PUT', data, parse=True, silent=True)
+        self.logger.debug(u'Append group permissions %s ' % truncate(perms))
         return res
 
     #
