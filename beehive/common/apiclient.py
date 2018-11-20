@@ -1034,20 +1034,20 @@ class BeehiveApiClient(object):
         self.logger.debug(u'Permissions %s are used by users: %s' % (perms, truncate(res)))
         return res.get(u'users')
 
-    def get_perms_roles(self, perms):
-        """Get roles associated to some permissions
-
-        :param perms: list of permissions like (objtype, subsystem, objid, action)
-        :raise BeehiveApiClientError:
-        """
-        data = {
-            u'size': 1000,
-            u'perms.N': perms
-        }
-        uri = u'/v1.0/nas/roles'
-        res = self.invoke(u'auth', uri, u'GET', urlencode(data, doseq=True), parse=True, silent=True)
-        self.logger.debug(u'Permissions %s are used by roles: %s' % (perms, truncate(res)))
-        return res.get(u'roles')
+    # def get_perms_roles(self, perms):
+    #     """Get roles associated to some permissions
+    #
+    #     :param perms: list of permissions like (objtype, subsystem, objid, action)
+    #     :raise BeehiveApiClientError:
+    #     """
+    #     data = {
+    #         u'size': 1000,
+    #         u'perms.N': perms
+    #     }
+    #     uri = u'/v1.0/nas/roles'
+    #     res = self.invoke(u'auth', uri, u'GET', urlencode(data, doseq=True), parse=True, silent=True)
+    #     self.logger.debug(u'Permissions %s are used by roles: %s' % (perms, truncate(res)))
+    #     return res.get(u'roles')
 
     def add_user(self, name, password, desc):
         """Add user

@@ -1408,8 +1408,9 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         for perm in perms:
             # remove permission from role
             #if len(perm.role.all()) > 0:
-            role.permission.remove(perm)
-            remove_perms.append(perm.id)
+            if perm in role.permission:
+                role.permission.remove(perm)
+                remove_perms.append(perm.id)
             
         self.logger.debug('Remove from role %s permissions: %s' % (role, perms))
         return remove_perms
