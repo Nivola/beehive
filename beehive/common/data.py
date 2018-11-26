@@ -79,12 +79,13 @@ def decrypt_data(data):
 def get_operation_params():
     "return a dictionary that contains the greenlet/thread parameter"
     return {
-        "user" : operation.user,
-        "perms" : operation.perms,
-        "opid" : operation.id,
-        "transaction" : operation.transaction,
-        "encryption_key" : operation.encryption_key,
+        "user": operation.user,
+        "perms": operation.perms,
+        "opid": operation.id,
+        "transaction": operation.transaction,
+        "encryption_key": operation.encryption_key,
     }
+
 
 def set_operation_params(param):
     "set in the current greenlet/thread the parameter stored in param"
