@@ -684,7 +684,6 @@ def job_task(module=u'', synchronous=True):
                     res = fn(task, params, *args, **kwargs)
                 except Exception as e:
                     msg = u'Fail %s:%s caused by %s' % (task.name, task.request.id, e)
-                    logger.error(u'______test___________failure______')
                     
                     task.on_failure( e, task.request.id, args, kwargs, ExceptionInfo())
                     logger.error(msg)
