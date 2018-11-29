@@ -340,9 +340,9 @@ class ApiManager(object):
                 identity = self.redis_manager.get(key)
                 data = pickle.loads(identity)
                 ttl = self.redis_manager.ttl(key)
-                res.append({'uid':data['uid'], 'user':data['user']['name'],
-                            'timestamp':data['timestamp'], 'ttl':ttl, 
-                            'ip':data['ip']})
+                res.append({'uid': data['uid'], 'user': data['user']['name'],
+                            'timestamp': data['timestamp'], 'ttl': ttl,
+                            'ip': data['ip']})
         except Exception as ex:
             self.logger.error('No identities found: %s' % ex)
             raise ApiManagerError('No identities found')
