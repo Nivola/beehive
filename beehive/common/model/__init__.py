@@ -881,8 +881,8 @@ class AbstractDbManager(object):
             raise QueryError("Error: can't not add None entity")
         
         self.logger.info(u'Update %s entity %s' % (entity.__class__.__name__, entity))
-        if isinstance(entity, BaseEntity):
-            entity.modication_date = datetime.today()
+        if isinstance(entity, AuditData):
+            entity.modification_date = datetime.now()
         
         session = self.get_session()
         session.merge(entity)
@@ -898,7 +898,7 @@ class AbstractDbManager(object):
         for entity in entities:
             self.logger.info(u'Update %s entity %s' % (entities.__class__.__name__, entity))
             if isinstance(entity, BaseEntity):
-                entity.modication_date = datetime.today()
+                entity.modification_date = datetime.today()
         
         session = self.get_session()
         session.bulk_save_objects(entities)
