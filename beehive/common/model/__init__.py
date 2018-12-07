@@ -151,11 +151,11 @@ class BaseEntity(AuditData):
         # expiry_date
         currField = u'filter_expiry_date_start'
         if currField in kvargs and kvargs.get(currField) is not None: 
-            filters.append(u' AND t3.expiry_date>=:{field}'.format(field=currField))
+            filters.append(u' AND (t3.expiry_date is null OR t3.expiry_date>=:{field})'.format(field=currField))
         
         currField = u'filter_expiry_date_stop'
         if currField in kvargs and kvargs.get(currField) is not None: 
-            filters.append(u' AND t3.expiry_date<=:{field}'.format(field=currField))
+            filters.append(u' AND (t3.expiry_date is null OR t3.expiry_date<=:{field})'.format(field=currField))
         
         return filters  
 
