@@ -1971,52 +1971,34 @@ class ApiObject(object):
     # pre, post function
     #
     def post_get(self):
-        """Post get function. This function is used in get_entity method.
-        Extend this function to extend description info returned after query.
-        
-        **Parameters:**
+        """Post get function. This function is used in get_entity method. Extend this function to extend description
+        info returned after query.
 
-        **Returns:**
-            
-        **Raise:** :class:`ApiManagerError`
+        :raise ApiManagerError:
         """
         pass
     
     @staticmethod
     def pre_create(controller, *args, **kvargs):
-        """Check input params before resource creation. This function is used 
-        in container resource_factory method. Extend this function to manipulate 
-        and validate create input params.
+        """Check input params before resource creation. This function is used in container resource_factory method.
+        Extend this function to manipulate and validate create input params.
         
-        **Parameters:**
-        
-            * **args** (:py:class:`list`): custom params
-            * **kvargs** (:py:class:`dict`): custom params
-            
-        **Returns:**
-        
-            kvargs
-            
-        **Raise:** :class:`ApiManagerError`
+        :param list args: custom params
+        :param dict kvargs: custom params
+        :return: kvargs
+        :raise ApiManagerError:
         """
         return kvargs
     
     @staticmethod
     def post_create(controller, *args, **kvargs):
-        """Post create function. This function is used in object_factory method. 
-        Used only for synchronous creation. Extend this function to execute 
-        some operation after entity was created.
+        """Post create function. This function is used in object_factory method. Used only for synchronous creation.
+        Extend this function to execute some operation after entity was created.
         
-        **Parameters:**
-        
-            * **args** (:py:class:`list`): custom params
-            * **kvargs** (:py:class:`dict`): custom params
-            
-        **Returns:**
-        
-            None
-            
-        **Raise:** :class:`ApiManagerError`
+        :param list args: custom params
+        :param dict kvargs: custom params
+        :return: kvargs
+        :raise ApiManagerError:
         """
         return None    
     
@@ -2024,16 +2006,10 @@ class ApiObject(object):
         """Pre update function. This function is used in update method. Extend this function to manipulate and
         validate update input params.
         
-        **Parameters:**
-        
-            * **args** (:py:class:`list`): custom params
-            * **kvargs** (:py:class:`dict`): custom params
-            
-        **Returns:**
-        
-            kvargs
-            
-        **Raise:** :class:`ApiManagerError`
+        :param list args: custom params
+        :param dict kvargs: custom params
+        :return: kvargs
+        :raise ApiManagerError:
         """        
         return kvargs
 
@@ -2041,16 +2017,10 @@ class ApiObject(object):
         """Pre patch function. This function is used in update method. Extend this function to manipulate and
         validate patch input params.
 
-        **Parameters:**
-
-            * **args** (:py:class:`list`): custom params
-            * **kvargs** (:py:class:`dict`): custom params
-
-        **Returns:**
-
-            kvargs
-
-        **Raise:** :class:`ApiManagerError`
+        :param list args: custom params
+        :param dict kvargs: custom params
+        :return: kvargs
+        :raise ApiManagerError:
         """
         return kvargs
 
@@ -2058,33 +2028,21 @@ class ApiObject(object):
         """Pre delete function. This function is used in delete method. Extend this function to manipulate and
         validate delete input params.
         
-        **Parameters:**
-        
-            * **args** (:py:class:`list`): custom params
-            * **kvargs** (:py:class:`dict`): custom params
-            
-        **Returns:**
-        
-            kvargs
-            
-        **Raise:** :class:`ApiManagerError`
+        :param list args: custom params
+        :param dict kvargs: custom params
+        :return: kvargs
+        :raise ApiManagerError:
         """
         return kvargs
 
     def post_delete(self, *args, **kvargs):
-        """Post delete function. This function is used in delete method. Extend
-        this function to execute action after object was deleted.
+        """Post delete function. This function is used in delete method. Extend this function to execute action after
+        object was deleted.
 
-        **Parameters:**
-
-            * **args** (:py:class:`list`): custom params
-            * **kvargs** (:py:class:`dict`): custom params
-
-        **Returns:**
-
-            True
-
-        **Raise:** :class:`ApiManagerError`
+        :param list args: custom params
+        :param dict kvargs: custom params
+        :return: kvargs
+        :raise ApiManagerError:
         """
         return True
     

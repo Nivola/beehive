@@ -253,8 +253,11 @@ class Job(AbstractJob):
         BaseTask.__init__(self, *args, **kwargs)
 
     @staticmethod
-    def create(tasks, *args):
+    def create(tasks, *args, **kvargs):
         """Create celery signature with chord, group and chain
+
+        :param tasks: list of celery task
+        :return: celery signature
         """
         process = tasks.pop().signature(args, immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE)
         last_task = None
@@ -268,6 +271,46 @@ class Job(AbstractJob):
             last_task = item
         process.link(last_task)
         return process
+
+    @staticmethod
+    def create_job(tasks, *args, **kvargs):
+        """Create celery signature with chord, group and chain
+
+        :param tasks: list of celery tasks
+        :return: celery signature
+        """
+        tasks.reverse()
+        process = tasks.pop().signature(args, immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE)
+        last_task = None
+        for task in tasks:
+            if not isinstance(task, list):
+                item = task.signature(args, immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE)
+                if last_task is not None:
+                    item.link(last_task)
+            elif isinstance(task, list) and len(task) > 0:
+                item = chord(task, last_task)
+            last_task = item
+        process.link(last_task)
+        return process
+
+    @staticmethod
+    def start(inst, tasks, params):
+        """Run job
+
+        :param inst: celery task instance
+        :param tasks: list of celery task to run
+        :param params: list of celery task params
+        :return: True
+        """
+        from beehive.common.task.util import end_task, start_task
+
+        ops = inst.get_options()
+        inst.set_shared_data(params)
+        tasks.insert(0, start_task)
+        tasks.append(end_task)
+        process = Job.create_job(tasks, ops)
+        process.delay()
+        return True
     
     #
     # handler
@@ -564,7 +607,7 @@ class JobTask(AbstractJob):
     
         The return value of this handler is ignored.
         """
-        self.update(u'SUCCESS', msg=u'Stop %s:%s' % (self.name, task_id))
+        self.update(u'SUCCESS', msg=u'STOP - %s:%s' % (self.name, task_id))
 
 
 def job(entity_class=None, name=None, module=None, delta=2):
@@ -675,7 +718,7 @@ def job_task(module=u'', synchronous=True):
 
             res = None
             # task.update(u'STARTED', start_time=time(), msg=u'Start %s:%s' % (task.name, task.request.id))
-            task.update(u'STARTED', msg=u'Start %s:%s' % (task.name, task.request.id))
+            task.update(u'STARTED', msg=u'START - %s:%s' % (task.name, task.request.id))
             if synchronous:
                 res = fn(task, params, *args, **kwargs)
             else:
@@ -683,7 +726,7 @@ def job_task(module=u'', synchronous=True):
                 try:
                     res = fn(task, params, *args, **kwargs)
                 except Exception as e:
-                    msg = u'Fail %s:%s caused by %s' % (task.name, task.request.id, e)
+                    msg = u'FAIL - %s:%s caused by %s' % (task.name, task.request.id, e)
                     
                     task.on_failure( e, task.request.id, args, kwargs, ExceptionInfo())
                     logger.error(msg)
