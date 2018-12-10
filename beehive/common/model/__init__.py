@@ -151,11 +151,11 @@ class BaseEntity(AuditData):
         # expiry_date
         currField = u'filter_expiry_date_start'
         if currField in kvargs and kvargs.get(currField) is not None: 
-            filters.append(u' AND t3.expiry_date>=:{field}'.format(field=currField))
+            filters.append(u' AND (t3.expiry_date is null OR t3.expiry_date>=:{field})'.format(field=currField))
         
         currField = u'filter_expiry_date_stop'
         if currField in kvargs and kvargs.get(currField) is not None: 
-            filters.append(u' AND t3.expiry_date<=:{field}'.format(field=currField))
+            filters.append(u' AND (t3.expiry_date is null OR t3.expiry_date<=:{field})'.format(field=currField))
         
         return filters  
 
@@ -881,8 +881,8 @@ class AbstractDbManager(object):
             raise QueryError("Error: can't not add None entity")
         
         self.logger.info(u'Update %s entity %s' % (entity.__class__.__name__, entity))
-        if isinstance(entity, BaseEntity):
-            entity.modication_date = datetime.today()
+        if isinstance(entity, AuditData):
+            entity.modification_date = datetime.now()
         
         session = self.get_session()
         session.merge(entity)
@@ -898,7 +898,7 @@ class AbstractDbManager(object):
         for entity in entities:
             self.logger.info(u'Update %s entity %s' % (entities.__class__.__name__, entity))
             if isinstance(entity, BaseEntity):
-                entity.modication_date = datetime.today()
+                entity.modification_date = datetime.today()
         
         session = self.get_session()
         session.bulk_save_objects(entities)
