@@ -1377,7 +1377,7 @@ class ApiController(object):
     #
     # helper model get method
     #
-    def get_entity(self, entity_class, model_class, oid, authorize=True, for_update=False):
+    def get_entity(self, entity_class, model_class, oid, for_update=False, *args, **kvargs):
         """Get single entity by oid (id, uuid, name) if exists
         
         **Parameters:**
@@ -1386,8 +1386,6 @@ class ApiController(object):
             * **model_class** (:py:class:`ApiObject`): Model ApiObject 
                 Extension class
             * **oid** (:py:class:`str`): entity model id or name or uuid
-            * **authorize** (:py:class:`str`): if True check permissions for 
-                authorization
             * **customize** (function): function used to customize entities. 
                 Signature def customize(entity, resource)            
             
@@ -1410,7 +1408,7 @@ class ApiController(object):
             raise ApiManagerError(u'%s %s not found' % (entity_name, oid), code=404)
             
         # check authorization
-        if authorize is True:
+        if operation.authorize is True:
             self.check_authorization(entity_class.objtype, entity_class.objdef, entity.objid, u'view')
         
         res = entity_class(self, oid=entity.id, objid=entity.objid, name=entity.name, active=entity.active,
@@ -1423,7 +1421,7 @@ class ApiController(object):
         return res
 
     def get_paginated_entities(self, entity_class, get_entities, page=0, size=10, order=u'DESC', field=u'id',
-                               customize=None, authorize=True, *args, **kvargs):
+                               customize=None, *args, **kvargs):
         """Get entities with pagination
 
         :param entity_class: ApiObject Extension class
@@ -1447,7 +1445,7 @@ class ApiController(object):
         objs = []
         tags = []
 
-        if authorize is True:
+        if operation.authorize is True:
             # verify permissions
             objs = self.can(u'view', entity_class.objtype, definition=entity_class.objdef)
             objs = objs.get(entity_class.objdef.lower())
@@ -1461,8 +1459,7 @@ class ApiController(object):
             self.logger.debug(u'Auhtorization disabled for command')
                 
         try:
-            entities, total = get_entities(tags=tags, page=page, size=size, order=order, field=field,
-                                           authorize=authorize, *args, **kvargs)
+            entities, total = get_entities(tags=tags, page=page, size=size, order=order, field=field, *args, **kvargs)
             
             for entity in entities:
                 obj = entity_class(self, oid=entity.id, objid=entity.objid, name=entity.name, active=entity.active,
@@ -1479,7 +1476,7 @@ class ApiController(object):
             self.logger.warn(ex, exc_info=1)
             return [], 0
 
-    def get_entities(self, entity_class, get_entities, authorize=True, *args, **kvargs):
+    def get_entities(self, entity_class, get_entities, *args, **kvargs):
         """Get entities less pagination
 
         :param entity_class: ApiObject Extension class
@@ -1496,7 +1493,7 @@ class ApiController(object):
         res = []
         objs =  []
         
-        if authorize is True:
+        if operation.authorize is True:
             # verify permissions
             objs = self.can(u'view', entity_class.objtype, definition=entity_class.objdef)
             objs = objs.get(entity_class.objdef.lower())
@@ -1932,18 +1929,16 @@ class ApiObject(object):
         self.api_client.append_role_permissions(role, self.objtype, self.objdef,
                                                 self._get_value(self.objdef, args), u'view')
     
-    def verify_permisssions(self, action, authorize=True):
+    def verify_permisssions(self, action, *args, **kvargs):
         """Short method to verify permissions.
-        
-        :param authorize: if True check authorization
+
         :param action: action to verify. Can be *, view, insert, update, delete, use
         :return: True if permissions overlap
-        **Raise:** :class:`ApiManagerError`
+        :raise ApiManagerError:
         """        
         # check authorization
-        if authorize is True:
-            self.controller.check_authorization(
-                self.objtype, self.objdef, self.objid, action)
+        if operation.authorize is True:
+            self.controller.check_authorization(self.objtype, self.objdef, self.objid, action)
     
     def authorization(self, objid=None, *args, **kvargs):
         """Get entity authorizations 
@@ -1954,7 +1949,7 @@ class ApiObject(object):
         :param order: sort order [default=DESC]
         :param field: sort field [default=id]        
         :return: [(perm, roles), ...]
-        :raises ApiManagerError: if query empty return error.  
+        :raise ApiManagerError: if query empty return error.
         """
         try:
             # resource permissions
@@ -2141,14 +2136,13 @@ class ApiObject(object):
     # update, delete
     #
     @trace(op=u'update')
-    def update(self, authorize=True, *args, **kvargs):
+    def update(self, *args, **kvargs):
         """Update entity.
         
         **Parameters:**
         
             * **args** (:py:class:`list`): custom params
             * **kvargs** (:py:class:`dict`): custom params
-            * **authorize** (:py:class:`bool`): if True check permissions for authorization
             
         **Returns:**
         
@@ -2160,7 +2154,7 @@ class ApiObject(object):
             raise ApiManagerError(u'Update is not supported for %s:%s' % (self.objtype, self.objdef))
         
         # verify permissions
-        self.verify_permisssions(u'update', authorize=authorize)
+        self.verify_permisssions(u'update')
         
         # custom action
         if self.pre_update is not None:
@@ -2176,14 +2170,13 @@ class ApiObject(object):
             raise ApiManagerError(ex, code=ex.code)
 
     @trace(op=u'update')
-    def patch(self, authorize=True, *args, **kvargs):
+    def patch(self, *args, **kvargs):
         """Patch entity.
 
         **Parameters:**
 
             * **args** (:py:class:`list`): custom params
             * **kvargs** (:py:class:`dict`): custom params
-            * **authorize** (:py:class:`bool`): if True check permissions for authorization
 
         **Returns:**
 
@@ -2195,7 +2188,7 @@ class ApiObject(object):
             raise ApiManagerError(u'Patch is not supported for %s:%s' % (self.objtype, self.objdef))
 
         # verify permissions
-        self.verify_permisssions(u'update', authorize=authorize)
+        self.verify_permisssions(u'update')
 
         # custom action
         if self.pre_patch is not None:
@@ -2211,13 +2204,12 @@ class ApiObject(object):
             raise ApiManagerError(ex, code=ex.code)
 
     @trace(op=u'delete')
-    def delete(self, authorize=True, soft=False, **kvargs):
+    def delete(self, soft=False, **kvargs):
         """Delete entity.
         
         **Parameters:**
         
             * **kvargs** (:py:class:`dict`): custom params
-            * **authorize** (:py:class:`bool`): if True check permissions for authorization
             * **soft** (:py:class:`bool`): if True make a soft delete
             
         **Returns:**
@@ -2227,11 +2219,10 @@ class ApiObject(object):
         **Raise:** :class:`ApiManagerError`
         """
         if self.delete_object is None:
-            raise ApiManagerError(u'Delete is not supported for %s:%s' % 
-                                  (self.objtype, self.objdef))        
+            raise ApiManagerError(u'Delete is not supported for %s:%s' % (self.objtype, self.objdef))
         
         # verify permissions
-        self.verify_permisssions(u'delete', authorize=authorize)
+        self.verify_permisssions(u'delete')
             
         # custom action
         if self.pre_delete is not None:
@@ -2948,6 +2939,7 @@ class ApiView(FlaskView):
             operation.user = (u'guest', u'localhost', None)
             operation.id = request.headers.get(u'request-id', str(uuid4()))
             operation.transaction = None
+            operation.authorize = True
             operation.encryption_key = module.api_manager.app_fernet_key
 
             self.logger.info(u'Start new operation: %s' % operation.id)

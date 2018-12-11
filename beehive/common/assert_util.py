@@ -1,7 +1,7 @@
 from beehive.common.apimanager import ApiManagerError, ApiManagerWarning
 
+
 class AssertUtil(object):
-    
     MAX_LENGTH = 80
     
     @staticmethod
@@ -53,4 +53,4 @@ class AssertUtil(object):
         if obj is None:
             standardMsg = 'unexpectedly None'
             AssertUtil.fail(AssertUtil._formatMessage(msg, standardMsg))
-    
+
