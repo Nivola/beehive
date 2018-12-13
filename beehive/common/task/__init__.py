@@ -100,7 +100,9 @@ class BaseTask(Task):
     #
     # db session
     #
-    def get_session(self):
+    def get_session(self, reopen=False):
+        if reopen is True:
+            self.app.api_manager.release_session()
         self.app.api_manager.get_session()
         
     def flush_session(self):

@@ -328,6 +328,7 @@ class Job(AbstractJob):
         inst.set_shared_data(params)
         tasks.insert(0, start_task)
         tasks.append(end_task)
+        logger.debug2(u'Workflow tasks: %s' % tasks)
         process = Job.create_job(tasks, ops)
         process.delay()
         return True
