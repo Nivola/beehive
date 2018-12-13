@@ -2080,6 +2080,24 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug(u'Disable exipred users: %s' % (res))
         return res
 
+
+    @transaction
+    def set_user_secret(self, oid):
+        """Set user last login date.
+
+        :param oid: user id, name or uuid
+        :param last_login: last_login date
+        :return: True if operation is successful, False otherwise
+        :rtype: bool
+        :raises TransactionError: raise :class:`TransactionError`
+        """
+        session = self.get_session()
+        user = self.get_user(oid)
+        secret=random_password(length=100)
+        res = self.update_entity(User, oid=user.id, secret=secret)
+        self.logger.debug(u'Update user %s secret' % oid)
+        return res
+
     @transaction
     def set_user_last_login(self, oid):
         """Set user last login date.

@@ -238,7 +238,8 @@ class ListUsersRequestSchema(PaginatedRequestQuerySchema):
 
 
 class ListUserResponseSchema(ApiObjectResponseSchema):
-    secret = fields.String(required=True, example=u'tedwdsai93dja8wst')
+    # secret = fields.String(required=True, example=u'tedwdsai93dja8wst')
+    pass
 
 
 class ListUsersResponseSchema(PaginatedResponseSchema):
@@ -271,7 +272,8 @@ class ListUsers(SwaggerApiView):
 
 
 class GetUserParamsResponseSchema(ApiObjectResponseSchema):
-    secret = fields.String(required=True, default=u'test', example=u'test')
+    # secret = fields.String(required=True, example=u'test')
+    pass
 
 
 class GetUserResponseSchema(Schema):
@@ -302,18 +304,18 @@ class GetUser(SwaggerApiView):
         return resp
 
 
-class GetUserSecretParamsResponseSchema(ApiObjectResponseSchema):
-    secret = fields.String(required=True, default=u'test', example=u'test')
+class UserSecretParamsResponseSchema(Schema):
+    secret = fields.String(required=True, example=u'test')
 
 
-class GetUserSecret(Schema):
-    user = fields.Nested(GetUserSecretParamsResponseSchema, required=True, allow_none=True)
+class UserSecretResponseSchema(Schema):
+    user = fields.Nested(UserSecretParamsResponseSchema, required=True, allow_none=True)
 
 
 class GetUserSecret(SwaggerApiView):
     tags = [u'authorization']
     definitions = {
-        u'GetUserResponseSchema': GetUserResponseSchema,
+        u'UserSecretResponseSchema': UserSecretResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
     responses = SwaggerApiView.setResponses({
@@ -329,6 +331,42 @@ class GetUserSecret(SwaggerApiView):
         Call this api to get user secret
         """
         secret = controller.get_user_secret(oid)
+        resp = {u'user': {u'secret': secret}}
+        return resp
+
+
+class UserSecretParamsRequestSchema ():
+    old_secret = fields.String(required=False, example=u'test', description=u'user secret key to reset to', context=u'query')
+
+class UserSecretRequestSchema (Schema):
+
+    user = fields.Nested(UserSecretParamsRequestSchema, required=True, allow_none=True)
+
+class ResetUserSecretBodyRequestSchema(Schema):
+    body = fields.Nested(UserSecretRequestSchema, context=u'body')
+
+class ResetUserSecret (SwaggerApiView):
+    tags = [u'authorization']
+    definitions = {
+        u'UserSecretRequestSchema': UserSecretRequestSchema,
+        u'UserSecretResponseSchema': UserSecretResponseSchema,
+    }
+    parameters = SwaggerHelper().get_parameters(ResetUserSecretBodyRequestSchema)
+    responses = SwaggerApiView.setResponses({
+        200: {
+            u'description': u'success',
+            u'schema': GetUserResponseSchema
+        }
+    })    
+    
+    def put(self, controller, data, oid, *args, **kwargs):
+        """
+        Reset user secret
+        Call this api to reset user secret
+        """
+        
+        old_secret = data.get(u'user', {}).get(u'old_secret', None)
+        secret = controller.reset_user_secret(oid, old_secret=old_secret)
         resp = {u'user': {u'secret': secret}}
         return resp
 
@@ -1700,6 +1738,7 @@ class AuthorizationAPI(ApiView):
             (u'%s/users' % module.base_path, u'POST', CreateUser, {}),
             (u'%s/users/<oid>' % module.base_path, u'PUT', UpdateUser, {}),
             (u'%s/users/<oid>/secret' % module.base_path, u'GET', GetUserSecret, {}),
+            (u'%s/users/<oid>/secret' % module.base_path, u'PUT', ResetUserSecret, {}),
             (u'%s/users/<oid>/attributes' % module.base_path, u'POST', CreateUserAttribute, {}),
             (u'%s/users/<oid>/attributes/<aid>' % module.base_path, u'DELETE', DeleteUserAttribute, {}),
             (u'%s/users/<oid>' % module.base_path, u'DELETE', DeleteUser, {}),

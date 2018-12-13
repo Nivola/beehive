@@ -6,12 +6,13 @@ Created on Jan 16, 2014
 from datetime import datetime
 from beecell.auth import extract
 #from beecell.perf import watch
-from beecell.simple import str2uni, id_gen, truncate, str2bool, format_date
+from beecell.simple import str2uni, id_gen, truncate, str2bool, format_date,\
+    random_password
 from beehive.common.apimanager import ApiManagerError, ApiObject
 from beecell.db import TransactionError, QueryError
 from beehive.common.controller.authorization import BaseAuthController, \
      User as BaseUser, Token, AuthObject
-from beehive.common.data import trace
+from beehive.common.data import trace, operation
 from beehive.common.model.authorization import User as ModelUser, \
     Role as ModelRole, Group as ModelGroup, SysObject as ModelObject
 
@@ -247,7 +248,22 @@ class AuthController(BaseAuthController):
         self.logger.debug(u'Get %s : %s' % (entity_class.__name__, res))
         return res
 
-    @trace(entity=u'User', op=u'view')
+    def _verify_operation_user_role(self, role=u'ApiSuperadmin'):
+        """Check if operation user has a specific role.
+
+        :return: Boolean
+        :raises ApiManagerError: raise :class:`ApiManagerError`
+        """   
+        
+        user_name = operation.user[0]
+        
+        users, total = self.get_users(name=user_name, role=role)      
+        if total > 0 :
+            return True
+
+        return False
+
+    @trace(entity=u'User', op=u'use')
     def get_user_secret(self, oid):
         """Get user secret.
 
@@ -255,10 +271,48 @@ class AuthController(BaseAuthController):
         :return: User
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
+        
+        if self._verify_operation_user_role() is False:
+            raise ApiManagerError(value=u'Invalid ApiSuperadmin role for operation user %s' % operation.user[0], code=400)
+   
         user = self.get_user(oid, action=u'use')
         secret = user.model.secret
         self.logger.debug(u'Get user %s secret' % user.uuid)
         return secret
+            
+    
+    @trace(entity=u'User', op=u'update')
+    def reset_user_secret(self, oid, match_old_secret=False, old_secret=None):
+        """reset user secret.
+
+        :param oid: entity model id or name or uuid
+        :param old_secret:  old secret key to reset
+        :return: User
+        :raises ApiManagerError: raise :class:`ApiManagerError`
+        """
+
+        matched = True
+        
+        if self._verify_operation_user_role() is False:
+            raise ApiManagerError(value=u'Invalid ApiSuperadmin role for operation user %s' % operation.user[0], code=400)
+                
+        user = self.get_user(oid, action=u'update')
+        try:
+            if match_old_secret:
+                matched = self.manager.verify_user_secret(user.model, old_secret)
+            if matched is False:
+                raise ApiManagerError(value=u'Invalid old secret key for user id %s' % oid, code=400)
+            else:
+                res = self.manager.set_user_secret(user.model.id)  
+            self.logger.debug(u'Reset user %s secret' % user.uuid)
+            return user.model.secret
+        except (TransactionError) as ex:
+            self.logger.error(ex.desc, exc_info=1)
+            raise ApiManagerError(ex.desc, code=ex.code)
+        except (Exception) as ex:
+            self.logger.error(ex, exc_info=1)
+            raise ApiManagerError(ex, code=400)
+    
 
     @trace(entity=u'User', op=u'view')
     def get_users(self, *args, **kvargs):
