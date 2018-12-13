@@ -44,6 +44,7 @@ operation.perms = None #: logged user permission
 operation.token_type = None #: token type released
 operation.transaction = None #: transaction id
 operation.encryption_key = None #: _encryption_key used to encrypt and decrypt data
+operation.authorize = True #: enable or disable authorization check
 
 
 #

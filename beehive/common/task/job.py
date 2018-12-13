@@ -72,8 +72,7 @@ class AbstractJob(BaseTask):
         """        
         operation.perms = []
         for op in self.ops:
-            perm = (1, 1, op.objtype, op.objdef,
-                    self.get_operation_id(op.objdef), 1, u'*')
+            perm = (1, 1, op.objtype, op.objdef, self.get_operation_id(op.objdef), 1, u'*')
             operation.perms.append(perm)
         logger.debug(u'Set permissions: %s' % operation.perms)     
 
@@ -276,20 +275,40 @@ class Job(AbstractJob):
     def create_job(tasks, *args, **kvargs):
         """Create celery signature with chord, group and chain
 
-        :param tasks: list of celery tasks
+        :param tasks: list of celery tasks. Task can be a celery task or a dict like
+            {u'task':<celery task>, u'args':..}
         :return: celery signature
         """
         tasks.reverse()
         process = tasks.pop().signature(args, immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE)
         last_task = None
         for task in tasks:
+            logger.warn(task)
             if not isinstance(task, list):
-                item = task.signature(args, immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE)
+                if isinstance(task, dict):
+                    internal_args = list(args)
+                    internal_args.extend(task.get(u'args'))
+                    item = task.get(u'task').signature(internal_args, immutable=True,
+                                                       queue=task_manager.conf.TASK_DEFAULT_QUEUE)
+                else:
+                    item = task.signature(args, immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE)
                 if last_task is not None:
                     item.link(last_task)
             elif isinstance(task, list) and len(task) > 0:
-                item = chord(task, last_task)
+                subitems = []
+                for subtask in task:
+                    if isinstance(subtask, dict):
+                        internal_args = list(args)
+                        internal_args.extend(subtask.get(u'args'))
+                        subitem = subtask.get(u'task').signature(internal_args, immutable=True,
+                                                                 queue=task_manager.conf.TASK_DEFAULT_QUEUE)
+                    else:
+                        subitem = subtask.get(u'task').signature(args, immutable=True,
+                                                                 queue=task_manager.conf.TASK_DEFAULT_QUEUE)
+                    subitems.append(subitem)
+                item = chord(subitems, last_task)
             last_task = item
+            logger.warn(item)
         process.link(last_task)
         return process
 
@@ -298,7 +317,8 @@ class Job(AbstractJob):
         """Run job
 
         :param inst: celery task instance
-        :param tasks: list of celery task to run
+        :param tasks: list of celery task to run. Task can be a celery task or a dict like
+            {u'task':<celery task>, u'args':..}
         :param params: list of celery task params
         :return: True
         """
@@ -413,7 +433,7 @@ class JobTask(AbstractJob):
             self.release_session()
             self.get_session()
             resource = self.get_resource(link)
-            resource.add_link(u'%s-link' % res[u'uuid'], u'relation', res[u'uuid'], attributes={}, authorize=False)
+            resource.add_link(u'%s-link' % res[u'uuid'], u'relation', res[u'uuid'], attributes={})
             # self.release_session()
             self.update(u'PROGRESS', msg=u'Setup link between resource %s and resource %s' %
                                          (res[u'uuid'], resource.oid))
@@ -645,6 +665,7 @@ def job(entity_class=None, name=None, module=None, delta=2):
             operation.user = (user, server, identity)
             operation.session = None
             operation.transaction = None
+            operation.authorize = False
             operation.encryption_key = task.app.api_manager.app_fernet_key
             
             if entity_class.module is not None:
@@ -706,14 +727,13 @@ def job_task(module=u'', synchronous=True):
             task_local.objid = params[1]
             task_local.op = params[2]
             task_local.opid = params[3]
-            #task_local.start = params[4]
             task_local.delta = params[5]
-            #task_local.inner_type = 'JOBTASK'
 
             operation.perms = []
             operation.user = params[6]
             operation.session = None
             operation.transaction = None
+            operation.authorize = False
             operation.encryption_key= task.app.api_manager.app_fernet_key
 
             res = None
