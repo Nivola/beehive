@@ -321,7 +321,7 @@ class GetUserSecret(SwaggerApiView):
     responses = SwaggerApiView.setResponses({
         200: {
             u'description': u'success',
-            u'schema': GetUserResponseSchema
+            u'schema': UserSecretResponseSchema
         }
     })
 
@@ -335,7 +335,7 @@ class GetUserSecret(SwaggerApiView):
         return resp
 
 
-class UserSecretParamsRequestSchema ():
+class UserSecretParamsRequestSchema (Schema):
     old_secret = fields.String(required=False, example=u'test', description=u'user secret key to reset to', context=u'query')
 
 class UserSecretRequestSchema (Schema):
@@ -355,7 +355,7 @@ class ResetUserSecret (SwaggerApiView):
     responses = SwaggerApiView.setResponses({
         200: {
             u'description': u'success',
-            u'schema': GetUserResponseSchema
+            u'schema': UserSecretResponseSchema
         }
     })    
     
