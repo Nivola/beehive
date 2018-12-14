@@ -308,7 +308,6 @@ class Job(AbstractJob):
                     subitems.append(subitem)
                 item = chord(subitems, last_task)
             last_task = item
-            logger.warn(item)
         process.link(last_task)
         return process
 
