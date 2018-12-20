@@ -380,7 +380,7 @@ class PaginatedQueryGenerator(object):
 
             # set group by and limit
         if count is False:
-            if not hasattr(self.entity, u'__view__'):
+            if not hasattr(self.entity, u'__view__') and self.with_perm_tag is True:
                 sql.extend([
                     u'GROUP BY {field}',
                     u'ORDER BY {field} {order}'
