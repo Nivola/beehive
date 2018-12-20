@@ -78,13 +78,15 @@ def decrypt_data(data):
 
 
 def get_operation_params():
-    "return a dictionary that contains the greenlet/thread parameter"
+    """return a dictionary that contains the greenlet/thread parameter"""
+
     return {
         "user": operation.user,
         "perms": operation.perms,
         "opid": operation.id,
         "transaction": operation.transaction,
         "encryption_key": operation.encryption_key,
+        u'authorize': operation.authorize
     }
 
 
@@ -111,6 +113,9 @@ def set_operation_params(param):
     if val != "--":
         operation.encryption_key = val
 
+    val = param.get("authorize", "--")
+    if val != "--":
+        operation.authorize = val
 
 #
 # decorators
@@ -468,10 +473,11 @@ def trace(entity=None, op=u'view', noargs=False):
             
                 # calculate elasped time
                 elapsed = round(time() - start, 4)
+                method = u'%s.%s.%s' % (inst.__module__, fn.__name__, op)
                 if noargs is True:
-                    get_entity(entity).send_event(op, args=[], params={}, elapsed=elapsed)
+                    get_entity(entity).send_event(method, args=[], params={}, elapsed=elapsed)
                 else:
-                    get_entity(entity).send_event(op, args=args, params=kwargs, elapsed=elapsed)
+                    get_entity(entity).send_event(method, args=args, params=kwargs, elapsed=elapsed)
             except Exception as ex:
                 logger.error(ex)
                 # calculate elasped time

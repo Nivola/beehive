@@ -2090,7 +2090,8 @@ class ApiObject(object):
         
         data = {
             u'opid': opid,
-            u'op': u'%s.%s' % (self.objdef, op),
+            # u'op': u'%s.%s' % (self.objdef, op),
+            u'op': op,
             u'args': nargs,
             u'params': params,
             u'elapsed': elapsed,
@@ -3280,7 +3281,7 @@ class ApiClient(BeehiveApiClient):
         try:
             res = self.send_request(subsystem, path, method, data, self.uid, self.seckey, other_headers, silent=silent)
         except BeehiveApiClientError as ex:
-            self.logger.error('Send admin request to %s using uid %s: %s' % (path, self.uid, ex.value))
+            self.logger.error('Send admin request to %s using uid %s: %s' % (path, self.uid, ex.value), exc_info=1)
             raise ApiManagerError(ex.value, code=ex.code)
 
         return res
@@ -3297,7 +3298,7 @@ class ApiClient(BeehiveApiClient):
             res = self.send_request(module, path, method, data, uid, seckey, other_headers, silent=silent,
                                     api_authtype=operation.token_type)
         except BeehiveApiClientError as ex:
-            self.logger.error('Send user request to %s using uid %s: %s' % (path, self.uid, ex.value))
+            self.logger.error('Send user request to %s using uid %s: %s' % (path, self.uid, ex.value), exc_info=1)
             raise
 
         return res

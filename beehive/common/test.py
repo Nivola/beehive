@@ -14,7 +14,7 @@ from beehive.common.log import ColorFormatter
 # os.environ['GEVENT_RESOLVER'] = 'ares'
 # os.environ['GEVENTARES_SERVERS'] = 'ares'
 # import beecell.server.gevent_ssl
-from beecell.simple import truncate, str2bool
+from beecell.simple import truncate, str2bool, dict_get
 
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -168,6 +168,9 @@ class BeehiveTestCase(unittest.TestCase):
 
         self.load_result()
 
+        self.custom_headers = {}
+        self.endpoit_service = u'auth'
+
     @classmethod
     def tearDownClass(cls):
         cls.store_result()
@@ -213,6 +216,21 @@ class BeehiveTestCase(unittest.TestCase):
         except:
             result = {}
 
+    def conf(self, key, separator=u'.'):
+        res = dict_get(self.test_config, key, separator)
+        if isinstance(res, dict):
+            for k, v in res.items():
+                if isinstance(v, list):
+                    iss = []
+                    for i in v:
+                        if i.find(u'$REF$') == 0:
+                            iss.append(dict_get(self.test_config, i.lstrip(u'$REF$'), separator))
+                    res[k] = iss
+                elif isinstance(v, str) or isinstance(v, unicode):
+                    if v.find(u'$REF$') == 0:
+                        res[k] = dict_get(self.test_config, v.lstrip(u'$REF$'), separator)
+        return res
+
     def set_result(self, key, value):
         global result
         result[key] = value
@@ -243,11 +261,13 @@ class BeehiveTestCase(unittest.TestCase):
         headers = {u'Content-Type': u'application/json'}
         endpoint = self.endpoints[u'auth']
         uri = u'/v1.0/nas/keyauth/token'
+        self.logger.debug(u'Request token to: %s' % endpoint + uri)
         response = requests.request(u'post', endpoint + uri, data=json.dumps(data), headers=headers, timeout=5,
                                     verify=False)
         res = response.json()
         token = res[u'access_token']
         seckey = res[u'seckey']
+        self.logger.debug(u'Get access token to: %s' % token)
 
     def validate_swagger_schema(self, endpoint):
         start = time.time()
@@ -439,6 +459,34 @@ class BeehiveTestCase(unittest.TestCase):
         
         logger.debug(u'call elapsed: %s' % (time.time()-start))
         self.assertEqual(validate, True)
+        return res
+
+    def get(self, uri, query=None, timeout=600, user=None):
+        if user is None:
+            user = self.users[u'admin']
+        res = self.call(self.endpoint_service, uri, u'get', data=u'', query=query, timeout=timeout,
+                        headers=self.custom_headers, **user)
+        return res
+
+    def post(self, uri, data=None, query=None, timeout=600, user=None):
+        if user is None:
+            user = self.users[u'admin']
+        res = self.call(self.endpoint_service, uri, u'post', data=data, query=query, timeout=timeout,
+                        headers=self.custom_headers, **user)
+        return res
+
+    def put(self, uri, data=None, query=None, timeout=600, user=None):
+        if user is None:
+            user = self.users[u'admin']
+        res = self.call(self.endpoint_service, uri, u'put', data=data, query=query, timeout=timeout,
+                        headers=self.custom_headers, **user)
+        return res
+
+    def delete(self, uri, data=None, query=None, timeout=600, user=None):
+        if user is None:
+            user = self.users[u'admin']
+        res = self.call(self.endpoint_service, uri, u'delete', data=data, query=query, timeout=timeout,
+                        headers=self.custom_headers, **user)
         return res
 
     def get_job_state(self, jobid):

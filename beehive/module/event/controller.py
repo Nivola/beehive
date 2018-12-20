@@ -4,6 +4,7 @@ Created on Dec 31, 2014
 @author: darkbk
 """
 import logging
+from datetime import datetime, timedelta
 
 from beecell.perf import watch
 from beecell.simple import str2uni, id_gen, truncate, format_date
@@ -58,8 +59,8 @@ class EventController(ApiController):
         :param data: event data [optional]
         :param source: event source [optional]
         :param dest: event destinatiaion [optional]
-        :param datefrom: event data from. Ex. '2015-3-9-15-23-56' [optional]
-        :param dateto: event data to. Ex. '2015-3-9-15-23-56' [optional]
+        :param datefrom: event data from. Ex. '1985-04-12T23:20:50.52Z' [optional]
+        :param dateto: event data to. Ex. '1985-04-12T23:20:50.52Z' [optional]
         :param page: objects list page to show [default=0]
         :param size: number of objects to show in list per page [default=0]
         :param order: sort order [default=DESC]
@@ -78,6 +79,15 @@ class EventController(ApiController):
         objtype = kvargs.get(u'objtype', None)
         definition = kvargs.get(u'objdef', None)
         objs = self.can(u'use', objtype=objtype, definition=definition)
+
+        # set max time window to 7 days
+        if kvargs.get(u'datefrom', None) is None:
+            kvargs[u'datefrom'] = datetime.today() - timedelta(days=1)
+        elif kvargs.get(u'datefrom', None) is not None:
+            if kvargs.get(u'dateto', None) is None or \
+               kvargs[u'dateto'] <= kvargs.get(u'datefrom') or \
+               kvargs[u'dateto'] > kvargs.get(u'datefrom') + timedelta(days=1):
+                kvargs[u'dateto'] = kvargs.get(u'datefrom') + timedelta(days=1)
 
         # create permission tags
         tags = []

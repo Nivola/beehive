@@ -218,7 +218,7 @@ class EventProducerRedis(EventProducer):
                                  routing_key=self.routing_key,
                                  expiration=60,
                                  delivery_mode=1)
-                self.logger.debug(u'Send event : %s' % msg[u'id'])
+                # self.logger.debug(u'Send event : %s' % msg[u'id'])
         except exceptions.ConnectionLimitExceeded as ex:
             self.logger.error(u'Event can not be send: %s' % ex, exc_info=1)
         except Exception as ex:

@@ -286,6 +286,8 @@ class BeehiveApiClient(object):
                 res = {u'code': 501, u'message': u'Not Implemented', u'description': u'Not Implemented'}
             elif response.status in [503]:
                 res = {u'code': 503,  u'message': u'Service Unavailable', u'description': u'Service Unavailable'}
+            else:
+                res = {u'code': response.status, u'message': res, u'description': res}
             conn.close()
         except Exception as ex:
             elapsed = time() - start
@@ -320,7 +322,7 @@ class BeehiveApiClient(object):
                 err = res[u'message']
             if u'code' in res:
                 code = res[u'code']
-            self.logger.error(err)
+            self.logger.error(err, exc_info=1)
             raise BeehiveApiClientError(err, code=int(code))
 
         return res

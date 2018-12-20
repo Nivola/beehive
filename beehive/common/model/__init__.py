@@ -345,7 +345,7 @@ class PaginatedQueryGenerator(object):
         :param kvargs: args to parse that contains field
         """
         if field_name in kvargs and kvargs.get(field_name) is not None:
-            self.other_filters.append(sqlfilter)        
+            self.other_filters.append(sqlfilter)
 
     def base_stmp(self, count=False):
         """
@@ -353,32 +353,32 @@ class PaginatedQueryGenerator(object):
         fields = u', '.join(self.select_fields)
         if count is True:
             fields = u'count(distinct t3.id) as count'
-        
+
         sql = [u'SELECT {fields}', u'FROM {table} t3']
         if self.with_perm_tag is True:
             sql.extend([
                 u', perm_tag t1, perm_tag_entity t2 '
             ])
-        
+
         # append other tables
         for table in self.other_tables:
             sql.append(u', %s %s' % (table[0], table[1]))
-        
+
         sql.extend([
-                u'WHERE 1=1'
-            ])
+            u'WHERE 1=1'
+        ])
         # set base where
         if self.with_perm_tag is True:
             sql.extend([
                 u'AND t3.id=t2.entity AND t2.tag=t1.id',
                 u'AND t1.value IN :tags '
             ])
-        
+
         # add filters
         for sqlfilter in self.other_filters:
-            sql.append(sqlfilter)            
-        
-        # set group by and limit
+            sql.append(sqlfilter)
+
+            # set group by and limit
         if count is False:
             if not hasattr(self.entity, u'__view__'):
                 sql.extend([
@@ -408,7 +408,7 @@ class PaginatedQueryGenerator(object):
                            size=self.size)
         self.logger.debug(u'query: %s' % stmp)
         return stmp
-    
+
     def run(self, tags, *args, **kvargs):
         """Make query
         
@@ -437,7 +437,8 @@ class PaginatedQueryGenerator(object):
         query = self.session.query(*entities).from_statement(stmp).params(tags=tags, **kvargs)
         self.logger.debug2(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
         self.logger.debug2(u'kvargs: %s' % truncate(kvargs))
-        self.logger.debug2(u'tags: %s' % truncate(tags))
+        # self.logger.debug2(u'tags: %s' % truncate(tags))
+        self.logger.debug2(u'tags: %s' % (tags))
         res = query.all()
         
         if self.size == 0 or self.size == -1:
@@ -568,19 +569,19 @@ class AbstractDbManager(object):
         session = self.get_session()
 
         if oid is None:
-            raise ModelError(u'%s not found' % entityclass)
+            raise ModelError(u'%s %s not found' % (oid, entityclass))
 
         # get obj by uuid
         if match(u'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', str(oid)):
-            self.logger.debug(u'Query entity %s by uuid: %s' % (entityclass.__name__, oid))
+            search_field = u'uuid'
             entity = self.query_entities(entityclass, session, uuid=oid, *args, **kvargs)
         # get obj by id
         elif match(u'^\d+$', str(oid)):
-            self.logger.debug(u'Query entity %s by id: %s' % (entityclass.__name__, oid))
+            search_field = u'id'
             entity = self.query_entities(entityclass, session, oid=oid, *args, **kvargs)
         # get obj by name
         elif match(u'[\-\w\d]+', oid):
-            self.logger.debug(u'Query entity %s by name: %s' % (entityclass.__name__, oid))
+            search_field = u'name'
             entity = self.query_entities(entityclass, session, name=oid, **kvargs)
 
         res = None
@@ -589,7 +590,7 @@ class AbstractDbManager(object):
         else:
             res = entity.first()
 
-        self.logger.debug(u'Found entity %s: %s' % (entityclass.__name__, res))
+        self.logger.debug(u'Query entity %s by %s: %s' % (entityclass.__name__, search_field, res))
         return res
     
     @query
