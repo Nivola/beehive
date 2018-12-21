@@ -76,7 +76,7 @@ class Scheduler(ApiObject):
         except:
             self.logger.warn(u'', exc_info=1)
 
-    @trace(op=u'schedule.insert')
+    @trace(op=u'insert')
     def create_update_entry(self, name, task, schedule, args=None, kwargs=None, options={}, relative=None):
         """Create scheduler entry.
 
@@ -109,7 +109,7 @@ class Scheduler(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
 
-    @trace(op=u'schedule.insert')
+    @trace(op=u'insert')
     def create_update_entry2(self, name, task, schedule, args=None, kwargs=None, options=None, relative=None):
         """Create scheduler entry.
         
@@ -192,7 +192,7 @@ class Scheduler(ApiObject):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
         
-    @trace(op=u'schedules.view')
+    @trace(op=u'view')
     def get_entries(self, name=None):
         """Get scheduler entries.
         
@@ -211,7 +211,7 @@ class Scheduler(ApiObject):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=404)
 
-    @trace(op=u'schedules.view')
+    @trace(op=u'view')
     def get_entries2(self, name=None):
         """Get scheduler entries.
 
@@ -234,7 +234,7 @@ class Scheduler(ApiObject):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=404)
 
-    @trace(op=u'schedule.delete')
+    @trace(op=u'delete')
     def remove_entry(self, name):
         """Remove scheduler entry.
 
@@ -253,7 +253,7 @@ class Scheduler(ApiObject):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
 
-    @trace(op=u'schedule.delete')
+    @trace(op=u'delete')
     def remove_entry2(self, name):
         """Remove scheduler entry.
         
@@ -274,7 +274,7 @@ class Scheduler(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
         
-    @trace(op=u'schedules.delete')
+    @trace(op=u'delete')
     def clear_all_entries(self):
         """Clear all scheduler entries.
         
@@ -399,7 +399,7 @@ class TaskManager(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
 
-    @trace(op=u'definitions.view')
+    @trace(op=u'view')
     def get_registered_tasks(self):
         """Get task definitions
         
@@ -418,7 +418,7 @@ class TaskManager(ApiObject):
             self.logger.error(u'No registered tasks found')
             return []
 
-    @trace(op=u'tasks.view')
+    @trace(op=u'view')
     def get_all_tasks(self, details=False):
         """Get all task of type TASK and JOB. Inner job task are not returned.
         
@@ -433,7 +433,7 @@ class TaskManager(ApiObject):
             manager = self.controller.redis_taskmanager
             keys = manager.inspect(pattern=self.prefix+u'*', debug=False)
             self.logger.debug(u'Get %s keys form redis' % len(keys))
-            self.logger.debug(u'Get %s keys form redis' % keys)
+            self.logger.debug(u'Get %s keys form redis' % truncate(keys))
             if details is False:
                 for key in keys:
                     key = key[0].lstrip(self.prefix+u'-')
@@ -484,7 +484,7 @@ class TaskManager(ApiObject):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=404)
 
-    @trace(op=u'tasks-count.view')
+    @trace(op=u'view')
     def count_all_tasks(self):
         """
         
@@ -536,7 +536,15 @@ class TaskManager(ApiObject):
         val[u'elapsed'] = elapsed
         val[u'stop_time'] = stop_time_str
         val[u'start_time'] = self.__convert_timestamp(start_time)
-        
+        # val[u'trace'] = None
+
+        # get child jobs
+        jobs = val.get(u'jobs', [])
+        job_list = []
+        if jobs is not None and len(jobs) > 0:
+            for job in jobs:
+                job_list.append(self.query_task(job))
+        val[u'jobs'] = job_list
         return val
 
     def _get_task_graph(self, task, graph, index=1):
@@ -593,7 +601,7 @@ class TaskManager(ApiObject):
                            len(child[u'children']) == 0:
                             child[u'inner_type'] = u'end'
                         else:
-                            child[u'inner_type']  = u'inner'
+                            child[u'inner_type'] = u'inner'
                             
                         childs_index[child_id] = child
                         
@@ -604,7 +612,7 @@ class TaskManager(ApiObject):
         except Exception as ex:
             raise ApiManagerError(ex, code=400)        
 
-    @trace(op=u'task.view')
+    @trace(op=u'view')
     def query_task(self, task_id):
         """Get task info. If task type JOB return graph composed by all the job 
         childs.
@@ -667,7 +675,7 @@ class TaskManager(ApiObject):
                         # get childs trace
                         trace = []
                         for c in childs:
-                            for t in c[u'trace']:
+                            for t in c.pop(u'trace'):
                                 trace.append((t[0], c[u'name'], c[u'task_id'], t[1]))
                         # sort trace
                         val[u'trace'] = sorted(trace, key=lambda row: row[0])
@@ -685,101 +693,7 @@ class TaskManager(ApiObject):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
     
-    '''
     @trace(op=u'view')
-    def query_task_status(self, task_id):
-        """Get task status. 
-        
-        :return: 
-        :rtype: dict        
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
-        """
-        # verify permissions
-        self.verify_permisssions(u'view')     
-        
-        try:
-            res = []
-            manager = self.controller.redis_taskmanager
-            keys = manager.inspect(pattern=self.prefix+u'-'+task_id, debug=False)
-            data = manager.query(keys, ttl=True)[self.prefix+u'-'+task_id]
-        except Exception as ex:
-            err = u'Task %s not found' % task_id
-            self.logger.error(err)
-            raise ApiManagerError(err, code=404)                    
-        
-        try:
-            # get task status
-            res = json.loads(data[0])
-            
-            self.logger.debug(u'Get task %s status: %s' % (task_id, truncate(res)))
-            return res
-        except Exception as ex:
-            self.logger.error(ex)
-            raise ApiManagerError(ex, code=400)    
-    
-    def query_chain_status(self, task_id):
-        res = AsyncResult(task_id, app=task_manager)
-        state = res.state
-        
-        if res.failed() is True:
-            return task_id, True, state
-        
-        # get children
-        if res.children is not None and len(res.children) > 0:
-            c = res.children[0]
-            stask_id, failed, state = self.query_chain_status(c.task_id)
-            return stask_id, failed, state
-        
-        return task_id, False, state    '''
-    
-    '''
-    def _query_task_graph_item(self, task_id):
-        res = AsyncResult(task_id, app=task_manager)
-        
-        resp = {u'status':res.state,
-                u'result':None, 
-                u'traceback':None,
-                u'children':[], 
-                u'id':task_id,
-                u'start_time':None,
-                u'type':None,
-                u'name':None, 
-                u'args':None}
-        
-        # get children
-        if res.children is not None:
-            for c in res.children:
-                sub = self._query_task_graph_item(c.task_id)
-                resp[u'children'].append(sub)
-        
-        result = res.info
-        try: name = result[0]
-        except: name = None                    
-        try: args = result[1]
-        except: args = None
-        try: start_time = result[2]
-        except: start_time = None
-        try: elapsed = result[3]
-        except: elapsed = None
-        try: tasktype = result[4]
-        except: tasktype = None                    
-        try: result = result[5]
-        except: result = None
-        
-        resp[u'name'] = name
-        resp[u'args'] = args
-        resp[u'start_time'] = start_time
-        resp[u'elapsed'] = elapsed
-        resp[u'type'] = tasktype        
-        
-        if res.state == u'ERROR':
-            resp[u'traceback'] = res.traceback
-        elif res.ready() is True:
-            resp[u'result'] = result
-            
-        return resp    '''
-    
-    @trace(op=u'task-graph.view')
     def get_task_graph(self, task_id):
         """Get job task child graph
         
@@ -831,24 +745,8 @@ class TaskManager(ApiObject):
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=404)
-
-    '''@trace(op=u'tasks.delete')
-    def purge_tasks(self):
-        """Discard all waiting tasks.
-        
-        :return: 
-        :rtype: dict        
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
-        """
-        try:
-            res = task_manager.control.purge()
-            self.logger.debug(u'Purge waiting task: %s' % (res))
-            return res
-        except Exception as ex:
-            self.logger.error(ex)
-            raise ApiManagerError(ex, code=400)'''
     
-    @trace(op=u'tasks.delete')
+    @trace(op=u'delete')
     def delete_task_instances(self):
         """
         
@@ -897,7 +795,7 @@ class TaskManager(ApiObject):
                 self.logger.debug(u'Delete task instance %s: %s' % (child_id, res))
         return True
     
-    @trace(op=u'task.delete')
+    @trace(op=u'delete')
     def delete_task_instance(self, task_id, propagate=True):
         """Delete task instance result from results db.
         
@@ -986,7 +884,7 @@ class TaskManager(ApiObject):
     #
     # test jobs
     #
-    @trace(op=u'task.test.insert')
+    @trace(op=u'insert')
     def run_jobtest(self, params):
         """Run jobtest task
 
