@@ -216,19 +216,28 @@ class BeehiveTestCase(unittest.TestCase):
         except:
             result = {}
 
+    def convert(self, data, separator=u'.'):
+        if isinstance(data, dict):
+            for k, v in data.items():
+                data[k] = self.convert(v, separator)
+
+        elif isinstance(data, list):
+            datal = []
+            for v in data:
+                datal.append(self.convert(v, separator))
+            data = datal
+
+        elif isinstance(data, str) or isinstance(data, unicode):
+            if data.find(u'$REF$') == 0:
+                data = dict_get(self.test_config, data.lstrip(u'$REF$'), separator)
+
+        return data
+
     def conf(self, key, separator=u'.'):
         res = dict_get(self.test_config, key, separator)
         if isinstance(res, dict):
             for k, v in res.items():
-                if isinstance(v, list):
-                    iss = []
-                    for i in v:
-                        if i.find(u'$REF$') == 0:
-                            iss.append(dict_get(self.test_config, i.lstrip(u'$REF$'), separator))
-                    res[k] = iss
-                elif isinstance(v, str) or isinstance(v, unicode):
-                    if v.find(u'$REF$') == 0:
-                        res[k] = dict_get(self.test_config, v.lstrip(u'$REF$'), separator)
+                res[k] = self.convert(v, separator)
         return res
 
     def set_result(self, key, value):
@@ -461,31 +470,31 @@ class BeehiveTestCase(unittest.TestCase):
         self.assertEqual(validate, True)
         return res
 
-    def get(self, uri, query=None, timeout=600, user=None):
+    def get(self, uri, query=None, params=None, timeout=600, user=None):
         if user is None:
             user = self.users[u'admin']
-        res = self.call(self.endpoint_service, uri, u'get', data=u'', query=query, timeout=timeout,
+        res = self.call(self.endpoint_service, uri, u'get', data=u'', query=query, timeout=timeout, params=params,
                         headers=self.custom_headers, **user)
         return res
 
-    def post(self, uri, data=None, query=None, timeout=600, user=None):
+    def post(self, uri, data=None, query=None, params=None, timeout=600, user=None):
         if user is None:
             user = self.users[u'admin']
-        res = self.call(self.endpoint_service, uri, u'post', data=data, query=query, timeout=timeout,
+        res = self.call(self.endpoint_service, uri, u'post', data=data, query=query, params=params, timeout=timeout,
                         headers=self.custom_headers, **user)
         return res
 
-    def put(self, uri, data=None, query=None, timeout=600, user=None):
+    def put(self, uri, data=None, query=None, params=None, timeout=600, user=None):
         if user is None:
             user = self.users[u'admin']
-        res = self.call(self.endpoint_service, uri, u'put', data=data, query=query, timeout=timeout,
+        res = self.call(self.endpoint_service, uri, u'put', data=data, query=query, params=params, timeout=timeout,
                         headers=self.custom_headers, **user)
         return res
 
-    def delete(self, uri, data=None, query=None, timeout=600, user=None):
+    def delete(self, uri, data=None, query=None, params=None, timeout=600, user=None):
         if user is None:
             user = self.users[u'admin']
-        res = self.call(self.endpoint_service, uri, u'delete', data=data, query=query, timeout=timeout,
+        res = self.call(self.endpoint_service, uri, u'delete', data=data, query=query, params=params, timeout=timeout,
                         headers=self.custom_headers, **user)
         return res
 

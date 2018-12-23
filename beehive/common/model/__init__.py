@@ -3,7 +3,7 @@ import logging
 from sqlalchemy import create_engine, exc
 from sqlalchemy.ext.declarative import declarative_base
 from beehive.common.data import operation, query, transaction
-from beecell.simple import truncate, encrypt_data, decrypt_data
+from beecell.simple import truncate, encrypt_data, decrypt_data, id_gen
 from beecell.db import ModelError, QueryError
 from beecell.perf import watch
 from datetime import datetime
@@ -160,18 +160,17 @@ class BaseEntity(AuditData):
         return filters  
 
     def is_active(self):
-        return (self.active or 
-                (self.expiry_date is None 
-                  or self.expiry_date < datetime.today()))
+        return self.active is True and self.expiry_date is None
+        # return self.active is True or (self.expiry_date is None or self.expiry_date < datetime.today())
     
     def disable(self):
         self.expiry_date = datetime.today()
+        self.name += u'%s-DELETED' % id_gen()
         self.active = False
         
     def __repr__(self):
         return u'<%s id=%s, uuid=%s, obid=%s, name=%s, active=%s>' % (
-                    self.__class__.__name__, self.id, self.uuid, self.objid, 
-                    self.name, self.active)  
+            self.__class__.__name__, self.id, self.uuid, self.objid, self.name, self.active)
      
 
 class PermTag(Base):
@@ -705,7 +704,7 @@ class AbstractDbManager(object):
         # get entity
         oid = kvargs.pop(u'oid', None)
         query = self.query_entities(entityclass, session, oid=oid)
-        
+
         for k, v in kvargs.items():
             if v is None:
                 kvargs.pop(k)
@@ -879,7 +878,7 @@ class AbstractDbManager(object):
     @transaction
     def update(self, entity):
         if entity is None:
-            raise QueryError("Error: can't not add None entity")
+            raise QueryError("Error: can't not update None entity")
         
         self.logger.info(u'Update %s entity %s' % (entity.__class__.__name__, entity))
         if isinstance(entity, AuditData):
@@ -906,36 +905,34 @@ class AbstractDbManager(object):
         session.flush()
         self.logger.info(u'Bulk updated')
         return entities   
-    
-    
+
     @transaction
     def delete(self, entity):
-        """
-            Software delete
+        """Delete entity
+
+        :param entity: entity
         """
         if entity is None:
-            raise QueryError("Error: can't not add None entity")
+            raise QueryError("Error: can't not delete None entity")
         
-        self.logger.debug(u'Delete %s entity ...' % (entity.__class__.__name__))
+        self.logger.debug(u'Delete %s entity %s' % (entity.__class__.__name__, entity))
         if isinstance(entity, BaseEntity):
             if entity.is_active():
                 entity.disable()
                 res = self.update(entity)
             else:
-                logger.info("Nothing to do on %s !" %entity)
+                logger.info("Nothing to do on %s !" % entity)
         else:
             res = self.purge(entity)
-        logger.debug(u'Deleted')
         return entity
         
     @transaction
     def purge(self, entity):
+        """Hard Delete entity
+
+        :param entity: entity
+        :return Boolean:
         """
-            Hard Delete entity
-            :param entity
-            :return Boolean: 
-        """
-        
         if entity is None:
             logger.warn("Warning: can't not purge None entity")
             return entity
