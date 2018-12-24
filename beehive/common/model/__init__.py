@@ -113,7 +113,24 @@ class BaseEntity(AuditData):
         
     @staticmethod   
     def get_base_entity_sqlfilters(*args, **kvargs):
-         
+        """Get base sql filters
+
+        :param id: filter by id
+        :param uuid: filter by uuid
+        :param objid: filter by objid
+        :param name: filter by name
+        :param desc: filter by desc
+        :param active: filter by active
+        :param filter_expired: if True read item with expiry_date <= filter_expiry_date
+        :param filter_expiry_date: expire date
+        :param filter_creation_date_start: creation date start
+        :param filter_creation_date_stop: creation date stop
+        :param filter_modification_date_start: modification date start
+        :param filter_modification_date_stop: modification date stop
+        :param filter_expiry_date_start: expiry date start
+        :param filter_expiry_date_stop: expiry date stop
+        :return: base filters
+        """
         filters=[]
         # id is unique
         filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field(u'id', kvargs))
@@ -123,14 +140,14 @@ class BaseEntity(AuditData):
         filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field(u'desc', kvargs))
         filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field(u'active', kvargs))
 
-        #expired
+        # expired
         if u'filter_expired' in kvargs and kvargs.get(u'filter_expired') is not None: 
             if kvargs.get(u'filter_expired') is True:
                 filters.append(u' AND t3.expiry_date<=:filter_expiry_date')
             else:
                 filters.append(u' AND (t3.expiry_date>:filter_expiry_date OR t3.expiry_date is null)')
         
-        #creation_date
+        # creation_date
         currField = u'filter_creation_date_start'
         if currField in kvargs and kvargs.get(currField) is not None: 
             filters.append(u' AND t3.creation_date>=:{field}'.format(field=currField))
