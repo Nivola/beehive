@@ -1491,18 +1491,20 @@ class ApiController(object):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         res = []
-        objs =  []
-        
+        objs = []
+        tags = None
+
         if operation.authorize is True:
             # verify permissions
             objs = self.can(u'view', entity_class.objtype, definition=entity_class.objdef)
             objs = objs.get(entity_class.objdef.lower())
         
-        # create permission tags
-        tags = []
-        for p in objs:
-            tags.append(self.manager.hash_from_permission(entity_class.objdef, p))
-        self.logger.debug(u'Permission tags to apply: %s' % tags)
+            # create permission tags
+            # todo check me:  creo tags solo se operation.authorize altrimenti query fallisce senza tags
+            tags = []
+            for p in objs:
+                tags.append(self.manager.hash_from_permission(entity_class.objdef, p))
+            self.logger.debug(u'Permission tags to apply: %s' % tags)
                 
         try:
             entities = get_entities(tags=tags, *args, **kvargs)
