@@ -1377,23 +1377,17 @@ class ApiController(object):
     #
     # helper model get method
     #
-    def get_entity(self, entity_class, model_class, oid, for_update=False, *args, **kvargs):
+    def get_entity(self, entity_class, model_class, oid, for_update=False, details=True, *args, **kvargs):
         """Get single entity by oid (id, uuid, name) if exists
-        
-        **Parameters:**
-        
-            * **entity_class** (): Controller ApiObject Extension class
-            * **model_class** (:py:class:`ApiObject`): Model ApiObject 
-                Extension class
-            * **oid** (:py:class:`str`): entity model id or name or uuid
-            * **customize** (function): function used to customize entities. 
-                Signature def customize(entity, resource)            
-            
-        **Returns:**
-        
-            entity instance
-            
-        **Raise:** :class:`ApiManagerError`     
+
+        :param entity_class: Controller ApiObject Extension class. Specify when you want to verif match between
+            objdef of the required resource and find resource
+        :param model_class: Model ApiObject Extension class
+        :param oid: entity model id or name or uuid
+        :param for_update: [default=False]
+        :param details: if True call custom method post_get()
+        :return: entity instance
+        :raise ApiManagerError`:
         """
         try:
             entity = self.manager.get_entity(model_class, oid, for_update)
@@ -1415,7 +1409,8 @@ class ApiController(object):
                            desc=entity.desc, model=entity)
         
         # execute custom post_get
-        res.post_get()
+        if details is True:
+            res.post_get()
         
         self.logger.debug(u'Get %s : %s' % (entity_class.__name__, res))
         return res

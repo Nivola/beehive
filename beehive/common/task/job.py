@@ -283,7 +283,6 @@ class Job(AbstractJob):
         process = tasks.pop().signature(args, immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE)
         last_task = None
         for task in tasks:
-            logger.warn(task)
             if not isinstance(task, list):
                 if isinstance(task, dict):
                     internal_args = list(args)
