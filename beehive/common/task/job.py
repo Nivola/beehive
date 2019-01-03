@@ -483,6 +483,9 @@ class JobTask(AbstractJob):
             task results
         """
         try:
+            # append job to task jobs list
+            self.update(u'PROGRESS', job=task_id)
+
             # get celery task
             inner_task = TaskResult.get(task_id)
             start = time()
@@ -525,7 +528,7 @@ class JobTask(AbstractJob):
     #
     # task status management
     #    
-    def update(self, status, ex=None, traceback=None, result=None, msg=None, start_time=None):
+    def update(self, status, ex=None, traceback=None, result=None, msg=None, start_time=None, job=None):
         """Update job and jobtask status
         
         :param status: jobtask status
@@ -534,6 +537,7 @@ class JobTask(AbstractJob):
         :param result: task result. None otherwise task status is SUCCESS [optional]
         :param msg: update message [optional]
         :param start_time: job task start time [optional]
+        :param job: job id to add to tasks jobs list [optional]
         """
         # get variables from shared area
         params = self.get_shared_data()
@@ -553,8 +557,11 @@ class JobTask(AbstractJob):
         
         # update jobtask result
         task_id = self.request.id
+        jobs = None
+        if job is not None:
+            jobs = [job]
         TaskResult.store(task_id, status=status, traceback=traceback, retval=result, msg=msg, stop_time=current_time,
-                         start_time=start_time, inner_type=u'JOBTASK')
+                         start_time=start_time, inner_type=u'JOBTASK', jobs=jobs)
 
         # get job start time
         job_start_time = params.get(u'start-time', 0)        
