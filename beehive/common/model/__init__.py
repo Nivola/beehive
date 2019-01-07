@@ -720,16 +720,16 @@ class AbstractDbManager(object):
         
         # get entity
         oid = kvargs.pop(u'oid', None)
-        query = self.query_entities(entityclass, session, oid=oid)
+        entity = self.query_entities(entityclass, session, oid=oid)
 
         for k, v in kvargs.items():
             if v is None:
                 kvargs.pop(k)
-        
+
         # create data dict with update
-        entity = query
         kvargs[u'modification_date'] = datetime.today()
-        res = entity.update(kvargs)
+
+        entity.update(kvargs)
         session.flush()
             
         self.logger.debug(u'Update %s %s with data: %s' % (entityclass.__name__, oid, kvargs))
@@ -936,11 +936,13 @@ class AbstractDbManager(object):
         if isinstance(entity, BaseEntity):
             if entity.is_active():
                 entity.disable()
-                res = self.update(entity)
+                self.update(entity)
+                logger.info(u'Disable entity %s' % entity.id)
             else:
-                logger.info("Nothing to do on %s !" % entity)
+                logger.info(u'Nothing to do on %s !' % entity)
         else:
-            res = self.purge(entity)
+            self.purge(entity)
+            logger.info(u'Purge entity %s' % entity.id)
         return entity
         
     @transaction

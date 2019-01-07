@@ -195,7 +195,7 @@ def core_transaction(fn, rollback_throwable, *args, **kwargs):
         elapsed = round(time() - start, 4)
         logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
                      fn.__name__,  params, elapsed))
-        #logger.error(ex.message, exc_info=1)
+        # logger.error(ex.message, exc_info=1)
         #logger.error(ex.message)
               
         if rollback_throwable:
