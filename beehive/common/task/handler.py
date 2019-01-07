@@ -94,11 +94,11 @@ class TaskResult(object):
                     result.update({u'stop_time': stop_time})
 
                 # check job already present in task jobs list
-                val_jobs = val.get(u'jobs')
+                val_jobs = result.get(u'jobs')
                 if jobs is not None:
                     for job in jobs:
                         if job not in val_jobs:
-                            val[u'jobs'].append(job)
+                            result[u'jobs'].append(job)
 
             else:
                 result = {
