@@ -1,14 +1,12 @@
-import inspect
 import logging
+from time import time
+
 from sqlalchemy import create_engine, exc
 from sqlalchemy.ext.declarative import declarative_base
 from beehive.common.data import operation, query, transaction
 from beecell.simple import truncate, encrypt_data, decrypt_data, id_gen
 from beecell.db import ModelError, QueryError
-from beecell.perf import watch
 from datetime import datetime
-from sqlalchemy import Column, Integer, Float, String, Boolean, Index, DateTime
-from sqlalchemy.sql import text, table
 import hashlib
 from uuid import uuid4
 from re import match
@@ -29,15 +27,18 @@ class CreateView(DDLElement):
         self.name = name
         self.selectable = selectable
 
+
 class DropView(DDLElement):
     def __init__(self, name):
         self.name = name
+
 
 @compiler.compiles(CreateView)
 def compile_create_view(element, compiler, **kw):
     return "CREATE OR REPLACE VIEW %s AS %s" % (
         element.name, 
         compiler.sql_compiler.process(element.selectable))
+
 
 @compiler.compiles(DropView)
 def compile_drop_view(element, compiler, **kw):
@@ -61,14 +62,10 @@ def view(name, metadata, selectable=None, sql=None):
     for c in selectable.c:
         c._make_proxy(t)
 
-#     if sql is not None:
-#         CreateSQLView(name, sql).execute_at('after-create', metadata)
-#     else:
     CreateView(name, selectable).execute_at('after-create', metadata)
     
     DropView(name).execute_at('before-drop', metadata)
     return t
-
 
 
 class AuditData(object):
@@ -177,7 +174,8 @@ class BaseEntity(AuditData):
         return filters  
 
     def is_active(self):
-        return self.active is True and self.expiry_date is None
+        res = (self.active is True or self.active == 1) and self.expiry_date is None
+        return res
         # return self.active is True or (self.expiry_date is None or self.expiry_date < datetime.today())
     
     def disable(self):
@@ -430,6 +428,8 @@ class PaginatedQueryGenerator(object):
         
         :param list tags: list of permission tags
         """
+        start = time()
+
         if self.with_perm_tag is True:
             self.logger.debug2(u'Authorization with permission tags ENABLED')
         else:
@@ -459,8 +459,9 @@ class PaginatedQueryGenerator(object):
         
         if self.size == 0 or self.size == -1:
             total = len(res)
-        
-        self.logger.debug(u'Get %ss (total:%s): %s' % (self.entity.__tablename__, total, truncate(res)))
+
+        elapsed = round(time() - start, 3)
+        self.logger.debug(u'Get %ss (total:%s): %s [%s]' % (self.entity.__tablename__, total, truncate(res), elapsed))
         return res, total
 
 

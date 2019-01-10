@@ -258,7 +258,7 @@ class AuthController(BaseAuthController):
         user_name = operation.user[0]
         
         users, total = self.get_users(name=user_name, role=role)      
-        if total > 0 :
+        if total > 0:
             return True
 
         return False
@@ -279,8 +279,7 @@ class AuthController(BaseAuthController):
         secret = user.model.secret
         self.logger.debug(u'Get user %s secret' % user.uuid)
         return secret
-            
-    
+
     @trace(entity=u'User', op=u'update')
     def reset_user_secret(self, oid, match_old_secret=False, old_secret=None):
         """reset user secret.
@@ -312,7 +311,6 @@ class AuthController(BaseAuthController):
         except (Exception) as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
-    
 
     @trace(entity=u'User', op=u'view')
     def get_users(self, *args, **kvargs):

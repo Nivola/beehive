@@ -55,7 +55,7 @@ task_scheduler = Celery('scheduler')
 # setup logging
 @celery.signals.setup_logging.connect
 def on_celery_setup_logging(**args):
-    print args
+    pass
 
 
 def configure_task_manager(broker_url, result_backend, tasks=[], expire=60*60*24, task_queue=u'celery',

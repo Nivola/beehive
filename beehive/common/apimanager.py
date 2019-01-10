@@ -2003,6 +2003,17 @@ class ApiObject(object):
         """        
         return kvargs
 
+    def post_update(self, *args, **kvargs):
+        """Post update function. This function is used in update method. Extend this function to manipulate and
+        validate update input params.
+
+        :param list args: custom params
+        :param dict kvargs: custom params
+        :return: True
+        :raise ApiManagerError:
+        """
+        return True
+
     def pre_patch(self, *args, **kvargs):
         """Pre patch function. This function is used in update method. Extend this function to manipulate and
         validate patch input params.
@@ -2341,12 +2352,12 @@ class ApiInternalObject(ApiObject):
             # remove object and permissions
             obj_type = self.auth_db_manager.get_object_type(
                 objtype=self.objtype, objdef=self.objdef)[0][0]
-            #objid = self._get_value(self.objdef, objids)
+            # objid = self._get_value(self.objdef, objids)
             objid = u'//'.join(objids)
             self.auth_db_manager.remove_object(objid=objid, objtype=obj_type)
             
             # deregister event related to ApiObject
-            #self.event_class(self.controller).deregister_object(objids)
+            # self.event_class(self.controller).deregister_object(objids)
             
             self.logger.debug(u'Deregister api object %s:%s %s - STOP' % 
                               (self.objtype, self.objdef, objids))                
@@ -2462,7 +2473,7 @@ class ApiViewResponse(ApiObject):
             self.auth_db_manager.add_object(objs, actions)
             
             # register event related to ApiObject
-            #self.event_class(self.controller).init_object()
+            # self.event_class(self.controller).init_object()
             
             self.logger.debug(u'Register api object: %s' % objs)
         except (QueryError, TransactionError) as ex:
@@ -2514,7 +2525,7 @@ class ApiViewResponse(ApiObject):
             action = u'patch'
         elif method in [u'DELETE']:
             action = u'delete'
-        #else:
+        # else:
         #    action = u'use'
         elapsed = api.pop(u'elapsed')
 
@@ -3056,7 +3067,7 @@ class ApiView(FlaskView):
                       [('/jobs', 'GET', ListJobs.as_view('jobs')), {'secure':False}]
         """
         logger = logging.getLogger(__name__)
-        #logger = logging.getLogger('gibbon.cloudapi.view')
+        # logger = logging.getLogger('gibbon.cloudapi.view')
         
         # get version
         if version is None:
@@ -3066,7 +3077,7 @@ class ApiView(FlaskView):
         app = module.api_manager.app
         
         # get swagger
-        #swagger = module.api_manager.swagger
+        # swagger = module.api_manager.swagger
         
         # regiter routes
         view_num = 0
@@ -3255,7 +3266,7 @@ class ApiClient(BeehiveApiClient):
     def __init__(self, auth_endpoints, user, pwd, secret, catalog_id=None, authtype=u'keyauth'):
         BeehiveApiClient.__init__(self, auth_endpoints, authtype, user, pwd, secret, catalog_id)
     
-    def admin_request(self, subsystem, path, method, data=u'', other_headers=None, silent=False):
+    def admin_request(self, subsystem, path, method, data=u'', other_headers={}, silent=False):
         """Make api request using module internal admin user credentials.
 
         :param subsystem:
@@ -3267,6 +3278,9 @@ class ApiClient(BeehiveApiClient):
         :return:
         :raise: :class:`ApiManagerError`
         """
+        # propagate opernation.id to internal api call
+        other_headers[u'request-id'] = operation.id
+
         try:
             if self.exist(self.uid) is False:
                 self.create_token()
@@ -3281,11 +3295,14 @@ class ApiClient(BeehiveApiClient):
 
         return res
 
-    def user_request(self, module, path, method, data=u'', other_headers=None, silent=False):
+    def user_request(self, module, path, method, data=u'', other_headers={}, silent=False):
         """Make api request using module current user credentials.
         
         **Raise:** :class:`ApiManagerError`
         """
+        # propagate opernation.id to internal api call
+        other_headers[u'request-id'] = operation.id
+
         try:
             # get user logged uid and password
             uid = operation.user[2]
