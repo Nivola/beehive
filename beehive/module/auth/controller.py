@@ -256,9 +256,18 @@ class AuthController(BaseAuthController):
         """   
         
         user_name = operation.user[0]
-        
-        users, total = self.get_users(name=user_name, role=role)      
-        if total > 0:
+
+        # check if role is assigned to the user
+        users, total_users = self.get_users(name=user_name, role=role)
+
+        # check if role is assigned to a group of which a user is a member
+        groups, total = self.get_groups(user=user_name, role=role)
+        total_groups = 0
+        for group in groups:
+            groups, total = self.get_groups(name=group.name, role=role)
+            total_groups += total
+
+        if total_users > 0 or total_groups > 0:
             return True
 
         return False

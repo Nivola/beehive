@@ -217,11 +217,11 @@ class BaseAuthController(ApiController):
         try:
             self.module.redis_manager.delete(self.prefix + uid)
             self.logger.debug(u'Remove identity %s from redis' % uid)
-            #User(self).send_event(u'identity.delete', params={u'uid':uid})      
+            # User(self).send_event(u'identity.delete', params={u'uid':uid})
             return None
         except Exception as ex:
             err = u'Can not remove identity %s' % uid
-            #User(self).send_event(u'identity.delete', params={u'uid':uid}, 
+            # User(self).send_event(u'identity.delete', params={u'uid':uid},
             #                      exception=err)  
             self.logger.error(err)
             raise ApiManagerError(err, code=400)       
@@ -254,7 +254,7 @@ class BaseAuthController(ApiController):
                   'seckey':...}
         :rtype: dict
         """
-        #self.check_authorization(Token.objtype, Token.objdef, u'*', u'view')
+        # self.check_authorization(Token.objtype, Token.objdef, u'*', u'view')
         
         try:
             identity = self.module.redis_manager.get(self.prefix + uid)
@@ -265,7 +265,7 @@ class BaseAuthController(ApiController):
         if identity is not None:
             data = pickle.loads(identity)
             data[u'ttl'] = self.module.redis_manager.ttl(self.prefix + uid)
-            #User(self).send_event(u'identity.get', params={u'uid':uid})
+            # User(self).send_event(u'identity.get', params={u'uid':uid})
             self.logger.debug(u'Get identity %s from redis: %s' % 
                               (uid, truncate(data)))   
             return data
