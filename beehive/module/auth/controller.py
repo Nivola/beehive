@@ -280,9 +280,9 @@ class AuthController(BaseAuthController):
         :return: User
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        
-        if self._verify_operation_user_role() is False:
-            raise ApiManagerError(value=u'Invalid ApiSuperadmin role for operation user %s' % operation.user[0], code=400)
+        role = u'ApiSuperadmin'
+        if self._verify_operation_user_role(role) is False:
+            raise ApiManagerError(value=u'Invalid %s role for operation user %s' % (role, operation.user[0]), code=400)
    
         user = self.get_user(oid, action=u'use')
         secret = user.model.secret
