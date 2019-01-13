@@ -512,7 +512,7 @@ class BeehiveTestCase(unittest.TestCase):
         except (NotFoundException, Exception):
             return u'EXPUNGED'
 
-    def wait_job(self, jobid, delta=1, accepted_state=u'SUCCESS'):
+    def wait_job(self, jobid, delta=3, accepted_state=u'SUCCESS'):
         """Wait resource
         """
         logger.info(u'wait for:         %s' % jobid)

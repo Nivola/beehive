@@ -452,7 +452,7 @@ class ApiManager(object):
 
         return identity
 
-    def register_modules(self):
+    def register_modules(self, register_api=True):
         self.logger.info('Configure modules - START')
         
         module_classes = self.params[u'api_module']
@@ -500,9 +500,10 @@ class ApiManager(object):
                 self.logger.info(u'Register plugin: %s' % class_name)
         
         # register api
-        for module in self.modules.values():
-            # register module api
-            module.register_api()
+        if register_api is True:
+            for module in self.modules.values():
+                # register module api
+                module.register_api()
         
         self.logger.info('Configure modules - STOP')
 
@@ -950,20 +951,12 @@ class ApiManager(object):
         # skip monitor registration - usefool for temporary instance
         if register is False:
             return
-        
-        # register monitor        
-        #self.monitor_producer.send(self.app_endpoint_id, self.app_desc, 
-        #                           self.app_name, {u'uri':self.app_uri})
-        #self.logger.info(u'Register %s instance in monitor' % self.app_endpoint_id)
                         
         
 class ApiModule(object):
     """ """
-    #logger = logging.getLogger('gibbon.cloudapi')
-    
     def __init__(self, api_manager, name):
-        self.logger = logging.getLogger(self.__class__.__module__+ \
-                                        '.'+self.__class__.__name__)
+        self.logger = logging.getLogger(self.__class__.__module__+  u'.' + self.__class__.__name__)
         
         self.api_manager = api_manager
         self.name = str2uni(name)
@@ -975,7 +968,6 @@ class ApiModule(object):
     
     def __repr__(self):
         return "<%s id='%s'>" % (self.__class__.__module__+'.'+self.__class__.__name__, id(self))    
-    
 
     def info(self):
         """Get module infos.
@@ -3063,8 +3055,7 @@ class ApiView(FlaskView):
     def register_api(module, rules, version=None):
         """
         :param module: beehive module
-        :param rules: route to register. Ex. 
-                      [('/jobs', 'GET', ListJobs.as_view('jobs')), {'secure':False}]
+        :param rules: route to register. Ex. [('/jobs', 'GET', ListJobs.as_view('jobs')), {'secure':False}]
         """
         logger = logging.getLogger(__name__)
         # logger = logging.getLogger('gibbon.cloudapi.view')

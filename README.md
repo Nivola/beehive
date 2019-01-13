@@ -1,52 +1,44 @@
 # beehive
+One Paragraph of project description
 
-Latest Version: 1.0.0
+## Configurations (Optional)
+Software parameters and their meaning.
 
-beehive contains the documentations of the project beehive and the source
-code.
+## Prerequisites
+What things you need to install the software and how to install them.
+Also referred to BoM to know external packages to install.
 
-Features included:
+## Installing
+A step by step series of examples that tell you how to get a development environment running
 
+## Getting Started
+Instructions useful to deploy software on a simple environment (local machine or simple server configuration infrastructure).
 
-beehive is written and maintained by: 
+## Running the tests (Optional)
+Results of vulnerability assessment and/or penetration test. If known explain how to run the automated tests for this system
+
+## Break down into end to end tests (Optional)
+Explain what these tests test and why
+
+## And coding style tests (Optional)
+Explain what these tests test and why
+
+## Deployment (Optional)
+Add additional notes about how to deploy this on a live system
+
+## Versioning
+We use Semantic Versioning for versioning. (http://semver.org)
+
+## Authors and Contributors
+beedrones is written and maintained by: 
 
 * Sergio Tonani
-* Michele Bello
-* Gianpiero Ardissono
-* Ignazio Cassano
-* Marco Paschetta
- 
-and is licensed under MIT license.
+* Antonio Brasile
+* Gianni Doria
+* Daniela Ferrarini
 
+## Copyrights
+CSI Piemonte
 
-## Get beehive-doc
-
-Install Python 2.7.* and the following package:
-
-Download the latest release from Python Package Index or clone the repository.
-
-Read the documentation online at http://.....
-
-Post feedback and issues on the bug tracker, mailing list, blog_ and twitter (@gevent).
-
-
-## Installing from github
-
-To install the latest development version:
-
-  pip install cython git+git://github.com/......
-
-
-## Running tests
-
-  python setup.py build
-
-  cd greentest
-
-  PYTHONPATH=.. python testrunner.py --expected ../known_failures.txt
-
-## Dependencies
-
-* [sphinx](http://http://www.sphinx-doc.org/en/1.4.8/)
-
-
+## License
+See the LICENSE.txt file for details

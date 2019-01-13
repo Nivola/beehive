@@ -6,6 +6,8 @@ from time import time
 from functools import wraps
 from uuid import uuid4
 from sqlalchemy.exc import IntegrityError, DBAPIError, ArgumentError
+
+from beecell.logger.helper import ExtendedLogger
 from beecell.simple import id_gen, truncate
 from beecell.simple import import_class
 from beecell.simple import encrypt_data as simple_encrypt_data
@@ -15,6 +17,7 @@ from multiprocessing import current_process
 from threading import current_thread
 
 logger = logging.getLogger(__name__)
+logger.manager.setLoggerClass(ExtendedLogger)
 
 # container connection
 try:
@@ -301,7 +304,7 @@ def query(fn):
                 params.append(str(item))
             for k, v in kwargs.iteritems():
                 params.append(u"'%s':'%s'" % (k, v))
-                
+
             # call internal function
             res = fn(*args, **kwargs)
             elapsed = round(time() - start, 4)
