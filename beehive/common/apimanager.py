@@ -3270,7 +3270,10 @@ class ApiClient(BeehiveApiClient):
         :raise: :class:`ApiManagerError`
         """
         # propagate opernation.id to internal api call
-        other_headers[u'request-id'] = operation.id
+        if isinstance(other_headers, dict):
+            other_headers[u'request-id'] = operation.id
+        else:
+            other_headers = {u'request-id': operation.id}
 
         try:
             if self.exist(self.uid) is False:
