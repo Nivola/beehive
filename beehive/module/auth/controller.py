@@ -232,8 +232,6 @@ class AuthController(BaseAuthController):
         # check authorization
         # - check identity has action over some groups that contain user
         groups, tot = self.manager.get_user_groups(user_id=entity.id, size=-1, with_perm_tag=False)
-        self.logger.warn(groups)
-        self.logger.warn(oid)
         groups_objids = [g.objid for g in groups]
         perms_objids = self.can(action, objtype=entity_class.objtype,
                                 definition=Group.objdef).get(Group.objdef.lower(), [])
