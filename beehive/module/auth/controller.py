@@ -280,14 +280,15 @@ class AuthController(BaseAuthController):
         :return: User
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        role = u'ApiSuperadmin'
-        if self._verify_operation_user_role(role) is False:
-            raise ApiManagerError(value=u'Invalid %s role for operation user %s' % (role, operation.user[0]), code=400)
-   
-        user = self.get_user(oid, action=u'use')
-        secret = user.model.secret
-        self.logger.debug(u'Get user %s secret' % user.uuid)
-        return secret
+        role1 = u'ApiSuperadmin'
+        role2 = u'CsiOperator'
+        if self._verify_operation_user_role(role1) is True or self._verify_operation_user_role(role2) is True:
+            user = self.get_user(oid, action=u'use')
+            secret = user.model.secret
+            self.logger.debug(u'Get user %s secret' % user.uuid)
+            return secret
+        else:
+            raise ApiManagerError(value=u'This operation require one of this roles: %s, %s' % (role1, role2), code=400)
 
     @trace(entity=u'User', op=u'update')
     def reset_user_secret(self, oid, match_old_secret=False, old_secret=None):
@@ -376,7 +377,7 @@ class AuthController(BaseAuthController):
         # search users by group
         if group is not None:
             kvargs[u'group_id'] = self.get_entity(Group, ModelGroup, group).oid
-            kvargs[u'authorize'] = False
+            operation.authorize = False
 
         res, total = self.get_paginated_entities(User, get_entities, *args, **kvargs)
         return res, total
