@@ -278,20 +278,20 @@ class BeehiveTestCase(unittest.TestCase):
         seckey = res[u'seckey']
         self.logger.debug(u'Get access token to: %s' % token)
 
-    def validate_swagger_schema(self, endpoint):
+    def validate_swagger_schema(self, endpoint, timeout=5):
         start = time.time()
         schema_uri = endpoint
-        response = requests.request(u'GET', schema_uri, timeout=5, verify=False)
+        response = requests.request(u'GET', schema_uri, timeout=timeout, verify=False)
         schema = load(response.text)
         logger.info(u'Load swagger schema from %s: %ss' % (endpoint, time.time()-start))
         return schema    
     
-    def get_schema(self, subsystem, endpoint):
+    def get_schema(self, subsystem, endpoint, timeout=5):
         if self.validation_active is True:
             schema = self.schema.get(subsystem, None)
             if schema is None:
                 self.logger.info(u'Load swagger schema from %s' % endpoint)
-                schema = self.validate_swagger_schema(endpoint)
+                schema = self.validate_swagger_schema(endpoint, timeout=timeout)
                 self.schema[subsystem] = schema
             return schema
         return None
@@ -334,7 +334,7 @@ class BeehiveTestCase(unittest.TestCase):
             endpoint = self.endpoints[subsystem]
             swagger_endpoint = self.swagger_endpoints[subsystem]
             # schema = self.schema[subsystem]
-            schema = self.get_schema(subsystem, swagger_endpoint)
+            schema = self.get_schema(subsystem, swagger_endpoint, timeout=timeout)
             if u'Content-Type' not in headers:
                 headers[u'Content-Type'] = u'application/json'            
 
@@ -591,7 +591,7 @@ def runtest(testcase_class, tests, args={}):
     # read external params
     testcase_class.main_config_file = args.get(u'conf', None)
     testcase_class.spec_config_file = args.get(u'exconf', None)
-    testcase_class.validation_active = args.get(u'validate', False)
+    testcase_class.validation_active = args.get(u'validate', True)
 
     # run test suite
     runner = unittest.TextTestRunner(verbosity=2)
