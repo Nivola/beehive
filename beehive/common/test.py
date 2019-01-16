@@ -264,14 +264,14 @@ class BeehiveTestCase(unittest.TestCase):
         db_session = sessionmaker(bind=engine, autocommit=False, autoflush=False)
         return db_session
     
-    def create_keyauth_token(self, user, pwd):
+    def create_keyauth_token(self, user, pwd, timeout=5):
         global token, seckey
         data = {u'user': user, u'password': pwd}
         headers = {u'Content-Type': u'application/json'}
         endpoint = self.endpoints[u'auth']
         uri = u'/v1.0/nas/keyauth/token'
         self.logger.debug(u'Request token to: %s' % endpoint + uri)
-        response = requests.request(u'post', endpoint + uri, data=json.dumps(data), headers=headers, timeout=5,
+        response = requests.request(u'post', endpoint + uri, data=json.dumps(data), headers=headers, timeout=timeout,
                                     verify=False)
         res = response.json()
         token = res[u'access_token']
@@ -345,7 +345,7 @@ class BeehiveTestCase(unittest.TestCase):
                 logger.debug(u'Make simple http authentication: %s' % time.time()-start)
             elif user is not None and auth == u'keyauth':
                 if token is None:
-                    self.create_keyauth_token(user, pwd)
+                    self.create_keyauth_token(user, pwd, timeout=timeout)
                     logger.debug(u'Create keyauth token: %s - %s' % (token, time.time()-start))
                 sign = self.auth_client.sign_request(seckey, uri)
                 headers.update({u'uid': token, u'sign': sign})
