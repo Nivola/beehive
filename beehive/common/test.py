@@ -264,34 +264,34 @@ class BeehiveTestCase(unittest.TestCase):
         db_session = sessionmaker(bind=engine, autocommit=False, autoflush=False)
         return db_session
     
-    def create_keyauth_token(self, user, pwd):
+    def create_keyauth_token(self, user, pwd, timeout=5):
         global token, seckey
         data = {u'user': user, u'password': pwd}
         headers = {u'Content-Type': u'application/json'}
         endpoint = self.endpoints[u'auth']
         uri = u'/v1.0/nas/keyauth/token'
         self.logger.debug(u'Request token to: %s' % endpoint + uri)
-        response = requests.request(u'post', endpoint + uri, data=json.dumps(data), headers=headers, timeout=5,
+        response = requests.request(u'post', endpoint + uri, data=json.dumps(data), headers=headers, timeout=timeout,
                                     verify=False)
         res = response.json()
         token = res[u'access_token']
         seckey = res[u'seckey']
         self.logger.debug(u'Get access token to: %s' % token)
 
-    def validate_swagger_schema(self, endpoint):
+    def validate_swagger_schema(self, endpoint, timeout=5):
         start = time.time()
         schema_uri = endpoint
-        response = requests.request(u'GET', schema_uri, timeout=5, verify=False)
+        response = requests.request(u'GET', schema_uri, timeout=timeout, verify=False)
         schema = load(response.text)
         logger.info(u'Load swagger schema from %s: %ss' % (endpoint, time.time()-start))
         return schema    
     
-    def get_schema(self, subsystem, endpoint):
+    def get_schema(self, subsystem, endpoint, timeout=5):
         if self.validation_active is True:
             schema = self.schema.get(subsystem, None)
             if schema is None:
                 self.logger.info(u'Load swagger schema from %s' % endpoint)
-                schema = self.validate_swagger_schema(endpoint)
+                schema = self.validate_swagger_schema(endpoint, timeout=timeout)
                 self.schema[subsystem] = schema
             return schema
         return None
@@ -334,7 +334,7 @@ class BeehiveTestCase(unittest.TestCase):
             endpoint = self.endpoints[subsystem]
             swagger_endpoint = self.swagger_endpoints[subsystem]
             # schema = self.schema[subsystem]
-            schema = self.get_schema(subsystem, swagger_endpoint)
+            schema = self.get_schema(subsystem, swagger_endpoint, timeout=timeout)
             if u'Content-Type' not in headers:
                 headers[u'Content-Type'] = u'application/json'            
 
@@ -345,7 +345,7 @@ class BeehiveTestCase(unittest.TestCase):
                 logger.debug(u'Make simple http authentication: %s' % time.time()-start)
             elif user is not None and auth == u'keyauth':
                 if token is None:
-                    self.create_keyauth_token(user, pwd)
+                    self.create_keyauth_token(user, pwd, timeout=timeout)
                     logger.debug(u'Create keyauth token: %s - %s' % (token, time.time()-start))
                 sign = self.auth_client.sign_request(seckey, uri)
                 headers.update({u'uid': token, u'sign': sign})
@@ -598,7 +598,7 @@ def runtest(testcase_class, tests, args={}):
     # read external params
     testcase_class.main_config_file = args.get(u'conf', None)
     testcase_class.spec_config_file = args.get(u'exconf', None)
-    testcase_class.validation_active = args.get(u'validate', False)
+    testcase_class.validation_active = args.get(u'validate', True)
 
     # run test suite
     runner = unittest.TextTestRunner(verbosity=2)
