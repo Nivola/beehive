@@ -491,6 +491,13 @@ class BeehiveTestCase(unittest.TestCase):
                         headers=self.custom_headers, **user)
         return res
 
+    def patch(self, uri, data=None, query=None, params=None, timeout=600, user=None):
+        if user is None:
+            user = self.users[u'admin']
+        res = self.call(self.endpoint_service, uri, u'patch', data=data, query=query, params=params, timeout=timeout,
+                        headers=self.custom_headers, **user)
+        return res
+
     def delete(self, uri, data=None, query=None, params=None, timeout=600, user=None):
         if user is None:
             user = self.users[u'admin']
