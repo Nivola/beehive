@@ -673,8 +673,8 @@ class AbstractDbManager(object):
         """Add an entity.
         
         :param entityclass: entity model class
-        :param value str: entity value.
-        :param desc str: desc
+        :param value: entity value.
+        :param desc: desc
         :return: new entity
         :rtype: Oauth2entity
         :raises TransactionError: raise :class:`TransactionError`
