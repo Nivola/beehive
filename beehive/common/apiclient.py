@@ -1420,6 +1420,37 @@ class BeehiveApiClient(object):
         self.logger.debug(u'Delete ssh group %s: %s' % (oid, truncate(res)))
         return res
 
+    def set_ssh_group_authorization(self, name, role, user=None, group=None):
+        """Add ssh group
+
+        :param name: ssh group name
+        :param role: ssh group role to assign
+        :param user: user who receive authorization [optional]
+        :param group: group who receive authorization [optional]
+        :return: True
+        :raise BeehiveApiClientError:
+        """
+        if user is not None:
+            prefix = u'user'
+            entity = user
+        elif group is not None:
+            prefix = u'group'
+            entity = group
+        else:
+            self.logger.error(u'User or group must be specified')
+            raise BeehiveApiClientError(u'User or group must be specified')
+        data = {
+            prefix: {
+                u'%s_id' % prefix: entity,
+                u'role': role
+            }
+        }
+        uri = u'/v1.0/gas/groups/%s/%ss' % (name, prefix)
+        res = self.invoke(u'ssh', uri, u'POST', data, parse=True, silent=True)
+        uuid = res.get(u'uuid')
+        self.logger.debug(u'Set authorization to ssh group %s for %s with role %s' % (name, prefix, entity, role))
+        return uuid
+
     def get_ssh_keys(self, oid=None):
         """Get ssh keys
 

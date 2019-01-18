@@ -1,5 +1,13 @@
 # Changelog
 
+## Version 1.2.0.alpha (, 2019)
+
+* Added ...
+    * **BeehiveApiClient** aggiunto metodo set_ssh_group_authorization
+* Fixed ...
+* Integrated ...
+* Various bugfixes
+
 ## Version 1.1.0 (January 13, 2019)
 
 * Added ...
