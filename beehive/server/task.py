@@ -34,7 +34,7 @@ if __name__ == u'__main__':
     config = ConfigParser.RawConfigParser(dict_type=MultiOrderedDict)
     config.read(config_file)
 
-    params = {i[0]:i[1] for i in config.items(u'uwsgi')}
+    params = {i[0]: i[1] for i in config.items(u'uwsgi')}
     params[u'task_module'] = params[u'task_module'].split(u'\n')
     params[u'api_module'] = params[u'api_module'].split(u'\n')
     if u'api_plugin' in params:

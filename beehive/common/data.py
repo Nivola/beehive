@@ -1,12 +1,13 @@
-"""
-Created on Jan 31, 2014
-
-@author: darkbk
-"""
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
+import logging
 from time import time
 from functools import wraps
 from uuid import uuid4
 from sqlalchemy.exc import IntegrityError, DBAPIError, ArgumentError
+
+from beecell.logger.helper import ExtendedLogger
 from beecell.simple import id_gen, truncate
 from beecell.simple import import_class
 from beecell.simple import encrypt_data as simple_encrypt_data
@@ -14,10 +15,9 @@ from beecell.simple import decrypt_data as simple_decrypt_data
 from beecell.db import TransactionError, QueryError, ModelError
 from multiprocessing import current_process
 from threading import current_thread
-from re import escape
-from beecell.logger.helper import ExtendedLogger
 
-logger = ExtendedLogger(__name__)
+logger = logging.getLogger(__name__)
+logger.manager.setLoggerClass(ExtendedLogger)
 
 # container connection
 try:
@@ -91,8 +91,7 @@ def get_operation_params():
 
 
 def set_operation_params(param):
-    "set in the current greenlet/thread the parameter stored in param"
-    
+    """set in the current greenlet/thread the parameter stored in param"""
     val = param.get("user", "--")
     if val != "--":
         operation.user = val
@@ -116,6 +115,7 @@ def set_operation_params(param):
     val = param.get("authorize", "--")
     if val != "--":
         operation.authorize = val
+
 
 #
 # decorators
@@ -195,8 +195,8 @@ def core_transaction(fn, rollback_throwable, *args, **kwargs):
         elapsed = round(time() - start, 4)
         logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
                      fn.__name__,  params, elapsed))
-        #logger.error(ex.message, exc_info=1)
-        #logger.error(ex.message)
+        # logger.error(ex.message, exc_info=1)
+        # logger.error(ex.message)
               
         if rollback_throwable:
             rollback(session, commit)
@@ -241,9 +241,9 @@ def transaction2(rollback_throwable=True):
     def wrapper_transaction2(fn):
         
         @wraps(fn)
-        def transaction_inner2(*args, **kwargs): #1
+        def transaction_wrap2(*args, **kwargs): #1
             return core_transaction(fn, rollback_throwable, *args, **kwargs)
-        return transaction_inner2
+        return transaction_wrap2
     return wrapper_transaction2
 
 
@@ -258,101 +258,9 @@ def transaction(fn):
             ....
     """
     @wraps(fn)
-    def transaction_inner(*args, **kwargs): #1
+    def transaction_wrap(*args, **kwargs): #1
         return core_transaction(fn, True, *args, **kwargs)
-#         start = time()
-#         stmp_id = id_gen()
-#         session = operation.session
-#         sessionid = id(session)
-#          
-#         commit = False
-#         if operation.transaction is None:
-#             operation.transaction = id_gen()
-#             commit = True
-#             logger.debug2(u'Create transaction %s' % operation.transaction)
-#         else:
-#             logger.debug2(u'Use transaction %s' % operation.transaction)
-#          
-#         # set distributed transaction id to 0 for single transaction
-#         try:
-#             operation.id
-#         except: 
-#             operation.id = str(uuid4())
-#              
-#         try:
-#             # format request params
-#             params = []
-#             for item in args:
-#                 params.append(unicode(item))
-#             for k, v in kwargs.iteritems():
-#                 params.append(u"'%s':'%s'" % (k, v))
-#                  
-#             # call internal function
-#             res = fn(*args, **kwargs)
-#              
-#             if commit is True:
-#                 session.commit()
-#                 logger.log(100, u'Commit transaction %s' % operation.transaction)
-#                 operation.transaction = None
-#                  
-#             elapsed = round(time() - start, 4)
-#             logger.debug2(u'%s.%s - %s - transaction - %s - %s - OK - %s' % (operation.id, stmp_id, sessionid,
-#                           fn.__name__, params,  elapsed))
-#                          
-#             return res
-#         except ModelError as ex:
-#             elapsed = round(time() - start, 4)
-#             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
-#                          fn.__name__,  params, elapsed))
-#             if ex.code not in [409]:
-#                 # logger.error(ex.desc, exc_info=1)
-#                 logger.error(ex.desc)
-#              
-#             rollback(session, commit)
-#             raise TransactionError(ex.desc, code=ex.code)
-#         except ArgumentError as ex:
-#             elapsed = round(time() - start, 4)
-#             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
-#                          fn.__name__,  params, elapsed))
-#             logger.error(ex.message)
-#  
-#             rollback(session, commit)
-#             raise TransactionError(ex.message, code=400)
-#         except IntegrityError as ex:
-#             elapsed = round(time() - start, 4)
-#             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
-#                          fn.__name__,  params, elapsed))
-#             logger.error(ex.message)
-#  
-#             rollback(session, commit)
-#             raise TransactionError(ex.message, code=409)
-#         except DBAPIError as ex:
-#             elapsed = round(time() - start, 4)
-#             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
-#                          fn.__name__,  params, elapsed))
-#             #logger.error(ex.message, exc_info=1)
-#             #logger.error(ex.message)
-#                    
-#             rollback(session, commit)
-#             raise TransactionError(ex.message, code=400)
-#         except TransactionError as ex:
-#             elapsed = round(time() - start, 4)
-#             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
-#                          fn.__name__,  params, elapsed))
-#             # logger.error(ex.desc, exc_info=1)
-#             logger.error(ex.desc)
-#             rollback(session, commit)
-#             raise
-#         except Exception as ex:
-#             elapsed = round(time() - start, 4)
-#             logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
-#                          fn.__name__,  params, elapsed))
-#             # logger.error(ex, exc_info=1)
-#             logger.error(ex)
-#             rollback(session, commit)
-#             raise TransactionError(ex, code=400)
- 
-    return transaction_inner
+    return transaction_wrap
 
 
 def rollback(session, status):
@@ -373,12 +281,12 @@ def query(fn):
             ....    
     """
     @wraps(fn)
-    def query_inner(*args, **kwargs): #1
+    def query_wrap(*args, **kwargs): #1
         start = time()
         stmp_id = id_gen()
         session = operation.session
         sessionid = id(session)
-        
+
         # set distributed transaction id to 0 for single transaction
         try:
             operation.id
@@ -396,7 +304,7 @@ def query(fn):
                 params.append(str(item))
             for k, v in kwargs.iteritems():
                 params.append(u"'%s':'%s'" % (k, v))
-                
+
             # call internal function
             res = fn(*args, **kwargs)
             elapsed = round(time() - start, 4)
@@ -435,7 +343,7 @@ def query(fn):
                          truncate(params), elapsed))
             logger.error(ex.message)
             raise QueryError(ex.message, code=400)
-    return query_inner
+    return query_wrap
 
 
 def trace(entity=None, op=u'view', noargs=False):
@@ -523,7 +431,7 @@ def maybe_run_batch_greenlet(controller, batch, timeout=600):
                 # def inner_fn(user, perms, opid, encryption_key, *args, **kwargs):
                 def inner_fn(op_params, *args, **kwargs):
                     # get start time
-                    start_inner = time()
+                    start_wrap = time()
 
                     logger.info(u'Inner %s - START' % fn.__name__)
 
@@ -541,14 +449,14 @@ def maybe_run_batch_greenlet(controller, batch, timeout=600):
 
                         fn(*args, **kwargs)
                         # calculate elasped time
-                        elapsed_inner = round(time() - start_inner, 4)
-                        logger.info(u'Inner %s - STOP - %s' % (fn.__name__, elapsed_inner))
+                        elapsed_wrap = round(time() - start_wrap, 4)
+                        logger.info(u'Inner %s - STOP - %s' % (fn.__name__, elapsed_wrap))
                         return True
                     except:
                         # calculate elasped time
-                        elapsed_inner = round(time() - start_inner, 4)
+                        elapsed_wrap = round(time() - start_wrap, 4)
                         logger.error(u'', exc_info=1)
-                        logger.error(u'Inner %s - ERROR - %s' % (fn.__name__, elapsed_inner))
+                        logger.error(u'Inner %s - ERROR - %s' % (fn.__name__, elapsed_wrap))
                     finally:
                         controller.release_session()
 

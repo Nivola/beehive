@@ -452,7 +452,7 @@ class ApiManager(object):
 
         return identity
 
-    def register_modules(self):
+    def register_modules(self, register_api=True):
         self.logger.info('Configure modules - START')
         
         module_classes = self.params[u'api_module']
@@ -500,9 +500,10 @@ class ApiManager(object):
                 self.logger.info(u'Register plugin: %s' % class_name)
         
         # register api
-        for module in self.modules.values():
-            # register module api
-            module.register_api()
+        if register_api is True:
+            for module in self.modules.values():
+                # register module api
+                module.register_api()
         
         self.logger.info('Configure modules - STOP')
 
@@ -950,20 +951,12 @@ class ApiManager(object):
         # skip monitor registration - usefool for temporary instance
         if register is False:
             return
-        
-        # register monitor        
-        #self.monitor_producer.send(self.app_endpoint_id, self.app_desc, 
-        #                           self.app_name, {u'uri':self.app_uri})
-        #self.logger.info(u'Register %s instance in monitor' % self.app_endpoint_id)
                         
         
 class ApiModule(object):
     """ """
-    #logger = logging.getLogger('gibbon.cloudapi')
-    
     def __init__(self, api_manager, name):
-        self.logger = logging.getLogger(self.__class__.__module__+ \
-                                        '.'+self.__class__.__name__)
+        self.logger = logging.getLogger(self.__class__.__module__+  u'.' + self.__class__.__name__)
         
         self.api_manager = api_manager
         self.name = str2uni(name)
@@ -975,7 +968,6 @@ class ApiModule(object):
     
     def __repr__(self):
         return "<%s id='%s'>" % (self.__class__.__module__+'.'+self.__class__.__name__, id(self))    
-    
 
     def info(self):
         """Get module infos.
@@ -1377,23 +1369,17 @@ class ApiController(object):
     #
     # helper model get method
     #
-    def get_entity(self, entity_class, model_class, oid, for_update=False, *args, **kvargs):
+    def get_entity(self, entity_class, model_class, oid, for_update=False, details=True, *args, **kvargs):
         """Get single entity by oid (id, uuid, name) if exists
-        
-        **Parameters:**
-        
-            * **entity_class** (): Controller ApiObject Extension class
-            * **model_class** (:py:class:`ApiObject`): Model ApiObject 
-                Extension class
-            * **oid** (:py:class:`str`): entity model id or name or uuid
-            * **customize** (function): function used to customize entities. 
-                Signature def customize(entity, resource)            
-            
-        **Returns:**
-        
-            entity instance
-            
-        **Raise:** :class:`ApiManagerError`     
+
+        :param entity_class: Controller ApiObject Extension class. Specify when you want to verif match between
+            objdef of the required resource and find resource
+        :param model_class: Model ApiObject Extension class
+        :param oid: entity model id or name or uuid
+        :param for_update: [default=False]
+        :param details: if True call custom method post_get()
+        :return: entity instance
+        :raise ApiManagerError`:
         """
         try:
             entity = self.manager.get_entity(model_class, oid, for_update)
@@ -1415,7 +1401,8 @@ class ApiController(object):
                            desc=entity.desc, model=entity)
         
         # execute custom post_get
-        res.post_get()
+        if details is True:
+            res.post_get()
         
         self.logger.debug(u'Get %s : %s' % (entity_class.__name__, res))
         return res
@@ -2010,6 +1997,17 @@ class ApiObject(object):
         """        
         return kvargs
 
+    def post_update(self, *args, **kvargs):
+        """Post update function. This function is used in update method. Extend this function to manipulate and
+        validate update input params.
+
+        :param list args: custom params
+        :param dict kvargs: custom params
+        :return: True
+        :raise ApiManagerError:
+        """
+        return True
+
     def pre_patch(self, *args, **kvargs):
         """Pre patch function. This function is used in update method. Extend this function to manipulate and
         validate patch input params.
@@ -2348,12 +2346,12 @@ class ApiInternalObject(ApiObject):
             # remove object and permissions
             obj_type = self.auth_db_manager.get_object_type(
                 objtype=self.objtype, objdef=self.objdef)[0][0]
-            #objid = self._get_value(self.objdef, objids)
+            # objid = self._get_value(self.objdef, objids)
             objid = u'//'.join(objids)
             self.auth_db_manager.remove_object(objid=objid, objtype=obj_type)
             
             # deregister event related to ApiObject
-            #self.event_class(self.controller).deregister_object(objids)
+            # self.event_class(self.controller).deregister_object(objids)
             
             self.logger.debug(u'Deregister api object %s:%s %s - STOP' % 
                               (self.objtype, self.objdef, objids))                
@@ -2469,7 +2467,7 @@ class ApiViewResponse(ApiObject):
             self.auth_db_manager.add_object(objs, actions)
             
             # register event related to ApiObject
-            #self.event_class(self.controller).init_object()
+            # self.event_class(self.controller).init_object()
             
             self.logger.debug(u'Register api object: %s' % objs)
         except (QueryError, TransactionError) as ex:
@@ -2521,7 +2519,7 @@ class ApiViewResponse(ApiObject):
             action = u'patch'
         elif method in [u'DELETE']:
             action = u'delete'
-        #else:
+        # else:
         #    action = u'use'
         elapsed = api.pop(u'elapsed')
 
@@ -3059,11 +3057,10 @@ class ApiView(FlaskView):
     def register_api(module, rules, version=None):
         """
         :param module: beehive module
-        :param rules: route to register. Ex. 
-                      [('/jobs', 'GET', ListJobs.as_view('jobs')), {'secure':False}]
+        :param rules: route to register. Ex. [('/jobs', 'GET', ListJobs.as_view('jobs')), {'secure':False}]
         """
         logger = logging.getLogger(__name__)
-        #logger = logging.getLogger('gibbon.cloudapi.view')
+        # logger = logging.getLogger('gibbon.cloudapi.view')
         
         # get version
         if version is None:
@@ -3073,7 +3070,7 @@ class ApiView(FlaskView):
         app = module.api_manager.app
         
         # get swagger
-        #swagger = module.api_manager.swagger
+        # swagger = module.api_manager.swagger
         
         # regiter routes
         view_num = 0
@@ -3262,7 +3259,7 @@ class ApiClient(BeehiveApiClient):
     def __init__(self, auth_endpoints, user, pwd, secret, catalog_id=None, authtype=u'keyauth'):
         BeehiveApiClient.__init__(self, auth_endpoints, authtype, user, pwd, secret, catalog_id)
     
-    def admin_request(self, subsystem, path, method, data=u'', other_headers=None, silent=False):
+    def admin_request(self, subsystem, path, method, data=u'', other_headers={}, silent=False):
         """Make api request using module internal admin user credentials.
 
         :param subsystem:
@@ -3274,6 +3271,12 @@ class ApiClient(BeehiveApiClient):
         :return:
         :raise: :class:`ApiManagerError`
         """
+        # propagate opernation.id to internal api call
+        if isinstance(other_headers, dict):
+            other_headers[u'request-id'] = operation.id
+        else:
+            other_headers = {u'request-id': operation.id}
+
         try:
             if self.exist(self.uid) is False:
                 self.create_token()
@@ -3288,11 +3291,14 @@ class ApiClient(BeehiveApiClient):
 
         return res
 
-    def user_request(self, module, path, method, data=u'', other_headers=None, silent=False):
+    def user_request(self, module, path, method, data=u'', other_headers={}, silent=False):
         """Make api request using module current user credentials.
         
         **Raise:** :class:`ApiManagerError`
         """
+        # propagate opernation.id to internal api call
+        other_headers[u'request-id'] = operation.id
+
         try:
             # get user logged uid and password
             uid = operation.user[2]

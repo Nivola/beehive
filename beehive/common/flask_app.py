@@ -84,9 +84,9 @@ class BeehiveApp(Flask):
         self.api_manager = ApiManager(self.params, app=self, hostname=self.server_name)
 
         # server configuration
-        #self.api_manager.configure_logger()
+        # self.api_manager.configure_logger()
         self.api_manager.configure()
-        #self.get_configurations()
+        # self.get_configurations()
         
         # load modules
         self.api_manager.register_modules()
@@ -97,8 +97,8 @@ class BeehiveApp(Flask):
         # register in moitor
         self.api_manager.register_monitor()
         
-        self.logger.info(u'Setup server over: %s' % (self.api_manager.app_uri))
-        self.logger.info(u'Setup server over: %s' % (self.api_manager.uwsgi_uri))      
+        self.logger.info(u'Setup server over: %s' % self.api_manager.app_uri)
+        self.logger.info(u'Setup server over: %s' % self.api_manager.uwsgi_uri)
         
         self.logger.info("##### SERVER STARTED ##### - %s" % round(time() - start, 2))
     
@@ -112,24 +112,26 @@ class BeehiveApp(Flask):
         
         # base logging
         file_name = u'%s/%s.log' % (self.log_path, logname)
-        loggers = [self.logger,
-                   logging.getLogger(u'oauthlib'),
-                   logging.getLogger(u'beehive'),
-                   logging.getLogger(u'beehive.db'),
-                   logging.getLogger(u'beecell'),
-                   logging.getLogger(u'beedrones'),
-                   logging.getLogger(u'beehive_oauth2'),
-                   logging.getLogger(u'beehive_monitor'),
-                   logging.getLogger(u'beehive_service'),
-                   logging.getLogger(u'beehive_resource'),
-                   logging.getLogger(u'beehive_ssh'),
-                   logging.getLogger(u'beehive.common.data')]
+        loggers = [
+            self.logger,
+            logging.getLogger(u'oauthlib'),
+            logging.getLogger(u'beehive'),
+            logging.getLogger(u'beehive.db'),
+            logging.getLogger(u'beecell'),
+            logging.getLogger(u'beedrones'),
+            logging.getLogger(u'beehive_oauth2'),
+            logging.getLogger(u'beehive_monitor'),
+            logging.getLogger(u'beehive_service'),
+            logging.getLogger(u'beehive_resource'),
+            logging.getLogger(u'beehive_ssh'),
+            # logging.getLogger(u'beehive.common.data')
+        ]
         # LoggerHelper.DEBUG2
         LoggerHelper.rotatingfile_handler(loggers, LoggerHelper.DEBUG, file_name)
         
         # transaction and db logging
         file_name = u'%s/%s.db.log' % (self.log_path, logname)
-        loggers = [logging.getLogger(u'beehive.common.data'),
+        loggers = [#logging.getLogger(u'beehive.common.data'),
                    logging.getLogger(u'sqlalchemy.engine'),
                    logging.getLogger(u'sqlalchemy.pool')]
         LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, file_name)

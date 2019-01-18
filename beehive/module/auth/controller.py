@@ -231,7 +231,7 @@ class AuthController(BaseAuthController):
 
         # check authorization
         # - check identity has action over some groups that contain user
-        groups, tot = self.manager.get_user_groups(user_id=oid, size=-1, with_perm_tag=False)
+        groups, tot = self.manager.get_user_groups(user_id=entity.id, size=-1, with_perm_tag=False)
         groups_objids = [g.objid for g in groups]
         perms_objids = self.can(action, objtype=entity_class.objtype,
                                 definition=Group.objdef).get(Group.objdef.lower(), [])
@@ -253,14 +253,30 @@ class AuthController(BaseAuthController):
 
         :return: Boolean
         :raises ApiManagerError: raise :class:`ApiManagerError`
-        """   
-        
+        """
+        # disable authorization
+        operation.authorize = False
+
         user_name = operation.user[0]
-        
-        users, total = self.get_users(name=user_name, role=role)      
-        if total > 0 :
+
+        # check if role is assigned to the user
+        users, total_users = self.get_users(name=user_name, role=role)
+
+        # check if role is assigned to a group of which a user is a member
+        groups, total = self.get_groups(user=user_name)
+        total_groups = 0
+        for group in groups:
+            groups, total = self.get_groups(name=group.name, role=role)
+            total_groups += total
+
+        # disable authorization
+        operation.authorize = True
+
+        if total_users > 0 or total_groups > 0:
+            self.logger.debug(u'User %s has role %s' % (user_name, role))
             return True
 
+        self.logger.warn(u'User %s has not role %s' % (user_name, role))
         return False
 
     @trace(entity=u'User', op=u'use')
@@ -271,16 +287,22 @@ class AuthController(BaseAuthController):
         :return: User
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        
-        if self._verify_operation_user_role() is False:
-            raise ApiManagerError(value=u'Invalid ApiSuperadmin role for operation user %s' % operation.user[0], code=400)
-   
-        user = self.get_user(oid, action=u'use')
-        secret = user.model.secret
-        self.logger.debug(u'Get user %s secret' % user.uuid)
-        return secret
-            
-    
+        # disable authorization check
+        # operation.authorize = False
+
+        role1 = u'ApiSuperadmin'
+        role2 = u'CsiOperator'
+        if self._verify_operation_user_role(role1) is True or self._verify_operation_user_role(role2) is True:
+            user = self.get_user(oid, action=u'use')
+            secret = user.model.secret
+            self.logger.debug(u'Get user %s secret' % user.uuid)
+            return secret
+        else:
+            raise ApiManagerError(value=u'This operation require one of this roles: %s, %s' % (role1, role2), code=400)
+
+        # enable authorization check
+        # operation.authorize = True
+
     @trace(entity=u'User', op=u'update')
     def reset_user_secret(self, oid, match_old_secret=False, old_secret=None):
         """reset user secret.
@@ -294,7 +316,8 @@ class AuthController(BaseAuthController):
         matched = True
         
         if self._verify_operation_user_role() is False:
-            raise ApiManagerError(value=u'Invalid ApiSuperadmin role for operation user %s' % operation.user[0], code=400)
+            raise ApiManagerError(value=u'Invalid ApiSuperadmin role for operation user %s' % operation.user[0],
+                                  code=400)
                 
         user = self.get_user(oid, action=u'update')
         try:
@@ -312,7 +335,6 @@ class AuthController(BaseAuthController):
         except (Exception) as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
-    
 
     @trace(entity=u'User', op=u'view')
     def get_users(self, *args, **kvargs):
@@ -369,7 +391,7 @@ class AuthController(BaseAuthController):
         # search users by group
         if group is not None:
             kvargs[u'group_id'] = self.get_entity(Group, ModelGroup, group).oid
-            kvargs[u'authorize'] = False
+            operation.authorize = False
 
         res, total = self.get_paginated_entities(User, get_entities, *args, **kvargs)
         return res, total
