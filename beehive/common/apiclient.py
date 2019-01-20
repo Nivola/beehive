@@ -1447,9 +1447,9 @@ class BeehiveApiClient(object):
         }
         uri = u'/v1.0/gas/groups/%s/%ss' % (name, prefix)
         res = self.invoke(u'ssh', uri, u'POST', data, parse=True, silent=True)
-        uuid = res.get(u'uuid')
-        self.logger.debug(u'Set authorization to ssh group %s for %s with role %s' % (name, prefix, entity, role))
-        return uuid
+        # uuid = res.get(u'uuid')
+        self.logger.debug(u'Set authorization to ssh group %s for %s %s with role %s' % (name, prefix, entity, role))
+        return res
 
     def get_ssh_keys(self, oid=None):
         """Get ssh keys
