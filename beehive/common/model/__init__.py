@@ -269,6 +269,9 @@ class PaginatedQueryGenerator(object):
         :param order: sort order [default=DESC]
         :param field: sort field [default=id]
         """
+        if field == u'id':
+            field = u't3.id'
+
         self.page = page
         self.size = size
         self.order = order
