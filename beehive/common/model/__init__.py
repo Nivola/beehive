@@ -249,8 +249,7 @@ class PaginatedQueryGenerator(object):
         :param custom_select: custom select used instead of entity table
         :param with_perm_tag: check permission tags.
         """
-        self.logger = logging.getLogger(self.__class__.__module__+ \
-                                        u'.'+self.__class__.__name__)         
+        self.logger = logging.getLogger(self.__class__.__module__+ u'.' + self.__class__.__name__)
         
         self.session = session
         self.entity = entity
@@ -337,10 +336,8 @@ class PaginatedQueryGenerator(object):
             column = param
  
         if column is not None: 
-            return u' {opLogical} {alias}.{column}{opComparison}:{param}'.format(column=column, param=param,
-                                                                            opLogical=opLogical,
-                                                                            opComparison=opComparison,
-                                                                            alias=alias)
+            return u' {opLogical} {alias}.{column}{opComparison}:{param}'.format(
+                column=column, param=param, opLogical=opLogical, opComparison=opComparison, alias=alias)
         else:
             return u''
 
@@ -366,7 +363,7 @@ class PaginatedQueryGenerator(object):
         """
         fields = u', '.join(self.select_fields)
         if count is True:
-            fields = u'count(distinct t3.id) as count'
+            fields = u'count(distinct {field}) as count'.format(field=self.field)
 
         sql = [u'SELECT {fields}', u'FROM {table} t3']
         if self.with_perm_tag is True:
@@ -636,7 +633,7 @@ class AbstractDbManager(object):
         return res
     
     @query
-    def get_paginated_entities(self, entity, tags=[], page=0, size=10, order=u'DESC', field=u'id', filters=[],
+    def get_paginated_entities(self, entity, tags=[], page=0, size=10, order=u'DESC', field=u't3.id', filters=[],
                                tables=[], select_fields=[], custom_select=None, with_perm_tag=True, *args, **kvargs):
         """Get entities associated with some permission tags
 
