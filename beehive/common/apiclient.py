@@ -322,7 +322,7 @@ class BeehiveApiClient(object):
                 err = res[u'message']
             if u'code' in res:
                 code = res[u'code']
-            self.logger.error(err, exc_info=1)
+            self.logger.error(err, exc_info=0)
             raise BeehiveApiClientError(err, code=int(code))
 
         return res
@@ -1375,6 +1375,23 @@ class BeehiveApiClient(object):
     #
     # ssh module
     #
+    def exist_ssh_group(self, oid):
+        """Verify if ssh group already exists
+
+        :param oid: ssh group id, uuid or name
+        :return: True or False
+        :raise BeehiveApiClientError:
+        """
+        try:
+            uri = u'/v1.0/gas/groups/%s' % quote(oid)
+            res = self.invoke(u'ssh', uri, u'GET', u'', parse=True, silent=True)
+            res = res.get(u'group')
+            self.logger.debug(u'Ssh group %s exists' % oid)
+            return True
+        except:
+            self.logger.debug(u'Ssh group %s does not exist' % oid)
+            return False
+
     def get_ssh_group(self, oid):
         """Get ssh group
 

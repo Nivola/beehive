@@ -154,6 +154,7 @@ class BeehiveTestCase(unittest.TestCase):
         
         # get users
         self.users = cfg.get(u'users')
+        self.run_test_user = u'test1'
         
         # create auth client
         self.auth_client = BeehiveApiClient([], u'keyauth', None, u'', None)
@@ -472,35 +473,35 @@ class BeehiveTestCase(unittest.TestCase):
 
     def get(self, uri, query=None, params=None, timeout=600, user=None):
         if user is None:
-            user = self.users[u'admin']
+            user = self.users[self.run_test_user]
         res = self.call(self.endpoint_service, uri, u'get', data=u'', query=query, timeout=timeout, params=params,
                         headers=self.custom_headers, **user)
         return res
 
     def post(self, uri, data=None, query=None, params=None, timeout=600, user=None):
         if user is None:
-            user = self.users[u'admin']
+            user = self.users[self.run_test_user]
         res = self.call(self.endpoint_service, uri, u'post', data=data, query=query, params=params, timeout=timeout,
                         headers=self.custom_headers, **user)
         return res
 
     def put(self, uri, data=None, query=None, params=None, timeout=600, user=None):
         if user is None:
-            user = self.users[u'admin']
+            user = self.users[self.run_test_user]
         res = self.call(self.endpoint_service, uri, u'put', data=data, query=query, params=params, timeout=timeout,
                         headers=self.custom_headers, **user)
         return res
 
     def patch(self, uri, data=None, query=None, params=None, timeout=600, user=None):
         if user is None:
-            user = self.users[u'admin']
+            user = self.users[self.run_test_user]
         res = self.call(self.endpoint_service, uri, u'patch', data=data, query=query, params=params, timeout=timeout,
                         headers=self.custom_headers, **user)
         return res
 
     def delete(self, uri, data=None, query=None, params=None, timeout=600, user=None):
         if user is None:
-            user = self.users[u'admin']
+            user = self.users[self.run_test_user]
         res = self.call(self.endpoint_service, uri, u'delete', data=data, query=query, params=params, timeout=timeout,
                         headers=self.custom_headers, **user)
         return res
@@ -508,7 +509,7 @@ class BeehiveTestCase(unittest.TestCase):
     def get_job_state(self, jobid):
         try:
             res = self.call(self.module, u'/v1.0/%s/worker/tasks/{oid}' % self.module_prefix, u'get', 
-                            params={u'oid': jobid}, runlog=False, **self.users[u'admin'])
+                            params={u'oid': jobid}, runlog=False, **self.users[self.run_test_user])
             job = res.get(u'task_instance')
             state = job.get(u'status')
             logger.debug(u'Get job %s state: %s' % (jobid, state))
@@ -599,6 +600,7 @@ def runtest(testcase_class, tests, args={}):
     testcase_class.main_config_file = args.get(u'conf', None)
     testcase_class.spec_config_file = args.get(u'exconf', None)
     testcase_class.validation_active = args.get(u'validate', True)
+    testcase_class.run_test_user = args.get(u'user', u'test1')
 
     # run test suite
     runner = unittest.TextTestRunner(verbosity=2)
