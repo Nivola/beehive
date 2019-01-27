@@ -75,6 +75,7 @@ class BeehiveTestCase(unittest.TestCase):
     main_config_file = None
     spec_config_file = None
     validation_active = False
+    run_test_user = u'test1'
 
     @classmethod
     def setUpClass(cls):
@@ -118,6 +119,7 @@ class BeehiveTestCase(unittest.TestCase):
         print(u'Main config file: %s' % cls.main_config_file)
         print(u'Extra config file: %s' % cls.spec_config_file)
         print(u'Validation active: %s' % cls.validation_active)
+        print(u'Test user: %s' % cls.run_test_user)
         print(u'')
         print(u'Tests:')
 
@@ -154,7 +156,6 @@ class BeehiveTestCase(unittest.TestCase):
         
         # get users
         self.users = cfg.get(u'users')
-        self.run_test_user = u'test1'
         
         # create auth client
         self.auth_client = BeehiveApiClient([], u'keyauth', None, u'', None)
