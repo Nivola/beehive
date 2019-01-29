@@ -45,7 +45,7 @@ from requests.auth import HTTPBasicAuth
 from celery.utils.log import ColorFormatter as CeleryColorFormatter
 from celery.utils.term import colored
 from gevent import sleep
-from dict_recursive_update import recursive_update
+# from dict_recursive_update import recursive_update
 
 seckey = None
 token = None
