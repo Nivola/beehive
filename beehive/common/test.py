@@ -45,7 +45,7 @@ from requests.auth import HTTPBasicAuth
 from celery.utils.log import ColorFormatter as CeleryColorFormatter
 from celery.utils.term import colored
 from gevent import sleep
-# from dict_recursive_update import recursive_update
+from dict_recursive_update import recursive_update
 
 seckey = None
 token = None
@@ -600,7 +600,7 @@ def runtest(testcase_class, tests, args={}):
     # read external params
     testcase_class.main_config_file = args.get(u'conf', None)
     testcase_class.spec_config_file = args.get(u'exconf', None)
-    testcase_class.validation_active = args.get(u'validate', True)
+    testcase_class.validation_active = args.get(u'validate', False)
     testcase_class.run_test_user = args.get(u'user', u'test1')
 
     # run test suite
