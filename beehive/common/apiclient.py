@@ -1329,7 +1329,7 @@ class BeehiveApiClient(object):
         uri = u'/v1.0/nws/computeservices/image/createimage'
         res = self.invoke(u'service', uri, u'POST', data={u'image': data}, timeout=600)
         self.logger.debug(u'Add image: %s' % truncate(res))
-        res = res.get(u'CreateImageResponse').get(u'instancesSet')[0].get(u'imageId')
+        res = res.get(u'CreateImageResponse').get(u'imageId')
         return res
 
     def create_vpcaas_vpc(self, account=None, name=None, template=None, **kvargs):
@@ -1341,7 +1341,7 @@ class BeehiveApiClient(object):
         uri = u'/v1.0/nws/computeservices/vpc/createvpc'
         res = self.invoke(u'service', uri, u'POST', data={u'vpc': data}, timeout=600)
         self.logger.debug(u'Add vpc: %s' % truncate(res))
-        res = res.get(u'CreateVpcResponse').get(u'instancesSet')[0].get(u'vpcId')
+        res = res.get(u'CreateVpcResponse').get(u'vpc').get(u'vpcId')
         return res
 
     def create_vpcaas_subnet(self, account=None, name=None, vpc=None, zone=None, cidr=None, **kvargs):
@@ -1355,7 +1355,7 @@ class BeehiveApiClient(object):
         uri = u'/v1.0/nws/computeservices/subnet/createsubnet'
         res = self.invoke(u'service', uri, u'POST', data={u'subnet': data}, timeout=600)
         self.logger.debug(u'Add subnet: %s' % truncate(res))
-        res = res.get(u'CreateSubnetResponse').get(u'instancesSet')[0].get(u'subnetId')
+        res = res.get(u'CreateSubnetResponse').get(u'subnet').get(u'subnetId')
         return res
 
     def create_vpcaas_sg(self, account=None, name=None, vpc=None, template=None, **kvargs):
@@ -1369,7 +1369,7 @@ class BeehiveApiClient(object):
         uri = u'/v1.0/nws/computeservices/securitygroup/createsecuritygroup'
         res = self.invoke(u'service', uri, u'POST', data={u'security_group': data}, timeout=600)
         self.logger.debug(u'Add security group: %s' % truncate(res))
-        res = res.get(u'CreateSecurityGroupResponse').get(u'instancesSet')[0].get(u'groupId')
+        res = res.get(u'CreateSecurityGroupResponse').get(u'groupId')
         return res
 
     #
