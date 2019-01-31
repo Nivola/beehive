@@ -599,7 +599,7 @@ class JobTask(AbstractJob):
         trace = format_tb(einfo.tb)
         trace.append(err)
         logger.error(u'', exc_info=1)
-        msg = u'Error %s:%s %s' % (self.name, task_id, err)
+        msg = u'ERROR %s:%s %s' % (self.name, task_id, err)
         self.update(u'FAILURE', ex=err, traceback=trace, result=None, msg=msg)
         
         # update job

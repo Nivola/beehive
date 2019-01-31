@@ -378,12 +378,17 @@ class QueryTaskResponseSchema(Schema):
     task_instance = fields.Nested(GetAllTasksParamsResponseSchema, required=True, allow_none=True)
 
 
+class QueryTaskRequestSchema(GetApiObjectRequestSchema):
+    chain = fields.Boolean(required=False, default=True, missing=True, context=u'query')
+
+
 class QueryTask(TaskApiView):
     definitions = {
         u'QueryTaskResponseSchema': QueryTaskResponseSchema,
-        u'GetApiObjectRequestSchema': GetApiObjectRequestSchema,
+        u'QueryTaskRequestSchema': QueryTaskRequestSchema,
     }
-    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)    
+    parameters = SwaggerHelper().get_parameters(QueryTaskRequestSchema)
+    parameters_schema = QueryTaskRequestSchema
     responses = SwaggerApiView.setResponses({
         200: {
             u'description': u'success',
@@ -397,7 +402,7 @@ class QueryTask(TaskApiView):
         Query single task by id and return description fields
         """
         task_manager = controller.get_task_manager()
-        res = task_manager.query_task(oid)
+        res = task_manager.query_task(oid, chain=data.get(u'chain'))
         resp = {u'task_instance': res}
         return resp
 

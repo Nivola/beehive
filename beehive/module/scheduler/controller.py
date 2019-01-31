@@ -582,7 +582,7 @@ class TaskManager(ApiObject):
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
-        
+
     def _get_task_childs(self, childs_index, task):
         """Get task childs.
 
@@ -592,31 +592,27 @@ class TaskManager(ApiObject):
         """
         try:
             child_ids = task.pop(u'children')
+            self.logger.debug(u'Get task %s children: %s' % (task[u'task_id'], child_ids))
             if child_ids is not None:
                 for child_id in child_ids:
                     try:
+                        if child_id in childs_index:
+                            continue
+
                         child = self._get_task_info(child_id)
-                        
-                        if child[u'children'] is not None and \
-                           len(child[u'children']) == 0:
-                            child[u'inner_type'] = u'end'
-                        else:
-                            child[u'inner_type'] = u'inner'
-                            
                         childs_index[child_id] = child
-                        
-                        # call get_task_graph with task child
                         self._get_task_childs(childs_index, child)
                     except:
-                        self.logger.warn('Child task %s does not exist' % child_id)                        
+                        self.logger.warn(u'Child task %s does not exist' % child_id)
         except Exception as ex:
-            raise ApiManagerError(ex, code=400)        
+            raise ApiManagerError(ex, code=400)
 
     @trace(op=u'view')
-    def query_task(self, task_id):
-        """Get task info. If task type JOB return graph composed by all the job 
-        childs.
-        
+    def query_task(self, task_id, chain=True):
+        """Get task info. If task type JOB return graph composed by all the job childs.
+
+        :param task_id: id of the celery task
+        :param chain: if True get all task chain
         :return: 
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
@@ -659,30 +655,32 @@ class TaskManager(ApiObject):
                 val[u'stop_time'] = stop_time_str
                 val[u'start_time'] = self.__convert_timestamp(start_time)
 
-                try:
-                    # get job childs
-                    childrens = val.pop(u'children', [])
-                    if len(childrens) > 0:
-                        first_child_id = childrens[0]
-                        first_child = self._get_task_info(first_child_id)
-                        first_child[u'inner_type'] = u'start'
-                        childs_index = {first_child_id: first_child}
-                        self._get_task_childs(childs_index, first_child)
+                if chain is True:
+                    try:
+                        # get job childs
+                        childrens = val.pop(u'children', [])
+                        if len(childrens) > 0:
+                            first_child_id = childrens[0]
+                            first_child = self._get_task_info(first_child_id)
+                            first_child[u'inner_type'] = u'start'
+                            childs_index = {first_child_id: first_child}
+                            # self._get_task_childs(childs_index, first_child)
+                            self._get_task_childs(childs_index, first_child)
 
-                        # sort childs by date
-                        childs = sorted(childs_index.values(), key=lambda task: task[u'start_time'])
+                            # sort childs by date
+                            childs = sorted(childs_index.values(), key=lambda task: task[u'start_time'])
 
-                        # get childs trace
-                        trace = []
-                        for c in childs:
-                            for t in c.pop(u'trace'):
-                                trace.append((t[0], c[u'name'], c[u'task_id'], t[1]))
-                        # sort trace
-                        val[u'trace'] = sorted(trace, key=lambda row: row[0])
-                        val[u'children'] = childs
-                except:
-                    self.logger.warn(u'', exc_info=1)
-                    val[u'children'] = None
+                            # get childs trace
+                            trace = []
+                            for c in childs:
+                                for t in c.pop(u'trace'):
+                                    trace.append((t[0], c[u'name'], c[u'task_id'], t[1]))
+                            # sort trace
+                            val[u'trace'] = sorted(trace, key=lambda row: row[0])
+                            val[u'children'] = childs
+                    except:
+                        self.logger.warn(u'', exc_info=1)
+                        val[u'children'] = None
             else:
                 val[u'children'] = None
                 

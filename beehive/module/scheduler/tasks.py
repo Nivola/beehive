@@ -12,7 +12,7 @@ from beehive.common.data import operation
 from beehive.common.task.job import JobTask, job_task, job, Job
 from beehive.common.task.manager import task_manager
 from beehive.module.scheduler.controller import TaskManager
-from beehive.common.task.util import end_task, start_task
+from beehive.common.task.util import end_task, start_task, join_task
 
 logger = get_task_logger(__name__)
 
@@ -62,12 +62,16 @@ def jobtest(self, objid, params):
     g1.append(test_invoke_job.signature((ops, i), immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE))
     g1.append(test_invoke_job.signature((ops, i), immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE))
     g1.append(test_invoke_job.signature((ops, i), immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE))
+    g1.append(test_invoke_job.signature((ops, i), immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE))
+    g1.append(test_invoke_job.signature((ops, i), immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE))
 
     j = Job.create([
         end_task,
         # jobtest_task2,
         # jobtest_task1,
-        # g1,
+        g1,
+        join_task,
+        g1,
         jobtest_task0,
         start_task
     ], ops)
