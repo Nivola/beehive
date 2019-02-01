@@ -278,17 +278,19 @@ class EventDbManager(AbstractDbManager):
         :param dest: event destionation
         :raise TransactionError: if transaction return error
         """
+        res = None
+
         # add event
-        data = truncate(json.dumps(data), size=4000)
-        res = self.add_entity(DbEvent, eventid, etype, objid, objdef, objtype, creation, data, json.dumps(source),
-                              json.dumps(dest))
-        
-        # add permtag
-        ids = self.get_all_valid_objids(objid.split(u'//'))
-        self.logger.warn(ids)
-        for i in ids:
-            perm = u'%s-%s' % (objdef.lower(), i)
-            tag = self.hash_from_permission(objdef.lower(), i)
-            self.add_perm_tag(tag, perm, res.id, u'event')
+        if objid is not None:
+            data = truncate(json.dumps(data), size=4000)
+            res = self.add_entity(DbEvent, eventid, etype, objid, objdef, objtype, creation, data, json.dumps(source),
+                                  json.dumps(dest))
+
+            # add permtag
+            ids = self.get_all_valid_objids(objid.split(u'//'))
+            for i in ids:
+                perm = u'%s-%s' % (objdef.lower(), i)
+                tag = self.hash_from_permission(objdef.lower(), i)
+                self.add_perm_tag(tag, perm, res.id, u'event')
         
         return res
