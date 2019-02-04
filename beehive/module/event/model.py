@@ -36,7 +36,7 @@ class DbEvent(Base):
     creation = Column(DateTime())
     data = Column(String(5000), nullable=True)
     source = Column(String(200), nullable=True)
-    dest = Column(String(200), nullable=True)
+    dest = Column(String(500), nullable=True)
     
     def __init__(self, eventid, etype, objid, objdef, objtype, creation, data, 
                  source, dest):

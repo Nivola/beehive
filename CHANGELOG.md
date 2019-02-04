@@ -1,5 +1,13 @@
 # Changelog
 
+## Version 1.3.0.a (February , 2019)
+
+* Added ...
+* Fixed ...
+    * aumenteta la dimensione del campo desc della tabella event a 500 caratteri
+* Integrated ...
+* Various bugfixes
+
 ## Version 1.2.0 (February 01, 2019)
 
 * Added ...
