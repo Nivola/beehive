@@ -314,7 +314,8 @@ class BeehiveTestCase(unittest.TestCase):
         return validate
     
     def call(self, subsystem, path, method, params=None, headers=None, user=None, pwd=None, auth=None, data=None,
-             query=None, runlog=True, timeout=10, oauth2_token=None, response_size=400, *args, **kvargs):
+             query=None, runlog=True, timeout=10, oauth2_token=None, response_size=400, pretty_response=False,
+             *args, **kvargs):
         global token, seckey
 
         start = time.time()
@@ -459,6 +460,8 @@ class BeehiveTestCase(unittest.TestCase):
             
             if runlog is True:
                 self.runlogger.info(u'response data:    %s' % truncate(response.text, size=response_size))
+            if pretty_response is True:
+                self.runlogger.debug(self.pp.pformat(res))
             
             # validate with swagger schema
             validate = self.validate_response(resp_content_type, schema, path, method, response, runlog)
@@ -472,11 +475,11 @@ class BeehiveTestCase(unittest.TestCase):
         self.assertEqual(validate, True)
         return res
 
-    def get(self, uri, query=None, params=None, timeout=600, user=None):
+    def get(self, uri, query=None, params=None, timeout=600, user=None, pretty_response=False):
         if user is None:
             user = self.users[self.run_test_user]
         res = self.call(self.endpoint_service, uri, u'get', data=u'', query=query, timeout=timeout, params=params,
-                        headers=self.custom_headers, **user)
+                        headers=self.custom_headers, pretty_response=pretty_response, **user)
         return res
 
     def post(self, uri, data=None, query=None, params=None, timeout=600, user=None):
@@ -574,7 +577,7 @@ def runtest(testcase_class, tests, args={}):
     loggers = [
         logging.getLogger(u'beehive.test.run'),
     ]
-    LoggerHelper.file_handler(loggers, logging.INFO, run_file, frmt=u'%(message)s', formatter=ColorFormatter)
+    LoggerHelper.file_handler(loggers, logging.DEBUG, run_file, frmt=u'%(message)s', formatter=ColorFormatter)
 
     # setting logger
     # frmt = "%(asctime)s - %(levelname)s - %(process)s:%(thread)s - %(message)s"
