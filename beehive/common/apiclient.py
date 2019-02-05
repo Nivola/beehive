@@ -269,7 +269,7 @@ class BeehiveApiClient(object):
 
             if response.status in [200, 201, 202, 400, 401, 403, 404, 405, 406, 408, 409, 415]:
                 res = response.read()
-                if content_type.find(u'application/json') >= 0:
+                if content_type is not None and content_type.find(u'application/json') >= 0:
                     res = json.loads(res)
 
                 # insert for compliance with oauth2 error message
