@@ -132,7 +132,13 @@ class TaskResult(object):
             
             # save data in redis
             _redis.setex(key, _expire, val)
-            # pipe.execute()
+
+            # check key exists
+            val_redis = _redis.get(key)
+
+            # resave data in redis if key does not exist
+            if val_redis is None:
+                _redis.setex(key, _expire, val)
 
             return val
 
@@ -141,8 +147,7 @@ class TaskResult(object):
         logout = logger.debug2
         if inner_type == u'JOB':
             logout = logger.info
-            
-        # logout(u'Save %s %s result: %s' % (inner_type, task_id, truncate(val, size=400)))
+            logout(u'Save %s %s result: %s' % (inner_type, task_id, truncate(val, size=400)))
 
         return data
 

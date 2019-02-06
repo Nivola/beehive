@@ -12,9 +12,10 @@ from beehive.common.data import operation
 from beehive.common.task.job import JobTask, job_task, job, Job
 from beehive.common.task.manager import task_manager
 from beehive.module.scheduler.controller import TaskManager
-from beehive.common.task.util import end_task, start_task
+from beehive.common.task.util import end_task, start_task, join_task
 
 logger = get_task_logger(__name__)
+
 
 #
 # test job
@@ -65,9 +66,11 @@ def jobtest(self, objid, params):
 
     j = Job.create([
         end_task,
-        # jobtest_task2,
-        # jobtest_task1,
-        # g1,
+        jobtest_task2,
+        jobtest_task1,
+        g1,
+        join_task,
+        g1,
         jobtest_task0,
         start_task
     ], ops)
@@ -220,8 +223,7 @@ def jobtest_task4(self, options):
     res = 0
     for n in xrange(10000):
         res += n
-
-    logger.warn(u'hello')
+    sleep(3)
     return res
 
 

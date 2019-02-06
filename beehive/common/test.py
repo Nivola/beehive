@@ -276,6 +276,9 @@ class BeehiveTestCase(unittest.TestCase):
         response = requests.request(u'post', endpoint + uri, data=json.dumps(data), headers=headers, timeout=timeout,
                                     verify=False)
         res = response.json()
+        self.logger.debug(u'Respone token: %s' % res)
+        if res.get(u'code', None) is not None:
+            raise Exception(res.get(u'message', u''))
         token = res[u'access_token']
         seckey = res[u'seckey']
         self.logger.debug(u'Get access token to: %s' % token)
