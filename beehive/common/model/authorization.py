@@ -1448,12 +1448,13 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         return res, total
     
     @query
-    def get_group_roles(self, tags=None, group_id=None, page=0, size=10, 
+    def get_group_roles(self, tags=None, group_id=None, group_id_list=None, page=0, size=10, 
             order=u'DESC', field=u'id', *args, **kvargs):
         """Get roles of a user with expiry date of the association
         
         :param tags: list of permission tags
         :param group_id: Orm Group instance
+        :param group_id_list: list id group instance
         :param page: roles list page to show [default=0]
         :param size: number of roles to show in list per page [default=0]
         :param order: sort order [default=DESC]
@@ -1467,9 +1468,13 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         query.add_table(u'roles_groups', u't4')
         query.add_select_field(u't4.expiry_date')
         query.add_filter(u'AND t4.role_id=t3.id')
-        query.add_filter(u'AND t4.group_id=:group_id')
+        if group_id is not None:
+            query.add_filter(u'AND t4.group_id=:group_id')
+        if group_id_list is not None:
+            group_id_list = tuple(group_id_list)
+            query.add_filter(u'AND t4.group_id IN :group_id_list')
         query.set_pagination(page=page, size=size, order=order, field=field)
-        res = query.run(tags, group_id=group_id, *args, **kvargs)
+        res = query.run(tags, group_id=group_id, group_id_list=group_id_list, *args, **kvargs)
         return res
 
     def get_role_groups(self, *args, **kvargs):

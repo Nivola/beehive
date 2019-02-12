@@ -655,6 +655,8 @@ class DeleteUser(SwaggerApiView):
 class ListRolesRequestSchema(PaginatedRequestQuerySchema):
     user = fields.String(context=u'query')
     group = fields.String(context=u'query')
+#     groups_N = fields.List(fields.String(example=u'1'), required=False, allow_none=True, context=u'query',
+#                           collection_format=u'multi', load_from=u'groups.N', description=u'groups id list')
     names = fields.String(context=u'query')
     alias = fields.String(context=u'query')
     perms_N = fields.List(fields.String(example=u''), required=False, allow_none=True, context=u'query',

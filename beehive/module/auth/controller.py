@@ -83,6 +83,7 @@ class AuthController(BaseAuthController):
         :param alias: role alias [optional]
         :param user: user id [optional]
         :param group: group id [optional]
+        :param groups_N: list of groups [optional]
         :param perms_N: list of permissions like objtype,subsystem,objid,action [optional]
         :param page: users list page to show [default=0]
         :param size: number of users to show in list per page [default=0]
@@ -94,6 +95,7 @@ class AuthController(BaseAuthController):
         def get_entities(*args, **kvargs):
             # get filter field
             perms = kvargs.get(u'perms_N', None)
+            groups = kvargs.get(u'groups_N', None)
             group = kvargs.get(u'group', None)
             user = kvargs.get(u'user', None)             
             
@@ -119,7 +121,15 @@ class AuthController(BaseAuthController):
                 for role in iroles:
                     role[0].expiry_date = role[1]
                     roles.append(role[0])                
-            
+  
+            # search roles by groups_N
+            elif groups is not None:
+                iroles, total = self.manager.get_group_roles(group_id_list=groups, *args, **kvargs)
+                roles = []
+                for role in iroles:
+                    role[0].expiry_date = role[1]
+                    roles.append(role[0])    
+
             # get all roles
             else:
                 roles, total = self.manager.get_roles(*args, **kvargs)
