@@ -566,9 +566,10 @@ class JobTask(AbstractJob):
         # get job start time
         job_start_time = params.get(u'start-time', 0)        
         
-        # update job only if job_start_time is not 0. job_start_time=0 if
-        # job already finished and shared area is empty
-        if job_start_time != 0:
+        # update job only if job_start_time is not 0. job_start_time=0 if job already finished and shared area is empty
+        # don't update job when task status is SUCCESS to avoid async on_success of a task to overwrite job status
+        # already written by a following task
+        if job_start_time != 0 and status != u'SUCCESS':
             # get elapsed
             elapsed = current_time - float(job_start_time)        
             

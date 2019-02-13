@@ -1,6 +1,15 @@
 # Changelog
 
-## Version 1.2.0.alpha (, 2019)
+## Version 1.3.0 (February , 2019)
+
+* Added ...
+    * aggiunto runner per realizzare test unit concorrenti
+* Fixed ...
+    * aumenteta la dimensione del campo desc della tabella event a 500 caratteri
+* Integrated ...
+* Various bugfixes
+
+## Version 1.2.0 (February 01, 2019)
 
 * Added ...
     * **BeehiveApiClient** aggiunto metodo set_ssh_group_authorization

@@ -1,8 +1,8 @@
-'''
-Created on May 15, 2017
+#!/usr/bin/env python
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: darkbk
-'''
 import os
 import sys
 
@@ -46,6 +46,8 @@ from celery.utils.log import ColorFormatter as CeleryColorFormatter
 from celery.utils.term import colored
 from gevent import sleep
 from dict_recursive_update import recursive_update
+from multiprocessing import Process, Queue
+from beecell.test.runner import TestRunner
 
 seckey = None
 token = None
@@ -115,13 +117,13 @@ class BeehiveTestCase(unittest.TestCase):
 
         logger.info(u'Validation active: %s' % cls.validation_active)
 
-        print(u'Configurations:')
-        print(u'Main config file: %s' % cls.main_config_file)
-        print(u'Extra config file: %s' % cls.spec_config_file)
-        print(u'Validation active: %s' % cls.validation_active)
-        print(u'Test user: %s' % cls.run_test_user)
-        print(u'')
-        print(u'Tests:')
+        # print(u'Configurations:')
+        # print(u'Main config file: %s' % cls.main_config_file)
+        # print(u'Extra config file: %s' % cls.spec_config_file)
+        # print(u'Validation active: %s' % cls.validation_active)
+        # print(u'Test user: %s' % cls.run_test_user)
+        # print(u'')
+        # print(u'Tests:')
 
         # env = config.get(u'env', None)
         # if env is None:
@@ -276,6 +278,9 @@ class BeehiveTestCase(unittest.TestCase):
         response = requests.request(u'post', endpoint + uri, data=json.dumps(data), headers=headers, timeout=timeout,
                                     verify=False)
         res = response.json()
+        self.logger.debug(u'Respone token: %s' % res)
+        if res.get(u'code', None) is not None:
+            raise Exception(res.get(u'message', u''))
         token = res[u'access_token']
         seckey = res[u'seckey']
         self.logger.debug(u'Get access token to: %s' % token)
@@ -314,7 +319,8 @@ class BeehiveTestCase(unittest.TestCase):
         return validate
     
     def call(self, subsystem, path, method, params=None, headers=None, user=None, pwd=None, auth=None, data=None,
-             query=None, runlog=True, timeout=10, oauth2_token=None, response_size=400, *args, **kvargs):
+             query=None, runlog=True, timeout=10, oauth2_token=None, response_size=400, pretty_response=False,
+             *args, **kvargs):
         global token, seckey
 
         start = time.time()
@@ -459,6 +465,8 @@ class BeehiveTestCase(unittest.TestCase):
             
             if runlog is True:
                 self.runlogger.info(u'response data:    %s' % truncate(response.text, size=response_size))
+            if pretty_response is True:
+                self.runlogger.debug(self.pp.pformat(res))
             
             # validate with swagger schema
             validate = self.validate_response(resp_content_type, schema, path, method, response, runlog)
@@ -472,11 +480,11 @@ class BeehiveTestCase(unittest.TestCase):
         self.assertEqual(validate, True)
         return res
 
-    def get(self, uri, query=None, params=None, timeout=600, user=None):
+    def get(self, uri, query=None, params=None, timeout=600, user=None, pretty_response=False):
         if user is None:
             user = self.users[self.run_test_user]
         res = self.call(self.endpoint_service, uri, u'get', data=u'', query=query, timeout=timeout, params=params,
-                        headers=self.custom_headers, **user)
+                        headers=self.custom_headers, pretty_response=pretty_response, **user)
         return res
 
     def post(self, uri, data=None, query=None, params=None, timeout=600, user=None):
@@ -547,23 +555,12 @@ class ColorFormatter(CeleryColorFormatter):
     }
 
 
-def runtest(testcase_class, tests, args={}):
-    """Run test. Accept as external input args:
-    -
-        main_config_file = None
-    spec_config_file = None
-    validation_active
-
-
-    :param testcase_class:
-    :param tests:
-    :return:
-    """
+def configure_test(testcase_class, args={}, log_file_name=u'test'):
     home = os.path.expanduser(u'~')
-    log_file = home + u'/test.log'
-    watch_file = home + u'/test.watch'
-    run_file = home + u'/test.run'
-    
+    log_file = u'%s/%s.log' % (home, log_file_name)
+    watch_file = u'%s/%s.watch' % (home, log_file_name)
+    run_file = u'%s/%s.run' % (home, log_file_name)
+
     logging.captureWarnings(True)
 
     loggers = [
@@ -574,10 +571,9 @@ def runtest(testcase_class, tests, args={}):
     loggers = [
         logging.getLogger(u'beehive.test.run'),
     ]
-    LoggerHelper.file_handler(loggers, logging.INFO, run_file, frmt=u'%(message)s', formatter=ColorFormatter)
+    LoggerHelper.file_handler(loggers, logging.DEBUG, run_file, frmt=u'%(message)s', formatter=ColorFormatter)
 
     # setting logger
-    # frmt = "%(asctime)s - %(levelname)s - %(process)s:%(thread)s - %(message)s"
     frmt = u'%(asctime)s - %(levelname)s - %(message)s'
     loggers = [
         logging.getLogger(u'beehive'),
@@ -603,6 +599,62 @@ def runtest(testcase_class, tests, args={}):
     testcase_class.validation_active = args.get(u'validate', False)
     testcase_class.run_test_user = args.get(u'user', u'test1')
 
+
+def runtest(testcase_class, tests, args={}):
+    """Run test. Accept as external input args:
+    -
+        main_config_file = None
+    spec_config_file = None
+    validation_active
+
+
+    :param testcase_class:
+    :param tests:
+    :return:
+    """
+    configure_test(testcase_class, args=args)
+
     # run test suite
     runner = unittest.TextTestRunner(verbosity=2)
     runner.run(unittest.TestSuite(map(testcase_class, tests)))
+
+
+def runtest_parallel(testcase_class, tests, args={}):
+    """Run test. Accept as external input args:
+    -
+        main_config_file = None
+    spec_config_file = None
+    validation_active
+
+
+    :param testcase_class:
+    :param tests:
+    :return:
+    """
+    results = Queue()
+
+    def run_test(index, results):
+        # run test suite
+        configure_test(testcase_class, args=args, log_file_name=u'test-runner-'+index)
+        runner = TestRunner(verbosity=2, index=index)
+        testcase_class.index = index
+        result = runner.run(unittest.TestSuite(map(testcase_class, tests)))
+        results.put([index, result])
+
+    max_test = args.get(u'max', 2)
+    indexes = range(0, max_test)
+
+    procs = [Process(target=run_test, args=(str(i), results)) for i in indexes]
+
+    print(u'\nExecution plan:')
+    print(u'----------------------------------------------------------------------')
+    for p in procs:
+        p.start()
+
+    for p in procs:
+        p.join()
+
+    print(u'\nExecution results:')
+    print(u'----------------------------------------------------------------------')
+    for i in indexes:
+        TestRunner(index=i).print_result(results.get()[1])

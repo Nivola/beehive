@@ -12,24 +12,24 @@ task_id = 'd124ef29-7c57-423e-b6d9-b72d519d7600'
 schedule_id = None
 
 tests = [
-    'test_ping_task_manager',
-    'test_stat_task_manager',
-    'test_report_task_manager',
-    'test_queues_task_manager',
-    'test_get_all_tasks',
-    'test_count_all_tasks',
-    'test_get_task_definitions',
-    'test_run_job_test',
-    'test_get_task',
-    'test_get_task_graph',
-    'test_delete_task',
-    'test_run_job_test',
-    'test_delete_all_tasks',
-
-    'test_create_scheduler_entries',
-    'test_get_scheduler_entries',
-    'test_get_scheduler_entry',
-    'test_delete_scheduler_entry',
+    # 'test_ping_task_manager',
+    # 'test_stat_task_manager',
+    # 'test_report_task_manager',
+    # 'test_queues_task_manager',
+    # 'test_get_all_tasks',
+    # 'test_count_all_tasks',
+    # 'test_get_task_definitions',
+    # 'test_run_job_test',
+    # 'test_get_task',
+    # 'test_get_task_graph',
+    # 'test_delete_task',
+    # 'test_run_job_test',
+    # 'test_delete_all_tasks',
+    #
+    # 'test_create_scheduler_entries',
+    # 'test_get_scheduler_entries',
+    # 'test_get_scheduler_entry',
+    # 'test_delete_scheduler_entry',
 ]
 
 

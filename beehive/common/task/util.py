@@ -53,7 +53,7 @@ def start_task(self, options):
     # update job status
     # self.logger.warn(u'START TASK - %s:%s' % (self.name, self.request.id))
     self.update(u'STARTED', msg=u'START TASK')
-    self.update_job(status=u'PROGRESS')
+    # self.update_job(status=u'PROGRESS')
     return None
 
 

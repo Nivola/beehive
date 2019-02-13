@@ -16,6 +16,7 @@ from beehive.common.task.util import end_task, start_task, join_task
 
 logger = get_task_logger(__name__)
 
+
 #
 # test job
 #
@@ -67,8 +68,8 @@ def jobtest(self, objid, params):
 
     j = Job.create([
         end_task,
-        # jobtest_task2,
-        # jobtest_task1,
+        jobtest_task2,
+        jobtest_task1,
         g1,
         join_task,
         g1,
@@ -224,8 +225,7 @@ def jobtest_task4(self, options):
     res = 0
     for n in xrange(10000):
         res += n
-
-    logger.warn(u'hello')
+    sleep(3)
     return res
 
 
