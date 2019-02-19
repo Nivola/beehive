@@ -1470,8 +1470,8 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         query.add_filter(u'AND t4.role_id=t3.id')
         if group_id is not None:
             query.add_filter(u'AND t4.group_id=:group_id')
-        if group_id_list is not None:
-            group_id_list = tuple(group_id_list)
+        if kvargs.get(u'group_id_list') is not None:
+            group_id_list = tuple(kvargs.pop(u'group_id_list'))
             query.add_filter(u'AND t4.group_id IN :group_id_list')
         query.set_pagination(page=page, size=size, order=order, field=field)
         res = query.run(tags, group_id=group_id, group_id_list=group_id_list, *args, **kvargs)

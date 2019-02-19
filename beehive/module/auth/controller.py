@@ -124,7 +124,8 @@ class AuthController(BaseAuthController):
   
             # search roles by groups_N
             elif groups is not None:
-                iroles, total = self.manager.get_group_roles(group_id_list=groups, *args, **kvargs)
+                kvargs[u'group_id_list'] = [ str(self.get_entity(Group, ModelGroup, group).oid) for group in groups ]
+                iroles, total = self.manager.get_group_roles(*args, **kvargs)
                 roles = []
                 for role in iroles:
                     role[0].expiry_date = role[1]
