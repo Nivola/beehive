@@ -3180,7 +3180,7 @@ class PaginatedResponseSchema(Schema):
 
 
 class CrudApiObjectSimpleResponseSchema(Schema):
-    uuid = fields.Boolean(required=True,  default=True, example=True)
+    res = fields.Boolean(required=True,  default=True, example=True)
 
 
 class CrudApiObjectResponseSchema(Schema):
