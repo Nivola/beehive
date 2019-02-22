@@ -545,6 +545,10 @@ class BeehiveTestCase(unittest.TestCase):
                 state = TIMEOUT
         self.assertEqual(state, accepted_state)
 
+    def setup_param_for_runner(self, param):
+        param = u'%s-%s' % (param, self.index)
+        return param
+
 
 class ColorFormatter(CeleryColorFormatter):
     #: Loglevel -> Color mapping.
