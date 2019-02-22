@@ -209,11 +209,17 @@ class TaskResult(object):
     
         # get task stop_time
         stop_time = time()
-    
+
+        logger.debug(u'POST RUN =============== task_id: %s status %s' % (task_id, status))
         # set retval to None when failure occurs
         if status == u'FAILURE':
             retval = None
-    
+
+        # when RETRAY store PROGRESS and ignore retval
+        if status == u'RETRY':
+            retval = None
+            status = u'PROGRESS'
+
         # reset status for JOB task to PROGRESS when status is SUCCESS
         # status SUCCESS will be set when the last child task end
         # if task.inner_type == u'JOB' and task_local.opid == task_id and \
