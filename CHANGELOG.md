@@ -1,6 +1,6 @@
 # Changelog
 
-## Version 1.3.0 (February , 2019)
+## Version 1.3.0 (February 27, 2019)
 
 * Added ...
     * aggiunto runner per realizzare test unit concorrenti
