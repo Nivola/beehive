@@ -95,6 +95,9 @@ class TaskResult(object):
 
                 # check job already present in task jobs list
                 val_jobs = result.get(u'jobs', [])
+                if val_jobs is None:
+                    result[u'jobs'] = []
+                    val_jobs = []
                 if jobs is not None:
                     for job in jobs:
                         if job not in val_jobs:

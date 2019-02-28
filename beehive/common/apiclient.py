@@ -47,6 +47,7 @@ class BeehiveApiClient(object):
     :param pwd: api user password
     :param catalog_id: api catalog id
     :param key: [optional] fernet key used to decrypt encrypted password
+    :param proxy: http proxy server {u'host': .., u'port': ..} [optional]
     
     Use:
     
@@ -54,7 +55,8 @@ class BeehiveApiClient(object):
     
     
     """
-    def __init__(self, auth_endpoints, authtype, user, pwd, secret=None, catalog_id=None, client_config=None, key=None):
+    def __init__(self, auth_endpoints, authtype, user, pwd, secret=None, catalog_id=None, client_config=None, key=None,
+                 proxy=None):
         self.logger = getLogger(self.__class__.__module__ + u'.' + self.__class__.__name__)
 
         # check password is encrypted
@@ -83,6 +85,8 @@ class BeehiveApiClient(object):
         self.uid = None
         self.seckey = None
         self.filter = None
+
+        self.proxy = proxy
         
         # self.host = gethostname()
 
@@ -207,7 +211,7 @@ class BeehiveApiClient(object):
         :param data: Request data. [default={}]. Ex.
         
                         {'@number': 12524, '@type': 'issue', '@action': 'show'}
-                       
+
         :param timeout: Request timeout. [default=30s]
         :param print_curl: if True print curl request call
         :param silent: if True print curl request call
@@ -246,12 +250,19 @@ class BeehiveApiClient(object):
             
             if proto == u'http':
                 conn = httplib.HTTPConnection(host, port, timeout=timeout)
+                if self.proxy is not None:
+                    conn.set_tunnel(self.proxy.get(u'host'), port=self.proxy.get(u'port'))
             else:
                 try:
                     ssl._create_default_https_context = ssl._create_unverified_context
                 except:
                     pass
-                conn = httplib.HTTPSConnection(host, port, timeout=timeout)
+                if self.proxy is not None:
+                    conn = httplib.HTTPSConnection(self.proxy.get(u'host'), port=self.proxy.get(u'port'),
+                                                   timeout=timeout)
+                    conn.set_tunnel(host, port=port)
+                else:
+                    conn = httplib.HTTPSConnection(host, port, timeout=timeout)
 
             # get response
             conn.request(method, path, data, headers)
