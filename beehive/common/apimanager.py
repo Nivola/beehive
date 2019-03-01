@@ -39,7 +39,7 @@ from beehive.common.model.config import ConfigDbManager
 from beehive.common.model.authorization import AuthDbManager, Role
 from beehive.common.event import EventProducerRedis
 from flasgger import Swagger, Schema, fields, SwaggerView
-from beecell.dicttoxml import dicttoxml
+from beehive.common.dicttoxml import dicttoxml
 from beecell.flask.api_util import get_error
 from rediscluster.client import StrictRedisCluster
 try:
