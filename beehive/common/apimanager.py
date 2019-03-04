@@ -3285,28 +3285,33 @@ class ApiClient(BeehiveApiClient):
         
         try:
             res = self.send_request(subsystem, path, method, data, self.uid, self.seckey, other_headers, silent=silent)
+            self.logger.debug(u'Send admin request to %s using uid %s' % (path, self.uid))
         except BeehiveApiClientError as ex:
-            self.logger.error('Send admin request to %s using uid %s: %s' % (path, self.uid, ex.value), exc_info=1)
+            self.logger.error(u'Send admin request to %s using uid %s: %s' % (path, self.uid, ex.value), exc_info=1)
             raise ApiManagerError(ex.value, code=ex.code)
 
         return res
 
-    def user_request(self, module, path, method, data=u'', other_headers={}, silent=False):
+    def user_request(self, subsystem, path, method, data=u'', other_headers={}, silent=False):
         """Make api request using module current user credentials.
         
         **Raise:** :class:`ApiManagerError`
         """
         # propagate opernation.id to internal api call
-        other_headers[u'request-id'] = operation.id
+        if isinstance(other_headers, dict):
+            other_headers[u'request-id'] = operation.id
+        else:
+            other_headers = {u'request-id': operation.id}
 
         try:
             # get user logged uid and password
             uid = operation.user[2]
             seckey = operation.user[3]
-            res = self.send_request(module, path, method, data, uid, seckey, other_headers, silent=silent,
+            res = self.send_request(subsystem, path, method, data, uid, seckey, other_headers, silent=silent,
                                     api_authtype=operation.token_type)
+            self.logger.debug(u'Send user request to %s using uid %s' % (path, self.uid))
         except BeehiveApiClientError as ex:
-            self.logger.error('Send user request to %s using uid %s: %s' % (path, self.uid, ex.value), exc_info=1)
+            self.logger.error(u'Send user request to %s using uid %s: %s' % (path, self.uid, ex.value), exc_info=1)
             raise
 
         return res
