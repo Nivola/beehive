@@ -52,6 +52,7 @@ from beecell.test.runner import TestRunner
 seckey = None
 token = None
 result = {}
+TIMEOUT = u'TIMEOUT'
 
 logger = logging.getLogger(__name__)
 
@@ -529,17 +530,24 @@ class BeehiveTestCase(unittest.TestCase):
         except (NotFoundException, Exception):
             return u'EXPUNGED'
 
-    def wait_job(self, jobid, delta=3, accepted_state=u'SUCCESS'):
+    def wait_job(self, jobid, delta=3, accepted_state=u'SUCCESS', maxtime=600):
         """Wait resource
         """
         logger.info(u'wait for:         %s' % jobid)
         self.runlogger.info(u'wait for:         %s' % jobid)
         state = self.get_job_state(jobid)
+        elapsed = 0
         while state not in [u'SUCCESS', u'FAILURE']:
             self.runlogger.info(u'.')
             sleep(delta)
             state = self.get_job_state(jobid)
+            if elapsed > maxtime and state != accepted_state:
+                state = TIMEOUT
         self.assertEqual(state, accepted_state)
+
+    def setup_param_for_runner(self, param):
+        param = u'%s-%s' % (param, self.index)
+        return param
 
 
 class ColorFormatter(CeleryColorFormatter):

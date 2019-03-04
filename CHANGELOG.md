@@ -1,6 +1,14 @@
 # Changelog
 
-## Version 1.3.0 (February , 2019)
+## Version 1.4.0 (March, 2019)
+
+* Added ...
+* Fixed ...
+    * revisione del metodo user_request
+* Integrated ...
+* Various bugfixes
+
+## Version 1.3.0 (February 27, 2019)
 
 * Added ...
     * aggiunto runner per realizzare test unit concorrenti

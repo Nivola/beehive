@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
-'''
-Created on Nov 14, 2015
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: darkbk
-'''
 from .view import SchedulerAPI, TaskAPI
 from .controller import SchedulerController
 from beehive.common.apimanager import ApiModule
@@ -33,3 +31,6 @@ class SchedulerModule(ApiModule):
 
     def get_controller(self):
         return self.controller
+
+    def get_related_controller(self):
+        return self.related.get_controller()
