@@ -1382,7 +1382,7 @@ class ApiController(object):
         :raise ApiManagerError`:
         """
         try:
-            entity = self.manager.get_entity(model_class, oid, for_update)
+            entity = self.manager.get_entity(model_class, oid, for_update, *args, **kvargs)
         except QueryError as ex:         
             self.logger.error(ex, exc_info=1)
             entity_name = entity_class.__name__

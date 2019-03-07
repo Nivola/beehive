@@ -1,5 +1,10 @@
 # Changelog
 
+## version 1.5.0 (Marcch, 05 2019)
+* Added ...
+* Fixed ...
+	* aggiornamento firma metodo get_entity: inserimento params *args, **kvargs
+
 ## Version 1.4.0 (March, 2019)
 
 * Added ...
