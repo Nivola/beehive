@@ -638,27 +638,27 @@ class ApiManager(object):
                 ##### security configuration #####
                 # configure only with auth module
                 try:
-                    confs = configurator.get(app=self.app_name, group='auth')
+                    confs = configurator.get(app=self.app_name, group=u'auth')
                     self.logger.info(u'Configure security - CONFIGURE')
                     
                     # Create authentication providers
         
                     for conf in confs:
                         item = json.loads(conf.value)
-                        if item['type'] == 'db':
-                            auth_provider = DatabaseAuth(AuthDbManager, 
-                                                         self.db_manager, 
-                                                         SystemUser)
-                        elif item['type'] == 'ldap':
-                            auth_provider = LdapAuth(item['host'], item['domain'], 
-                                                     SystemUser, timeout=item['timeout'], 
-                                                     ssl=item['ssl'])
-                        self.auth_providers[item['domain']] = auth_provider
-                        self.logger.info('Setup authentication provider: %s' % auth_provider)
+                        if item[u'type'] == u'db':
+                            auth_provider = DatabaseAuth(AuthDbManager, self.db_manager, SystemUser)
+                        elif item[u'type'] == u'ldap':
+                            bind_pwd = decrypt_data(item[u'bind_pwd'])
+                            auth_provider = LdapAuth(item[u'host'], SystemUser, timeout=item[u'timeout'],
+                                                     ssl=item[u'ssl'], dn=item[u'dn'],
+                                                     search_filter=item[u'search_filter'], search_id=item[u'search_id'],
+                                                     bind_user=item[u'bind_user'], bind_pwd=bind_pwd)
+                        self.auth_providers[item[u'provider']] = auth_provider
+                        self.logger.info(u'Setup authentication provider: %s' % auth_provider)
 
                     self.logger.info(u'Configure security - CONFIGURED')
                 except:
-                    self.logger.warning(u'Configure security - NOT CONFIGURED')
+                    self.logger.warning(u'Configure security - NOT CONFIGURED', exc_info=1)
                 ##### security configuration #####
         
                 ##### camunda configuration #####
@@ -2757,7 +2757,8 @@ class ApiView(FlaskView):
         try:
             # get user permission
             user = identity[u'user']
-            name = user[u'name']
+            # name = user[u'name']
+            name = user[u'id']
             compress_perms = user[u'perms']
             
             # get permissions

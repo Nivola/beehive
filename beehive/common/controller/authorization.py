@@ -42,6 +42,10 @@ class AuthenticationManager(object):
     def check(self, user_uuid, username, domain, ipaddr):
         """Login user using identity provider.
 
+        :param user_uuid: user uuid
+        :param username: user email or name
+        :param domain: authentication provider
+        :param ipaddr: ip address
         :return: System User
         :rtype: :class:`SystemUser`
         :raises AuthError: raise :class:`AuthError`
@@ -56,19 +60,25 @@ class AuthenticationManager(object):
             raise AuthError(u'', u'Authentication domain %s does not exist' % domain, code=10)
 
         # login over authentication provider and get user attributes
-        username = u'%s@%s' % (username, domain)
+        # username = u'%s@%s' % (username, domain)
 
         auth_user = auth_provider.check(user_uuid, username)
 
         # set user ip address
+        auth_user.domain = domain
         auth_user.current_login_ip = ipaddr
+        auth_user.id = user_uuid
 
         self.logger.debug(u'Login user: %s' % username)
         return auth_user
 
-    def login(self, username, password, domain, ipaddr):
+    def login(self, user_uuid, username, password, domain, ipaddr):
         """Login user using identity provider.
-        
+
+        :param user_uuid: user uuid
+        :param username: user email or name
+        :param domain: authentication provider
+        :param ipaddr: ip address
         :return: System User
         :rtype: :class:`SystemUser`
         :raises AuthError: raise :class:`AuthError`
@@ -83,12 +93,14 @@ class AuthenticationManager(object):
             raise AuthError(u'', u'Authentication domain %s does not exist' % domain, code=10)
         
         # login over authentication provider and get user attributes
-        username = u'%s@%s' % (username, domain)
+        # username = u'%s@%s' % (username, domain)
 
         auth_user = auth_provider.login(username, password)
 
         # set user ip address
         auth_user.current_login_ip = ipaddr
+        auth_user.domain = domain
+        auth_user.id = user_uuid
         
         self.logger.debug(u'Login user: %s' % username)
         return auth_user
@@ -107,11 +119,10 @@ class AuthenticationManager(object):
             self.logger.debug(u'Get authentication provider: %s' % auth_provider)
         except KeyError:
             self.logger.error(u'Authentication domain %s does not exist' % domain)
-            raise AuthError(u'', u'Authentication domain %s does not exist' % domain, 
-                            code=10)
+            raise AuthError(u'', u'Authentication domain %s does not exist' % domain, code=10)
         
         # login over authentication provider and get user attributes
-        username = u'%s@%s' % (username, domain)
+        # username = u'%s@%s' % (username, domain)
         auth_user = auth_provider.refresh(username, uid)
         
         self.logger.debug(u'Login user: %s' % username)
@@ -188,8 +199,6 @@ class BaseAuthController(ApiController):
         :param expire: if True identity key expire after xx seconds
         :param expire_time: [optional] det expire time in seconds
         """
-        #self.check_authorization(Token.objtype, Token.objdef, u'*', u'insert')
-        
         if expire_time is None:
             expire_time = self.expire
         val = pickle.dumps(identity)
@@ -197,7 +206,6 @@ class BaseAuthController(ApiController):
         if expire is False:
             self.module.redis_manager.persist(self.prefix + uid)
         self.logger.info(u'Set identity %s in redis' % uid)
-        #User(self).send_event(u'identity.insert', params={u'uid':uid})
     
     @trace(entity=u'Token', op=u'delete')
     def remove_identity(self, uid):
@@ -209,20 +217,16 @@ class BaseAuthController(ApiController):
         
         if self.module.redis_manager.get(self.prefix + uid) is None:
             err = u'Identity %s does not exist' % uid
-            User(self).send_event(u'identity.delete', params={u'uid':uid}, 
-                                  exception=err)
+            User(self).send_event(u'identity.delete', params={u'uid': uid}, exception=err)
             self.logger.error(err)
             raise ApiManagerError(err, code=404)            
         
         try:
             self.module.redis_manager.delete(self.prefix + uid)
             self.logger.debug(u'Remove identity %s from redis' % uid)
-            # User(self).send_event(u'identity.delete', params={u'uid':uid})
             return None
         except Exception as ex:
             err = u'Can not remove identity %s' % uid
-            # User(self).send_event(u'identity.delete', params={u'uid':uid},
-            #                      exception=err)  
             self.logger.error(err)
             raise ApiManagerError(err, code=400)       
 
@@ -250,12 +254,9 @@ class BaseAuthController(ApiController):
     def get_identity(self, uid):
         """Get identity
         
-        :return: {u'uid':..., u'user':..., u'timestamp':..., u'pubkey':..., 
-                  'seckey':...}
+        :return: {u'uid':..., u'user':..., u'timestamp':..., u'pubkey':..., u'seckey':...}
         :rtype: dict
         """
-        # self.check_authorization(Token.objtype, Token.objdef, u'*', u'view')
-        
         try:
             identity = self.module.redis_manager.get(self.prefix + uid)
         except Exception as ex:
@@ -297,7 +298,7 @@ class BaseAuthController(ApiController):
     #
     # base inner login
     #
-    @trace(entity=u'Token', op=u'login.params.insert', noargs=True)
+    @trace(entity=u'Token', op=u'insert', noargs=True)
     def validate_login_params(self, name, domain, password, login_ip):
         """Validate main login params.
         
@@ -371,15 +372,26 @@ class BaseAuthController(ApiController):
         
         return dbuser, dbuser_attribs
 
-    @trace(entity=u'Token', op=u'login.lastlogin.insert', noargs=True)
+    @trace(entity=u'Token', op=u'insert', noargs=True)
     def set_user_last_login(self, name, domain):
-        user = u'%s@%s' % (name, domain)
+        # user = u'%s@%s' % (name, domain)
+        user = name
         try:
             self.auth_manager.set_user_last_login(user)
         except:
             self.logger.warn(u'User %s last login date can not be updated' % user, exc_info=1)
 
-    @trace(entity=u'Token', op=u'login.base.insert', noargs=True)
+    def get_login_email(self, dbuser):
+        """Get valid login email
+
+        :param dbuser: database user instance
+        :return: valid email
+        """
+        if dbuser.email is not None:
+            return dbuser.email
+        return dbuser.name
+
+    @trace(entity=u'Token', op=u'insert', noargs=True)
     def base_login(self, name, domain, password, login_ip, dbuser, dbuser_attribs):
         """Base login.
         
@@ -394,14 +406,15 @@ class BaseAuthController(ApiController):
         """        
         # login user
         try:
-            user = self.module.authentication_manager.login(name, password, domain, login_ip)
+            user = self.module.authentication_manager.login(dbuser.name, self.get_login_email(dbuser), password,
+                                                            domain, login_ip)
         except (AuthError) as ex:
             self.logger.error(ex.desc)
             raise ApiManagerError(ex.desc, code=401)
         
         self.logger.info(u'Login user: %s' % user)
 
-        self.set_user_last_login(name, domain)
+        self.set_user_last_login(dbuser.name, domain)
         
         # append attributes, roles and perms to SystemUser
         try:
@@ -432,7 +445,8 @@ class BaseAuthController(ApiController):
         """
         # login user
         try:
-            user = self.module.authentication_manager.login(name, password, domain, login_ip)
+            user = self.module.authentication_manager.login(dbuser.name, self.get_login_email(dbuser), password,
+                                                            domain, login_ip)
         except AuthError as ex:
             self.logger.warn(ex.desc)
 
@@ -440,14 +454,17 @@ class BaseAuthController(ApiController):
             res = self.auth_manager.verify_user_secret(dbuser, password)
 
             user_class = self.module.authentication_manager.get_user_class(domain)
-            user = user_class(dbuser.uuid, domain, password, True)
+            email = dbuser.email
+            if email is None:
+                email = dbuser.name
+            user = user_class(dbuser.name, email, password, dbuser.active, login_ip=login_ip, domain=domain)
 
             if res is False:
                 raise ApiManagerError(ex.desc, code=401)
 
         self.logger.info(u'Login user: %s' % user)
 
-        self.set_user_last_login(name, domain)
+        self.set_user_last_login(dbuser.name, domain)
 
         # append attributes, roles and perms to SystemUser
         try:
@@ -478,7 +495,7 @@ class BaseAuthController(ApiController):
         """
         # login user
         try:
-            user = self.module.authentication_manager.check(dbuser.uuid, name, domain, login_ip)
+            user = self.module.authentication_manager.check(dbuser.name, self.get_login_email(dbuser), domain, login_ip)
         except AuthError as ex:
             self.logger.error(ex.desc)
             raise ApiManagerError(ex.desc, code=401)
@@ -490,7 +507,7 @@ class BaseAuthController(ApiController):
 
         self.logger.info(u'Login user: %s' % user)
 
-        self.set_user_last_login(name, domain)
+        self.set_user_last_login(dbuser.name, domain)
 
         # append attributes, roles and perms to SystemUser
         try:
@@ -535,38 +552,24 @@ class BaseAuthController(ApiController):
         :return: True
         :raise ApiManagerError:
         """
-        opts = {
-            u'name':name, 
-            u'domain':domain, 
-            u'password':u'xxxxxxx', 
-            u'login_ip':login_ip
-        }
         user_name = u'%s@%s' % (name, domain)
         
         # validate input params
         try:
             self.validate_login_params(name, domain, password, login_ip)
         except ApiManagerError as ex:
-            #User(self).send_event(u'simplehttp.login.insert', params=opts, 
-            #                      exception=ex)
             raise
         
         # check user
         try:
-            dbuser, dbuser_attribs = self.check_login_user(name, domain, 
-                                                       password, login_ip)
+            dbuser, dbuser_attribs = self.check_login_user(name, domain, password, login_ip)
         except ApiManagerError as ex:
-            #User(self).send_event(u'simplehttp.login.insert', params=opts, 
-            #                      exception=ex)
             raise
         
         # check user has authentication filter
         auth_filters = dbuser_attribs.get(u'auth-filters', (u'', None))[0].split(u',')
         if u'simplehttp' not in auth_filters:
-            msg = u'Simple http authentication is not allowed for user %s' % \
-                  user_name
-            #User(self).send_event(u'simplehttp.login.insert', params=opts, 
-            #                      exception=msg)
+            msg = u'Simple http authentication is not allowed for user %s' % user_name
             self.logger.error(msg)
             raise ApiManagerError(msg, code=401)
         
@@ -581,37 +584,30 @@ class BaseAuthController(ApiController):
                 break
         
         if allowed is False:
-            msg = u'User %s ip %s can not perform simple http authentication' % \
-                  (user_name, login_ip)
-            #User(self).send_event(u'simplehttp.login.insert', params=opts, 
-            #                      exception=msg)
+            msg = u'User %s ip %s can not perform simple http authentication' % (user_name, login_ip)
             self.logger.error(msg)
             raise ApiManagerError(msg, code=401)            
         
         # login user
         try:
-            user, attrib = self.base_login(name, domain, password, login_ip, 
-                                           dbuser, dbuser_attribs)
+            user, attrib = self.base_login(self.get_login_email(dbuser), domain, password, login_ip, dbuser,
+                                           dbuser_attribs)
         except ApiManagerError as ex:
-            #User(self).send_event(u'simplehttp.login.insert', params=opts, 
-            #                      exception=ex)
             raise
         
-        res = {u'uid':id_gen(20),
-               u'type':u'simplehttp',
-               u'user':user.get_dict(),
-               u'timestamp':datetime.now().strftime(u'%y-%m-%d-%H-%M')}        
-    
-        #User(self).send_event(u'simplehttp.login.insert', params=opts)
+        res = {u'uid': id_gen(20),
+               u'type': u'simplehttp',
+               u'user': user.get_dict(),
+               u'timestamp': datetime.now().strftime(u'%y-%m-%d-%H-%M')}
         
         return res
     
     #
     # keyauth login, logout, refresh_user
     #
-    #@trace(entity=u'Token', op=u'login.key.insert')
-    def gen_authorizaion_key(self, user, domain, name, login_ip, attrib):
-        '''Generate asymmetric key for keyauth filter.
+    # @trace(entity=u'Token', op=u'login.key.insert')
+    def gen_authorization_key(self, user, domain, name, login_ip, attrib):
+        """Generate asymmetric key for keyauth filter.
         
         :param name: user name
         :param domain: user authentication domain
@@ -620,58 +616,47 @@ class BaseAuthController(ApiController):
         :param attrib: user attributes
         
         :raise ApiManagerError: 
-        '''
-        opts = {
-            u'name':name, 
-            u'domain':domain, 
-            u'password':u'xxxxxxx', 
-            u'login_ip':login_ip
-        }
+        """
         user_name = u'%s@%s' % (name, domain) 
         
         try:
-            #uid = id_gen(20)
             uid = token_gen()
             timestamp = datetime.now()#.strftime(u'%H-%M_%d-%m-%Y')     
-            private_key = rsa.generate_private_key(public_exponent=65537,
-                                                   key_size=1024,
-                                                   backend=default_backend())        
+            private_key = rsa.generate_private_key(public_exponent=65537, key_size=1024, backend=default_backend())
             public_key = private_key.public_key()
             pem = public_key.public_bytes(encoding=serialization.Encoding.PEM,
-                        format=serialization.PublicFormat.SubjectPublicKeyInfo)    
+                                          format=serialization.PublicFormat.SubjectPublicKeyInfo)
             pubkey = binascii.b2a_base64(pem)
             pem = private_key.private_bytes(encoding=serialization.Encoding.PEM,
-                        format=serialization.PrivateFormat.TraditionalOpenSSL, 
-                        encryption_algorithm=serialization.NoEncryption())    
+                                            format=serialization.PrivateFormat.TraditionalOpenSSL,
+                                            encryption_algorithm=serialization.NoEncryption())
             seckey = binascii.b2a_base64(pem)
             
             # create identity
-            identity = {u'uid':uid,
-                        u'type':u'keyauth',
-                        u'user':user.get_dict(),
-                        u'timestamp':timestamp,
-                        u'ip':login_ip,
-                        u'pubkey':pubkey,
-                        u'seckey':seckey}
-            self.logger.debug(u'Create user %s identity: %s' % 
-                              (user_name, truncate(identity)))
-            operation.user = (user_name, login_ip, uid)
+            identity = {u'uid': uid,
+                        u'type': u'keyauth',
+                        u'user': user.get_dict(),
+                        u'timestamp': timestamp,
+                        u'ip': login_ip,
+                        u'pubkey': pubkey,
+                        u'seckey': seckey}
+            self.logger.debug(u'Create user %s identity: %s' % (user_name, truncate(identity)))
+            operation.user = (user.id, login_ip, uid)
             
             # save identity in redis
             expire = True
             if attrib[u'sys_type'][0] == u'SYS':
                 self.logger.debug(u'Login system user')
-                #expire = False
             self.set_identity(uid, identity, expire=expire)
 
             res = {
-                u'token_type':u'Bearer',
-                u'user':user.get_dict().get(u'id'),
-                u'access_token':uid,
-                u'pubkey':pubkey,
-                u'seckey':seckey,
-                u'expires_in':self.expire,
-                u'expires_at':timestamp+timedelta(seconds=self.expire),
+                u'token_type': u'Bearer',
+                u'user': user.get_dict().get(u'id'),
+                u'access_token': uid,
+                u'pubkey': pubkey,
+                u'seckey': seckey,
+                u'expires_in': self.expire,
+                u'expires_at': timestamp+timedelta(seconds=self.expire),
             }  
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
@@ -699,8 +684,7 @@ class BaseAuthController(ApiController):
         
         # check user
         try:
-            dbuser, dbuser_attribs = self.check_login_user(name, domain, 
-                                                       password, login_ip)
+            dbuser, dbuser_attribs = self.check_login_user(name, domain, password, login_ip)
         except ApiManagerError as ex:
             raise     
         
@@ -708,13 +692,13 @@ class BaseAuthController(ApiController):
         
         # login user
         try:
-            user, attrib = self.base_login(name, domain, password, login_ip, 
-                                           dbuser, dbuser_attribs)
+            user, attrib = self.base_login(self.get_login_email(dbuser), domain, password, login_ip, dbuser,
+                                           dbuser_attribs)
         except ApiManagerError as ex:
             raise
         
         # generate asymmetric keys
-        res = self.gen_authorizaion_key(user, domain, name, login_ip, attrib)
+        res = self.gen_authorization_key(user, domain, name, login_ip, attrib)
 
         return res    
     
@@ -729,13 +713,6 @@ class BaseAuthController(ApiController):
         :return: True
         :raise ApiManagerError:
         """
-        # opts = {
-        #     u'name': name,
-        #     u'domain': domain,
-        #     u'password': u'xxxxxxx',
-        #     u'login_ip': login_ip
-        # }
-        
         # validate input params
         try:
             self.validate_login_params(name, domain, password, login_ip)
@@ -752,12 +729,13 @@ class BaseAuthController(ApiController):
         
         # login user
         try:
-            user, attrib = self.base_login(name, domain, password, login_ip, dbuser, dbuser_attribs)
+            user, attrib = self.base_login(self.get_login_email(dbuser), domain, password, login_ip, dbuser,
+                                           dbuser_attribs)
         except ApiManagerError as ex:
             raise
         
         # generate asymmetric keys
-        res = self.gen_authorizaion_key(user, domain, name, login_ip, attrib)
+        res = self.gen_authorization_key(user, domain, name, login_ip, attrib)
         
         return res
     
@@ -766,8 +744,6 @@ class BaseAuthController(ApiController):
         """Logout user
         """
         # get identity and verify signature
-        #identity = self.verify_request_signature(uid, sign, data)
-        #operation.user = (identity[u'user'][u'name'], identity[u'ip'], identity[u'uid'])
         identity = self.get_identity(uid)
         
         try:
@@ -823,13 +799,9 @@ class BaseAuthController(ApiController):
 
             User(self).send_event(u'keyauth-login.uodate', params={u'uid':uid})
         except QueryError as ex:
-            #User(self).send_event(u'keyauth-login.uodate', params={u'uid':uid}, 
-            #                      exception=ex)
             self.logger.error(ex.desc, exc_info=1)
             raise ApiManagerError(ex.desc, code=400)
         except Exception as ex:
-            #User(self).send_event(u'keyauth-login.uodate', params={u'uid':uid}, 
-            #                      exception=ex)
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)        
 

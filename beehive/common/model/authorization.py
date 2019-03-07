@@ -162,8 +162,7 @@ class UserAttribute(Base):
         self.desc = desc
     
     def __repr__(self):
-        return "<UserAttribute id=%s user=%s name=%s value=%s>" % (
-                    self.id, self.user_id, self.name, self.value)
+        return u'<UserAttribute id=%s user=%s name=%s value=%s>' % (self.id, self.user_id, self.name, self.value)
 
 
 class User(Base, BaseEntity):
@@ -172,12 +171,13 @@ class User(Base, BaseEntity):
     __tablename__ = u'user'
 
     password = Column(String(150))
+    email = Column(String(100))
     secret = Column(String(150))
     role = relationship(u'RoleUser', back_populates=u'user')
     attrib = relationship(u'UserAttribute')
     last_login = Column(DateTime())
 
-    def __init__(self, objid, name, active=True, password=None, desc=u'', expiry_date=None):
+    def __init__(self, objid, name, active=True, password=None, desc=u'', expiry_date=None, email=None):
         """Create new user
         
         :param objid: authorization id
@@ -186,6 +186,7 @@ class User(Base, BaseEntity):
         :param password: user password [optional]
         :param desc: user desc [default='']
         :param expiry_date: user expiry date [default=365 days]. Set using a datetime object
+        :param email: email [optional]
         """
         BaseEntity.__init__(self, objid, name, desc, active)
         
@@ -1759,7 +1760,8 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         :param active: active [optional]
         :param creation_date: creation_date [optional]
         :param modification_date: modification_date [optional]
-        :param expiry_date: expiry_date [optional]       
+        :param expiry_date: expiry_date [optional]
+        :param email: email [optional]
         :param page: users list page to show [default=0]
         :param size: number of users to show in list per page [default=0]
         :param order: sort order [default=DESC]
@@ -1983,7 +1985,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
 
     @transaction
     def add_user(self, objid, name, active=True, password=None, desc=u'', expiry_date=None, is_generic=False,
-                 is_admin=False):
+                 is_admin=False, email=None):
         """Add user.
         
         :param objid: authorization id
@@ -1995,10 +1997,14 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
                 datetime object
         :param is_generic: if True create a private role for the user [default=False]
         :param is_admin: if True assign super admin role [default=False]
+        :param email: email [optional]
         :return: :class:`User`
         :raises TransactionError: raise :class:`TransactionError`
         """
-        user = self.add_entity(User, objid, name, active=active, password=password, desc=desc, expiry_date=expiry_date)
+        if email is None:
+            email = name
+        user = self.add_entity(User, objid, name, active=active, password=password, desc=desc, expiry_date=expiry_date,
+                               email=email)
 
         # create user role
         if is_generic is True:

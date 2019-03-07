@@ -3,8 +3,13 @@
 ## Version 1.4.0 (March, 2019)
 
 * Added ...
+    * introdotta il campo provider nella classe common.model.authorization.User per indicare l'autentication provider
+    * aggiunta la gestione del campo provider nelle api di auth.user
 * Fixed ...
     * revisione del metodo user_request
+    * modificata la chiave primaria nella classe common.model.authorization.User da name a name,provider
+    * modificata l'api di interrogazione dei domains in interrogazione dei providers
+    * modificata la configurazione di un authentication provider ldap
 * Integrated ...
 * Various bugfixes
 

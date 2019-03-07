@@ -107,6 +107,7 @@ class ListTokensParamsResponseSchema(Schema):
     ttl = fields.Integer(required=True, example=3600, description=u'token ttl')
     token = fields.String(required=True, example=u'28ff1dd5-5520-42f3-a361-c58f19d20b7c', description=u'token')
     user = fields.String(required=True, example=u'admin@local', description=u'client login user')
+    provider = fields.String(required=True, example=u'local', description=u'authentication provider')
     timestamp = fields.String(required=True, example=u'internal', description=u'token timestamp')
     type = fields.String(required=True, example=u'internal', description=u'token type')
 
@@ -140,15 +141,20 @@ class ListTokens(SwaggerApiView):
         for i in identities:            
             user = i.get(u'user')
             user_name = None
+            user_domain = None
             if user is not None:
-                user_name = user[u'name']
+                user_name = user.get(u'id', None)
+                user_email = user.get(u'name', None)
+                user_domain = user.get(u'domain', None)
             res.append({
-                u'token':i[u'uid'],
-                u'type':i[u'type'],
-                u'user':user_name,
-                u'timestamp':format_date(i[u'timestamp']), 
-                u'ttl':i[u'ttl'], 
-                u'ip':i[u'ip']
+                u'token': i[u'uid'],
+                u'type': i[u'type'],
+                u'user': user_name,
+                u'email': user_email,
+                u'provider': user_domain,
+                u'timestamp': format_date(i[u'timestamp']),
+                u'ttl': i[u'ttl'],
+                u'ip': i[u'ip']
             })
         resp = {u'tokens': res,
                 u'count': len(res)}
@@ -233,13 +239,13 @@ class ListUsersRequestSchema(PaginatedRequestQuerySchema):
     name = fields.String(context=u'query')
     names = fields.String(context=u'query')
     desc = fields.String(context=u'query')
+    email = fields.String(context=u'query')
     perms_N = fields.List(fields.String(example=u''), required=False, allow_none=True, context=u'query',
                           collection_format=u'multi', load_from=u'perms.N', description=u'permissions list')
 
 
 class ListUserResponseSchema(ApiObjectResponseSchema):
-    # secret = fields.String(required=True, example=u'tedwdsai93dja8wst')
-    pass
+    email = fields.String(required=True, example=u'test@local')
 
 
 class ListUsersResponseSchema(PaginatedResponseSchema):
@@ -335,17 +341,20 @@ class GetUserSecret(SwaggerApiView):
         return resp
 
 
-class UserSecretParamsRequestSchema (Schema):
-    old_secret = fields.String(required=False, example=u'test', description=u'user secret key to reset to', context=u'query')
+class UserSecretParamsRequestSchema(Schema):
+    old_secret = fields.String(required=False, example=u'test', description=u'user secret key to reset to',
+                               context=u'query')
+
 
 class UserSecretRequestSchema (Schema):
-
     user = fields.Nested(UserSecretParamsRequestSchema, required=True, allow_none=True)
+
 
 class ResetUserSecretBodyRequestSchema(Schema):
     body = fields.Nested(UserSecretRequestSchema, context=u'body')
 
-class ResetUserSecret (SwaggerApiView):
+
+class ResetUserSecret(SwaggerApiView):
     tags = [u'authorization']
     definitions = {
         u'UserSecretRequestSchema': UserSecretRequestSchema,
@@ -402,21 +411,21 @@ class GetUserAtributes(SwaggerApiView):
         """
         user = controller.get_user(oid)
         res = user.get_attribs()
-        resp = {u'user_attributes':res,
-                u'count':len(res)} 
+        resp = {u'user_attributes': res, u'count': len(res)}
         return resp
 
-## create
+
 class CreateUserParamRequestSchema(BaseCreateRequestSchema, BaseCreateExtendedParamRequestSchema):
     password = fields.String(validate=Length(min=8, max=20), error=u'Password must be at least 8 characters')
-    storetype = fields.String(validate=OneOf([u'DBUSER', u'LDAPUSER', u'SPID'],
-                                             error=u'Field can be DBUSER, LDAPUSER or SPIDUSER'), missing=u'DBUSER')
+    email = fields.Email(error=u'email address', missing=None)
+    storetype = fields.String(validate=OneOf([u'DBUSER', u'LDAPUSER'], error=u'Field can be DBUSER, LDAPUSER'),
+                              missing=u'DBUSER')
     base = fields.Boolean(missing=False)
     system = fields.Boolean(missing=False)
     
     @validates(u'name')
     def validate_user(self, value):
-        if not match(u'[\w\W]+@[\w\W]+', value):
+        if not match(r'[\w\W]+@[\w\W]+', value):
             raise ValidationError(u'User name syntax must be <name>@<domain>') 
 
 

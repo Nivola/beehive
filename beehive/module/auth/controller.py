@@ -359,6 +359,7 @@ class AuthController(BaseAuthController):
         :param perms_N: list of permissions like objtype,subsystem,objid,action [optional]
         :param active: user status [optional]
         :param expiry_date: user expiry date. Use gg-mm-yyyy [optional]
+        :param email: email [optional]
         :param page: users list page to show [default=0]
         :param size: number of users to show in list per page [default=0]
         :param order: sort order [default=DESC]
@@ -409,7 +410,7 @@ class AuthController(BaseAuthController):
 
     @trace(entity=u'User', op=u'insert')
     def add_user(self, name=None, storetype=None, active=True, password=None, desc=u'', expiry_date=None, base=False,
-                 system=False):
+                 system=False, email=None):
         """Add new user.
 
         :param name: name of the user
@@ -420,7 +421,8 @@ class AuthController(BaseAuthController):
                          <user>@local [Optional]
         :param expiry_date: user expiry date. Set as gg-mm-yyyy [default=365 days]
         :param base: if True create a private role for the user [default=False]
-        :param system: if True assign super admin role [default=False]        
+        :param system: if True assign super admin role [default=False]
+        :param email: email [optional]
         :return: user id
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
@@ -429,15 +431,11 @@ class AuthController(BaseAuthController):
         
         try:
             objid = id_gen()
-            user = self.manager.add_user(objid, name, active=active, 
-                                         password=password, 
-                                         desc=desc, 
-                                         expiry_date=expiry_date,
-                                         is_generic=base,
-                                         is_admin=system)
+            user = self.manager.add_user(objid, name, active=active, password=password, desc=desc,
+                                         expiry_date=expiry_date, is_generic=base, is_admin=system, email=email)
             # add object and permission
-            obj = User(self, oid=user.id, objid=user.objid, name=user.name, 
-                       desc=user.desc, model=user, active=user.active)
+            obj = User(self, oid=user.id, objid=user.objid, name=user.name, desc=user.desc, model=user,
+                       active=user.active)
             
             obj.register_object([objid], desc=desc)
             
@@ -486,8 +484,7 @@ class AuthController(BaseAuthController):
         :param size: number of groups to show in list per page [default=0]
         :param order: sort order [default=DESC]
         :param field: sort field [default=id]       
-        :return: tupla (id, name, type, active, desc, attribute
-                        creation_date, modification_date)
+        :return: tupla (id, name, type, active, desc, attribute creation_date, modification_date)
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         def get_entities(*args, **kvargs):
@@ -1261,7 +1258,7 @@ class User(BaseUser):
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
         info = BaseUser.info(self)
-        # info[u'secret'] = self.model.secret
+        info[u'email'] = self.model.email
         if self.model.last_login is not None:
             info[u'date'][u'last_login'] = format_date(self.model.last_login)
 
@@ -1275,7 +1272,7 @@ class User(BaseUser):
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
         info = BaseUser.detail(self)
-        # info[u'secret'] = self.model.secret
+        info[u'email'] = self.model.email
         if self.model.last_login is not None:
             info[u'date'][u'last_login'] = format_date(self.model.last_login)
 
