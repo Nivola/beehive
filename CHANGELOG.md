@@ -1,10 +1,5 @@
 # Changelog
 
-## version 1.5.0 (Marcch, 05 2019)
-* Added ...
-* Fixed ...
-	* aggiornamento firma metodo get_entity: inserimento params *args, **kvargs
-
 ## Version 1.4.0 (March, 2019)
 
 * Added ...
@@ -12,9 +7,9 @@
     * aggiunta la gestione del campo provider nelle api di auth.user
 * Fixed ...
     * revisione del metodo user_request
-    * modificata la chiave primaria nella classe common.model.authorization.User da name a name,provider
     * modificata l'api di interrogazione dei domains in interrogazione dei providers
     * modificata la configurazione di un authentication provider ldap
+    * aggiornamento firma metodo get_entity: inserimento params *args, **kvargs
 * Integrated ...
 * Various bugfixes
 
