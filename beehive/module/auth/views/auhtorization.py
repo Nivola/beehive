@@ -53,47 +53,46 @@ class BaseUpdateMultiRequestSchema(Schema):
     remove = fields.List(fields.String())
 
 
-class ListDomainsRequestSchema(Schema):
+class ListProvidersRequestSchema(Schema):
     pass
 
 
-class ListDomainsParamsResponseSchema(Schema):
+class ListProvidersParamsResponseSchema(Schema):
     name = fields.String(required=True, example=u'local', description=u'login domain name')
     type = fields.String(required=True, example=u'DatabaseAuth', description=u'login domain description')
 
 
-class ListDomainsResponseSchema(Schema):
-    domains = fields.Nested(ListDomainsParamsResponseSchema, many=True, required=True, allow_none=True)
+class ListProvidersResponseSchema(Schema):
+    providers = fields.Nested(ListProvidersParamsResponseSchema, many=True, required=True, allow_none=True)
     count = fields.Integer(required=True, example=1, description=u'Domains count')
 
 
-class ListDomains(SwaggerApiView):
+class ListProviders(SwaggerApiView):
     tags = [u'authorization']
     definitions = {
-        u'ListDomainsResponseSchema': ListDomainsResponseSchema,
+        u'ListProvidersResponseSchema': ListProvidersResponseSchema,
     }
-    parameters = SwaggerHelper().get_parameters(ListDomainsRequestSchema)
-    parameters_schema = ListDomainsRequestSchema
+    parameters = SwaggerHelper().get_parameters(ListProvidersRequestSchema)
+    parameters_schema = ListProvidersRequestSchema
     responses = SwaggerApiView.setResponses({
         200: {
             u'description': u'success',
-            u'schema': ListDomainsResponseSchema
+            u'schema': ListProvidersResponseSchema
         }
     })
 
     def get(self, controller, data, *args, **kwargs):
         """
-        List authentication domains
-        Call this api to list authentication domains
+        List authentication providers
+        Call this api to list authentication providers
         """
         auth_providers = controller.module.authentication_manager.auth_providers
         res = []
-        for domain, auth_provider in auth_providers.iteritems():
-            res.append({u'name':domain, 
-                        u'type':auth_provider.__class__.__name__})
-        resp = {u'domains':res,
-                u'count':len(res)}
+        for provider, auth_provider in auth_providers.iteritems():
+            res.append({u'name': provider, u'type': auth_provider.__class__.__name__})
+        resp = {u'providers': res, u'count': len(res)}
         return resp
+
 
 #
 # identity
@@ -1735,7 +1734,7 @@ class AuthorizationAPI(ApiView):
     def register_api(module):
         rules = [
             # new routes
-            (u'%s/domains' % module.base_path, u'GET', ListDomains, {u'secure': False}),
+            (u'%s/providers' % module.base_path, u'GET', ListProviders, {u'secure': False}),
 
             (u'%s/tokens' % module.base_path, u'GET', ListTokens, {}),
             (u'%s/tokens/<oid>' % module.base_path, u'GET', GetToken, {}),

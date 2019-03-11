@@ -127,7 +127,7 @@ class BeehiveApp(Flask):
             # logging.getLogger(u'beehive.common.data')
         ]
         # LoggerHelper.DEBUG2
-        LoggerHelper.rotatingfile_handler(loggers, LoggerHelper.DEBUG, file_name)
+        LoggerHelper.rotatingfile_handler(loggers, LoggerHelper.DEBUG2, file_name)
         
         # transaction and db logging
         file_name = u'%s/%s.db.log' % (self.log_path, logname)

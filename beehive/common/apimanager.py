@@ -2757,8 +2757,8 @@ class ApiView(FlaskView):
         try:
             # get user permission
             user = identity[u'user']
-            # name = user[u'name']
-            name = user[u'id']
+            name = user[u'name']
+            # name = user[u'id']
             compress_perms = user[u'perms']
             
             # get permissions
