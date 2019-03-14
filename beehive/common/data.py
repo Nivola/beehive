@@ -403,6 +403,46 @@ def trace(entity=None, op=u'view', noargs=False):
     return wrapper
 
 
+def cache(key, ttl=600):
+    """Use this decorator to get an item from cache if exist or execute a function and set item in cache for future
+    query.
+
+    :param key: cache item key
+    :param ttl: cache item ttl [default=600]
+    Example::
+
+        @cache(u'prova')
+        def fn(controller, postfix, *args, **kwargs):
+            ....
+    """
+    def wrapper(fn):
+        @wraps(fn)
+        def decorated(controller, postfix, *args, **kwargs):
+            # get start time
+            start = time()
+
+            internalkey = u'%s.%s' % (key, postfix)
+
+            # execute inner function
+            try:
+                ret = controller.cache.get(internalkey)
+                if ret is None:
+                    ret = fn(controller, postfix, *args, **kwargs)
+                    controller.cache.set(internalkey, ret, ttl=ttl)
+
+                # calculate elasped time
+                elapsed = round(time() - start, 4)
+                logger.warn(u'Cache %s:%s [%ss]' % (internalkey, truncate(ret), elapsed))
+            except Exception as ex:
+                logger.error(ex)
+                raise
+            return ret
+
+        return decorated
+
+    return wrapper
+
+
 def maybe_run_batch_greenlet(controller, batch, timeout=600):
     """Use this decorator to run a parallel greenlet if batch is True.
 

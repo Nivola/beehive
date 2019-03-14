@@ -24,6 +24,8 @@ from flask import request, Response, session
 from flask.views import MethodView as FlaskView
 from flask_session import Session
 from flask import current_app
+
+from beecell.cache.client import CacheClient
 from beecell.logger.helper import LoggerHelper
 from beecell.db import TransactionError, QueryError
 from beecell.db.manager import MysqlManager, SqlManagerError, RedisManager
@@ -155,6 +157,9 @@ class ApiManager(object):
         
         # redis
         self.redis_manager = None
+
+        # cache
+        self.cache_manager = None
         
         # security
         self.auth_providers = {}
@@ -557,9 +562,6 @@ class ApiManager(object):
                 ##### redis configuration #####
                 self.logger.info(u'Configure redis - CONFIGURE')
                 # connect to redis
-                '''redis_uri = configurator.get(app=self.app_name, 
-                                             group=u'redis', 
-                                             name=u'redis_01')[0].value'''
                 redis_uri = self.params[u'redis_identity_uri']
                                              
                 # parse redis uri
@@ -589,7 +591,7 @@ class ApiManager(object):
                 if self.app is not None:
                     self.app.config.update(
                         SESSION_COOKIE_NAME=u'auth-session',
-                        #SESSION_COOKIE_DOMAIN=u'beehive',
+                        # SESSION_COOKIE_DOMAIN=u'beehive',
                         SESSION_COOKIE_SECURE=True,
                         PERMANENT_SESSION_LIFETIME=3600,
                         SESSION_TYPE=u'redis',
@@ -605,7 +607,17 @@ class ApiManager(object):
     
                 self.logger.info(u'Configure redis - CONFIGURED')  
                 ##### redis configuration #####
-                
+
+                ##### cache configuration #####
+                self.logger.info(u'Configure cache - CONFIGURE')
+
+                if self.redis_manager is not None:
+                    self.cache_manager = CacheClient(self.redis_manager)
+                    self.logger.debug(self.cache_manager)
+
+                self.logger.info(u'Configure cache - CONFIGURED')
+                ##### cache configuration #####
+
                 ##### scheduler reference configuration #####
                 self.logger.info(u'Configure scheduler reference - CONFIGURE')
                 
@@ -745,33 +757,33 @@ class ApiManager(object):
                     self.logger.warning(u'Configure event queue - NOT CONFIGURED')                
                 ##### event queue configuration #####
                 
-                ##### monitor queue configuration #####
-                try:
-                    self.logger.info(u'Configure monitor queue- CONFIGURE')
-                    try:
-                        from beehive_monitor.producer import MonitorProducerRedis
-                    except:
-                        raise Exception(u'beehive_monitor is not installed')
-                    
-                    conf = configurator.get(app=self.app_name, 
-                                            group='queue', 
-                                            name='queue.monitor')
-    
-                    # setup monitor producer
-                    conf = json.loads(conf[0].value)
-                    self.redis_monitor_uri = self.params[u'redis_queue_uri']
-                    #self.redis_monitor_uri = conf['uri']
-                    self.redis_monitor_channel = conf['queue']                    
-                        
-                    # create instance of monitor producer
-                    self.monitor_producer = MonitorProducerRedis(
-                                                        self.redis_monitor_uri, 
-                                                        self.redis_monitor_channel)
-                    self.logger.info(u'Configure queue %s on %s' % (self.redis_monitor_channel, self.redis_monitor_uri))
-                    self.logger.info(u'Configure monitor queue - CONFIGURED')
-                except Exception as ex:
-                    self.logger.warning(u'Configure monitor queue - NOT CONFIGURED')                
-                ##### monitor queue configuration #####
+                # ##### monitor queue configuration #####
+                # try:
+                #     self.logger.info(u'Configure monitor queue- CONFIGURE')
+                #     try:
+                #         from beehive_monitor.producer import MonitorProducerRedis
+                #     except:
+                #         raise Exception(u'beehive_monitor is not installed')
+                #
+                #     conf = configurator.get(app=self.app_name,
+                #                             group='queue',
+                #                             name='queue.monitor')
+                #
+                #     # setup monitor producer
+                #     conf = json.loads(conf[0].value)
+                #     self.redis_monitor_uri = self.params[u'redis_queue_uri']
+                #     #self.redis_monitor_uri = conf['uri']
+                #     self.redis_monitor_channel = conf['queue']
+                #
+                #     # create instance of monitor producer
+                #     self.monitor_producer = MonitorProducerRedis(
+                #                                         self.redis_monitor_uri,
+                #                                         self.redis_monitor_channel)
+                #     self.logger.info(u'Configure queue %s on %s' % (self.redis_monitor_channel, self.redis_monitor_uri))
+                #     self.logger.info(u'Configure monitor queue - CONFIGURED')
+                # except Exception as ex:
+                #     self.logger.warning(u'Configure monitor queue - NOT CONFIGURED')
+                # ##### monitor queue configuration #####
         
                 ##### catalog queue configuration #####
                 try:
@@ -976,8 +988,7 @@ class ApiModule(object):
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
-        res = {u'name' :self.name,
-               u'api': self.api_routes}
+        res = {u'name': self.name, u'api': self.api_routes}
         return res
     
     @property
@@ -987,7 +998,11 @@ class ApiModule(object):
     @property
     def job_manager(self):
         return self.api_manager.job_manager
-    
+
+    @property
+    def cache(self):
+        return self.api_manager.cache_manager
+
     @staticmethod
     def _get_value(objtype, args):
         data = ['*' for i in objtype.split('.')]
@@ -1049,11 +1064,8 @@ class ApiModule(object):
 
 class ApiController(object):
     """ """
-    # logger = logging.getLogger('gibbon.cloudapi')
-    
     def __init__(self, module):
-        self.logger = logging.getLogger(self.__class__.__module__+ \
-                                        u'.'+self.__class__.__name__)
+        self.logger = logging.getLogger(self.__class__.__module__+ u'.' + self.__class__.__name__)
         
         self.module = module
         self.version = u'v1.0'
@@ -1114,7 +1126,11 @@ class ApiController(object):
     @property
     def api_client(self):
         return self.module.api_manager.api_client 
-    
+
+    @property
+    def cache(self):
+        return self.module.api_manager.cache_manager
+
     @property
     def redis_taskmanager(self):
         return self.module.api_manager.redis_taskmanager
@@ -1506,64 +1522,6 @@ class ApiController(object):
         except QueryError as ex:         
             self.logger.warn(ex)
             return []
-    
-    '''
-    def get_paginated_entities2(self, object_class, get_entities, 
-                              page=0, size=10, order=u'DESC', field=u'id', 
-                              *args, **kvargs):
-        """Get objects with pagination
-
-        :param object_class: ApiObject Extension class
-        :param get_entities: model get_entities function. Return (entities, total)
-        :param page: objects list page to show [default=0]
-        :param size: number of objects to show in list per page [default=0]
-        :param order: sort order [default=DESC]
-        :param field: sort field [default=id]
-        :param args: custom params
-        :param kvargs: custom params
-        :return: (list of object_class instances, total)
-        :raises ApiManagerError: raise :class:`ApiManagerError`
-        """
-        # verify permissions
-        objs = self.can(u'view', object_class.objtype, 
-                        definition=object_class.objdef)
-        res = []
-                
-        try:
-            entities, total = get_entities(page=page, size=size, order=order, 
-                                           field=field, *args, **kvargs)
-            
-            for entity in entities:
-                expiry_date = None
-                if isinstance(entity, tuple):
-                    expiry_date = entity[1]
-                    entity = entity[0]
-                
-                # check authorization
-                objset = set(objs[object_class.objdef.lower()])
-
-                # create needs
-                needs = self.get_needs([entity.objid])
-                
-                # check if needs overlaps perms
-                if self.has_needs(needs, objset) is True:
-                    try: objid=entity.objid
-                    except: objid=None
-                    try: active=entity.active
-                    except: active=None                    
-                    obj = object_class(self, oid=entity.id, objid=objid, 
-                               name=entity.name, active=active, 
-                               desc=entity.desc, model=entity)
-                    # set expiry_date
-                    if expiry_date is not None:
-                        obj.expiry_date = expiry_date
-                    res.append(obj)                
-            
-            self.logger.debug(u'Get entities %s: %s' % (object_class, len(res)))
-            return res, total
-        except QueryError as ex:         
-            self.logger.warn(ex)
-            return [], 0'''
 
 
 class ApiObject(object):
@@ -1629,6 +1587,10 @@ class ApiObject(object):
     @property
     def api_client(self):
         return self.controller.module.api_manager.api_client
+
+    @property
+    def cache(self):
+        return self.controller.module.api_manager.cache_manager
     
     @property
     def camunda_engine(self):
