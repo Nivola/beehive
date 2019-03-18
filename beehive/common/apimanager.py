@@ -1946,8 +1946,32 @@ class ApiObject(object):
         :return: kvargs
         :raise ApiManagerError:
         """
-        return None    
-    
+        return None
+
+    @staticmethod
+    def pre_import(controller, *args, **kvargs):
+        """Check input params before resource creation. This function is used in container resource_factory method.
+        Extend this function to manipulate and validate import input params.
+
+        :param list args: custom params
+        :param dict kvargs: custom params
+        :return: kvargs
+        :raise ApiManagerError:
+        """
+        return kvargs
+
+    @staticmethod
+    def post_import(controller, *args, **kvargs):
+        """Post import function. This function is used in object_factory method. Used only for synchronous creation.
+        Extend this function to execute some operation after entity was importd.
+
+        :param list args: custom params
+        :param dict kvargs: custom params
+        :return: kvargs
+        :raise ApiManagerError:
+        """
+        return None
+
     def pre_update(self, *args, **kvargs):
         """Pre update function. This function is used in update method. Extend this function to manipulate and
         validate update input params.
