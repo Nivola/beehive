@@ -75,7 +75,7 @@ class BeehiveApp(Flask):
         self._register_error_handler(None, 404, error404)        
         
         # setup loggers
-        self.setup_loggers()
+        self.setup_loggers(level=int(self.params[u'api_logging_level']))
         
         self.logger.info("##### SERVER STARTING #####")
         start = time()
@@ -106,7 +106,7 @@ class BeehiveApp(Flask):
         del self.db_uri
         del self.tcp_proxy
 
-    def setup_loggers(self):
+    def setup_loggers(self, level=LoggerHelper.DEBUG):
         """ """
         logname = uwsgi_util.opt[u'api_id']
         
@@ -127,7 +127,7 @@ class BeehiveApp(Flask):
             # logging.getLogger(u'beehive.common.data')
         ]
         # LoggerHelper.DEBUG2
-        LoggerHelper.rotatingfile_handler(loggers, LoggerHelper.DEBUG, file_name)
+        LoggerHelper.rotatingfile_handler(loggers, level, file_name)
         
         # transaction and db logging
         file_name = u'%s/%s.db.log' % (self.log_path, logname)
@@ -148,7 +148,7 @@ class BeehiveApp(Flask):
         try:
             operation.session = self.api_manager.db_manager.get_session()
             return operation.session
-        except MysqlManagerError, e:
+        except MysqlManagerError as e:
             self.logger.error(e)
             raise BeehiveAppError(e)
     
@@ -157,6 +157,6 @@ class BeehiveApp(Flask):
         """
         try:
             self.api_manager.db_manager.release_session(operation.session)
-        except MysqlManagerError, e:
+        except MysqlManagerError as e:
             self.logger.error(e)
             raise BeehiveAppError(e)

@@ -420,7 +420,7 @@ class PaginatedQueryGenerator(object):
             table = u'`%s`' % self.entity.__tablename__
         stmp = stmp.format(table=table, fields=fields, field=self.field, order=self.order, start=self.start,
                            size=self.size)
-        self.logger.debug(u'query: %s' % stmp)
+        # self.logger.debug2(u'query: %s' % stmp)
         return stmp
 
     def run(self, tags, *args, **kvargs):
@@ -454,14 +454,14 @@ class PaginatedQueryGenerator(object):
         self.logger.debug2(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
         self.logger.debug2(u'kvargs: %s' % truncate(kvargs))
         # self.logger.debug2(u'tags: %s' % truncate(tags))
-        self.logger.debug2(u'tags: %s' % (tags))
+        self.logger.debug2(u'tags: %s' % tags)
         res = query.all()
         
         if self.size == 0 or self.size == -1:
             total = len(res)
 
         elapsed = round(time() - start, 3)
-        self.logger.debug(u'Get %ss (total:%s): %s [%s]' % (self.entity.__tablename__, total, truncate(res), elapsed))
+        self.logger.debug2(u'Get %ss (total:%s): %s [%s]' % (self.entity.__tablename__, total, truncate(res), elapsed))
         return res, total
 
 
@@ -495,7 +495,7 @@ class AbstractDbManager(object):
             Base.metadata.create_all(engine)
             logger.info(u'Create tables on : %s' % (db_uri))
             del engine
-        except exc.DBAPIError, e:
+        except exc.DBAPIError as e:
             raise Exception(e)
     
     @staticmethod
@@ -508,13 +508,13 @@ class AbstractDbManager(object):
             Base.metadata.drop_all(engine)
             logger.info(u'Remove tables from : %s' % (db_uri))
             del engine
-        except exc.DBAPIError, e:
+        except exc.DBAPIError as e:
             raise Exception(e)
 
     def print_stmp(self, stmp):
         """
         """
-        self.logger.debug(u'stmp: %s' % stmp.statement.compile(dialect=mysql.dialect()))
+        self.logger.debug2(u'stmp: %s' % stmp.statement.compile(dialect=mysql.dialect()))
     
     @query
     def count_entities(self, entityclass):
@@ -526,11 +526,11 @@ class AbstractDbManager(object):
         session = self.get_session()
         res = session.query(entityclass).count()
             
-        self.logger.debug(u'Count %s: %s' % (entityclass.__name__, res))
+        self.logger.debug2(u'Count %s: %s' % (entityclass.__name__, res))
         return res    
 
     def print_query(self, func, query, args):
-        self.logger.debug2(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
+        self.logger.debug22(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
         args = {arg: args.locals[arg] for arg in args.args}
         self.logger.debug2(args)
 
@@ -607,7 +607,7 @@ class AbstractDbManager(object):
         else:
             res = entity.first()
 
-        self.logger.debug(u'Query entity %s by %s: %s' % (entityclass.__name__, search_field, res))
+        self.logger.debug2(u'Query entity %s by %s: %s' % (entityclass.__name__, search_field, res))
         return res
     
     @query
@@ -632,7 +632,7 @@ class AbstractDbManager(object):
 
         # make query
         res = query.all()
-        self.logger.debug(u'Get %s: %s' % (entityclass.__name__, truncate(res)))
+        self.logger.debug2(u'Get %s: %s' % (entityclass.__name__, truncate(res)))
         return res
     
     @query
@@ -704,7 +704,7 @@ class AbstractDbManager(object):
         session.add(record)
         session.flush()
         
-        self.logger.debug(u'Add %s: %s' % (entityclass.__name__, truncate(record)))
+        self.logger.debug2(u'Add %s: %s' % (entityclass.__name__, truncate(record)))
         return record
     
     @transaction
@@ -733,7 +733,7 @@ class AbstractDbManager(object):
         entity.update(kvargs)
         session.flush()
             
-        self.logger.debug(u'Update %s %s with data: %s' % (entityclass.__name__, oid, kvargs))
+        self.logger.debug2(u'Update %s %s with data: %s' % (entityclass.__name__, oid, kvargs))
         return oid
     
     @transaction
@@ -754,7 +754,7 @@ class AbstractDbManager(object):
         entity = query.first()
         session.delete(entity)
         
-        self.logger.debug(u'Remove %s %s' % (entityclass.__name__, entity.id))
+        self.logger.debug2(u'Remove %s %s' % (entityclass.__name__, entity.id))
         return entity.id
     
     #
@@ -786,7 +786,7 @@ class AbstractDbManager(object):
         """
         perm = u'%s-%s' % (objdef.lower(), objid)
         tag = hashlib.md5(perm).hexdigest()
-        #self.logger.debug(u'tag: %s, per: %s' % (tag, perm))
+        #self.logger.debug2(u'tag: %s, per: %s' % (tag, perm))
         return tag
     
     @transaction
@@ -808,7 +808,7 @@ class AbstractDbManager(object):
             tagrecord = PermTag(tag, explain=explain)
             session.add(tagrecord)
             session.flush()
-            self.logger.debug(u'Add permtag %s' % (tagrecord))
+            self.logger.debug2(u'Add permtag %s' % (tagrecord))
         except:
             # permtag already exists. Get reference
             self.logger.warn(u'Permtag %s already exists' % (tagrecord))
@@ -820,9 +820,9 @@ class AbstractDbManager(object):
         try:
             record = PermTagEntity(tagrecord.id, entity, type)
             session.add(record)
-            self.logger.debug(u'Add permtag %s entity %s association' % (tag, entity))
+            self.logger.debug2(u'Add permtag %s entity %s association' % (tag, entity))
         except:
-            self.logger.debug(u'Permtag %s entity %s association already exists' % (tag, entity))
+            self.logger.debug2(u'Permtag %s entity %s association already exists' % (tag, entity))
         
         return tagrecord
     
@@ -846,7 +846,7 @@ class AbstractDbManager(object):
         for item in items:
             session.delete(item)
         session.flush()
-        self.logger.debug(u'Delete tag entity %s.%s association' % (entity, etype))
+        self.logger.debug2(u'Delete tag entity %s.%s association' % (entity, etype))
         
         # remove unused tag
         for tag in tags:           
@@ -857,7 +857,7 @@ class AbstractDbManager(object):
                     self.logger.warn(u'Tag %s is used by other entities' % tag)
                 else:
                     session.delete(tagrecord)
-                    self.logger.debug(u'Delete tag %s' % tag)
+                    self.logger.debug2(u'Delete tag %s' % tag)
 
         return True
 
@@ -874,7 +874,7 @@ class AbstractDbManager(object):
         session = self.get_session()
         session.add(entity)
         session.flush()
-        self.logger.debug(u'Add %s entity %s' % (entity.__class__.__name__, entity))
+        self.logger.debug2(u'Add %s entity %s' % (entity.__class__.__name__, entity))
         return entity
     
     @transaction
@@ -890,7 +890,7 @@ class AbstractDbManager(object):
         session = self.get_session()
         session.add_all(entities)
         session.flush()
-        self.logger.debug(u'Add all %s entity %s' % (entities[0].__class__.__name__, len(entities)))
+        self.logger.debug2(u'Add all %s entity %s' % (entities[0].__class__.__name__, len(entities)))
         return len(entities)
     
     @transaction
@@ -933,7 +933,7 @@ class AbstractDbManager(object):
         if entity is None:
             raise QueryError("Error: can't not delete None entity")
         
-        self.logger.debug(u'Delete %s entity %s' % (entity.__class__.__name__, entity))
+        self.logger.debug2(u'Delete %s entity %s' % (entity.__class__.__name__, entity))
         if isinstance(entity, BaseEntity):
             if entity.is_active():
                 entity.disable()
@@ -960,7 +960,7 @@ class AbstractDbManager(object):
         session = self.get_session()
         session.delete(entity)
         session.flush()
-        logger.debug(u'Delete %s entity %s' % (entity.__class__.__name__, entity))
+        logger.debug2(u'Delete %s entity %s' % (entity.__class__.__name__, entity))
 
     @staticmethod   
     def add_base_entity_filters(query, *args, **kvargs):

@@ -45,7 +45,7 @@ class ExtTaskFormatter(ColorFormatter):
         return ColorFormatter.format(self, record)
 
 
-logger_level = LoggerHelper.DEBUG
+# logger_level = LoggerHelper.DEBUG
 internal_logger_level = LoggerHelper.DEBUG
 
 task_manager = Celery('tasks')
@@ -151,6 +151,8 @@ def start_task_manager(params):
     log_path = u'/var/log/%s/%s' % (params[u'api_package'], params[u'api_env'])
     run_path = u'/var/run/%s/%s' % (params[u'api_package'], params[u'api_env'])
 
+    logger_level = int(params[u'api_logging_level'])
+
     # base logging
     loggers = [
         logging.getLogger(u'beehive'),
@@ -221,6 +223,7 @@ def start_scheduler(params):
     run_path = u'/var/run/%s/%s' % (params[u'api_package'], 
                                     params[u'api_env'])       
     logger_file = u'%s/%s.scheduler.log' % (log_path, params[u'api_id'])
+    logger_level = int(params[u'api_logging_level'])
     loggers = [
         logging.getLogger(u'beehive'),
         logging.getLogger(u'beecell'),
