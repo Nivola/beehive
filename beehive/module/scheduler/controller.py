@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Nov 14, 2015
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: darkbk
-"""
 import ujson as json
 from datetime import datetime, timedelta
 import pickle

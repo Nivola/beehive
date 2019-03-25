@@ -272,11 +272,6 @@ class TaskResult(object):
                          jobs=None, failure=True)
 
 
-# @before_task_publish.connect
-# def before_task_publish(**args):
-#     logger.warn(u'--------------------------')
-#     logger.warn(args)
-
 @task_prerun.connect
 def task_prerun(**args):
     TaskResult.task_prerun(**args)
@@ -290,48 +285,3 @@ def task_postrun(**args):
 @task_failure.connect
 def task_failure(**args):
     TaskResult.task_failure(**args)
-
-
-'''
-@task_failure.connect
-def task_failure(**args):
-    """Dispatched when a task fails.
-    Sender is the task object executed.
-
-    Provides arguments:
-    - task_id: Id of the task.
-    - exception: Exception instance raised.
-    - args: Positional arguments the task was called with.
-    - kwargs: Keyword arguments the task was called with.
-    - traceback: Stack trace object.
-    - einfo: The billiard.einfo.ExceptionInfo instance.
-    """
-    task_id = args.get(u'task_id')
-    exception = args.get(u'exception')
-    kwargs = args.get(u'kwargs')
-    kwargs = args.get(u'kwargs')
-    traceback = args.get(u'traceback')
-    einfo = args.get(u'einfo')
-    
-    # set status
-    status = u'FAILURE'
-    
-    # get exception info
-    err = str(exception)
-    trace = format_tb(einfo.tb)
-    trace.append(err)    
-
-    # store task
-    TaskResult.store(task_id, name=None, hostname=None, 
-                     args=None, kwargs=None, status=status, retval=None, 
-                     start_time=None, stop_time=None, childs=None, 
-                     traceback=trace, inner_type=None, msg=err, jobs=None)    
-    
-@task_retry.connect
-def task_retry(**kwargs):
-    logger.warn(u'[task_retry] %s' % kwargs)
-    
-@task_revoked.connect
-def task_revoked(**kwargs):
-    logger.warn(u'[task_revoked] %s' % kwargs)
-'''

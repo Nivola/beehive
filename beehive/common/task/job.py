@@ -741,7 +741,7 @@ def job_task(module=u'', synchronous=True):
             operation.session = None
             operation.transaction = None
             operation.authorize = False
-            operation.encryption_key= task.app.api_manager.app_fernet_key
+            operation.encryption_key = task.app.api_manager.app_fernet_key
 
             res = None
             # task.update(u'STARTED', start_time=time(), msg=u'Start %s:%s' % (task.name, task.request.id))
@@ -755,7 +755,7 @@ def job_task(module=u'', synchronous=True):
                 except Exception as e:
                     msg = u'FAIL - %s:%s caused by %s' % (task.name, task.request.id, e)
                     
-                    task.on_failure( e, task.request.id, args, kwargs, ExceptionInfo())
+                    task.on_failure(e, task.request.id, args, kwargs, ExceptionInfo())
                     logger.error(msg)
                     
             return res
