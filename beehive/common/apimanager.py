@@ -1438,7 +1438,7 @@ class ApiController(object):
         :param order: sort order [default=DESC]
         :param field: sort field [default=id]
         :param customize: function used to customize entities. Signature
-                def customize(entities, *args, **kvargs)
+            def customize(entities, *args, **kvargs)
         :param args: custom params
         :param kvargs: custom params
         :return: (list of entity_class instances, total)

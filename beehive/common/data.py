@@ -38,15 +38,15 @@ except:
     import threading
     operation = threading.local()
 
-operation.id = None #: operation id in uuid4
-operation.session = None #: current database session
-operation.user = None #: logged user (username, userip, uid)
-operation.perms = None #: logged user permission
-operation.token_type = None #: token type released
-operation.transaction = None #: transaction id
-operation.encryption_key = None #: _encryption_key used to encrypt and decrypt data
-operation.authorize = True #: enable or disable authorization check
-
+operation.id = None  #: operation id in uuid4
+operation.session = None  #: current database session
+operation.user = None  #: logged user (username, userip, uid)
+operation.perms = None  #: logged user permission
+operation.token_type = None  #: token type released
+operation.transaction = None  #: transaction id
+operation.encryption_key = None  #: _encryption_key used to encrypt and decrypt data
+operation.authorize = True  #: enable or disable authorization check
+operation.cache = True  #: if True check cache. If False execute function decorated by @cache() also if cache exists
 
 #
 # encryption method
@@ -426,13 +426,13 @@ def cache(key, ttl=600):
             # execute inner function
             try:
                 ret = controller.cache.get(internalkey)
-                if ret is None:
+                if operation.cache is False or ret is None:
                     ret = fn(controller, postfix, *args, **kwargs)
                     controller.cache.set(internalkey, ret, ttl=ttl)
 
                 # calculate elasped time
                 elapsed = round(time() - start, 4)
-                logger.warn(u'Cache %s:%s [%ss]' % (internalkey, truncate(ret), elapsed))
+                logger.debug2(u'Cache %s:%s [%ss]' % (internalkey, truncate(ret), elapsed))
             except Exception as ex:
                 logger.error(ex)
                 raise
