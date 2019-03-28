@@ -2928,6 +2928,7 @@ class ApiView(FlaskView):
             operation.id = request.headers.get(u'request-id', str(uuid4()))
             operation.transaction = None
             operation.authorize = True
+            operation.cache = True
             operation.encryption_key = module.api_manager.app_fernet_key
 
             self.logger.info(u'Start new operation: %s' % operation.id)

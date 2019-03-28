@@ -527,7 +527,15 @@ class JobTask(AbstractJob):
     
     #
     # task status management
-    #    
+    #
+    def progress(self, msg):
+        """Run a task update and log a message
+
+        :param msg: message to log
+        :return:
+        """
+        self.update(u'PROGRESS', msg=msg)
+
     def update(self, status, ex=None, traceback=None, result=None, msg=None, start_time=None, job=None):
         """Update job and jobtask status
         
