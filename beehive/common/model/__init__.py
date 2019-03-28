@@ -530,7 +530,7 @@ class AbstractDbManager(object):
         return res    
 
     def print_query(self, func, query, args):
-        self.logger.debug22(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
+        self.logger.debug2(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
         args = {arg: args.locals[arg] for arg in args.args}
         self.logger.debug2(args)
 
