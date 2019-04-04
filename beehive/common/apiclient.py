@@ -338,7 +338,7 @@ class BeehiveApiClient(object):
 
         return res
     
-    def send_request(self, subsystem, path, method, data=u'', uid=None, seckey=None, other_headers=None, timeout=30,
+    def send_request(self, subsystem, path, method, data=u'', uid=None, seckey=None, other_headers=None, timeout=60,
                      silent=False, print_curl=False, api_authtype=None):
         """Send api request
 
