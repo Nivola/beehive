@@ -672,7 +672,7 @@ class TaskManager(ApiObject):
         """
         try:
             child_ids = task.pop(u'children')
-            self.logger.debug(u'Get task %s children: %s' % (task[u'task_id'], child_ids))
+            self.logger.debug2(u'Get task %s children: %s' % (task[u'task_id'], child_ids))
             if child_ids is not None:
                 for child_id in child_ids:
                     try:
