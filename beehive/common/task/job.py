@@ -681,6 +681,7 @@ def job(entity_class=None, name=None, module=None, delta=2):
             operation.session = None
             operation.transaction = None
             operation.authorize = False
+            operation.cache = False
             operation.encryption_key = task.app.api_manager.app_fernet_key
             
             if entity_class.module is not None:
@@ -749,6 +750,7 @@ def job_task(module=u'', synchronous=True):
             operation.session = None
             operation.transaction = None
             operation.authorize = False
+            operation.cache = False
             operation.encryption_key = task.app.api_manager.app_fernet_key
 
             res = None
