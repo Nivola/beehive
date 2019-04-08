@@ -314,6 +314,8 @@ class TaskManager(ApiObject):
             self.prefix = u''
             self.prefix_base = u''
 
+        self.expire = float(self.api_manager.params.get(u'expire', 0))
+
         # print i.memdump()
         # print i.memsample()
         # print i.objgraph()
@@ -418,7 +420,7 @@ class TaskManager(ApiObject):
             return []
 
     @trace(op=u'view')
-    def get_all_tasks(self, details=False):
+    def get_all_tasks(self, elapsed=60, ttype=None, details=False):
         """Get all task of type TASK and JOB. Inner job task are not returned.
         
         :return: 
@@ -430,9 +432,16 @@ class TaskManager(ApiObject):
         try:
             res = []
             manager = self.controller.redis_taskmanager
-            keys = manager.inspect(pattern=self.prefix+u'*', debug=False)
-            self.logger.debug(u'Get %s keys form redis' % len(keys))
-            self.logger.debug(u'Get %s keys form redis' % truncate(keys))
+            keys1 = manager.inspect(pattern=self.prefix+u'*', debug=False)
+            self.logger.debug(u'Get all %s keys form redis' % len(keys1))
+
+            keys = []
+            for k in keys1:
+                if self.expire - float(k[2]) < elapsed:
+                    keys.append(k)
+
+            self.logger.debug(u'Get filtered %s keys form redis' % len(keys))
+
             if details is False:
                 for key in keys:
                     key = key[0].lstrip(self.prefix+u'-')
@@ -470,13 +479,85 @@ class TaskManager(ApiObject):
                     # if tasktype == 'JOB':
                     #    status = self.query_chain_status(tid)[2]            
 
-                    if tasktype in [u'JOB', u'TASK']:
+                    available_ttypes = [u'JOB', u'JOBTASK', u'TASK']
+                    ttypes = available_ttypes
+
+                    if ttype is not None and ttype in available_ttypes:
+                        ttypes = [ttype]
+
+                    if tasktype in ttypes:
                         res.append(val)
                         # res = AsyncResult(key, app=task_manager).get()
             
                     # sort task by date
                     res = sorted(res, key=lambda task: task[u'start_time'])
             
+            self.logger.debug(u'Get all tasks: %s' % truncate(res))
+            return res
+        except Exception as ex:
+            self.logger.error(ex, exc_info=1)
+            raise ApiManagerError(ex, code=404)
+
+    @trace(op=u'view')
+    def get_all_tasks2(self, details=False):
+        """Get all task of type TASK and JOB. Inner job task are not returned.
+
+        :return:
+        :rtype: dict
+        :raises ApiManagerError: raise :class:`.ApiManagerError`
+        """
+        self.verify_permisssions(u'view')
+
+        try:
+            res = []
+            manager = self.controller.redis_taskmanager
+            keys = manager.inspect(pattern=self.prefix + u'*', debug=False)
+            self.logger.debug(u'Get %s keys form redis' % len(keys))
+            self.logger.debug(u'Get %s keys form redis' % truncate(keys))
+            if details is False:
+                for key in keys:
+                    key = key[0].lstrip(self.prefix + u'-')
+                    res.append(key)
+            else:
+                data = manager.query(keys, ttl=True)
+                for key, item in data.iteritems():
+                    try:
+                        val = json.loads(item[0])
+                    except:
+                        val = {}
+                    ttl = item[1]
+
+                    tasktype = val.get(u'type', None)
+                    val.pop(u'trace', None)
+
+                    # add time to live
+                    val[u'ttl'] = ttl
+
+                    # add elapsed
+                    stop_time = val.get(u'stop_time', 0)
+                    start_time = val.get(u'start_time', 0)
+                    elapsed = 0
+                    stop_time_str = 0
+                    if stop_time is not None:
+                        elapsed = stop_time - start_time
+                        stop_time_str = self.__convert_timestamp(stop_time)
+
+                    # add elapsed
+                    val[u'elapsed'] = elapsed
+                    val[u'stop_time'] = stop_time_str
+                    val[u'start_time'] = self.__convert_timestamp(start_time)
+
+                    # task status
+                    # if tasktype == 'JOB':
+                    #    status = self.query_chain_status(tid)[2]
+
+                    if tasktype in [u'JOB', u'JOBTASK', u'TASK']:
+                        res.append(val)
+                        # res = AsyncResult(key, app=task_manager).get()
+
+                    # sort task by date
+                    res = sorted(res, key=lambda task: task[u'start_time'])
+
             self.logger.debug(u'Get all tasks: %s' % truncate(res))
             return res
         except Exception as ex:

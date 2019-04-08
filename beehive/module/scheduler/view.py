@@ -3,6 +3,8 @@ Created on Apr 2, 2026
 
 @author: darkbk
 """
+from marshmallow.validate import OneOf
+
 from beecell.simple import get_value
 from beehive.common.apimanager import ApiView, ApiManagerError, SwaggerApiView, \
     GetApiObjectRequestSchema, CrudApiObjectJobResponseSchema, \
@@ -328,10 +330,20 @@ class GetAllTasksResponseSchema(Schema):
     count = fields.Integer(required=True, default=1)
 
 
+class GetAllTasksRequestSchema(Schema):
+    elapsed = fields.Integer(required=False, missing=60, example=60, allow_none=True,
+                             description=u'Used to filter key not older than')
+    ttype = fields.String(required=False, missing=None, example=u'JOB', description=u'Used to filter key type',
+                          allow_none=True, validate=OneOf([u'JOB', u'JOBTASK', u'TASK']))
+
+
 class GetAllTasks(TaskApiView):
     definitions = {
         u'GetAllTasksResponseSchema': GetAllTasksResponseSchema,
+        u'GetAllTasksRequestSchema': GetAllTasksRequestSchema
     }
+    parameters = SwaggerHelper().get_parameters(GetAllTasksRequestSchema)
+    parameters_schema = GetAllTasksRequestSchema
     responses = SwaggerApiView.setResponses({
         200: {
             u'description': u'success',
@@ -345,7 +357,7 @@ class GetAllTasks(TaskApiView):
         Call this api to list all the task instances
         """  
         task_manager = controller.get_task_manager()
-        res = task_manager.get_all_tasks(details=True)
+        res = task_manager.get_all_tasks(details=True, **data)
         resp = {
             u'task_instances': res,
             u'count': len(res)
