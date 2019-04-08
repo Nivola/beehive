@@ -711,6 +711,7 @@ def job(entity_class=None, name=None, module=None, delta=2):
             task.send_job_event(status, 0, ex=None, msg=None)
                    
             res = fn(task, objid, *args, **kwargs)
+            task.release_session()
             return res
         return decorated_view
     return wrapper
@@ -758,6 +759,7 @@ def job_task(module=u'', synchronous=True):
             task.update(u'STARTED', msg=u'START - %s:%s' % (task.name, task.request.id))
             if synchronous:
                 res = fn(task, params, *args, **kwargs)
+                task.release_session()
             else:
                 
                 try:
@@ -767,6 +769,8 @@ def job_task(module=u'', synchronous=True):
                     
                     task.on_failure(e, task.request.id, args, kwargs, ExceptionInfo())
                     logger.error(msg)
+                finally:
+                    task.release_session()
                     
             return res
         return decorated_view
