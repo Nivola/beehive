@@ -333,7 +333,7 @@ class GetAllTasksResponseSchema(Schema):
 class GetAllTasksRequestSchema(Schema):
     elapsed = fields.Integer(required=False, missing=60, example=60, allow_none=True,
                              description=u'Used to filter key not older than')
-    ttype = fields.String(required=False, missing=None, example=u'JOB', description=u'Used to filter key type',
+    ttype = fields.String(required=False, example=u'JOB', description=u'Used to filter key type',
                           allow_none=True, validate=OneOf([u'JOB', u'JOBTASK', u'TASK']))
 
 
