@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 1.5.0 (April, 2019)
+* Fixed ...
+	* Class GetAllTasksRequestSchema: corretto errore di validazione swagger, eliminato il parametro missing=None per il fields ttype
+
 ## Version 1.4.0 (March, 2019)
 
 * Added ...
