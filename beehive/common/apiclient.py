@@ -295,6 +295,8 @@ class BeehiveApiClient(object):
                 res = {u'code': 500, u'message': u'Internal Server Error', u'description': u'Internal Server Error'}
             elif response.status in [501]:
                 res = {u'code': 501, u'message': u'Not Implemented', u'description': u'Not Implemented'}
+            elif response.status in [502]:
+                res = {u'code': 502,  u'message': u'Bad Gateway Error', u'description': u'Bad Gateway Error'}
             elif response.status in [503]:
                 res = {u'code': 503,  u'message': u'Service Unavailable', u'description': u'Service Unavailable'}
             else:
@@ -393,7 +395,7 @@ class BeehiveApiClient(object):
         return res
 
     @watch
-    def invoke(self, subsystem, path, method, data=u'', other_headers=None, parse=False, timeout=30, silent=False,
+    def invoke(self, subsystem, path, method, data=u'', other_headers=None, parse=False, timeout=60, silent=False,
                print_curl=False):
         """Make api request using subsystem internal admin user credentials.
 
