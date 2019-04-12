@@ -186,7 +186,8 @@ class ApiManager(object):
         #self.rpc_httpclient = ApiRpcHttpClient(self)
         self.api_user = None
         self.api_user_pwd = None
-        self.api_client = None      
+        self.api_client = None     
+        self.api_awx_client = None 
         
         # gateways
         self.gateways = {}
@@ -686,6 +687,20 @@ class ApiManager(object):
                 except:
                     self.logger.warning(u'Configure Camunda  - NOT CONFIGURED', exc_info=1)
                 ##### camunda configuration #####
+                
+                ##### awx configuration #####
+                try:
+                    self.logger.info(u'Configure AWX - CONFIGURE')            
+                    from beedrones.awx import awxclient as AwxClient
+                    conf = configurator.get(app=self.app_name, group=u'awx', name=u'awx_client')[0].value
+                    self.logger.info(u'Configure AWX - CONFIG app %s: %s' % (self.app_name, conf))
+                    item = json.loads(conf)
+
+                    self.awx_client = AwxClient(item[u'conn'], user=item[u'user'], passwd=item[u'passwd'])
+                    self.logger.info(u'Configure AWX  - CONFIGURED')            
+                except:
+                    self.logger.warning(u'Configure AWX  - NOT CONFIGURED', exc_info=1)
+                ##### awx configuration #####
 
                 ##### sendmail configuration #####
                 try:

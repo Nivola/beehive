@@ -51,7 +51,7 @@ client = BeehiveApiClient(config[u'endpoint'],
                           config[u'user'], 
                           config[u'pwd'],
                           None,
-                          config[u'catalog'])
+                          catalog_id=config[u'catalog'])
 
 uri = u'/v1.0/providers/%s/instances/' % config[u'provider']
 data = u'super-zone=%s' % (config[u'super-zone'])
