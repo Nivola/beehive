@@ -427,8 +427,12 @@ def cache(key, ttl=600):
             try:
                 ret = controller.cache.get(internalkey)
                 if operation.cache is False or ret is None:
+                    # save data in cache
                     ret = fn(controller, postfix, *args, **kwargs)
                     controller.cache.set(internalkey, ret, ttl=ttl)
+                else:
+                    # extend key time
+                    controller.cache.expire(key, ttl)
 
                 # calculate elasped time
                 elapsed = round(time() - start, 4)

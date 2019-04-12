@@ -7,7 +7,7 @@ logger = logging.getLogger(u'beehive.common')
 
 
 class Signature(CelerySignature):
-    def apply_async(self, args=(), kwargs={}, route_name=None, **options):
+    def apply_async1(self, args=(), kwargs={}, route_name=None, **options):
         """Apply this task asynchronously.
 
         Arguments:

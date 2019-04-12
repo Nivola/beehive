@@ -78,6 +78,7 @@ class TaskResult(object):
             # get data from redis
             # logger.debug(u'prefix: %s, task_id: %s' % (_prefix, task_id))
             key = u'%s%s' % (_prefix, task_id)
+
             try:
                 val = _redis.get(key)
             except:
@@ -135,6 +136,9 @@ class TaskResult(object):
             
             # save data in redis
             _redis.setex(key, _expire, val)
+            # if result.get(u'start_time') is not None:
+            #     key_time = u'%sfrom:%s' % (_prefix, result.get(u'start_time'))
+            #     _redis.setex(key_time, _expire, task_id)
 
             # check key exists
             val_redis = _redis.get(key)
@@ -142,6 +146,9 @@ class TaskResult(object):
             # resave data in redis if key does not exist
             if val_redis is None:
                 _redis.setex(key, _expire, val)
+                # if result.get(u'start_time') is not None:
+                #     key_time = u'%sfrom:%s' % (_prefix, result.get(u'start_time'))
+                #     _redis.setex(key_time, _expire, task_id)
 
             return val
 

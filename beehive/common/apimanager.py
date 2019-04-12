@@ -160,6 +160,7 @@ class ApiManager(object):
 
         # cache
         self.cache_manager = None
+        self.cache_manager_ttl = 86400
         
         # security
         self.auth_providers = {}
@@ -1018,6 +1019,10 @@ class ApiModule(object):
     def cache(self):
         return self.api_manager.cache_manager
 
+    @property
+    def cache_ttl(self):
+        return self.api_manager.cache_manager_ttl
+
     @staticmethod
     def _get_value(objtype, args):
         data = ['*' for i in objtype.split('.')]
@@ -1562,6 +1567,9 @@ class ApiObject(object):
     API_OPERATION = u'API'
     SYNC_OPERATION = u'CMD'
     ASYNC_OPERATION = u'JOB'
+
+    # cache key
+    cache_key = u'object.get'
     
     def __init__(self, controller, oid=None, objid=None, name=None, desc=None, active=None, model=None):
         self.logger = logging.getLogger(self.__class__.__module__ + u'.' + self.__class__.__name__)
@@ -1606,7 +1614,11 @@ class ApiObject(object):
     @property
     def cache(self):
         return self.controller.module.api_manager.cache_manager
-    
+
+    @property
+    def cache_ttl(self):
+        return self.controller.module.api_manager.cache_manager_ttl
+
     @property
     def camunda_engine(self):
         return self.controller.module.api_manager.camunda_engine
@@ -1676,6 +1688,27 @@ class ApiObject(object):
     #
     # info
     #
+    def set_cache(self):
+        """Cache object required infos.
+
+        :return: Dictionary with object info.
+        :rtype: dict
+        :raises ApiManagerError: raise :class:`.ApiManagerError`
+        """
+        data = {
+            u'__meta__': {
+                u'objid': self.objid,
+                u'type': self.objtype,
+                u'definition': self.objdef,
+                u'uri': self.objuri,
+            },
+            u'id': self.oid,
+            u'uuid': self.uuid,
+            u'name': self.name,
+            u'desc': self.desc,
+        }
+        self.cache.set(self.cache_key + u'.' + self.oid, data, ttl=self.cache_ttl)
+
     def small_info(self):
         """Get object small infos.
         
@@ -2943,6 +2976,7 @@ class ApiView(FlaskView):
             operation.id = request.headers.get(u'request-id', str(uuid4()))
             operation.transaction = None
             operation.authorize = True
+            operation.cache = True
             operation.encryption_key = module.api_manager.app_fernet_key
 
             self.logger.info(u'Start new operation: %s' % operation.id)
