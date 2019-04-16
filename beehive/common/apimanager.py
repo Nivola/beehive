@@ -188,7 +188,7 @@ class ApiManager(object):
         self.api_user = None
         self.api_user_pwd = None
         self.api_client = None     
-        self.api_awx_client = None 
+        self.awx_client = None 
         
         # gateways
         self.gateways = {}
@@ -692,12 +692,12 @@ class ApiManager(object):
                 ##### awx configuration #####
                 try:
                     self.logger.info(u'Configure AWX - CONFIGURE')            
-                    from beedrones.awx import awxclient as AwxClient
+                    from beedrones.awx.awxclient import AwxClient, Awx
                     conf = configurator.get(app=self.app_name, group=u'awx', name=u'awx_client')[0].value
                     self.logger.info(u'Configure AWX - CONFIG app %s: %s' % (self.app_name, conf))
                     item = json.loads(conf)
 
-                    self.awx_client = AwxClient(item[u'conn'], user=item[u'user'], passwd=item[u'passwd'])
+                    self.awx_client = Awx(AwxClient(item[u'conn'], user=item[u'user'], passwd=item[u'passwd'], organization=item[u'org_id']))
                     self.logger.info(u'Configure AWX  - CONFIGURED')            
                 except:
                     self.logger.warning(u'Configure AWX  - NOT CONFIGURED', exc_info=1)
@@ -1146,6 +1146,10 @@ class ApiController(object):
     @property
     def api_client(self):
         return self.module.api_manager.api_client 
+    
+    @property
+    def awx_client(self):
+        return self.module.api_manager.awx_client 
 
     @property
     def cache(self):
