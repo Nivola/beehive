@@ -156,7 +156,8 @@ def start_task_manager(params):
     # base logging
     loggers = [
         logging.getLogger(u'beehive'),
-        logging.getLogger(u'beehive_service'),
+        logging.getLogger(u'beehive.common.model'),
+        logging.getLogger(u'beehive_service' ),
         logging.getLogger(u'beehive_resource'),
         logging.getLogger(u'beehive.db'),
         logging.getLogger(u'beecell'),

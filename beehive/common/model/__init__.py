@@ -735,7 +735,32 @@ class AbstractDbManager(object):
             
         self.logger.debug2(u'Update %s %s with data: %s' % (entityclass.__name__, oid, kvargs))
         return oid
-    
+
+    @transaction
+    def update_entity_null(self, entityclass, **kvargs):
+        """Update entity.
+
+        :param entityclass: entity model class
+        :param int oid: entity id. [optional]
+        :param kvargs str: date to update. [optional]
+        :return: entity
+        :raises TransactionError: raise :class:`TransactionError`
+        """
+        session = self.get_session()
+
+        # get entity
+        oid = kvargs.pop(u'oid', None)
+        entity = self.query_entities(entityclass, session, oid=oid)
+
+        # create data dict with update
+        kvargs[u'modification_date'] = datetime.today()
+
+        entity.update(kvargs)
+        session.flush()
+
+        self.logger.debug2(u'UPDATE NULL %s %s with data: %s' % (entityclass.__name__, oid, kvargs))
+        return oid
+
     @transaction
     def remove_entity(self, entityclass, *args, **kvargs):
         """Remove entity.
