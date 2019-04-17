@@ -232,6 +232,8 @@ class BeehiveApiClient(object):
             # else:
             #     send_data = u'xxxxxxx'
             send_data = obscure_string(data)
+            self.logger.info(u'Api Request [%s] %s %s://%s:%s%s, timoute=%s' %
+                             (reqid, method, proto, host, port, path, timeout))
             if silent is False:
                 self.logger.debug(u'API Request: %s - Call: METHOD=%s, URI=%s://%s:%s%s, HEADERS=%s, DATA=%s' %
                                   (reqid, method, proto, host, port, path, headers, send_data))
