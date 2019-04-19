@@ -828,20 +828,30 @@ class AbstractDbManager(object):
         """
         session = self.get_session()
         
-        try:
+        # try:
+        #     # create permtag
+        #     tagrecord = PermTag(tag, explain=explain)
+        #     session.add(tagrecord)
+        #     session.flush()
+        #     self.logger.debug2(u'Add permtag %s' % (tagrecord))
+        # except:
+        #     # permtag already exists. Get reference
+        #     self.logger.warn(u'Permtag %s already exists' % (tagrecord))
+        #     session.rollback()
+        #     tagrecord = session.query(PermTag).filter_by(value=tag).first()
+
+        tagrecord = session.query(PermTag).filter_by(value=tag).one_or_none()
+        if tagrecord is None:
             # create permtag
             tagrecord = PermTag(tag, explain=explain)
             session.add(tagrecord)
             session.flush()
-            self.logger.debug2(u'Add permtag %s' % (tagrecord))
-        except:
-            # permtag already exists. Get reference
-            self.logger.warn(u'Permtag %s already exists' % (tagrecord))
-            session.rollback()
-            tagrecord = session.query(PermTag).filter_by(value=tag).first()
+            self.logger.debug2(u'Add permtag %s' % tagrecord)
+        else:
+            self.logger.warn(u'Permtag %s already exists' % tagrecord)
 
         # create tag entity association
-        record = None
+        # record = None
         try:
             record = PermTagEntity(tagrecord.id, entity, type)
             session.add(record)
@@ -934,7 +944,7 @@ class AbstractDbManager(object):
         return entity   
     
     @transaction
-    def bulk_save_objects(self, entities ):
+    def bulk_save_objects(self, entities):
         if entities is None:
             raise QueryError("Error: can't not bulk update None entities")
         

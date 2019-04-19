@@ -1,10 +1,6 @@
 # Changelog
 
-## Version 1.5.0 (April, 2019)
-* Fixed ...
-	* Class GetAllTasksRequestSchema: corretto errore di validazione swagger, eliminato il parametro missing=None per il fields ttype
-
-## Version 1.4.0 (March, 2019)
+## Version 1.4.0 (, 2019)
 
 * Added ...
     * introdotta il campo provider nella classe common.model.authorization.User per indicare l'autentication provider
@@ -14,6 +10,9 @@
     * modificata l'api di interrogazione dei domains in interrogazione dei providers
     * modificata la configurazione di un authentication provider ldap
     * aggiornamento firma metodo get_entity: inserimento params *args, **kvargs
+    * Class GetAllTasksRequestSchema: corretto errore di validazione swagger, eliminato il parametro missing=None per il 
+      fields ttype
+    * modificato comportamento del metodo AbstractDbManager.add_perm_tag. Eliminata la rollback in caso di permtag già esistenti
 * Integrated ...
 * Various bugfixes
 
