@@ -190,7 +190,7 @@ class BaseEntity(AuditData):
 
 class PermTag(Base):
     __tablename__ = u'perm_tag'
-    __table_args__ = {u'mysql_engine':u'InnoDB'}    
+    __table_args__ = {u'mysql_engine': u'InnoDB'}
     
     id = Column(Integer, primary_key=True)
     value = Column(String(100), unique = True)
@@ -208,10 +208,11 @@ class PermTag(Base):
     
     def __repr__(self):
         return u'<PermTag(%s, %s)>' % (self.value, self.explain)
-    
+
+
 class PermTagEntity(Base):
     __tablename__ = u'perm_tag_entity'
-    __table_args__ = {u'mysql_engine':u'InnoDB'}    
+    __table_args__ = {u'mysql_engine': u'InnoDB'}
     
     id = Column(Integer, primary_key=True)
     tag = Column(Integer)
@@ -512,7 +513,9 @@ class AbstractDbManager(object):
             raise Exception(e)
 
     def print_stmp(self, stmp):
-        """
+        """Print a query statement
+
+        :param stmp: statement
         """
         self.logger.debug2(u'stmp: %s' % stmp.statement.compile(dialect=mysql.dialect()))
     
@@ -530,6 +533,12 @@ class AbstractDbManager(object):
         return res    
 
     def print_query(self, func, query, args):
+        """Print query
+
+        :param func: function that run the query
+        :param query: query to run
+        :param args: query args. Use: inspect.getargvalues(inspect.currentframe())
+        """
         self.logger.debug2(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
         args = {arg: args.locals[arg] for arg in args.args}
         self.logger.debug2(args)
