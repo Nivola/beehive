@@ -1639,15 +1639,36 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         """
         res = self.update_entity(Group, *args, **kvargs)
         return res
-    
+
+    @transaction
     def remove_group(self, *args, **kvargs):
         """Remove group.
         
         :param int oid: entity id. [optional]
         :raises TransactionError: raise :class:`TransactionError`  
         """
-        res = self.remove_entity(Group, *args, **kvargs)
-        return res   
+        session = self.get_session()
+
+        # get group roles
+        rus = session.query(RoleGroup).filter(RoleGroup.group_id == kvargs[u'oid']).all()
+
+        # remove roles from group if it exists
+        for ru in rus:
+            session.delete(ru)
+        session.flush()
+
+        # remove internal role
+        name = u'Group%sRole' % kvargs[u'oid']
+        try:
+            role = self.get_entity(Role, name)
+            self.remove_role(oid=role.id)
+        except QueryError:
+            pass
+
+        # remove user
+        res = self.remove_entity(User, oid=kvargs[u'oid'])
+
+        return res
 
     @transaction
     def append_group_role(self, group, role, expiry_date=None):
@@ -1770,6 +1791,9 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         :raises QueryError: raise :class:`QueryError`
         """
         filters = []
+        email = kvargs.get(u'email', None)
+        if email is not None:
+            filters.append(u'AND t3.email=:email')
         if u'expiry_date' in kvargs and kvargs.get(u'expiry_date') is not None:
             filters.append(u'AND expiry_date>=:expiry_date')
         res, total = self.get_paginated_entities(User, filters=filters, *args, **kvargs)
@@ -1805,6 +1829,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         
         :param tags: list of permission tags
         :param role_id: role id
+        :param email: user email
         :param page: users list page to show [default=0]
         :param size: number of users to show in list per page [default=0]
         :param order: sort order [default=DESC]
@@ -1818,6 +1843,9 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             u'AND t3.id=t4.user_id',
             u'AND t4.role_id=:role_id'
         ]
+        email = kvargs.get(u'email', None)
+        if email is not None:
+            filters.append(u'AND t3.email=:email')
         res, total = self.get_paginated_entities(User, filters=filters,
                                                  tables=tables, *args, **kvargs)
         return res, total
@@ -2054,8 +2082,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         session = self.get_session()
         
         # get user roles
-        rus = session.query(RoleUser)\
-                     .filter(RoleUser.user_id == kvargs[u'oid']).all() 
+        rus = session.query(RoleUser).filter(RoleUser.user_id == kvargs[u'oid']).all()
                      
         # remove roles from user if it exists
         for ru in rus:

@@ -268,10 +268,12 @@ class AuthController(BaseAuthController):
         # disable authorization
         operation.authorize = False
 
-        user_name = operation.user[0]
+        user_email = operation.user[0]
+        users, tot = self.manager.get_users(email=user_email, with_perm_tag=False)
+        user_name = users[0].name
 
         # check if role is assigned to the user
-        users, total_users = self.get_users(name=user_name, role=role)
+        users, total_users = self.get_users(email=user_email, role=role)
 
         # check if role is assigned to a group of which a user is a member
         groups, total = self.get_groups(user=user_name)
