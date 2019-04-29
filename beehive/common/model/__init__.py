@@ -962,9 +962,10 @@ class AbstractDbManager(object):
             if isinstance(entity, BaseEntity):
                 entity.modification_date = datetime.today()
         
-        session = self.get_session()
-        session.bulk_save_objects(entities)
-        session.flush()
+        self.add_all(entities)
+        #session = self.get_session()
+        #session.bulk_save_objects(entities)
+        #session.flush()
         self.logger.info(u'Bulk updated')
         return entities   
 
