@@ -153,11 +153,9 @@ class TaskResult(object):
             return val
 
         val = update_data()
-        
-        logout = logger.debug2
+
         if inner_type == u'JOB':
-            logout = logger.info
-            logout(u'Save %s %s result: %s' % (inner_type, task_id, truncate(val, size=400)))
+            logger.debug2(u'Save %s %s result: %s' % (inner_type, task_id, truncate(val, size=400)))
 
         return data
 
