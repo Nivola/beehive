@@ -204,6 +204,7 @@ class User(Base, BaseEntity):
 
         self.secret = random_password(length=100)
         self.last_login = None
+        self.email = email
 
     def _check_password(self, password):
         # verifying the password
