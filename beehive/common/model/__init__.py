@@ -958,14 +958,14 @@ class AbstractDbManager(object):
             raise QueryError("Error: can't not bulk update None entities")
         
         for entity in entities:
-            self.logger.info(u'Update %s entity %s' % (entities.__class__.__name__, entity))
+            self.logger.debug(u'Update %s entity %s' % (entities.__class__.__name__, entity))
             if isinstance(entity, BaseEntity):
                 entity.modification_date = datetime.today()
         
         session = self.get_session()
         session.bulk_save_objects(entities)
         session.flush()
-        self.logger.info(u'Bulk updated')
+        self.logger.info(u'Bulk updated %s entities' %len(entities))
         return entities   
 
     @transaction
