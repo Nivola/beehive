@@ -235,7 +235,7 @@ class AbstractJob(BaseTask):
 
         # store job data
         msg = None
-        counter = int(job[u'counter']) + 1
+        counter = int(job.get(u'counter', 0)) + 1
         TaskResult.store(task_local.opid, status=status, retval=retval, inner_type=u'JOB', traceback=traceback,
                          stop_time=current_time, msg=msg, counter=counter)
         if status == u'FAILURE':
@@ -492,13 +492,12 @@ class JobTask(AbstractJob):
 
             # loop until inner_task finish with success or error
             status = inner_task.get(u'status')
-            start_counter = inner_task.get(u'counter')
+            start_counter = inner_task.get(u'counter', 0)
             while status != u'SUCCESS' and status != u'FAILURE':
                 sleep(task_local.delta)
                 inner_task = TaskResult.get(task_id)
                 counter = inner_task.get(u'counter')
                 elapsed = time() - start
-
                 # verify job is stalled
                 if counter - start_counter == 0 and elapsed > 60:
                     raise JobError(u'Job %s is stalled' % task_id)
