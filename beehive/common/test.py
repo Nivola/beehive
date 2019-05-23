@@ -359,6 +359,9 @@ class BeehiveTestCase(unittest.TestCase):
                 sign = self.auth_client.sign_request(seckey, uri)
                 headers.update({u'uid': token, u'sign': sign})
 
+            # reset start after authentication
+            start = time.time()
+
             if runlog is True:
                 self.runlogger.info(u'request endpoint: %s' % endpoint)
                 self.runlogger.info(u'request path:     %s' % uri)
@@ -373,9 +376,10 @@ class BeehiveTestCase(unittest.TestCase):
             # execute request
             response = requests.request(method, endpoint + uri, auth=cred, params=query, data=data, headers=headers,
                                         timeout=timeout, verify=False)
-            self.runlogger.info(u'request url:      %s' % response.url)
+            logger.info(u'Call api: %s' % response.url)
             
             if runlog is True:
+                self.runlogger.info(u'request url:      %s' % response.url)
                 self.runlogger.info(u'response headers: %s' % response.headers)
                 self.runlogger.info(u'response code:    %s' % response.status_code)
             resp_content_type = response.headers[u'content-type']
@@ -477,15 +481,15 @@ class BeehiveTestCase(unittest.TestCase):
                 self.runlogger.error(u'', exc_info=1)
             raise
         
-        logger.debug(u'call elapsed: %s' % (time.time()-start))
+        logger.debug(u'Call api elapsed: %s' % (time.time()-start))
         self.assertEqual(validate, True)
         return res
 
-    def get(self, uri, query=None, params=None, timeout=600, user=None, pretty_response=False):
+    def get(self, uri, query=None, params=None, timeout=600, user=None, pretty_response=False, runlog=True):
         if user is None:
             user = self.users[self.run_test_user]
         res = self.call(self.endpoint_service, uri, u'get', data=u'', query=query, timeout=timeout, params=params,
-                        headers=self.custom_headers, pretty_response=pretty_response, **user)
+                        headers=self.custom_headers, pretty_response=pretty_response, runlog=runlog, **user)
         return res
 
     def post(self, uri, data=None, query=None, params=None, timeout=600, user=None):
