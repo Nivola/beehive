@@ -71,7 +71,7 @@ tests_auth = [
     u'test_get_perms_by_type',
     u'test_get_perm',
 
-    u'test_get_domains',
+    u'test_get_providers',
     u'test_get_tokens',
     u'test_get_token',
     u'test_delete_token',

@@ -68,7 +68,7 @@ tests = [
     u'test_get_perms_by_type',
     u'test_get_perm',
 
-    u'test_get_domains',
+    u'test_get_providers',
     u'test_get_tokens',
     u'test_get_token',
     u'test_delete_token',
@@ -85,8 +85,8 @@ class AuthTestCase(BeehiveTestCase):
     #
     # domains
     #
-    def test_get_domains(self):
-        self.call(u'auth', u'/v1.0/nas/domains', u'get')
+    def test_get_providers(self):
+        self.call(u'auth', u'/v1.0/nas/providers', u'get')
 
     #
     # tokens
@@ -189,6 +189,7 @@ class AuthTestCase(BeehiveTestCase):
         data = {
             u'user': {
                 u'name': u'user_prova@local',
+                u'email': u'user_prova@local',
                 u'desc': u'user_prova',
                 u'active': True,
                 u'expirydate': u'2099-12-31',
@@ -204,6 +205,7 @@ class AuthTestCase(BeehiveTestCase):
         data = {
             u'user': {
                 u'name': u'user_prova@local',
+                u'email': u'user_prova@local',
                 u'desc': u'user_prova',
                 u'active': True,
                 u'expirydate': u'2019-12-31',
@@ -354,7 +356,7 @@ class AuthTestCase(BeehiveTestCase):
     def test_add_group_role(self):
         data = {
             u'group': {
-                u'roles': {u'append': [u'ApiSuperAdmin']}
+                u'roles': {u'append': [(u'ApiSuperAdmin', u'2019-12-31')]}
             }
         }
         self.call(u'auth', u'/v1.0/nas/groups/{oid}', u'put', params={u'oid': u'grp_prova'}, data=data,
