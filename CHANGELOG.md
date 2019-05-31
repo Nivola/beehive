@@ -1,6 +1,6 @@
 # Changelog
 
-## Version 1.4.0 (, 2019)
+## Version 1.4.0 (May 24, 2019)
 
 * Added ...
     * introdotta il campo provider nella classe common.model.authorization.User per indicare l'autentication provider
