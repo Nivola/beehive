@@ -1,8 +1,7 @@
-"""
-Created on Mar 29, 2018
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: darkbk
-"""
 import logging
 from beecell.logger.helper import LoggerHelper
 from signal import SIGHUP, SIGABRT, SIGILL, SIGINT, SIGSEGV, SIGTERM, SIGQUIT
