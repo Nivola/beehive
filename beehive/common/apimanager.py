@@ -2202,7 +2202,7 @@ class ApiObject(object):
         try:  
             res = self.update_object(oid=self.oid, *args, **kvargs)
             
-            self.logger.debug(u'Update %s %s with data %s' % (self.objdef, self.oid, kvargs))
+            self.logger.debug(u'Update %s %s with data %s' % (self.objdef, self.oid, truncate(kvargs)))
             return self.uuid
         except TransactionError as ex:
             self.logger.error(ex, exc_info=1)
