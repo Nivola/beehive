@@ -7,6 +7,7 @@ import ujson as json
 from datetime import datetime, timedelta
 import pickle
 #from beecell.perf import watch
+from beecell.db.manager import RedisManagerError
 from beecell.simple import str2uni, id_gen, get_attrib, truncate
 from redis_collections import Dict
 from celery.schedules import crontab
@@ -591,14 +592,41 @@ class TaskManager(ApiObject):
         timestamp = datetime.fromtimestamp(timestamp)
         return str2uni(timestamp.strftime(u'%d-%m-%Y %H:%M:%S.%f'))        
 
+    def __get_redis_task(self, task_id):
+        """Get task from redis
+        
+        :param task_id: redis key
+        :return: task data
+        :raise ApiManagerError: if task was not found
+        """
+        try:
+            manager = self.controller.redis_taskmanager
+            task_data, task_ttl = manager.get_with_ttl(self.prefix + task_id, max_retry=3, delay=0.01)
+        except RedisManagerError as ex:
+            raise ApiManagerError(u'Task %s not found' % task_id, code=404)
+
+        return task_data, task_ttl 
+        
+        # try:            
+        #     keys = manager.inspect(pattern=self.prefix + task_id, debug=False)
+        #     data = manager.query(keys, ttl=True)[self.prefix + task_id]            
+        # except Exception:
+        #     err = u'Task %s not found' % task_id
+        #     self.logger.error(err, exc_info=1)
+        #     raise ApiManagerError(err, code=404)
+
     def _get_task_info(self, task_id):
         """ """
         manager = self.controller.redis_taskmanager
-        keys = manager.inspect(pattern=self.prefix + task_id, debug=False)
-        data = manager.query(keys, ttl=True)[self.prefix + task_id]
+        # keys = manager.inspect(pattern=self.prefix + task_id, debug=False)
+        # data = manager.query(keys, ttl=True)[self.prefix + task_id]
+        task_data, task_ttl = self.__get_redis_task(task_id)
+
         # get task info and time to live
-        val = json.loads(data[0])
-        ttl = data[1]
+        # val = json.loads(data[0])
+        # ttl = data[1]
+        val = json.loads(task_data)
+        ttl = task_ttl
         
         # add time to live
         val[u'ttl'] = ttl
@@ -700,20 +728,29 @@ class TaskManager(ApiObject):
         # verify permissions
         self.verify_permisssions(u'view')     
         
-        try:
-            res = []
-            manager = self.controller.redis_taskmanager
-            keys = manager.inspect(pattern=self.prefix + task_id, debug=False)
-            data = manager.query(keys, ttl=True)[self.prefix + task_id]
-        except Exception:
-            err = u'Task %s not found' % task_id
-            self.logger.error(err, exc_info=1)
-            raise ApiManagerError(err, code=404)
+        res = []
+        
+        # try:
+        #     res = []
+        #     manager = self.controller.redis_taskmanager
+        #     # keys = manager.inspect(pattern=self.prefix + task_id, debug=False)
+        #     # data = manager.query(keys, ttl=True)[self.prefix + task_id]
+        # 
+        #     task_data = manager.get(self.prefix + task_id)
+        #     task_ttl = manager.ttl(self.prefix + task_id)
+        # except Exception:
+        #     err = u'Task %s not found' % task_id
+        #     self.logger.error(err, exc_info=1)
+        #     raise ApiManagerError(err, code=404)
+
+        task_data, task_ttl = self.__get_redis_task(task_id)
             
         try:
             # get task info and time to live
-            val = json.loads(data[0])
-            ttl = data[1]
+            # val = json.loads(data[0])
+            # ttl = data[1]
+            val = json.loads(task_data)
+            ttl = task_ttl
             
             tasktype = val.get(u'type', u'JOB')
             
@@ -784,18 +821,23 @@ class TaskManager(ApiObject):
 
         graph_data = None
 
-        try:
-            manager = self.controller.redis_taskmanager
-            keys = manager.inspect(pattern=self.prefix + task_id, debug=False)
-            data = manager.query(keys, ttl=True)[self.prefix + task_id]
-        except Exception:
-            err = u'Task %s not found' % task_id
-            self.logger.error(err, exc_info=1)
-            raise ApiManagerError(err, code=404)
+        # try:
+        #     manager = self.controller.redis_taskmanager
+        #     # keys = manager.inspect(pattern=self.prefix + task_id, debug=False)
+        #     # data = manager.query(keys, ttl=True)[self.prefix + task_id]
+        #
+        #     task_data = manager.get(self.prefix + task_id)
+        # except Exception:
+        #     err = u'Task %s not found' % task_id
+        #     self.logger.error(err, exc_info=1)
+        #     raise ApiManagerError(err, code=404)
+
+        task_data, task_ttl = self.__get_redis_task(task_id)
 
         try:
             # get task info and time to live
-            val = json.loads(data[0])
+            # val = json.loads(data[0])
+            val = json.loads(task_data)
 
             childs = val[u'children']
             tasktype = val[u'type']

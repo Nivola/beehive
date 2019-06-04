@@ -37,8 +37,8 @@ beedrones is written and maintained by:
 * Gianni Doria
 * Daniela Ferrarini
 
-## Copyrights
-CSI Piemonte
+## Copyright
+CSI Piemonte - 2018-2019
 
 ## License
 See the LICENSE.txt file for details

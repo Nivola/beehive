@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
+
 import logging
 from celery.canvas import Signature as CelerySignature
 from celery.utils import abstract
@@ -23,8 +27,9 @@ class Signature(CelerySignature):
             :meth:`~@Task.apply_async` and the :ref:`guide-calling` guide.
         """
         #from beehive.common.task.handler import TaskResult
-        #TaskResult.task_pending(args)
-        jobid = CelerySignature.apply_async(self, args, kwargs, route_name, **options)
+        # TaskResult.task_pending(args)
+        jobid = CelerySignature.apply_async(
+            self, args, kwargs, route_name, **options)
         task = TaskResult.task_pending(str(jobid))
         logger.warn(u'Create new task: %s' % task)
         return jobid
@@ -39,7 +44,6 @@ def signature(varies, *args, **kwargs):
     Returns:
         Signature: The resulting signature.
     """
-    # return None
     app = kwargs.get('app')
     if isinstance(varies, dict):
         if isinstance(varies, abstract.CallableSignature):

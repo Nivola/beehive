@@ -1667,7 +1667,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             pass
 
         # remove user
-        res = self.remove_entity(User, oid=kvargs[u'oid'])
+        res = self.remove_entity(Group, oid=kvargs[u'oid'])
 
         return res
 

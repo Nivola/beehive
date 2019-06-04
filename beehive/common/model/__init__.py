@@ -893,11 +893,13 @@ class AbstractDbManager(object):
         self.logger.debug2(u'Delete tag entity %s.%s association' % (entity, etype))
         
         # remove unused tag
-        for tag in tags:           
+        for tag in tags:
             tagrecord = session.query(PermTag).filter_by(value=tag).first()
             if tagrecord is not None:
-                tagusage = session.query(PermTagEntity).filter_by(tag=tagrecord.id).all()
-                if len(tagusage) > 0:
+                tagusage = session.query(func.count(PermTagEntity.id)).filter_by(tag=tagrecord.id).scalar()
+                # tagusage = session.query(PermTagEntity).filter_by(tag=tagrecord.id).all()
+                # if len(tagusage) > 0:
+                if tagusage > 0:
                     self.logger.warn(u'Tag %s is used by other entities' % tag)
                 else:
                     session.delete(tagrecord)

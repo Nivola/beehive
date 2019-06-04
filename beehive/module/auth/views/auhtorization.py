@@ -416,7 +416,7 @@ class GetUserAtributes(SwaggerApiView):
 
 class CreateUserParamRequestSchema(BaseCreateRequestSchema, BaseCreateExtendedParamRequestSchema):
     password = fields.String(validate=Length(min=8, max=20), error=u'Password must be at least 8 characters')
-    email = fields.Email(error=u'email address', missing=None)
+    email = fields.String(error=u'email address', missing=None)
     storetype = fields.String(validate=OneOf([u'DBUSER', u'LDAPUSER'], error=u'Field can be DBUSER, LDAPUSER'),
                               missing=u'DBUSER')
     base = fields.Boolean(missing=False)

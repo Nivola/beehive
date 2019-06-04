@@ -1453,7 +1453,7 @@ class BeehiveApiClient(object):
         return res
 
     def set_ssh_group_authorization(self, name, role, user=None, group=None):
-        """Add ssh group
+        """Set ssh group authorization
 
         :param name: ssh group name
         :param role: ssh group role to assign
@@ -1479,7 +1479,6 @@ class BeehiveApiClient(object):
         }
         uri = u'/v1.0/gas/groups/%s/%ss' % (name, prefix)
         res = self.invoke(u'ssh', uri, u'POST', data, parse=True, silent=True)
-        # uuid = res.get(u'uuid')
         self.logger.debug(u'Set authorization to ssh group %s for %s %s with role %s' % (name, prefix, entity, role))
         return res
 
