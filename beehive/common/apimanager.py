@@ -694,7 +694,7 @@ class ApiManager(object):
                     self.logger.info(u'Configure AWX - CONFIGURE')            
                     from beedrones.awx.awxclient import AwxClient, Awx
                     conf = configurator.get(app=self.app_name, group=u'awx', name=u'awx_client')[0].value
-                    self.logger.info(u'Configure AWX - CONFIG app %s: %s' % (self.app_name, conf))
+                    self.logger.info(u'Configure AWX - CONFIG app %s' %(self.app_name))
                     item = json.loads(conf)
 
                     self.awx_client = Awx(AwxClient(item[u'conn'], user=item[u'user'], passwd=item[u'passwd'], organization=item[u'org_id']))
