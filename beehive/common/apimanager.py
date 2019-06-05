@@ -305,7 +305,7 @@ class ApiManager(object):
         
             * **uid** (:py:class:`str`): identity id
             
-        **Returns:**
+        :return:
 
             .. code-block:: python
                
@@ -328,7 +328,7 @@ class ApiManager(object):
     def get_identities(self):
         """Get identities
         
-        **Returns:**
+        :return:
 
             .. code-block:: python
                
@@ -366,7 +366,7 @@ class ApiManager(object):
             * **pwd** (:py:class:`str`): password
             * **user_ip** (:py:class:`str`): user ip address
             
-        **Returns:**
+        :return:
 
             .. code-block:: python
                
@@ -376,7 +376,7 @@ class ApiManager(object):
                 u'pubkey':..., 
                 u'seckey':...}
             
-        **Raise:** :class:`ApiManagerError`         
+        :raise ApiManagerError:         
         """
         try:
             identity = self.api_client.simplehttp_login(user, pwd, user_ip)
@@ -393,7 +393,7 @@ class ApiManager(object):
         
             * **token** (:py:class:`str`): identity id
             
-        **Returns:**
+        :return:
 
             .. code-block:: python
                
@@ -403,7 +403,7 @@ class ApiManager(object):
                 u'pubkey':..., 
                 u'seckey':...}
             
-        **Raise:** :class:`ApiManagerError`
+        :raise ApiManagerError:
         """
         identity = self.get_identity(token)
         self.redis_manager.expire(self.prefix + token, self.expire)
@@ -419,7 +419,7 @@ class ApiManager(object):
             * **sign** (:py:class:`str`): request sign
             * **data** (:py:class:`str`): request data
             
-        **Returns:**
+        :return:
 
             .. code-block:: python
                
@@ -429,7 +429,7 @@ class ApiManager(object):
                 u'pubkey':..., 
                 u'seckey':...}
             
-        **Raise:** :class:`ApiManagerError`
+        :raise ApiManagerError:
         """
         # get identity
         identity = self.get_identity(uid)
@@ -1226,7 +1226,7 @@ class ApiController(object):
 
         :param token: identity id
         :return: identity
-        **Raise:** :class:`ApiManagerError`
+        :raise ApiManagerError:
         """
         return self.module.api_manager.get_oauth2_identity(token)
 
@@ -1237,7 +1237,7 @@ class ApiController(object):
         :param pwd: password
         :param user_ip: user ip address
         :return: identity
-        **Raise:** :class:`ApiManagerError`
+        :raise ApiManagerError:
         """
         return self.module.api_manager.verify_simple_http_credentials(user, pwd, user_ip)
 
@@ -1876,9 +1876,9 @@ class ApiObject(object):
             * **objids**: objid split by //
             * **desc**: object description        
         
-        **Returns:**
+        :return:
         
-        **Raise:** :class:`ApiManagerError` 
+        :raise ApiManagerError: 
         """
         self.logger.debug(u'Register api object: %s:%s %s - START' % (self.objtype, self.objdef, objids))
         
@@ -2078,7 +2078,29 @@ class ApiObject(object):
         :raise ApiManagerError:
         """
         return True
-    
+
+    def pre_expunge(self, *args, **kvargs):
+        """Pre expunge function. This function is used in expunge method. Extend this function to manipulate and
+        validate expunge input params.
+
+        :param list args: custom params
+        :param dict kvargs: custom params
+        :return: kvargs
+        :raise ApiManagerError:
+        """
+        return kvargs
+
+    def post_expunge(self, *args, **kvargs):
+        """Post expunge function. This function is used in expunge method. Extend this function to execute action after
+        object was expunged.
+
+        :param list args: custom params
+        :param dict kvargs: custom params
+        :return: kvargs
+        :raise ApiManagerError:
+        """
+        return True
+
     #
     # db session
     #
@@ -2178,16 +2200,10 @@ class ApiObject(object):
     def update(self, *args, **kvargs):
         """Update entity.
         
-        **Parameters:**
-        
-            * **args** (:py:class:`list`): custom params
-            * **kvargs** (:py:class:`dict`): custom params
-            
-        **Returns:**
-        
-            entity uuid
-            
-        **Raise:** :class:`ApiManagerError`
+        :param args: custom params
+        :param kvargs: custom params
+        :return: entity uuid
+        :raise ApiManagerError:
         """
         if self.update_object is None:
             raise ApiManagerError(u'Update is not supported for %s:%s' % (self.objtype, self.objdef))
@@ -2212,16 +2228,10 @@ class ApiObject(object):
     def patch(self, *args, **kvargs):
         """Patch entity.
 
-        **Parameters:**
-
-            * **args** (:py:class:`list`): custom params
-            * **kvargs** (:py:class:`dict`): custom params
-
-        **Returns:**
-
-            entity uuid
-
-        **Raise:** :class:`ApiManagerError`
+        :param args: custom params
+        :param kvargs: custom params
+        :return: entity uuid
+        :raise ApiManagerError:
         """
         if self.patch_object is None:
             raise ApiManagerError(u'Patch is not supported for %s:%s' % (self.objtype, self.objdef))
@@ -2246,16 +2256,10 @@ class ApiObject(object):
     def delete(self, soft=False, **kvargs):
         """Delete entity.
         
-        **Parameters:**
-        
-            * **kvargs** (:py:class:`dict`): custom params
-            * **soft** (:py:class:`bool`): if True make a soft delete
-            
-        **Returns:**
-        
-            None
-            
-        **Raise:** :class:`ApiManagerError`
+        :param kvargs: custom params
+        :param soft: if True make a soft delete            
+        :return: None            
+        :raise ApiManagerError:
         """
         if self.delete_object is None:
             raise ApiManagerError(u'Delete is not supported for %s:%s' % (self.objtype, self.objdef))
@@ -2269,7 +2273,8 @@ class ApiObject(object):
             
         try:  
             if soft is False:
-                self.delete_object(oid=self.oid)
+                # self.delete_object(oid=self.oid)
+                self.delete_object(self.oid)
                 if self.register is True:
                     # remove object and permissions
                     self.deregister_object(self.objid.split(u'//'))
@@ -2285,6 +2290,41 @@ class ApiObject(object):
         # custom action
         if self.post_delete is not None:
             self.post_delete(**kvargs)
+
+        return None
+
+    @trace(op=u'delete')
+    def expunge(self, **kvargs):
+        """Expunge entity.
+
+        :param kvargs: custom params
+        :return: None
+        :raise ApiManagerError:
+        """
+        if self.expunge_object is None:
+            raise ApiManagerError(u'Expunge is not supported for %s:%s' % (self.objtype, self.objdef))
+
+        # verify permissions
+        self.verify_permisssions(u'delete')
+
+        # custom action
+        if self.pre_expunge is not None:
+            kvargs = self.pre_expunge(**kvargs)
+
+        try:
+            self.expunge_object(self.model)
+            if self.register is True:
+                # remove object and permissions
+                self.deregister_object(self.objid.split(u'//'))
+
+            self.logger.debug(u'Expunge %s: %s' % (self.objdef, self.oid))
+        except TransactionError as ex:
+            self.logger.error(ex.desc, exc_info=1)
+            raise ApiManagerError(ex, code=ex.code)
+
+        # custom action
+        if self.post_expunge is not None:
+            self.post_expunge(**kvargs)
 
         return None
 
@@ -3335,7 +3375,7 @@ class ApiClient(BeehiveApiClient):
     def user_request(self, subsystem, path, method, data=u'', other_headers={}, silent=False):
         """Make api request using module current user credentials.
         
-        **Raise:** :class:`ApiManagerError`
+        :raise ApiManagerError:
         """
         # propagate opernation.id to internal api call
         if isinstance(other_headers, dict):
