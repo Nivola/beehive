@@ -1,5 +1,13 @@
 # Changelog
 
+## Version 1.5.0 (Jun  , 2019)
+
+* Added ...
+    * added methods expunge, pre_expunge e post_expunge to ApiObject
+* Fixed ...
+* Integrated ...
+* Various bugfixes
+
 ## Version 1.4.0 (May 24, 2019)
 
 * Added ...

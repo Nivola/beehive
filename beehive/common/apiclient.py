@@ -236,7 +236,7 @@ class BeehiveApiClient(object):
                              (reqid, method, proto, host, port, path, timeout))
             if silent is False:
                 self.logger.debug(u'API Request: %s - Call: METHOD=%s, URI=%s://%s:%s%s, HEADERS=%s, DATA=%s' %
-                                  (reqid, method, proto, host, port, path, headers, send_data))
+                                  (reqid, method, proto, host, port, path, headers, truncate(send_data)))
 
             # format curl string
             if print_curl is True:
