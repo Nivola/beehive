@@ -6,6 +6,7 @@
     * added methods expunge, pre_expunge e post_expunge to ApiObject
 * Fixed ...
 * Integrated ...
+    * introdotta signature Celery che registra il task su redis appena generato l'uuid dall'apply_async
 * Various bugfixes
 
 ## Version 1.4.0 (May 24, 2019)

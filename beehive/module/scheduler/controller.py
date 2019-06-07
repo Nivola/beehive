@@ -1026,8 +1026,10 @@ class TaskManager(ApiObject):
         task = signature(u'beehive.module.scheduler.tasks.jobtest', (self.objid, params), app=task_manager,
                          queue=self.celery_broker_queue)
         job = task.apply_async()
-        self.logger.debug(u'Run job test: %s' % job)
-        self.logger.debug(u'Run job test: %s' % signature)
-        self.logger.debug(u'Run job test: %s' % task)
+
+        # save job
+        add_job = getattr(self.controller.module.get_related_controller(), u'add_job', None)
+        if add_job is not None:
+            add_job(job.id, u'jobtest', params)
 
         return job
