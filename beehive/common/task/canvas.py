@@ -11,7 +11,7 @@ logger = logging.getLogger(u'beehive.common')
 
 
 class Signature(CelerySignature):
-    def apply_async1(self, args=(), kwargs={}, route_name=None, **options):
+    def apply_async(self, args=(), kwargs={}, route_name=None, **options):
         """Apply this task asynchronously.
 
         Arguments:
@@ -26,12 +26,9 @@ class Signature(CelerySignature):
         See also:
             :meth:`~@Task.apply_async` and the :ref:`guide-calling` guide.
         """
-        #from beehive.common.task.handler import TaskResult
-        # TaskResult.task_pending(args)
-        jobid = CelerySignature.apply_async(
-            self, args, kwargs, route_name, **options)
+        jobid = CelerySignature.apply_async(self, args, kwargs, route_name, **options)
         task = TaskResult.task_pending(str(jobid))
-        logger.warn(u'Create new task: %s' % task)
+        logger.debug(u'Create new task: %s' % task)
         return jobid
 
 
@@ -50,6 +47,3 @@ def signature(varies, *args, **kwargs):
             return varies.clone()
         return Signature.from_dict(varies, app=app)
     return Signature(varies, *args, **kwargs)
-
-
-# celery.canvas.Signature = Signature
