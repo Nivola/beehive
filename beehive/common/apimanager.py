@@ -2273,8 +2273,8 @@ class ApiObject(object):
             
         try:  
             if soft is False:
-                # self.delete_object(oid=self.oid)
-                self.delete_object(self.oid)
+                self.delete_object(oid=self.oid)
+                # self.delete_object(self.oid)
                 if self.register is True:
                     # remove object and permissions
                     self.deregister_object(self.objid.split(u'//'))

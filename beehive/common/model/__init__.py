@@ -1000,7 +1000,7 @@ class AbstractDbManager(object):
         :return Boolean:
         """
         if entity is None:
-            logger.warn("Warning: can't not purge None entity")
+            logger.warn(u'Warning: can\'t not purge None entity')
             return entity
         
         session = self.get_session()
