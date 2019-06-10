@@ -221,7 +221,7 @@ class TaskResult(object):
         # store task
         start_time = time()
         task = TaskResult.store(task_id, name=None, hostname=None, args=None, kwargs=None, status=u'PENDING',
-                                retval=None, stop_time=0, childs=[], traceback=None,
+                                retval=None, start_time=start_time, stop_time=0, childs=[], traceback=None,
                                 inner_type=None, msg=None, jobs=None, counter=0)
         return task
 
