@@ -529,7 +529,7 @@ class JobTask(AbstractJob):
             while status != u'SUCCESS' and status != u'FAILURE':
                 sleep(task_local.delta)
                 inner_task = TaskResult.get(task_id)
-                counter = inner_task.get(u'counter')
+                counter = inner_task.get(u'counter', 0)
                 elapsed = time() - start
                 # verify job is stalled
                 if counter - start_counter == 0 and elapsed > 60:
