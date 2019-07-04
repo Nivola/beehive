@@ -261,6 +261,7 @@ class PaginatedQueryGenerator(object):
         self.filter_fields = []
         self.select_fields = [u't3.*']
         self.with_perm_tag = with_perm_tag
+        self.joins = []
     
     def set_pagination(self, page=0, size=10, order=u'DESC', field=u'id'):
         """Set pagiantion params
@@ -287,7 +288,26 @@ class PaginatedQueryGenerator(object):
         :param str alias: table alias
         """
         self.other_tables.append([table, alias])
-        
+
+    def add_join(self, table, alias, on, left=False, inner=False, outer=False):
+        """Append join to query
+
+        :param str table: table name
+        :param str alias: table alias
+        :param str on: join on clause
+        :param bool left: if True create a left join
+        :param bool inner: if True create an inner join
+        :param bool outer: if True create an outer join
+        """
+        join = u'join %s %s on %s' % (table, alias, on)
+        if inner is True:
+            join = u'inner ' + join
+        elif outer is True:
+            join = u'outer ' + join
+        if left is True:
+            join = u'left ' + join
+        self.joins.append(join)
+
     def add_select_field(self, field):
         """Append field to add after SELECT
         
@@ -363,7 +383,9 @@ class PaginatedQueryGenerator(object):
             self.other_filters.append(sqlfilter)
 
     def base_stmp(self, count=False):
-        """
+        """Base statement
+
+        :param count: if True return statement for count
         """
         fields = u', '.join(self.select_fields)
         if count is True:
@@ -409,7 +431,7 @@ class PaginatedQueryGenerator(object):
             elif self.size == -1:
                 sql.append(u'')
             else:
-                sql.append(u'LIMIT 1000')  # num rows - test
+                sql.append(u'LIMIT 1000')  # num rows
 
         # format query
         stmp = u' '.join(sql)
@@ -454,10 +476,113 @@ class PaginatedQueryGenerator(object):
         query = self.session.query(*entities).from_statement(stmp).params(tags=tags, **kvargs)
         self.logger.debug2(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
         self.logger.debug2(u'kvargs: %s' % truncate(kvargs))
-        # self.logger.debug2(u'tags: %s' % truncate(tags))
-        self.logger.debug2(u'tags: %s' % tags)
+        self.logger.debug2(u'tags: %s' % truncate(tags))
         res = query.all()
         
+        if self.size == 0 or self.size == -1:
+            total = len(res)
+
+        elapsed = round(time() - start, 3)
+        self.logger.debug2(u'Get %ss (total:%s): %s [%s]' % (self.entity.__tablename__, total, truncate(res), elapsed))
+        return res, total
+
+    def base_stmp2(self, count=False, limit=1000):
+        """Base statement. Change usage respect base_smtp. Use distinct in select and remove group by
+
+        :param count: if True return statement for count
+        :param limit: max returned records [default=1000]
+        """
+        fields = u', '.join(self.select_fields)
+        if count is True:
+            fields = u'count(distinct {field}) as count'.format(field=self.field)
+
+        sql = [u'SELECT distinct {fields}', u'FROM {table} t3']
+        if self.with_perm_tag is True:
+            sql.extend([
+                u'inner join perm_tag_entity t2 on  t3.id=t2.entity',
+                u'inner join perm_tag t1 on t2.tag=t1.id'
+            ])
+
+        # append other tables
+        for join in self.joins:
+            sql.append(join)
+
+        sql.extend([
+            u'WHERE 1=1'
+        ])
+
+        # set base where
+        if self.with_perm_tag is True:
+            sql.extend([
+                u'AND t1.value IN :tags '
+            ])
+
+        # add filters
+        for sqlfilter in self.other_filters:
+            sql.append(sqlfilter)
+
+        # set group by and limit
+        if count is False:
+            sql.extend([
+                u'ORDER BY {field} {order}'
+            ])
+
+            if self.size > 0:
+                sql.append(u'LIMIT {start},{size}')
+            elif self.size == -1:
+                sql.append(u'')
+            else:
+                sql.append(u'LIMIT %s' % limit)  # num rows
+
+        # format query
+        stmp = u' '.join(sql)
+
+        # custom table like select
+        if self.custom_select is not None:
+            table = self.custom_select
+
+        # table is defined by entity
+        else:
+            table = u'`%s`' % self.entity.__tablename__
+        stmp = stmp.format(table=table, fields=fields, field=self.field, order=self.order, start=self.start,
+                           size=self.size)
+
+        # self.logger.debug2(u'query: %s' % stmp)
+        return stmp
+
+    def run2(self, tags, *args, **kvargs):
+        """Make query. Use base_smtp2
+
+        :param list tags: list of permission tags
+        """
+        start = time()
+
+        if self.with_perm_tag is True:
+            self.logger.debug2(u'Authorization with permission tags ENABLED')
+        else:
+            self.logger.debug2(u'Authorization with permission tags DISABLED')
+
+        if tags is None or len(tags) == 0:
+            tags = [u'']
+
+        # make query
+        if self.size > 0:
+            # count all records
+            stmp = self.base_stmp2(count=True)
+            total = self.session.query(u'count').from_statement(stmp).params(tags=tags, **kvargs).first()[0]
+
+        stmp = self.base_stmp2()
+
+        # set query entities
+        entities = [self.entity]
+        entities.extend(self.other_entities)
+
+        query = self.session.query(*entities).from_statement(stmp).params(tags=tags, **kvargs)
+        self.logger.debug2(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
+        self.logger.debug2(u'kvargs: %s' % truncate(kvargs))
+        self.logger.debug2(u'tags: %s' % truncate(tags))
+        res = query.all()
+
         if self.size == 0 or self.size == -1:
             total = len(res)
 
