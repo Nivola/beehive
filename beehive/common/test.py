@@ -243,6 +243,11 @@ class BeehiveTestCase(unittest.TestCase):
         if isinstance(res, dict):
             for k, v in res.items():
                 res[k] = self.convert(v, separator)
+        if isinstance(res, list):
+            newres = []
+            for v in res:
+                newres.append(self.convert(v, separator))
+            res = newres
         return res
 
     def set_result(self, key, value):
@@ -497,6 +502,8 @@ class BeehiveTestCase(unittest.TestCase):
             user = self.users[self.run_test_user]
         res = self.call(self.endpoint_service, uri, u'post', data=data, query=query, params=params, timeout=timeout,
                         headers=self.custom_headers, **user)
+        if u'jobid' in res:
+            self.wait_job(res[u'jobid'])
         return res
 
     def put(self, uri, data=None, query=None, params=None, timeout=600, user=None):
@@ -504,6 +511,8 @@ class BeehiveTestCase(unittest.TestCase):
             user = self.users[self.run_test_user]
         res = self.call(self.endpoint_service, uri, u'put', data=data, query=query, params=params, timeout=timeout,
                         headers=self.custom_headers, **user)
+        if u'jobid' in res:
+            self.wait_job(res[u'jobid'])
         return res
 
     def patch(self, uri, data=None, query=None, params=None, timeout=600, user=None):
@@ -511,6 +520,8 @@ class BeehiveTestCase(unittest.TestCase):
             user = self.users[self.run_test_user]
         res = self.call(self.endpoint_service, uri, u'patch', data=data, query=query, params=params, timeout=timeout,
                         headers=self.custom_headers, **user)
+        if u'jobid' in res:
+            self.wait_job(res[u'jobid'])
         return res
 
     def delete(self, uri, data=None, query=None, params=None, timeout=600, user=None):
@@ -518,6 +529,8 @@ class BeehiveTestCase(unittest.TestCase):
             user = self.users[self.run_test_user]
         res = self.call(self.endpoint_service, uri, u'delete', data=data, query=query, params=params, timeout=timeout,
                         headers=self.custom_headers, **user)
+        if u'jobid' in res:
+            self.wait_job(res[u'jobid'])
         return res
 
     def get_job_state(self, jobid):
