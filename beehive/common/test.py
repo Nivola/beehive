@@ -235,19 +235,24 @@ class BeehiveTestCase(unittest.TestCase):
         elif isinstance(data, str) or isinstance(data, unicode):
             if data.find(u'$REF$') == 0:
                 data = dict_get(self.test_config, data.lstrip(u'$REF$'), separator)
-
+        print data
         return data
 
     def conf(self, key, separator=u'.'):
         res = dict_get(self.test_config, key, separator)
+
         if isinstance(res, dict):
+            print u'd'
             for k, v in res.items():
                 res[k] = self.convert(v, separator)
-        if isinstance(res, list):
+
+        elif isinstance(res, list):
+            print u'l'
             newres = []
             for v in res:
                 newres.append(self.convert(v, separator))
             res = newres
+
         return res
 
     def set_result(self, key, value):
