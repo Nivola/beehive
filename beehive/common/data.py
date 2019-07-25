@@ -6,6 +6,7 @@ import logging
 from time import time
 from functools import wraps
 from uuid import uuid4
+from gevent.lock import RLock
 from sqlalchemy.exc import IntegrityError, DBAPIError, ArgumentError
 
 from beecell.logger.helper import ExtendedLogger
@@ -47,6 +48,7 @@ operation.transaction = None  #: transaction id
 operation.encryption_key = None  #: _encryption_key used to encrypt and decrypt data
 operation.authorize = True  #: enable or disable authorization check
 operation.cache = True  #: if True check cache. If False execute function decorated by @cache() also if cache exists
+
 
 #
 # encryption method
@@ -126,6 +128,9 @@ def core_transaction(fn, rollback_throwable, *args, **kwargs):
     stmp_id = id_gen()
     session = operation.session
     sessionid = id(session)
+
+    # lock = RLock()
+    # lock.acquire()
     
     commit = False
     if operation.transaction is None:
@@ -226,7 +231,9 @@ def core_transaction(fn, rollback_throwable, *args, **kwargs):
                 session.commit()
                 logger.log(100, u'Commit transaction on exception %s' % operation.transaction)
                 operation.transaction = None
-            
+
+        # lock.release()
+
 
 def transaction2(rollback_throwable=True):
     """Use this decorator to transform a function that contains delete, insert

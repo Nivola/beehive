@@ -947,7 +947,7 @@ class AbstractDbManager(object):
         tag = hashlib.md5(perm).hexdigest()
         #self.logger.debug2(u'tag: %s, per: %s' % (tag, perm))
         return tag
-    
+
     @transaction
     def add_perm_tag(self, tag, explain, entity, type, *args, **kvargs):
         """Add permission tag and entity association.
@@ -961,7 +961,7 @@ class AbstractDbManager(object):
         :raises TransactionError: raise :class:`TransactionError`
         """
         session = self.get_session()
-        
+
         # try:
         #     # create permtag
         #     tagrecord = PermTag(tag, explain=explain)
@@ -974,7 +974,8 @@ class AbstractDbManager(object):
         #     session.rollback()
         #     tagrecord = session.query(PermTag).filter_by(value=tag).first()
 
-        tagrecord = session.query(PermTag).filter_by(value=tag).one_or_none()
+        query = session.query(PermTag).filter_by(value=tag)
+        tagrecord = query.one_or_none()
         if tagrecord is None:
             # create permtag
             tagrecord = PermTag(tag, explain=explain)
