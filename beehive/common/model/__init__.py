@@ -848,7 +848,7 @@ class AbstractDbManager(object):
         :param entityclass: entity model class
         :param int oid: entity id. [optional]
         :param kvargs str: date to update. [optional]
-        :return: entity
+        :return: entity oid
         :raises TransactionError: raise :class:`TransactionError`        
         """        
         session = self.get_session()
