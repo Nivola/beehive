@@ -506,7 +506,7 @@ class BeehiveTestCase(unittest.TestCase):
             user = self.users[self.run_test_user]
         res = self.call(self.endpoint_service, uri, u'post', data=data, query=query, params=params, timeout=timeout,
                         headers=self.custom_headers, **user)
-        if u'jobid' in res:
+        if res is not None and u'jobid' in res:
             self.wait_job(res[u'jobid'])
         return res
 
@@ -515,7 +515,7 @@ class BeehiveTestCase(unittest.TestCase):
             user = self.users[self.run_test_user]
         res = self.call(self.endpoint_service, uri, u'put', data=data, query=query, params=params, timeout=timeout,
                         headers=self.custom_headers, **user)
-        if u'jobid' in res:
+        if res is not None and u'jobid' in res:
             self.wait_job(res[u'jobid'])
         return res
 
@@ -524,7 +524,7 @@ class BeehiveTestCase(unittest.TestCase):
             user = self.users[self.run_test_user]
         res = self.call(self.endpoint_service, uri, u'patch', data=data, query=query, params=params, timeout=timeout,
                         headers=self.custom_headers, **user)
-        if u'jobid' in res:
+        if res is not None and u'jobid' in res:
             self.wait_job(res[u'jobid'])
         return res
 
@@ -533,7 +533,7 @@ class BeehiveTestCase(unittest.TestCase):
             user = self.users[self.run_test_user]
         res = self.call(self.endpoint_service, uri, u'delete', data=data, query=query, params=params, timeout=timeout,
                         headers=self.custom_headers, **user)
-        if u'jobid' in res:
+        if res is not None and u'jobid' in res:
             self.wait_job(res[u'jobid'])
         return res
 
