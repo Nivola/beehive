@@ -101,7 +101,7 @@ class AuthTestCase(BeehiveTestCase):
     def test_get_token(self):
         global oid
         self.call(u'auth', u'/v1.0/nas/tokens/{oid}', u'get', 
-                  params={u'oid':oid},
+                  params={u'oid': oid},
                   **self.users[u'admin'])
         
     def test_delete_token(self):
