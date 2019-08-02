@@ -74,7 +74,8 @@ class BeehiveApp(Flask):
         self._register_error_handler(None, 404, error404)        
         
         # setup loggers
-        self.setup_loggers(level=int(self.params[u'api_logging_level']))
+        loggin_level = int(self.params[u'api_logging_level'])
+        self.setup_loggers(level=loggin_level)
         
         self.logger.info("##### SERVER STARTING #####")
         start = time()
@@ -86,7 +87,11 @@ class BeehiveApp(Flask):
         # self.api_manager.configure_logger()
         self.api_manager.configure()
         # self.get_configurations()
-        
+
+        # setup additional handler
+        if self.api_manager.elasticsearch is not None:
+            self.setup_additional_loggers(self.api_manager.elasticsearch, level=loggin_level)
+
         # load modules
         self.api_manager.register_modules()
         
@@ -106,7 +111,11 @@ class BeehiveApp(Flask):
         del self.tcp_proxy
 
     def setup_loggers(self, level=LoggerHelper.DEBUG):
-        """ """
+        """Setup loggers
+
+        :param level:
+        :return:
+        """
         logname = uwsgi_util.opt[u'api_id']
         
         # base logging
@@ -119,7 +128,6 @@ class BeehiveApp(Flask):
             logging.getLogger(u'beecell'),
             logging.getLogger(u'beedrones'),
             logging.getLogger(u'beehive_oauth2'),
-            logging.getLogger(u'beehive_monitor'),
             logging.getLogger(u'beehive_service'),
             logging.getLogger(u'beehive_resource'),
             logging.getLogger(u'beehive_ssh'),
@@ -140,6 +148,31 @@ class BeehiveApp(Flask):
         file_name = u'%s/beehive.watch' % (self.log_path)
         loggers = [logging.getLogger(u'beecell.perf')]
         LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, file_name, frmt=u'%(asctime)s - %(message)s')
+
+    def setup_additional_loggers(self, elasticsearch, level=LoggerHelper.DEBUG):
+        """Setup loggers
+
+        :param elasticsearch: elasticsearch.Elasticsearch class instance
+        :param level:
+        :return:
+        """
+        logname = uwsgi_util.opt[u'api_id']
+
+        loggers = [
+            self.logger,
+            logging.getLogger(u'oauthlib'),
+            logging.getLogger(u'beehive'),
+            logging.getLogger(u'beehive.db'),
+            logging.getLogger(u'beecell'),
+            logging.getLogger(u'beedrones'),
+            logging.getLogger(u'beehive_oauth2'),
+            logging.getLogger(u'beehive_service'),
+            logging.getLogger(u'beehive_resource'),
+            logging.getLogger(u'beehive_ssh'),
+            # logging.getLogger(u'beehive.common.data')
+        ]
+        # LoggerHelper.DEBUG2
+        LoggerHelper.elastic_handler(loggers, level, elasticsearch, index=u'cmp-api')
 
     def open_db_session(self):
         """Open database session.

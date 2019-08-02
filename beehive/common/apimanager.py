@@ -52,6 +52,7 @@ from marshmallow.validate import OneOf, Range
 from copy import deepcopy
 from flask_session.sessions import RedisSessionInterface
 from beehive.common.data import encrypt_data, decrypt_data
+from elasticsearch import Elasticsearch
 
 logger = logging.getLogger(__name__)
 
@@ -191,6 +192,9 @@ class ApiManager(object):
         
         # gateways
         self.gateways = {}
+
+        # elasticsearch
+        self.elasticsearch = None
         
         # database manager
         self.db_manager = None
@@ -531,12 +535,6 @@ class ApiManager(object):
 
     def configure(self):
         """ """
-        # create db manager
-        #self.db_uri = self.params['database_uri']
-        #self.db_manager = MysqlManager('db_manager01', self.db_uri, connect_timeout=5)
-        #self.db_manager.create_pool_engine(pool_size=10, max_overflow=10, pool_recycle=3600)
-        #self.db_manager.create_simple_engine()
-
         self.logger.info(u'Configure server - CONFIGURE')
 
         if self.is_engine_configured() is True:
@@ -645,7 +643,7 @@ class ApiManager(object):
     
                     self.logger.info(u'Configure scheduler reference - CONFIGURED')
                 except:
-                    self.logger.warning(u'Configure scheduler reference - NOT CONFIGURED', exc_info=1)
+                    self.logger.warning(u'Configure scheduler reference - NOT CONFIGURED')
                 ##### scheduler reference configuration #####
                 
                 ##### security configuration #####
@@ -671,7 +669,7 @@ class ApiManager(object):
 
                     self.logger.info(u'Configure security - CONFIGURED')
                 except:
-                    self.logger.warning(u'Configure security - NOT CONFIGURED', exc_info=1)
+                    self.logger.warning(u'Configure security - NOT CONFIGURED')
                 ##### security configuration #####
         
                 ##### camunda configuration #####
@@ -685,21 +683,43 @@ class ApiManager(object):
                     self.camunda_engine = CamundaEngine(item[u'conn'], user=item[u'user'], passwd=item[u'passwd'])
                     self.logger.info(u'Configure Camunda  - CONFIGURED')            
                 except:
-                    self.logger.warning(u'Configure Camunda  - NOT CONFIGURED', exc_info=1)
+                    self.logger.warning(u'Configure Camunda  - NOT CONFIGURED')
                 ##### camunda configuration #####
                 
                 ##### awx configuration #####
                 try:
                     self.logger.info(u'Configure AWX - CONFIGURE')            
                     from beedrones.awx.awxclient import AwxClient, Awx
-                    conf = configurator.get(app=self.app_name, group=u'awx', name=u'awx_client')[0].value
-                    self.logger.info(u'Configure AWX - CONFIG app %s' %(self.app_name))
-                    item = json.loads(conf)
-
-                    self.awx_client = Awx(AwxClient(item[u'conn'], user=item[u'user'], passwd=item[u'passwd'], organization=item[u'org_id']))
+                    self.awx_client = Awx(AwxClient(self.params[u'awx_uri'], user=self.params[u'awx_user'],
+                                                    passwd=self.params[u'awx_password'],
+                                                    organization=self.params[u'awx_organization']))
                     self.logger.info(u'Configure AWX  - CONFIGURED')            
                 except:
-                    self.logger.warning(u'Configure AWX  - NOT CONFIGURED', exc_info=1)
+                    self.logger.warning(u'Configure AWX  - NOT CONFIGURED')
+                ##### awx configuration #####
+
+                ##### elasticsearch configuration #####
+                try:
+                    self.logger.info(u'Configure elasticsearch - CONFIGURE')
+                    el_nodes = self.params.get(u'elasticsearch_nodes', None)
+                    if el_nodes is not None and el_nodes != u'' and el_nodes != '':
+                        self.elasticsearch = Elasticsearch(
+                            el_nodes.split(u','),
+                            # sniff before doing anything
+                            sniff_on_start=True,
+                            # refresh nodes after a node fails to respond
+                            sniff_on_connection_fail=True,
+                            # and also every 60 seconds
+                            sniffer_timeout=60
+                        )
+                        self.logger.info(u'Elasticsearch client: %s' % self.elasticsearch)
+                        self.logger.info(u'Configure elasticsearch  - CONFIGURED')
+                    else:
+                        self.logger.warning(u'Configure elasticsearch  - NOT CONFIGURED', exc_info=1)
+                        self.logger.warning(u'Configure elasticsearch  - NOT CONFIGURED')
+                except:
+                    self.logger.warning(u'Configure elasticsearch  - NOT CONFIGURED', exc_info=1)
+                    self.logger.warning(u'Configure elasticsearch  - NOT CONFIGURED')
                 ##### awx configuration #####
 
                 ##### sendmail configuration #####
@@ -818,7 +838,6 @@ class ApiManager(object):
                     self.logger.info(u'Configure catalog queue - CONFIGURED')
                 except Exception as ex:
                     self.logger.warning(u'Configure catalog queue - NOT CONFIGURED')
-                    self.logger.warning(u'', exc_info=1)
                 ##### catalog queue configuration #####
         
                 ##### tcp proxy configuration #####

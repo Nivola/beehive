@@ -433,7 +433,7 @@ def cache(key, ttl=600):
             # execute inner function
             try:
                 ret = controller.cache.get(internalkey)
-                if operation.cache is False or ret is None:
+                if operation.cache is False or ret is None or ret == {} or ret == []:
                     # save data in cache
                     ret = fn(controller, postfix, *args, **kwargs)
                     controller.cache.set(internalkey, ret, ttl=ttl)

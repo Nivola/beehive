@@ -8,6 +8,7 @@
 * Fixed ...
 * Integrated ...
     * introdotta signature Celery che registra il task su redis appena generato l'uuid dall'apply_async
+    * added send of log item for the api class to elasticsearch if it is configured
 * Various bugfixes
 
 ## Version 1.4.0 (May 24, 2019)
