@@ -1,8 +1,7 @@
-'''
-Created on Jun 7, 2017
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: darkbk
-'''
 import ujson as json
 from logging import getLogger
 from oauthlib.oauth2.rfc6749.clients.base import Client

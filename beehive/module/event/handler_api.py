@@ -1,8 +1,7 @@
-"""
-Created on Jun 29, 2018
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: darkbk
-"""
 import logging
 from datetime import datetime
 import ujson as json

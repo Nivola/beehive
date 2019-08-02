@@ -1,8 +1,7 @@
-"""
-Created on Jan 27, 2017
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: darkbk
-"""
 from logging import getLogger
 import gevent
 from kombu.pools import producers

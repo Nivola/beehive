@@ -1,8 +1,7 @@
-"""
-Created on Nov 13, 2015
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: darkbk
-"""
 import logging
 import ujson as json
 from beecell.db.manager import RedisManager

@@ -1,10 +1,9 @@
 #!/usr/bin/env python
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-'''
-Created on Oct 13, 2014
-
-@author: darkbk
-
+"""
 Usage: task.py config_file
   
 Options:
@@ -12,7 +11,7 @@ Options:
   -v, --version            Print version and exit
   -c, --command=CMD        Command: start, stop, reload, trace
                            Require args = service name
-'''
+"""
 import sys, os
 import ConfigParser
 from collections import OrderedDict

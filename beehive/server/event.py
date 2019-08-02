@@ -1,10 +1,9 @@
 #!/usr/bin/env python
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
 """
-Created on Oct 13, 2014
-
-@author: darkbk
-
 Usage: event.py config_file
   
 Options:

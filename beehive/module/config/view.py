@@ -1,8 +1,6 @@
-'''
-Created on May 23, 2017
-
-@author: darkbk
-'''
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 from beehive.common.apimanager import ApiView
 
 

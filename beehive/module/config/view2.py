@@ -1,12 +1,11 @@
-'''
-Created on Aug 13, 2014
-
-@author: darkbk
-'''
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 import ujson as json
 from flask import request
 from gibboncloudapi.module.base import MethodView, ApiManagerError
 from gibboncloudapi.util.data import operation
+
 
 class ConfigAPI(MethodView):
     """**ConfigAPI**

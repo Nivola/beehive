@@ -1,8 +1,7 @@
-"""
-Created on Nov 3, 2015
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: darkbk
-"""
 from gevent import sleep
 
 from beehive.common.apimanager import ApiManagerError

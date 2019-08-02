@@ -1,8 +1,7 @@
-"""
-Created on Apr 2, 2026
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: darkbk
-"""
 from marshmallow.validate import OneOf
 
 from beecell.simple import get_value

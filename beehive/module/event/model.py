@@ -1,11 +1,7 @@
-'''
-Created on Mar 2, 2015
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: darkbk
-
-https://learning-0mq-with-pyzmq.readthedocs.org/en/latest/
-http://zeromq.github.io/pyzmq/
-'''
 import ujson as json
 import logging
 from re import match

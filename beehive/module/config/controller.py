@@ -1,8 +1,7 @@
-'''
-Created on Jan 16, 2014
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: darkbk
-'''
 import logging
 import ujson as json
 from beecell.auth import extract
@@ -12,6 +11,7 @@ from beehive.common.apimanager import ApiController, ApiManagerError, ApiObject
 from beehive.common.model.config import ConfigDbManager
 from beecell.db import TransactionError
 from beehive.common.data import trace
+
 
 class ConfigController(ApiController):
     """Basic Module controller.

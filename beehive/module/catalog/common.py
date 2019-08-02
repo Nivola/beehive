@@ -1,10 +1,10 @@
-'''
-Created on May 20, 2016
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: darkbk
-'''
 import ujson as json
 from beecell.simple import id_gen, str2uni
+
 
 class CatalogEndpoint(object):
     """Catalog endpoint.
@@ -20,8 +20,7 @@ class CatalogEndpoint(object):
     :param id: node id [optional]
     """
         
-    def __init__(self, name, desc, service, catalog, uri, creation=None,
-                 modified=None, enabled=True, oid=None):
+    def __init__(self, name, desc, service, catalog, uri, creation=None, modified=None, enabled=True, oid=None):
         if oid is not None:
             self.id = oid
         else:

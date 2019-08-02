@@ -1,8 +1,7 @@
-'''
-Created on Dec 31, 2014
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: darkbk
-'''
 from beehive.common.apimanager import ApiModule
 from beehive.module.event.view import EventAPI
 from beehive.module.event.controller import EventController

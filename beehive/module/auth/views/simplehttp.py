@@ -1,8 +1,7 @@
-"""
-Created on Apr 28, 2017
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: darkbk
-"""
 from flask import request
 from beecell.simple import get_value, str2bool, get_remote_ip
 from beehive.common.apimanager import ApiView, ApiManagerError

@@ -1,8 +1,7 @@
-'''
-Created on May 5, 2017
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: darkbk
-'''
 from celery.utils.log import get_task_logger
 from beehive.common.apiclient import BeehiveApiClient
 from beehive.common.task.job import Job, task_local, job, JobTask, job_task

@@ -1,8 +1,7 @@
-'''
-Created on May 5, 2017
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: darkbk
-'''
 import datetime
 from celery.utils.log import get_task_logger
 from beehive.common.apiclient import BeehiveApiClient
@@ -14,6 +13,7 @@ from beehive.common.task.util import end_task, start_task
 from beehive.module.auth.controller import User, Role, Group
 
 logger = get_task_logger(__name__)
+
 
 #
 # AuthJob
@@ -33,6 +33,7 @@ class AuthJob(Job):
     
     def __init__(self, *args, **kwargs):
         Job.__init__(self, *args, **kwargs)
+
 
 class AuthJobTask(JobTask):
     """AuthJobTask class.
@@ -111,6 +112,7 @@ def disable_expired_users(self, objid, params):
     ], ops).delay()
     return True    
 
+
 @task_manager.task(bind=True, base=AuthJobTask)
 @job_task()
 def disable_expired_users_task(self, options):
@@ -122,6 +124,7 @@ def disable_expired_users_task(self, options):
     res = task_local.controller.dbauth.expire_users(expiry_date)
     self.release_session()
     return res
+
 
 @task_manager.task(bind=True, base=AuthJob)
 @job(entity_class=User, name=u'remove-user-roles.update', delta=1)
@@ -157,6 +160,7 @@ def remove_expired_roles_from_users(self, objid, params):
     ], ops).delay()
     return True
 
+
 @task_manager.task(bind=True, base=AuthJobTask)
 @job_task()
 def remove_expired_roles_from_users_task(self, options):
@@ -168,4 +172,3 @@ def remove_expired_roles_from_users_task(self, options):
     res = task_local.controller.dbauth.remove_expired_user_role(expiry_date)
     self.release_session()
     return res
-

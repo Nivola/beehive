@@ -1,6 +1,11 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
+
 from beehive.common.apimanager import ApiModule
 from beehive.module.config.view import ConfigAPI
 from beehive.module.config.controller import ConfigController
+
 
 class ConfigModule(ApiModule):
     """Beehive Config Module

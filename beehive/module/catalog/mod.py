@@ -1,8 +1,7 @@
-'''
-Created on Jan 28, 2015
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: darkbk
-'''
 from .controller import CatalogController
 from .view import CatalogAPI
 from beehive.common.apimanager import ApiModule

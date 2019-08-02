@@ -1,10 +1,8 @@
 #!/usr/bin/env python
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-'''
-Created on Nov 25, 2013
-
-@author: darkbk
-'''
 import sys
 import os
 from beecell.server.uwsgi_server.console import main

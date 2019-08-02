@@ -1,10 +1,8 @@
 #!/usr/bin/env python
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-'''
-Created on Apr 12, 2017
-
-@author: darkbk
-'''
 import os, sys
 import getopt
 import json

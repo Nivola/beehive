@@ -1,8 +1,7 @@
-'''
-Created on Jan 23, 2017
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: io
-'''
 import os
 #os.environ['GEVENT_RESOLVER'] = 'ares'
 #os.environ['GEVENTARES_SERVERS'] = 'ares'
