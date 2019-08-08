@@ -1868,7 +1868,7 @@ class ApiObject(object):
         :param args: objid split by //
         """
         # reopen session
-        self.release_session(None)
+        # self.release_session(None)
         self.get_session()
 
         if self.oid is not None:
