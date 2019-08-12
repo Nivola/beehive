@@ -295,11 +295,10 @@ class ApiManager(object):
     def release_session(self, dbsession=None):
         """release db session"""
         try:
-            if operation.session is not None:
-                self.db_manager.release_session(operation.session)
-                operation.session = None
+            self.db_manager.release_session(operation.session)
+            operation.session = None
         except SqlManagerError as e:
-            raise ApiManagerError(e)            
+            raise ApiManagerError(e)
 
     def get_identity(self, uid):
         """Get identity
@@ -1869,7 +1868,7 @@ class ApiObject(object):
         """
         # reopen session
         # self.release_session(None)
-        self.get_session()
+        # self.get_session()
 
         if self.oid is not None:
             ids = self.get_all_valid_objids(args)

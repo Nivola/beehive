@@ -176,35 +176,16 @@ class TaskResult(object):
 
             # update task trace
             if msg is not None:
+                msg1 = u'(%s) %s' % (task_id, msg)
                 if failure is True:
-                    msg1 = u'ERROR - %s' % msg
+                    msg1 = u'ERROR %s' % msg1
                 else:
-                    msg1 = u'DEBUG - %s' % msg
-                _timestamp = str2uni(
-                    datetime.today().strftime(u'%d-%m-%y %H:%M:%S-%f'))
+                    msg1 = u'DEBUG %s' % msg1
+                _timestamp = str2uni(datetime.today().strftime(u'%d-%m-%y %H:%M:%S-%f'))
                 result[u'trace'].append((_timestamp, msg1))
 
             # save data
             val = TaskResult.set_to_redis_with_retry(task_id, result)
-
-            # # serialize data
-            # val = json.dumps(result)
-            #
-            # # save data in redis
-            # _redis.setex(key, _expire, val)
-            # # if result.get(u'start_time') is not None:
-            # #     key_time = u'%sfrom:%s' % (_prefix, result.get(u'start_time'))
-            # #     _redis.setex(key_time, _expire, task_id)
-            #
-            # # check key exists
-            # val_redis = _redis.get(key)
-            #
-            # # resave data in redis if key does not exist
-            # if val_redis is None:
-            #     _redis.setex(key, _expire, val)
-            #     # if result.get(u'start_time') is not None:
-            #     #     key_time = u'%sfrom:%s' % (_prefix, result.get(u'start_time'))
-            #     #     _redis.setex(key_time, _expire, task_id)
 
             return val
 

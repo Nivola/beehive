@@ -799,22 +799,17 @@ def job_task(module=u'', synchronous=True):
 
             res = None
             # task.update(u'STARTED', start_time=time(), msg=u'Start %s:%s' % (task.name, task.request.id))
-            task.update(
-                u'STARTED', msg=u'START - %s:%s' %
-                (task.name, task.request.id))
+            task.update(u'STARTED', msg=u'START - %s:%s' % (task.name, task.request.id))
             if synchronous:
                 res = fn(task, params, *args, **kwargs)
                 task.release_session()
             else:
-
                 try:
                     res = fn(task, params, *args, **kwargs)
                 except Exception as e:
-                    msg = u'FAIL - %s:%s caused by %s' % (
-                        task.name, task.request.id, e)
+                    msg = u'FAIL - %s:%s caused by %s' % (task.name, task.request.id, e)
 
-                    task.on_failure(
-                        e, task.request.id, args, kwargs, ExceptionInfo())
+                    task.on_failure(e, task.request.id, args, kwargs, ExceptionInfo())
                     logger.error(msg)
                 finally:
                     task.release_session()

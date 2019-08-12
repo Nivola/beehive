@@ -100,7 +100,7 @@ def configure_task_manager(broker_url, result_backend, tasks=[], expire=60 * 60 
         CELERY_CHORD_PROPAGATES=True,
         CELERYD_TASK_TIME_LIMIT=time_limit,
         CELERYD_TASK_SOFT_TIME_LIMIT=time_limit,
-        CELERYD_CONCURRENCY=100,
+        CELERYD_CONCURRENCY=10,
         CELERYD_POOL=u'beehive.common.task.task_pool:TaskPool',
         CELERYD_TASK_LOG_FORMAT=u'[%(asctime)s: %(levelname)s/%(processName)s] [%(task_name)s:%(task_id)s] '
                                 u'%(name)s:%(funcName)s:%(lineno)d - %(message)s',
