@@ -256,9 +256,6 @@ class TaskResult(object):
         # get task stop_time
         stop_time = time()
 
-        logger.debug(
-            u'POST RUN =============== task_id: %s status %s' %
-            (task_id, status))
         # set retval to None when failure occurs
         if status == u'FAILURE':
             retval = None
