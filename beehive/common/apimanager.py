@@ -75,8 +75,8 @@ class RedisSessionInterface2(RedisSessionInterface):
 class ApiManagerWarning(Exception):
     """Main excpetion raised by api manager and childs
     
-    **Parameters:**
-        * **value** (:py:class:`str`): error description
+    
+        * **value: error description
         * **code** (:py:class:`int`): error code [default=400]
     """
     def __init__(self, value, code=400):
@@ -94,8 +94,8 @@ class ApiManagerWarning(Exception):
 class ApiManagerError(Exception):
     """Main exception raised by api manager and childs
     
-    **Parameters:**
-        * **value** (:py:class:`str`): error description
+    
+        * **value: error description
         * **code** (:py:class:`int`): error code [default=400]
     """
     def __init__(self, value, code=400):
@@ -113,7 +113,7 @@ class ApiManagerError(Exception):
 class ApiManager(object):
     """Api Manager
     
-    **Parameters:**
+    
     
         * **params** (:py:class:`dict`): configuration params
         * **app** (:py:class:`int`): error code [default=400]    
@@ -231,10 +231,7 @@ class ApiManager(object):
     def create_pool_engine(self, dbconf):
         """Create mysql pool engine.
         
-        **Parameters:**
-        
-            * **dbconf** (:py:class:`list`): 
-                (uri, timeout, pool_size, max_overflow, pool_recycle)
+        :param list dbconf: (uri, timeout, pool_size, max_overflow, pool_recycle)
         """
         try:
             db_uri = dbconf[0]
@@ -254,10 +251,7 @@ class ApiManager(object):
     def create_simple_engine(self, dbconf):
         """Create mysql simple engine.
         
-        **Parameters:**
-        
-            * **dbconf** (:py:class:`list`): 
-                (uri, timeout)        
+        :param list dbconf: (uri, timeout)        
         """
         try:
             db_uri = dbconf[0]
@@ -303,12 +297,8 @@ class ApiManager(object):
     def get_identity(self, uid):
         """Get identity
         
-        **Parameters:**
-        
-            * **uid** (:py:class:`str`): identity id
-            
+        :param uid: identity id            
         :return:
-
             .. code-block:: python
                
                {u'uid':..., 
@@ -331,7 +321,6 @@ class ApiManager(object):
         """Get identities
         
         :return:
-
             .. code-block:: python
                
                [
@@ -360,16 +349,12 @@ class ApiManager(object):
         return res
 
     def verify_simple_http_credentials(self, user, pwd, user_ip):
-        """Verify simple ahttp credentials.
-        
-        **Parameters:**
-        
-            * **user** (:py:class:`str`): user
-            * **pwd** (:py:class:`str`): password
-            * **user_ip** (:py:class:`str`): user ip address
-            
-        :return:
+        """Verify simple http credentials.
 
+        :param user: user
+        :param pwd: password
+        :param user_ip: user ip address
+        :return:
             .. code-block:: python
                
                {u'uid':..., 
@@ -390,11 +375,8 @@ class ApiManager(object):
 
     def get_oauth2_identity(self, token):
         """Get identity that correspond to oauth2 access token
-
-        **Parameters:**
         
-            * **token** (:py:class:`str`): identity id
-            
+        :param token: identity id
         :return:
 
             .. code-block:: python
@@ -414,13 +396,10 @@ class ApiManager(object):
 
     def verify_request_signature(self, uid, sign, data):
         """Verify Request signature.
-        
-        **Parameters:**
-        
-            * **uid** (:py:class:`str`): identity id
-            * **sign** (:py:class:`str`): request sign
-            * **data** (:py:class:`str`): request data
-            
+
+        :param uid: identity id
+        :param sign: request sign
+        :param data: request data
         :return:
 
             .. code-block:: python
@@ -533,7 +512,7 @@ class ApiManager(object):
         return self.modules[name]     
 
     def configure(self):
-        """ """
+        """Configure api manager"""
         self.logger.info(u'Configure server - CONFIGURE')
 
         if self.is_engine_configured() is True:
@@ -652,7 +631,6 @@ class ApiManager(object):
                     self.logger.info(u'Configure security - CONFIGURE')
                     
                     # Create authentication providers
-        
                     for conf in confs:
                         item = json.loads(conf.value)
                         if item[u'type'] == u'db':
@@ -717,7 +695,6 @@ class ApiManager(object):
                         self.logger.warning(u'Configure elasticsearch  - NOT CONFIGURED', exc_info=1)
                         self.logger.warning(u'Configure elasticsearch  - NOT CONFIGURED')
                 except:
-                    self.logger.warning(u'Configure elasticsearch  - NOT CONFIGURED', exc_info=1)
                     self.logger.warning(u'Configure elasticsearch  - NOT CONFIGURED')
                 ##### awx configuration #####
 
@@ -790,34 +767,6 @@ class ApiManager(object):
                 except:
                     self.logger.warning(u'Configure event queue - NOT CONFIGURED')                
                 ##### event queue configuration #####
-                
-                # ##### monitor queue configuration #####
-                # try:
-                #     self.logger.info(u'Configure monitor queue- CONFIGURE')
-                #     try:
-                #         from beehive_monitor.producer import MonitorProducerRedis
-                #     except:
-                #         raise Exception(u'beehive_monitor is not installed')
-                #
-                #     conf = configurator.get(app=self.app_name,
-                #                             group='queue',
-                #                             name='queue.monitor')
-                #
-                #     # setup monitor producer
-                #     conf = json.loads(conf[0].value)
-                #     self.redis_monitor_uri = self.params[u'redis_queue_uri']
-                #     #self.redis_monitor_uri = conf['uri']
-                #     self.redis_monitor_channel = conf['queue']
-                #
-                #     # create instance of monitor producer
-                #     self.monitor_producer = MonitorProducerRedis(
-                #                                         self.redis_monitor_uri,
-                #                                         self.redis_monitor_channel)
-                #     self.logger.info(u'Configure queue %s on %s' % (self.redis_monitor_channel, self.redis_monitor_uri))
-                #     self.logger.info(u'Configure monitor queue - CONFIGURED')
-                # except Exception as ex:
-                #     self.logger.warning(u'Configure monitor queue - NOT CONFIGURED')
-                # ##### monitor queue configuration #####
         
                 ##### catalog queue configuration #####
                 try:
@@ -835,7 +784,7 @@ class ApiManager(object):
                     self.catalog_producer = CatalogProducerRedis(self.redis_catalog_uri, self.redis_catalog_channel)
                     self.logger.info(u'Configure queue %s on %s' % (self.redis_catalog_channel, self.redis_catalog_uri))
                     self.logger.info(u'Configure catalog queue - CONFIGURED')
-                except Exception as ex:
+                except:
                     self.logger.warning(u'Configure catalog queue - NOT CONFIGURED')
                 ##### catalog queue configuration #####
         
@@ -1085,14 +1034,11 @@ class ApiModule(object):
                 # self.logger.debug('Register api view %s' % (api.__class__))
 
     def get_superadmin_permissions(self):
-        """
+        """Get superadmin permissions
         
         :param session: database session
         """
-        # session = self.get_session()
-        session = operation.session
         perms = self.get_controller().get_superadmin_permissions()
-        # self.release_session(session)
         return perms
     
     def get_controller(self):
@@ -1486,7 +1432,6 @@ class ApiController(object):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         res = []
-        objs = []
         tags = []
 
         if operation.authorize is True:
@@ -1892,10 +1837,10 @@ class ApiObject(object):
     def register_object(self, objids, desc=u''):
         """Register object types, objects and permissions related to module.
         
-        **Parameters:**
         
-            * **objids**: objid split by //
-            * **desc**: object description        
+        
+        :param objids**: objid split by //
+        :param desc**: object description        
         
         :return:
         
@@ -3161,7 +3106,6 @@ class ApiView(FlaskView):
         :param rules: route to register. Ex. [('/jobs', 'GET', ListJobs.as_view('jobs')), {'secure':False}]
         """
         logger = logging.getLogger(__name__)
-        # logger = logging.getLogger('gibbon.cloudapi.view')
         
         # get version
         if version is None:
@@ -3186,10 +3130,10 @@ class ApiView(FlaskView):
             app.add_url_rule(uri, methods=[rule[1]], view_func=view_func, defaults=defaults)
             
             view_num += 1
-            logger.debug('Add route: %s %s' % (uri, rule[1]))
+            logger.debug2(u'Add route: %s %s' % (uri, rule[1]))
             
             # append route to module
-            module.api_routes.append({'uri': uri, 'method': rule[1]})
+            module.api_routes.append({u'uri': uri, u'method': rule[1]})
 
 
 class PaginatedRequestQuerySchema(Schema):
