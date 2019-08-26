@@ -159,7 +159,7 @@ def start_task_manager(params):
     logger_level = int(params[u'api_logging_level'])
 
     # base logging
-    loggers = [
+    main_loggers = [
         logging.getLogger(u'beehive'),
         logging.getLogger(u'beehive.common.model'),
         logging.getLogger(u'beehive_service'),
@@ -169,29 +169,39 @@ def start_task_manager(params):
         logging.getLogger(u'beedrones'),
         logging.getLogger(u'celery'),
         logging.getLogger(u'proxmoxer'),
-        logging.getLogger(u'requests')]
-    LoggerHelper.rotatingfile_handler(loggers, logger_level, u'%s/%s.log' % (log_path, logname),
+        logging.getLogger(u'requests')
+    ]
+    LoggerHelper.rotatingfile_handler(main_loggers, logger_level, u'%s/%s.log' % (log_path, logname),
                                       frmt=frmt, formatter=ExtTaskFormatter)
 
     # transaction and db logging
     loggers = [
         # logging.getLogger(u'beehive.common.data'),
         logging.getLogger(u'sqlalchemy.engine'),
-        logging.getLogger(u'sqlalchemy.pool')]
-    LoggerHelper.rotatingfile_handler(
-        loggers, logger_level, u'%s/%s.db.log' %
-        (log_path, logname))
+        logging.getLogger(u'sqlalchemy.pool')
+    ]
+    LoggerHelper.rotatingfile_handler(loggers, logger_level, u'%s/%s.db.log' % (log_path, logname))
 
     # performance logging
     loggers = [
-        logging.getLogger(u'beecell.perf')]
+        logging.getLogger(u'beecell.perf')
+    ]
     LoggerHelper.rotatingfile_handler(loggers, logger_level, u'%s/%s.watch' % (log_path, params[u'api_id']),
                                       frmt=u'%(asctime)s - %(message)s')
 
+    # setup api manager
     api_manager = ApiManager(params, hostname=gethostname())
     api_manager.configure()
     api_manager.register_modules(register_api=False)
     task_manager.api_manager = api_manager
+
+    # elk logger
+    if api_manager.elasticsearch is not None:
+        frmt = u'{"timestamp":"%(asctime)s", "levelname":"%(levelname)s", "task_name":"%(task_name)s", ' \
+               u'"task_id":"%(task_id)s", "module":"%(name)s", "func":"%(funcName)s", "lineno":"%(lineno)d",' \
+               u'"message":"%(message)s"}'
+        LoggerHelper.elastic_handler(main_loggers, logger_level, api_manager.elasticsearch, index=u'cmp-task',
+                                     frmt=frmt)
 
     logger_file = u'%s/%s.log' % (log_path, logname)
 

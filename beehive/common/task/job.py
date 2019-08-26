@@ -196,9 +196,7 @@ class AbstractJob(BaseTask):
             client = self.controller.module.api_manager.event_producer
             client.send(ApiObject.ASYNC_OPERATION, data, source, dest)
         except Exception as ex:
-            logger.warn(
-                u'Event can not be published. Event producer is not configured - %s' %
-                ex)
+            logger.warn(u'Event can not be published. Event producer is not configured - %s' % ex)
 
     def update_job(self, params=None, status=None, current_time=None, ex=None, traceback=None, result=None, msg=None,
                    start_time=None):
