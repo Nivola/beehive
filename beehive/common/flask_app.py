@@ -7,7 +7,7 @@ import ujson as json
 
 # patch redis socket to use async comunication 
 from time import time
-from socket import gethostname
+from socket import gethostname, gethostbyname
 from flask import Flask, Response, request
 from os import urandom
 from beecell.logger.helper import LoggerHelper
@@ -42,6 +42,7 @@ class BeehiveApp(Flask):
         self.http_socket = uwsgi_util.opt[u'http-socket']
         self.server_name = uwsgi_util.opt[u'api_host']
         self.server_fqdn = uwsgi_util.opt[u'api_fqdn']
+        self.server_ip = gethostbyname(uwsgi_util.opt[u'api_fqdn'])
         
         self.app_name = uwsgi_util.opt[u'api_name']
         self.app_id = uwsgi_util.opt[u'api_id']
@@ -77,11 +78,11 @@ class BeehiveApp(Flask):
         loggin_level = int(self.params[u'api_logging_level'])
         self.setup_loggers(level=loggin_level)
         
-        self.logger.info("##### SERVER STARTING #####")
+        self.logger.info(u'##### SERVER STARTING #####')
         start = time()
         
         # api manager reference
-        self.api_manager = ApiManager(self.params, app=self, hostname=self.server_name)
+        self.api_manager = ApiManager(self.params, app=self, hostname=self.server_ip)
 
         # server configuration
         # self.api_manager.configure_logger()
@@ -90,7 +91,8 @@ class BeehiveApp(Flask):
 
         # setup additional handler
         if self.api_manager.elasticsearch is not None:
-            self.setup_additional_loggers(self.api_manager.elasticsearch, level=loggin_level)
+            tags = [self.server_name, self.app_id, u'api']
+            self.setup_additional_loggers(self.api_manager.elasticsearch, level=loggin_level, tags=tags)
 
         # load modules
         self.api_manager.register_modules()
@@ -104,7 +106,7 @@ class BeehiveApp(Flask):
         self.logger.info(u'Setup server over: %s' % self.api_manager.app_uri)
         self.logger.info(u'Setup server over: %s' % self.api_manager.uwsgi_uri)
         
-        self.logger.info("##### SERVER STARTED ##### - %s" % round(time() - start, 2))
+        self.logger.info(u'##### SERVER STARTED ##### - %s' % round(time() - start, 2))
     
     def del_configurations(self):
         del self.db_uri
@@ -149,7 +151,7 @@ class BeehiveApp(Flask):
         loggers = [logging.getLogger(u'beecell.perf')]
         LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, file_name, frmt=u'%(asctime)s - %(message)s')
 
-    def setup_additional_loggers(self, elasticsearch, level=LoggerHelper.DEBUG):
+    def setup_additional_loggers(self, elasticsearch, level=LoggerHelper.DEBUG, tags=[]):
         """Setup loggers
 
         :param elasticsearch: elasticsearch.Elasticsearch class instance
@@ -172,7 +174,7 @@ class BeehiveApp(Flask):
             # logging.getLogger(u'beehive.common.data')
         ]
         # LoggerHelper.DEBUG2
-        LoggerHelper.elastic_handler(loggers, level, elasticsearch, index=u'cmp-api')
+        LoggerHelper.elastic_handler(loggers, level, elasticsearch, index=u'cmp', tags=tags)
 
     def open_db_session(self):
         """Open database session.
