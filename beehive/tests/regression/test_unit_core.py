@@ -1,10 +1,7 @@
-"""
-Created on Feb 09, 2018
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: darkbk
-
-Use this test_unit to test openstack entities
-"""
 from beehive.common.test import runtest
 from beehive.tests.module.auth.view import AuthTestCase
 from beehive.tests.module.event.view import EventTestCase
@@ -25,6 +22,7 @@ class TestCase(BaseTestCase):
         BaseTestCase.setUp(self)
         self.module = u'auth'
         self.module_prefix = u'nas'
+        self.endpoint_service = u'auth'
 
 
 tests = []

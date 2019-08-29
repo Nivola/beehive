@@ -85,6 +85,7 @@ class TestCase(AuthTestCase):
         AuthTestCase.setUp(self)
         self.module = u'auth'
         self.module_prefix = u'nas'
+        self.endpoint_service = u'auth'
 
 
 tests = []

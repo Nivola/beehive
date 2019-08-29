@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # (C) Copyright 2018-2019 CSI-Piemonte
-
+import inspect
 import logging
 import time
 import binascii
@@ -16,16 +16,11 @@ from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA256
 from Crypto.Signature import PKCS1_v1_5
 from datetime import datetime
-
 from flask import request, Response, session
-# from flask.views import MethodView as FlaskMethodView
-# from flask.views import View as FlaskView
 from flask.views import MethodView as FlaskView
 from flask_session import Session
 from flask import current_app
-
 from beecell.cache.client import CacheClient
-from beecell.logger.helper import LoggerHelper
 from beecell.db import TransactionError, QueryError
 from beecell.db.manager import MysqlManager, SqlManagerError, RedisManager
 from beecell.auth import extract
@@ -39,20 +34,23 @@ from beehive.common.apiclient import BeehiveApiClient, BeehiveApiClientError
 from beehive.common.model.config import ConfigDbManager
 from beehive.common.model.authorization import AuthDbManager, Role
 from beehive.common.event import EventProducerRedis
-from flasgger import Swagger, Schema, fields, SwaggerView
+
 from beehive.common.dicttoxml import dicttoxml
 from beecell.flask.api_util import get_error
-from rediscluster.client import StrictRedisCluster
+from rediscluster.client import RedisCluster
 try:
     from beecell.server.uwsgi_server.wrapper import uwsgi_util
 except:
     pass
 from re import escape
-from marshmallow.validate import OneOf, Range
 from copy import deepcopy
 from flask_session.sessions import RedisSessionInterface
 from beehive.common.data import encrypt_data, decrypt_data
 from elasticsearch import Elasticsearch
+from flasgger import Swagger, SwaggerView
+from marshmallow import fields, Schema
+from marshmallow.validate import OneOf, Range
+
 
 logger = logging.getLogger(__name__)
 
@@ -146,7 +144,7 @@ class ApiManager(object):
 
         # swagger reference
         self.swagger = Swagger(self.app, template_file=u'swagger.yml')
-        
+
         # instance configuration
         self.http_socket = self.params.get(u'http-socket')
         self.server_name = hostname
@@ -555,7 +553,7 @@ class ApiManager(object):
                         socket_timeout=5,
                         socket_connect_timeout=5)
                 elif parsed_uri[u'type'] == u'cluster':
-                    self.redis_manager = StrictRedisCluster(
+                    self.redis_manager = RedisCluster(
                         startup_nodes=parsed_uri[u'nodes'],
                         password=parsed_uri.get(u'pwd', None),
                         decode_responses=True,
@@ -2978,6 +2976,11 @@ class ApiView(FlaskView):
         start = time.time()
         dbsession = None
         data = None
+
+        # open database session.
+        dbsession = module.get_session()
+        controller = module.get_controller()
+
         try:
             headers = [u'%s: %s' % (k, v) for k, v in request.headers.iteritems()]
             
@@ -3003,9 +3006,9 @@ class ApiView(FlaskView):
 
             self._get_response_mime_type()
             
-            # open database session.
-            dbsession = module.get_session()
-            controller = module.get_controller()            
+            # # open database session.
+            # dbsession = module.get_session()
+            # controller = module.get_controller()
             
             # check security
             if secure is True:

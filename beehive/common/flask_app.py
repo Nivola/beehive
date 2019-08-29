@@ -91,8 +91,9 @@ class BeehiveApp(Flask):
 
         # setup additional handler
         if self.api_manager.elasticsearch is not None:
-            tags = [self.server_name, self.app_id, u'api']
-            self.setup_additional_loggers(self.api_manager.elasticsearch, level=loggin_level, tags=tags)
+            tags = []
+            self.setup_additional_loggers(self.api_manager.elasticsearch, level=loggin_level, tags=tags,
+                                          server=self.server_name, app=self.app_id, component=u'api')
 
         # load modules
         self.api_manager.register_modules()
@@ -151,7 +152,7 @@ class BeehiveApp(Flask):
         loggers = [logging.getLogger(u'beecell.perf')]
         LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, file_name, frmt=u'%(asctime)s - %(message)s')
 
-    def setup_additional_loggers(self, elasticsearch, level=LoggerHelper.DEBUG, tags=[]):
+    def setup_additional_loggers(self, elasticsearch, level=LoggerHelper.DEBUG, tags=[], **custom_fields):
         """Setup loggers
 
         :param elasticsearch: elasticsearch.Elasticsearch class instance
@@ -174,7 +175,7 @@ class BeehiveApp(Flask):
             # logging.getLogger(u'beehive.common.data')
         ]
         # LoggerHelper.DEBUG2
-        LoggerHelper.elastic_handler(loggers, level, elasticsearch, index=u'cmp', tags=tags)
+        LoggerHelper.elastic_handler(loggers, level, elasticsearch, index=u'cmp', tags=tags, **custom_fields)
 
     def open_db_session(self):
         """Open database session.

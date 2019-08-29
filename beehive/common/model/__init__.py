@@ -49,17 +49,6 @@ def compile_drop_view(element, compiler, **kw):
     return "DROP VIEW IF EXISTS %s" % (element.name)
 
 
-# class CreateSQLView(DDLElement):
-#     def __init__(self, name, sql_view):
-#         self.name = name
-#         self.sql_view = sql_view
-#         
-# @compiler.compiles(CreateSQLView)
-# def compile_create_sql_view(element, compiler, **kw):
-#     return "CREATE OR REPLACE VIEW %s AS %s" % (
-#         element.name, 
-#         element.sql_view)
-
 def view(name, metadata, selectable=None, sql=None):
     t = table(name)
 
@@ -448,7 +437,7 @@ class PaginatedQueryGenerator(object):
         stmp = stmp.format(table=table, fields=fields, field=self.field, order=self.order, start=self.start,
                            size=self.size)
         # self.logger.debug2(u'query: %s' % stmp)
-        return stmp
+        return text(stmp)
 
     def run(self, tags, *args, **kvargs):
         """Make query
@@ -552,7 +541,7 @@ class PaginatedQueryGenerator(object):
                            size=self.size)
 
         # self.logger.debug2(u'query: %s' % stmp)
-        return stmp
+        return text(stmp)
 
     def run2(self, tags, *args, **kvargs):
         """Make query. Use base_smtp2
@@ -810,10 +799,8 @@ class AbstractDbManager(object):
             query.add_select_field(item)
         # set filters
         # query.add_filter_by_field(u'name', kvargs)
-        query.add_filter_by_field(u'name', kvargs,
-                                  custom_filter=u'AND t3.name like :name')
-        query.add_filter_by_field(u'desc', kvargs,
-                                  custom_filter=u'AND t3.desc like :desc')
+        query.add_filter_by_field(u'name', kvargs, custom_filter=u'AND t3.name like :name')
+        query.add_filter_by_field(u'desc', kvargs, custom_filter=u'AND t3.desc like :desc')
         query.add_filter_by_field(u'active', kvargs)
         query.add_filter_by_field(u'creation_date', kvargs)
         query.add_filter_by_field(u'modification_date', kvargs)
@@ -1014,9 +1001,7 @@ class AbstractDbManager(object):
         session = self.get_session()
         
         # remove tag entity association
-        items = session.query(PermTagEntity)\
-                       .filter_by(entity=entity)\
-                       .filter_by(type=etype).all()
+        items = session.query(PermTagEntity).filter_by(entity=entity).filter_by(type=etype).all()
         for item in items:
             session.delete(item)
         session.flush()

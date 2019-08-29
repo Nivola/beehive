@@ -3,19 +3,17 @@
 # (C) Copyright 2018-2019 CSI-Piemonte
 
 from re import match
-from flask import request
 from datetime import datetime
 from beecell.simple import get_value, str2bool, AttribException, format_date
 from beehive.common.apimanager import ApiView, ApiManagerError, PaginatedRequestQuerySchema,\
     PaginatedResponseSchema, ApiObjectResponseSchema, SwaggerApiView,\
     CrudApiObjectResponseSchema, GetApiObjectRequestSchema,\
     ApiObjectResponseDateSchema
-from flasgger import fields, Schema
+from beecell.swagger import SwaggerHelper
+from marshmallow import fields, Schema
 from marshmallow.validate import OneOf, Range, Length
 from marshmallow.decorators import post_load, validates
 from marshmallow.exceptions import ValidationError
-from beecell.swagger import SwaggerHelper
-from flasgger.marshmallow_apispec import SwaggerView
 
 
 class BaseCreateRequestSchema(Schema):
@@ -52,18 +50,14 @@ class BaseUpdateMultiRequestSchema(Schema):
     remove = fields.List(fields.String())
 
 
-class ListProvidersRequestSchema(Schema):
-    pass
-
-
-class ListProvidersParamsResponseSchema(Schema):
-    name = fields.String(required=True, example=u'local', description=u'login domain name')
-    type = fields.String(required=True, example=u'DatabaseAuth', description=u'login domain description')
+class ListProviderResponseSchema(Schema):
+    name = fields.String(required=True, example=u'local', description=u'login provider name')
+    type = fields.String(required=True, example=u'DatabaseAuth', description=u'login provider description')
 
 
 class ListProvidersResponseSchema(Schema):
-    providers = fields.Nested(ListProvidersParamsResponseSchema, many=True, required=True, allow_none=True)
-    count = fields.Integer(required=True, example=1, description=u'Domains count')
+    providers = fields.Nested(ListProviderResponseSchema, many=True, required=True, allow_none=True)
+    count = fields.Integer(required=True, example=1, description=u'Providers count')
 
 
 class ListProviders(SwaggerApiView):
@@ -71,8 +65,6 @@ class ListProviders(SwaggerApiView):
     definitions = {
         u'ListProvidersResponseSchema': ListProvidersResponseSchema,
     }
-    parameters = SwaggerHelper().get_parameters(ListProvidersRequestSchema)
-    parameters_schema = ListProvidersRequestSchema
     responses = SwaggerApiView.setResponses({
         200: {
             u'description': u'success',
@@ -100,7 +92,7 @@ class ListTokensRequestSchema(Schema):
     pass
 
 
-class ListTokensParamsResponseSchema(Schema):
+class ListTokenResponseSchema(Schema):
     ip = fields.String(required=True, example=u'pc160234.csi.it', description=u'client login ip address')
     ttl = fields.Integer(required=True, example=3600, description=u'token ttl')
     token = fields.String(required=True, example=u'28ff1dd5-5520-42f3-a361-c58f19d20b7c', description=u'token')
@@ -111,17 +103,17 @@ class ListTokensParamsResponseSchema(Schema):
 
 
 class ListTokensResponseSchema(Schema):
-    tokens = fields.Nested(ListTokensParamsResponseSchema, many=True, required=True, allow_none=True)
+    tokens = fields.Nested(ListTokenResponseSchema, many=True, required=True, allow_none=True)
     count = fields.Integer(required=True, example=1, description=u'Token count')
 
 
 class ListTokens(SwaggerApiView):
     tags = [u'authorization']
     definitions = {
-        u'ListTokensResponseSchema': ListTokensResponseSchema,
+        u'ListTokensResponseSchema': ListTokensResponseSchema
     }
-    parameters = SwaggerHelper().get_parameters(ListTokensRequestSchema)
-    parameters_schema = ListTokensRequestSchema
+    # parameters = SwaggerHelper().get_parameters(ListTokensRequestSchema)
+    # parameters_schema = ListTokensRequestSchema
     responses = SwaggerApiView.setResponses({
         200: {
             u'description': u'success',
@@ -177,13 +169,13 @@ class GetTokenParamsResponseSchema(Schema):
 
 
 class GetTokenResponseSchema(Schema):
-    token = fields.Nested(ListTokensParamsResponseSchema, required=True, allow_none=True)
+    token = fields.Nested(ListTokenResponseSchema, required=True, allow_none=True)
 
 
 class GetToken(SwaggerApiView):
     tags = [u'authorization']
     definitions = {
-        u'ListTokensResponseSchema': ListTokensResponseSchema,
+        u'GetTokenResponseSchema': GetTokenResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
     responses = SwaggerApiView.setResponses({
@@ -200,13 +192,13 @@ class GetToken(SwaggerApiView):
         """                
         data = controller.get_identity(oid)
         res = {
-            u'token':data[u'uid'],
-            u'type':data[u'type'],
-            u'user':data[u'user'],
-            u'timestamp':format_date(data[u'timestamp']), 
-            u'ttl':data[u'ttl'], 
-            u'ip':data[u'ip']}
-        resp = {u'token':res}
+            u'token': data[u'uid'],
+            u'type': data[u'type'],
+            u'user': data[u'user'],
+            u'timestamp': format_date(data[u'timestamp']),
+            u'ttl': data[u'ttl'],
+            u'ip': data[u'ip']}
+        resp = {u'token': res}
         return resp
 
 

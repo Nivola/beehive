@@ -36,10 +36,28 @@ class ServerPing(SwaggerApiView):
         return resp
 
 
-class ServerInfo(ApiView):
+class ServerInfoResponseSchema(Schema):
+    name = fields.String(required=True, example=u'beehive', description=u'server instance name')
+    id = fields.String(required=True, example=u'auth', description=u'server instance id')
+    modules = fields.Dict(required=True, example={}, description=u'server modules')
+
+
+class ServerInfo(SwaggerApiView):
+    tags = [u'base']
+    definitions = {
+        u'ServerInfoResponseSchema': ServerInfoResponseSchema,
+    }
+    responses = SwaggerApiView.setResponses({
+        200: {
+            u'description': u'success',
+            u'schema': ServerInfoResponseSchema
+        }
+    })
+
     def get(self, controller, data, *args, **kwargs):
         """
-
+        Server info api
+        Call this api to get server info
         """  
         resp = controller.info()
         return resp

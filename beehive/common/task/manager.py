@@ -200,9 +200,10 @@ def start_task_manager(params):
         frmt = u'{"timestamp":"%(asctime)s", "levelname":"%(levelname)s", "task_name":"%(task_name)s", ' \
                u'"task_id":"%(task_id)s", "module":"%(name)s", "func":"%(funcName)s", "lineno":"%(lineno)d",' \
                u'"message":"%(message)s"}'
-        tags = [api_manager.server_name, api_manager.app_id, u'task']
+        tags = []
         LoggerHelper.elastic_handler(main_loggers, logger_level, api_manager.elasticsearch, index=u'cmp',
-                                     frmt=frmt, tags=tags)
+                                     frmt=frmt, tags=tags, server=api_manager.server_name, app=api_manager.app_id,
+                                     component=u'task')
 
     logger_file = u'%s/%s.log' % (log_path, logname)
 

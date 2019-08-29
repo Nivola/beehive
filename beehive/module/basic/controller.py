@@ -35,16 +35,17 @@ class BasicController(BaseAuthController):
         :raise ApiManagerError:
         """
         try:
-            res = {u'name':self.module.api_manager.app_name,
-                   u'id':self.module.api_manager.app_id,
-                   u'hostname':self.module.api_manager.server_name,
-                   u'uri':self.module.api_manager.app_uri}
+            res = {
+                u'name': self.module.api_manager.app_name,
+                u'id': self.module.api_manager.app_id,
+                u'hostname': self.module.api_manager.server_name,
+                u'uri': self.module.api_manager.app_uri
+            }
             self.logger.debug(u'Ping server: %s' % truncate(res))
             return res
         except Exception as ex:
             self.logger.error(ex)
             return False
-            #raise ApiManagerError(ex, code=8000)
         
     def info(self):
         """Server Info
@@ -52,12 +53,12 @@ class BasicController(BaseAuthController):
         :raise ApiManagerError:
         """
         try:
-            res = {'name':self.module.api_manager.app_name,
-                   'id':self.module.api_manager.app_id,
-                   'modules':{k:v.info() for k,v in 
-                              self.module.api_manager.modules.iteritems()},
-                   }
-            self.logger.debug('Get server info: %s' % truncate(res))
+            res = {
+                u'name': self.module.api_manager.app_name,
+                u'id': self.module.api_manager.app_id,
+                u'modules': {k: v.info() for k, v in self.module.api_manager.modules.iteritems()},
+            }
+            self.logger.debug(u'Get server info: %s' % truncate(res))
             return res
         except Exception as ex:
             self.logger.error(ex)
@@ -113,7 +114,7 @@ class BasicController(BaseAuthController):
             
             res = []
             for c in confs:
-                res.append({u'type':c.group, u'name':c.name, u'value':c.value})
+                res.append({u'type': c.group, u'name': c.name, u'value': c.value})
             self.logger.debug('Get server configuration: %s' % truncate(res))
             return res
         except (TransactionError, Exception) as ex:

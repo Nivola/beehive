@@ -469,7 +469,7 @@ class AuthTestCase(BeehiveTestCase):
         res = self.call(u'auth', u'/v1.0/nas/objects/perms', u'get', **self.users[u'admin'])
         oids = res[u'perms']
         if len(oids) > 0:
-            oid = oids[0][u'oid']
+            oid = oids[0][u'id']
             
     def test_get_perms_by_type(self):
         res = self.call(u'auth', u'/v1.0/nas/objects/perms', u'get',

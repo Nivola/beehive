@@ -17,7 +17,11 @@ class AuthModule(ApiModule):
         
         ApiModule.__init__(self, api_manger, self.name)
          
-        self.apis = [AuthorizationAPI, SimpleHttpAuthApi, KeyAuthApi]
+        self.apis = [
+            AuthorizationAPI,
+            SimpleHttpAuthApi,
+            KeyAuthApi
+        ]
         self.authentication_manager = AuthenticationManager(api_manger.auth_providers)
         self.controller = AuthController(self)
 

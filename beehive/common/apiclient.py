@@ -3,7 +3,6 @@
 # (C) Copyright 2018-2019 CSI-Piemonte
 
 import ujson as json
-import json as sjson
 import httplib
 import ssl
 from copy import deepcopy
@@ -17,8 +16,6 @@ from Crypto.Signature import PKCS1_v1_5
 from Crypto.Random import atfork
 import binascii
 from beecell.simple import truncate, id_gen, check_vault, obscure_data, obscure_string
-from socket import gethostname
-from itertools import repeat
 from multiprocessing import current_process
 from base64 import b64encode
 from beehive.common.jwtclient import JWTClient
@@ -629,24 +626,23 @@ class BeehiveApiClient(object):
         self.logger.debug(u'Get configuration from beehive')
         return res    
 
-    #
-    # configuration
-    #
-    def register_to_monitor(self, name, desc, conn):
-        """Register system in monitor"""
-        data = {
-            u'node':{
-                u'name':name,
-                u'desc':desc,
-                u'type':u'portal',
-                u'conn':conn,
-                u'refresh':u'dynamic'
-            }
-        }
-        res = self.invoke(u'monitor', u'/v1.0/monitor/node',
-                          u'POST', json.dumps(data))        
-        self.logger.debug(u'Register in monitor')
-        return res 
+    # #
+    # # configuration
+    # #
+    # def register_to_monitor(self, name, desc, conn):
+    #     """Register system in monitor"""
+    #     data = {
+    #         u'node': {
+    #             u'name': name,
+    #             u'desc': desc,
+    #             u'type': u'portal',
+    #             u'conn': conn,
+    #             u'refresh': u'dynamic'
+    #         }
+    #     }
+    #     res = self.invoke(u'monitor', u'/v1.0/monitor/node', u'POST', json.dumps(data))
+    #     self.logger.debug(u'Register in monitor')
+    #     return res
 
     #
     # catalog request

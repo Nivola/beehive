@@ -953,8 +953,8 @@ class Objects(AuthObject):
         """Get system object permisssions with roles.
         
         :param objid: Total or partial objid [optional]
-        :param cascade: If true filter by objid and childs until 
-            objid+'//*//*//*//*//*//*'. Require objid and type [optional]
+        :param cascade: If true filter by objid and childs until objid+'//*//*//*//*//*//*'.
+            Require objid and type [optional]
         :param subsystem str: Object type list comma separated [optional]
         :param type str: Object definition [optional]
         :param page: perm list page to show [default=0]
@@ -985,13 +985,11 @@ class Objects(AuthObject):
                     objid+u'//*//*//*//*//*//*'
                 ]
                 perms, total = self.auth_db_manager.get_deep_permissions(
-                        objids=objids, objtypes=subsystems,
-                        page=page, size=size, order=order, field=field)
+                        objids=objids, objtypes=subsystems, page=page, size=size, order=order, field=field)
             
             else:
                 perms, total = self.manager.get_permissions(
-                    objid=objid, objid_filter=None, objtypes=subsystems, 
-                    objdef=type, objdef_filter=None, action=None,
+                    objid=objid, objid_filter=None, objtypes=subsystems, objdef=type, objdef_filter=None, action=None,
                     page=page, size=size, order=order, field=field)
                 
             for p in perms:
