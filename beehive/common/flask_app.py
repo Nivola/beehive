@@ -78,7 +78,7 @@ class BeehiveApp(Flask):
         loggin_level = int(self.params[u'api_logging_level'])
         self.setup_loggers(level=loggin_level)
         
-        self.logger.info(u'##### SERVER STARTING #####')
+        logger.info(u'##### SERVER STARTING #####')
         start = time()
         
         # api manager reference
@@ -104,10 +104,10 @@ class BeehiveApp(Flask):
         # register in moitor
         self.api_manager.register_monitor()
         
-        self.logger.info(u'Setup server over: %s' % self.api_manager.app_uri)
-        self.logger.info(u'Setup server over: %s' % self.api_manager.uwsgi_uri)
+        logger.info(u'Setup server over: %s' % self.api_manager.app_uri)
+        logger.info(u'Setup server over: %s' % self.api_manager.uwsgi_uri)
         
-        self.logger.info(u'##### SERVER STARTED ##### - %s' % round(time() - start, 2))
+        logger.info(u'##### SERVER STARTED ##### - %s' % round(time() - start, 2))
     
     def del_configurations(self):
         del self.db_uri
@@ -124,7 +124,7 @@ class BeehiveApp(Flask):
         # base logging
         file_name = u'%s/%s.log' % (self.log_path, logname)
         loggers = [
-            self.logger,
+            logger,
             logging.getLogger(u'oauthlib'),
             logging.getLogger(u'beehive'),
             logging.getLogger(u'beehive.db'),
@@ -162,7 +162,7 @@ class BeehiveApp(Flask):
         logname = uwsgi_util.opt[u'api_id']
 
         loggers = [
-            self.logger,
+            logger,
             logging.getLogger(u'oauthlib'),
             logging.getLogger(u'beehive'),
             logging.getLogger(u'beehive.db'),
@@ -184,7 +184,7 @@ class BeehiveApp(Flask):
             operation.session = self.api_manager.db_manager.get_session()
             return operation.session
         except MysqlManagerError as e:
-            self.logger.error(e)
+            logger.error(e)
             raise BeehiveAppError(e)
     
     def release_db_session(self):
@@ -193,5 +193,5 @@ class BeehiveApp(Flask):
         try:
             self.api_manager.db_manager.release_session(operation.session)
         except MysqlManagerError as e:
-            self.logger.error(e)
+            logger.error(e)
             raise BeehiveAppError(e)
