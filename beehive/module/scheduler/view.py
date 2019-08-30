@@ -300,8 +300,8 @@ class GetTasksDefinition(TaskApiView):
         task_manager = controller.get_task_manager()
         res = task_manager.get_registered_tasks()
         resp = {
-            u'task_definitions':res,
-            u'count':len(res)
+            u'task_definitions': res,
+            u'count': len(res)
         }
         return resp    
 

@@ -414,7 +414,9 @@ class TaskManager(ApiObject):
         try:
             control = task_manager.control.inspect([self.hostname], timeout=1.0)
             res = control.registered()
-            self.logger.debug(u'Get registered tasks: %s' % (res))
+            if res is None:
+                res = []
+            self.logger.debug(u'Get registered tasks: %s' % res)
             return res
         except Exception as ex:
             self.logger.error(u'No registered tasks found')
