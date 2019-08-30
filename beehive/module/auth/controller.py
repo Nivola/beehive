@@ -219,6 +219,15 @@ class AuthController(BaseAuthController):
     # user manipulation methods
     #
     @trace(entity=u'User', op=u'view')
+    def exist_user(self, oid):
+        """Check user exists.
+
+        :param oid: entity model id or name or uuid
+        :return: True if exists
+        """
+        return self.manager.exist_entity(ModelUser, oid)
+
+    @trace(entity=u'User', op=u'view')
     def get_user(self, oid, action=u'view'):
         """Get single user.
 

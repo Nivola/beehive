@@ -691,22 +691,58 @@ class AbstractDbManager(object):
         self.logger.debug2(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
         self.logger.debug2(u'kvargs: %s' % kvargs)
 
-        entity = query.first()
-        
-        if entity is None:
-            msg = u'No %s found' % entityclass.__name__
-            self.logger.error(msg)
-            raise ModelError(msg, code=404)
+        # entity = query.first()
+        #
+        # if entity is None:
+        #     msg = u'No %s found' % entityclass.__name__
+        #     self.logger.error(msg)
+        #     raise ModelError(msg, code=404)
 
         return query
-    
+
+    @query
+    def exist_entity(self, entityclass, oid, *args, **kvargs):
+        """Parse oid and check entity exists
+
+        :param entityclass: entity model class
+        :param oid: entity model id or name or uuid
+        :param dict kvargs: additional filters [optional]
+        :return: True if exists
+        """
+        session = self.get_session()
+
+        if oid is None:
+            raise ModelError(u'%s %s not found' % (oid, entityclass))
+
+        # get obj by uuid
+        if match(u'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', str(oid)):
+            search_field = u'uuid'
+            entity = self.query_entities(entityclass, session, uuid=oid, *args, **kvargs)
+        # get obj by id
+        elif match(u'^\d+$', str(oid)):
+            search_field = u'id'
+            entity = self.query_entities(entityclass, session, oid=oid, *args, **kvargs)
+        # get obj by name
+        elif match(u'[\-\w\d]+', oid):
+            search_field = u'name'
+            entity = self.query_entities(entityclass, session, name=oid, **kvargs)
+
+        res = entity.one_or_none()
+        resp = True
+        if res is None:
+            resp = False
+
+        self.logger.debug2(u'Check entity %s by %s exists: %s' % (entityclass.__name__, search_field, resp))
+        return resp
+
     @query
     def get_entity(self, entityclass, oid, for_update=False, *args, **kvargs):
-        """Parse oid and get entity entity by name or by model id or by uuid
+        """Parse oid and get entity by name or by model id or by uuid
         
         :param entityclass: entity model class
         :param oid: entity model id or name or uuid
         :param dict kvargs: additional filters [optional]
+        :param for_update: True if model is get for update [default=False]
         :return: list of entityclass
         :raises QueryError: raise :class:`QueryError`           
         """
@@ -734,33 +770,37 @@ class AbstractDbManager(object):
         else:
             res = entity.first()
 
+        if entity is None:
+            msg = u'No %s found' % entityclass.__name__
+            self.logger.error(msg)
+            raise ModelError(msg, code=404)
+
         self.logger.debug2(u'Query entity %s by %s: %s' % (entityclass.__name__, search_field, res))
         return res
     
-    @query
-    def get_entities(self, entityclass, filters, *args, **kvargs):
-        """Get model entities
-        
-        :param entityclass: entity model class
-        :param filters: entity model filters function. Return query with 
-            additional filter
-        :param int oid: entity id. [optional]
-        :param str objid: entity authorization id. [optional]
-        :param str uuid: entity uuid. [optional]
-        :param str name: entity name. [optional]
-        :param args: custom params
-        :param kvargs: custom params         
-        :return: list of entityclass
-        :raises QueryError: raise :class:`QueryError`           
-        """
-        session = self.get_session()
-        query = self.query_entities(entityclass, session, *args, **kvargs)
-        query = filters(query, *args, **kvargs)
-
-        # make query
-        res = query.all()
-        self.logger.debug2(u'Get %s: %s' % (entityclass.__name__, truncate(res)))
-        return res
+    # @query
+    # def get_entities(self, entityclass, filters, *args, **kvargs):
+    #     """Get model entities
+    #
+    #     :param entityclass: entity model class
+    #     :param filters: entity model filters function. Return query with additional filter
+    #     :param int oid: entity id. [optional]
+    #     :param str objid: entity authorization id. [optional]
+    #     :param str uuid: entity uuid. [optional]
+    #     :param str name: entity name. [optional]
+    #     :param args: custom params
+    #     :param kvargs: custom params
+    #     :return: list of entityclass
+    #     :raises QueryError: raise :class:`QueryError`
+    #     """
+    #     session = self.get_session()
+    #     query = self.query_entities(entityclass, session, *args, **kvargs)
+    #     query = filters(query, *args, **kvargs)
+    #
+    #     # make query
+    #     res = query.all()
+    #     self.logger.debug2(u'Get %s: %s' % (entityclass.__name__, truncate(res)))
+    #     return res
     
     @query
     def get_paginated_entities(self, entity, tags=[], page=0, size=10, order=u'DESC', field=u't3.id', filters=[],
@@ -846,7 +886,14 @@ class AbstractDbManager(object):
         
         # get entity
         oid = kvargs.pop(u'oid', None)
-        entity = self.query_entities(entityclass, session, oid=oid)
+        query = self.query_entities(entityclass, session, oid=oid)
+
+        # check entity exists
+        entity = query.first()
+        if entity is None:
+            msg = u'No %s found' % entityclass.__name__
+            self.logger.error(msg)
+            raise ModelError(msg, code=404)
 
         for k, v in kvargs.items():
             if v is None:
@@ -855,7 +902,7 @@ class AbstractDbManager(object):
         # create data dict with update
         kvargs[u'modification_date'] = datetime.today()
 
-        entity.update(kvargs)
+        query.update(kvargs)
         session.flush()
             
         self.logger.debug2(u'Update %s %s with data: %s' % (entityclass.__name__, oid, kvargs))
@@ -875,12 +922,19 @@ class AbstractDbManager(object):
 
         # get entity
         oid = kvargs.pop(u'oid', None)
-        entity = self.query_entities(entityclass, session, oid=oid)
+        query = self.query_entities(entityclass, session, oid=oid)
+
+        # check entity exists
+        entity = query.first()
+        if entity is None:
+            msg = u'No %s found' % entityclass.__name__
+            self.logger.error(msg)
+            raise ModelError(msg, code=404)
 
         # create data dict with update
         kvargs[u'modification_date'] = datetime.today()
 
-        entity.update(kvargs)
+        query.update(kvargs)
         session.flush()
 
         self.logger.debug2(u'UPDATE NULL %s %s with data: %s' % (entityclass.__name__, oid, kvargs))
@@ -899,9 +953,15 @@ class AbstractDbManager(object):
 
         # get entity
         query = self.query_entities(entityclass, session, **kvargs)
-        
-        # delete entity
+
+        # check entity exists
         entity = query.first()
+        if entity is None:
+            msg = u'No %s found' % entityclass.__name__
+            self.logger.error(msg)
+            raise ModelError(msg, code=404)
+
+        # delete entity
         session.delete(entity)
         
         self.logger.debug2(u'Remove %s %s' % (entityclass.__name__, entity.id))

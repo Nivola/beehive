@@ -78,9 +78,8 @@ class Event(object):
 
     def __str__(self):
         creation = str2uni(self.creation.strftime("%d-%m-%y %H:%M:%S"))
-        res = "<Event id=%s, type=%s, creation=%s, data='%s', source='%s',\
-                      dest='%s'>" % (self.id, self.type, creation, self.data, 
-                                     self.source, self.dest)
+        res = "<Event id=%s, type=%s, creation=%s, data='%s', source='%s', dest='%s'>" % \
+              (self.id, self.type, creation, self.data, self.source, self.dest)
         return res
     
     def dict(self):
@@ -98,12 +97,12 @@ class Event(object):
         :return: dict
         """
         msg = {
-            u'id':self.id,
-            u'type':self.type, 
-            u'creation':self.creation, 
-            u'data':self.data, 
-            u'source':self.source, 
-            u'dest':self.dest
+            u'id': self.id,
+            u'type': self.type,
+            u'creation': self.creation,
+            u'data': self.data,
+            u'source': self.source,
+            u'dest': self.dest
         }
         return msg    
     

@@ -16,8 +16,7 @@ class CatalogProducer(object):
     def __init__(self):
         """Abstract node producer.
         """
-        self.logger = getLogger(self.__class__.__module__+ \
-                                u'.'+self.__class__.__name__)
+        self.logger = getLogger(self.__class__.__module__ + u'.' + self.__class__.__name__)
     
     def _send(self, node_type, data, source, dest):
         raise NotImplementedError()
@@ -84,4 +83,4 @@ class CatalogProducerRedis(CatalogProducer):
         except exceptions.ConnectionLimitExceeded as ex:
             self.logger.error(u'Endpoint can not be send: %s' % ex)
         except Exception as ex:
-            self.logger.error(u'Endpoint can not be send: %s' % ex)
+            self.logger.error(u'Endpoint can not be send: %s' % ex, exc_info=1)
