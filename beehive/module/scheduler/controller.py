@@ -469,7 +469,7 @@ class TaskManager(ApiObject):
                     start_time = val.get(u'start_time', 0)
                     elapsed = 0
                     stop_time_str = 0
-                    if stop_time is not None:
+                    if start_time is not None and stop_time is not None:
                         elapsed = stop_time - start_time
                         stop_time_str = self.__convert_timestamp(stop_time)
 
@@ -541,7 +541,7 @@ class TaskManager(ApiObject):
                     start_time = val.get(u'start_time', 0)
                     elapsed = 0
                     stop_time_str = 0
-                    if stop_time is not None:
+                    if start_time is not None and stop_time is not None:
                         elapsed = stop_time - start_time
                         stop_time_str = self.__convert_timestamp(stop_time)
 
@@ -591,8 +591,10 @@ class TaskManager(ApiObject):
     def __convert_timestamp(self, timestamp):
         """
         """
-        timestamp = datetime.fromtimestamp(timestamp)
-        return str2uni(timestamp.strftime(u'%d-%m-%Y %H:%M:%S.%f'))        
+        if isinstance(timestamp, float):
+            timestamp = datetime.fromtimestamp(timestamp)
+            return str2uni(timestamp.strftime(u'%d-%m-%Y %H:%M:%S.%f'))
+        return u''
 
     def __get_redis_task(self, task_id):
         """Get task from redis
@@ -638,7 +640,7 @@ class TaskManager(ApiObject):
         start_time = val.get(u'start_time', 0)
         elapsed = 0
         stop_time_str = 0
-        if stop_time is not None:
+        if start_time is not None and stop_time is not None:
             elapsed = stop_time - start_time
             stop_time_str = self.__convert_timestamp(stop_time)
 
@@ -765,7 +767,7 @@ class TaskManager(ApiObject):
                 start_time = val.get(u'start_time', 0)
                 elapsed = 0
                 stop_time_str = 0
-                if stop_time is not None:
+                if start_time is not None and stop_time is not None:
                     elapsed = stop_time - start_time
                     stop_time_str = self.__convert_timestamp(stop_time)
 

@@ -168,6 +168,7 @@ class TaskResult(object):
                     u'result': retval,
                     u'traceback': traceback,
                     u'start_time': time(),
+                    # u'start_time': start_time,
                     u'stop_time': stop_time,
                     u'children': childs,
                     u'jobs': jobs,
@@ -192,15 +193,15 @@ class TaskResult(object):
         val = update_data()
 
         if inner_type == u'JOB':
-            logger.debug2(u'Save %s %s result: %s' %
-                          (inner_type, task_id, truncate(val, size=400)))
+            logger.debug2(u'Save %s %s result: %s' % (inner_type, task_id, truncate(val, size=400)))
 
         return data
 
     @staticmethod
     def task_pending(task_id):
         # store task
-        start_time = time()
+        # start_time = time()
+        start_time = None
         task = TaskResult.store(task_id, name=None, hostname=None, args=None, kwargs=None, status=u'PENDING',
                                 retval=None, start_time=start_time, stop_time=0, childs=[], traceback=None,
                                 inner_type=None, msg=None, jobs=None, counter=0)

@@ -60,10 +60,10 @@ def jobtest(self, objid, params):
         g1.append(test_raise.signature((ops, i), immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE))
     
     g1.append(test_invoke_job.signature((ops, i), immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE))
-    g1.append(test_invoke_job.signature((ops, i), immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE))
-    g1.append(test_invoke_job.signature((ops, i), immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE))
-    g1.append(test_invoke_job.signature((ops, i), immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE))
-    g1.append(test_invoke_job.signature((ops, i), immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE))
+    # g1.append(test_invoke_job.signature((ops, i), immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE))
+    # g1.append(test_invoke_job.signature((ops, i), immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE))
+    # g1.append(test_invoke_job.signature((ops, i), immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE))
+    # g1.append(test_invoke_job.signature((ops, i), immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE))
 
     j = Job.create([
         end_task,
@@ -156,7 +156,8 @@ def test_invoke_job(self, options, i):
     user = {
         u'user': operation.user[0],
         u'server': operation.user[1],
-        u'identity': operation.user[2]
+        u'identity': operation.user[2],
+        u'api_id': operation.id,
     }
     # job = jobtest_inner.apply_async(data, **user)
 

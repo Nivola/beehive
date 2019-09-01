@@ -6,7 +6,9 @@
     * added methods expunge, pre_expunge e post_expunge to ApiObject
     * added methods base_stmp2 and run2 in PaginatedQueryGenerator
     * added logger elk for api and task
+    * added microsecond to event stored in mysql db
 * Fixed ...
+    * modify max query window for event to 2 hours
 * Integrated ...
     * introdotta signature Celery che registra il task su redis appena generato l'uuid dall'apply_async
     * added send of log item for the api class to elasticsearch if it is configured

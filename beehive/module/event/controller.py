@@ -79,14 +79,14 @@ class EventController(ApiController):
         definition = kvargs.get(u'objdef', None)
         objs = self.can(u'use', objtype=objtype, definition=definition)
 
-        # set max time window to 7 days
+        # set max time window to 2 hours
         if kvargs.get(u'datefrom', None) is None:
-            kvargs[u'datefrom'] = datetime.today() - timedelta(days=1)
+            kvargs[u'datefrom'] = datetime.today() - timedelta(hours=2)
         elif kvargs.get(u'datefrom', None) is not None:
             if kvargs.get(u'dateto', None) is None or \
                kvargs[u'dateto'] <= kvargs.get(u'datefrom') or \
-               kvargs[u'dateto'] > kvargs.get(u'datefrom') + timedelta(days=1):
-                kvargs[u'dateto'] = kvargs.get(u'datefrom') + timedelta(days=1)
+               kvargs[u'dateto'] > kvargs.get(u'datefrom') + timedelta(hours=2):
+                kvargs[u'dateto'] = kvargs.get(u'datefrom') + timedelta(hours=2)
 
         # create permission tags
         tags = []
@@ -97,7 +97,7 @@ class EventController(ApiController):
                 
         try:
             entities, total = self.event_manager.get_events(tags=tags, page=page, size=size, order=order, field=field,
-                                                            *args, **kvargs)
+                                                            with_perm_tag=False, *args, **kvargs)
             
             for entity in entities:
                 obj = BaseEvent(entity)
@@ -109,7 +109,7 @@ class EventController(ApiController):
             self.logger.warn(ex)
             return [], 0
 
-    @trace(entity=u'GenericEvent', op=u'types.view')
+    @trace(entity=u'GenericEvent', op=u'view')
     def get_event_types(self):
         """Get event types.
       
@@ -118,8 +118,7 @@ class EventController(ApiController):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """        
         # verify permissions
-        self.check_authorization(GenericEvent.objtype, GenericEvent.objdef, 
-                                 u'*', u'view')
+        self.check_authorization(GenericEvent.objtype, GenericEvent.objdef, u'*', u'view')
         
         # get available event types
         try:
@@ -133,7 +132,7 @@ class EventController(ApiController):
         self.logger.debug(u'Get event types: %s' % res)
         return res
     
-    @trace(entity=u'GenericEvent', op=u'definitions.view')
+    @trace(entity=u'GenericEvent', op=u'view')
     def get_entity_definitions(self):
         """Get event entity definition. 
       

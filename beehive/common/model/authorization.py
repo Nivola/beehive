@@ -861,15 +861,15 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             u'sysobject_permission t4'
         ]
 
-        # sqlcount = [
-        #     u'SELECT count(t4.id) FROM',
-        #     u', '.join(tables),
-        #     u'WHERE t4.obj_id=t1.id AND t4.action_id=t3.id AND t1.type_id=t2.id'
-        # ]
-
         sqlcount = [
-            u'SELECT count(t4.id) FROM sysobject_permission t4'
+            u'SELECT count(t4.id) FROM',
+            u', '.join(tables),
+            u'WHERE t4.obj_id=t1.id AND t4.action_id=t3.id AND t1.type_id=t2.id'
         ]
+
+        # sqlcount = [
+        #     u'SELECT count(t4.id) FROM sysobject_permission t4'
+        # ]
 
         # add indexes
         tables[0] += u' FORCE INDEX(type_id)'
@@ -912,17 +912,17 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             sql.append(u'AND t3.value LIKE :action')
             sqlcount.append(u'AND t3.value LIKE :action')
             params[u'action'] = action
-        
+
+        query = session.query(SysObjectPermission).from_statement(text(u' '.join(sql))).params(params)
+        self.print_query(self.get_permissions, query, inspect.getargvalues(inspect.currentframe()))
+
         # get total rows
         total = session.execute(u' '.join(sqlcount), params).fetchone()[0]
         self.logger.debug2(u' '.join(sqlcount))
                 
         offset = size * page
         sql.append(u'ORDER BY %s %s' % (field, order))
-        sql.append(u'LIMIT %s OFFSET %s' % (size, offset))        
-
-        query = session.query(SysObjectPermission).from_statement(text(u' '.join(sql))).params(params)
-        self.print_query(self.get_permissions, query, inspect.getargvalues(inspect.currentframe()))
+        sql.append(u'LIMIT %s OFFSET %s' % (size, offset))
 
         res = query.all()
         

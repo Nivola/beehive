@@ -8,7 +8,7 @@ from beecell.simple import get_value
 from beehive.common.apimanager import ApiView, ApiManagerError, SwaggerApiView, \
     GetApiObjectRequestSchema, CrudApiObjectJobResponseSchema, \
     ApiObjecCountResponseSchema, CrudApiJobResponseSchema
-from flasgger import fields, Schema
+from marshmallow import fields, Schema
 from beecell.swagger import SwaggerHelper
 
 

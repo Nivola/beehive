@@ -137,12 +137,10 @@ class AbstractJob(BaseTask):
     def get_options(self):
         """Return tupla with some useful options.
 
-        :return:  (class_name, objid, job, job id, start time,
-                   time before new query, user)
+        :return:  (class_name, objid, job, job id, start time, time before new query, user, api_id)
         """
-        options = (self.get_entity_class_name(), task_local.objid,
-                   task_local.op, task_local.opid, None,
-                   task_local.delta, task_local.user)
+        options = (self.get_entity_class_name(), task_local.objid, task_local.op, task_local.opid, None,
+                   task_local.delta, task_local.user, task_local.api_id)
         return options
 
     #
@@ -162,10 +160,12 @@ class AbstractJob(BaseTask):
             response.append(str(ex))
 
         action = task_local.op.split(u'.')[-1]
-        op = task_local.op
-        op = op.replace(u'.%s' % action, u'')
+        # op = task_local.op
+        # op = op.replace(u'.%s' % action, u'')
+        op = u'%s.%s' % (self.__module__, self.__name__)
         entity_class = task_local.entity_class
         data = {
+            u'api_id': task_local.api_id,
             u'opid': task_local.opid,
             u'op': u'%s.%s' % (task_local.entity_class.objdef, op),
             u'taskid': self.request.id,
@@ -225,6 +225,10 @@ class AbstractJob(BaseTask):
             params[u'start-time'] = job.get(u'start_time')
             self.set_shared_data(params)
 
+        # if status == u'STARTED':
+        #     params[u'start-time'] = time()
+        #     self.set_shared_data(params)
+
         # set result if status is SUCCESS
         retval = None
         if status == u'SUCCESS':
@@ -246,13 +250,9 @@ class AbstractJob(BaseTask):
         TaskResult.store(task_local.opid, status=status, retval=retval, inner_type=u'JOB', traceback=traceback,
                          stop_time=current_time, msg=msg, counter=counter)
         if status == u'FAILURE':
-            logger.error(
-                u'JOB %s status change to %s' %
-                (task_local.opid, status))
+            logger.error(u'JOB %s status change to %s' % (task_local.opid, status))
         else:
-            logger.info(
-                u'JOB %s status change to %s' %
-                (task_local.opid, status))
+            logger.info(u'JOB %s status change to %s' % (task_local.opid, status))
 
 
 class Job(AbstractJob):
@@ -711,14 +711,17 @@ def job(entity_class=None, name=None, module=None, delta=2):
                 user = user_data.pop(u'user', u'task_manager')
                 server = user_data.pop(u'server', u'127.0.0.1')
                 identity = user_data.pop(u'identity', u'')
+                api_id = user_data.pop(u'api_id', u'')
             except BaseException:
                 logger.warn(u'Can not get request user', exc_info=1)
                 user = u'task_manager'
                 server = u'127.0.0.1'
                 identity = u''
+                api_id = u''
 
             operation.perms = []
             operation.user = (user, server, identity)
+            operation.id = api_id
             operation.session = None
             operation.transaction = None
             operation.authorize = False
@@ -738,18 +741,19 @@ def job(entity_class=None, name=None, module=None, delta=2):
             task_local.opid = task.request.id
             task_local.delta = delta
             task_local.user = operation.user
+            task_local.api_id = api_id
 
             # record PENDING task and set start-time
-            status = u'STARTED'
+            ### status = u'STARTED'
             # start_time = time()
             # params = {
             #     u'start-time': start_time,
             # }
             # task.set_shared_data(params)
-            task.update_job(status=status, current_time=time())
+            # task.update_job(status=status, current_time=time())
 
-            # send event
-            task.send_job_event(status, 0, ex=None, msg=None)
+            # # send event
+            ### task.send_job_event(status, 0, ex=None, msg=None)
 
             res = fn(task, objid, *args, **kwargs)
             task.release_session()
@@ -786,9 +790,11 @@ def job_task(module=u'', synchronous=True):
             task_local.op = params[2]
             task_local.opid = params[3]
             task_local.delta = params[5]
+            task_local.api_id = params[7]
 
             operation.perms = []
             operation.user = params[6]
+            operation.id = params[7]
             operation.session = None
             operation.transaction = None
             operation.authorize = False

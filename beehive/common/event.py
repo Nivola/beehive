@@ -64,6 +64,7 @@ class Event(object):
         
         # fire time of event 
         self.creation = time.time()
+        # datetime.datetime.utcnow()
         #time.strftime("%d-%m-%y %H:%M:%S")
 
         # event operation data

@@ -1609,6 +1609,7 @@ class ApiObject(object):
             u'user': operation.user[0],
             u'server': operation.user[1],
             u'identity': operation.user[2],
+            u'api_id': operation.id
             # u'encryption_key': operation.encryption_key,
         }
         return user
@@ -2098,8 +2099,10 @@ class ApiObject(object):
         if etype is None:
             etype = self.SYNC_OPERATION
         if exception is not None:
-            # response = (False, escape(str(exception)))
             response = (False, str(exception))
+        else:
+            response = [response]
+
         action = op.split(u'.')[-1]
         
         # remove object from args - it does not serialize in event
@@ -2116,6 +2119,7 @@ class ApiObject(object):
             u'opid': opid,
             # u'op': u'%s.%s' % (self.objdef, op),
             u'op': op,
+            u'api_id': opid,
             u'args': nargs,
             u'params': params,
             u'elapsed': elapsed,
@@ -2542,13 +2546,18 @@ class ApiViewResponse(ApiObject):
         """
         objid = u'*'
         if exception is not None:
-            try:
-                response = (False, escape(str(exception)))
-            except:
-                try:
-                    response = (False, escape(exception))
-                except:
-                    response = (False, exception.message)
+            response = (False, str(exception))
+        else:
+            response = [response]
+
+        # if exception is not None:
+        #     try:
+        #         response = (False, escape(str(exception)))
+        #     except:
+        #         try:
+        #             response = (False, escape(exception))
+        #         except:
+        #             response = (False, exception.message)
 
         method = api[u'method']
         if method in [u'GET']:
@@ -2569,6 +2578,7 @@ class ApiViewResponse(ApiObject):
         data = {
             u'opid': operation.id,
             u'op': api,
+            u'api_id': operation.id,
             u'params': params,
             u'elapsed': elapsed,
             u'response': response

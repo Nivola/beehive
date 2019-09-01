@@ -2,20 +2,11 @@
 #
 # (C) Copyright 2018-2019 CSI-Piemonte
 
-from re import match
-from flask import request
-from beecell.simple import get_value
-from beecell.simple import get_attrib
-from beehive.common.apimanager import ApiView, ApiManagerError, PaginatedRequestQuerySchema,\
-    PaginatedResponseSchema, ApiObjectResponseSchema, SwaggerApiView,\
-    GetApiObjectRequestSchema, ApiObjectPermsResponseSchema,\
-    ApiObjectPermsRequestSchema
-from flasgger import fields, Schema
-from marshmallow.validate import OneOf, Range, Length
-from marshmallow.decorators import post_load, validates
-from marshmallow.exceptions import ValidationError
+from beehive.common.apimanager import ApiView, PaginatedRequestQuerySchema,\
+    PaginatedResponseSchema, SwaggerApiView, GetApiObjectRequestSchema
+from marshmallow import fields, Schema
+from marshmallow.validate import OneOf
 from beecell.swagger import SwaggerHelper
-from flasgger.marshmallow_apispec import SwaggerView
 
 
 #

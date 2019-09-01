@@ -7,6 +7,7 @@ import logging
 from re import match
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy import create_engine, exc
+from sqlalchemy.dialects.mysql import DATETIME
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import distinct, desc
@@ -29,7 +30,7 @@ class DbEvent(Base):
     objid = Column(String(400))
     objdef = Column(String(500))
     objtype = Column(String(45))
-    creation = Column(DateTime())
+    creation = Column(DATETIME(fsp=6))
     data = Column(String(5000), nullable=True)
     source = Column(String(200), nullable=True)
     dest = Column(String(500), nullable=True)
@@ -157,7 +158,7 @@ class EventDbManager(AbstractDbManager):
         return entity
 
     @query
-    def get_events(self, tags=[], page=0, size=10, order=u'DESC', field=u'id', *args, **kvargs):
+    def get_events(self, tags=[], page=0, size=10, order=u'DESC', field=u'id', with_perm_tag=None, *args, **kvargs):
         """Get events with some permission tags
         
         :param type: event type [optional]
@@ -175,11 +176,12 @@ class EventDbManager(AbstractDbManager):
         :param order: sort order [default=DESC]
         :param field: sort field [default=id]
         :param args: custom params
-        :param kvargs: custom params         
+        :param kvargs: custom params
+        :param with_perm_tag: if False disable authorization
         :return: list of entityclass
         :raises QueryError: raise :class:`QueryError`           
         """
-        query = PaginatedQueryGenerator(DbEvent, self.get_session())
+        query = PaginatedQueryGenerator(DbEvent, self.get_session(), with_perm_tag=with_perm_tag)
 
         # set filters
         query.add_relative_filter(u'AND t3.type = :type', u'type', kvargs)
