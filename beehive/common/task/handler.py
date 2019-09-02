@@ -177,7 +177,8 @@ class TaskResult(object):
 
             # update task trace
             if msg is not None:
-                msg1 = u'(%s) %s' % (task_id, msg)
+                # msg1 = u'(%s) %s' % (task_id, msg)
+                msg1 = msg
                 if failure is True:
                     msg1 = u'ERROR %s' % msg1
                 else:

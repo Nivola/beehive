@@ -447,9 +447,7 @@ class JobTask(AbstractJob):
         :raise: ApiManagerError
         """
         res = self.api_admin_request(module, uri, method, data, other_headers)
-        self.update(
-            u'PROGRESS', msg=u'Invoke api %s [%s] in module %s' %
-            (uri, method, module))
+        self.update(u'PROGRESS', msg=u'Invoke api %s [%s] in module %s' % (uri, method, module))
 
         if link is not None:
             # set up link from remote stack to instance

@@ -349,6 +349,7 @@ def query(fn):
             elapsed = round(time() - start, 4)
             logger.error(u'%s.%s - %s - query - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid, fn.__name__,
                          truncate(params), elapsed))
+            logger.error(ex.message, exc_info=1)
             logger.error(ex.message)
             raise QueryError(ex.message, code=400)
     return query_wrap

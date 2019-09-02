@@ -9,10 +9,11 @@ from celery.beat import Scheduler
 from datetime import timedelta, datetime
 from celery.schedules import maybe_schedule, crontab, schedule as interval
 from celery.beat import ScheduleEntry 
-from celery.five import items
-from kombu.utils import reprcall
-import redis_collections
+# from celery.five import items
+# from kombu.utils import reprcall
+# import redis_collections
 from beecell.simple import format_date
+
 #import pickle
 
 
@@ -196,60 +197,59 @@ class RedisScheduleEntry(ScheduleEntry):
             if relative is not None:
                 entry[u'relative'] = relative
             if last_run_at is not None:
-                entry[u'last_run_at'] = datetime.strptime(last_run_at, u'%Y-%m-%dT%H:%M:%SZ')
+                entry[u'last_run_at'] = datetime.strptime(last_run_at, u'%Y-%m-%dT%H:%M:%SZ.%f')
 
             res = RedisScheduleEntry(**dict(entry, name=name, app=app))
 
-            # logger.info(u'Create entry: %s' % res)
             return res
         except Exception as ex:
             logger.error(ex, exc_info=1)
             raise
 
 
-class RedisScheduler2(Scheduler):
-    Entry = RedisScheduleEntry
-
-    def __init__(self, app, schedule={}, max_interval=None, Publisher=None, lazy=False, sync_every_tasks=None,
-                 **kwargs):
-        # self.schedule_filename = kwargs.get('schedule_filename')
-        redis_uri = app.conf.CELERY_SCHEDULE_BACKEND
-        # set redis manager
-        self.manager = RedisManager(redis_uri)
-        # keys = self.manager.inspect(pattern='*', debug=False)
-        
-        self._prefix = app.conf.CELERY_REDIS_SCHEDULER_KEY_PREFIX
-        
-        self._schedule = redis_collections.Dict(key=self._prefix, redis=self.manager.conn)
-        Scheduler.__init__(self, app, schedule=schedule, max_interval=max_interval, Publisher=Publisher,
-                           lazy=lazy, sync_every_tasks=sync_every_tasks, **kwargs)
-
-    def update_from_dict(self, dict_):
-        self.schedule.update({
-            name: self._maybe_entry(name, entry)
-            for name, entry in items(dict_)
-        })
-    
-    def get_schedule(self):
-        logger.warn('GET', self._schedule)
-        return self._schedule
-
-    def set_schedule(self, schedule):
-        logger.warn('SET', schedule)
-        self.data = schedule
-        
-    schedule = property(get_schedule, set_schedule)
-    
-    def setup_schedule(self):
-        # self.install_default_entries(self.schedule)
-        schedule = self.app.conf.CELERYBEAT_SCHEDULE
-        schedule.update(self._schedule)
-        logger.warn(u'Setup schedules: %s' % schedule)
-        self.update_from_dict(schedule)
-
-    @property
-    def info(self):
-        return u'<RedisScheduler>'
+# class RedisScheduler2(Scheduler):
+#     Entry = RedisScheduleEntry
+#
+#     def __init__(self, app, schedule={}, max_interval=None, Publisher=None, lazy=False, sync_every_tasks=None,
+#                  **kwargs):
+#         # self.schedule_filename = kwargs.get('schedule_filename')
+#         redis_uri = app.conf.CELERY_SCHEDULE_BACKEND
+#         # set redis manager
+#         self.manager = RedisManager(redis_uri)
+#         # keys = self.manager.inspect(pattern='*', debug=False)
+#
+#         self._prefix = app.conf.CELERY_REDIS_SCHEDULER_KEY_PREFIX
+#
+#         self._schedule = redis_collections.Dict(key=self._prefix, redis=self.manager.conn)
+#         Scheduler.__init__(self, app, schedule=schedule, max_interval=max_interval, Publisher=Publisher,
+#                            lazy=lazy, sync_every_tasks=sync_every_tasks, **kwargs)
+#
+#     def update_from_dict(self, dict_):
+#         self.schedule.update({
+#             name: self._maybe_entry(name, entry)
+#             for name, entry in items(dict_)
+#         })
+#
+#     def get_schedule(self):
+#         logger.warn('GET', self._schedule)
+#         return self._schedule
+#
+#     def set_schedule(self, schedule):
+#         logger.warn('SET', schedule)
+#         self.data = schedule
+#
+#     schedule = property(get_schedule, set_schedule)
+#
+#     def setup_schedule(self):
+#         # self.install_default_entries(self.schedule)
+#         schedule = self.app.conf.CELERYBEAT_SCHEDULE
+#         schedule.update(self._schedule)
+#         logger.warn(u'Setup schedules: %s' % schedule)
+#         self.update_from_dict(schedule)
+#
+#     @property
+#     def info(self):
+#         return u'<RedisScheduler>'
 
 
 class RedisScheduler(Scheduler):

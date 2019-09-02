@@ -913,9 +913,6 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             sqlcount.append(u'AND t3.value LIKE :action')
             params[u'action'] = action
 
-        query = session.query(SysObjectPermission).from_statement(text(u' '.join(sql))).params(params)
-        self.print_query(self.get_permissions, query, inspect.getargvalues(inspect.currentframe()))
-
         # get total rows
         total = session.execute(u' '.join(sqlcount), params).fetchone()[0]
         self.logger.debug2(u' '.join(sqlcount))
@@ -923,6 +920,9 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         offset = size * page
         sql.append(u'ORDER BY %s %s' % (field, order))
         sql.append(u'LIMIT %s OFFSET %s' % (size, offset))
+
+        query = session.query(SysObjectPermission).from_statement(text(u' '.join(sql))).params(params)
+        self.print_query(self.get_permissions, query, inspect.getargvalues(inspect.currentframe()))
 
         res = query.all()
         
