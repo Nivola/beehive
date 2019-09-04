@@ -243,7 +243,8 @@ def start_scheduler(params):
     run_path = u'/var/run/%s/%s' % (params[u'api_package'],
                                     params[u'api_env'])
     logger_file = u'%s/%s.scheduler.log' % (log_path, params[u'api_id'])
-    logger_level = int(params[u'api_logging_level'])
+    # logger_level = int(params[u'api_logging_level'])
+    logger_level = logging.INFO
     loggers = [
         logging.getLogger(u'beehive'),
         logging.getLogger(u'beecell'),

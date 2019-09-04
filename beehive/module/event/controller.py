@@ -187,7 +187,7 @@ class BaseEvent(object):
                u'objid': self.event.objid,
                u'objdef': self.event.objdef,
                u'objtype': self.event.objtype,
-               u'date': format_date(self.event.creation),
+               u'date': format_date(self.event.creation, microsec=True),
                u'data': data,
                u'source': json.loads(self.event.source),
                u'dest': json.loads(self.event.dest)}

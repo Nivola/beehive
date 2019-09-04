@@ -42,7 +42,10 @@ class BeehiveApp(Flask):
         self.http_socket = uwsgi_util.opt[u'http-socket']
         self.server_name = uwsgi_util.opt[u'api_host']
         self.server_fqdn = uwsgi_util.opt[u'api_fqdn']
-        self.server_ip = gethostbyname(uwsgi_util.opt[u'api_fqdn'])
+        try:
+            self.server_ip = gethostbyname(uwsgi_util.opt[u'api_fqdn'])
+        except:
+            self.server_ip = u'127.0.0.1'
         
         self.app_name = uwsgi_util.opt[u'api_name']
         self.app_id = uwsgi_util.opt[u'api_id']
