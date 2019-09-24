@@ -197,7 +197,7 @@ class RedisScheduleEntry(ScheduleEntry):
             if relative is not None:
                 entry[u'relative'] = relative
             if last_run_at is not None:
-                entry[u'last_run_at'] = datetime.strptime(last_run_at, u'%Y-%m-%dT%H:%M:%SZ.%f')
+                entry[u'last_run_at'] = datetime.strptime(last_run_at, u'%Y-%m-%dT%H:%M:%SZ')
 
             res = RedisScheduleEntry(**dict(entry, name=name, app=app))
 
