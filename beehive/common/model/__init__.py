@@ -1013,28 +1013,28 @@ class AbstractDbManager(object):
         """
         session = self.get_session()
 
-        # try:
-        #     # create permtag
-        #     tagrecord = PermTag(tag, explain=explain)
-        #     session.add(tagrecord)
-        #     session.flush()
-        #     self.logger.debug2(u'Add permtag %s' % (tagrecord))
-        # except:
-        #     # permtag already exists. Get reference
-        #     self.logger.warn(u'Permtag %s already exists' % (tagrecord))
-        #     session.rollback()
-        #     tagrecord = session.query(PermTag).filter_by(value=tag).first()
-
-        query = session.query(PermTag).filter_by(value=tag)
-        tagrecord = query.one_or_none()
-        if tagrecord is None:
+        try:
             # create permtag
             tagrecord = PermTag(tag, explain=explain)
             session.add(tagrecord)
             session.flush()
             self.logger.debug2(u'Add permtag %s' % tagrecord)
-        else:
+        except:
+            # permtag already exists. Get reference
             self.logger.warn(u'Permtag %s already exists' % tagrecord)
+            # session.rollback()
+            tagrecord = session.query(PermTag).filter_by(value=tag).first()
+
+        # query = session.query(PermTag).filter_by(value=tag)
+        # tagrecord = query.one_or_none()
+        # if tagrecord is None:
+        #     # create permtag
+        #     tagrecord = PermTag(tag, explain=explain)
+        #     session.add(tagrecord)
+        #     session.flush()
+        #     self.logger.debug2(u'Add permtag %s' % tagrecord)
+        # else:
+        #     self.logger.warn(u'Permtag %s already exists' % tagrecord)
 
         # create tag entity association
         # record = None
