@@ -1192,6 +1192,7 @@ class Role(AuthObject):
         try:
             # get permissions
             roleperms = []
+
             for perm in perms:
                 # perm as permission_id
                 if u'id' in perm:

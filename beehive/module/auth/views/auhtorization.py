@@ -828,16 +828,22 @@ class UpdateRole(SwaggerApiView):
                 perms = []
                 for perm in role_perm.get(u'append'):
                     perms.append(perm)
-                res = role.append_permissions(perms)
-                resp[u'perm_append'] = res
+                if len(perms) > 0:
+                    res = role.append_permissions(perms)
+                    resp[u'perm_append'] = res
+                else:
+                    resp[u'perm_append'] = []
         
             # remove role
             if u'remove' in role_perm:
                 perms = []
                 for perm in role_perm.get(u'remove'):
                     perms.append(perm)
-                res = role.remove_permissions(perms)
-                resp[u'perm_remove'] = res
+                if len(perms) > 0:
+                    res = role.remove_permissions(perms)
+                    resp[u'perm_remove'] = res
+                else:
+                    resp[u'perm_remove'] = []
         
         # update role
         res = role.update(**data)        

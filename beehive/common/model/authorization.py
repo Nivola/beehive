@@ -834,16 +834,17 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         return res    
     
     @query
-    def get_permissions(self, objid=None, objid_filter=None, objtype=None, objtypes=None, objdef=None,
+    def get_permissions(self, objid=None, objids=None, objid_filter=None, objtype=None, objtypes=None, objdef=None,
                         objdef_filter=None, action=None, page=0, size=10, order=u'DESC', field=u'id'):
         """Get system object permisssion.
         
         :param objid: Total or partial objid [optional]
-        :param objtype str: Object type [optional]
-        :param objtypes str: Object type list [optional]
-        :param objdef str: Object definition [optional]
-        :param objdef_filter str: Part of object definition [optional]
-        :param action str: Object action [optional]
+        :param objids: list of objid [optional]
+        :param objtype: Object type [optional]
+        :param objtypes: Object type list [optional]
+        :param objdef: Object definition [optional]
+        :param objdef_filter: Part of object definition [optional]
+        :param action: Object action [optional]
         :param page: perm list page to show [default=0]
         :param size: number of perms to show in list per page [default=10]
         :param order: sort order [default=DESC]
@@ -872,9 +873,10 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         # ]
 
         # add indexes
-        tables[0] += u' FORCE INDEX(type_id)'
-        if field == u'id':
-            tables[3] += u' FORCE INDEX (PRIMARY)'
+        if objid is None and objids is None and objdef is None and objdef_filter is None:
+            tables[0] += u' FORCE INDEX(type_id)'
+            if field == u'id':
+                tables[3] += u' FORCE INDEX (PRIMARY)'
 
         sql = [
             u'SELECT t4.id as id, t1.id as oid, t1.objid as objid, t2.objtype as objtype, t2.objdef as objdef,',
@@ -888,6 +890,10 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             sql.append(u'AND t1.objid LIKE :objid')
             sqlcount.append(u'AND t1.objid LIKE :objid')
             params[u'objid'] = objid
+        if objids is not None:
+            sql.append(u'AND t1.objid in :objids')
+            sqlcount.append(u'AND t1.objid in :objids')
+            params[u'objids'] = objids
         if objid_filter is not None:
             sql.append(u'AND t1.objid LIKE :objid')
             sqlcount.append(u'AND t1.objid LIKE :objid')
@@ -919,7 +925,8 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
                 
         offset = size * page
         sql.append(u'ORDER BY %s %s' % (field, order))
-        sql.append(u'LIMIT %s OFFSET %s' % (size, offset))
+        if size != -1:
+            sql.append(u'LIMIT %s OFFSET %s' % (size, offset))
 
         query = session.query(SysObjectPermission).from_statement(text(u' '.join(sql))).params(params)
         self.print_query(self.get_permissions, query, inspect.getargvalues(inspect.currentframe()))

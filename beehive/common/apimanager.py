@@ -3039,19 +3039,19 @@ class ApiView(FlaskView):
                     # parsed = self.parameters_schema().load(request.args.to_dict())
                     query_string.update(kwargs)
                     parsed = self.parameters_schema().load(query_string)
-                    self.logger.debug(u'Api request data: %s' % obscure_data(deepcopy(query_string)))
+                    self.logger.debug(u'Api request data: %s' % truncate(obscure_data(deepcopy(query_string))))
                 else:
                     data.update(kwargs)
                     parsed = self.parameters_schema().load(data)
-                    self.logger.debug(u'Api request data: %s' % obscure_data(deepcopy(data)))
+                    self.logger.debug(u'Api request data: %s' % truncate(obscure_data(deepcopy(data))))
 
                 if len(parsed.errors.keys()) > 0:
                     self.logger.error(parsed.errors)
                     raise ApiManagerError(parsed.errors, code=400)
                 data = parsed.data
-                self.logger.debug(u'Api request data after validation: %s' % obscure_data(deepcopy(data)))
+                self.logger.debug(u'Api request data after validation: %s' % truncate(obscure_data(deepcopy(data))))
             else:
-                self.logger.debug(u'Api request data: %s' % obscure_data(deepcopy(data)))
+                self.logger.debug(u'Api request data: %s' % truncate(obscure_data(deepcopy(data))))
 
             # dispatch request
             meth = getattr(self, request.method.lower(), None)

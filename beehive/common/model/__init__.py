@@ -1015,6 +1015,7 @@ class AbstractDbManager(object):
 
         try:
             # create permtag
+            session.begin_nested()
             tagrecord = PermTag(tag, explain=explain)
             session.add(tagrecord)
             session.flush()
@@ -1022,7 +1023,7 @@ class AbstractDbManager(object):
         except:
             # permtag already exists. Get reference
             self.logger.warn(u'Permtag %s already exists' % tagrecord)
-            # session.rollback()
+            session.rollback()
             tagrecord = session.query(PermTag).filter_by(value=tag).first()
 
         # query = session.query(PermTag).filter_by(value=tag)
