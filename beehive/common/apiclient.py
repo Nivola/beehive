@@ -17,14 +17,18 @@ from beecell.simple import truncate, id_gen, check_vault, obscure_data, obscure_
 from multiprocessing import current_process
 from base64 import b64encode
 from beehive.common.jwtclient import JWTClient
-from beecell.simple import is_py2, is_py3
+# from beecell.simple import is_py2, is_py3
 
-if is_py3():
-    from urllib.parse import urlencode, quote
-    from http import client as httpclient
-else:
-    from urllib import urlencode, quote
-    import httplib as httpclient
+from six.moves.urllib.parse import urlencode, quote
+from six.moves import http_client
+from six import PY3
+
+# if is_py3():
+#     from urllib.parse import urlencode, quote
+#     from http import client as httpclient
+# else:
+#     from urllib import urlencode, quote
+#     import httplib as httpclient
 
 
 class BeehiveApiClientError(Exception):
@@ -181,7 +185,7 @@ class BeehiveApiClient(object):
             key = RSA.importKey(seckey)
             
             # create data hash
-            if is_py3():
+            if PY3:
                 hash_data = SHA256.new()
                 hash_data.update(bytes(data, encoding=u'utf-8'))
             else:
@@ -257,7 +261,7 @@ class BeehiveApiClient(object):
                 self.logger.debug(' '.join(curl_url))
             
             if proto == 'http':
-                conn = httpclient.HTTPConnection(host, port, timeout=timeout)
+                conn = http_client.HTTPConnection(host, port, timeout=timeout)
                 if self.proxy is not None:
                     conn.set_tunnel(self.proxy.get('host'), port=self.proxy.get('port'))
             else:
@@ -266,11 +270,11 @@ class BeehiveApiClient(object):
                 except:
                     pass
                 if self.proxy is not None:
-                    conn = httpclient.HTTPSConnection(self.proxy.get('host'), port=self.proxy.get('port'),
+                    conn = http_client.HTTPSConnection(self.proxy.get('host'), port=self.proxy.get('port'),
                                                       timeout=timeout)
                     conn.set_tunnel(host, port=port)
                 else:
-                    conn = httpclient.HTTPSConnection(host, port, timeout=timeout)
+                    conn = http_client.HTTPSConnection(host, port, timeout=timeout)
 
             # get response
             conn.request(method, path, data, headers)
