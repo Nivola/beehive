@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # (C) Copyright 2018-2019 CSI-Piemonte
-import inspect
 import logging
 import time
 import binascii
@@ -24,11 +23,11 @@ from beecell.cache.client import CacheClient
 from beecell.db import TransactionError, QueryError
 from beecell.db.manager import MysqlManager, SqlManagerError, RedisManager
 from beecell.auth import extract
-from beecell.simple import str2uni, id_gen, import_class, truncate, get_class_name, \
-    parse_redis_uri, get_remote_ip, nround, str2bool, format_date, obscure_data
+from beecell.simple import str2uni, import_class, truncate, get_class_name, \
+    parse_redis_uri, get_remote_ip, str2bool, format_date, obscure_data
 from beecell.sendmail import Mailer
 from beehive.common.data import operation, trace
-from beecell.auth import AuthError, DatabaseAuth, LdapAuth, SystemUser
+from beecell.auth import DatabaseAuth, LdapAuth, SystemUser
 import gevent
 from beehive.common.apiclient import BeehiveApiClient, BeehiveApiClientError
 from beehive.common.model.config import ConfigDbManager
@@ -36,13 +35,11 @@ from beehive.common.model.authorization import AuthDbManager, Role
 from beehive.common.event import EventProducerRedis
 
 from beehive.common.dicttoxml import dicttoxml
-from beecell.flask.api_util import get_error
 from rediscluster.client import RedisCluster
 try:
     from beecell.server.uwsgi_server.wrapper import uwsgi_util
 except:
     pass
-from re import escape
 from copy import deepcopy
 from flask_session.sessions import RedisSessionInterface
 from beehive.common.data import encrypt_data, decrypt_data
@@ -664,10 +661,10 @@ class ApiManager(object):
                 ##### awx configuration #####
                 try:
                     self.logger.info(u'Configure AWX - CONFIGURE')            
-                    from beedrones.awx.awxclient import AwxClient, Awx
-                    self.awx_client = Awx(AwxClient(self.params[u'awx_uri'], user=self.params[u'awx_user'],
-                                                    passwd=self.params[u'awx_password'],
-                                                    organization=self.params[u'awx_organization']))
+                    #from beedrones.awx.old.awxclient import AwxClient, Awx
+                    #self.awx_client = Awx(AwxClient(self.params[u'awx_uri'], user=self.params[u'awx_user'],
+                    #                                passwd=self.params[u'awx_password'],
+                    #                                organization=self.params[u'awx_organization']))
                     self.logger.info(u'Configure AWX  - CONFIGURED')            
                 except:
                     self.logger.warning(u'Configure AWX  - NOT CONFIGURED')
