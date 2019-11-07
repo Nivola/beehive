@@ -11,6 +11,7 @@ from zlib import decompress
 from uuid import uuid4
 from base64 import b64decode
 from re import match
+from six import b
 from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA256
 from Crypto.Signature import PKCS1_v1_5
@@ -137,7 +138,7 @@ class ApiManager(object):
             self.uwsgi_uri = None
         
         # set encryption key
-        operation.encryption_key = self.app_fernet_key
+        operation.encryption_key = b(self.app_fernet_key)
 
         # swagger reference
         self.swagger = Swagger(self.app, template_file=u'swagger.yml')

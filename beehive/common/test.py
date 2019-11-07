@@ -76,6 +76,7 @@ class BeehiveTestCase(unittest.TestCase):
     # module_prefix = u'nrs'
 
     main_config_file = None
+    main_fernet_file = None
     spec_config_file = None
     validation_active = False
     run_test_user = u'test1'
@@ -106,6 +107,19 @@ class BeehiveTestCase(unittest.TestCase):
             logger.info(u'Get beehive test configuration: %s' % config_file)
         except Exception as ex:
             raise Exception(u'Error loading config file. Search in user home. %s' % ex)
+
+        # load configs fernet key
+        try:
+            home = os.path.expanduser(u'~')
+            if self.main_fernet_file is None:
+                config_file = u'%s/beehive.fernet' % home
+                self.main_fernet_file = config_file
+            else:
+                config_file = self.main_fernet_file.replace(u'yml', u'fernet')
+            fernet = self.load_file(config_file)
+            logger.info(u'Get beehive test fernet key: %s' % config_file)
+        except Exception as ex:
+            raise Exception(u'Error loading fernet key file. Search in user home. %s' % ex)
 
         # load specific configs for a set of test
         try:
@@ -138,6 +152,7 @@ class BeehiveTestCase(unittest.TestCase):
                 self.test_config.get(u'resource').get(key).update(cfg.get(u'configs').get(u'resource').get(key, {}))
         if u'configs' in cfg.keys() and u'container' in cfg.get(u'configs').keys():
             self.test_config.get(u'container').update(cfg.get(u'configs').get(u'container'))
+        self.fernet = fernet
 
         # endpoints
         self.endpoints = cfg.get(u'endpoints')
