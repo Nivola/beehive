@@ -114,7 +114,7 @@ if __name__ == '__main__':
             "proxmoxer==1.0.3",
             "geventhttpclient==1.3.1",
             "tabulate==0.8.3",
-            "py2-ipaddress==3.4.1",
+            "ipaddress==1.0.23",
             "ansible==2.8.4",
             "oauthlib==3.1.0",
             "requests_oauthlib==1.2.0",
