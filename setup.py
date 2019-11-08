@@ -140,4 +140,5 @@ if __name__ == '__main__':
         keywords='',
         python_requires='',
         obsoletes=[],
+        data_files=[('config', ['config/beehive.json']),
     )
