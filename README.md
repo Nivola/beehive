@@ -28,8 +28,8 @@ $ pip3 install wheel
 $ pip install git+https://github.com/Nivola/beecell.git
 $ pip install git+https://github.com/Nivola/beehive.git
 
-$ pip install https://gitlab.csi.it/nivola/cmp3/beecell.git@devel
-$ pip install https://gitlab.csi.it/nivola/cmp2/beehive.git@devel
+$ pip install git+https://gitlab.csi.it/nivola/cmp3/beecell.git@devel
+$ pip install git+https://gitlab.csi.it/nivola/cmp2/beehive.git@devel
 ```
 
 ## Getting Started

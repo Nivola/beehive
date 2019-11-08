@@ -112,8 +112,6 @@ if __name__ == '__main__':
             "xmltodict==0.12.0",
             "PyYAML==5.1.2",
             "proxmoxer==1.0.3",
-            "psycogreen==1.0.1",
-            "psycopg2==2.8.3",
             "geventhttpclient==1.3.1",
             "tabulate==0.8.3",
             "py2-ipaddress==3.4.1",
