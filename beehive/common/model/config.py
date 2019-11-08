@@ -58,7 +58,7 @@ class ConfigDbManager(AbstractDbManager):
             Base.metadata.create_all(engine)
             logger.info(u'Create tables on : %s' % (db_uri))
             del engine
-        except exc.DBAPIError, e:
+        except exc.DBAPIError as e:
             raise Exception(e)
     
     @staticmethod
@@ -71,7 +71,7 @@ class ConfigDbManager(AbstractDbManager):
             Base.metadata.drop_all(engine)
             logger.info(u'Remove tables from : %s' % (db_uri))
             del engine
-        except exc.DBAPIError, e:
+        except exc.DBAPIError as e:
             raise Exception(e)
 
     @query    

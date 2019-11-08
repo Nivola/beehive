@@ -23,13 +23,6 @@ from six.moves.urllib.parse import urlencode, quote
 from six.moves import http_client
 from six import PY3
 
-# if is_py3():
-#     from urllib.parse import urlencode, quote
-#     from http import client as httpclient
-# else:
-#     from urllib import urlencode, quote
-#     import httplib as httpclient
-
 
 class BeehiveApiClientError(Exception):
     def __init__(self, value, code=400):

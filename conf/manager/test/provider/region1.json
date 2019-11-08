@@ -1,9 +1,0 @@
-{
-  "region": {
-    "container": "tst-provider-01",
-    "name": "prv-region-01",
-    "desc": "prv-region-01",
-    "geo_area": "pedmont",
-    "coords": "100,100"
-  }
-}

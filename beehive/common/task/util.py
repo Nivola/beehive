@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # (C) Copyright 2018-2019 CSI-Piemonte
+
 from time import time
 
 from celery.utils.log import get_task_logger

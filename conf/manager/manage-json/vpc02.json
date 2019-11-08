@@ -1,9 +1,0 @@
-{
-    "vpc":{
-        "tag":"default",
-        "name":"vpc02",
-        "desc":"vpc02",
-        "super-zone":1843,
-        "networks":[{"id":1825}]
-    }
-}

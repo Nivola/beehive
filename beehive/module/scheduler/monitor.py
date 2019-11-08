@@ -14,8 +14,7 @@ def my_monitor(app):
         # will keep track of this for us.
         task = state.tasks.get(event['uuid'])
 
-        print('TASK FAILED: %s[%s] %s' % (
-            task.name, task.uuid, task.info(), ))
+        print('TASK FAILED: %s[%s] %s' % (task.name, task.uuid, task.info(), ))
         
     def announce_successes_tasks(event):
         state.event(event)
@@ -23,9 +22,8 @@ def my_monitor(app):
         # will keep track of this for us.
         task = state.tasks.get(event['uuid'])
 
-        print('TASK SUCCESS: %s[%s] %s' % (
-            task.name, task.uuid, task.info(), ))
-        print task.__dict__
+        print('TASK SUCCESS: %s[%s] %s' % (task.name, task.uuid, task.info(), ))
+        print(task.__dict__)
         
     def announce_received_tasks(event):
         state.event(event)
@@ -35,18 +33,18 @@ def my_monitor(app):
 
         print('TASK RECEIVED: %s[%s] %s' % (
             task.name, task.uuid, task.info(), ))
-        print task.__dict__        
+        print(task.__dict__)
 
     with app.connection() as connection:
         recv = app.events.Receiver(connection, handlers={
                 'task-failed': announce_failed_tasks,
                 'task-succeeded': announce_successes_tasks,
-                'task-received': announce_received_tasks,
-                #'*': state.event,
+                'task-received': announce_received_tasks
         })
         recv.capture(limit=None, timeout=None, wakeup=True)
 
+
 if __name__ == '__main__':
-    print 'Start monitor'
+    print('Start monitor')
     app = Celery(broker='redis://10.102.160.12:6379/1')
     my_monitor(app)

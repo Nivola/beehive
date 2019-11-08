@@ -10,17 +10,6 @@ from beehive.common.data import operation
 from marshmallow import fields, Schema, validates, ValidationError
 
 
-# class ListDomains(ApiView):
-#     def dispatch(self, controller, data, *args, **kwargs):
-#         auth_providers = controller.module.authentication_manager.auth_providers
-#         res = []
-#         for domain, auth_provider in auth_providers.iteritems():
-#             res.append([domain, auth_provider.__class__.__name__])
-#         resp = {u'domains':res,
-#                 u'count':len(res)}
-#         return resp
-
-
 def get_ip():
     return get_remote_ip(request)
 
