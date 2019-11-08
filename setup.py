@@ -70,7 +70,10 @@ if __name__ == '__main__':
             'Programming Language :: Python'
         ],
         entry_points={},
-        data_files=[(prefix+'/share/config', ['config/beehive.json'])],
+        data_files=[(prefix+'/share/config', ['config/auth.json',
+                                              'config/event.json',
+                                              'config/auth.ini',
+                                              'config/event.ini'])],
         package_data={},
         install_requires=[
             "SQLAlchemy==1.3.7",
