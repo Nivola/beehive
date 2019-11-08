@@ -69,7 +69,7 @@ if __name__ == '__main__':
             'Programming Language :: Python'
         ],
         entry_points={},
-        data_files=[],
+        data_files=[('config', ['config/beehive.json'])],
         package_data={},
         install_requires=[
             "SQLAlchemy==1.3.7",
@@ -139,6 +139,5 @@ if __name__ == '__main__':
         cmdclass={'install': install},
         keywords='',
         python_requires='',
-        obsoletes=[],
-        data_files=[('config', ['config/beehive.json']),
+        obsoletes=[]
     )
