@@ -4,6 +4,7 @@
 #
 # (C) Copyright 2018-2019 CSI-Piemonte
 
+from sys import prefix
 from setuptools import setup
 from setuptools.command.install import install as _install
 
@@ -69,7 +70,7 @@ if __name__ == '__main__':
             'Programming Language :: Python'
         ],
         entry_points={},
-        data_files=[('config', ['config/beehive.json'])],
+        data_files=[(prefix+'/share/config', ['config/beehive.json'])],
         package_data={},
         install_requires=[
             "SQLAlchemy==1.3.7",
