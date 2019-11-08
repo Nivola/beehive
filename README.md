@@ -7,6 +7,11 @@ Software parameters and their meaning.
 ## Prerequisites
 Fundamental requirements is python 3.5>.
 
+Required middleware:
+
+- mysql 5.7.x
+- redis 5.x
+
 First of all you have to install some package:
 
 ```
@@ -17,8 +22,8 @@ $ sudo apt-get install -y python-dev libldap2-dev libsasl2-dev libssl-dev
 At this point create a virtual env
 
 ```
-$ python3 -m venv beehvie-test-env
-$ source beehvie-test-env/bin/activate
+$ python3 -m venv /tmp/beehvie-test-env
+$ source /tmp/beehvie-test-env/bin/activate
 $ pip3 install wheel
 ```
 
@@ -31,6 +36,17 @@ $ pip install git+https://github.com/Nivola/beehive.git
 $ pip install git+https://gitlab.csi.it/nivola/cmp3/beecell.git@devel
 $ pip install git+https://gitlab.csi.it/nivola/cmp2/beehive.git@devel
 ```
+
+### Post configuration
+
+from beehive.common.helper import BeehiveHelper
+helper = BeehiveHelper()
+config = 'auth.json'
+helper.create_subsystem(config)
+
+### Run server
+
+
 
 ## Getting Started
 Instructions useful to deploy software on a simple environment (local machine or simple server configuration infrastructure).

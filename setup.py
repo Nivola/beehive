@@ -131,7 +131,8 @@ if __name__ == '__main__':
             "dnspython==1.16.0",
             "python-dateutil==2.8.0",
             "billiard==3.6.0",
-            "elasticsearch==7.0.4"
+            "elasticsearch==7.0.4",
+            "uwsgi==2.0.18"
         ],
         dependency_links=[],
         zip_safe=True,

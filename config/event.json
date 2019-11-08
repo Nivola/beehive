@@ -1,0 +1,33 @@
+{
+    "api_system":"beehive",
+    "api_subsystem":"{{ subsystem }}",
+    "api_modules":["beehive.module.event.mod.EventModule",
+                   "beehive.module.config.mod.ConfigModule",
+                   "beehive.module.scheduler.mod.SchedulerModule"],
+    "api_plugins":[],
+    "api_catalog":"{{ cmp.catalog }}",
+    "api_endpoint":"{{ cmp.internal_endpoint }}",
+    "db_uri":"{{ ssystem[subsystem].mysql }}",
+    "db_managers":["beehive.module.event.model.EventDbManager"],
+    "redis_identity_uri":"{{ platform.redis.identity }}",
+    "config":[
+        {"group":"redis", "name":"redis_01", "value":"{{ platform.redis.identity }}"},
+        {"group":"mail", "name":"server1", "value":"{{ mail_server }}"},
+        {"group":"mail", "name":"sender1", "value":"{{ mail_user }}"},      
+        {"group":"tcpproxy", "name":"proxy01", "value":"10.102.47.208"},
+        {"group":"httpproxy", "name":"proxy02", "value":"{{ http_proxy }}"},
+        {"group":"gateway", "name":"internet_spice", "value":{"name":"internet_spice", "host":"84.240.187.251", "port":80, "type":"spice"}},
+        {"group":"gateway", "name":"internet_vnc", "value":{"name":"internet_vnc", "host":"84.240.187.251", "port":80, "type":"vnc"}},
+        {"group":"gateway", "name":"rupar_spice", "value":{"name":"rupar_spice", "host":"10.102.81.197", "port":15900, "type":"spice"}},
+        {"group":"gateway", "name":"rupar_vnc", "value":{"name":"rupar_vnc", "host":"10.102.81.197", "port":15900, "type":"vnc"}},
+        {"group":"queue", "name":"queue.event", "value":{"name":"queue.event", "queue":"beehive.event", "uri":"{{ platform.redis.queue }}"}},
+        {"group":"queue", "name":"queue.catalog", "value":{"name":"queue.catalog", "queue":"beehive.catalog", "uri":"{{ platform.redis.queue }}"}},
+        {"group":"queue", "name":"queue.monitor", "value":{"name":"queue.monitor", "queue":"beehive.monitor", "uri":"{{ platform.redis.queue }}"}}
+    ],
+    "api":{
+        "endpoint":["{{ platform.endpoint }}"],
+        "user":"{{ platform.admin.user }}", 
+        "pwd":"{{ platform.admin.pwd }}",
+        "catalog":"{{ platform.catalog }}"
+    }
+}
