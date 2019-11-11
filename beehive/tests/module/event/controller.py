@@ -3,23 +3,23 @@ Created on Sep 2, 2013
 
 @author: darkbk
 '''
-from tests.test_util import run_test, CloudapiTestCase
-import unittest
 import datetime
-from gibboncloudapi.module.base import ApiManager
-from gibboncloudapi.module.event.model import EventDbManager
-from gibboncloudapi.util.data import operation
-from gibbonutil.simple import id_gen
+import unittest
+
+from beehive.common.apimanager import ApiManager
+from beehive.common.data import operation
+from beehive.common.test import BeehiveTestCase
+from beehive.module.event.model import EventDbManager
 
 pid = None
 pid = 836485998
 
-class EventControllerTestCase(CloudapiTestCase):
+class EventControllerTestCase(BeehiveTestCase):
     """To execute this test you need a mysql instance, a user and a 
     database associated to the user.
     """
     def setUp(self):
-        CloudapiTestCase.setUp(self)
+        BeehiveTestCase.setUp(self)
         operation.transaction = 0
         
         # create api manager
@@ -37,13 +37,7 @@ class EventControllerTestCase(CloudapiTestCase):
         # caller permissions
         perms = [(1, 1, 'event', 'property', 'ConfigEvent', '*', 1, '*'),
                  (1, 1, 'event', 'user', 'ConfigEvent', 'prova@local', 1, '*')]
-        #perms = []
-        
-        """perms = [(1, 1, 'auth', 'object_container', 'ObjectContainer', '*', 1, 'view'),
-                 (1, 1, 'auth', 'object_container', 'ObjectContainer', '*', 1, 'insert'),
-                 (1, 1, 'auth', 'object_container', 'ObjectContainer', '*', 1, 'update'),
-                 (1, 1, 'auth', 'object_container', 'ObjectContainer', '*', 1, 'delete')]
-        """
+
         operation.perms = perms
         operation.user = ('admin', 0)
         
@@ -53,7 +47,7 @@ class EventControllerTestCase(CloudapiTestCase):
     
     def tearDown(self):
         self.event_module.release_session(operation.session)
-        CloudapiTestCase.tearDown(self)
+        BeehiveTestCase.tearDown(self)
     
     def test_create_table(self):
         EventDbManager.create_table(self.db_uri)
@@ -84,5 +78,6 @@ def test_suite():
             ]
     return unittest.TestSuite(map(EventControllerTestCase, tests))
 
+
 if __name__ == '__main__':
-    run_test(test_suite())    
+    runtest(test_suite())

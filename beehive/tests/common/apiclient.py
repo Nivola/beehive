@@ -94,8 +94,6 @@ class BeehiveApiClientTestCase(BeehiveTestCase):
         for i in range(1, 20):
             time.sleep(2)
             res = self.client.get_catalogs()
-            print ''
-            print self.client.endpoints['auth']
         self.logger.info(self.pp.pformat(res))
         
     def test_get_catalog(self):
@@ -141,8 +139,7 @@ class BeehiveApiClientTestCase(BeehiveTestCase):
     def test_list_resources(self):
         global uid, seckey
         res = self.client.invoke('resource1', '/v1.0/resources/', 'get', '')
-        #self.logger.info(self.pp.pformat(res))
-        
+
+
 if __name__ == '__main__':
-    runtest(BeehiveApiClientTestCase, tests)    
-    
+    runtest(BeehiveApiClientTestCase, tests)

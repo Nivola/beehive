@@ -4,12 +4,12 @@ Created on Sep 2, 2013
 @author: darkbk
 '''
 import unittest
-from tests.test_util import BeehiveTestCase
 from beehive.common.data import operation
 from beehive.common.model.authorization import AuthDbManager
 from beecell.db import QueryError, TransactionError
 from beecell.simple import id_gen
-from beehive.common.test import runtest
+from beehive.common.test import runtest, BeehiveTestCase
+
 
 class AuthManagerTestCase(BeehiveTestCase):
     """To execute this test you need a mysql instance, a user and a 
@@ -217,14 +217,11 @@ class AuthManagerTestCase(BeehiveTestCase):
 
     def test_get_user_roles(self):
         user, total = self.manager.get_user(name='admin@local')
-        #print user[0].role[0].expiry_date
         res, total = self.manager.get_user_roles_with_expiry(user[0])
-        print res[0]
 
     def test_get_role_users(self):
         role, total = self.manager.get_role(name='ApiSuperadmin')
         res = self.manager.get_role_users(role[0])
-        print res
 
     def test_get_user_permissions(self):
         user = self.manager.get_user(name='user1')[0]
@@ -257,7 +254,6 @@ class AuthManagerTestCase(BeehiveTestCase):
         user = self.manager.get_user(name='user1')[0]
         if self.manager.add_role(id_gen(), 'role3', 'role3_desc'):
             role = self.manager.get_role(name='role3')[0]
-        #self.manager.append_role_permission(role, 3, 6)
         res = self.manager.append_user_role(user, role)
         self.assertEqual(res, True)
 
