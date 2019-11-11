@@ -11,8 +11,8 @@ import gevent.monkey
 # apply monkey patch
 gevent.monkey.patch_all()
 # apply monkey patch to psycopg2
-from psycogreen.gevent import patch_psycopg
-patch_psycopg()
+# from psycogreen.gevent import patch_psycopg
+# patch_psycopg()
 
 from beehive.common.flask_app import BeehiveApp
 

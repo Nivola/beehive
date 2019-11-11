@@ -12,8 +12,8 @@ from beehive.module.auth.tasks import disable_expired_users,\
 from beehive.common.test import runtest, BeehiveTestCase
 
 tests = [
-#u'test_disable_expired_users',
-u'test_remove_expired_roles_from_users',
+#'test_disable_expired_users',
+'test_remove_expired_roles_from_users',
 ]
 
 class AuthTaskTestCase(BeehiveTestCase):
@@ -31,13 +31,13 @@ class AuthTaskTestCase(BeehiveTestCase):
 
     def test_disable_expired_users(self):
         data = {}
-        task = disable_expired_users.delay(u'*', data)
+        task = disable_expired_users.delay('*', data)
         print task.id, task.status
         
     def test_remove_expired_roles_from_users(self):
         data = {}
-        task = remove_expired_roles_from_users.delay(u'*', data)
+        task = remove_expired_roles_from_users.delay('*', data)
         print task.id, task.status        
 
-if __name__ == u'__main__':
+if __name__ == '__main__':
     runtest(AuthTaskTestCase, tests)

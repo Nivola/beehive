@@ -42,33 +42,33 @@ class BaseTestCase(BeehiveTestCase):
     '''def test_processes(self):
         data = ''
         uri = '/v1.0/server/processes'
-        res = self.call(self.module, uri, 'GET', data=data, **self.users[u'admin'])
+        res = self.call(self.module, uri, 'GET', data=data, **self.users['admin'])
         self.logger.debug(self.pp.pformat(res))
         
     def test_workers(self):
         data = ''
         uri = '/v1.0/server/workers'
-        res = self.call(self.module, uri, 'GET', data=data, **self.users[u'admin'])
+        res = self.call(self.module, uri, 'GET', data=data, **self.users['admin'])
         self.logger.debug(self.pp.pformat(res))
         
     def test_configs(self):
         data = ''
         uri = '/v1.0/server/configs'
-        res = self.call(self.module, uri, 'GET', data=data, **self.users[u'admin'])
+        res = self.call(self.module, uri, 'GET', data=data, **self.users['admin'])
         self.logger.debug(self.pp.pformat(res))
 
     def test_uwsgi_configs(self):
         data = ''
         uri = '/v1.0/server/uwsgi/configs'
-        res = self.call(self.module, uri, 'GET', data=data, **self.users[u'admin'])
+        res = self.call(self.module, uri, 'GET', data=data, **self.users['admin'])
         self.logger.debug(self.pp.pformat(res))
 
     def test_reload(self):
         data = ''
         uri = '/v1.0/server/reload'
-        res = self.call(self.module, uri, 'PUT', data=data, **self.users[u'admin'])
+        res = self.call(self.module, uri, 'PUT', data=data, **self.users['admin'])
         self.logger.debug(self.pp.pformat(res))'''
 
 
-if __name__ == u'__main__':
+if __name__ == '__main__':
     runtest(BaseTestCase, tests)

@@ -2,7 +2,6 @@
 #
 # (C) Copyright 2018-2019 CSI-Piemonte
 
-#from beecell.perf import watch
 from beecell.simple import import_class, truncate, id_gen, str2uni
 from beecell.db import ModelError, QueryError, TransactionError
 from beehive.common.apiclient import BeehiveApiClientError
@@ -13,10 +12,11 @@ from beehive.common.controller.authorization import BaseAuthController,\
     AuthObject, Token
 from beehive.common.data import trace
 
+
 class CatalogController(BaseAuthController):
     """Catalog Module controller.
     """
-    version = u'v1.0'
+    version = 'v1.0'
     
     def __init__(self, module):
         BaseAuthController.__init__(self, module)
@@ -24,20 +24,17 @@ class CatalogController(BaseAuthController):
         self.manager = CatalogDbManager()
         self.child_classes = [Catalog]
 
-    @trace(entity=u'Catalog', op=u'insert')
+    @trace(entity='Catalog', op='insert')
     def add_catalog(self, name=None, desc=None, zone=None):
         """ """
         # check authorization
-        self.check_authorization(Catalog.objtype, Catalog.objdef, None, u'insert')
+        self.check_authorization(Catalog.objtype, Catalog.objdef, None, 'insert')
         
         try:
             # create catalog reference
             objid = id_gen()
-            #catalog = Catalog(self, oid=None, objid=objid, name=name, desc=desc, 
-            #                  active=True, model=None)
-            
+
             res = self.manager.add(objid, name, desc, zone)
-            #catalog.oid = res.id
             
             # create object and permission
             Catalog(self, oid=res.id).register_object([objid], desc=desc)
@@ -55,7 +52,7 @@ class CatalogController(BaseAuthController):
         """Get all catalog services count"""
         return self.manager.count_entities(ModelEndpoint)
 
-    @trace(entity=u'Catalog', op=u'view')
+    @trace(entity='Catalog', op='view')
     def get_catalog(self, oid):
         """Get single catalog.
 
@@ -65,7 +62,7 @@ class CatalogController(BaseAuthController):
         """
         return self.get_entity(Catalog, ModelCatalog, oid)
 
-    @trace(entity=u'Catalog', op=u'view')
+    @trace(entity='Catalog', op='view')
     def get_catalogs(self, *args, **kvargs):
         """Get catalogs.
         
@@ -83,11 +80,10 @@ class CatalogController(BaseAuthController):
             
             return entities, total                    
         
-        res, total = self.get_paginated_entities(Catalog, get_entities, 
-                                                *args, **kvargs)
+        res, total = self.get_paginated_entities(Catalog, get_entities, *args, **kvargs)
         return res, total            
         
-    @trace(entity=u'CatalogEndpoint', op=u'view')
+    @trace(entity='CatalogEndpoint', op='view')
     def get_endpoint(self, oid):
         """Get single catalog endpoint.
 
@@ -101,7 +97,7 @@ class CatalogController(BaseAuthController):
         
         return endpoint
         
-    @trace(entity=u'CatalogEndpoint', op=u'view')
+    @trace(entity='CatalogEndpoint', op='view')
     def get_endpoints(self, *args, **kvargs):
         """Get endpoints.
 
@@ -116,9 +112,9 @@ class CatalogController(BaseAuthController):
         """        
         def get_entities(*args, **kvargs):
             # get filter catalog
-            catalog = kvargs.pop(u'catalog', None)
+            catalog = kvargs.pop('catalog', None)
             if catalog is not None:
-                kvargs[u'catalog'] = self.get_catalog(catalog).oid
+                kvargs['catalog'] = self.get_catalog(catalog).oid
             
             entities, total = self.manager.get_endpoints(*args, **kvargs)
             
@@ -126,7 +122,7 @@ class CatalogController(BaseAuthController):
         
         def customize(entities, *args, **kvargs):
             # verify permissions for catalogs
-            objs = self.can(u'view', Catalog.objtype, definition=Catalog.objdef)
+            objs = self.can('view', Catalog.objtype, definition=Catalog.objdef)
             objs = objs.get(Catalog.objdef.lower())
             
             # create permission tags
@@ -136,29 +132,25 @@ class CatalogController(BaseAuthController):
             
             # make catalog index
             catalogs, total = self.manager.get(tags=tags)
-            catalogs_idx = {i.id:Catalog(self, oid=i.id, objid=i.objid, 
-                                         name=i.name, desc=i.desc, active=True, 
-                                         model=i) 
-                            for i in catalogs}
+            catalogs_idx = {i.id: Catalog(self, oid=i.id, objid=i.objid, name=i.name, desc=i.desc, active=True,
+                                          model=i) for i in catalogs}
             
             # set parent catalog
             for entity in entities:
                 cat = catalogs_idx[entity.model.catalog_id]
                 entity.set_catalog(cat.uuid, cat.name)
         
-        res, total = self.get_paginated_entities(CatalogEndpoint, get_entities, 
-                                                 customize=customize, 
-                                                 *args, **kvargs)
+        res, total = self.get_paginated_entities(CatalogEndpoint, get_entities, customize=customize, *args, **kvargs)
 
         return res, total 
 
 
 class Catalog(AuthObject):
-    module = u'CatalogModule'
-    objtype = u'directory'
-    objdef = u'Catalog'
-    objuri = u'catalog'
-    objdesc = u'dir/Catalog'
+    module = 'CatalogModule'
+    objtype = 'directory'
+    objdef = 'Catalog'
+    objuri = 'catalog'
+    objdesc = 'dir/Catalog'
     
     def __init__(self, *args, **kvargs):
         """ """
@@ -181,7 +173,7 @@ class Catalog(AuthObject):
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
         info = AuthObject.info(self)
-        info.update({u'zone':self.zone})
+        info.update({'zone':self.zone})
         return info
 
     def detail(self):
@@ -199,11 +191,10 @@ class Catalog(AuthObject):
                 services[item.service].append(item.endpoint)
             except:
                 services[item.service] = [item.endpoint]
-        info[u'services'] = [{u'service':k, u'endpoints':v} 
-                             for k,v in services.items()]
+        info['services'] = [{'service': k, 'endpoints': v} for k, v in services.items()]
         return info
 
-    @trace(op=u'endpoints.insert')
+    @trace(op='endpoints.insert')
     def add_endpoint(self, name=None, desc=None, service=None, uri=None, active=True):
         """Add endpoint.
         
@@ -218,32 +209,28 @@ class Catalog(AuthObject):
         :raises ApiAuthorizationError: raise :class:`ApiAuthorizationError`
         """
         # check authorization
-        self.controller.check_authorization(CatalogEndpoint.objtype, 
-                                            CatalogEndpoint.objdef, 
-                                            self.objid, u'insert')
+        self.controller.check_authorization(CatalogEndpoint.objtype, CatalogEndpoint.objdef, self.objid, 'insert')
         
         try:
             # create catalog endpoint reference
-            objid = u'%s//%s' % (self.objid, id_gen())            
-            res = self.manager.add_endpoint(objid, name, service, desc, self.oid, 
-                                            uri, active)
+            objid = b'%s//%s' % (self.objid, id_gen())
+            res = self.manager.add_endpoint(objid, name, service, desc, self.oid, uri, active)
             
             # create object and permission
-            CatalogEndpoint(self.controller, oid=res.id).register_object(
-                objid.split(u'//'), desc=desc)
+            CatalogEndpoint(self.controller, oid=res.id).register_object(objid.split('//'), desc=desc)
             
-            self.logger.debug(u'Add catalog endpoint: %s' % truncate(res))
+            self.logger.debug('Add catalog endpoint: %s' % truncate(res))
             return res.uuid
         except (QueryError, TransactionError, ModelError) as ex:      
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
 class CatalogEndpoint(AuthObject):
-    module = u'CatalogModule'
-    objtype = u'directory'
-    objdef = u'Catalog.Endpoint'
-    objuri = u'dir/endpoint'
-    objdesc = u'Catalog endpoint'
+    module = 'CatalogModule'
+    objtype = 'directory'
+    objdef = 'Catalog.Endpoint'
+    objuri = 'dir/endpoint'
+    objdesc = 'Catalog endpoint'
     
     def __init__(self, *args, **kvargs):
         """ """
@@ -260,8 +247,8 @@ class CatalogEndpoint(AuthObject):
 
     def set_catalog(self, uuid, name):
         self.catalog = {
-            u'name':name,
-            u'uuid':uuid,
+            'name':name,
+            'uuid':uuid,
         }
 
     def info(self):
@@ -273,9 +260,9 @@ class CatalogEndpoint(AuthObject):
         """
         info = AuthObject.info(self)
         info.update({
-            u'catalog':self.catalog,
-            u'service':self.model.service,
-            u'endpoint':self.model.uri
+            'catalog':self.catalog,
+            'service':self.model.service,
+            'endpoint':self.model.uri
         })
         return info
 

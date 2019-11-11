@@ -25,14 +25,14 @@ class CatalogTaskManagerTestCase(BeehiveTestCase):
 
     def test_run_refresh_catalog(self):
         data = {}
-        task = refresh_catalog.delay(u'*', data)
+        task = refresh_catalog.delay('*', data)
         print task.id, task.status
 
 def test_suite():
     tests = [
-        u'test_run_refresh_catalog',
+        'test_run_refresh_catalog',
     ]
     return unittest.TestSuite(map(CatalogTaskManagerTestCase, tests))
 
-if __name__ == u'__main__':
+if __name__ == '__main__':
     runtest(test_suite())

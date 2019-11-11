@@ -7,7 +7,7 @@ from celery.canvas import Signature as CelerySignature
 from celery.utils import abstract
 from beehive.common.task.handler import TaskResult
 
-logger = logging.getLogger(u'beehive.common')
+logger = logging.getLogger('beehive.common')
 
 
 class Signature(CelerySignature):
@@ -28,7 +28,7 @@ class Signature(CelerySignature):
         """
         jobid = CelerySignature.apply_async(self, args, kwargs, route_name, **options)
         task = TaskResult.task_pending(str(jobid))
-        logger.debug(u'Create new task: %s' % task)
+        logger.debug('Create new task: %s' % task)
         return jobid
 
 

@@ -60,9 +60,9 @@ class AuthJobTask(JobTask):
             endpoints = task_local.controller.manager.get_endpoints()
         except:
             endpoints = []
-            logger.debug(u'Get endpoints: %s' % endpoints)'''
+            logger.debug('Get endpoints: %s' % endpoints)'''
         endpoints = task_local.controller.get_endpoints(oid=oid)
-        logger.debug(u'Get endpoints: %s' % endpoints)
+        logger.debug('Get endpoints: %s' % endpoints)
         return endpoints
     
     def ping_endpoint(self, endpoint):
@@ -72,14 +72,14 @@ class AuthJobTask(JobTask):
         """
         uri = endpoint.model.uri
         res = self.apiclient.ping(endpoint=uri)
-        logger.warn(u'Ping endpoint %s: %s' % (uri, res))
+        logger.warn('Ping endpoint %s: %s' % (uri, res))
         return res      
 
 #
 # auth tasks
 #
 @task_manager.task(bind=True, base=AuthJob)
-@job(entity_class=User, name=u'disable-users.update', delta=1)
+@job(entity_class=User, name='disable-users.update', delta=1)
 def disable_expired_users(self, objid, params):
     """Disable expired users
     
@@ -97,7 +97,7 @@ def disable_expired_users(self, objid, params):
         .. code-block:: python
     
             {
-                u'cid':..,
+                'cid':..,
 
             }
     """
@@ -127,7 +127,7 @@ def disable_expired_users_task(self, options):
 
 
 @task_manager.task(bind=True, base=AuthJob)
-@job(entity_class=User, name=u'remove-user-roles.update', delta=1)
+@job(entity_class=User, name='remove-user-roles.update', delta=1)
 def remove_expired_roles_from_users(self, objid, params):
     """Remove expired roles from users
     
@@ -145,7 +145,7 @@ def remove_expired_roles_from_users(self, objid, params):
         .. code-block:: python
     
             {
-                u'cid':..,
+                'cid':..,
 
             }
     """

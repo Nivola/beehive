@@ -25,7 +25,7 @@ logger = get_task_logger(__name__)
 class JobError(Exception):
     def __init__(self, value, code=0):
         self.code = code
-        self.value = str(value)
+        self.value = value
         Exception.__init__(self, value, code)
 
     def __repr__(self):
@@ -38,7 +38,7 @@ class JobError(Exception):
 class JobInvokeApiError(Exception):
     def __init__(self, value, code=0):
         self.code = code
-        self.value = str(value)
+        self.value = value
         Exception.__init__(self, value, code)
 
     def __repr__(self):
@@ -62,9 +62,9 @@ class AbstractJob(BaseTask):
     def get_operation_id(self, objdef):
         """
         """
-        temp = objdef.split(u'.')
-        ids = [u'*' for i in temp]
-        return u'//'.join(ids)
+        temp = objdef.split('.')
+        ids = ['*' for i in temp]
+        return '//'.join(ids)
 
     def set_operation(self):
         """
@@ -79,9 +79,9 @@ class AbstractJob(BaseTask):
                 self.get_operation_id(
                     op.objdef),
                 1,
-                u'*')
+                '*')
             operation.perms.append(perm)
-        logger.debug(u'Set permissions: %s' % operation.perms)
+        logger.debug('Set permissions: %s' % operation.perms)
 
     #
     # shared area
@@ -131,7 +131,7 @@ class AbstractJob(BaseTask):
         return elapsed
 
     def get_entity_class_name(self):
-        return task_local.entity_class.__module__ + u'.' + \
+        return task_local.entity_class.__module__ + '.' + \
             task_local.entity_class.__name__
 
     def get_options(self):
@@ -157,38 +157,37 @@ class AbstractJob(BaseTask):
         """
         response = [status]
         if ex is not None:
-            response.append(str(ex))
+            response.append(ex)
 
-        action = task_local.op.split(u'.')[-1]
-        # op = task_local.op
-        # op = op.replace(u'.%s' % action, u'')
-        op = u'%s.%s' % (self.__module__, self.__name__)
+        action = task_local.op.split('.')[-1]
+
+        op = '%s.%s' % (self.__module__, self.__name__)
         entity_class = task_local.entity_class
         data = {
-            u'api_id': task_local.api_id,
-            u'opid': task_local.opid,
-            u'op': u'%s.%s' % (task_local.entity_class.objdef, op),
-            u'taskid': self.request.id,
-            u'task': self.name,
-            u'params': self.request.args,
-            u'response': response,
-            u'elapsed': elapsed,
-            u'msg': str(msg)
+            'api_id': task_local.api_id,
+            'opid': task_local.opid,
+            'op': '%s.%s' % (task_local.entity_class.objdef, op),
+            'taskid': self.request.id,
+            'task': self.name,
+            'params': self.request.args,
+            'response': response,
+            'elapsed': elapsed,
+            'msg': msg
         }
 
         source = {
-            u'user': operation.user[0],
-            u'ip': operation.user[1],
-            u'identity': operation.user[2]
+            'user': operation.user[0],
+            'ip': operation.user[1],
+            'identity': operation.user[2]
         }
 
         dest = {
-            u'ip': task_local.controller.module.api_manager.server_name,
-            u'port': task_local.controller.module.api_manager.http_socket,
-            u'objid': task_local.objid,
-            u'objtype': entity_class.objtype,
-            u'objdef': entity_class.objdef,
-            u'action': action
+            'ip': task_local.controller.module.api_manager.server_name,
+            'port': task_local.controller.module.api_manager.http_socket,
+            'objid': task_local.objid,
+            'objtype': entity_class.objtype,
+            'objdef': entity_class.objdef,
+            'action': action
         }
 
         # send event
@@ -196,7 +195,7 @@ class AbstractJob(BaseTask):
             client = self.controller.module.api_manager.event_producer
             client.send(ApiObject.ASYNC_OPERATION, data, source, dest)
         except Exception as ex:
-            logger.warn(u'Event can not be published. Event producer is not configured - %s' % ex)
+            logger.warn('Event can not be published. Event producer is not configured - %s' % ex)
 
     def update_job(self, params=None, status=None, current_time=None, ex=None, traceback=None, result=None, msg=None,
                    start_time=None):
@@ -213,31 +212,31 @@ class AbstractJob(BaseTask):
         """
         # get actual job
         job = TaskResult.get(task_local.opid)
-        if job[u'status'] is not None and job[u'status'] == u'FAILURE':
+        if job['status'] is not None and job['status'] == 'FAILURE':
             return None
 
         params = self.get_shared_data()
         # if job is finished exit to avoid wrong status change
-        if params.get(u'is-finished', False) is True:
+        if params.get('is-finished', False) is True:
             return None
 
-        if u'start-time' not in params.keys():
-            params[u'start-time'] = job.get(u'start_time')
+        if 'start-time' not in params.keys():
+            params['start-time'] = job.get('start_time')
             self.set_shared_data(params)
 
-        # if status == u'STARTED':
-        #     params[u'start-time'] = time()
+        # if status == 'STARTED':
+        #     params['start-time'] = time()
         #     self.set_shared_data(params)
 
         # set result if status is SUCCESS
         retval = None
-        if status == u'SUCCESS':
+        if status == 'SUCCESS':
             # set flag for SUCCESS job
-            params[u'is-finished'] = True
+            params['is-finished'] = True
             self.set_shared_data(params)
 
-            if u'result' in params:
-                retval = params[u'result']
+            if 'result' in params:
+                retval = params['result']
             # remove shared area
             # self.remove_shared_area()
 
@@ -246,18 +245,18 @@ class AbstractJob(BaseTask):
 
         # store job data
         msg = None
-        counter = int(job.get(u'counter', 0)) + 1
-        TaskResult.store(task_local.opid, status=status, retval=retval, inner_type=u'JOB', traceback=traceback,
+        counter = int(job.get('counter', 0)) + 1
+        TaskResult.store(task_local.opid, status=status, retval=retval, inner_type='JOB', traceback=traceback,
                          stop_time=current_time, msg=msg, counter=counter)
-        if status == u'FAILURE':
-            logger.error(u'JOB %s status change to %s' % (task_local.opid, status))
+        if status == 'FAILURE':
+            logger.error('JOB %s status change to %s' % (task_local.opid, status))
         else:
-            logger.info(u'JOB %s status change to %s' % (task_local.opid, status))
+            logger.info('JOB %s status change to %s' % (task_local.opid, status))
 
 
 class Job(AbstractJob):
     abstract = True
-    inner_type = u'JOB'
+    inner_type = 'JOB'
 
     def __init__(self, *args, **kwargs):
         BaseTask.__init__(self, *args, **kwargs)
@@ -289,7 +288,7 @@ class Job(AbstractJob):
         """Create celery signature with chord, group and chain
 
         :param tasks: list of celery tasks. Task can be a celery task or a dict like
-            {u'task':<celery task>, u'args':..}
+            {'task':<celery task>, 'args':..}
         :return: celery signature
         """
         tasks.reverse()
@@ -300,8 +299,8 @@ class Job(AbstractJob):
             if not isinstance(task, list):
                 if isinstance(task, dict):
                     internal_args = list(args)
-                    internal_args.extend(task.get(u'args'))
-                    item = task.get(u'task').signature(internal_args, immutable=True,
+                    internal_args.extend(task.get('args'))
+                    item = task.get('task').signature(internal_args, immutable=True,
                                                        queue=task_manager.conf.TASK_DEFAULT_QUEUE)
                 else:
                     item = task.signature(
@@ -313,11 +312,11 @@ class Job(AbstractJob):
                 for subtask in task:
                     if isinstance(subtask, dict):
                         internal_args = list(args)
-                        internal_args.extend(subtask.get(u'args'))
-                        subitem = subtask.get(u'task').signature(internal_args, immutable=True,
+                        internal_args.extend(subtask.get('args'))
+                        subitem = subtask.get('task').signature(internal_args, immutable=True,
                                                                  queue=task_manager.conf.TASK_DEFAULT_QUEUE)
                     else:
-                        subitem = subtask.get(u'task').signature(args, immutable=True,
+                        subitem = subtask.get('task').signature(args, immutable=True,
                                                                  queue=task_manager.conf.TASK_DEFAULT_QUEUE)
                     subitems.append(subitem)
                 item = chord(subitems, last_task)
@@ -331,7 +330,7 @@ class Job(AbstractJob):
 
         :param inst: celery task instance
         :param tasks: list of celery task to run. Task can be a celery task or a dict like
-            {u'task':<celery task>, u'args':..}
+            {'task':<celery task>, 'args':..}
         :param params: list of celery task params
         :return: True
         """
@@ -341,7 +340,7 @@ class Job(AbstractJob):
         inst.set_shared_data(params)
         tasks.insert(0, start_task)
         tasks.append(end_task)
-        logger.debug2(u'Workflow tasks: %s' % tasks)
+        logger.debug2('Workflow tasks: %s' % tasks)
         process = Job.create_job(tasks, ops)
         process.delay()
         return True
@@ -362,12 +361,12 @@ class Job(AbstractJob):
 
         The return value of this handler is ignored.
         """
-        err = str(exc)
+        err = exc
         BaseTask.on_failure(self, exc, task_id, args, kwargs, einfo)
         trace = format_tb(einfo.tb)
         trace.append(err)
-        logger.error(u'', exc_info=1)
-        self.update_job(params={}, status=u'FAILURE', current_time=time(), ex=err, traceback=trace,
+        logger.error('', exc_info=1)
+        self.update_job(params={}, status='FAILURE', current_time=time(), ex=err, traceback=trace,
                         result=None, msg=err)
 
     def on_retry(self, exc, task_id, args, kwargs, einfo):
@@ -383,25 +382,25 @@ class Job(AbstractJob):
 
         The return value of this handler is ignored.
         """
-        self.update_job(status=u'FAILURE', current_time=time())
+        self.update_job(status='FAILURE', current_time=time())
 
 
 class JobTask(AbstractJob):
     abstract = True
-    inner_type = u'JOBTASK'
+    inner_type = 'JOBTASK'
 
     #
     # api
     #
     def api_admin_request(self, module, path, method,
-                          data=u'', other_headers=None):
+                          data='', other_headers=None):
         if isinstance(data, dict):
             data = json.dumps(data)
         return self.app.api_manager.api_client.admin_request(
             module, path, method, data, other_headers, silent=True)
 
     def api_user_request(self, module, path, method,
-                         data=u'', other_headers=None):
+                         data='', other_headers=None):
         if isinstance(data, dict):
             data = json.dumps(data)
         return self.app.api_manager.api_client.user_request(
@@ -416,21 +415,21 @@ class JobTask(AbstractJob):
                  FAILURE
         """
         prefix = {
-            u'auth': u'nas',
-            u'service': u'nws',
-            u'resource': u'nrs',
-            u'event': u'nes'
+            'auth': 'nas',
+            'service': 'nws',
+            'resource': 'nrs',
+            'event': 'nes'
         }
 
         try:
-            uri = u'/v1.0/%s/worker/tasks/%s' % (prefix[module], job_id)
+            uri = '/v1.0/%s/worker/tasks/%s' % (prefix[module], job_id)
             res = self.api_admin_request(
-                module, uri, u'GET', u'').get(
-                u'task_instance', {})
-            logger.debug(u'Query job %s: %s' % (job_id, res[u'status']))
+                module, uri, 'GET', '').get(
+                'task_instance', {})
+            logger.debug('Query job %s: %s' % (job_id, res['status']))
         except ApiManagerError as ex:
             # remote job query fails. Return fake state and wait new query
-            res = {u'state': u'PROGRESS'}
+            res = {'state': 'PROGRESS'}
         return res, attempt
 
     def invoke_api(self, module, uri, method, data,
@@ -447,7 +446,7 @@ class JobTask(AbstractJob):
         :raise: ApiManagerError
         """
         res = self.api_admin_request(module, uri, method, data, other_headers)
-        self.update(u'PROGRESS', msg=u'Invoke api %s [%s] in module %s' % (uri, method, module))
+        self.update('PROGRESS', msg='Invoke api %s [%s] in module %s' % (uri, method, module))
 
         if link is not None:
             # set up link from remote stack to instance
@@ -455,45 +454,45 @@ class JobTask(AbstractJob):
             self.get_session()
             resource = self.get_resource(link)
             resource.add_link(
-                u'%s-link' %
-                res[u'uuid'],
-                u'relation',
-                res[u'uuid'],
+                '%s-link' %
+                res['uuid'],
+                'relation',
+                res['uuid'],
                 attributes={})
             # self.release_session()
-            self.update(u'PROGRESS', msg=u'Setup link between resource %s and resource %s' %
-                                         (res[u'uuid'], resource.oid))
+            self.update('PROGRESS', msg='Setup link between resource %s and resource %s' %
+                                         (res['uuid'], resource.oid))
             # self.release_session()
 
-        if method in [u'POST', u'PUT', u'DELETE']:
-            job_id = res[u'jobid']
-            self.update(u'PROGRESS', msg=u'Invoke job %s' % job_id)
+        if method in ['POST', 'PUT', 'DELETE']:
+            job_id = res['jobid']
+            self.update('PROGRESS', msg='Invoke job %s' % job_id)
 
-            status = u'PENDING'
+            status = 'PENDING'
             attempt = 1
             # after 6 attempt set status to FAILURE and block loop
-            while status != u'SUCCESS' and status != u'FAILURE':
+            while status != 'SUCCESS' and status != 'FAILURE':
                 sleep(task_local.delta)
                 job = self._query_job(module, job_id, attempt)
                 attempt = job[1]
                 job = job[0]
-                status = job[u'status']
-                self.update(u'PROGRESS')
+                status = job['status']
+                self.update('PROGRESS')
 
             self.update(
-                status, msg=u'Job %s completed with %s' %
+                status, msg='Job %s completed with %s' %
                 (job_id, status))
-            if status == u'FAILURE':
+            if status == 'FAILURE':
                 try:
-                    trace = job[u'traceback'][-1]
+                    trace = job['traceback'][-1]
                 except BaseException:
-                    trace = u'Job %s was not found' % job_id
-                err = u'Remote job %s error: %s' % (job_id, trace)
-                trace = str(trace)
+                    trace = 'Job %s was not found' % job_id
+                err = 'Remote job %s error: %s' % (job_id, trace)
+                trace = trace
                 logger.error(err)
                 raise JobInvokeApiError(trace)
             else:
-                return job[u'result']
+                return job['result']
         else:
             return res
 
@@ -513,50 +512,50 @@ class JobTask(AbstractJob):
         """
         try:
             # append job to task jobs list
-            self.update(u'PROGRESS', job=task_id)
+            self.update('PROGRESS', job=task_id)
 
             # get celery task
             inner_task = TaskResult.get(task_id)
             start = time()
 
             # loop until inner_task finish with success or error
-            status = inner_task.get(u'status')
-            start_counter = inner_task.get(u'counter', 0)
-            while status != u'SUCCESS' and status != u'FAILURE':
+            status = inner_task.get('status')
+            start_counter = inner_task.get('counter', 0)
+            while status != 'SUCCESS' and status != 'FAILURE':
                 sleep(task_local.delta)
                 inner_task = TaskResult.get(task_id)
-                counter = inner_task.get(u'counter', 0)
+                counter = inner_task.get('counter', 0)
                 elapsed = time() - start
                 # verify job is stalled
                 if counter - start_counter == 0 and elapsed > 60:
-                    raise JobError(u'Job %s is stalled' % task_id)
+                    raise JobError('Job %s is stalled' % task_id)
 
                 self.update(
-                    u'PROGRESS', msg=u'Job %s status %s after %ss' %
+                    'PROGRESS', msg='Job %s status %s after %ss' %
                     (task_id, status, elapsed))
-                status = inner_task.get(u'status')
+                status = inner_task.get('status')
 
             elapsed = time() - start
-            if status == u'FAILURE':
-                err = inner_task.get(u'traceback')[-1]
-                logger.error(u'Job %s error after %ss' % (task_id, elapsed))
+            if status == 'FAILURE':
+                err = inner_task.get('traceback')[-1]
+                logger.error('Job %s error after %ss' % (task_id, elapsed))
                 self.update(
-                    u'PROGRESS', msg=u'Job %s status %s after %ss' %
+                    'PROGRESS', msg='Job %s status %s after %ss' %
                     (task_id, status, elapsed))
                 raise JobError(err)
-            elif status == u'SUCCESS':
+            elif status == 'SUCCESS':
                 self.update(
-                    u'PROGRESS', msg=u'Job %s success after %ss' %
+                    'PROGRESS', msg='Job %s success after %ss' %
                     (task_id, elapsed))
                 res = inner_task
             else:
                 logger.error(
-                    u'Job %s unknown error after %ss' %
+                    'Job %s unknown error after %ss' %
                     (task_id, elapsed))
                 self.update(
-                    u'PROGRESS', msg=u'Job %s status %s after %ss' %
-                    (task_id, u'UNKNONWN', elapsed))
-                raise JobError(u'Unknown error')
+                    'PROGRESS', msg='Job %s status %s after %ss' %
+                    (task_id, 'UNKNONWN', elapsed))
+                raise JobError('Unknown error')
 
             return res
         except Exception as ex:
@@ -572,7 +571,7 @@ class JobTask(AbstractJob):
         :param msg: message to log
         :return:
         """
-        self.update(u'PROGRESS', msg=msg)
+        self.update('PROGRESS', msg=msg)
 
     def update(self, status, ex=None, traceback=None,
                result=None, msg=None, start_time=None, job=None):
@@ -594,11 +593,11 @@ class JobTask(AbstractJob):
 
         # log message
         if msg is not None:
-            msg = str(msg)
-            if status == u'FAILURE':
+            # msg = str(msg)
+            if status == 'FAILURE':
                 # logger.error(msg, exc_info=1)
                 logger.error(msg)
-                # msg = u'ERROR: %s' % msg
+                # msg = 'ERROR: %s' % msg
             else:
                 logger.debug(truncate(msg))
 
@@ -608,20 +607,20 @@ class JobTask(AbstractJob):
         if job is not None:
             jobs = [job]
         TaskResult.store(task_id, status=status, traceback=traceback, retval=result, msg=msg, stop_time=current_time,
-                         start_time=start_time, inner_type=u'JOBTASK', jobs=jobs)
+                         start_time=start_time, inner_type='JOBTASK', jobs=jobs)
 
         # get job start time
-        job_start_time = params.get(u'start-time', 0)
+        job_start_time = params.get('start-time', 0)
 
         # update job only if job_start_time is not 0. job_start_time=0 if job already finished and shared area is empty
         # don't update job when task status is SUCCESS to avoid async on_success of a task to overwrite job status
         # already written by a following task
-        if job_start_time != 0 and status != u'SUCCESS':
+        if job_start_time != 0 and status != 'SUCCESS':
             # get elapsed
             elapsed = current_time - float(job_start_time)
 
             # update job
-            self.update_job(current_time=time(), status=u'PROGRESS')
+            self.update_job(current_time=time(), status='PROGRESS')
 
             # send event
             self.send_job_event(status, elapsed, ex, msg)
@@ -642,16 +641,16 @@ class JobTask(AbstractJob):
 
         The return value of this handler is ignored.
         """
-        err = str(exc)
+        err = exc
         BaseTask.on_failure(self, exc, task_id, args, kwargs, einfo)
         trace = format_tb(einfo.tb)
         trace.append(err)
-        logger.error(u'', exc_info=1)
-        msg = u'ERROR %s:%s %s' % (self.name, task_id, err)
-        self.update(u'FAILURE', ex=err, traceback=trace, result=None, msg=msg)
+        logger.error('', exc_info=1)
+        msg = 'ERROR %s:%s %s' % (self.name, task_id, err)
+        self.update('FAILURE', ex=err, traceback=trace, result=None, msg=msg)
 
         # update job
-        self.update_job(params={}, status=u'FAILURE', current_time=time(), ex=err, traceback=trace, result=None,
+        self.update_job(params={}, status='FAILURE', current_time=time(), ex=err, traceback=trace, result=None,
                         msg=err)
 
     def on_retry(self, exc, task_id, args, kwargs, einfo):
@@ -667,7 +666,7 @@ class JobTask(AbstractJob):
 
         The return value of this handler is ignored.
         """
-        self.update(u'RETRY')
+        self.update('RETRY')
 
     def on_success(self, retval, task_id, args, kwargs):
         """Run by the worker if the task executes successfully.
@@ -681,7 +680,7 @@ class JobTask(AbstractJob):
 
         The return value of this handler is ignored.
         """
-        self.update(u'SUCCESS', msg=u'STOP - %s:%s' % (self.name, task_id))
+        self.update('SUCCESS', msg='STOP - %s:%s' % (self.name, task_id))
 
 
 def job(entity_class=None, name=None, module=None, delta=2):
@@ -706,16 +705,16 @@ def job(entity_class=None, name=None, module=None, delta=2):
             # setup correct user
             user_data = args[0]
             try:
-                user = user_data.pop(u'user', u'task_manager')
-                server = user_data.pop(u'server', u'127.0.0.1')
-                identity = user_data.pop(u'identity', u'')
-                api_id = user_data.pop(u'api_id', u'')
+                user = user_data.pop('user', 'task_manager')
+                server = user_data.pop('server', '127.0.0.1')
+                identity = user_data.pop('identity', '')
+                api_id = user_data.pop('api_id', '')
             except BaseException:
-                logger.warn(u'Can not get request user', exc_info=1)
-                user = u'task_manager'
-                server = u'127.0.0.1'
-                identity = u''
-                api_id = u''
+                logger.warn('Can not get request user', exc_info=1)
+                user = 'task_manager'
+                server = '127.0.0.1'
+                identity = ''
+                api_id = ''
 
             operation.perms = []
             operation.user = (user, server, identity)
@@ -742,10 +741,10 @@ def job(entity_class=None, name=None, module=None, delta=2):
             task_local.api_id = api_id
 
             # record PENDING task and set start-time
-            ### status = u'STARTED'
+            ### status = 'STARTED'
             # start_time = time()
             # params = {
-            #     u'start-time': start_time,
+            #     'start-time': start_time,
             # }
             # task.set_shared_data(params)
             # task.update_job(status=status, current_time=time())
@@ -760,7 +759,7 @@ def job(entity_class=None, name=None, module=None, delta=2):
     return wrapper
 
 
-def job_task(module=u'', synchronous=True):
+def job_task(module='', synchronous=True):
     """Decorator used for workflow child task.
 
     Example::
@@ -800,8 +799,8 @@ def job_task(module=u'', synchronous=True):
             operation.encryption_key = task.app.api_manager.app_fernet_key
 
             res = None
-            # task.update(u'STARTED', start_time=time(), msg=u'Start %s:%s' % (task.name, task.request.id))
-            task.update(u'STARTED', msg=u'START - %s:%s' % (task.name, task.request.id))
+            # task.update('STARTED', start_time=time(), msg='Start %s:%s' % (task.name, task.request.id))
+            task.update('STARTED', msg='START - %s:%s' % (task.name, task.request.id))
             if synchronous:
                 res = fn(task, params, *args, **kwargs)
                 task.release_session()
@@ -809,7 +808,7 @@ def job_task(module=u'', synchronous=True):
                 try:
                     res = fn(task, params, *args, **kwargs)
                 except Exception as e:
-                    msg = u'FAIL - %s:%s caused by %s' % (task.name, task.request.id, e)
+                    msg = 'FAIL - %s:%s caused by %s' % (task.name, task.request.id, e)
 
                     task.on_failure(e, task.request.id, args, kwargs, ExceptionInfo())
                     logger.error(msg)

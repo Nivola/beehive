@@ -5,6 +5,7 @@
 import ujson as json
 import logging
 from re import match
+from six import b
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy import create_engine, exc
 from sqlalchemy.dialects.mysql import DATETIME
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 class DbEvent(Base):
-    __tablename__ = u'event'
+    __tablename__ = 'event'
 
     id = Column(Integer, primary_key=True)
     event_id = Column(String(40))
@@ -76,9 +77,9 @@ class EventDbManager(AbstractDbManager):
             engine = create_engine(db_uri)
             engine.execute("SET FOREIGN_KEY_CHECKS=1;")
             Base.metadata.create_all(engine)
-            logger.info(u'Create tables on : %s' % (db_uri))
+            logger.info('Create tables on : %s' % (db_uri))
             del engine
-        except exc.DBAPIError, e:
+        except exc.DBAPIError as e:
             raise Exception(e)
     
     @staticmethod
@@ -91,9 +92,9 @@ class EventDbManager(AbstractDbManager):
             engine = create_engine(db_uri)
             engine.execute("SET FOREIGN_KEY_CHECKS=0;")
             Base.metadata.drop_all(engine)
-            logger.info(u'Remove tables from : %s' % (db_uri))
+            logger.info('Remove tables from : %s' % (db_uri))
             del engine
-        except exc.DBAPIError, e:
+        except exc.DBAPIError as e:
             raise Exception(e)    
     
     @query
@@ -107,10 +108,10 @@ class EventDbManager(AbstractDbManager):
         res = [i[0] for i in query]
         
         if len(res) == 0:
-            self.logger.error(u'No event types found')
-            raise SQLAlchemyError(u'No event types found')            
+            self.logger.error('No event types found')
+            raise SQLAlchemyError('No event types found')            
         
-        self.logger.debug(u'Get event types: %s' % truncate(res))
+        self.logger.debug('Get event types: %s' % truncate(res))
         
         return res
     
@@ -125,10 +126,10 @@ class EventDbManager(AbstractDbManager):
         res = [i[0].lower() for i in query]
         
         if len(res) == 0:
-            self.logger.error(u'No entity definitions found')
-            raise SQLAlchemyError(u'No entity definitions found')            
+            self.logger.error('No entity definitions found')
+            raise SQLAlchemyError('No entity definitions found')            
         
-        self.logger.debug(u'Get entity definitions: %s' % truncate(res))
+        self.logger.debug('Get entity definitions: %s' % truncate(res))
         
         return res    
 
@@ -141,24 +142,24 @@ class EventDbManager(AbstractDbManager):
         session = self.get_session()
         
         # get obj by uuid
-        if match(u'[0-9a-z]+', str(oid)):
+        if match('[0-9a-z]+', b(oid)):
             query = session.query(DbEvent).filter_by(event_id=oid)
         # get obj by id
-        elif match(u'[0-9]+', str(oid)):
+        elif match('[0-9]+', b(oid)):
             query = session.query(DbEvent).filter_by(id=oid)
 
         entity = query.first()
         
         if entity is None:
-            msg = u'No event found'
+            msg = 'No event found'
             self.logger.error(msg)
             raise ModelError(msg, code=404)
                  
-        self.logger.debug(u'Get event: %s' % (truncate(entity)))
+        self.logger.debug('Get event: %s' % (truncate(entity)))
         return entity
 
     @query
-    def get_events(self, tags=[], page=0, size=10, order=u'DESC', field=u'id', with_perm_tag=None, *args, **kvargs):
+    def get_events(self, tags=[], page=0, size=10, order='DESC', field='id', with_perm_tag=None, *args, **kvargs):
         """Get events with some permission tags
         
         :param type: event type [optional]
@@ -184,15 +185,15 @@ class EventDbManager(AbstractDbManager):
         query = PaginatedQueryGenerator(DbEvent, self.get_session(), with_perm_tag=with_perm_tag)
 
         # set filters
-        query.add_relative_filter(u'AND t3.type = :type', u'type', kvargs)
-        query.add_relative_filter(u'AND t3.objid like :objid', u'objid', kvargs)
-        query.add_relative_filter(u'AND t3.objtype like :objtype', u'objtype', kvargs)
-        query.add_relative_filter(u'AND t3.objdef like :objdef', u'objdef', kvargs)
-        query.add_relative_filter(u'AND t3.data like :data', u'data', kvargs)
-        query.add_relative_filter(u'AND t3.source like :source', u'source', kvargs)
-        query.add_relative_filter(u'AND t3.dest like :dest', u'dest', kvargs)
-        query.add_relative_filter(u'AND t3.creation >= :datefrom', u'datefrom', kvargs)
-        query.add_relative_filter(u'AND t3.creation <= :dateto', u'dateto', kvargs)
+        query.add_relative_filter('AND t3.type = :type', 'type', kvargs)
+        query.add_relative_filter('AND t3.objid like :objid', 'objid', kvargs)
+        query.add_relative_filter('AND t3.objtype like :objtype', 'objtype', kvargs)
+        query.add_relative_filter('AND t3.objdef like :objdef', 'objdef', kvargs)
+        query.add_relative_filter('AND t3.data like :data', 'data', kvargs)
+        query.add_relative_filter('AND t3.source like :source', 'source', kvargs)
+        query.add_relative_filter('AND t3.dest like :dest', 'dest', kvargs)
+        query.add_relative_filter('AND t3.creation >= :datefrom', 'datefrom', kvargs)
+        query.add_relative_filter('AND t3.creation <= :dateto', 'dateto', kvargs)
 
         query.set_pagination(page=page, size=size, order=order, field=field)
         res = query.run(tags, *args, **kvargs)
@@ -285,10 +286,10 @@ class EventDbManager(AbstractDbManager):
                                   json.dumps(dest))
 
             # add permtag
-            ids = self.get_all_valid_objids(objid.split(u'//'))
+            ids = self.get_all_valid_objids(objid.split('//'))
             for i in ids:
-                perm = u'%s-%s' % (objdef.lower(), i)
+                perm = '%s-%s' % (objdef.lower(), i)
                 tag = self.hash_from_permission(objdef.lower(), i)
-                self.add_perm_tag(tag, perm, res.id, u'event')
+                self.add_perm_tag(tag, perm, res.id, 'event')
         
         return res

@@ -22,31 +22,59 @@ $ sudo apt-get install -y python-dev libldap2-dev libsasl2-dev libssl-dev
 At this point create a virtual env
 
 ```
-$ python3 -m venv /tmp/beehvie-test-env
-$ source /tmp/beehvie-test-env/bin/activate
+$ python3 -m venv /tmp/beehive-test-env
+$ source /tmp/beehive-test-env/bin/activate
 $ pip3 install wheel
 ```
 
 ## Installing
 
 ```
-$ pip install git+https://github.com/Nivola/beecell.git
-$ pip install git+https://github.com/Nivola/beehive.git
+$ pip3 install git+https://github.com/Nivola/beecell.git
+$ pip3 install git+https://github.com/Nivola/beehive.git
 
-$ pip install git+https://gitlab.csi.it/nivola/cmp3/beecell.git@devel
-$ pip install git+https://gitlab.csi.it/nivola/cmp2/beehive.git@devel
+$ pip3 install git+https://gitlab.csi.it/nivola/cmp3/beecell.git@devel
+$ pip3 install git+https://gitlab.csi.it/nivola/cmp2/beehive.git@devel
 ```
 
 ### Post configuration
 
-from beehive.common.helper import BeehiveHelper
-helper = BeehiveHelper()
-config = 'auth.json'
-helper.create_subsystem(config)
+#### Init auth module
 
-### Run server
+```
+$ python console.py init auth --path=/tmp/beehive-test-env/share/config
+```
 
+#### Run auth server
 
+```
+$ uwsgi -i share/config/auth.ini
+```
+
+#### Init event module
+
+```
+$ python console.py init event --path=/tmp/beehive-test-env/share/config
+```
+
+### Run servers
+
+#### Run auth server
+
+```
+uwsgi -i share/config/auth.ini
+```
+
+### Reload server
+# using kill to send the signal
+kill -HUP `cat /tmp/project-master.pid`
+# or the convenience option --reload
+uwsgi --reload /tmp/project-master.pid
+
+### Stop server
+kill -INT `cat /tmp/project-master.pid`
+# or for convenience...
+uwsgi --stop /tmp/project-master.pid
 
 ## Getting Started
 Instructions useful to deploy software on a simple environment (local machine or simple server configuration infrastructure).

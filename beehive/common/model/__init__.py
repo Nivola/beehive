@@ -4,7 +4,7 @@
 
 import logging
 from time import time
-
+from six import b
 from sqlalchemy import create_engine, exc
 from sqlalchemy.ext.declarative import declarative_base
 from beehive.common.data import operation, query, transaction
@@ -83,7 +83,7 @@ class BaseEntity(AuditData):
     """
         
     """
-    __table_args__ = {u'mysql_engine': u'InnoDB'}
+    __table_args__ = {'mysql_engine': 'InnoDB'}
 
     id = Column(Integer, primary_key=True)
     uuid = Column(String(50), unique=True)
@@ -92,9 +92,9 @@ class BaseEntity(AuditData):
     desc = Column(String(255))
     active = Column(Boolean())
     
-    def __init__(self, objid, name, desc=u'', active=True):
+    def __init__(self, objid, name, desc='', active=True):
         self.uuid = str(uuid4())
-        self.objid = objid
+        self.objid = str(objid)
         self.name = name
         self.desc = desc
         self.active = active
@@ -123,46 +123,46 @@ class BaseEntity(AuditData):
         """
         filters=[]
         # id is unique
-        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field(u'id', kvargs))
-        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field(u'uuid', kvargs))
-        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field(u'objid', kvargs))
-        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field(u'name', kvargs))
-        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field(u'desc', kvargs))
-        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field(u'active', kvargs))
+        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field('id', kvargs))
+        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field('uuid', kvargs))
+        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field('objid', kvargs))
+        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field('name', kvargs))
+        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field('desc', kvargs))
+        filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field('active', kvargs))
 
         # expired
-        if u'filter_expired' in kvargs and kvargs.get(u'filter_expired') is not None: 
-            if kvargs.get(u'filter_expired') is True:
-                filters.append(u' AND t3.expiry_date<=:filter_expiry_date')
+        if 'filter_expired' in kvargs and kvargs.get('filter_expired') is not None: 
+            if kvargs.get('filter_expired') is True:
+                filters.append(' AND t3.expiry_date<=:filter_expiry_date')
             else:
-                filters.append(u' AND (t3.expiry_date>:filter_expiry_date OR t3.expiry_date is null)')
+                filters.append(' AND (t3.expiry_date>:filter_expiry_date OR t3.expiry_date is null)')
         
         # creation_date
-        currField = u'filter_creation_date_start'
+        currField = 'filter_creation_date_start'
         if currField in kvargs and kvargs.get(currField) is not None: 
-            filters.append(u' AND t3.creation_date>=:{field}'.format(field=currField))
+            filters.append(' AND t3.creation_date>=:{field}'.format(field=currField))
         
-        currField = u'filter_creation_date_stop'
+        currField = 'filter_creation_date_stop'
         if currField in kvargs and kvargs.get(currField) is not None: 
-            filters.append(u' AND t3.creation_date<=:{field}'.format(field=currField))
+            filters.append(' AND t3.creation_date<=:{field}'.format(field=currField))
             
         # modification_date
-        currField = u'filter_modification_date_start'
+        currField = 'filter_modification_date_start'
         if currField in kvargs and kvargs.get(currField) is not None: 
-            filters.append(u' AND t3.modification_date>=:{field}'.format(field=currField))
+            filters.append(' AND t3.modification_date>=:{field}'.format(field=currField))
         
-        currField = u'filter_modification_date_stop'
+        currField = 'filter_modification_date_stop'
         if currField in kvargs and kvargs.get(currField) is not None: 
-            filters.append(u' AND t3.modification_date<=:{field}'.format(field=currField))
+            filters.append(' AND t3.modification_date<=:{field}'.format(field=currField))
         
         # expiry_date
-        currField = u'filter_expiry_date_start'
+        currField = 'filter_expiry_date_start'
         if currField in kvargs and kvargs.get(currField) is not None: 
-            filters.append(u' AND (t3.expiry_date is null OR t3.expiry_date>=:{field})'.format(field=currField))
+            filters.append(' AND (t3.expiry_date is null OR t3.expiry_date>=:{field})'.format(field=currField))
         
-        currField = u'filter_expiry_date_stop'
+        currField = 'filter_expiry_date_stop'
         if currField in kvargs and kvargs.get(currField) is not None: 
-            filters.append(u' AND (t3.expiry_date is null OR t3.expiry_date<=:{field})'.format(field=currField))
+            filters.append(' AND (t3.expiry_date is null OR t3.expiry_date<=:{field})'.format(field=currField))
         
         return filters  
 
@@ -173,17 +173,17 @@ class BaseEntity(AuditData):
     
     def disable(self):
         self.expiry_date = datetime.today()
-        self.name += u'%s-DELETED' % id_gen()
+        self.name += '%s-DELETED' % id_gen()
         self.active = False
         
     def __repr__(self):
-        return u'<%s id=%s, uuid=%s, obid=%s, name=%s, active=%s>' % (
+        return '<%s id=%s, uuid=%s, obid=%s, name=%s, active=%s>' % (
             self.__class__.__name__, self.id, self.uuid, self.objid, self.name, self.active)
      
 
 class PermTag(Base):
-    __tablename__ = u'perm_tag'
-    __table_args__ = {u'mysql_engine': u'InnoDB'}
+    __tablename__ = 'perm_tag'
+    __table_args__ = {'mysql_engine': 'InnoDB'}
     
     id = Column(Integer, primary_key=True)
     value = Column(String(100), unique = True)
@@ -200,12 +200,12 @@ class PermTag(Base):
         self.explain = explain
     
     def __repr__(self):
-        return u'<PermTag(%s, %s)>' % (self.value, self.explain)
+        return '<PermTag(%s, %s)>' % (self.value, self.explain)
 
 
 class PermTagEntity(Base):
-    __tablename__ = u'perm_tag_entity'
-    __table_args__ = {u'mysql_engine': u'InnoDB'}
+    __tablename__ = 'perm_tag_entity'
+    __table_args__ = {'mysql_engine': 'InnoDB'}
     
     id = Column(Integer, primary_key=True)
     tag = Column(Integer)
@@ -213,7 +213,7 @@ class PermTagEntity(Base):
     type = Column(String(200))
     
     __table_args__ = (
-        Index(u'idx_tag_entity', u'tag', u'entity', unique=True),
+        Index('idx_tag_entity', 'tag', 'entity', unique=True),
     )    
     
     def __init__(self, tag, entity, type):
@@ -228,8 +228,7 @@ class PermTagEntity(Base):
         self.type = type
     
     def __repr__(self):
-        return u'<PermTagEntity(%s, %s, %s, %s)>' % (self.id, self.tag, 
-                                                     self.entity, self.type)
+        return '<PermTagEntity(%s, %s, %s, %s)>' % (self.id, self.tag, self.entity, self.type)
 
 
 class PaginatedQueryGenerator(object):
@@ -243,7 +242,7 @@ class PaginatedQueryGenerator(object):
         :param custom_select: custom select used instead of entity table
         :param with_perm_tag: check permission tags.
         """
-        self.logger = logging.getLogger(self.__class__.__module__+ u'.' + self.__class__.__name__)
+        self.logger = logging.getLogger(self.__class__.__module__+ '.' + self.__class__.__name__)
         
         self.session = session
         self.entity = entity
@@ -252,11 +251,11 @@ class PaginatedQueryGenerator(object):
         self.other_tables = []
         self.other_filters = []
         self.filter_fields = []
-        self.select_fields = [u't3.*']
+        self.select_fields = ['t3.*']
         self.with_perm_tag = with_perm_tag
         self.joins = []
     
-    def set_pagination(self, page=0, size=10, order=u'DESC', field=u'id'):
+    def set_pagination(self, page=0, size=10, order='DESC', field='id'):
         """Set pagiantion params
         
         :param page: users list page to show [default=0]
@@ -264,8 +263,8 @@ class PaginatedQueryGenerator(object):
         :param order: sort order [default=DESC]
         :param field: sort field [default=id]
         """
-        if field == u'id':
-            field = u't3.id'
+        if field == 'id':
+            field = 't3.id'
 
         self.page = page
         self.size = size
@@ -292,13 +291,13 @@ class PaginatedQueryGenerator(object):
         :param bool inner: if True create an inner join
         :param bool outer: if True create an outer join
         """
-        join = u'join %s %s on %s' % (table, alias, on)
+        join = 'join %s %s on %s' % (table, alias, on)
         if inner is True:
-            join = u'inner ' + join
+            join = 'inner ' + join
         elif outer is True:
-            join = u'outer ' + join
+            join = 'outer ' + join
         if left is True:
-            join = u'left ' + join
+            join = 'left ' + join
         self.joins.append(join)
 
     def add_select_field(self, field):
@@ -318,12 +317,12 @@ class PaginatedQueryGenerator(object):
         """
         if field in kvargs and kvargs.get(field) is not None:
             if custom_filter is None:    
-                self.other_filters.append(u'AND t3.{field}=:{field}'.format(field=field))
+                self.other_filters.append('AND t3.{field}=:{field}'.format(field=field))
             else:
                 self.other_filters.append(custom_filter)
     
     @staticmethod
-    def get_sqlfilter_by_field(field, kvargs, op=u' AND'):
+    def get_sqlfilter_by_field(field, kvargs, op=' AND'):
         """Add where condition like 
             AND t3.<field>=:<field> 
         if <field> in kvargs and not None..
@@ -336,10 +335,10 @@ class PaginatedQueryGenerator(object):
         if field in kvargs and kvargs.get(field) is not None: 
             return PaginatedQueryGenerator.create_sqlfilter(field, opLogical=op)
         else:
-            return u''
+            return ''
     
     @staticmethod
-    def create_sqlfilter(param, column=None, opLogical=u' AND', opComparison=u'=', alias=u't3'):
+    def create_sqlfilter(param, column=None, opLogical=' AND', opComparison='=', alias='t3'):
         """create sql where condition filter like 
             AND t3.<field>=:<field> 
         if <field> in kvargs and not None..
@@ -353,10 +352,10 @@ class PaginatedQueryGenerator(object):
             column = param
  
         if column is not None: 
-            return u' {opLogical} {alias}.{column}{opComparison}:{param}'.format(
+            return ' {opLogical} {alias}.{column}{opComparison}:{param}'.format(
                 column=column, param=param, opLogical=opLogical, opComparison=opComparison, alias=alias)
         else:
-            return u''
+            return ''
 
     def add_filter(self, sqlfilter):
         """Append filter to query
@@ -380,28 +379,28 @@ class PaginatedQueryGenerator(object):
 
         :param count: if True return statement for count
         """
-        fields = u', '.join(self.select_fields)
+        fields = ', '.join(self.select_fields)
         if count is True:
-            fields = u'count(distinct {field}) as count'.format(field=self.field)
+            fields = 'count(distinct {field}) as count'.format(field=self.field)
 
-        sql = [u'SELECT {fields}', u'FROM {table} t3']
+        sql = ['SELECT {fields}', 'FROM {table} t3']
         if self.with_perm_tag is True:
             sql.extend([
-                u', perm_tag t1, perm_tag_entity t2 '
+                ', perm_tag t1, perm_tag_entity t2 '
             ])
 
         # append other tables
         for table in self.other_tables:
-            sql.append(u', %s %s' % (table[0], table[1]))
+            sql.append(', %s %s' % (table[0], table[1]))
 
         sql.extend([
-            u'WHERE 1=1'
+            'WHERE 1=1'
         ])
         # set base where
         if self.with_perm_tag is True:
             sql.extend([
-                u'AND t3.id=t2.entity AND t2.tag=t1.id',
-                u'AND t1.value IN :tags '
+                'AND t3.id=t2.entity AND t2.tag=t1.id',
+                'AND t1.value IN :tags '
             ])
 
         # add filters
@@ -410,33 +409,33 @@ class PaginatedQueryGenerator(object):
 
             # set group by and limit
         if count is False:
-            if not hasattr(self.entity, u'__view__') and self.with_perm_tag is True:
+            if not hasattr(self.entity, '__view__') and self.with_perm_tag is True:
                 sql.extend([
-                    u'GROUP BY {field}',
-                    u'ORDER BY {field} {order}'
+                    'GROUP BY {field}',
+                    'ORDER BY {field} {order}'
                 ])
             else:
                 sql.extend([
-                    u'ORDER BY {field} {order}'
+                    'ORDER BY {field} {order}'
                 ])
             if self.size > 0:
-                sql.append(u'LIMIT {start},{size}')
+                sql.append('LIMIT {start},{size}')
             elif self.size == -1:
-                sql.append(u'')
+                sql.append('')
             else:
-                sql.append(u'LIMIT 1000')  # num rows
+                sql.append('LIMIT 1000')  # num rows
 
         # format query
-        stmp = u' '.join(sql)
+        stmp = ' '.join(sql)
         # custom table like select
         if self.custom_select is not None:
             table = self.custom_select
         # table is defined by entity
         else:
-            table = u'`%s`' % self.entity.__tablename__
+            table = '`%s`' % self.entity.__tablename__
         stmp = stmp.format(table=table, fields=fields, field=self.field, order=self.order, start=self.start,
                            size=self.size)
-        # self.logger.debug2(u'query: %s' % stmp)
+        # self.logger.debug2('query: %s' % stmp)
         return text(stmp)
 
     def run(self, tags, *args, **kvargs):
@@ -447,18 +446,18 @@ class PaginatedQueryGenerator(object):
         start = time()
 
         if self.with_perm_tag is True:
-            self.logger.debug2(u'Authorization with permission tags ENABLED')
+            self.logger.debug2('Authorization with permission tags ENABLED')
         else:
-            self.logger.debug2(u'Authorization with permission tags DISABLED')
+            self.logger.debug2('Authorization with permission tags DISABLED')
 
         if tags is None or len(tags) == 0:
-            tags = [u'']
+            tags = ['']
 
         # make query
         if self.size > 0:
             # count all records
             stmp = self.base_stmp(count=True)
-            total = self.session.query(u'count').from_statement(stmp).params(tags=tags, **kvargs).first()[0]
+            total = self.session.query('count').from_statement(stmp).params(tags=tags, **kvargs).first()[0]
 
         stmp = self.base_stmp()
 
@@ -467,16 +466,16 @@ class PaginatedQueryGenerator(object):
         entities.extend(self.other_entities)
 
         query = self.session.query(*entities).from_statement(stmp).params(tags=tags, **kvargs)
-        self.logger.debug2(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
-        self.logger.debug2(u'kvargs: %s' % truncate(kvargs))
-        self.logger.debug2(u'tags: %s' % truncate(tags))
+        self.logger.debug2('stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
+        self.logger.debug2('kvargs: %s' % truncate(kvargs))
+        self.logger.debug2('tags: %s' % truncate(tags))
         res = query.all()
         
         if self.size == 0 or self.size == -1:
             total = len(res)
 
         elapsed = round(time() - start, 3)
-        self.logger.debug2(u'Get %ss (total:%s): %s [%s]' % (self.entity.__tablename__, total, truncate(res), elapsed))
+        self.logger.debug2('Get %ss (total:%s): %s [%s]' % (self.entity.__tablename__, total, truncate(res), elapsed))
         return res, total
 
     def base_stmp2(self, count=False, limit=1000):
@@ -485,15 +484,15 @@ class PaginatedQueryGenerator(object):
         :param count: if True return statement for count
         :param limit: max returned records [default=1000]
         """
-        fields = u', '.join(self.select_fields)
+        fields = ', '.join(self.select_fields)
         if count is True:
-            fields = u'count(distinct {field}) as count'.format(field=self.field)
+            fields = 'count(distinct {field}) as count'.format(field=self.field)
 
-        sql = [u'SELECT distinct {fields}', u'FROM {table} t3']
+        sql = ['SELECT distinct {fields}', 'FROM {table} t3']
         if self.with_perm_tag is True:
             sql.extend([
-                u'inner join perm_tag_entity t2 on  t3.id=t2.entity',
-                u'inner join perm_tag t1 on t2.tag=t1.id'
+                'inner join perm_tag_entity t2 on  t3.id=t2.entity',
+                'inner join perm_tag t1 on t2.tag=t1.id'
             ])
 
         # append other tables
@@ -501,13 +500,13 @@ class PaginatedQueryGenerator(object):
             sql.append(join)
 
         sql.extend([
-            u'WHERE 1=1'
+            'WHERE 1=1'
         ])
 
         # set base where
         if self.with_perm_tag is True:
             sql.extend([
-                u'AND t1.value IN :tags '
+                'AND t1.value IN :tags '
             ])
 
         # add filters
@@ -517,18 +516,18 @@ class PaginatedQueryGenerator(object):
         # set group by and limit
         if count is False:
             sql.extend([
-                u'ORDER BY {field} {order}'
+                'ORDER BY {field} {order}'
             ])
 
             if self.size > 0:
-                sql.append(u'LIMIT {start},{size}')
+                sql.append('LIMIT {start},{size}')
             elif self.size == -1:
-                sql.append(u'')
+                sql.append('')
             else:
-                sql.append(u'LIMIT %s' % limit)  # num rows
+                sql.append('LIMIT %s' % limit)  # num rows
 
         # format query
-        stmp = u' '.join(sql)
+        stmp = ' '.join(sql)
 
         # custom table like select
         if self.custom_select is not None:
@@ -536,11 +535,11 @@ class PaginatedQueryGenerator(object):
 
         # table is defined by entity
         else:
-            table = u'`%s`' % self.entity.__tablename__
+            table = '`%s`' % self.entity.__tablename__
         stmp = stmp.format(table=table, fields=fields, field=self.field, order=self.order, start=self.start,
                            size=self.size)
 
-        # self.logger.debug2(u'query: %s' % stmp)
+        # self.logger.debug2('query: %s' % stmp)
         return text(stmp)
 
     def run2(self, tags, *args, **kvargs):
@@ -551,18 +550,18 @@ class PaginatedQueryGenerator(object):
         start = time()
 
         if self.with_perm_tag is True:
-            self.logger.debug2(u'Authorization with permission tags ENABLED')
+            self.logger.debug2('Authorization with permission tags ENABLED')
         else:
-            self.logger.debug2(u'Authorization with permission tags DISABLED')
+            self.logger.debug2('Authorization with permission tags DISABLED')
 
         if tags is None or len(tags) == 0:
-            tags = [u'']
+            tags = ['']
 
         # make query
         if self.size > 0:
             # count all records
             stmp = self.base_stmp2(count=True)
-            total = self.session.query(u'count').from_statement(stmp).params(tags=tags, **kvargs).first()[0]
+            total = self.session.query('count').from_statement(stmp).params(tags=tags, **kvargs).first()[0]
 
         stmp = self.base_stmp2()
 
@@ -571,16 +570,16 @@ class PaginatedQueryGenerator(object):
         entities.extend(self.other_entities)
 
         query = self.session.query(*entities).from_statement(stmp).params(tags=tags, **kvargs)
-        self.logger.debug2(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
-        self.logger.debug2(u'kvargs: %s' % truncate(kvargs))
-        self.logger.debug2(u'tags: %s' % truncate(tags))
+        self.logger.debug2('stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
+        self.logger.debug2('kvargs: %s' % truncate(kvargs))
+        self.logger.debug2('tags: %s' % truncate(tags))
         res = query.all()
 
         if self.size == 0 or self.size == -1:
             total = len(res)
 
         elapsed = round(time() - start, 3)
-        self.logger.debug2(u'Get %ss (total:%s): %s [%s]' % (self.entity.__tablename__, total, truncate(res), elapsed))
+        self.logger.debug2('Get %ss (total:%s): %s [%s]' % (self.entity.__tablename__, total, truncate(res), elapsed))
         return res, total
 
 
@@ -588,7 +587,7 @@ class AbstractDbManager(object):
     """Abstract db manager
     """
     def __init__(self, session=None):
-        self.logger = logging.getLogger(self.__class__.__module__+  u'.' + self.__class__.__name__)
+        self.logger = logging.getLogger(self.__class__.__module__+  '.' + self.__class__.__name__)
         
         self._session = session
 
@@ -596,7 +595,10 @@ class AbstractDbManager(object):
         pass
 
     def __repr__(self):
-        return u"<%s id='%s'>" % (self.__class__.__name__, id(self))
+        return "<%s id='%s'>" % (self.__class__.__name__, id(self))
+
+    def __str__(self):
+        return "<%s id='%s'>" % (self.__class__.__name__, id(self))
 
     def get_session(self):
         if self._session is None:
@@ -612,7 +614,7 @@ class AbstractDbManager(object):
             engine = create_engine(db_uri)
             engine.execute("SET FOREIGN_KEY_CHECKS=1;")
             Base.metadata.create_all(engine)
-            logger.info(u'Create tables on : %s' % (db_uri))
+            logger.info('Create tables on : %s' % (db_uri))
             del engine
         except exc.DBAPIError as e:
             raise Exception(e)
@@ -625,7 +627,7 @@ class AbstractDbManager(object):
             engine = create_engine(db_uri)
             engine.execute("SET FOREIGN_KEY_CHECKS=0;")
             Base.metadata.drop_all(engine)
-            logger.info(u'Remove tables from : %s' % (db_uri))
+            logger.info('Remove tables from : %s' % (db_uri))
             del engine
         except exc.DBAPIError as e:
             raise Exception(e)
@@ -635,7 +637,7 @@ class AbstractDbManager(object):
 
         :param stmp: statement
         """
-        self.logger.debug2(u'stmp: %s' % stmp.statement.compile(dialect=mysql.dialect()))
+        self.logger.debug2('stmp: %s' % stmp.statement.compile(dialect=mysql.dialect()))
     
     @query
     def count_entities(self, entityclass):
@@ -647,7 +649,7 @@ class AbstractDbManager(object):
         session = self.get_session()
         res = session.query(entityclass).count()
             
-        self.logger.debug2(u'Count %s: %s' % (entityclass.__name__, res))
+        self.logger.debug2('Count %s: %s' % (entityclass.__name__, res))
         return res    
 
     def print_query(self, func, query, args):
@@ -657,7 +659,7 @@ class AbstractDbManager(object):
         :param query: query to run
         :param args: query args. Use: inspect.getargvalues(inspect.currentframe())
         """
-        self.logger.debug2(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
+        self.logger.debug2('stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
         args = {arg: args.locals[arg] for arg in args.args}
         self.logger.debug2(args)
 
@@ -688,13 +690,13 @@ class AbstractDbManager(object):
 
         query = query.filter_by(**kvargs)
 
-        self.logger.debug2(u'stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
-        self.logger.debug2(u'kvargs: %s' % kvargs)
+        self.logger.debug2('stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
+        self.logger.debug2('kvargs: %s' % kvargs)
 
         # entity = query.first()
         #
         # if entity is None:
-        #     msg = u'No %s found' % entityclass.__name__
+        #     msg = 'No %s found' % entityclass.__name__
         #     self.logger.error(msg)
         #     raise ModelError(msg, code=404)
 
@@ -712,19 +714,19 @@ class AbstractDbManager(object):
         session = self.get_session()
 
         if oid is None:
-            raise ModelError(u'%s %s not found' % (oid, entityclass))
+            raise ModelError('%s %s not found' % (oid, entityclass))
 
         # get obj by uuid
-        if match(u'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', str(oid)):
-            search_field = u'uuid'
+        if match('[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', str(oid)):
+            search_field = 'uuid'
             entity = self.query_entities(entityclass, session, uuid=oid, *args, **kvargs)
         # get obj by id
-        elif match(u'^\d+$', str(oid)):
-            search_field = u'id'
+        elif match('^\d+$', str(oid)):
+            search_field = 'id'
             entity = self.query_entities(entityclass, session, oid=oid, *args, **kvargs)
         # get obj by name
-        elif match(u'[\-\w\d]+', oid):
-            search_field = u'name'
+        elif match('[\-\w\d]+', oid):
+            search_field = 'name'
             entity = self.query_entities(entityclass, session, name=oid, **kvargs)
 
         res = entity.one_or_none()
@@ -732,7 +734,7 @@ class AbstractDbManager(object):
         if res is None:
             resp = False
 
-        self.logger.debug2(u'Check entity %s by %s exists: %s' % (entityclass.__name__, search_field, resp))
+        self.logger.debug2('Check entity %s by %s exists: %s' % (entityclass.__name__, search_field, resp))
         return resp
 
     @query
@@ -749,19 +751,19 @@ class AbstractDbManager(object):
         session = self.get_session()
 
         if oid is None:
-            raise ModelError(u'%s %s not found' % (oid, entityclass))
+            raise ModelError('%s %s not found' % (oid, entityclass))
 
         # get obj by uuid
-        if match(u'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', str(oid)):
-            search_field = u'uuid'
+        if match('[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', str(oid)):
+            search_field = 'uuid'
             entity = self.query_entities(entityclass, session, uuid=oid, *args, **kvargs)
         # get obj by id
-        elif match(u'^\d+$', str(oid)):
-            search_field = u'id'
+        elif match('^\d+$', str(oid)):
+            search_field = 'id'
             entity = self.query_entities(entityclass, session, oid=oid, *args, **kvargs)
         # get obj by name
-        elif match(u'[\-\w\d]+', oid):
-            search_field = u'name'
+        elif match('[\-\w\d]+', oid):
+            search_field = 'name'
             entity = self.query_entities(entityclass, session, name=oid, **kvargs)
 
         res = None
@@ -771,11 +773,11 @@ class AbstractDbManager(object):
             res = entity.first()
 
         if entity is None:
-            msg = u'No %s found' % entityclass.__name__
+            msg = 'No %s found' % entityclass.__name__
             self.logger.error(msg)
             raise ModelError(msg, code=404)
 
-        self.logger.debug2(u'Query entity %s by %s: %s' % (entityclass.__name__, search_field, res))
+        self.logger.debug2('Query entity %s by %s: %s' % (entityclass.__name__, search_field, res))
         return res
     
     # @query
@@ -799,11 +801,11 @@ class AbstractDbManager(object):
     #
     #     # make query
     #     res = query.all()
-    #     self.logger.debug2(u'Get %s: %s' % (entityclass.__name__, truncate(res)))
+    #     self.logger.debug2('Get %s: %s' % (entityclass.__name__, truncate(res)))
     #     return res
     
     @query
-    def get_paginated_entities(self, entity, tags=[], page=0, size=10, order=u'DESC', field=u't3.id', filters=[],
+    def get_paginated_entities(self, entity, tags=[], page=0, size=10, order='DESC', field='t3.id', filters=[],
                                tables=[], select_fields=[], custom_select=None, with_perm_tag=True, *args, **kvargs):
         """Get entities associated with some permission tags
 
@@ -838,12 +840,12 @@ class AbstractDbManager(object):
         for item in select_fields:
             query.add_select_field(item)
         # set filters
-        # query.add_filter_by_field(u'name', kvargs)
-        query.add_filter_by_field(u'name', kvargs, custom_filter=u'AND t3.name like :name')
-        query.add_filter_by_field(u'desc', kvargs, custom_filter=u'AND t3.desc like :desc')
-        query.add_filter_by_field(u'active', kvargs)
-        query.add_filter_by_field(u'creation_date', kvargs)
-        query.add_filter_by_field(u'modification_date', kvargs)
+        # query.add_filter_by_field('name', kvargs)
+        query.add_filter_by_field('name', kvargs, custom_filter='AND t3.name like :name')
+        query.add_filter_by_field('desc', kvargs, custom_filter='AND t3.desc like :desc')
+        query.add_filter_by_field('active', kvargs)
+        query.add_filter_by_field('creation_date', kvargs)
+        query.add_filter_by_field('modification_date', kvargs)
 
         for item in filters:
             query.add_filter(item)
@@ -869,7 +871,7 @@ class AbstractDbManager(object):
         session.add(record)
         session.flush()
         
-        self.logger.debug2(u'Add %s: %s' % (entityclass.__name__, truncate(record)))
+        self.logger.debug2('Add %s: %s' % (entityclass.__name__, truncate(record)))
         return record
     
     @transaction
@@ -885,13 +887,13 @@ class AbstractDbManager(object):
         session = self.get_session()
         
         # get entity
-        oid = kvargs.pop(u'oid', None)
+        oid = kvargs.pop('oid', None)
         query = self.query_entities(entityclass, session, oid=oid)
 
         # check entity exists
         entity = query.first()
         if entity is None:
-            msg = u'No %s found' % entityclass.__name__
+            msg = 'No %s found' % entityclass.__name__
             self.logger.error(msg)
             raise ModelError(msg, code=404)
 
@@ -900,12 +902,12 @@ class AbstractDbManager(object):
                 kvargs.pop(k)
 
         # create data dict with update
-        kvargs[u'modification_date'] = datetime.today()
+        kvargs['modification_date'] = datetime.today()
 
         query.update(kvargs)
         session.flush()
             
-        self.logger.debug2(u'Update %s %s with data: %s' % (entityclass.__name__, oid, kvargs))
+        self.logger.debug2('Update %s %s with data: %s' % (entityclass.__name__, oid, kvargs))
         return oid
 
     @transaction
@@ -921,23 +923,23 @@ class AbstractDbManager(object):
         session = self.get_session()
 
         # get entity
-        oid = kvargs.pop(u'oid', None)
+        oid = kvargs.pop('oid', None)
         query = self.query_entities(entityclass, session, oid=oid)
 
         # check entity exists
         entity = query.first()
         if entity is None:
-            msg = u'No %s found' % entityclass.__name__
+            msg = 'No %s found' % entityclass.__name__
             self.logger.error(msg)
             raise ModelError(msg, code=404)
 
         # create data dict with update
-        kvargs[u'modification_date'] = datetime.today()
+        kvargs['modification_date'] = datetime.today()
 
         query.update(kvargs)
         session.flush()
 
-        self.logger.debug2(u'UPDATE NULL %s %s with data: %s' % (entityclass.__name__, oid, kvargs))
+        self.logger.debug2('UPDATE NULL %s %s with data: %s' % (entityclass.__name__, oid, kvargs))
         return oid
 
     @transaction
@@ -957,14 +959,14 @@ class AbstractDbManager(object):
         # check entity exists
         entity = query.first()
         if entity is None:
-            msg = u'No %s found' % entityclass.__name__
+            msg = 'No %s found' % entityclass.__name__
             self.logger.error(msg)
             raise ModelError(msg, code=404)
 
         # delete entity
         session.delete(entity)
         
-        self.logger.debug2(u'Remove %s %s' % (entityclass.__name__, entity.id))
+        self.logger.debug2('Remove %s %s' % (entityclass.__name__, entity.id))
         return entity.id
     
     #
@@ -977,13 +979,13 @@ class AbstractDbManager(object):
         :return: list of valid objids
         """
         # first item *.*.*.....
-        act_obj = [u'*' for i in args]
-        objdis = [u'//'.join(act_obj)]
-        if args[0] != u'*':
+        act_obj = ['*' for i in args]
+        objdis = ['//'.join(act_obj)]
+        if args[0] != '*':
             pos = 0
             for arg in args:
                 act_obj[pos] = arg
-                objdis.append(u'//'.join(act_obj))
+                objdis.append('//'.join(act_obj))
                 pos += 1
     
         return objdis    
@@ -994,9 +996,8 @@ class AbstractDbManager(object):
         :param objdef: enitity permission object type definition
         :param objid: enitity permission object id
         """
-        perm = u'%s-%s' % (objdef.lower(), objid)
+        perm = b('%s-%s' % (objdef.lower(), objid))
         tag = hashlib.md5(perm).hexdigest()
-        #self.logger.debug2(u'tag: %s, per: %s' % (tag, perm))
         return tag
 
     @transaction
@@ -1019,10 +1020,10 @@ class AbstractDbManager(object):
             tagrecord = PermTag(tag, explain=explain)
             session.add(tagrecord)
             session.flush()
-            self.logger.debug2(u'Add permtag %s' % tagrecord)
+            self.logger.debug2('Add permtag %s' % tagrecord)
         except:
             # permtag already exists. Get reference
-            self.logger.warn(u'Permtag %s already exists' % tagrecord)
+            self.logger.warn('Permtag %s already exists' % tagrecord)
             session.rollback()
             tagrecord = session.query(PermTag).filter_by(value=tag).first()
 
@@ -1033,18 +1034,18 @@ class AbstractDbManager(object):
         #     tagrecord = PermTag(tag, explain=explain)
         #     session.add(tagrecord)
         #     session.flush()
-        #     self.logger.debug2(u'Add permtag %s' % tagrecord)
+        #     self.logger.debug2('Add permtag %s' % tagrecord)
         # else:
-        #     self.logger.warn(u'Permtag %s already exists' % tagrecord)
+        #     self.logger.warn('Permtag %s already exists' % tagrecord)
 
         # create tag entity association
         # record = None
         try:
             record = PermTagEntity(tagrecord.id, entity, type)
             session.add(record)
-            self.logger.debug2(u'Add permtag %s entity %s association' % (tag, entity))
+            self.logger.debug2('Add permtag %s entity %s association' % (tag, entity))
         except:
-            self.logger.debug2(u'Permtag %s entity %s association already exists' % (tag, entity))
+            self.logger.debug2('Permtag %s entity %s association already exists' % (tag, entity))
         
         return tagrecord
     
@@ -1066,7 +1067,7 @@ class AbstractDbManager(object):
         for item in items:
             session.delete(item)
         session.flush()
-        self.logger.debug2(u'Delete tag entity %s.%s association' % (entity, etype))
+        self.logger.debug2('Delete tag entity %s.%s association' % (entity, etype))
         
         # remove unused tag
         for tag in tags:
@@ -1076,10 +1077,10 @@ class AbstractDbManager(object):
                 # tagusage = session.query(PermTagEntity).filter_by(tag=tagrecord.id).all()
                 # if len(tagusage) > 0:
                 if tagusage > 0:
-                    self.logger.warn(u'Tag %s is used by other entities' % tag)
+                    self.logger.warn('Tag %s is used by other entities' % tag)
                 else:
                     session.delete(tagrecord)
-                    self.logger.debug2(u'Delete tag %s' % tag)
+                    self.logger.debug2('Delete tag %s' % tag)
 
         return True
 
@@ -1096,7 +1097,7 @@ class AbstractDbManager(object):
         session = self.get_session()
         session.add(entity)
         session.flush()
-        self.logger.debug2(u'Add %s entity %s' % (entity.__class__.__name__, entity))
+        self.logger.debug2('Add %s entity %s' % (entity.__class__.__name__, entity))
         return entity
     
     @transaction
@@ -1112,7 +1113,7 @@ class AbstractDbManager(object):
         session = self.get_session()
         session.add_all(entities)
         session.flush()
-        self.logger.debug2(u'Add all %s entity %s' % (entities[0].__class__.__name__, len(entities)))
+        self.logger.debug2('Add all %s entity %s' % (entities[0].__class__.__name__, len(entities)))
         return len(entities)
     
     @transaction
@@ -1120,14 +1121,14 @@ class AbstractDbManager(object):
         if entity is None:
             raise QueryError("Error: can't not update None entity")
         
-        self.logger.info(u'Update %s entity %s' % (entity.__class__.__name__, entity))
+        self.logger.info('Update %s entity %s' % (entity.__class__.__name__, entity))
         if isinstance(entity, AuditData):
             entity.modification_date = datetime.now()
         
         session = self.get_session()
         session.merge(entity)
         session.flush()
-        self.logger.info(u'Updated')
+        self.logger.info('Updated')
         return entity   
     
     @transaction
@@ -1136,14 +1137,14 @@ class AbstractDbManager(object):
             raise QueryError("Error: can't not bulk update None entities")
         
         for entity in entities:
-            self.logger.debug(u'Update %s entity %s' % (entities.__class__.__name__, entity))
+            self.logger.debug('Update %s entity %s' % (entities.__class__.__name__, entity))
             if isinstance(entity, BaseEntity):
                 entity.modification_date = datetime.today()
         
         session = self.get_session()
         session.bulk_save_objects(entities)
         session.flush()
-        self.logger.info(u'Bulk updated %s entities' %len(entities))
+        self.logger.info('Bulk updated %s entities' %len(entities))
         return entities   
 
     @transaction
@@ -1155,17 +1156,17 @@ class AbstractDbManager(object):
         if entity is None:
             raise QueryError("Error: can't not delete None entity")
         
-        self.logger.debug2(u'Delete %s entity %s' % (entity.__class__.__name__, entity))
+        self.logger.debug2('Delete %s entity %s' % (entity.__class__.__name__, entity))
         if isinstance(entity, BaseEntity):
             if entity.is_active():
                 entity.disable()
                 self.update(entity)
-                logger.info(u'Disable entity %s' % entity.id)
+                logger.info('Disable entity %s' % entity.id)
             else:
-                logger.info(u'Nothing to do on %s !' % entity)
+                logger.info('Nothing to do on %s !' % entity)
         else:
             self.purge(entity)
-            logger.info(u'Purge entity %s' % entity.id)
+            logger.info('Purge entity %s' % entity.id)
         return entity
         
     @transaction
@@ -1176,32 +1177,32 @@ class AbstractDbManager(object):
         :return Boolean:
         """
         if entity is None:
-            logger.warn(u'Warning: can\'t not purge None entity')
+            logger.warn('Warning: can\'t not purge None entity')
             return entity
         
         session = self.get_session()
         session.delete(entity)
         session.flush()
-        logger.debug2(u'Delete %s entity %s' % (entity.__class__.__name__, entity))
+        logger.debug2('Delete %s entity %s' % (entity.__class__.__name__, entity))
 
     @staticmethod   
     def add_base_entity_filters(query, *args, **kvargs):
         
         # id is unique
-        if u'id' in kvargs and kvargs.get(u'id') is not None:
-            query = query.filter_by(id=kvargs.get(u'id'))
+        if 'id' in kvargs and kvargs.get('id') is not None:
+            query = query.filter_by(id=kvargs.get('id'))
         # uuid is unique
-        if u'uuid' in kvargs and kvargs.get(u'uuid') is not None:
-            query = query.filter_by(uuid=kvargs.get(u'uuid')) 
+        if 'uuid' in kvargs and kvargs.get('uuid') is not None:
+            query = query.filter_by(uuid=kvargs.get('uuid')) 
         
         # Non unique filters
-        if u'objid' in kvargs and kvargs.get(u'objid') is not None:
-            query = query.filter_by(objid=kvargs.get(u'objid'))
-        if u'name' in kvargs and kvargs.get(u'name') is not None:
-            query = query.filter_by(name=kvargs.get(u'name'))
-        if u'desc' in kvargs and kvargs.get(u'desc') is not None:
-            query = query.filter_by(desc=kvargs.get(u'desc'))
-        if u'active' in kvargs and kvargs.get(u'active') is not None:
-            query = query.filter_by(active=kvargs.get(u'active')) 
+        if 'objid' in kvargs and kvargs.get('objid') is not None:
+            query = query.filter_by(objid=kvargs.get('objid'))
+        if 'name' in kvargs and kvargs.get('name') is not None:
+            query = query.filter_by(name=kvargs.get('name'))
+        if 'desc' in kvargs and kvargs.get('desc') is not None:
+            query = query.filter_by(desc=kvargs.get('desc'))
+        if 'active' in kvargs and kvargs.get('active') is not None:
+            query = query.filter_by(active=kvargs.get('active')) 
             
         return query

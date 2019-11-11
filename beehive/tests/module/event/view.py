@@ -11,19 +11,19 @@ from beecell.remote import BadRequestException,\
 oid = None
 
 tests = [
-    u'test_get_event_types',
-    u'test_get_event_entities',
+    'test_get_event_types',
+    'test_get_event_entities',
     
-    u'test_get_events',
-    # u'test_get_events_by_type',
-    # u'test_get_events_by_objtype',
-    # u'test_get_events_by_objdef',
-    # u'test_get_events_by_objid',
-    # u'test_get_events_by_date',
-    # u'test_get_events_by_source',
-    # u'test_get_events_by_data',
-    # u'test_get_event_by_id',
-    # u'test_get_event_by_eventid'
+    'test_get_events',
+    # 'test_get_events_by_type',
+    # 'test_get_events_by_objtype',
+    # 'test_get_events_by_objdef',
+    # 'test_get_events_by_objid',
+    # 'test_get_events_by_date',
+    # 'test_get_events_by_source',
+    # 'test_get_events_by_data',
+    # 'test_get_event_by_id',
+    # 'test_get_event_by_eventid'
 ]
 
 
@@ -35,63 +35,63 @@ class EventTestCase(BeehiveTestCase):
         BeehiveTestCase.tearDown(self)
     
     def test_get_event_types(self):
-        self.call(u'event', u'/v1.0/nes/events/types', u'get', 
-                  **self.users[u'admin'])
+        self.call('event', '/v1.0/nes/events/types', 'get', 
+                  **self.users['admin'])
 
     def test_get_event_entities(self):
-        self.call(u'event', u'/v1.0/nes/events/entities', u'get', 
-                  **self.users[u'admin'])
+        self.call('event', '/v1.0/nes/events/entities', 'get', 
+                  **self.users['admin'])
         
     def test_get_events(self):
-        self.call(u'event', u'/v1.0/nes/events', u'get',
-                  query={u'page':1},
-                  **self.users[u'admin'])        
+        self.call('event', '/v1.0/nes/events', 'get',
+                  query={'page':1},
+                  **self.users['admin'])        
         
     def test_get_events_by_type(self):
-        self.call(u'event', u'/v1.0/nes/events', u'get',
-                  query={u'type':u'internal'},
-                  **self.users[u'admin'])
+        self.call('event', '/v1.0/nes/events', 'get',
+                  query={'type':'internal'},
+                  **self.users['admin'])
         
     def test_get_events_by_objtype(self):
-        self.call(u'event', u'/v1.0/nes/events', u'get',
-                  query={u'objtype':u'internal'},
-                  **self.users[u'admin'])
+        self.call('event', '/v1.0/nes/events', 'get',
+                  query={'objtype':'internal'},
+                  **self.users['admin'])
         
     def test_get_events_by_objdef(self):
-        self.call(u'event', u'/v1.0/nes/events', u'get',
-                  query={u'objdef':u'internal'},
-                  **self.users[u'admin'])
+        self.call('event', '/v1.0/nes/events', 'get',
+                  query={'objdef':'internal'},
+                  **self.users['admin'])
         
     def test_get_events_by_objid(self):
-        self.call(u'event', u'/v1.0/nes/events', u'get',
-                  query={u'objid':u'internal'},
-                  **self.users[u'admin'])
+        self.call('event', '/v1.0/nes/events', 'get',
+                  query={'objid':'internal'},
+                  **self.users['admin'])
         
     def test_get_events_by_date(self):
-        self.call(u'event', u'/v1.0/nes/events', u'get',
-                  query={u'date':u'internal'},
-                  **self.users[u'admin'])
+        self.call('event', '/v1.0/nes/events', 'get',
+                  query={'date':'internal'},
+                  **self.users['admin'])
         
     def test_get_events_by_source(self):
-        self.call(u'event', u'/v1.0/nes/events', u'get',
-                  query={u'source':u'internal'},
-                  **self.users[u'admin'])
+        self.call('event', '/v1.0/nes/events', 'get',
+                  query={'source':'internal'},
+                  **self.users['admin'])
         
     def test_get_events_by_data(self):
-        self.call(u'event', u'/v1.0/nes/events', u'get',
-                  query={u'data':u'internal'},
-                  **self.users[u'admin'])        
+        self.call('event', '/v1.0/nes/events', 'get',
+                  query={'data':'internal'},
+                  **self.users['admin'])        
         
     def test_get_event_by_id(self):
-        self.call(u'event', u'/v1.0/nes/events/{oid}', u'get',
-                  params={u'oid':4}, 
-                  **self.users[u'admin'])
+        self.call('event', '/v1.0/nes/events/{oid}', 'get',
+                  params={'oid':4}, 
+                  **self.users['admin'])
         
     def test_get_event_by_eventid(self):
-        self.call(u'event', u'/v1.0/nes/events/{oid}', u'get',
-                  params={u'oid':4}, 
-                  **self.users[u'admin'])
+        self.call('event', '/v1.0/nes/events/{oid}', 'get',
+                  params={'oid':4}, 
+                  **self.users['admin'])
 
 
-if __name__ == u'__main__':
+if __name__ == '__main__':
     runtest(EventTestCase, tests)  

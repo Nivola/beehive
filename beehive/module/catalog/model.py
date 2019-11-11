@@ -46,8 +46,8 @@ class CatalogEndpoint(Base, BaseEntity):
         self.uri = uri
 
     def __repr__(self):
-        return u'<CatalogEndpoint id=%s, uuid=%s, obid=%s, name=%s, service=%s,'\
-               u' catalog=%s, active=%s, >' % (self.id, self.uuid, self.objid, 
+        return '<CatalogEndpoint id=%s, uuid=%s, obid=%s, name=%s, service=%s,'\
+               ' catalog=%s, active=%s, >' % (self.id, self.uuid, self.objid, 
                     self.name, self.service, self.catalog, self.active)
 
 
@@ -60,9 +60,9 @@ class CatalogDbManager(AbstractDbManager):
             engine = create_engine(db_uri)
             engine.execute("SET FOREIGN_KEY_CHECKS=1;")
             Base.metadata.create_all(engine)
-            logger.info(u'Create tables on : %s' % (db_uri))
+            logger.info('Create tables on : %s' % (db_uri))
             del engine
-        except exc.DBAPIError, e:
+        except exc.DBAPIError as e:
             raise Exception(e)
     
     @staticmethod
@@ -73,9 +73,9 @@ class CatalogDbManager(AbstractDbManager):
             engine = create_engine(db_uri)
             engine.execute("SET FOREIGN_KEY_CHECKS=0;")
             Base.metadata.drop_all(engine)
-            logger.info(u'Remove tables from : %s' % (db_uri))
+            logger.info('Remove tables from : %s' % (db_uri))
             del engine
-        except exc.DBAPIError, e:
+        except exc.DBAPIError as e:
             raise Exception(e)    
     
     #
@@ -99,8 +99,8 @@ class CatalogDbManager(AbstractDbManager):
         :raises QueryError: raise :class:`QueryError`
         """
         filters = []
-        if u'zone' in kvargs and kvargs.get(u'zone') is not None:
-            filters = [u'AND zone=:zone']
+        if 'zone' in kvargs and kvargs.get('zone') is not None:
+            filters = ['AND zone=:zone']
         
         res, total = self.get_paginated_entities(Catalog, filters=filters, 
                                                  *args, **kvargs)     
@@ -162,10 +162,10 @@ class CatalogDbManager(AbstractDbManager):
         :raises QueryError: raise :class:`QueryError`
         """
         filters = []
-        if u'service' in kvargs and kvargs.get(u'service') is not None:
-            filters.append(u'AND service=:service')
-        if u'catalog' in kvargs and kvargs.get(u'catalog') is not None:
-            filters.append(u'AND catalog_id=:catalog')        
+        if 'service' in kvargs and kvargs.get('service') is not None:
+            filters.append('AND service=:service')
+        if 'catalog' in kvargs and kvargs.get('catalog') is not None:
+            filters.append('AND catalog_id=:catalog')        
         
         res, total = self.get_paginated_entities(CatalogEndpoint, filters=filters, 
                                                  *args, **kvargs)     

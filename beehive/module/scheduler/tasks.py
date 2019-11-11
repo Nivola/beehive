@@ -20,7 +20,7 @@ logger = get_task_logger(__name__)
 # test job
 #
 @task_manager.task(bind=True, base=Job)
-@job(entity_class=TaskManager, name=u'test2.insert', delta=1)
+@job(entity_class=TaskManager, name='test2.insert', delta=1)
 def jobtest_inner(self, objid, params):
     """Test job
     
@@ -39,7 +39,7 @@ def jobtest_inner(self, objid, params):
 
 
 @task_manager.task(bind=True, base=Job)
-@job(entity_class=TaskManager, name=u'test.insert', delta=1)
+@job(entity_class=TaskManager, name='test.insert', delta=1)
 def jobtest(self, objid, params):
     """Test job
     
@@ -54,9 +54,9 @@ def jobtest(self, objid, params):
     self.set_shared_data(params)
 
     g1 = []
-    for i in range(0, len(params[u'numbers'])):
+    for i in range(0, len(params['numbers'])):
         g1.append(jobtest_task3.signature((ops, i), immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE))
-    if params[u'error'] is True:
+    if params['error'] is True:
         g1.append(test_raise.signature((ops, i), immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE))
     
     g1.append(test_invoke_job.signature((ops, i), immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE))
@@ -88,16 +88,16 @@ def jobtest_task0(self, options):
         (class_name, objid, job, job id, start time, time before new query, user)
     """
     data = self.get_shared_data()
-    x = data[u'x']
-    y = data[u'y']
+    x = data['x']
+    y = data['y']
     res = x + y
     
     # save data. Shared data must be re-kept before save modification because 
     # concurrent tasks can change its content during task elaboration 
     data = self.get_shared_data()    
-    data[u'mul'] = res
+    data['mul'] = res
     self.set_shared_data(data)
-    self.update(u'PROGRESS', msg=u'add %s' % data)
+    self.update('PROGRESS', msg='add %s' % data)
     return res
 
 
@@ -120,9 +120,9 @@ def jobtest_task1(self, options):
     # save data. Shared data must be re-kept before save modification because 
     # concurrent tasks can change its content during task elaboration 
     data = self.get_shared_data()
-    data[u'res'] = res
+    data['res'] = res
     self.set_shared_data(data)
-    self.update(u'PROGRESS', msg=u'sum %s' % numbers)
+    self.update('PROGRESS', msg='sum %s' % numbers)
     return res
 
 
@@ -136,10 +136,10 @@ def jobtest_task2(self, options):
         (class_name, objid, job, job id, start time, time before new query, user)
     """
     data = self.get_shared_data()
-    data[u'res'] = data[u'res'] + 10
+    data['res'] = data['res'] + 10
     self.set_shared_data(data)
     sleep(5)
-    self.update(u'PROGRESS', msg=u'%s' % data)
+    self.update('PROGRESS', msg='%s' % data)
     return True
 
 
@@ -152,26 +152,26 @@ def test_invoke_job(self, options, i):
         (class_name, objid, job, job id, start time, time before new query, user)
     """
     params = self.get_shared_data()
-    # data = (u'*', params)
+    # data = ('*', params)
     user = {
-        u'user': operation.user[0],
-        u'server': operation.user[1],
-        u'identity': operation.user[2],
-        u'api_id': operation.id,
+        'user': operation.user[0],
+        'server': operation.user[1],
+        'identity': operation.user[2],
+        'api_id': operation.id,
     }
     # job = jobtest_inner.apply_async(data, **user)
 
     params.update(user)
-    task = signature(u'beehive.module.scheduler.tasks.jobtest_inner', (u'*', params), app=task_manager,
+    task = signature('beehive.module.scheduler.tasks.jobtest_inner', ('*', params), app=task_manager,
                      queue=task_manager.conf.TASK_DEFAULT_QUEUE)
     job = task.apply_async()
 
     job_id = job.id
-    self.update(u'PROGRESS')
+    self.update('PROGRESS')
     
     # - wait job complete
     resp = self.wait_for_job_complete(job_id)
-    self.update(u'PROGRESS', msg=u'Job %s completed' % job_id)
+    self.update('PROGRESS', msg='Job %s completed' % job_id)
 
 
 @task_manager.task(bind=True, base=JobTask)
@@ -185,12 +185,12 @@ def jobtest_task3(self, options, index):
     :param index: index of item in numbers list        
     """
     data = self.get_shared_data()
-    numbers = data[u'numbers']
-    mul = data[u'mul']
+    numbers = data['numbers']
+    mul = data['mul']
     res = numbers[index] * mul
-    self.update(u'PROGRESS', msg=u'mul %s' % numbers)
+    self.update('PROGRESS', msg='mul %s' % numbers)
     self.push_stack_data(res)
-    self.update(u'PROGRESS', msg=u'Push item %s to stack' % res)
+    self.update('PROGRESS', msg='Push item %s to stack' % res)
     
     return res
 
@@ -204,8 +204,8 @@ def test_raise(self, options, i):
     :param tupla options: Tupla with some useful options.
         (class_name, objid, job, job id, start time, time before new query, user)
     """
-    # raise ApiManagerError(u'Error in main job')
-    raise Exception(ApiManagerError(u'Error in main job'))
+    # raise ApiManagerError('Error in main job')
+    raise Exception(ApiManagerError('Error in main job'))
 
 
 @task_manager.task(bind=True, base=JobTask)
@@ -218,9 +218,9 @@ def jobtest_task4(self, options):
         (class_name, objid, job, job id, start time, time before new query, user)
     """
     params = self.get_shared_data()
-    if params[u'suberror'] is True:
-        logger.error(u'Test error in internal job')
-        raise ApiManagerError(u'Test error in internal job')
+    if params['suberror'] is True:
+        logger.error('Test error in internal job')
+        raise ApiManagerError('Test error in internal job')
 
     res = 0
     for n in xrange(10000):
@@ -230,11 +230,11 @@ def jobtest_task4(self, options):
 
 
 @task_manager.task(bind=True, base=Job)
-@job(entity_class=TaskManager, name=u'test.insert')
+@job(entity_class=TaskManager, name='test.insert')
 def test(self, objid, params):
     """Test job
     """
     ops = self.get_options()
     self.set_shared_data(params)
-    logger.warn(u'$$$$$$$$$$$$$$$$$ hello $$$$$$$$$$$$$$$$$')
+    logger.warn('$$$$$$$$$$$$$$$$$ hello $$$$$$$$$$$$$$$$$')
     return True

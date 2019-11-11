@@ -29,17 +29,15 @@ except:
     long = int
 
 
-def set_debug(debug=True, filename=u'dicttoxml.log'):
+def set_debug(debug=True, filename='dicttoxml.log'):
     if debug:
         import datetime
-        print(u'Debug mode is on. Events are logged at: %s' % filename)
+        print('Debug mode is on. Events are logged at: %s' % filename)
         logging.basicConfig(filename=filename, level=logging.INFO)
-        logger.info(u'\nLogging session starts: %s' % (
-            str(datetime.datetime.today()))
-        )
+        logger.info('\nLogging session starts: %s' % (datetime.datetime.today()))
     else:
         logging.basicConfig(level=logging.WARNING)
-        print(u'Debug mode is off.')
+        print('Debug mode is off.')
 
 
 def unicode_me(something):
@@ -49,7 +47,7 @@ def unicode_me(something):
     second argument, hence this kludge.
     """
     try:
-        return unicode(something, u'utf-8')
+        return unicode(something, 'utf-8')
     except:
         return unicode(something)
 
@@ -60,7 +58,7 @@ ids = []
 
 def make_id(element, start=100000, end=999999):
     """Returns a random integer"""
-    return u'%s_%s' % (element, randint(start, end))
+    return '%s_%s' % (element, randint(start, end))
 
 
 def get_unique_id(element):
@@ -213,7 +211,7 @@ def convert_dict(obj, ids, parent, attr_type, item_func, cdata):
         # add new attribute from special key of dict
         if isinstance(val, dict):
             for k,v in val.items():
-                if k.find(u'$') == 0:
+                if k.find('$') == 0:
                     val.pop(k)
                     attr[k[1:]] = v
         # ----------- added by me -----------        
@@ -360,22 +358,22 @@ def convert_bool(key, val, attr_type, attr={}, cdata=False):
 
 def convert_none(key, val, attr_type, attr={}, cdata=False):
     """Converts a null value into an XML element"""
-    logger.info(u'Inside convert_none(): key="%s"' % (unicode_me(key)))
+    logger.info('Inside convert_none(): key="%s"' % (unicode_me(key)))
 
     key, attr = make_valid_xml_name(key, attr)
 
     if attr_type:
         attr['type'] = get_xml_type(val)
     attrstring = make_attrstring(attr)
-    return u'<%s%s></%s>' % (key, attrstring, key)
+    return '<%s%s></%s>' % (key, attrstring, key)
 
 
-def dicttoxml(obj, root=True, custom_root=u'root', ids=False, attr_type=True, item_func=default_item_func, cdata=False):
+def dicttoxml(obj, root=True, custom_root='root', ids=False, attr_type=True, item_func=default_item_func, cdata=False):
     """Converts a python object into XML.
     
     :param obj: 
     :param root: root specifies whether the output is wrapped in an XML root element [default=True]
-    :param custom_root: allows you to specify a custom root element [default=u'root]
+    :param custom_root: allows you to specify a custom root element [default='root]
     :param ids: ids specifies whether elements get unique ids [default=False]
     :param attr_type: specifies whether elements get a data type attribute [default=False]
     :param item_func: specifies what function should generate the element name for items in a list 
@@ -383,13 +381,13 @@ def dicttoxml(obj, root=True, custom_root=u'root', ids=False, attr_type=True, it
     :param cdata: cdata specifies whether string values should be wrapped in CDATA sections [default=False]
     :return: xml string message
     """
-    logger.info(u'Inside dicttoxml(): type(obj) is: "%s", obj="%s"' % (type(obj).__name__, unicode_me(obj)))
+    logger.info('Inside dicttoxml(): type(obj) is: "%s", obj="%s"' % (type(obj).__name__, unicode_me(obj)))
     output = []
     addline = output.append
     if root == True:
-        addline(u'<?xml version="1.0" encoding="UTF-8" ?>')
-        addline(u'<%s>%s</%s>' % (custom_root, convert(obj, ids, attr_type, item_func, cdata, parent=custom_root), 
+        addline('<?xml version="1.0" encoding="UTF-8" ?>')
+        addline('<%s>%s</%s>' % (custom_root, convert(obj, ids, attr_type, item_func, cdata, parent=custom_root), 
                                   custom_root))
     else:
-        addline(convert(obj, ids, attr_type, item_func, cdata, parent=u''))
-    return u''.join(output).encode(u'utf-8')
+        addline(convert(obj, ids, attr_type, item_func, cdata, parent=''))
+    return ''.join(output).encode('utf-8')

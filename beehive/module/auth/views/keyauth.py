@@ -15,40 +15,40 @@ def get_ip():
 
 
 class CreateTokenRequestSchema(Schema):
-    user = fields.String(required=True, error_messages={u'required': u'user is required.'})
-    password = fields.String(required=True, error_messages={u'required': u'password is required.'})
-    login_ip = fields.String(load_from=u'login-ip', missing=get_ip)
+    user = fields.String(required=True, error_messages={'required': 'user is required.'})
+    password = fields.String(required=True, error_messages={'required': 'password is required.'})
+    login_ip = fields.String(load_from='login-ip', missing=get_ip)
     
-    @validates(u'user')
+    @validates('user')
     def validate_user(self, value):
         try:
-            value.index(u'@')
+            value.index('@')
         except ValueError:
-            raise ValidationError(u'User syntax must be <user>@<domain>')
+            raise ValidationError('User syntax must be <user>@<domain>')
 
 
 class CreateTokenResponseSchema(Schema):
-    access_token = fields.String(required=True, example=u'39cdae88-74a7-466b-9817-ced52c90239c')
+    access_token = fields.String(required=True, example='39cdae88-74a7-466b-9817-ced52c90239c')
     expires_in = fields.Integer(example=3600)
     expires_at = fields.Integer(example=1502739783)
-    token_type = fields.String(required=True, example=u'Bearer')
-    seckey = fields.String(required=True, example=u'LS0tLS1CRUdJTiBSU0Eg........')
-    pubkey = fields.String(required=True, example=u'LS0tLS1CRUdJTiBQVUJMSUMgS0VZL..........')
-    user = fields.String(required=True, example=u'6d960236-d280-46d2-817d-f3ce8f0aeff7')
+    token_type = fields.String(required=True, example='Bearer')
+    seckey = fields.String(required=True, example='LS0tLS1CRUdJTiBSU0Eg........')
+    pubkey = fields.String(required=True, example='LS0tLS1CRUdJTiBQVUJMSUMgS0VZL..........')
+    user = fields.String(required=True, example='6d960236-d280-46d2-817d-f3ce8f0aeff7')
 
 
 class CreateToken(SwaggerApiView):
-    tags = [u'authorization']
+    tags = ['authorization']
     definitions = {
-        u'CreateTokenRequestSchema': CreateTokenRequestSchema,
-        u'CreateTokenResponseSchema': CreateTokenResponseSchema
+        'CreateTokenRequestSchema': CreateTokenRequestSchema,
+        'CreateTokenResponseSchema': CreateTokenResponseSchema
     }
     parameters = SwaggerHelper().get_parameters(CreateTokenRequestSchema)
     parameters_schema = CreateTokenRequestSchema
     responses = SwaggerApiView.setResponses({
         200: {
-            u'description': u'success',
-            u'schema': CreateTokenResponseSchema
+            'description': 'success',
+            'schema': CreateTokenResponseSchema
         }
     })
 
@@ -58,9 +58,9 @@ class CreateToken(SwaggerApiView):
         Call this api to create keyauth token
         """
         innerperms = [
-            (1, 1, u'auth', u'objects', u'ObjectContainer', u'*', 1, u'*'),
-            (1, 1, u'auth', u'role', u'RoleContainer', u'*', 1, u'*'),
-            (1, 1, u'auth', u'user', u'UserContainer', u'*', 1, u'*')]
+            (1, 1, 'auth', 'objects', 'ObjectContainer', '*', 1, '*'),
+            (1, 1, 'auth', 'role', 'RoleContainer', '*', 1, '*'),
+            (1, 1, 'auth', 'user', 'UserContainer', '*', 1, '*')]
         operation.perms = innerperms     
         res = controller.create_keyauth_token(**data)
         resp = res       
@@ -72,12 +72,12 @@ class KeyAuthApi(ApiView):
     """
     @staticmethod
     def register_api(module):
-        # base = u'keyauth'
+        # base = 'keyauth'
         rules = [
-            # (u'%s/token' % base, u'POST', CreateToken, {u'secure': False}),
+            # ('%s/token' % base, 'POST', CreateToken, {'secure': False}),
 
             # new routes
-            (u'%s/keyauth/token' % module.base_path, u'POST', CreateToken, {u'secure': False}),
+            ('%s/keyauth/token' % module.base_path, 'POST', CreateToken, {'secure': False}),
         ]
         
         ApiView.register_api(module, rules)

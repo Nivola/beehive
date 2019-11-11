@@ -21,11 +21,11 @@ logger = getLogger(__name__)
 
 
 class GrantType(object):
-    AUTHORIZATION_CODE = u'authorization_code'
-    IMPLICIT = u'implicit'
-    RESOURCE_OWNER_PASSWORD_CREDENTIAL = u'resource_owner_password_credentials'
-    CLIENT_CRDENTIAL = u'client_credentials'
-    JWT_BEARER = u'urn:ietf:params:oauth:grant-type:jwt-bearer'
+    AUTHORIZATION_CODE = 'authorization_code'
+    IMPLICIT = 'implicit'
+    RESOURCE_OWNER_PASSWORD_CREDENTIAL = 'resource_owner_password_credentials'
+    CLIENT_CRDENTIAL = 'client_credentials'
+    JWT_BEARER = 'urn:ietf:params:oauth:grant-type:jwt-bearer'
 
 
 class OAuth2Error(errors.OAuth2Error):
@@ -39,7 +39,7 @@ class JWTClient(Client):
     """A client that implement the use case 'JWTs as Authorization Grants' of 
     the rfc7523.
     """
-    def prepare_request_body(self, body=u'', scope=None, **kwargs):
+    def prepare_request_body(self, body='', scope=None, **kwargs):
         """Add the client credentials to the request body.
         """
         grant_type = GrantType.JWT_BEARER
@@ -104,15 +104,15 @@ class JWTClient(Client):
         
         now = datetime.utcnow()
         claims = {
-            u'iss': client_email,
-            u'sub': sub,
-            u'aud': client_token_uri,
-            u'exp': now + timedelta(seconds=60),
-            u'iat': now,
-            u'nbf': now
+            'iss': client_email,
+            'sub': sub,
+            'aud': client_token_uri,
+            'exp': now + timedelta(seconds=60),
+            'iat': now,
+            'nbf': now
         }
-        encoded = jwt.encode(claims, private_key, algorithm=u'RS512')
+        encoded = jwt.encode(claims, private_key, algorithm='RS512')
         res = client.prepare_request_body(assertion=encoded, client_id=client_id, scope=client_scope)
         token = oauth.fetch_token(token_url=client_token_uri, body=res, verify=False)
-        logger.info(u'Create new oauth2 jwt token for client %s and sub %s' % (client_id, sub))
+        logger.info('Create new oauth2 jwt token for client %s and sub %s' % (client_id, sub))
         return token

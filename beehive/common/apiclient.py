@@ -180,7 +180,7 @@ class BeehiveApiClient(object):
             # create data hash
             if PY3:
                 hash_data = SHA256.new()
-                hash_data.update(bytes(data, encoding=u'utf-8'))
+                hash_data.update(bytes(data, encoding='utf-8'))
             else:
                 hash_data = SHA256.new(data)
         
@@ -1003,7 +1003,7 @@ class BeehiveApiClient(object):
         }
         uri = '/v1.0/nas/roles'
         res = self.invoke('auth', uri, 'POST', data, parse=True, silent=True)
-        self.logger.debug('Add role: %s' % str(name))
+        self.logger.debug('Add role: %s' % name)
         return res
 
     def remove_role(self, oid):
@@ -1086,7 +1086,7 @@ class BeehiveApiClient(object):
         
         uri = '/v1.0/nas/users'
         res = self.invoke('auth', uri, 'POST', data, parse=True, silent=True)
-        self.logger.debug('Add base user: %s' % str(name))
+        self.logger.debug('Add base user: %s' % name)
         return res    
     
     def add_system_user(self, name, password, desc):
@@ -1104,7 +1104,7 @@ class BeehiveApiClient(object):
         } 
         uri = '/v1.0/nas/users'
         res = self.invoke('auth', uri, 'POST', data, parse=True, silent=True)
-        self.logger.debug('Add system user: %s' % str(name))
+        self.logger.debug('Add system user: %s' % name)
         return res
     
     def update_user(self, name, new_name, new_pwd, new_desc, 
@@ -1122,7 +1122,7 @@ class BeehiveApiClient(object):
         } 
         uri = '/v1.0/nas/users/%s' % name
         res = self.invoke('auth', uri, 'PUT', data, parse=True, silent=True)
-        self.logger.debug('Update user: %s' % str(name))
+        self.logger.debug('Update user: %s' % name)
         return res
     
     def remove_user(self, oid):
@@ -1132,7 +1132,7 @@ class BeehiveApiClient(object):
         """
         uri = '/v1.0/nas/users/%s' % oid
         res = self.invoke('auth', uri, 'DELETE', '', silent=True)
-        self.logger.debug('Remove user: %s' % str(oid))
+        self.logger.debug('Remove user: %s' % oid)
         return res
     
     def append_user_roles(self, oid, roles):

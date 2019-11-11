@@ -3,6 +3,8 @@
 # (C) Copyright 2018-2019 CSI-Piemonte
 
 import logging
+from uuid import uuid4
+from six import b
 import ujson as json
 import datetime
 
@@ -37,14 +39,14 @@ class BeehiveHelper(object):
     ]
     
     def __init__(self):
-        self.logger = logging.getLogger(self.__class__.__module__+  u'.' + self.__class__.__name__)
+        self.logger = logging.getLogger(self.__class__.__module__+  '.' + self.__class__.__name__)
     
     def get_permission_id(self, objdef):
         """Get operation objid
         """
-        temp = objdef.split(u'.')
-        ids = [u'*' for i in temp]
-        return u'//'.join(ids)
+        temp = objdef.split('.')
+        ids = ['*' for i in temp]
+        return '//'.join(ids)
     
     def set_permissions(self, classes=[]):
         """Set user operations
@@ -54,15 +56,15 @@ class BeehiveHelper(object):
         try:
             operation.perms = []
             for op in classes:
-                perm = (1, 1, op.objtype, op.objdef, self.get_permission_id(op.objdef), 1, u'*')
+                perm = (1, 1, op.objtype, op.objdef, self.get_permission_id(op.objdef), 1, '*')
                 operation.perms.append(perm)
         except Exception as ex:
-            raise Exception(u'Permissions assign error: %s' % ex)
+            raise Exception('Permissions assign error: %s' % ex)
     
     def read_config(self, filename):
         """
         """
-        f = open(filename, u'r')
+        f = open(filename, 'r')
         config = f.read()
         config = json.loads(config)
         f.close()
@@ -75,25 +77,23 @@ class BeehiveHelper(object):
         manager = None
         try:
             # create api manager
-            params = {u'api_id': u'server-01',
-                      u'api_name': config[u'api_system'],
-                      u'api_subsystem': config[u'api_subsystem'],
-                      u'database_uri': config[u'db_uri'],
-                      u'api_module': [u'beehive.module.process.mod.ConfigModule'],
-                      u'api_plugin': []}
+            params = {'api_id': 'server-01',
+                      'api_name': config['api_system'],
+                      'api_subsystem': config['api_subsystem'],
+                      'database_uri': config['db_uri'],
+                      'api_module': ['beehive.module.process.mod.ConfigModule'],
+                      'api_plugin': []}
             manager = ApiManager(params)    
     
             # remove and create scchema
             if update is False:
-                ConfigDbManager.remove_table(config[u'db_uri'])
-            ConfigDbManager.create_table(config[u'db_uri'])
-            self.logger.info(u'Create config DB %s' % (u''))
-            msgs.append(u'Create config DB %s' % (u''))
+                ConfigDbManager.remove_table(config['db_uri'])
+            ConfigDbManager.create_table(config['db_uri'])
+            self.logger.info('Create config DB %s' % (''))
+            msgs.append('Create config DB %s' % (''))
     
             # create session
             operation.session = manager.get_session()
-            #operation.perms = perms
-            #operation.user = authuser
             
             # create config db manager
             db_manager = ConfigDbManager()
@@ -102,28 +102,21 @@ class BeehiveHelper(object):
             #
             # populate configs
             #
-            for item in config[u'config']:
+            for item in config['config']:
                 # check if config already exists
-                value = item[u'value']
+                value = item['value']
                 if isinstance(value, dict):
                     value = json.dumps(value)
                 try:
-                    res = db_manager.get(app=config[u'api_system'], 
-                                         group=item[u'group'], 
-                                         name=item[u'name'])
-                    self.logger.warn(u'Configuration %s %s %s already exist'%
-                                     (config[u'api_system'], item[u'group'], 
-                                      item[u'name']))
-                    msgs.append(u'Configuration %s %s %s already exist'%
-                               (config[u'api_system'], item[u'group'], 
-                                item[u'name']))
+                    res = db_manager.get(app=config['api_system'], group=item['group'], name=item['name'])
+                    self.logger.warning('Configuration %s %s %s already exist' %
+                                        (config['api_system'], item['group'], item['name']))
+                    msgs.append('Configuration %s %s %s already exist' %
+                                (config['api_system'], item['group'], item['name']))
                 except QueryError as ex:
-                    res = db_manager.add(config[u'api_system'], 
-                                         item[u'group'], 
-                                         item[u'name'], 
-                                         value)
-                    self.logger.info(u'Add configuration %s' % (res))
-                    msgs.append(u'Add configuration %s' % (res))
+                    res = db_manager.add(config['api_system'], item['group'], item['name'], value)
+                    self.logger.info('Add configuration %s' % res)
+                    msgs.append('Add configuration %s' % res)
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
             raise
@@ -146,15 +139,15 @@ class BeehiveHelper(object):
     
         try:
             # create api manager
-            params = {u'api_id': u'server-01',
-                      u'api_name': config[u'api_system'],
-                      u'api_subsystem': config[u'api_subsystem'],
-                      u'database_uri': config[u'db_uri'],
-                      u'redis_identity_uri': config[u'redis_identity_uri'],
-                      u'api_module': config[u'api_modules'],
-                      u'api_plugin': config[u'api_plugins'],
-                      u'api_endpoint': config[u'api_endpoint'],
-                      u'api_catalog': config[u'api_catalog']}
+            params = {'api_id': 'server-01',
+                      'api_name': config['api_system'],
+                      'api_subsystem': config['api_subsystem'],
+                      'database_uri': config['db_uri'],
+                      'redis_identity_uri': config['redis_identity_uri'],
+                      'api_module': config['api_modules'],
+                      'api_plugin': config['api_plugins'],
+                      'api_endpoint': config['api_endpoint'],
+                      'api_catalog': config['api_catalog']}
             manager = ApiManager(params)
             manager.configure()
             manager.register_modules()
@@ -162,15 +155,15 @@ class BeehiveHelper(object):
             # create config db manager
             config_db_manager = ConfigDbManager()
     
-            for db_manager_class in config[u'db_managers']:
+            for db_manager_class in config['db_managers']:
                 db_manager = import_class(db_manager_class)
         
                 # remove and create/update scchema
                 if update is False:
-                    db_manager.remove_table(config[u'db_uri'])
-                db_manager.create_table(config[u'db_uri'])
-                self.logger.info(u'Create DB %s' % (db_manager_class))
-                msgs.append(u'Create DB %s' % (db_manager_class))
+                    db_manager.remove_table(config['db_uri'])
+                db_manager.create_table(config['db_uri'])
+                self.logger.info('Create DB %s' % (db_manager_class))
+                msgs.append('Create DB %s' % (db_manager_class))
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
             raise
@@ -178,10 +171,10 @@ class BeehiveHelper(object):
         self.set_permissions(classes=self.classes)
     
         # create module
-        for item in config[u'api_modules']:
+        for item in config['api_modules']:
             try:
-                self.logger.info(u'Load module %s' % (item))
-                module = manager.modules[item.split(u'.')[-1]]
+                self.logger.info('Load module %s' % item)
+                module = manager.modules[item.split('.')[-1]]
                 controller = module.get_controller()
                 
                 # create session
@@ -189,30 +182,29 @@ class BeehiveHelper(object):
                 
                 # init module
                 module.init_object()
-                self.logger.info(u'Init module %s' % (module))
-                msgs.append(u'Init module %s' % (module))
+                self.logger.info('Init module %s' % module)
+                msgs.append('Init module %s' % module)
                 
                 # create system users and roles
-                if module.name == u'AuthModule':
-                    res = self.__create_main_users(
-                        controller, config, config_db_manager, update)
+                if module.name == 'AuthModule':
+                    res = self.__create_main_users(controller, config, config_db_manager, update)
                     controller.set_superadmin_permissions()
                     msgs.extend(res)
                     
-                elif module.name == u'Oauth2Module':
+                elif module.name == 'Oauth2Module':
                     controller.set_superadmin_permissions()
                     
-                elif module.name == u'BasicModule':
+                elif module.name == 'BasicModule':
                     controller.set_superadmin_permissions()  
                     
-                elif module.name == u'CatalogModule':
+                elif module.name == 'CatalogModule':
                     res = self.__create_main_catalogs(controller, config, config_db_manager)
                     controller.set_superadmin_permissions()
                     msgs.extend(res)
 
-                elif module.name == u'ServiceModule':
-                    controller.populate(config[u'db_uri'])
-                    msgs.extend(u'Populate service database')
+                elif module.name == 'ServiceModule':
+                    controller.populate(config['db_uri'])
+                    msgs.extend('Populate service database')
               
             except Exception as ex:
                 self.logger.error(ex, exc_info=1)
@@ -222,8 +214,8 @@ class BeehiveHelper(object):
                 module.release_session(operation.session)
                 operation.session = None
                 
-        self.logger.info(u'Init subsystem %s' % (config[u'api_subsystem']))
-        msgs.append(u'Init subsystem %s' % (config[u'api_subsystem']))
+        self.logger.info('Init subsystem %s' % (config['api_subsystem']))
+        msgs.append('Init subsystem %s' % (config['api_subsystem']))
         
         return msgs
     
@@ -232,7 +224,7 @@ class BeehiveHelper(object):
         """
         msgs = []
     
-        users = config[u'users']
+        users = config['users']
     
         if update is False:
             # add superadmin role
@@ -246,39 +238,34 @@ class BeehiveHelper(object):
         for user in users:
             # check if user already exist
             try:
-                user = controller.get_user(user[u'name'])
-                self.logger.warn(u'User %s already exist' % (user))
-                msgs.append(u'User %s already exist' % (user))                  
+                user = controller.get_user(user['name'])
+                self.logger.warning('User %s already exist' % (user))
+                msgs.append('User %s already exist' % (user))                  
             except:
                 # create superadmin
-                if user[u'type'] == u'admin':
+                if user['type'] == 'admin':
                     expiry_date = datetime.datetime(2099, 12, 31)                    
                     user_id = controller.add_user(
-                        name=user[u'name'], storetype=u'DBUSER', active=True, 
-                        password=user[u'pwd'], desc=user[u'desc'], 
+                        name=user['name'], storetype='DBUSER', active=True, 
+                        password=user['pwd'], desc=user['desc'], 
                         expiry_date=expiry_date, base=False, system=True)
 
-                    # users, total = controller.get_users(name=user[u'name'])
-                    # users[0].append_role(u'ApiSuperadmin',
-                    #                      expiry_date=expiry_date)
-                    
                 # create users
-                elif user[u'type'] == u'user':
+                elif user['type'] == 'user':
                     expiry_date = datetime.datetime(2099, 12, 31) 
                     user_id = controller.add_user(
-                        name=user[u'name'], storetype=u'DBUSER', active=True, 
-                        password=user[u'pwd'], desc=user[u'desc'], 
+                        name=user['name'], storetype='DBUSER', active=True, 
+                        password=user['pwd'], desc=user['desc'], 
                         expiry_date=expiry_date, base=True, system=False)
                 
                 # add attribs to user
-                attribs = user.get(u'attribs', [])
-                user_obj = controller.get_user(user[u'name'])
+                attribs = user.get('attribs', [])
+                user_obj = controller.get_user(user['name'])
                 for a in attribs:
-                    user_obj.set_attribute(name=a[u'name'], 
-                        value=a[u'value'], desc=a[u'desc'])
+                    user_obj.set_attribute(name=a['name'], value=a['value'], desc=a['desc'])
                 
-                self.logger.info(u'Add user %s' % (user[u'name']))
-                msgs.append(u'Add user %s' % (user[u'name']))          
+                self.logger.info('Add user %s' % (user['name']))
+                msgs.append('Add user %s' % (user['name']))          
                 
         return msgs            
     
@@ -287,55 +274,55 @@ class BeehiveHelper(object):
         """
         msgs = []
         
-        catalogs = config[u'catalogs']
+        catalogs = config['catalogs']
         
         for catalog in catalogs:
             # check if catalog already exist
             try:
-                controller.get_catalog(catalog[u'name'])
-                self.logger.warn(u'Catalog %s already exist' % (catalog[u'name']))
-                msgs.append(u'Catalog %s already exist' % (catalog[u'name']))
-                # res = cats[0][u'oid']
+                controller.get_catalog(catalog['name'])
+                self.logger.warning('Catalog %s already exist' % (catalog['name']))
+                msgs.append('Catalog %s already exist' % (catalog['name']))
+                # res = cats[0]['oid']
             except:
                 # create new catalog
-                cat = controller.add_catalog(catalog[u'name'], catalog[u'desc'], catalog[u'zone'])
-                self.logger.info(u'Add catalog name:%s zone:%s : %s' % (catalog[u'name'], catalog[u'zone'], cat))
-                msgs.append(u'Add catalog name:%s zone:%s : %s' % (catalog[u'name'], catalog[u'zone'], cat))
+                cat = controller.add_catalog(catalog['name'], catalog['desc'], catalog['zone'])
+                self.logger.info('Add catalog name:%s zone:%s : %s' % (catalog['name'], catalog['zone'], cat))
+                msgs.append('Add catalog name:%s zone:%s : %s' % (catalog['name'], catalog['zone'], cat))
 
                 # set catalog in config if internal
-                if catalog[u'zone'] == u'internal':
-                    config_db_manager.add(config[u'api_system'], u'api', u'catalog', catalog[u'name'])
+                if catalog['zone'] == 'internal':
+                    config_db_manager.add(config['api_system'], 'api', 'catalog', catalog['name'])
 
             # add endpoint
-            for endpoint in catalog.get(u'endpoints', []):
+            for endpoint in catalog.get('endpoints', []):
                 # check if endpoint already exist
                 try:
-                    controller.get_endpoint(endpoint[u'name'])
-                    self.logger.warn(u'Endpoint %s already exist' % (endpoint[u'name']))
-                    msgs.append(u'Endpoint %s already exist' % (endpoint[u'name']))
-                    # res = cats[0][u'oid']
+                    controller.get_endpoint(endpoint['name'])
+                    self.logger.warning('Endpoint %s already exist' % (endpoint['name']))
+                    msgs.append('Endpoint %s already exist' % (endpoint['name']))
+                    # res = cats[0]['oid']
                 except:
                     # create new endpoint
-                    cat = controller.get_catalog(catalog[u'name'])
-                    res = cat.add_endpoint(name=endpoint[u'name'], desc=endpoint[u'desc'], service=endpoint[u'service'],
-                                           uri=endpoint[u'uri'], active=True)
-                    self.logger.info(u'Add endpoint name:%s service:%s : %s' % (endpoint[u'name'],
-                                                                                endpoint[u'service'], res))
-                    msgs.append(u'Add endpoint name:%s service:%s : %s' % (endpoint[u'name'], endpoint[u'service'], res))
+                    cat = controller.get_catalog(catalog['name'])
+                    res = cat.add_endpoint(name=endpoint['name'], desc=endpoint['desc'], service=endpoint['service'],
+                                           uri=endpoint['uri'], active=True)
+                    self.logger.info('Add endpoint name:%s service:%s : %s' % (endpoint['name'],
+                                                                               endpoint['service'], res))
+                    msgs.append('Add endpoint name:%s service:%s : %s' % (endpoint['name'], endpoint['service'], res))
 
         return msgs
     
     def __setup_kombu_queue(self, config):
         """Setup kombu redis key fro queue
         """
-        configs = config[u'config']
+        configs = config['config']
         for item in configs:
-            if item[u'group'] == u'queue':
-                value = item[u'value']
-                queue = value[u'queue']
-                uri = value[u'uri']
+            if item['group'] == 'queue':
+                value = item['value']
+                queue = value['queue']
+                uri = value['uri']
                 manager = RedisManager(uri)
-                manager.server.set(u'_kombu.binding.%s' % queue, value)
+                manager.server.set('_kombu.binding.%s' % queue, value)
     
     def create_subsystem(self, subsystem_config, update=False):
         """Create subsystem.
@@ -346,69 +333,62 @@ class BeehiveHelper(object):
         
         # read subsystem config
         config = self.read_config(subsystem_config)
-        subsystem = get_value(config, u'api_subsystem', None, exception=True)
-        # update = get_value(config, u'update', False)
-        api_config = get_value(config, u'api', {})
+        subsystem = get_value(config, 'api_subsystem', None, exception=True)
+        # update = get_value(config, 'update', False)
+        api_config = get_value(config, 'api', {})
 
         if update is True:
-            self.logger.info(u'Update %s subsystem' % subsystem)
+            self.logger.info('Update %s subsystem' % subsystem)
         else:
-            self.logger.info(u'Create new %s subsystem' % subsystem)
+            self.logger.info('Create new %s subsystem' % subsystem)
         
         # set operation user
-        operation.user = (api_config.get(u'user', None), u'localhost', None)
+        operation.user = (api_config.get('user', None), 'localhost', None)
+        operation.id = str(uuid4())
         self.set_permissions(classes=self.classes)        
         
         # init auth subsytem
-        if subsystem == u'auth':
+        if subsystem == 'auth':
             res.extend(self.__configure(config, update=update))
             res.extend(self.__init_subsystem(config, update=update))
             
             # setup main kombu queue
             
         # init oauth2 subsytem
-        elif subsystem == u'oauth2':
+        elif subsystem == 'oauth2':
             res.extend(self.__init_subsystem(config, update=update))
 
         # init other subsystem
         else:
             # create api client instance
-            client = BeehiveApiClient(api_config[u'endpoint'],
-                                      u'keyauth',
-                                      api_config[u'user'], 
-                                      api_config[u'pwd'],
+            client = BeehiveApiClient(api_config['endpoint'],
+                                      'keyauth',
+                                      api_config['user'], 
+                                      api_config['pwd'],
                                       None,
-                                      api_config[u'catalog'])
+                                      api_config['catalog'])
             
             if update is False:
                 # create super user
-                user = {u'name': u'%s_admin@local' % config[u'api_subsystem'],
-                        u'pwd': random_password(20),
-                        u'desc': u'%s internal user' % subsystem}
+                user = {'name': '%s_admin@local' % config['api_subsystem'],
+                        'pwd': random_password(20),
+                        'desc': '%s internal user' % subsystem}
                 try:
-                    client.add_system_user(user[u'name'], 
-                                           password=user[u'pwd'], 
-                                           desc=u'User %s' % user[u'name'])
+                    client.add_system_user(user['name'], password=user['pwd'], desc='User %s' % user['name'])
                 except BeehiveApiClientError as ex:
                     if ex.code == 409:
-                        client.update_user(user[u'name'], user[u'name'], user[u'pwd'],
-                                           u'User %s' % user[u'name'])
+                        client.update_user(user['name'], user['name'], user['pwd'], 'User %s' % user['name'])
                     else:
                         raise
             
                 # append system user config
-                config[u'config'].append({u'group': u'api',
-                                          u'name': u'user', 
-                                          u'value': {u'name': user[u'name'],
-                                                     u'pwd': user[u'pwd']}})
+                config['config'].append({'group': 'api', 'name': 'user',
+                                         'value': {'name': user['name'], 'pwd': user['pwd']}})
                 # append catalog config
-                config[u'config'].append({u'group': u'api', 
-                                          u'name': u'catalog', 
-                                          u'value': api_config[u'catalog']})
+                config['config'].append({'group': 'api', 'name': 'catalog', 'value': api_config['catalog']})
                 # append auth endpoints config
-                config[u'config'].append({u'group': u'api', 
-                                          u'name': u'endpoints', 
-                                          u'value': json.dumps(api_config[u'endpoint'])})
+                config['config'].append({'group': 'api', 'name': 'endpoints',
+                                         'value': json.dumps(api_config['endpoint'])})
     
             res.extend(self.__configure(config, update=update))
             res.extend(self.__init_subsystem(config, update=update))

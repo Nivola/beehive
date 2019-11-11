@@ -5,7 +5,7 @@
 
 import os
 import sys
-
+from six import b
 import gevent.monkey
 from beehive.common.apiclient import BeehiveApiClient
 from beehive.common.log import ColorFormatter
@@ -52,7 +52,7 @@ from beecell.test.runner import TestRunner
 seckey = None
 token = None
 result = {}
-TIMEOUT = u'TIMEOUT'
+TIMEOUT = 'TIMEOUT'
 
 logger = logging.getLogger(__name__)
 
@@ -66,141 +66,141 @@ def assert_exception(exception):
 
 
 class BeehiveTestCase(unittest.TestCase):
-    logger = logging.getLogger(u'beehive.test.log')
-    runlogger = logging.getLogger(u'beehive.test.run')
+    logger = logging.getLogger('beehive.test.log')
+    runlogger = logging.getLogger('beehive.test.run')
     pp = pprint.PrettyPrinter(width=200)
-    logging.addLevelName(60, u'TESTPLAN')
-    logging.addLevelName(70, u'TEST')
+    logging.addLevelName(60, 'TESTPLAN')
+    logging.addLevelName(70, 'TEST')
 
-    # module = u'resource'
-    # module_prefix = u'nrs'
+    # module = 'resource'
+    # module_prefix = 'nrs'
 
     main_config_file = None
     main_fernet_file = None
     spec_config_file = None
     validation_active = False
-    run_test_user = u'test1'
+    run_test_user = 'test1'
 
     @classmethod
     def setUpClass(cls):
-        logger.log(60, u'#################### Testplan %s - START ####################' % cls.__name__)
-        logging.getLogger(u'beehive.test.run')\
-            .log(60, u'#################### Testplan %s - START ####################' % cls.__name__)
+        logger.log(60, '#################### Testplan %s - START ####################' % cls.__name__)
+        logging.getLogger('beehive.test.run')\
+            .log(60, '#################### Testplan %s - START ####################' % cls.__name__)
         self = cls
 
         # ssl
-        path = os.path.dirname(__file__).replace(u'beehive/common', u'beehive/tests')
-        pos = path.find(u'tests')
+        path = os.path.dirname(__file__).replace('beehive/common', 'beehive/tests')
+        pos = path.find('tests')
         path = path[:pos+6]
         keyfile = None
         certfile = None
 
         # load configs
         try:
-            home = os.path.expanduser(u'~')
+            home = os.path.expanduser('~')
             if self.main_config_file is None:
-                config_file = u'%s/beehive.yml' % home
+                config_file = '%s/beehive.yml' % home
                 self.main_config_file = config_file
             else:
                 config_file = self.main_config_file
             config = self.load_file(config_file)
-            logger.info(u'Get beehive test configuration: %s' % config_file)
+            logger.info('Get beehive test configuration: %s' % config_file)
         except Exception as ex:
-            raise Exception(u'Error loading config file. Search in user home. %s' % ex)
+            raise Exception('Error loading config file. Search in user home. %s' % ex)
 
         # load configs fernet key
         try:
-            home = os.path.expanduser(u'~')
+            home = os.path.expanduser('~')
             if self.main_fernet_file is None:
-                config_file = u'%s/beehive.fernet' % home
+                config_file = '%s/beehive.fernet' % home
                 self.main_fernet_file = config_file
             else:
-                config_file = self.main_fernet_file.replace(u'yml', u'fernet')
+                config_file = self.main_fernet_file.replace('yml', 'fernet')
             fernet = self.load_file(config_file)
-            logger.info(u'Get beehive test fernet key: %s' % config_file)
+            logger.info('Get beehive test fernet key: %s' % config_file)
         except Exception as ex:
-            raise Exception(u'Error loading fernet key file. Search in user home. %s' % ex)
+            raise Exception('Error loading fernet key file. Search in user home. %s' % ex)
 
         # load specific configs for a set of test
         try:
             if self.spec_config_file is not None:
                 config2 = self.load_file(self.spec_config_file)
                 recursive_update(config, config2)
-                logger.info(u'Get beehive test specific configuration: %s' % self.spec_config_file)
+                logger.info('Get beehive test specific configuration: %s' % self.spec_config_file)
         except Exception as ex:
-            raise Exception(u'Error loading config file. Search in user home. %s' % ex)
+            raise Exception('Error loading config file. Search in user home. %s' % ex)
 
-        logger.info(u'Validation active: %s' % cls.validation_active)
+        logger.info('Validation active: %s' % cls.validation_active)
 
-        # print(u'Configurations:')
-        # print(u'Main config file: %s' % cls.main_config_file)
-        # print(u'Extra config file: %s' % cls.spec_config_file)
-        # print(u'Validation active: %s' % cls.validation_active)
-        # print(u'Test user: %s' % cls.run_test_user)
-        # print(u'')
-        # print(u'Tests:')
+        # print('Configurations:')
+        # print('Main config file: %s' % cls.main_config_file)
+        # print('Extra config file: %s' % cls.spec_config_file)
+        # print('Validation active: %s' % cls.validation_active)
+        # print('Test user: %s' % cls.run_test_user)
+        # print('')
+        # print('Tests:')
 
-        # env = config.get(u'env', None)
+        # env = config.get('env', None)
         # if env is None:
-        #     raise Exception(u'Test environment was not specified')
-        # current_schema = config.get(u'schema')
+        #     raise Exception('Test environment was not specified')
+        # current_schema = config.get('schema')
         # cfg = config.get(env)
         cfg = config
-        self.test_config = config.get(u'configs', {})
-        for key in self.test_config.get(u'resource').keys():
-            if u'configs' in cfg.keys() and u'resource' in cfg.get(u'configs').keys():
-                self.test_config.get(u'resource').get(key).update(cfg.get(u'configs').get(u'resource').get(key, {}))
-        if u'configs' in cfg.keys() and u'container' in cfg.get(u'configs').keys():
-            self.test_config.get(u'container').update(cfg.get(u'configs').get(u'container'))
+        self.test_config = config.get('configs', {})
+        for key in self.test_config.get('resource').keys():
+            if 'configs' in cfg.keys() and 'resource' in cfg.get('configs').keys():
+                self.test_config.get('resource').get(key).update(cfg.get('configs').get('resource').get(key, {}))
+        if 'configs' in cfg.keys() and 'container' in cfg.get('configs').keys():
+            self.test_config.get('container').update(cfg.get('configs').get('container'))
         self.fernet = fernet
 
         # endpoints
-        self.endpoints = cfg.get(u'endpoints')
-        self.swagger_endpoints = cfg.get(u'swagger')
-        logger.info(u'Endpoints: %s' % self.endpoints)
+        self.endpoints = cfg.get('endpoints')
+        self.swagger_endpoints = cfg.get('swagger')
+        logger.info('Endpoints: %s' % self.endpoints)
             
         # redis connection
-        if cfg.get(u'redis') is not None:
-            self.redis_uri = cfg.get(u'redis').get(u'uri')
-            if self.redis_uri is not None and self.redis_uri != u'':
-                rhost, rport, db = self.redis_uri.split(u';')
+        if cfg.get('redis') is not None:
+            self.redis_uri = cfg.get('redis').get('uri')
+            if self.redis_uri is not None and self.redis_uri != '':
+                rhost, rport, db = self.redis_uri.split(';')
                 self.redis = redis.StrictRedis(host=rhost, port=int(rport), db=int(db))
         
         # celery broker
-        self.broker = cfg.get(u'broker')
+        self.broker = cfg.get('broker')
         
         # mysql connection
-        self.db_uris = cfg.get(u'db-uris')  
+        self.db_uris = cfg.get('db-uris')  
         
         # get users
-        self.users = cfg.get(u'users')
+        self.users = cfg.get('users')
         
         # create auth client
-        self.auth_client = BeehiveApiClient([], u'keyauth', None, u'', None)
+        self.auth_client = BeehiveApiClient([], 'keyauth', None, '', None)
         
         # create api endpoint
         self.api = {}
         self.schema = {}
         for subsystem, endpoint in self.endpoints.items():
             self.api[subsystem] = RemoteClient(endpoint, keyfile=keyfile, certfile=certfile)
-            # self.logger.info(u'Load swagger schema from %s' % endpoint)
+            # self.logger.info('Load swagger schema from %s' % endpoint)
             # self.schema[subsystem] = self.validate_swagger_schema(endpoint)
 
         self.load_result()
 
         self.custom_headers = {}
-        self.endpoit_service = u'auth'
+        self.endpoit_service = 'auth'
 
     @classmethod
     def tearDownClass(cls):
         cls.store_result()
-        logger.log(60, u'#################### Testplan %s - STOP ####################' % cls.__name__)
-        logging.getLogger(u'beehive.test.run')\
-            .log(60, u'#################### Testplan %s - STOP ####################' % cls.__name__)
+        logger.log(60, '#################### Testplan %s - STOP ####################' % cls.__name__)
+        logging.getLogger('beehive.test.run')\
+            .log(60, '#################### Testplan %s - STOP ####################' % cls.__name__)
 
     @classmethod
     def load_config(cls, file_config):
-        f = open(file_config, u'r')
+        f = open(file_config, 'r')
         config = f.read()
         config = json.loads(config)
         f.close()
@@ -208,11 +208,11 @@ class BeehiveTestCase(unittest.TestCase):
 
     @classmethod
     def load_file(cls, file_config):
-        f = open(file_config, u'r')
+        f = open(file_config, 'r')
         config = f.read()
-        if file_config.find(u'.json') > 0:
+        if file_config.find('.json') > 0:
             config = json.loads(config)
-        elif file_config.find(u'.yml') > 0:
+        elif file_config.find('.yml') > 0:
             config = yaml.load(config, Loader=Loader)
         f.close()
         return config
@@ -221,7 +221,7 @@ class BeehiveTestCase(unittest.TestCase):
     def store_result(cls):
         global result
         if len(result.keys()) > 0:
-            f = open(u'/tmp/test.result', u'w')
+            f = open('/tmp/test.result', 'w')
             f.write(json.dumps(result))
             f.close()
 
@@ -229,14 +229,14 @@ class BeehiveTestCase(unittest.TestCase):
     def load_result(cls):
         global result
         try:
-            f = open(u'/tmp/test.result', u'r')
+            f = open('/tmp/test.result', 'r')
             config = f.read()
             result = json.loads(config)
             f.close()
         except:
             result = {}
 
-    def convert(self, data, separator=u'.'):
+    def convert(self, data, separator='.'):
         if isinstance(data, dict):
             for k, v in data.items():
                 data[k] = self.convert(v, separator)
@@ -248,13 +248,13 @@ class BeehiveTestCase(unittest.TestCase):
             data = datal
 
         elif isinstance(data, str) or isinstance(data, unicode):
-            if data.find(u'$REF$') == 0:
-                data = dict_get(self.test_config, data.lstrip(u'$REF$'), separator)
+            if data.find('$REF$') == 0:
+                data = dict_get(self.test_config, data.lstrip('$REF$'), separator)
                 data = self.convert(data, separator)
 
         return data
 
-    def conf(self, key, separator=u'.'):
+    def conf(self, key, separator='.'):
         res = dict_get(self.test_config, key, separator)
 
         if isinstance(res, dict):
@@ -278,14 +278,14 @@ class BeehiveTestCase(unittest.TestCase):
         return result.get(key, None)
 
     def setUp(self):
-        logger.log(70, u'========== %s ==========' % self.id()[8:])
-        logging.getLogger(u'beehive.test.run').log(70, u'========== %s ==========' % self.id()[9:])
+        logger.log(70, '========== %s ==========' % self.id()[8:])
+        logging.getLogger('beehive.test.run').log(70, '========== %s ==========' % self.id()[9:])
         self.start = time.time()
         
     def tearDown(self):
         elapsed = round(time.time() - self.start, 4)
-        logger.log(70, u'========== %s ========== : %ss' % (self.id()[8:], elapsed))
-        logging.getLogger(u'beehive.test.run').log(70, u'========== %s ========== : %ss' % (self.id()[9:], elapsed))
+        logger.log(70, '========== %s ========== : %ss' % (self.id()[8:], elapsed))
+        logging.getLogger('beehive.test.run').log(70, '========== %s ========== : %ss' % (self.id()[9:], elapsed))
     
     def open_mysql_session(self, db_uri):
         engine = create_engine(db_uri)
@@ -295,34 +295,34 @@ class BeehiveTestCase(unittest.TestCase):
     
     def create_keyauth_token(self, user, pwd, timeout=5):
         global token, seckey
-        data = {u'user': user, u'password': pwd}
-        headers = {u'Content-Type': u'application/json'}
-        endpoint = self.endpoints[u'auth']
-        uri = u'/v1.0/nas/keyauth/token'
-        self.logger.debug(u'Request token to: %s' % endpoint + uri)
-        response = requests.request(u'post', endpoint + uri, data=json.dumps(data), headers=headers, timeout=timeout,
+        data = {'user': user, 'password': pwd}
+        headers = {'Content-Type': 'application/json'}
+        endpoint = self.endpoints['auth']
+        uri = '/v1.0/nas/keyauth/token'
+        self.logger.debug('Request token to: %s' % endpoint + uri)
+        response = requests.request('post', endpoint + uri, data=json.dumps(data), headers=headers, timeout=timeout,
                                     verify=False)
         res = response.json()
-        self.logger.debug(u'Respone token: %s' % res)
-        if res.get(u'code', None) is not None:
-            raise Exception(res.get(u'message', u''))
-        token = res[u'access_token']
-        seckey = res[u'seckey']
-        self.logger.debug(u'Get access token to: %s' % token)
+        self.logger.debug('Respone token: %s' % res)
+        if res.get('code', None) is not None:
+            raise Exception(res.get('message', ''))
+        token = res['access_token']
+        seckey = res['seckey']
+        self.logger.debug('Get access token to: %s' % token)
 
     def validate_swagger_schema(self, endpoint, timeout=5):
         start = time.time()
         schema_uri = endpoint
-        response = requests.request(u'GET', schema_uri, timeout=timeout, verify=False)
+        response = requests.request('GET', schema_uri, timeout=timeout, verify=False)
         schema = load(response.text)
-        logger.info(u'Load swagger schema from %s: %ss' % (endpoint, time.time()-start))
+        logger.info('Load swagger schema from %s: %ss' % (endpoint, time.time()-start))
         return schema    
     
     def get_schema(self, subsystem, endpoint, timeout=5):
         if self.validation_active is True:
             schema = self.schema.get(subsystem, None)
             if schema is None:
-                self.logger.info(u'Load swagger schema from %s' % endpoint)
+                self.logger.info('Load swagger schema from %s' % endpoint)
                 schema = self.validate_swagger_schema(endpoint, timeout=timeout)
                 self.schema[subsystem] = schema
             return schema
@@ -332,14 +332,14 @@ class BeehiveTestCase(unittest.TestCase):
         validate = True
         if self.validation_active is True:
             # validate with swagger schema
-            if resp_content_type.find(u'application/json') >= 0:
+            if resp_content_type.find('application/json') >= 0:
                 validator = ApiValidator(schema, path, method)
                 validate = validator.validate(response)
                 if runlog is True:
-                    self.runlogger.info(u'validate:         %s' % validate)
+                    self.runlogger.info('validate:         %s' % validate)
             else:
                 if runlog is True:
-                    self.runlogger.warn(u'validation supported only for application/json')
+                    self.runlogger.warn('validation supported only for application/json')
                 validate = True
         return validate
     
@@ -368,98 +368,98 @@ class BeehiveTestCase(unittest.TestCase):
             swagger_endpoint = self.swagger_endpoints[subsystem]
             # schema = self.schema[subsystem]
             schema = self.get_schema(subsystem, swagger_endpoint, timeout=timeout)
-            if u'Content-Type' not in headers:
-                headers[u'Content-Type'] = u'application/json'            
+            if 'Content-Type' not in headers:
+                headers['Content-Type'] = 'application/json'            
 
-            if auth == u'oauth2' and oauth2_token is not None:
-                headers.update({u'Authorization': u'Bearer %s' % oauth2_token})
-            elif user is not None and auth == u'simplehttp':
+            if auth == 'oauth2' and oauth2_token is not None:
+                headers.update({'Authorization': 'Bearer %s' % oauth2_token})
+            elif user is not None and auth == 'simplehttp':
                 cred = HTTPBasicAuth(user, pwd)
-                logger.debug(u'Make simple http authentication: %s' % time.time()-start)
-            elif user is not None and auth == u'keyauth':
+                logger.debug('Make simple http authentication: %s' % time.time()-start)
+            elif user is not None and auth == 'keyauth':
                 if token is None:
                     self.create_keyauth_token(user, pwd, timeout=timeout)
-                    logger.debug(u'Create keyauth token: %s - %s' % (token, time.time()-start))
+                    logger.debug('Create keyauth token: %s - %s' % (token, time.time()-start))
                 sign = self.auth_client.sign_request(seckey, uri)
-                headers.update({u'uid': token, u'sign': sign})
+                headers.update({'uid': token, 'sign': sign})
 
             # reset start after authentication
             start = time.time()
 
             if runlog is True:
-                self.runlogger.info(u'request endpoint: %s' % endpoint)
-                self.runlogger.info(u'request path:     %s' % uri)
-                self.runlogger.info(u'request method:   %s' % method)
-                self.runlogger.info(u'request user:     %s' % user)
-                self.runlogger.info(u'request auth:     %s' % auth)
-                self.runlogger.info(u'request params:   %s' % params)
-                self.runlogger.info(u'request query:    %s' % query)
-                self.runlogger.info(u'request data:     %s' % data)            
-                self.runlogger.info(u'request headers:  %s' % headers)
+                self.runlogger.info('request endpoint: %s' % endpoint)
+                self.runlogger.info('request path:     %s' % uri)
+                self.runlogger.info('request method:   %s' % method)
+                self.runlogger.info('request user:     %s' % user)
+                self.runlogger.info('request auth:     %s' % auth)
+                self.runlogger.info('request params:   %s' % params)
+                self.runlogger.info('request query:    %s' % query)
+                self.runlogger.info('request data:     %s' % data)            
+                self.runlogger.info('request headers:  %s' % headers)
 
             # execute request
             response = requests.request(method, endpoint + uri, auth=cred, params=query, data=data, headers=headers,
                                         timeout=timeout, verify=False)
-            logger.info(u'Call api: %s' % response.url)
+            logger.info('Call api: %s' % response.url)
             
             if runlog is True:
-                self.runlogger.info(u'request url:      %s' % response.url)
-                self.runlogger.info(u'response headers: %s' % response.headers)
-                self.runlogger.info(u'response code:    %s' % response.status_code)
-            resp_content_type = response.headers[u'content-type']
+                self.runlogger.info('request url:      %s' % response.url)
+                self.runlogger.info('response headers: %s' % response.headers)
+                self.runlogger.info('response code:    %s' % response.status_code)
+            resp_content_type = response.headers['content-type']
             
             # evaluate response status
             # BAD_REQUEST     400     HTTP/1.1, RFC 2616, Section 10.4.1
             if response.status_code == 400:
-                res = response.json().get(u'message')
+                res = response.json().get('message')
                 raise BadRequestException(res)
       
             # UNAUTHORIZED           401     HTTP/1.1, RFC 2616, Section 10.4.2
             elif response.status_code == 401:
-                res = response.json().get(u'message')  
+                res = response.json().get('message')  
                 raise UnauthorizedException(res)
             
             # PAYMENT_REQUIRED       402     HTTP/1.1, RFC 2616, Section 10.4.3
             
             # FORBIDDEN              403     HTTP/1.1, RFC 2616, Section 10.4.4
             elif response.status_code == 403:
-                res = response.json().get(u'message')      
+                res = response.json().get('message')      
                 raise ForbiddenException(res)
             
             # NOT_FOUND              404     HTTP/1.1, RFC 2616, Section 10.4.5
             elif response.status_code == 404:
-                res = response.json().get(u'message')        
+                res = response.json().get('message')        
                 raise NotFoundException(res)
             
             # METHOD_NOT_ALLOWED     405     HTTP/1.1, RFC 2616, Section 10.4.6
             elif response.status_code == 405:
-                res = response.json().get(u'message')    
+                res = response.json().get('message')    
                 raise MethodNotAllowedException(res)
             
             # NOT_ACCEPTABLE         406     HTTP/1.1, RFC 2616, Section 10.4.7
             elif response.status_code == 406:
-                res = response.json().get(u'message')       
+                res = response.json().get('message')       
                 raise NotAcceptableException(res)
             
             # PROXY_AUTHENTICATION_REQUIRED     407     HTTP/1.1, RFC 2616, Section 10.4.8
             
             # REQUEST_TIMEOUT        408
             elif response.status_code == 408:
-                raise TimeoutException(u'Timeout')
+                raise TimeoutException('Timeout')
             
             # CONFLICT               409
             elif response.status_code == 409:
-                res = response.json().get(u'message')    
+                res = response.json().get('message')    
                 raise ConflictException(res)
             
             # UNSUPPORTED_MEDIA_TYPE 415
             elif response.status_code == 415:
-                res = response.json().get(u'message')    
+                res = response.json().get('message')    
                 raise UnsupporteMediaTypeException(res)
             
             # INTERNAL SERVER ERROR  500
             elif response.status_code == 500:
-                raise ServerErrorException(u'Internal server error')
+                raise ServerErrorException('Internal server error')
             
             # NO_CONTENT             204    HTTP/1.1, RFC 2616, Section 10.2.5            
             elif response.status_code == 204:
@@ -472,109 +472,109 @@ class BeehiveTestCase(unittest.TestCase):
             # RESET_CONTENT          205    HTTP/1.1, RFC 2616, Section 10.2.6
             # PARTIAL_CONTENT        206    HTTP/1.1, RFC 2616, Section 10.2.7
             # MULTI_STATUS           207    WEBDAV RFC 2518, Section 10.2
-            elif re.match(u'20[0-9]+', str(response.status_code)):
-                if resp_content_type.find(u'application/json') >= 0:
+            elif re.match('20[0-9]+', b(response.status_code)):
+                if resp_content_type.find('application/json') >= 0:
                     res = response.json()
                     if runlog is True:
                         logger.debug(self.pp.pformat(res))
                     else:
                         logger.debug(truncate(res))
-                elif resp_content_type.find(u'application/xml') >= 0:
+                elif resp_content_type.find('application/xml') >= 0:
                     # res = xmltodict.parse(response.text, dict_constructor=dict)
                     res = response.text
                     if runlog is True:
                         logger.debug(res)
                     else:
                         logger.debug(truncate(res))
-                elif resp_content_type.find(u'text/xml') >= 0:
+                elif resp_content_type.find('text/xml') >= 0:
                     # res = xmltodict.parse(response.text, dict_constructor=dict)
                     res = response.text
                 else:
                     res = response.text
             
             if runlog is True:
-                self.runlogger.info(u'response data:    %s' % truncate(response.text, size=response_size))
+                self.runlogger.info('response data:    %s' % truncate(response.text, size=response_size))
             if pretty_response is True:
                 self.runlogger.debug(self.pp.pformat(res))
             
             # validate with swagger schema
             validate = self.validate_response(resp_content_type, schema, path, method, response, runlog)
         except:
-            logger.error(u'', exc_info=1)
+            logger.error('', exc_info=1)
             if runlog is True:
-                self.runlogger.error(u'', exc_info=1)
+                self.runlogger.error('', exc_info=1)
             raise
         
-        logger.debug(u'Call api elapsed: %s' % (time.time()-start))
+        logger.debug('Call api elapsed: %s' % (time.time()-start))
         self.assertEqual(validate, True)
         return res
 
     def get(self, uri, query=None, params=None, timeout=600, user=None, pretty_response=False, runlog=True):
         if user is None:
             user = self.users[self.run_test_user]
-        res = self.call(self.endpoint_service, uri, u'get', data=u'', query=query, timeout=timeout, params=params,
+        res = self.call(self.endpoint_service, uri, 'get', data='', query=query, timeout=timeout, params=params,
                         headers=self.custom_headers, pretty_response=pretty_response, runlog=runlog, **user)
         return res
 
     def post(self, uri, data=None, query=None, params=None, timeout=600, user=None):
         if user is None:
             user = self.users[self.run_test_user]
-        res = self.call(self.endpoint_service, uri, u'post', data=data, query=query, params=params, timeout=timeout,
+        res = self.call(self.endpoint_service, uri, 'post', data=data, query=query, params=params, timeout=timeout,
                         headers=self.custom_headers, **user)
-        if res is not None and u'jobid' in res:
-            self.wait_job(res[u'jobid'])
+        if res is not None and 'jobid' in res:
+            self.wait_job(res['jobid'])
         return res
 
     def put(self, uri, data=None, query=None, params=None, timeout=600, user=None):
         if user is None:
             user = self.users[self.run_test_user]
-        res = self.call(self.endpoint_service, uri, u'put', data=data, query=query, params=params, timeout=timeout,
+        res = self.call(self.endpoint_service, uri, 'put', data=data, query=query, params=params, timeout=timeout,
                         headers=self.custom_headers, **user)
-        if res is not None and u'jobid' in res:
-            self.wait_job(res[u'jobid'])
+        if res is not None and 'jobid' in res:
+            self.wait_job(res['jobid'])
         return res
 
     def patch(self, uri, data=None, query=None, params=None, timeout=600, user=None):
         if user is None:
             user = self.users[self.run_test_user]
-        res = self.call(self.endpoint_service, uri, u'patch', data=data, query=query, params=params, timeout=timeout,
+        res = self.call(self.endpoint_service, uri, 'patch', data=data, query=query, params=params, timeout=timeout,
                         headers=self.custom_headers, **user)
-        if res is not None and u'jobid' in res:
-            self.wait_job(res[u'jobid'])
+        if res is not None and 'jobid' in res:
+            self.wait_job(res['jobid'])
         return res
 
     def delete(self, uri, data=None, query=None, params=None, timeout=600, user=None):
         if user is None:
             user = self.users[self.run_test_user]
-        res = self.call(self.endpoint_service, uri, u'delete', data=data, query=query, params=params, timeout=timeout,
+        res = self.call(self.endpoint_service, uri, 'delete', data=data, query=query, params=params, timeout=timeout,
                         headers=self.custom_headers, **user)
-        if res is not None and u'jobid' in res:
-            self.wait_job(res[u'jobid'])
+        if res is not None and 'jobid' in res:
+            self.wait_job(res['jobid'])
         return res
 
     def get_job_state(self, jobid):
         try:
-            res = self.call(self.module, u'/v1.0/%s/worker/tasks/{oid}' % self.module_prefix, u'get', 
-                            params={u'oid': jobid}, runlog=False, **self.users[self.run_test_user])
-            job = res.get(u'task_instance')
-            state = job.get(u'status')
-            logger.debug(u'Get job %s state: %s' % (jobid, state))
-            if state == u'FAILURE':
-                for err in job.get(u'traceback', []):
+            res = self.call(self.module, '/v1.0/%s/worker/tasks/{oid}' % self.module_prefix, 'get', 
+                            params={'oid': jobid}, runlog=False, **self.users[self.run_test_user])
+            job = res.get('task_instance')
+            state = job.get('status')
+            logger.debug('Get job %s state: %s' % (jobid, state))
+            if state == 'FAILURE':
+                for err in job.get('traceback', []):
                     self.runlogger.error(err.rstrip())
             return state
         except (NotFoundException, Exception):
-            return u'EXPUNGED'
+            return 'EXPUNGED'
 
-    def wait_job(self, jobid, delta=3, accepted_state=u'SUCCESS', maxtime=600):
+    def wait_job(self, jobid, delta=3, accepted_state='SUCCESS', maxtime=600):
         """Wait resource
         """
-        logger.info(u'wait for:         %s' % jobid)
-        self.runlogger.info(u'wait for:         %s' % jobid)
+        logger.info('wait for:         %s' % jobid)
+        self.runlogger.info('wait for:         %s' % jobid)
         state = self.get_job_state(jobid)
         elapsed = 0
-        while state not in [u'SUCCESS', u'FAILURE']:
-            self.runlogger.info(u'.')
+        while state not in ['SUCCESS', 'FAILURE']:
+            self.runlogger.info('.')
             sleep(delta)
             state = self.get_job_state(jobid)
             if elapsed > maxtime and state != accepted_state:
@@ -582,49 +582,49 @@ class BeehiveTestCase(unittest.TestCase):
         self.assertEqual(state, accepted_state)
 
     def setup_param_for_runner(self, param):
-        param = u'%s-%s' % (param, self.index)
+        param = '%s-%s' % (param, self.index)
         return param
 
 
 class ColorFormatter(CeleryColorFormatter):
     #: Loglevel -> Color mapping.
     COLORS = colored().names
-    colors = {u'DEBUG': COLORS[u'blue'],
-              u'WARNING': COLORS[u'yellow'],
-              u'WARN': COLORS[u'yellow'],
-              u'ERROR': COLORS[u'red'],
-              u'CRITICAL': COLORS[u'magenta'],
-              u'TEST': COLORS[u'green'],
-              u'TESTPLAN': COLORS[u'cyan']
+    colors = {'DEBUG': COLORS['blue'],
+              'WARNING': COLORS['yellow'],
+              'WARN': COLORS['yellow'],
+              'ERROR': COLORS['red'],
+              'CRITICAL': COLORS['magenta'],
+              'TEST': COLORS['green'],
+              'TESTPLAN': COLORS['cyan']
     }
 
 
-def configure_test(testcase_class, args={}, log_file_name=u'test'):
-    home = os.path.expanduser(u'~')
-    log_file = u'%s/%s.log' % (home, log_file_name)
-    watch_file = u'%s/%s.watch' % (home, log_file_name)
-    run_file = u'%s/%s.run' % (home, log_file_name)
+def configure_test(testcase_class, args={}, log_file_name='test'):
+    home = os.path.expanduser('~')
+    log_file = '%s/%s.log' % (home, log_file_name)
+    watch_file = '%s/%s.watch' % (home, log_file_name)
+    run_file = '%s/%s.run' % (home, log_file_name)
 
     logging.captureWarnings(True)
 
     loggers = [
-        logging.getLogger(u'beecell.perf'),
+        logging.getLogger('beecell.perf'),
     ]
-    LoggerHelper.file_handler(loggers, logging.DEBUG, watch_file, frmt=u'%(message)s', formatter=ColorFormatter)
+    LoggerHelper.file_handler(loggers, logging.DEBUG, watch_file, frmt='%(message)s', formatter=ColorFormatter)
 
     loggers = [
-        logging.getLogger(u'beehive.test.run'),
+        logging.getLogger('beehive.test.run'),
     ]
-    LoggerHelper.file_handler(loggers, logging.DEBUG, run_file, frmt=u'%(message)s', formatter=ColorFormatter)
+    LoggerHelper.file_handler(loggers, logging.DEBUG, run_file, frmt='%(message)s', formatter=ColorFormatter)
 
     # setting logger
-    frmt = u'%(asctime)s - %(levelname)s - %(message)s'
+    frmt = '%(asctime)s - %(levelname)s - %(message)s'
     loggers = [
-        logging.getLogger(u'beehive'),
-        logging.getLogger(u'beedrones'),
-        logging.getLogger(u'beecell'),
-        logging.getLogger(u'beehive_resource'),
-        logging.getLogger(u'beehive_service'),
+        logging.getLogger('beehive'),
+        logging.getLogger('beedrones'),
+        logging.getLogger('beecell'),
+        logging.getLogger('beehive_resource'),
+        logging.getLogger('beehive_service'),
     ]
     LoggerHelper.file_handler(loggers, logging.DEBUG, log_file, frmt=frmt, formatter=ColorFormatter)
 
@@ -638,10 +638,10 @@ def configure_test(testcase_class, args={}, log_file_name=u'test'):
         pass
 
     # read external params
-    testcase_class.main_config_file = args.get(u'conf', None)
-    testcase_class.spec_config_file = args.get(u'exconf', None)
-    testcase_class.validation_active = args.get(u'validate', False)
-    testcase_class.run_test_user = args.get(u'user', u'test1')
+    testcase_class.main_config_file = args.get('conf', None)
+    testcase_class.spec_config_file = args.get('exconf', None)
+    testcase_class.validation_active = args.get('validate', False)
+    testcase_class.run_test_user = args.get('user', 'test1')
 
 
 def runtest(testcase_class, tests, args={}):
@@ -679,26 +679,26 @@ def runtest_parallel(testcase_class, tests, args={}):
 
     def run_test(index, results):
         # run test suite
-        configure_test(testcase_class, args=args, log_file_name=u'test-runner-'+index)
+        configure_test(testcase_class, args=args, log_file_name='test-runner-'+index)
         runner = TestRunner(verbosity=2, index=index)
         testcase_class.index = index
         result = runner.run(unittest.TestSuite(map(testcase_class, tests)))
         results.put([index, result])
 
-    max_test = args.get(u'max', 2)
+    max_test = args.get('max', 2)
     indexes = range(0, max_test)
 
-    procs = [Process(target=run_test, args=(str(i), results)) for i in indexes]
+    procs = [Process(target=run_test, args=(b(i), results)) for i in indexes]
 
-    print(u'\nExecution plan:')
-    print(u'----------------------------------------------------------------------')
+    print('\nExecution plan:')
+    print('----------------------------------------------------------------------')
     for p in procs:
         p.start()
 
     for p in procs:
         p.join()
 
-    print(u'\nExecution results:')
-    print(u'----------------------------------------------------------------------')
+    print('\nExecution results:')
+    print('----------------------------------------------------------------------')
     for i in indexes:
         TestRunner(index=i).print_result(results.get()[1])

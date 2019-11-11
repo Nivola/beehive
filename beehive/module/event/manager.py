@@ -36,7 +36,7 @@ class EventConsumerRedis(ConsumerMixin):
     """
 
     def __init__(self, connection, api_manager, event_handlers=[]):
-        self.logger = logging.getLogger(self.__class__.__module__ + u'.' + self.__class__.__name__)
+        self.logger = logging.getLogger(self.__class__.__module__ + '.' + self.__class__.__name__)
         
         self.connection = connection
         self.api_manager = api_manager
@@ -53,23 +53,23 @@ class EventConsumerRedis(ConsumerMixin):
         self.redis_uri = self.api_manager.redis_event_uri
         self.redis_exchange = self.api_manager.redis_event_exchange
         
-        self.exchange = Exchange(self.redis_exchange, type=u'direct', delivery_mode=1, durable=False)
-        self.queue_name = u'%s.queue' % self.redis_exchange   
-        self.routing_key = u'%s.key' % self.redis_exchange
+        self.exchange = Exchange(self.redis_exchange, type='direct', delivery_mode=1, durable=False)
+        self.queue_name = '%s.queue' % self.redis_exchange   
+        self.routing_key = '%s.key' % self.redis_exchange
         self.queue = Queue(self.queue_name, self.exchange, routing_key=self.routing_key, delivery_mode=1, durable=False)
-        self.event_producer = EventProducerRedis(self.redis_uri, self.redis_exchange+u'.sub', framework=u'simple')
+        self.event_producer = EventProducerRedis(self.redis_uri, self.redis_exchange+'.sub', framework='simple')
         self.conn = Connection(self.redis_uri)
  
     def get_consumers(self, Consumer, channel):
-        return [Consumer(queues=self.queue, accept=[u'pickle', u'json'], callbacks=[self.callback],
+        return [Consumer(queues=self.queue, accept=['pickle', 'json'], callbacks=[self.callback],
                          on_decode_error=self.decode_error)]
 
     def decode_error(self, message, exc):
         self.logger.error(exc)
 
     def callback(self, event, message):
-        event[u'data'] = obscure_data(event[u'data'])
-        # event[u'data'][u'params'] = truncate(event[u'data'][u'params'], 4000)
+        event['data'] = obscure_data(event['data'])
+        # event['data']['params'] = truncate(event['data']['params'], 4000)
         self.log_event(event, message)
         self.store_event(event, message)
         self.publish_event_to_subscriber(event, message)
@@ -85,7 +85,7 @@ class EventConsumerRedis(ConsumerMixin):
         :raise EventConsumerError:
         """
         message.ack()        
-        self.logger.info(u'Consume event : %s' % truncate(event))
+        self.logger.info('Consume event : %s' % truncate(event))
  
     def store_event(self, event, message):
         """Store event in db.
@@ -100,25 +100,25 @@ class EventConsumerRedis(ConsumerMixin):
             # clone event
             sevent = deepcopy(event)
 
-            etype = sevent[u'type']
+            etype = sevent['type']
             
             # for job events save only those with status 'STARTED', 'FAILURE' and 'SUCCESS' 
             if etype == ApiObject.ASYNC_OPERATION:
-                status = sevent[u'data'][u'response'][0]
-                if status not in [u'STARTED', u'FAILURE', u'SUCCESS']:
+                status = sevent['data']['response'][0]
+                if status not in ['STARTED', 'FAILURE', 'SUCCESS']:
                     return None
             
-            creation = datetime.fromtimestamp(sevent[u'creation'])
-            dest = sevent[u'dest']
-            objid = dest.pop(u'objid')
-            objdef = dest.pop(u'objdef')
-            module = dest.pop(u'objtype')
-            self.manager.add(sevent[u'id'], etype, objid, objdef, module, creation, sevent[u'data'], event[u'source'],
+            creation = datetime.fromtimestamp(sevent['creation'])
+            dest = sevent['dest']
+            objid = dest.pop('objid')
+            objdef = dest.pop('objdef')
+            module = dest.pop('objtype')
+            self.manager.add(sevent['id'], etype, objid, objdef, module, creation, sevent['data'], event['source'],
                              dest)
             
-            self.logger.debug(u'Store event : %s' % truncate(sevent))
+            self.logger.debug('Store event : %s' % truncate(sevent))
         except (TransactionError, Exception) as ex:
-            self.logger.error(u'Error storing event : %s' % ex, exc_info=True)
+            self.logger.error('Error storing event : %s' % ex, exc_info=True)
             raise EventConsumerError(ex)
         finally:
             if operation.session is not None:
@@ -130,61 +130,61 @@ class EventConsumerRedis(ConsumerMixin):
         :param event json: event to store
         :raise EventConsumerError:        
         """
-        self.__publish_event_simple(event[u'id'], event[u'type'], event[u'data'], event[u'source'], event[u'dest'])
+        self.__publish_event_simple(event['id'], event['type'], event['data'], event['source'], event['dest'])
     
     def __publish_event_simple(self, event_id, event_type, data, source, dest):
         try:
             self.event_producer.send(event_type, data, source, dest)
-            self.logger.debug(u'Publish event %s to channel %s' % (event_id, self.redis_exchange))
+            self.logger.debug('Publish event %s to channel %s' % (event_id, self.redis_exchange))
         except Exception as ex:
-            self.logger.error(u'Event %s can not be published: %s' % (event_id, ex), exc_info=1)
+            self.logger.error('Event %s can not be published: %s' % (event_id, ex), exc_info=1)
     
     def __publish_event_kombu(self, event_id, event_type, data, source, dest):
         try:
             event = Event(event_type, data, source, dest)
             producer = producers[self.conn].acquire()
             producer.publish(event.dict(),
-                             serializer=u'json',
-                             compression=u'bzip2',
+                             serializer='json',
+                             compression='bzip2',
                              exchange=self.exchange_sub,
                              declare=[self.exchange_sub],
                              routing_key=self.routing_key_sub,
                              expiration=60,
                              delivery_mode=1)
             producer.release()
-            self.logger.debug(u'Publish event %s to exchange %s' % (event_id, self.exchange_sub))
+            self.logger.debug('Publish event %s to exchange %s' % (event_id, self.exchange_sub))
         except exceptions.ConnectionLimitExceeded as ex:
-            self.logger.error(u'Event %s can not be published: %s' % (event_id, ex), exc_info=1)
+            self.logger.error('Event %s can not be published: %s' % (event_id, ex), exc_info=1)
         except Exception as ex:
-            self.logger.error(u'Event %s can not be published: %s' % (event_id, ex), exc_info=1)
+            self.logger.error('Event %s can not be published: %s' % (event_id, ex), exc_info=1)
 
 
 def start_event_consumer(params, log_path=None):
     """Start event consumer
     """
     # setup kombu logger
-    #setup_logging(loglevel=u'DEBUG', loggers=[u''])
+    #setup_logging(loglevel='DEBUG', loggers=[''])
     
     # internal logger
-    logger = logging.getLogger(u'beehive.module.event.manager')   
+    logger = logging.getLogger('beehive.module.event.manager')   
     
     logger_level = logging.DEBUG
     if log_path is None:
-        log_path = u'/var/log/%s/%s' % (params[u'api_package'], params[u'api_env'])
-    logname = u'%s/%s.event.consumer' % (log_path, params[u'api_id'])
-    logger_file = u'%s.log' % logname
+        log_path = '/var/log/%s/%s' % (params['api_package'], params['api_env'])
+    logname = '%s/%s.event.consumer' % (log_path, params['api_id'])
+    logger_file = '%s.log' % logname
     loggers = [logger,
-               logging.getLogger(u'beehive.common.event'),
-               logging.getLogger(u'beehive.module.event.model')]
+               logging.getLogger('beehive.common.event'),
+               logging.getLogger('beehive.module.event.model')]
     LoggerHelper.rotatingfile_handler(loggers, logger_level, logger_file)
 
     # performance logging
-    loggers = [logging.getLogger(u'beecell.perf')]
-    logger_file = u'%s/%s.watch' % (log_path, params[u'api_id'])
-    LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, logger_file, frmt=u'%(asctime)s - %(message)s')
+    loggers = [logging.getLogger('beecell.perf')]
+    logger_file = '%s/%s.watch' % (log_path, params['api_id'])
+    LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, logger_file, frmt='%(asctime)s - %(message)s')
 
     # get event handlers
-    event_handlers = params.pop(u'event_handler', [])
+    event_handlers = params.pop('event_handler', [])
 
     # setup api manager
     api_manager = ApiManager(params)
@@ -200,12 +200,12 @@ def start_event_consumer(params, log_path=None):
     with Connection(api_manager.redis_event_uri) as conn:
         try:
             worker = EventConsumerRedis(conn, api_manager, event_handlers=event_handlers)
-            logger.info(u'Start event consumer')
-            logger.debug(u'Event handlers: %s' % event_handlers)
-            logger.debug(u'Active worker: %s' % worker)
-            logger.debug(u'Use redis connection: %s' % conn)
+            logger.info('Start event consumer')
+            logger.debug('Event handlers: %s' % event_handlers)
+            logger.debug('Active worker: %s' % worker)
+            logger.debug('Use redis connection: %s' % conn)
             worker.run()
         except KeyboardInterrupt:
-            logger.info(u'Stop event consumer')
+            logger.info('Stop event consumer')
             
-    logger.info(u'Stop event consumer')
+    logger.info('Stop event consumer')

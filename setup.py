@@ -70,10 +70,16 @@ if __name__ == '__main__':
             'Programming Language :: Python'
         ],
         entry_points={},
-        data_files=[(prefix+'/share/config', ['config/auth.json',
-                                              'config/event.json',
-                                              'config/auth.ini',
-                                              'config/event.ini'])],
+        data_files=[
+            (prefix+'/share/config', ['config/auth.json',
+                                      'config/event.json',
+                                      'config/auth.ini',
+                                      'config/event.ini']),
+            (prefix + '/bin', ['beehive/server/task.py',
+                               'beehive/server/scheduler.py',
+                               'beehive/server/catalog.py',
+                               'beehive/server/event.py']),
+        ],
         package_data={},
         install_requires=[
             "SQLAlchemy==1.3.7",
@@ -103,7 +109,7 @@ if __name__ == '__main__':
             "pyzmq==18.1.0",
             "os-client-config==1.32.0",
             "dicttoxml==1.7.4",
-            "pyvmomi==6.7.1.2018.12",
+            #"pyvmomi==6.7.1.2018.12",
             "oslo.utils==3.41.0",
             "easywebdav==1.2.0",
             "networkx==2.2",
@@ -136,7 +142,8 @@ if __name__ == '__main__':
             "python-dateutil==2.8.0",
             "billiard==3.6.0",
             "elasticsearch==7.0.4",
-            "uwsgi==2.0.18"
+            "uwsgi==2.0.18",
+            "click==7.0"
         ],
         dependency_links=[],
         zip_safe=True,

@@ -11,8 +11,8 @@ class EventModule(ApiModule):
     """Event Beehive Module
     """
     def __init__(self, api_manger):
-        self.name = u'EventModule'
-        self.base_path = u'nes'
+        self.name = 'EventModule'
+        self.base_path = 'nes'
         
         ApiModule.__init__(self, api_manger, self.name)
         

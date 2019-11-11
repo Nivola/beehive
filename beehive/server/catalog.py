@@ -13,10 +13,11 @@ Options:
                            Require args = service name
 """
 import sys, os
-import ConfigParser
+from six.moves.configparser import ConfigParser
+# import ConfigParser
 from collections import OrderedDict
 
-if __name__ == u'__main__':
+if __name__ == '__main__':
     virtualenv = sys.argv[1:][0]
     config_file = sys.argv[1:][1]
 
@@ -33,12 +34,12 @@ if __name__ == u'__main__':
     config = ConfigParser.RawConfigParser(dict_type=MultiOrderedDict)
     config.read(config_file)
 
-    params = {i[0]: i[1] for i in config.items(u'uwsgi')}
-    params[u'api_module'] = params[u'api_module'].split(u'\n')
-    if u'api_plugin' in params:
-        params[u'api_plugin'] = params[u'api_plugin'].split(u'\n')
+    params = {i[0]: i[1] for i in config.items('uwsgi')}
+    params['api_module'] = params['api_module'].split('\n')
+    if 'api_plugin' in params:
+        params['api_plugin'] = params['api_plugin'].split('\n')
 
-    activate_this = u'%s/bin/activate_this.py' % virtualenv
+    activate_this = '%s/bin/activate_this.py' % virtualenv
     execfile(activate_this, dict(__file__=activate_this))
 
     import beecell.server.gevent_ssl

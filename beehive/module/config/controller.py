@@ -17,7 +17,7 @@ class ConfigController(ApiController):
     """Basic Module controller.
     """
         
-    version = u'v1.0'    
+    version = 'v1.0'    
     
     def __init__(self, module):
         ApiController.__init__(self, module)
@@ -36,7 +36,7 @@ class ConfigController(ApiController):
     #
     # base configuration
     #
-    @trace(entity=u'Config', op=u'view')
+    @trace(entity='Config', op='view')
     def get_configs(self, app=None, group=None, name=None):
         """Get generic configuration.
         
@@ -47,10 +47,10 @@ class ConfigController(ApiController):
         :rtype: Config
         :raises ApiManagerError: if query empty return error.
         """
-        #params = {u'app':app, u'group':group, u'name':name}
+        #params = {'app':app, 'group':group, 'name':name}
         
         # verify permissions
-        self.can(u'view', Config.objtype, definition=Config.objdef)
+        self.can('view', Config.objtype, definition=Config.objdef)
         
         try:
             if app is not None or group is not None:
@@ -69,14 +69,14 @@ class ConfigController(ApiController):
                 res.append(Config(self, oid=c.id, app=c.app, group=c.group, 
                                   name=c.name, value=value, model=c))
             self.logger.debug('Get generic configuration: %s' % res)
-            #Config(self).send_event(u'view', params=params)
+            #Config(self).send_event('view', params=params)
             return res
         except (TransactionError, Exception) as ex:
-            #Config(self).send_event(u'view', params=params, exception=ex)
+            #Config(self).send_event('view', params=params, exception=ex)
             self.logger.error(ex)     
             raise ApiManagerError(ex)
     
-    @trace(entity=u'Config', op=u'insert')
+    @trace(entity='Config', op='insert')
     def add_config(self, app, group, name, value):
         """Add generic configuration.
         
@@ -88,20 +88,20 @@ class ConfigController(ApiController):
         :rtype:  
         :raises ApiManagerError: if query empty return error.
         """
-        #params = {u'app':app, u'group':group, u'name':name}
+        #params = {'app':app, 'group':group, 'name':name}
         
         # verify permissions
-        self.can(u'insert', Config.objtype, definition=Config.objdef)
+        self.can('insert', Config.objtype, definition=Config.objdef)
         
         try:
             c = self.manager.add(app, group, name, value)
             res = Config(self, oid=c.id, app=c.app, group=c.group, 
                          name=c.name, value=c.value, model=c)
             self.logger.debug('Add generic configuration : %s' % res)
-            #Config(self).send_event(u'view', params=params)
+            #Config(self).send_event('view', params=params)
             return res
         except (TransactionError, Exception) as ex:
-            #Config(self).send_event(u'view', params=params, exception=ex)
+            #Config(self).send_event('view', params=params, exception=ex)
             self.logger.error(ex)
             raise ApiManagerError(ex)
 
@@ -199,9 +199,9 @@ class ConfigController(ApiController):
         return self.add_config(app, group, domain, json.dumps(value))'''
 
 class Config(ApiObject):
-    objtype = u'config'
-    objdef = u'Property'
-    objdesc = u'System configurations'
+    objtype = 'config'
+    objdef = 'Property'
+    objdesc = 'System configurations'
     
     def __init__(self, controller, oid=None, app=None, group=None, 
                        name=None, value=None, model=None):
@@ -224,15 +224,15 @@ class Config(ApiObject):
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
         return {
-            u'id':self.oid, 
-            u'app':self.app, 
-            u'group':self.group, 
-            u'name':self.name, 
-            u'objid':self.objid, 
-            u'value':self.value
+            'id':self.oid, 
+            'app':self.app, 
+            'group':self.group, 
+            'name':self.name, 
+            'objid':self.objid, 
+            'value':self.value
         }
 
-    @trace(op=u'update')
+    @trace(op='update')
     def update(self, value):
         """Update generic configuration.
             
@@ -242,23 +242,23 @@ class Config(ApiObject):
         :rtype:  
         :raises ApiManagerError: if query empty return error.
         """
-        #params = {u'name':self.name, u'value':value}
+        #params = {'name':self.name, 'value':value}
         
         # verify permissions
-        self.verify_permisssions(u'update')
+        self.verify_permisssions('update')
         
         try:
             res = self.manager.update(self.name, value)
-            self.logger.debug(u'Update generic configuration %s : %s' % 
+            self.logger.debug('Update generic configuration %s : %s' % 
                               (self.name, res))
-            #self.send_event(u'update', params=params)
+            #self.send_event('update', params=params)
             return res
         except (TransactionError, Exception) as ex:
-            #self.send_event(u'update', params=params, exception=ex)
+            #self.send_event('update', params=params, exception=ex)
             self.logger.error(ex)
             raise ApiManagerError(ex)
     
-    @trace(op=u'delete')
+    @trace(op='delete')
     def delete(self):
         """Update generic configuration.
             
@@ -268,17 +268,17 @@ class Config(ApiObject):
         :rtype:  
         :raises ApiManagerError: if query empty return error.
         """
-        #params = {u'name':self.name}
+        #params = {'name':self.name}
         
         # verify permissions
-        self.verify_permisssions(u'delete')
+        self.verify_permisssions('delete')
         
         try:
             res = self.manager.delete(name=self.name)
-            self.logger.debug(u'Delete generic configuration %s : %s' % (self.name, res))
-            #self.send_event(u'delete', params=params)
+            self.logger.debug('Delete generic configuration %s : %s' % (self.name, res))
+            #self.send_event('delete', params=params)
             return res
         except (TransactionError, Exception) as ex:
-            #self.send_event(u'delete', params=params, exception=ex)
+            #self.send_event('delete', params=params, exception=ex)
             self.logger.error(ex)
             raise ApiManagerError(ex)

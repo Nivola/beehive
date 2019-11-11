@@ -19,9 +19,9 @@
         {"group":"oauth2", "name":"endpoint", "value":"https://localhost"}
     ],
     "api":{
-        "endpoint":["{{ platform.endpoint }}"],
-        "user":"{{ platform.admin.user }}", 
-        "pwd":"{{ platform.admin.pwd }}",
-        "catalog":"{{ platform.catalog }}"
+        "endpoint":["https://localhost:8080"],
+        "user":"admin",
+        "pwd":"admin",
+        "catalog":"beehive-internal"
     }
 }

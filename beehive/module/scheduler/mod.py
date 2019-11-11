@@ -11,7 +11,7 @@ class SchedulerModule(ApiModule):
     """Beehive Scheduler Module
     """
     def __init__(self, api_manger):
-        self.name = u'SchedulerModule'
+        self.name = 'SchedulerModule'
         
         ApiModule.__init__(self, api_manger, self.name)
         

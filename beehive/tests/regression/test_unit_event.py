@@ -11,19 +11,19 @@ from beehive.tests.module.scheduler.view import SchedulerAPITestCase
 
 
 tests_event = [
-    # u'test_get_event_types',
-    # u'test_get_event_entities',
+    # 'test_get_event_types',
+    # 'test_get_event_entities',
 
-    u'test_get_events',
-    # u'test_get_events_by_type',
-    # u'test_get_events_by_objtype',
-    # u'test_get_events_by_objdef',
-    # u'test_get_events_by_objid',
-    # u'test_get_events_by_date',
-    # u'test_get_events_by_source',
-    # u'test_get_events_by_data',
-    # u'test_get_event_by_id',
-    # u'test_get_event_by_eventid'
+    'test_get_events',
+    # 'test_get_events_by_type',
+    # 'test_get_events_by_objtype',
+    # 'test_get_events_by_objdef',
+    # 'test_get_events_by_objid',
+    # 'test_get_events_by_date',
+    # 'test_get_events_by_source',
+    # 'test_get_events_by_data',
+    # 'test_get_event_by_id',
+    # 'test_get_event_by_eventid'
 ]
 
 
@@ -32,45 +32,45 @@ class TestCase(EventTestCase):
 
     def setUp(self):
         EventTestCase.setUp(self)
-        self.module = u'event'
-        self.module_prefix = u'nes'
-        self.endpoint_service = u'event'
+        self.module = 'event'
+        self.module_prefix = 'nes'
+        self.endpoint_service = 'event'
 
     def test_get_event_types(self):
-        self.get(u'/v1.0/nes/events/types')
+        self.get('/v1.0/nes/events/types')
 
     def test_get_event_entities(self):
-        self.get(u'/v1.0/nes/events/entities')
+        self.get('/v1.0/nes/events/entities')
 
     def test_get_events(self):
-        self.get(u'/v1.0/nes/events', query={u'page': 1})
+        self.get('/v1.0/nes/events', query={'page': 1})
 
     def test_get_events_by_type(self):
-        self.get(u'/v1.0/nes/events', query={u'type': u'internal'})
+        self.get('/v1.0/nes/events', query={'type': 'internal'})
 
     def test_get_events_by_objtype(self):
-        self.get(u'/v1.0/nes/events', query={u'objtype': u'internal'})
+        self.get('/v1.0/nes/events', query={'objtype': 'internal'})
 
     def test_get_events_by_objdef(self):
-        self.get(u'/v1.0/nes/events', query={u'objdef': u'internal'})
+        self.get('/v1.0/nes/events', query={'objdef': 'internal'})
 
     def test_get_events_by_objid(self):
-        self.get(u'/v1.0/nes/events', query={u'objid': u'internal'})
+        self.get('/v1.0/nes/events', query={'objid': 'internal'})
 
     def test_get_events_by_date(self):
-        self.get(u'/v1.0/nes/events', query={u'date': u'internal'})
+        self.get('/v1.0/nes/events', query={'date': 'internal'})
 
     def test_get_events_by_source(self):
-        self.get(u'/v1.0/nes/events', query={u'source': u'internal'})
+        self.get('/v1.0/nes/events', query={'source': 'internal'})
 
     def test_get_events_by_data(self):
-        self.get(u'/v1.0/nes/events', query={u'data': u'internal'})
+        self.get('/v1.0/nes/events', query={'data': 'internal'})
 
     def test_get_event_by_id(self):
-        self.get(u'/v1.0/nes/events/{oid}', params={u'oid': 4})
+        self.get('/v1.0/nes/events/{oid}', params={'oid': 4})
 
     def test_get_event_by_eventid(self):
-        self.get(u'/v1.0/nes/events/{oid}', params={u'oid': 4})
+        self.get('/v1.0/nes/events/{oid}', params={'oid': 4})
 
 
 tests = []
@@ -84,5 +84,5 @@ def run(args):
     runtest(TestCase, tests, args)
 
 
-if __name__ == u'__main__':
+if __name__ == '__main__':
     run()

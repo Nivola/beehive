@@ -478,6 +478,6 @@ def test_suite():
     ]
     return unittest.TestSuite(map(AuthManagerTestCase, tests))
 
-if __name__ == u'__main__':
+if __name__ == '__main__':
     runtest(test_suite())
     
