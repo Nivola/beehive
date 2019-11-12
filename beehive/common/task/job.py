@@ -528,7 +528,7 @@ class JobTask(AbstractJob):
                 counter = inner_task.get(u'counter', 0)
                 elapsed = time() - start
                 # verify job is stalled
-                if counter - start_counter == 0 and elapsed > 60:
+                if counter - start_counter == 0 and elapsed > 240:
                     raise JobError(u'Job %s is stalled' % task_id)
 
                 self.update(

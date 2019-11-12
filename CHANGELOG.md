@@ -9,6 +9,7 @@
     * added microsecond to event stored in mysql db
 * Fixed ...
     * modify max query window for event to 2 hours
+    * changed wait_for_job_complete. Timeout that identify a job as stalled is increased from 60s to 240s
 * Integrated ...
     * introdotta signature Celery che registra il task su redis appena generato l'uuid dall'apply_async
     * added send of log item for the api class to elasticsearch if it is configured
