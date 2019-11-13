@@ -15,12 +15,12 @@ syspath = os.path.expanduser("~")
 # start event consumer
 from gibboncloudapi.module.event.manager import start_event_consumer
 
-params = {u'api_id':u'server-01',
-          u'api_name':u'beehive',
-          u'api_subsystem':u'event',
-          u'api_package':u'beehive',
-          u'api_env':u'beehive100',
-          u'database_uri':u'mysql+pymysql://event:event@10.102.184.57:3306/event',
-          u'api_module':[u'gibboncloudapi.module.event.mod.EventModule'],
-          u'api_plugin':[]}
-start_event_consumer(params, log_path=u'/tmp')
+params = {'api_id':'server-01',
+          'api_name':'beehive',
+          'api_subsystem':'event',
+          'api_package':'beehive',
+          'api_env':'beehive100',
+          'database_uri':'mysql+pymysql://event:event@10.102.184.57:3306/event',
+          'api_module':['gibboncloudapi.module.event.mod.EventModule'],
+          'api_plugin':[]}
+start_event_consumer(params, log_path='/tmp')

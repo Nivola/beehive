@@ -40,16 +40,16 @@ logger = logging.getLogger(__name__)
 class BaseTaskSet(TaskSet):
     def __setup_logging(self):
         loggers = [
-            logging.getLogger(u'beehive'),
-            logging.getLogger(u'beedrones'),
-            logging.getLogger(u'beecell'),
-            logging.getLogger(u'beehive_resource'),
-            logging.getLogger(u'beehive_service'),
+            logging.getLogger('beehive'),
+            logging.getLogger('beedrones'),
+            logging.getLogger('beecell'),
+            logging.getLogger('beehive_resource'),
+            logging.getLogger('beehive_service'),
         ]
         LoggerHelper.simple_handler(loggers, logging.DEBUG)
 
     def __read_config_file(self, file_config):
-        f = open(file_config, u'r')
+        f = open(file_config, 'r')
         config = f.read()
         config = json.loads(config)
         f.close()
@@ -58,55 +58,55 @@ class BaseTaskSet(TaskSet):
     def __load_config(self):
         # load config
         try:
-            # config = self.load_config(u'%s/params.json' % path)
-            home = os.path.expanduser(u'~')
-            config = self.__read_config_file(u'%s/beehive.json' % home)
-            logger.info(u'get beehive test configuration')
+            # config = self.load_config('%s/params.json' % path)
+            home = os.path.expanduser('~')
+            config = self.__read_config_file('%s/beehive.json' % home)
+            logger.info('get beehive test configuration')
         except Exception as ex:
-            err = u'Error loading config file beehive.json. Search in user home. %s' % ex
+            err = 'Error loading config file beehive.json. Search in user home. %s' % ex
             logger.error(err)
             raise Exception(err)
 
-        env = config.get(u'env')
-        # current_schema = config.get(u'schema')
+        env = config.get('env')
+        # current_schema = config.get('schema')
         cfg = config.get(env)
         self.test_config = cfg
 
         # endpoints
-        self.endpoints = cfg.get(u'endpoints')
+        self.endpoints = cfg.get('endpoints')
 
         # get users
-        self.users = cfg.get(u'users')
+        self.users = cfg.get('users')
 
     def __create_client(self):
         try:
-            endpoints = [self.endpoints.get(self.test_config[u'default-endpoint'])]
-            user = self.users.get(u'admin')
-            self.user_name = user.get(u'user')
-            self.pwd = user.get(u'pwd')
-            self.ip = user.get(u'ip')
-            self.catalog_id = user.get(u'catalog')
-            self.authtype = user.get(u'auth')
+            endpoints = [self.endpoints.get(self.test_config['default-endpoint'])]
+            user = self.users.get('admin')
+            self.user_name = user.get('user')
+            self.pwd = user.get('pwd')
+            self.ip = user.get('ip')
+            self.catalog_id = user.get('catalog')
+            self.authtype = user.get('auth')
             # self.beeclient = BeehiveApiClient(endpoints, authtype, self.user_name, self.pwd, self.catalog_id)
         except:
-            logger.error(u'', exc_info=1)
+            logger.error('', exc_info=1)
         # self.beeclient.load_catalog()
         # if uid is not None:
         #    self.beeclient.uid = uid
         #    self.beeclient.seckey = seckey
 
     def __create_token(self):
-        if self.authtype == u'keyauth':
-            data = {u'user': self.user_name, u'password': self.pwd, u'login-ip': self.ip}
-            response = self.client.post(u'/v1.0/keyauth/token', json=data)
+        if self.authtype == 'keyauth':
+            data = {'user': self.user_name, 'password': self.pwd, 'login-ip': self.ip}
+            response = self.client.post('/v1.0/keyauth/token', json=data)
             res = response.json()
-            logger.info(u'Login user %s with token: %s' % (self.user_name, res[u'access_token']))
-            self.uid = res[u'access_token']
-            self.seckey = res[u'seckey']
+            logger.info('Login user %s with token: %s' % (self.user_name, res['access_token']))
+            self.uid = res['access_token']
+            self.seckey = res['seckey']
 
     def get_headers(self, path):
-        headers = {u'Cache-Control': u'no-store', u'Pragma': u'no-cache', u'Accept': u'application/json'}
-        if self.authtype == u'keyauth':
+        headers = {'Cache-Control': 'no-store', 'Pragma': 'no-cache', 'Accept': 'application/json'}
+        if self.authtype == 'keyauth':
             if current_process().ident != self.pid:
                 atfork()
 
@@ -124,12 +124,12 @@ class BaseTaskSet(TaskSet):
             # encode signature in base64
             signature64 = binascii.b2a_hex(signature)
 
-            headers.update({u'uid': self.uid, u'sign': signature64})
-        elif self.api_authtype == u'oauth2':
-            headers.update({u'Authorization': u'Bearer %s' % self.uid})
-        elif self.api_authtype == u'simplehttp':
-            auth = b64encode(u'%s:%s' % (self.user_name, self.pwd))
-            headers.update({u'Authorization': u'Basic %s' % auth})
+            headers.update({'uid': self.uid, 'sign': signature64})
+        elif self.api_authtype == 'oauth2':
+            headers.update({'Authorization': 'Bearer %s' % self.uid})
+        elif self.api_authtype == 'simplehttp':
+            auth = b64encode('%s:%s' % (self.user_name, self.pwd))
+            headers.update({'Authorization': 'Basic %s' % auth})
         return headers
 
     def on_start(self):
@@ -145,67 +145,67 @@ class BaseTaskSet(TaskSet):
 
     def check_response(self, response):
         if response.status_code in [400, 401, 403, 404, 405, 406, 408, 409, 415]:
-            response.failure(response.json().get(u'message'))
+            response.failure(response.json().get('message'))
 
     def log_task(self, response, path, method):
-        status = u'KO'
+        status = 'KO'
         if response.status_code in [200, 201, 202, 204]:
-            status = u'OK'
-        logger.info(u'User: %s - Status: %s - Remote: %s - Uri: %s - Method: %s' %
-                    (id(self), status, response.headers.get(u'remote-server', None), path, method))
+            status = 'OK'
+        logger.info('User: %s - Status: %s - Remote: %s - Uri: %s - Method: %s' %
+                    (id(self), status, response.headers.get('remote-server', None), path, method))
         self.check_response(response)
 
     # @task(1)
     def ping(self):
-        response = self.client.get(u'/v1.0/server/ping')
+        response = self.client.get('/v1.0/server/ping')
 
     @task(1)
     def validate_token(self):
-        path = u'/v1.0/auth/tokens/%s' % self.uid
-        method = u'get'
-        response = self.client.get(path, headers=self.get_headers(path), name=u'/v1.0/auth/tokens/<id>')
+        path = '/v1.0/auth/tokens/%s' % self.uid
+        method = 'get'
+        response = self.client.get(path, headers=self.get_headers(path), name='/v1.0/auth/tokens/<id>')
         self.log_task(response, path, method)
 
     @task(1)
     def get_catalog(self):
-        path = u'/v1.0/directory/catalogs/%s' % self.catalog_id
-        method = u'get'
+        path = '/v1.0/directory/catalogs/%s' % self.catalog_id
+        method = 'get'
         response = self.client.get(path, headers=self.get_headers(path))
         self.log_task(response, path, method)
 
     @task(3)
     def get_resources(self):
-        path = u'/v1.0/resources'
-        method = u'get'
+        path = '/v1.0/resources'
+        method = 'get'
         response = self.client.get(path, headers=self.get_headers(path))
         self.log_task(response, path, method)
 
     @task(1)
     def add_resource1(self):
-        path = u'/v1.0/resources'
-        method = u'post'
-        name = u'resource-test-%s' % random.randint(1, 100000)
+        path = '/v1.0/resources'
+        method = 'post'
+        name = 'resource-test-%s' % random.randint(1, 100000)
         data = {
-            u'resource': {
-                u'container': u'test-container',
-                u'resclass': u'beehive_resource.plugins.dummy.controller.DummySyncResource',
-                u'name': name,
-                u'desc': name,
-                u'ext_id': u'123'
+            'resource': {
+                'container': 'test-container',
+                'resclass': 'beehive_resource.plugins.dummy.controller.DummySyncResource',
+                'name': name,
+                'desc': name,
+                'ext_id': '123'
             }
         }
         response = self.client.post(path, json=data, headers=self.get_headers(path))
         self.log_task(response, path, method)
-        self.resources.append(response.json()[u'uuid'])
+        self.resources.append(response.json()['uuid'])
 
     @task(3)
     def delete_resource1(self):
         # if len(self.resources) > 0:
         try:
             uuid = self.resources.pop()
-            path = u'/v1.0/resources/%s' % uuid
-            method = u'delete'
-            response = self.client.delete(path, headers=self.get_headers(path), name=u'/v1.0/resources/[uuid]')
+            path = '/v1.0/resources/%s' % uuid
+            method = 'delete'
+            response = self.client.delete(path, headers=self.get_headers(path), name='/v1.0/resources/[uuid]')
             self.log_task(response, path, method)
         except IndexError:
             pass

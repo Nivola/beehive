@@ -55,22 +55,22 @@ class CatalogEndpoint(object):
                  "enabled":..}
         """
         if self.creation is not None:
-            creation = str2uni(self.creation.strftime(u'%d-%m-%y %H:%M:%S'))
+            creation = str2uni(self.creation.strftime('%d-%m-%y %H:%M:%S'))
         else:
             creation = None
         if self.modified is not None:
-            modified = str2uni(self.modified.strftime(u'%d-%m-%y %H:%M:%S'))
+            modified = str2uni(self.modified.strftime('%d-%m-%y %H:%M:%S'))
         else:
             modified = None            
         msg = {
-            u'id':self.id, 
-            u'name':self.name, 
-            u'desc':self.desc,
-            u'service':self.service,
-            u'date':{u'creation':creation, u'modified':modified},
-            u'catalog':self.catalog_id,
-            u'uri':self.uri,
-            u'enabled':self.enabled
+            'id':self.id, 
+            'name':self.name, 
+            'desc':self.desc,
+            'service':self.service,
+            'date':{'creation':creation, 'modified':modified},
+            'catalog':self.catalog_id,
+            'uri':self.uri,
+            'enabled':self.enabled
         }
         return msg      
 
@@ -90,21 +90,21 @@ class CatalogEndpoint(object):
                  "enabled":..}
         """
         if self.creation is not None:
-            creation = str2uni(self.creation.strftime(u'%d-%m-%y %H:%M:%S'))
+            creation = str2uni(self.creation.strftime('%d-%m-%y %H:%M:%S'))
         else:
             creation = None
         if self.modified is not None:
-            modified = str2uni(self.modified.strftime(u'%d-%m-%y %H:%M:%S'))
+            modified = str2uni(self.modified.strftime('%d-%m-%y %H:%M:%S'))
         else:
             modified = None            
         msg = {
-            u'id':self.id, 
-            u'name':self.name, 
-            u'desc':self.desc,
-            u'service':self.service,
-            u'date':{u'creation':creation, u'modified':modified},
-            u'catalog':self.catalog_id,
-            u'uri':self.uri,
-            u'enabled':self.enabled
+            'id':self.id, 
+            'name':self.name, 
+            'desc':self.desc,
+            'service':self.service,
+            'date':{'creation':creation, 'modified':modified},
+            'catalog':self.catalog_id,
+            'uri':self.uri,
+            'enabled':self.enabled
         }
         return json.dumps(msg)

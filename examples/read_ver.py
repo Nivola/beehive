@@ -1,2 +1,0 @@
-import beehive
-print beehive.__version__

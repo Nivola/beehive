@@ -10,24 +10,24 @@ from beehive.tests.module.catalog.view import CatalogTestCase
 from beehive.tests.module.scheduler.view import SchedulerAPITestCase
 
 tests_dir = [
-    u'test_add_catalog',
-    u'test_add_catalog_twice',
-    u'test_get_catalogs',
-    u'test_get_catalogs_by_zone',
-    u'test_get_catalog',
-    u'test_get_catalog_perms',
-    u'test_get_catalog_by_name',
-    u'test_update_catalog',
+    'test_add_catalog',
+    'test_add_catalog_twice',
+    'test_get_catalogs',
+    'test_get_catalogs_by_zone',
+    'test_get_catalog',
+    'test_get_catalog_perms',
+    'test_get_catalog_by_name',
+    'test_update_catalog',
 
-    u'test_add_endpoint',
-    u'test_add_endpoint_twice',
-    u'test_get_endpoints',
-    u'test_filter_endpoints',
-    u'test_get_endpoint',
-    u'test_update_endpoint',
-    u'test_delete_endpoint',
+    'test_add_endpoint',
+    'test_add_endpoint_twice',
+    'test_get_endpoints',
+    'test_filter_endpoints',
+    'test_get_endpoint',
+    'test_update_endpoint',
+    'test_delete_endpoint',
 
-    u'test_delete_catalog',
+    'test_delete_catalog',
 ]
 
 
@@ -36,119 +36,119 @@ class TestCase(CatalogTestCase):
 
     def setUp(self):
         CatalogTestCase.setUp(self)
-        self.module = u'auth'
-        self.module_prefix = u'nas'
-        self.endpoint_service = u'auth'
+        self.module = 'auth'
+        self.module_prefix = 'nas'
+        self.endpoint_service = 'auth'
 
     #
     # catalogs
     #
     def test_add_catalog(self):
         data = {
-            u'catalog': {
-                u'name': u'beehive',
-                u'desc': u'beehive catalog',
-                u'zone': u'internal'
+            'catalog': {
+                'name': 'beehive',
+                'desc': 'beehive catalog',
+                'zone': 'internal'
             }
         }
-        self.post(u'/v1.0/ncs//catalogs', data=data)
+        self.post('/v1.0/ncs//catalogs', data=data)
 
     @assert_exception(ConflictException)
     def test_add_catalog_twice(self):
         data = {
-            u'catalog': {
-                u'name': u'beehive',
-                u'desc': u'beehive catalog',
-                u'zone': u'internal'
+            'catalog': {
+                'name': 'beehive',
+                'desc': 'beehive catalog',
+                'zone': 'internal'
             }
         }
-        self.post(u'/v1.0/ncs//catalogs', data=data)
+        self.post('/v1.0/ncs//catalogs', data=data)
 
     def test_get_catalogs(self):
-        res = self.get(u'/v1.0/ncs//catalogs')
+        res = self.get('/v1.0/ncs//catalogs')
         global oid
-        oid = res[u'catalogs'][-1][u'id']
+        oid = res['catalogs'][-1]['id']
 
     def test_get_catalogs_by_zone(self):
-        self.get(u'/v1.0/ncs//catalogs', query={u'zone': u'internal'})
+        self.get('/v1.0/ncs//catalogs', query={'zone': 'internal'})
 
     def test_get_catalog(self):
         global oid
-        self.get(u'/v1.0/ncs//catalogs/{oid}', params={u'oid': oid})
+        self.get('/v1.0/ncs//catalogs/{oid}', params={'oid': oid})
 
     def test_get_catalog_perms(self):
         global oid
-        self.get(u'/v1.0/ncs//catalogs/{oid}/perms', params={u'oid': oid})
+        self.get('/v1.0/ncs//catalogs/{oid}/perms', params={'oid': oid})
 
     def test_get_catalog_by_name(self):
-        self.get(u'/v1.0/ncs//catalogs/{oid}', params={u'oid': u'beehive-internal-podto1'})
+        self.get('/v1.0/ncs//catalogs/{oid}', params={'oid': 'beehive-internal-podto1'})
 
     def test_update_catalog(self):
         data = {
-            u'catalog': {
-                u'name': u'beehive',
-                u'desc': u'beehive catalog1',
-                u'zone': u'internal1'
+            'catalog': {
+                'name': 'beehive',
+                'desc': 'beehive catalog1',
+                'zone': 'internal1'
             }
         }
-        self.put(u'/v1.0/ncs//catalogs/{oid}', params={u'oid': u'beehive'}, data=data)
+        self.put('/v1.0/ncs//catalogs/{oid}', params={'oid': 'beehive'}, data=data)
 
     def test_delete_catalog(self):
-        self.delete(u'/v1.0/ncs//catalogs/{oid}', params={u'oid': u'beehive'})
+        self.delete('/v1.0/ncs//catalogs/{oid}', params={'oid': 'beehive'})
 
     #
     # endpoints
     #
     def test_add_endpoint(self):
         data = {
-            u'endpoint': {
-                u'catalog': u'beehive',
-                u'name': u'endpoint-prova',
-                u'desc': u'Authorization endpoint 01',
-                u'service': u'auth',
-                u'uri': u'http://localhost:6060/v1.0/auth/',
-                u'active': True
+            'endpoint': {
+                'catalog': 'beehive',
+                'name': 'endpoint-prova',
+                'desc': 'Authorization endpoint 01',
+                'service': 'auth',
+                'uri': 'http://localhost:6060/v1.0/auth/',
+                'active': True
             }
         }
-        self.post(u'/v1.0/ncs//endpoints', data=data)
+        self.post('/v1.0/ncs//endpoints', data=data)
 
     @assert_exception(ConflictException)
     def test_add_endpoint_twice(self):
         data = {
-            u'endpoint': {
-                u'catalog': u'beehive',
-                u'name': u'endpoint-prova',
-                u'desc': u'Authorization endpoint 01',
-                u'service': u'auth',
-                u'uri': u'http://localhost:6060/v1.0/auth/',
-                u'active': True
+            'endpoint': {
+                'catalog': 'beehive',
+                'name': 'endpoint-prova',
+                'desc': 'Authorization endpoint 01',
+                'service': 'auth',
+                'uri': 'http://localhost:6060/v1.0/auth/',
+                'active': True
             }
         }
-        self.post(u'/v1.0/ncs//endpoints', data=data)
+        self.post('/v1.0/ncs//endpoints', data=data)
 
     def test_get_endpoints(self):
-        self.get(u'/v1.0/ncs//endpoints')
+        self.get('/v1.0/ncs//endpoints')
 
     def test_filter_endpoints(self):
-        self.get(u'/v1.0/ncs//endpoints', query={u'service': u'auth', u'catalog': u'beehive'})
+        self.get('/v1.0/ncs//endpoints', query={'service': 'auth', 'catalog': 'beehive'})
 
     def test_get_endpoint(self):
-        self.get(u'/v1.0/ncs//endpoints/{oid}', params={u'oid': u'endpoint-prova'})
+        self.get('/v1.0/ncs//endpoints/{oid}', params={'oid': 'endpoint-prova'})
 
     def test_update_endpoint(self):
         data = {
-            u'endpoint': {
-                u'name': u'endpoint-prova',
-                u'desc': u'Authorization endpoint 02',
-                u'service': u'auth',
-                u'uri': u'http://localhost:6060/v1.0/auth/',
-                u'active': True
+            'endpoint': {
+                'name': 'endpoint-prova',
+                'desc': 'Authorization endpoint 02',
+                'service': 'auth',
+                'uri': 'http://localhost:6060/v1.0/auth/',
+                'active': True
             }
         }
-        self.put(u'/v1.0/ncs//endpoints/{oid}', params={u'oid': u'endpoint-prova'}, data=data)
+        self.put('/v1.0/ncs//endpoints/{oid}', params={'oid': 'endpoint-prova'}, data=data)
 
     def test_delete_endpoint(self):
-        self.delete(u'/v1.0/ncs//endpoints/{oid}', params={u'oid': u'endpoint-prova'})
+        self.delete('/v1.0/ncs//endpoints/{oid}', params={'oid': 'endpoint-prova'})
 
 
 tests = []
@@ -162,5 +162,5 @@ def run(args):
     runtest(TestCase, tests, args)
 
 
-if __name__ == u'__main__':
+if __name__ == '__main__':
     run()

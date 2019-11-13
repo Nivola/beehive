@@ -8,8 +8,8 @@ class ListConfig(ApiView):
     def get(self, controller, data, app, *args, **kwargs):
         configs = controller.get_configs()
         res = [i.info() for i in configs]
-        resp = {u'configs': res,
-                u'count': len(res)}
+        resp = {'configs': res,
+                'count': len(res)}
         return resp
 
 
@@ -17,8 +17,8 @@ class FilterConfig(ApiView):
     def get(self, controller, data, app, *args, **kwargs):
         configs = controller.get_configs(app=app)
         res = [i.info() for i in configs]
-        resp = {u'configs': res,
-                u'count': len(res)}
+        resp = {'configs': res,
+                'count': len(res)}
         return resp
 
 
@@ -28,8 +28,8 @@ class ConfigAPI(ApiView):
     @staticmethod
     def register_api(module):
         rules = [
-            (u'configs/<app>', u'GET', ListConfig, {}),           
-            (u'configs', u'GET', FilterConfig, {})
+            ('configs/<app>', 'GET', ListConfig, {}),           
+            ('configs', 'GET', FilterConfig, {})
         ]
 
         ApiView.register_api(module, rules)

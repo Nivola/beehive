@@ -25,22 +25,22 @@ logger = logging.getLogger(__name__)
 class ExtTaskFormatter(ColorFormatter):
     COLORS = colored().names
     colors = {
-        u'DEBUG': COLORS[u'blue'],
-        u'WARNING': COLORS[u'yellow'],
-        u'WARN': COLORS[u'yellow'],
-        u'ERROR': COLORS[u'red'],
-        u'CRITICAL': COLORS[u'magenta'],
-        u'DEBUG2': COLORS[u'green'],
-        u'DEBUG3': COLORS[u'cyan']
+        'DEBUG': COLORS['blue'],
+        'WARNING': COLORS['yellow'],
+        'WARN': COLORS['yellow'],
+        'ERROR': COLORS['red'],
+        'CRITICAL': COLORS['magenta'],
+        'DEBUG2': COLORS['green'],
+        'DEBUG3': COLORS['cyan']
     }
 
     def format(self, record):
         task = get_current_task()
         if task and task.request:
-            name = task.name.split(u'.')[-1]
+            name = task.name.split('.')[-1]
             record.__dict__.update(task_id=task.request.id, task_name=name)
         else:
-            record.__dict__.update(task_id=u'xxx', task_name=u'xxx')
+            record.__dict__.update(task_id='xxx', task_name='xxx')
         return ColorFormatter.format(self, record)
 
 
@@ -57,7 +57,7 @@ def on_celery_setup_logging(**args):
     pass
 
 
-def configure_task_manager(broker_url, result_backend, tasks=[], expire=60 * 60 * 24, task_queue=u'celery',
+def configure_task_manager(broker_url, result_backend, tasks=[], expire=60 * 60 * 24, task_queue='celery',
                            logger_file=None, time_limit=1200):
     """
     :param broker_url: url of the broker
@@ -67,7 +67,7 @@ def configure_task_manager(broker_url, result_backend, tasks=[], expire=60 * 60 
     """
     # # get redis password
     # redis_password = None
-    # if result_backend.find(u'@') > 0:
+    # if result_backend.find('@') > 0:
     #     redis_password = match(r"redis:\/\/([\w\W\d]*)@.", result_backend).groups()[0]
 
     task_manager.conf.update(
@@ -85,14 +85,14 @@ def configure_task_manager(broker_url, result_backend, tasks=[], expire=60 * 60 
                 routing_key=task_queue),
         ),
         CELERY_RESULT_BACKEND=result_backend,
-        CELERY_REDIS_RESULT_KEY_PREFIX=u'%s.celery-task-meta2-' % task_queue,
+        CELERY_REDIS_RESULT_KEY_PREFIX='%s.celery-task-meta2-' % task_queue,
         CELERY_REDIS_RESULT_EXPIRES=expire,
         CELERY_TASK_IGNORE_RESULT=True,
         CELERY_TASK_RESULT_EXPIRES=600,
-        CELERY_TASK_SERIALIZER=u'json',
-        CELERY_ACCEPT_CONTENT=[u'json'],  # Ignore other content
-        CELERY_RESULT_SERIALIZER=u'json',
-        CELERY_TIMEZONE=u'Europe/Rome',
+        CELERY_TASK_SERIALIZER='json',
+        CELERY_ACCEPT_CONTENT=['json'],  # Ignore other content
+        CELERY_RESULT_SERIALIZER='json',
+        CELERY_TIMEZONE='Europe/Rome',
         CELERY_ENABLE_UTC=True,
         CELERY_IMPORTS=tasks,
         CELERY_DISABLE_RATE_LIMITS=True,
@@ -101,9 +101,9 @@ def configure_task_manager(broker_url, result_backend, tasks=[], expire=60 * 60 
         CELERYD_TASK_TIME_LIMIT=time_limit,
         CELERYD_TASK_SOFT_TIME_LIMIT=time_limit,
         CELERYD_CONCURRENCY=10,
-        CELERYD_POOL=u'beehive.common.task.task_pool:TaskPool',
-        CELERYD_TASK_LOG_FORMAT=u'[%(asctime)s: %(levelname)s/%(processName)s] [%(task_name)s:%(task_id)s] '
-                                u'%(name)s:%(funcName)s:%(lineno)d - %(message)s',
+        CELERYD_POOL='beehive.common.task.task_pool:TaskPool',
+        CELERYD_TASK_LOG_FORMAT='[%(asctime)s: %(levelname)s/%(processName)s] [%(task_name)s:%(task_id)s] '
+                                '%(name)s:%(funcName)s:%(lineno)d - %(message)s',
         CELERYD_MAX_TASKS_PER_CHILD=20
     )
 
@@ -125,22 +125,22 @@ def configure_task_scheduler(
         # CELERY_TASK_DEAFAULT_ROUTING_KEY=task_queue,
         BROKER_URL=broker_url,
         CELERY_SCHEDULE_BACKEND=schedule_backend,
-        # CELERYBEAT_SCHEDULE_FILENAME=u'/tmp/celerybeat-schedule',
-        # CELERY_REDIS_SCHEDULER_KEY_PREFIX=u'celery-schedule',
-        CELERY_REDIS_SCHEDULER_KEY_PREFIX=task_queue + u'.schedule',
-        CELERY_TASK_SERIALIZER=u'json',
-        CELERY_ACCEPT_CONTENT=[u'json'],  # Ignore other content
-        CELERY_RESULT_SERIALIZER=u'json',
-        CELERY_TIMEZONE=u'Europe/Rome',
+        # CELERYBEAT_SCHEDULE_FILENAME='/tmp/celerybeat-schedule',
+        # CELERY_REDIS_SCHEDULER_KEY_PREFIX='celery-schedule',
+        CELERY_REDIS_SCHEDULER_KEY_PREFIX=task_queue + '.schedule',
+        CELERY_TASK_SERIALIZER='json',
+        CELERY_ACCEPT_CONTENT=['json'],  # Ignore other content
+        CELERY_RESULT_SERIALIZER='json',
+        CELERY_TIMEZONE='Europe/Rome',
         CELERY_ENABLE_UTC=True,
         # CELERY_IMPORTS=tasks,
         CELERYBEAT_MAX_LOOP_INTERVAL=5,
         CELERYBEAT_SCHEDULE={
-            u'test-every-30-minutes': {
-                u'task': u'beehive.module.scheduler.tasks.test',
-                u'schedule': timedelta(minutes=30),
-                u'args': (u'*', {}),
-                u'options': {u'queue': task_queue}
+            'test-every-30-minutes': {
+                'task': 'beehive.module.scheduler.tasks.test',
+                'schedule': timedelta(minutes=30),
+                'args': ('*', {}),
+                'options': {'queue': task_queue}
             },
         }
     )
@@ -151,43 +151,43 @@ def start_task_manager(params):
     """Start celery task manager
     """
     logname = "%s.task" % params['api_id']
-    frmt = u'[%(asctime)s: %(levelname)s/%(task_name)s:%(task_id)s] %(name)s:%(funcName)s:%(lineno)d - %(message)s'
+    frmt = '[%(asctime)s: %(levelname)s/%(task_name)s:%(task_id)s] %(name)s:%(funcName)s:%(lineno)d - %(message)s'
 
-    log_path = u'/var/log/%s/%s' % (params[u'api_package'], params[u'api_env'])
-    run_path = u'/var/run/%s/%s' % (params[u'api_package'], params[u'api_env'])
+    log_path = '/var/log/%s/%s' % (params['api_package'], params['api_env'])
+    run_path = '/var/run/%s/%s' % (params['api_package'], params['api_env'])
 
-    logger_level = int(params[u'api_logging_level'])
+    logger_level = int(params['api_logging_level'])
 
     # base logging
     main_loggers = [
-        logging.getLogger(u'beehive'),
-        logging.getLogger(u'beehive.common.model'),
-        logging.getLogger(u'beehive_service'),
-        logging.getLogger(u'beehive_resource'),
-        logging.getLogger(u'beehive.db'),
-        logging.getLogger(u'beecell'),
-        logging.getLogger(u'beedrones'),
-        logging.getLogger(u'celery'),
-        logging.getLogger(u'proxmoxer'),
-        logging.getLogger(u'requests')
+        logging.getLogger('beehive'),
+        logging.getLogger('beehive.common.model'),
+        logging.getLogger('beehive_service'),
+        logging.getLogger('beehive_resource'),
+        logging.getLogger('beehive.db'),
+        logging.getLogger('beecell'),
+        logging.getLogger('beedrones'),
+        logging.getLogger('celery'),
+        logging.getLogger('proxmoxer'),
+        logging.getLogger('requests')
     ]
-    LoggerHelper.rotatingfile_handler(main_loggers, logger_level, u'%s/%s.log' % (log_path, logname),
+    LoggerHelper.rotatingfile_handler(main_loggers, logger_level, '%s/%s.log' % (log_path, logname),
                                       frmt=frmt, formatter=ExtTaskFormatter)
 
     # transaction and db logging
     loggers = [
-        # logging.getLogger(u'beehive.common.data'),
-        logging.getLogger(u'sqlalchemy.engine'),
-        logging.getLogger(u'sqlalchemy.pool')
+        # logging.getLogger('beehive.common.data'),
+        logging.getLogger('sqlalchemy.engine'),
+        logging.getLogger('sqlalchemy.pool')
     ]
-    LoggerHelper.rotatingfile_handler(loggers, logger_level, u'%s/%s.db.log' % (log_path, logname))
+    LoggerHelper.rotatingfile_handler(loggers, logger_level, '%s/%s.db.log' % (log_path, logname))
 
     # performance logging
     loggers = [
-        logging.getLogger(u'beecell.perf')
+        logging.getLogger('beecell.perf')
     ]
-    LoggerHelper.rotatingfile_handler(loggers, logger_level, u'%s/%s.watch' % (log_path, params[u'api_id']),
-                                      frmt=u'%(asctime)s - %(message)s')
+    LoggerHelper.rotatingfile_handler(loggers, logger_level, '%s/%s.watch' % (log_path, params['api_id']),
+                                      frmt='%(asctime)s - %(message)s')
 
     # setup api manager
     api_manager = ApiManager(params, hostname=gethostname())
@@ -197,34 +197,34 @@ def start_task_manager(params):
 
     # elk logger
     if api_manager.elasticsearch is not None:
-        frmt = u'{"timestamp":"%(asctime)s", "levelname":"%(levelname)s", "task_name":"%(task_name)s", ' \
-               u'"task_id":"%(task_id)s", "module":"%(name)s", "func":"%(funcName)s", "lineno":"%(lineno)d",' \
-               u'"message":"%(message)s"}'
+        frmt = '{"timestamp":"%(asctime)s", "levelname":"%(levelname)s", "task_name":"%(task_name)s", ' \
+               '"task_id":"%(task_id)s", "module":"%(name)s", "func":"%(funcName)s", "lineno":"%(lineno)d",' \
+               '"message":"%(message)s"}'
         tags = []
-        LoggerHelper.elastic_handler(main_loggers, logger_level, api_manager.elasticsearch, index=u'cmp',
+        LoggerHelper.elastic_handler(main_loggers, logger_level, api_manager.elasticsearch, index='cmp',
                                      frmt=frmt, tags=tags, server=api_manager.server_name, app=api_manager.app_id,
-                                     component=u'task')
+                                     component='task')
 
-    logger_file = u'%s/%s.log' % (log_path, logname)
+    logger_file = '%s/%s.log' % (log_path, logname)
 
-    configure_task_manager(params[u'broker_url'], params[u'result_backend'], tasks=params[u'task_module'],
-                           expire=params[u'expire'], task_queue=params[u'broker_queue'], logger_file=logger_file,
-                           time_limit=params[u'task_time_limit'])
+    configure_task_manager(params['broker_url'], params['result_backend'], tasks=params['task_module'],
+                           expire=params['expire'], task_queue=params['broker_queue'], logger_file=logger_file,
+                           time_limit=params['task_time_limit'])
 
-    argv = [u'',
-            u'--hostname=' + params[u'broker_queue'] + u'@%h',
-            u'--loglevel=%s' % logging.getLevelName(internal_logger_level),
-            u'--purge',
-            u'--logfile=%s' % logger_file,
-            u'--pidfile=%s/%s.task.pid' % (run_path, logname),
-            # u'--pool=prefork',
-            # u'--pool=gevent',
-            # u'--pool=beehive.common.task.task_pool:TaskPool',
+    argv = ['',
+            '--hostname=' + params['broker_queue'] + '@%h',
+            '--loglevel=%s' % logging.getLevelName(internal_logger_level),
+            '--purge',
+            '--logfile=%s' % logger_file,
+            '--pidfile=%s/%s.task.pid' % (run_path, logname),
+            # '--pool=prefork',
+            # '--pool=gevent',
+            # '--pool=beehive.common.task.task_pool:TaskPool',
             # '--time-limit=600',
             # '--soft-time-limit=300',
-            # u'--concurrency=1000',
-            # u'--maxtasksperchild=1000',
-            # u'--autoscale=100,10',
+            # '--concurrency=1000',
+            # '--maxtasksperchild=1000',
+            # '--autoscale=100,10',
             ]
 
     def terminate(*args):
@@ -238,18 +238,18 @@ def start_task_manager(params):
 
 def start_scheduler(params):
     """start celery scheduler """
-    log_path = u'/var/log/%s/%s' % (params[u'api_package'],
-                                    params[u'api_env'])
-    run_path = u'/var/run/%s/%s' % (params[u'api_package'],
-                                    params[u'api_env'])
-    logger_file = u'%s/%s.scheduler.log' % (log_path, params[u'api_id'])
-    # logger_level = int(params[u'api_logging_level'])
+    log_path = '/var/log/%s/%s' % (params['api_package'],
+                                    params['api_env'])
+    run_path = '/var/run/%s/%s' % (params['api_package'],
+                                    params['api_env'])
+    logger_file = '%s/%s.scheduler.log' % (log_path, params['api_id'])
+    # logger_level = int(params['api_logging_level'])
     logger_level = logging.INFO
     loggers = [
-        logging.getLogger(u'beehive'),
-        logging.getLogger(u'beecell'),
-        logging.getLogger(u'beedrones'),
-        logging.getLogger(u'celery'),
+        logging.getLogger('beehive'),
+        logging.getLogger('beecell'),
+        logging.getLogger('beedrones'),
+        logging.getLogger('celery'),
     ]
     LoggerHelper.rotatingfile_handler(
         loggers,
@@ -265,9 +265,9 @@ def start_scheduler(params):
     task_scheduler.api_manager = api_manager
 
     configure_task_scheduler(
-        params[u'broker_url'],
-        params[u'result_backend'],
-        task_queue=params[u'broker_queue'])
+        params['broker_url'],
+        params['result_backend'],
+        task_queue=params['broker_queue'])
 
     # from beehive.module.scheduler.scheduler import RedisScheduler
     from beehive.module.scheduler.redis_scheduler import RedisScheduler

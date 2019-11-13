@@ -36,110 +36,110 @@ tests = [
 class SchedulerAPITestCase(BeehiveTestCase):
     def setUp(self):
         BeehiveTestCase.setUp(self)
-        self.module = u'auth'
-        self.module_prefix = u'nas'
+        self.module = 'auth'
+        self.module_prefix = 'nas'
         
     #
     # task manager
     #
     def test_ping_task_manager(self):
-        data = u''
-        uri = u'/v1.0/nas/worker/ping'
+        data = ''
+        uri = '/v1.0/nas/worker/ping'
         
-        self.call(self.module, uri, u'get', data=data, **self.users[u'admin'])
+        self.call(self.module, uri, 'get', data=data, **self.users['admin'])
 
     def test_stat_task_manager(self):
-        data = u''
-        uri = u'/v1.0/nas/worker/stats'
+        data = ''
+        uri = '/v1.0/nas/worker/stats'
         
-        res = self.call(self.module, uri, u'get', data=data, **self.users[u'admin'])
+        res = self.call(self.module, uri, 'get', data=data, **self.users['admin'])
         self.logger.info(self.pp.pformat(res))
 
     def test_report_task_manager(self):
-        data = u''
-        uri = u'/v1.0/nas/worker/report'
+        data = ''
+        uri = '/v1.0/nas/worker/report'
         
-        res = self.call(self.module, uri, u'get', data=data, **self.users[u'admin'])
+        res = self.call(self.module, uri, 'get', data=data, **self.users['admin'])
         self.logger.info(self.pp.pformat(res))
 
     def test_queues_task_manager(self):
-        data = u''
-        uri = u'/v1.0/nas/worker/queues'
+        data = ''
+        uri = '/v1.0/nas/worker/queues'
 
-        res = self.call(self.module, uri, u'get', data=data, **self.users[u'admin'])
+        res = self.call(self.module, uri, 'get', data=data, **self.users['admin'])
         self.logger.info(self.pp.pformat(res))
 
     def test_get_all_tasks(self):
-        data = u''
-        uri = u'/v1.0/nas/worker/tasks'
+        data = ''
+        uri = '/v1.0/nas/worker/tasks'
         
-        res = self.call(self.module, uri, u'get', data=data, **self.users[u'admin'])
+        res = self.call(self.module, uri, 'get', data=data, **self.users['admin'])
         self.logger.info(self.pp.pformat(res))
 
     def test_count_all_tasks(self):
-        data = u''
-        uri = u'/v1.0/nas/worker/tasks/count'
+        data = ''
+        uri = '/v1.0/nas/worker/tasks/count'
 
-        res = self.call(self.module, uri, u'get', data=data, **self.users[u'admin'])
+        res = self.call(self.module, uri, 'get', data=data, **self.users['admin'])
         self.logger.info(self.pp.pformat(res))
 
     def test_get_task_definitions(self):
-        data = u''
-        uri = u'/v1.0/nas/worker/tasks/definitions'
-        res = self.call(self.module, uri, u'get', data=data, **self.users[u'admin'])
+        data = ''
+        uri = '/v1.0/nas/worker/tasks/definitions'
+        res = self.call(self.module, uri, 'get', data=data, **self.users['admin'])
         self.logger.info(self.pp.pformat(res))
 
     def test_get_task(self):
-        data = u''
+        data = ''
         global task_id
-        uri = u'/v1.0/nas/worker/tasks/%s' % task_id
-        res = self.call(self.module, uri, u'get', data=data, **self.users[u'admin'])
+        uri = '/v1.0/nas/worker/tasks/%s' % task_id
+        res = self.call(self.module, uri, 'get', data=data, **self.users['admin'])
         self.logger.info(self.pp.pformat(res))
         
     def test_get_task_graph(self):
         global task_id
-        data = u''
-        uri = u'/v1.0/nas/worker/tasks/%s/graph' % task_id
+        data = ''
+        uri = '/v1.0/nas/worker/tasks/%s/graph' % task_id
         
-        res = self.call(self.module, uri, u'get', data=data, **self.users[u'admin'])
+        res = self.call(self.module, uri, 'get', data=data, **self.users['admin'])
         self.logger.info(self.pp.pformat(res))
         
     def test_delete_all_tasks(self):
-        data = u''
-        uri = u'/v1.0/nas/worker/tasks'
+        data = ''
+        uri = '/v1.0/nas/worker/tasks'
         
-        self.call(self.module, uri, u'delete', data=data, **self.users[u'admin'])
+        self.call(self.module, uri, 'delete', data=data, **self.users['admin'])
         
     def test_delete_task(self):
         global task_id
-        data = u''
-        uri = u'/v1.0/nas/worker/tasks/%s' % task_id
+        data = ''
+        uri = '/v1.0/nas/worker/tasks/%s' % task_id
         
-        self.call(self.module, uri, u'delete', data=data, **self.users[u'admin'])
+        self.call(self.module, uri, 'delete', data=data, **self.users['admin'])
         
     def test_run_job_test(self):
         global task_id
-        data = {u'x': 2, u'y': 234, u'numbers': [2, 78, 45, 90], u'mul_numbers':[]}
-        uri = u'/v1.0/nas/worker/tasks/test'
-        res = self.call(self.module, uri, u'post', data=data, **self.users[u'admin'])
-        self.wait_job(res[u'jobid'], delta=1, accepted_state=u'SUCCESS')
-        task_id = res[u'jobid']
+        data = {'x': 2, 'y': 234, 'numbers': [2, 78, 45, 90], 'mul_numbers':[]}
+        uri = '/v1.0/nas/worker/tasks/test'
+        res = self.call(self.module, uri, 'post', data=data, **self.users['admin'])
+        self.wait_job(res['jobid'], delta=1, accepted_state='SUCCESS')
+        task_id = res['jobid']
 
     #
     # scheduler
     #
     def test_get_scheduler_entries(self):
-        data = u''
-        uri = u'/v1.0/nas/scheduler/entries'
-        res = self.call(self.module, uri, u'get', data=data, **self.users[u'admin'])
+        data = ''
+        uri = '/v1.0/nas/scheduler/entries'
+        res = self.call(self.module, uri, 'get', data=data, **self.users['admin'])
         global schedule_id
-        schedule_id = res[u'schedules'][0][u'name']
+        schedule_id = res['schedules'][0]['name']
 
     def test_get_scheduler_entry(self):
         global schedule_id
-        data = u''
-        uri = u'/v1.0/nas/scheduler/entries/%s' % schedule_id
-        res = self.call(self.module, uri, u'get', data=data, **self.users[u'admin'])
+        data = ''
+        uri = '/v1.0/nas/scheduler/entries/%s' % schedule_id
+        res = self.call(self.module, uri, 'get', data=data, **self.users['admin'])
 
     def test_create_scheduler_entries(self):
         data = {
@@ -160,13 +160,13 @@ class SchedulerAPITestCase(BeehiveTestCase):
                         'minutes':1},
             'options': {'expires': 60}
         }
-        uri = u'/v1.0/nas/scheduler/entries'
-        self.call(self.module, uri, u'post', data={u'schedule':data}, **self.users[u'admin'])
+        uri = '/v1.0/nas/scheduler/entries'
+        self.call(self.module, uri, 'post', data={'schedule':data}, **self.users['admin'])
 
     def test_delete_scheduler_entry(self):
-        uri = u'/v1.0/nas/scheduler/entries/%s' % u'celery.backend_cleanup'
-        self.call(self.module, uri, u'delete', data=u'', **self.users[u'admin'])
+        uri = '/v1.0/nas/scheduler/entries/%s' % 'celery.backend_cleanup'
+        self.call(self.module, uri, 'delete', data='', **self.users['admin'])
 
 
-if __name__ == u'__main__':
+if __name__ == '__main__':
     runtest(SchedulerAPITestCase, tests)

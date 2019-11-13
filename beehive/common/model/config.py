@@ -4,11 +4,12 @@
 
 import logging
 from datetime import datetime
+
+from beecell.db import ModelError
 from beehive.common.data import transaction, query, operation
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy import create_engine, exc
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.exc import SQLAlchemyError
 from beehive.common.model import AbstractDbManager
 
 Base = declarative_base()
@@ -56,9 +57,9 @@ class ConfigDbManager(AbstractDbManager):
             engine = create_engine(db_uri)
             engine.execute("SET FOREIGN_KEY_CHECKS=1;")
             Base.metadata.create_all(engine)
-            logger.info(u'Create tables on : %s' % (db_uri))
+            logger.info('Create tables on : %s' % (db_uri))
             del engine
-        except exc.DBAPIError, e:
+        except exc.DBAPIError as e:
             raise Exception(e)
     
     @staticmethod
@@ -69,9 +70,9 @@ class ConfigDbManager(AbstractDbManager):
             engine = create_engine(db_uri)
             engine.execute("SET FOREIGN_KEY_CHECKS=0;")
             Base.metadata.drop_all(engine)
-            logger.info(u'Remove tables from : %s' % (db_uri))
+            logger.info('Remove tables from : %s' % (db_uri))
             del engine
-        except exc.DBAPIError, e:
+        except exc.DBAPIError as e:
             raise Exception(e)
 
     @query    
@@ -101,14 +102,10 @@ class ConfigDbManager(AbstractDbManager):
             prop = session.query(ConfigProp).all()
             
         if len(prop) == 0:
-            self.logger.warn(u'No properties (app=%s, group=%s, '\
-                             u'oid=%s, name=%s) found' % 
-                             (app, group, oid, name)) 
-            raise SQLAlchemyError(u'No properties (app=%s, group=%s, '\
-                                  u'oid=%s, name=%s) found' % 
-                                  (app, group, oid, name))
+            self.logger.warn('No properties (app=%s, group=%s oid=%s, name=%s) found' % (app, group, oid, name))
+            raise ModelError('No properties (app=%s, group=%s, oid=%s, name=%s) found' % (app, group, oid, name))
             
-        self.logger.debug(u'Get properties: %s' % prop)
+        self.logger.debug('Get properties: %s' % prop)
         return prop
         
     @transaction
@@ -141,9 +138,8 @@ class ConfigDbManager(AbstractDbManager):
         """        
         session = self.get_session()
         modification_date = datetime.today()
-        res = session.query(ConfigProp).filter_by(name=name)\
-                                       .update({"value":value,
-                                                "modification_date":modification_date})
+        res = session.query(ConfigProp).filter_by(name=name).update(
+            {"value": value, "modification_date": modification_date})
             
         self.logger.debug('Set property "%s:%s"' % (name, value))
         return res
@@ -165,11 +161,11 @@ class ConfigDbManager(AbstractDbManager):
             prop = session.query(ConfigProp).filter_by(name=name).first()
         else:
             self.logger.error("Specify at least oid or name")
-            raise SQLAlchemyError("Specify at least oid or name")
+            raise ModelError("Specify at least oid or name")
 
         if prop is None:
             self.logger.error("No property found")
-            raise SQLAlchemyError("No property found")  
+            raise ModelError("No property found")  
         
         res = session.delete(prop)
             

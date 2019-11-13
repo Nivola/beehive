@@ -3,12 +3,13 @@ Created on Nov 6, 2015
 
 @author: darkbk
 '''
+
 import unittest
-from tests.test_util import BeehiveTestCase
 from beehive.common.task.manager import configure_task_manager,\
     configure_task_scheduler
 from beehive.module.catalog.tasks import refresh_catalog
-from beehive.common.test import runtest
+from beehive.common.test import runtest, BeehiveTestCase
+
 
 class CatalogTaskManagerTestCase(BeehiveTestCase):
     """To execute this test you need a mysql instance, a user and a 
@@ -25,14 +26,14 @@ class CatalogTaskManagerTestCase(BeehiveTestCase):
 
     def test_run_refresh_catalog(self):
         data = {}
-        task = refresh_catalog.delay(u'*', data)
-        print task.id, task.status
+        task = refresh_catalog.delay('*', data)
+
 
 def test_suite():
     tests = [
-        u'test_run_refresh_catalog',
+        'test_run_refresh_catalog',
     ]
     return unittest.TestSuite(map(CatalogTaskManagerTestCase, tests))
 
-if __name__ == u'__main__':
+if __name__ == '__main__':
     runtest(test_suite())

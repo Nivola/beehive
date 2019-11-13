@@ -16,7 +16,7 @@ class CatalogProducer(object):
     def __init__(self):
         """Abstract node producer.
         """
-        self.logger = getLogger(self.__class__.__module__ + u'.' + self.__class__.__name__)
+        self.logger = getLogger(self.__class__.__module__ + '.' + self.__class__.__name__)
     
     def _send(self, node_type, data, source, dest):
         raise NotImplementedError()
@@ -57,8 +57,8 @@ class CatalogProducerRedis(CatalogProducer):
         self.redis_uri = redis_uri
         self.redis_channel = redis_channel
         self.conn = Connection(redis_uri)
-        self.exchange = Exchange(self.redis_channel, type=u'direct', delivery_mode=1)
-        self.routing_key = u'%s.key' % self.redis_channel
+        self.exchange = Exchange(self.redis_channel, type='direct', delivery_mode=1)
+        self.routing_key = '%s.key' % self.redis_channel
         
         self.queue = Queue(self.redis_channel, exchange=self.exchange)
         self.queue.declare(channel=self.conn.channel())
@@ -72,15 +72,15 @@ class CatalogProducerRedis(CatalogProducer):
             with producers[self.conn].acquire() as producer:
                 msg = endpoint.dict()
                 producer.publish(msg,
-                                 serializer=u'json',
-                                 compression=u'bzip2',
+                                 serializer='json',
+                                 compression='bzip2',
                                  exchange=self.exchange,
                                  declare=[self.exchange],
                                  routing_key=self.routing_key,
                                  expiration=60,
                                  delivery_mode=1)
-                self.logger.debug(u'Send catalog endpoint : %s' % msg)
+                self.logger.debug('Send catalog endpoint : %s' % msg)
         except exceptions.ConnectionLimitExceeded as ex:
-            self.logger.error(u'Endpoint can not be send: %s' % ex)
+            self.logger.error('Endpoint can not be send: %s' % ex)
         except Exception as ex:
-            self.logger.error(u'Endpoint can not be send: %s' % ex, exc_info=1)
+            self.logger.error('Endpoint can not be send: %s' % ex, exc_info=1)

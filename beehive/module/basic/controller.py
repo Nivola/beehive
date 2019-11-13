@@ -18,7 +18,7 @@ from beehive.common.controller.authorization import BaseAuthController
 class BasicController(BaseAuthController):
     """Basic Module controller.
     """
-    version = u'v1.0'
+    version = 'v1.0'
     
     def __init__(self, module):
         BaseAuthController.__init__(self, module)
@@ -36,12 +36,12 @@ class BasicController(BaseAuthController):
         """
         try:
             res = {
-                u'name': self.module.api_manager.app_name,
-                u'id': self.module.api_manager.app_id,
-                u'hostname': self.module.api_manager.server_name,
-                u'uri': self.module.api_manager.app_uri
+                'name': self.module.api_manager.app_name,
+                'id': self.module.api_manager.app_id,
+                'hostname': self.module.api_manager.server_name,
+                'uri': self.module.api_manager.app_uri
             }
-            self.logger.debug(u'Ping server: %s' % truncate(res))
+            self.logger.debug('Ping server: %s' % truncate(res))
             return res
         except Exception as ex:
             self.logger.error(ex)
@@ -54,11 +54,11 @@ class BasicController(BaseAuthController):
         """
         try:
             res = {
-                u'name': self.module.api_manager.app_name,
-                u'id': self.module.api_manager.app_id,
-                u'modules': {k: v.info() for k, v in self.module.api_manager.modules.iteritems()},
+                'name': self.module.api_manager.app_name,
+                'id': self.module.api_manager.app_id,
+                'modules': {k: v.info() for k, v in self.module.api_manager.modules.items()},
             }
-            self.logger.debug(u'Get server info: %s' % truncate(res))
+            self.logger.debug('Get server info: %s' % truncate(res))
             return res
         except Exception as ex:
             self.logger.error(ex)
@@ -114,7 +114,7 @@ class BasicController(BaseAuthController):
             
             res = []
             for c in confs:
-                res.append({u'type': c.group, u'name': c.name, u'value': c.value})
+                res.append({'type': c.group, 'name': c.name, 'value': c.value})
             self.logger.debug('Get server configuration: %s' % truncate(res))
             return res
         except (TransactionError, Exception) as ex:
@@ -133,8 +133,8 @@ class BasicController(BaseAuthController):
             confs = self.module.api_manager.params
             
             res = []
-            for k,v in confs.iteritems():
-                res.append({u'key':k, u'value':v})
+            for k,v in confs.items():
+                res.append({'key':k, 'value':v})
             self.logger.debug('Get uwsgi configuration: %s' % truncate(res))
             return res
         except (TransactionError, Exception) as ex:

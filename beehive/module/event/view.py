@@ -14,30 +14,30 @@ from beecell.swagger import SwaggerHelper
 #
 ## list
 class ListEventsRequestSchema(PaginatedRequestQuerySchema):   
-    type = fields.String(default=u'API', context=u'query')
-    objid = fields.String(default=u'3638282dh82//dhedhw7d8we', context=u'query')
-    objdef = fields.String(default=u'CatalogEndpoint', context=u'query')
-    objtype = fields.String(default=u'directory', context=u'query')
-    date = fields.DateTime(default=u'1985-04-12T23:20:50.52Z', context=u'query')
-    datefrom = fields.DateTime(default=u'1985-04-12T23:20:50.52Z', context=u'query')
-    dateto = fields.DateTime(default=u'1985-04-12T23:20:50.52Z', context=u'query')
-    source = fields.String(default=u'{}', context=u'query')
-    dest = fields.String(default=u'{}', context=u'query')
-    data = fields.String(default=u'{}', context=u'query')
-    field = fields.String(validate=OneOf([u'id', u'uuid', u'objid', u'name'],
-                                         error=u'Field can be id, uuid, objid, name'),
-                          description=u'enitities list order field. Ex. id, uuid, name',
-                          default=u'id', example=u'id', missing=u'id', context=u'query')
+    type = fields.String(default='API', context='query')
+    objid = fields.String(default='3638282dh82//dhedhw7d8we', context='query')
+    objdef = fields.String(default='CatalogEndpoint', context='query')
+    objtype = fields.String(default='directory', context='query')
+    date = fields.DateTime(default='1985-04-12T23:20:50.52Z', context='query')
+    datefrom = fields.DateTime(default='1985-04-12T23:20:50.52Z', context='query')
+    dateto = fields.DateTime(default='1985-04-12T23:20:50.52Z', context='query')
+    source = fields.String(default='{}', context='query')
+    dest = fields.String(default='{}', context='query')
+    data = fields.String(default='{}', context='query')
+    field = fields.String(validate=OneOf(['id', 'uuid', 'objid', 'name'],
+                                         error='Field can be id, uuid, objid, name'),
+                          description='enitities list order field. Ex. id, uuid, name',
+                          default='id', example='id', missing='id', context='query')
 
 
 class EventsParamsResponseSchema(Schema):
     id = fields.Integer(required=True, default=1)
-    event_id = fields.String(required=True, default=u'384jnd7d4')
-    type = fields.String(required=True, default=u'API')
-    objid = fields.String(required=True, default=u'3638282dh82//dhedhw7d8we')
-    objdef = fields.String(required=True, default=u'CatalogEndpoint')
-    objtype = fields.String(required=True, default=u'directory')
-    date = fields.DateTime(required=True, default=u'1985-04-12T23:20:50.52Z')
+    event_id = fields.String(required=True, default='384jnd7d4')
+    type = fields.String(required=True, default='API')
+    objid = fields.String(required=True, default='3638282dh82//dhedhw7d8we')
+    objdef = fields.String(required=True, default='CatalogEndpoint')
+    objtype = fields.String(required=True, default='directory')
+    date = fields.DateTime(required=True, default='1985-04-12T23:20:50.52Z')
     data = fields.Dict(required=True)
     source = fields.Dict(required=True)
     dest = fields.Dict(required=True)
@@ -48,17 +48,17 @@ class ListEventsResponseSchema(PaginatedResponseSchema):
 
 
 class ListEvents(SwaggerApiView):
-    tags = [u'event']
+    tags = ['event']
     definitions = {
-        u'ListEventsResponseSchema': ListEventsResponseSchema,
-        u'ListEventsRequestSchema': ListEventsRequestSchema
+        'ListEventsResponseSchema': ListEventsResponseSchema,
+        'ListEventsRequestSchema': ListEventsRequestSchema
     }
     parameters = SwaggerHelper().get_parameters(ListEventsRequestSchema)
     parameters_schema = ListEventsRequestSchema
     responses = SwaggerApiView.setResponses({
         200: {
-            u'description': u'success',
-            u'schema': ListEventsResponseSchema
+            'description': 'success',
+            'schema': ListEventsResponseSchema
         }
     })
     
@@ -69,7 +69,7 @@ class ListEvents(SwaggerApiView):
         """            
         events, total = controller.get_events(**data)
         res = [r.info() for r in events]
-        return self.format_paginated_response(res, u'events', total, **data)
+        return self.format_paginated_response(res, 'events', total, **data)
 
 
 class GetEventResponseSchema(Schema):
@@ -77,22 +77,22 @@ class GetEventResponseSchema(Schema):
 
 
 class GetEvent(SwaggerApiView):
-    tags = [u'event']
+    tags = ['event']
     definitions = {
-        u'GetEventResponseSchema': GetEventResponseSchema,
+        'GetEventResponseSchema': GetEventResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
     responses = SwaggerApiView.setResponses({
         200: {
-            u'description': u'success',
-            u'schema': GetEventResponseSchema
+            'description': 'success',
+            'schema': GetEventResponseSchema
         }
     })
     
     def get(self, controller, data, oid, *args, **kwargs):
         event = controller.get_event(oid)
         res = event.detail()
-        resp = {u'event':res}        
+        resp = {'event':res}        
         return resp
 
 
@@ -103,22 +103,22 @@ class GetEventTypesResponseSchema(Schema):
 
 
 class GetEventTypes(SwaggerApiView):
-    tags = [u'event']
+    tags = ['event']
     definitions = {
-        u'GetEventTypesResponseSchema': GetEventTypesResponseSchema,
+        'GetEventTypesResponseSchema': GetEventTypesResponseSchema,
     }
     # parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
     responses = SwaggerApiView.setResponses({
         200: {
-            u'description': u'success',
-            u'schema': GetEventTypesResponseSchema
+            'description': 'success',
+            'schema': GetEventTypesResponseSchema
         }
     })    
     
     def get(self, controller, data, *args, **kwargs):    
         resp = controller.get_event_types()
-        return {u'event_types': resp,
-                u'count': len(resp)}
+        return {'event_types': resp,
+                'count': len(resp)}
 
 
 class GetEventEntityDefinitionResponseSchema(Schema):
@@ -127,22 +127,22 @@ class GetEventEntityDefinitionResponseSchema(Schema):
 
 
 class GetEventEntityDefinition(SwaggerApiView):
-    tags = [u'event']
+    tags = ['event']
     definitions = {
-        u'GetEventEntityDefinitionResponseSchema': GetEventEntityDefinitionResponseSchema,
+        'GetEventEntityDefinitionResponseSchema': GetEventEntityDefinitionResponseSchema,
     }
     # parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
     responses = SwaggerApiView.setResponses({
         200: {
-            u'description': u'success',
-            u'schema': GetEventEntityDefinitionResponseSchema
+            'description': 'success',
+            'schema': GetEventEntityDefinitionResponseSchema
         }
     })    
     
     def get(self, controller, data, *args, **kwargs):    
         resp = controller.get_entity_definitions()
-        return {u'event_entities': resp,
-                u'count': len(resp)}
+        return {'event_entities': resp,
+                'count': len(resp)}
 
 
 class EventAPI(ApiView):
@@ -151,10 +151,10 @@ class EventAPI(ApiView):
     @staticmethod
     def register_api(module):
         rules = [
-            (u'%s/events' % module.base_path, u'GET', ListEvents, {}),
-            (u'%s/events/<oid>' % module.base_path, u'GET', GetEvent, {}),
-            (u'%s/events/types' % module.base_path, u'GET', GetEventTypes, {}),
-            (u'%s/events/entities' % module.base_path, u'GET', GetEventEntityDefinition, {}),
+            ('%s/events' % module.base_path, 'GET', ListEvents, {}),
+            ('%s/events/<oid>' % module.base_path, 'GET', GetEvent, {}),
+            ('%s/events/types' % module.base_path, 'GET', GetEventTypes, {}),
+            ('%s/events/entities' % module.base_path, 'GET', GetEventEntityDefinition, {}),
         ]
 
         ApiView.register_api(module, rules)

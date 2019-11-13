@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # (C) Copyright 2018-2019 CSI-Piemonte
+
 from time import time
 
 from celery.utils.log import get_task_logger
@@ -23,7 +24,7 @@ def join_task(self, options):
     :rtype: int
     """    
     # update job status
-    self.update_job(status=u'PROGRESS')
+    self.update_job(status='PROGRESS')
     return None
 
 
@@ -37,9 +38,9 @@ def start_task(self, options):
     :rtype: int
     """    
     # update job status
-    # self.logger.warn(u'START TASK - %s:%s' % (self.name, self.request.id))
-    self.update(u'STARTED', msg=u'START TASK')
-    self.update_job(status=u'STARTED')
+    # self.logger.warn('START TASK - %s:%s' % (self.name, self.request.id))
+    self.update('STARTED', msg='START TASK')
+    self.update_job(status='STARTED')
     return None
 
 
@@ -54,15 +55,15 @@ def end_task(self, options):
     """    
     # update job status
     params = self.get_shared_data()
-    # self.logger.warn(u'STOP TASK - %s:%s' % (self.name, self.request.id))
-    self.update(u'SUCCESS', msg=u'END TASK')
-    self.update_job(params=params, status=u'SUCCESS')
+    # self.logger.warn('STOP TASK - %s:%s' % (self.name, self.request.id))
+    self.update('SUCCESS', msg='END TASK')
+    self.update_job(params=params, status='SUCCESS')
 
     # get job start time
-    job_start_time = params.get(u'start-time', 0)
+    job_start_time = params.get('start-time', 0)
     # get elapsed
     elapsed = time() - float(job_start_time)
     # send event
-    self.send_job_event(u'SUCCESS', elapsed, None, None)
+    self.send_job_event('SUCCESS', elapsed, None, None)
 
     return None

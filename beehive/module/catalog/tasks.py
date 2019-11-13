@@ -36,9 +36,9 @@ class CatalogJob(Job):
             endpoints = task_local.controller.manager.get_endpoints()
         except:
             endpoints = []
-            logger.debug(u'Get endpoints: %s' % endpoints)'''
+            logger.debug('Get endpoints: %s' % endpoints)'''
         endpoints = task_local.controller.get_endpoints(oid=oid)
-        logger.debug(u'Get endpoints: %s' % endpoints)
+        logger.debug('Get endpoints: %s' % endpoints)
         return endpoints
 
 class CatalogJobTask(JobTask):
@@ -65,9 +65,9 @@ class CatalogJobTask(JobTask):
             endpoints = task_local.controller.manager.get_endpoints()
         except:
             endpoints = []
-            logger.debug(u'Get endpoints: %s' % endpoints)'''
+            logger.debug('Get endpoints: %s' % endpoints)'''
         endpoints = task_local.controller.get_endpoints(oid=oid)
-        logger.debug(u'Get endpoints: %s' % endpoints)
+        logger.debug('Get endpoints: %s' % endpoints)
         return endpoints
     
     def ping_endpoint(self, endpoint):
@@ -77,7 +77,7 @@ class CatalogJobTask(JobTask):
         """
         uri = endpoint.model.uri
         res = self.apiclient.ping(endpoint=uri)
-        logger.warn(u'Ping endpoint %s: %s' % (uri, res))
+        logger.warn('Ping endpoint %s: %s' % (uri, res))
         return res
     
     def remove_endpoint(self, endpoint):
@@ -86,14 +86,14 @@ class CatalogJobTask(JobTask):
         :param endpoint: CatalogEndpoint instance
         """
         res = endpoint.delete()
-        logger.debug(u'Delete endpoint: %s' % endpoint.oid)
+        logger.debug('Delete endpoint: %s' % endpoint.oid)
         return res    
 
 #
 # catalog refresh tasks
 #
 @task_manager.task(bind=True, base=CatalogJob)
-@job(entity_class=Catalog, name=u'refresh-catalog.update', delta=1)
+@job(entity_class=Catalog, name='refresh-catalog.update', delta=1)
 def refresh_catalog(self, objid, params):
     """Create availability zone.
     
@@ -111,7 +111,7 @@ def refresh_catalog(self, objid, params):
         .. code-block:: python
     
             {
-                u'cid':..,
+                'cid':..,
 
             }
     """

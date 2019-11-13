@@ -1,8 +1,0 @@
-{
-    "schedule":{
-        "name":"refresh_catalogs",
-        "task":"beehive.module.catalog.tasks.refresh_catalog",
-        "schedule":{"type":"timedelta","minutes":2},
-        "args":["*", {}]
-    }
-}

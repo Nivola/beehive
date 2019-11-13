@@ -1,0 +1,27 @@
+{
+    "api_system":"beehive",
+    "api_subsystem":"event",
+    "api_modules":["beehive.module.event.mod.EventModule",
+                   "beehive.module.config.mod.ConfigModule",
+                   "beehive.module.scheduler.mod.SchedulerModule"],
+    "api_plugins":[],
+    "api_catalog":"beehive-internal",
+    "api_endpoint":"http://localhost:8070",
+    "db_uri":"mysql+pymysql://event:event@localhost:3306/event",
+    "redis_identity_uri":"redis://localhost:6379/0",
+    "db_managers":["beehive.module.event.model.EventDbManager"],
+    "config":[
+        {"group":"mail", "name":"server1", "value":""},
+        {"group":"mail", "name":"sender1", "value":""},
+        {"group":"tcpproxy", "name":"proxy01", "value":""},
+        {"group":"httpproxy", "name":"proxy02", "value":""},
+        {"group":"auth", "name":"local", "value":{"type":"db", "host":"localhost", "provider":"local", "ssl":false, "timeout":30}},
+        {"group":"oauth2", "name":"endpoint", "value":"https://localhost"}
+    ],
+    "api":{
+        "endpoint":["https://localhost:8080"],
+        "user":"admin",
+        "pwd":"admin",
+        "catalog":"beehive-internal"
+    }
+}

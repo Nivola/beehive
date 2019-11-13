@@ -5,7 +5,6 @@ Created on Sep 2, 2013
 '''
 import json
 import unittest
-from tests.test_util import run_test, CloudapiTestCase
 
 uid = None
 seckey = None

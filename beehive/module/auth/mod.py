@@ -12,8 +12,8 @@ class AuthModule(ApiModule):
     """Beehive Authorization Module
     """
     def __init__(self, api_manger):
-        self.name = u'AuthModule'
-        self.base_path = u'nas'
+        self.name = 'AuthModule'
+        self.base_path = 'nas'
         
         ApiModule.__init__(self, api_manger, self.name)
          

@@ -1,5 +1,13 @@
 # Changelog
 
+## Version 1.6.0 (, 2019)
+
+* Added ...
+* Fixed ...
+* Integrated ...
+* Various bugfixes
+    * changed method common.job.wait_for_job_complete. elapsed to set a job as stalled increased from 60s to 240s
+
 ## Version 1.5.0 (Sep 04, 2019)
 
 * Added ...
@@ -11,52 +19,52 @@
     * modify max query window for event to 2 hours
     * changed wait_for_job_complete. Timeout that identify a job as stalled is increased from 60s to 240s
 * Integrated ...
-    * introdotta signature Celery che registra il task su redis appena generato l'uuid dall'apply_async
+    * added signature Celery that register task in redis when uuid is generated from the apply_async
     * added send of log item for the api class to elasticsearch if it is configured
 * Various bugfixes
 
 ## Version 1.4.0 (May 24, 2019)
 
 * Added ...
-    * introdotta il campo provider nella classe common.model.authorization.User per indicare l'autentication provider
-    * aggiunta la gestione del campo provider nelle api di auth.user
+    * added field provider in the class classe common.model.authorization.User to indicate the autentication provider
+    * added management of the field provider in the api of auth.user
 * Fixed ...
-    * revisione del metodo user_request
-    * modificata l'api di interrogazione dei domains in interrogazione dei providers
-    * modificata la configurazione di un authentication provider ldap
-    * aggiornamento firma metodo get_entity: inserimento params *args, **kvargs
-    * Class GetAllTasksRequestSchema: corretto errore di validazione swagger, eliminato il parametro missing=None per il 
-      fields ttype
-    * modificato comportamento del metodo AbstractDbManager.add_perm_tag. Eliminata la rollback in caso di permtag già esistenti
+    * revision of method user_request
+    * modified query api of domains in query api of providers
+    * modified configuration of the authentication provider ldap
+    * update of the method get_entity signature: inserted params *args, **kvargs
+    * Class GetAllTasksRequestSchema: corrected error in swagger validation, removed the parameter missing=None for 
+      the field type
+    * modified behaviour of the methid AbstractDbManager.add_perm_tag. Removed the rollback when permtag already exixsts
 * Integrated ...
 * Various bugfixes
 
 ## Version 1.3.0 (February 27, 2019)
 
 * Added ...
-    * aggiunto runner per realizzare test unit concorrenti
+    * added runner to realize concurrent test unit 
 * Fixed ...
-    * aumenteta la dimensione del campo desc della tabella event a 500 caratteri
+    * increased the size to 500 chars of the field desc in table event 
 * Integrated ...
 * Various bugfixes
 
 ## Version 1.2.0 (February 01, 2019)
 
 * Added ...
-    * **BeehiveApiClient** aggiunto metodo set_ssh_group_authorization
+    * **BeehiveApiClient** added method set_ssh_group_authorization
 * Fixed ...
-    * corretto bug nella classe PaginatedQueryGenerator che impediva il cambio del campo di group by
+    * corrected bug in class PaginatedQueryGenerator that block change of group by filter
 * Integrated ...
 * Various bugfixes
 
 ## Version 1.1.0 (January 13, 2019)
 
 * Added ...
-    * aggiunti il riferimento dei jobs invocati nel task chiamanate
+    * added invoked job reference in caller task
 * Fixed ...
-    * trace: cambiato il tracciato degli eventi. Viene stampato il nome del metodo tracciato
-    * event: revisione della query di lista. Era troppo lenta. Limitata la query a un giorno.
-    * auth: rivisto metodo per verificare che uno user abbia un certo ruolo
+    * trace: changed event trace. It was printed the name of the traced method
+    * event: revision of the list query. It is too slow. Query was limited to one day.
+    * auth: revision of the method that control user has a specific role
 * Integrated ...
 * Various bugfixes
 

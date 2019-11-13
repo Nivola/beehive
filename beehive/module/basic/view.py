@@ -9,21 +9,21 @@ from marshmallow.schema import Schema
 
 
 class ServerPingResponseSchema(Schema):
-    name = fields.String(required=True, example=u'beehive', description=u'server instance name')
-    id = fields.String(required=True, example=u'auth', description=u'server instance id')
-    hostname = fields.String(required=True, example=u'tst-beehive', description=u'server instance host name')
-    uri = fields.String(required=True, example=u'http://localhost:6060', description=u'server instance uri')
+    name = fields.String(required=True, example='beehive', description='server instance name')
+    id = fields.String(required=True, example='auth', description='server instance id')
+    hostname = fields.String(required=True, example='tst-beehive', description='server instance host name')
+    uri = fields.String(required=True, example='http://localhost:6060', description='server instance uri')
 
 
 class ServerPing(SwaggerApiView):
-    tags = [u'base']
+    tags = ['base']
     definitions = {
-        u'ServerPingResponseSchema': ServerPingResponseSchema,
+        'ServerPingResponseSchema': ServerPingResponseSchema,
     }
     responses = SwaggerApiView.setResponses({
         200: {
-            u'description': u'success',
-            u'schema': ServerPingResponseSchema
+            'description': 'success',
+            'schema': ServerPingResponseSchema
         }
     })    
     
@@ -37,20 +37,20 @@ class ServerPing(SwaggerApiView):
 
 
 class ServerInfoResponseSchema(Schema):
-    name = fields.String(required=True, example=u'beehive', description=u'server instance name')
-    id = fields.String(required=True, example=u'auth', description=u'server instance id')
-    modules = fields.Dict(required=True, example={}, description=u'server modules')
+    name = fields.String(required=True, example='beehive', description='server instance name')
+    id = fields.String(required=True, example='auth', description='server instance id')
+    modules = fields.Dict(required=True, example={}, description='server modules')
 
 
 class ServerInfo(SwaggerApiView):
-    tags = [u'base']
+    tags = ['base']
     definitions = {
-        u'ServerInfoResponseSchema': ServerInfoResponseSchema,
+        'ServerInfoResponseSchema': ServerInfoResponseSchema,
     }
     responses = SwaggerApiView.setResponses({
         200: {
-            u'description': u'success',
-            u'schema': ServerInfoResponseSchema
+            'description': 'success',
+            'schema': ServerInfoResponseSchema
         }
     })
 
@@ -118,13 +118,13 @@ class BaseAPI(ApiView):
     @staticmethod
     def register_api(module):
         rules = [
-            (u'server/ping', u'GET', ServerPing, {u'secure': False}),
-            (u'server', u'GET', ServerInfo, {u'secure': False}),
-            # (u'server/processes', u'GET', ServerProcessTree, {}),
-            # (u'server/workers', u'GET', ServerWorkers, {u'secure':False}),
-            # (u'server/configs', u'GET', ServerConfigs, {}),
-            # (u'server/uwsgi/configs', u'GET', ServerUwsgiConfigs, {}),
-            # (u'server/reload', u'PUT', ServerReload, {}),
+            ('server/ping', 'GET', ServerPing, {'secure': False}),
+            ('server', 'GET', ServerInfo, {'secure': False}),
+            # ('server/processes', 'GET', ServerProcessTree, {}),
+            # ('server/workers', 'GET', ServerWorkers, {'secure':False}),
+            # ('server/configs', 'GET', ServerConfigs, {}),
+            # ('server/uwsgi/configs', 'GET', ServerUwsgiConfigs, {}),
+            # ('server/reload', 'PUT', ServerReload, {}),
         ]
 
         ApiView.register_api(module, rules)

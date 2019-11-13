@@ -12,7 +12,7 @@ class ConfigModule(ApiModule):
     """
     def __init__(self, api_manger):
         """ """
-        self.name = u'ConfigModule'
+        self.name = 'ConfigModule'
         
         ApiModule.__init__(self, api_manger, self.name)
         

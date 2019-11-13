@@ -11,7 +11,7 @@ class BasicModule(ApiModule):
     """Beehive Basic Module
     """
     def __init__(self, api_manger):
-        self.name = u'BasicModule'
+        self.name = 'BasicModule'
         
         ApiModule.__init__(self, api_manger, self.name)
         

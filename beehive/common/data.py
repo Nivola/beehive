@@ -6,9 +6,8 @@ import logging
 from time import time
 from functools import wraps
 from uuid import uuid4
-from gevent.lock import RLock
+from six import u, b
 from sqlalchemy.exc import IntegrityError, DBAPIError, ArgumentError
-
 from beecell.logger.helper import ExtendedLogger
 from beecell.simple import id_gen, truncate
 from beecell.simple import import_class
@@ -59,10 +58,8 @@ def encrypt_data(data):
     :param data: data to encrypt
     :return: encrypted data
     """
-    # fernet = getattr(operation, "encryption_key", "NON DEFINITO")
-    # logger.debug2("::::::::::::::Encrypt data %s" % fernet)
     res = simple_encrypt_data(operation.encryption_key, data)
-    logger.debug(u'Encrypt data')
+    logger.debug('Encrypt data')
     return res
 
 
@@ -72,11 +69,8 @@ def decrypt_data(data):
     :param data: data to decrypt
     :return: decrypted data
     """
-    # fernet = getattr(operation, "encryption_key", "NON DEFINITO")
-    # logger.debug2("::::::::::::::Encrypt data %s" % fernet)
-    
     res = simple_decrypt_data(operation.encryption_key, data)
-    logger.debug(u'Decrypt data')
+    logger.debug('Decrypt data')
     return res
 
 
@@ -89,7 +83,7 @@ def get_operation_params():
         "opid": operation.id,
         "transaction": operation.transaction,
         "encryption_key": operation.encryption_key,
-        u'authorize': operation.authorize
+        'authorize': operation.authorize
     }
 
 
@@ -136,9 +130,9 @@ def core_transaction(fn, rollback_throwable, *args, **kwargs):
     if operation.transaction is None:
         operation.transaction = id_gen()
         commit = True
-        logger.debug2(u'Create transaction %s' % operation.transaction)
+        logger.debug2('Create transaction %s' % operation.transaction)
     else:
-        logger.debug2(u'Use transaction %s' % operation.transaction)
+        logger.debug2('Use transaction %s' % operation.transaction)
     
     # set distributed transaction id to 0 for single transaction
     try:
@@ -150,8 +144,8 @@ def core_transaction(fn, rollback_throwable, *args, **kwargs):
         # format request params
         params = []
         for item in args:
-            params.append(unicode(item))
-        for k, v in kwargs.iteritems():
+            params.append(u(item))
+        for k, v in kwargs.items():
             params.append(u"'%s':'%s'" % (k, v))
             
         # call internal function
@@ -159,17 +153,17 @@ def core_transaction(fn, rollback_throwable, *args, **kwargs):
         
         if commit is True:
             session.commit()
-            logger.log(100, u'Commit transaction %s' % operation.transaction)
+            logger.log(100, 'Commit transaction %s' % operation.transaction)
             operation.transaction = None
             
         elapsed = round(time() - start, 4)
-        logger.debug2(u'%s.%s - %s - transaction - %s - %s - OK - %s' % (operation.id, stmp_id, sessionid,
+        logger.debug2('%s.%s - %s - transaction - %s - %s - OK - %s' % (operation.id, stmp_id, sessionid,
                       fn.__name__, truncate(params),  elapsed))
                     
         return res
     except ModelError as ex:
         elapsed = round(time() - start, 4)
-        logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
+        logger.error('%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
                      fn.__name__, truncate(params), elapsed))
         if ex.code not in [409]:
             # logger.error(ex.desc, exc_info=1)
@@ -180,36 +174,36 @@ def core_transaction(fn, rollback_throwable, *args, **kwargs):
         raise TransactionError(ex.desc, code=ex.code)
     except ArgumentError as ex:
         elapsed = round(time() - start, 4)
-        logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
+        logger.error('%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
                      fn.__name__, truncate(params), elapsed))
-        logger.error(ex.message)
+        logger.error(str(ex))
 
         if rollback_throwable:
             rollback(session, commit) 
             
-        raise TransactionError(ex.message, code=400)
+        raise TransactionError(str(ex), code=400)
     except IntegrityError as ex:
         elapsed = round(time() - start, 4)
-        logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
+        logger.error('%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
                      fn.__name__, truncate(params), elapsed))
-        logger.error(ex.message)
+        logger.error(str(ex))
 
         if rollback_throwable:
             rollback(session, commit)
-        raise TransactionError(ex.message, code=409)
+        raise TransactionError(str(ex), code=409)
     except DBAPIError as ex:
         elapsed = round(time() - start, 4)
-        logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
+        logger.error('%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
                      fn.__name__, truncate(params), elapsed))
-        # logger.error(ex.message, exc_info=1)
-        # logger.error(ex.message)
+        # logger.error(str(ex), exc_info=1)
+        # logger.error(str(ex))
               
         if rollback_throwable:
             rollback(session, commit)
-        raise TransactionError(ex.message, code=400)
+        raise TransactionError(str(ex), code=400)
     except TransactionError as ex:
         elapsed = round(time() - start, 4)
-        logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
+        logger.error('%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
                      fn.__name__, truncate(params), elapsed))
         # logger.error(ex.desc, exc_info=1)
         logger.error(ex.desc)
@@ -218,7 +212,7 @@ def core_transaction(fn, rollback_throwable, *args, **kwargs):
         raise
     except Exception as ex:
         elapsed = round(time() - start, 4)
-        logger.error(u'%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
+        logger.error('%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
                      fn.__name__, truncate(params), elapsed))
         # logger.error(ex, exc_info=1)
         logger.error(ex)
@@ -229,7 +223,7 @@ def core_transaction(fn, rollback_throwable, *args, **kwargs):
         if not rollback_throwable:
             if commit is True and operation.transaction is not None:
                 session.commit()
-                logger.log(100, u'Commit transaction on exception %s' % operation.transaction)
+                logger.log(100, 'Commit transaction on exception %s' % operation.transaction)
                 operation.transaction = None
 
         # lock.release()
@@ -274,7 +268,7 @@ def transaction(fn):
 def rollback(session, status):
     if status is True:
         session.rollback()
-        logger.warn(u'Rollback transaction %s' % operation.transaction)
+        logger.warn('Rollback transaction %s' % operation.transaction)
         operation.transaction = None
 
 
@@ -309,53 +303,53 @@ def query(fn):
             # format request params
             params = []
             for item in args:
-                params.append(str(item))
-            for k, v in kwargs.iteritems():
+                params.append(u(item))
+            for k, v in kwargs.items():
                 params.append(u"'%s':'%s'" % (k, v))
 
             # call internal function
             res = fn(*args, **kwargs)
             elapsed = round(time() - start, 4)
-            logger.debug2(u'%s.%s - %s - query - %s - %s - OK - %s' % (operation.id, stmp_id, sessionid, fn.__name__,
+            logger.debug2('%s.%s - %s - query - %s - %s - OK - %s' % (operation.id, stmp_id, sessionid, fn.__name__,
                           truncate(params),  elapsed))
             return res
         except ModelError as ex:
             elapsed = round(time() - start, 4)
-            logger.error(u'%s.%s - %s - query - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid, fn.__name__,
+            logger.error('%s.%s - %s - query - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid, fn.__name__,
                          truncate(params), elapsed))
             # logger.error(ex.desc, exc_info=1)
             logger.error(ex.desc)
             raise QueryError(ex.desc, code=ex.code)
         except ArgumentError as ex:
             elapsed = round(time() - start, 4)
-            logger.error(u'%s.%s - %s - query - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid, fn.__name__,
+            logger.error('%s.%s - %s - query - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid, fn.__name__,
                          truncate(params), elapsed))
-            logger.error(ex.message)
-            raise QueryError(ex.message, code=400)
+            logger.error(str(ex))
+            raise QueryError(str(ex), code=400)
         except DBAPIError as ex:
             elapsed = round(time() - start, 4)
-            logger.error(u'%s.%s - %s - query - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid, fn.__name__,
+            logger.error('%s.%s - %s - query - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid, fn.__name__,
                          truncate(params), elapsed))
-            # logger.error(ex.message, exc_info=1)
-            logger.error(ex.message)
-            raise QueryError(ex.message, code=400)
+            # logger.error(str(ex), exc_info=1)
+            logger.error(str(ex))
+            raise QueryError(str(ex), code=400)
         except TypeError as ex:
             elapsed = round(time() - start, 4)
-            logger.error(u'%s.%s - %s - query - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid, fn.__name__,
+            logger.error('%s.%s - %s - query - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid, fn.__name__,
                          truncate(params), elapsed))
-            logger.error(ex.message)
-            raise QueryError(ex.message, code=400)
+            logger.error(ex)
+            raise QueryError(ex, code=400)
         except Exception as ex:
             elapsed = round(time() - start, 4)
-            logger.error(u'%s.%s - %s - query - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid, fn.__name__,
+            logger.error('%s.%s - %s - query - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid, fn.__name__,
                          truncate(params), elapsed))
-            logger.error(ex.message, exc_info=1)
-            logger.error(ex.message)
-            raise QueryError(ex.message, code=400)
+            logger.error(str(ex), exc_info=1)
+            logger.error(str(ex))
+            raise QueryError(str(ex), code=400)
     return query_wrap
 
 
-def trace(entity=None, op=u'view', noargs=False):
+def trace(entity=None, op='view', noargs=False):
     """Use this decorator to send an event after function execution.
     
     :param entity: beehive authorized entity [optional]
@@ -364,7 +358,7 @@ def trace(entity=None, op=u'view', noargs=False):
     
     Example::
     
-        @trace(entity=Role, op=u'view')
+        @trace(entity=Role, op='view')
         def fn(*args, **kwargs):
             ....    
     """
@@ -381,7 +375,7 @@ def trace(entity=None, op=u'view', noargs=False):
                 if entity is None:
                     return inst
                 else:
-                    eclass = import_class(u'%s.%s' % (inst.__module__, entity))
+                    eclass = import_class('%s.%s' % (inst.__module__, entity))
                     return eclass(inst)
 
             # execute inner function
@@ -390,7 +384,7 @@ def trace(entity=None, op=u'view', noargs=False):
             
                 # calculate elasped time
                 elapsed = round(time() - start, 4)
-                method = u'%s.%s.%s' % (inst.__module__, fn.__name__, op)
+                method = '%s.%s.%s' % (inst.__module__, fn.__name__, op)
                 if noargs is True:
                     get_entity(entity).send_event(method, args=[], params={}, elapsed=elapsed)
                 else:
@@ -399,8 +393,15 @@ def trace(entity=None, op=u'view', noargs=False):
                 logger.error(ex)
                 # calculate elasped time
                 elapsed = round(time() - start, 4)
-                # ex_escaped = escape(str(ex.message))
-                ex_escaped = str(ex.message)
+
+                from beehive.common.apimanager import ApiManagerError
+                if isinstance(ex, ApiManagerError):
+                    ex_escaped = ex.value
+                else:
+                    try:
+                        ex_escaped = str(ex)
+                    except:
+                        ex_escaped = ex
                 if noargs is True:
                     get_entity(entity).send_event(op, args=[], params={}, exception=ex_escaped, elapsed=elapsed)
                 else:
@@ -419,7 +420,7 @@ def cache(key, ttl=600):
     :param ttl: cache item ttl [default=600]
     Example::
 
-        @cache(u'prova')
+        @cache('prova')
         def fn(controller, postfix, *args, **kwargs):
             ....
     """
@@ -429,7 +430,7 @@ def cache(key, ttl=600):
             # get start time
             start = time()
 
-            internalkey = u'%s.%s' % (key, postfix)
+            internalkey = '%s.%s' % (key, postfix)
 
             # execute inner function
             try:
@@ -444,7 +445,7 @@ def cache(key, ttl=600):
 
                 # calculate elasped time
                 elapsed = round(time() - start, 4)
-                logger.debug2(u'Cache %s:%s [%ss]' % (internalkey, truncate(ret), elapsed))
+                logger.debug2('Cache %s:%s [%ss]' % (internalkey, truncate(ret), elapsed))
             except Exception as ex:
                 logger.error(ex)
                 raise
@@ -476,7 +477,7 @@ def maybe_run_batch_greenlet(controller, batch, timeout=600):
 
             logger = controller.logger
 
-            logger.info(u'Outer %s - START' % fn.__name__)
+            logger.info('Outer %s - START' % fn.__name__)
 
             # execute inner function
             try:
@@ -486,7 +487,7 @@ def maybe_run_batch_greenlet(controller, batch, timeout=600):
                     # get start time
                     start_wrap = time()
 
-                    logger.info(u'Inner %s - START' % fn.__name__)
+                    logger.info('Inner %s - START' % fn.__name__)
 
                     try:
                         # set local thread operation
@@ -503,13 +504,13 @@ def maybe_run_batch_greenlet(controller, batch, timeout=600):
                         fn(*args, **kwargs)
                         # calculate elasped time
                         elapsed_wrap = round(time() - start_wrap, 4)
-                        logger.info(u'Inner %s - STOP - %s' % (fn.__name__, elapsed_wrap))
+                        logger.info('Inner %s - STOP - %s' % (fn.__name__, elapsed_wrap))
                         return True
                     except:
                         # calculate elasped time
                         elapsed_wrap = round(time() - start_wrap, 4)
-                        logger.error(u'', exc_info=1)
-                        logger.error(u'Inner %s - ERROR - %s' % (fn.__name__, elapsed_wrap))
+                        logger.error('', exc_info=1)
+                        logger.error('Inner %s - ERROR - %s' % (fn.__name__, elapsed_wrap))
                     finally:
                         controller.release_session()
 
@@ -523,18 +524,18 @@ def maybe_run_batch_greenlet(controller, batch, timeout=600):
                 # res = gevent.spawn(inner_fn, user, perms, opid, encryption_key, *args, **kwargs)
                 res = gevent.spawn(inner_fn, op_params, *args, **kwargs)
                 if batch is True:
-                    logger.debug(u'Start batch operation: %s' % res)
+                    logger.debug('Start batch operation: %s' % res)
                 else:
                     gevent.joinall([res], timeout=timeout)
 
                 # calculate elasped time
                 elapsed = round(time() - start, 4)
-                logger.info(u'Outer %s - STOP - %s' % (fn.__name__, elapsed))
+                logger.info('Outer %s - STOP - %s' % (fn.__name__, elapsed))
             except:
                 # calculate elasped time
                 elapsed = round(time() - start, 4)
-                logger.error(u'', exc_info=1)
-                logger.error(u'Outer %s - ERROR - %s' % (fn.__name__, elapsed))
+                logger.error('', exc_info=1)
+                logger.error('Outer %s - ERROR - %s' % (fn.__name__, elapsed))
                 raise
             return True
         return decorated

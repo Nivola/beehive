@@ -13,18 +13,18 @@ from beecell.swagger import SwaggerHelper
 
 
 class TaskApiView(SwaggerApiView):
-    tags = [u'scheduler']
+    tags = ['scheduler']
 
 
 class SchedulerEntryResponseSchema(Schema):
     schedules = fields.List(fields.Dict(), required=True)
-    args = fields.List(fields.String(default=u''), required=False, allow_none=True)
+    args = fields.List(fields.String(default=''), required=False, allow_none=True)
     kwargs = fields.Dict(required=False, default={}, allow_none=True)
     last_run_at = fields.DateTime(required=True)
-    name = fields.String(required=True, default=u'discover')
+    name = fields.String(required=True, default='discover')
     options = fields.Dict(required=True, default={})
-    schedule = fields.String(required=True, default=u'<freq: 5.00 minutes>')
-    task = fields.String(required=True, default=u'tasks.discover_vsphere')
+    schedule = fields.String(required=True, default='<freq: 5.00 minutes>')
+    task = fields.String(required=True, default='tasks.discover_vsphere')
     total_run_count = fields.Integer(required=True, default=679)
 
 
@@ -35,12 +35,12 @@ class GetSchedulerEntriesResponseSchema(Schema):
 
 class GetSchedulerEntries(TaskApiView):
     definitions = {
-        u'GetSchedulerEntriesResponseSchema': GetSchedulerEntriesResponseSchema,
+        'GetSchedulerEntriesResponseSchema': GetSchedulerEntriesResponseSchema,
     }
     responses = SwaggerApiView.setResponses({
         200: {
-            u'description': u'success',
-            u'schema': GetSchedulerEntriesResponseSchema
+            'description': 'success',
+            'schema': GetSchedulerEntriesResponseSchema
         }
     })    
     
@@ -53,8 +53,8 @@ class GetSchedulerEntries(TaskApiView):
         data = scheduler.get_entries()
         res = [i.info() for i in data]
         resp = {
-            u'schedules': res,
-            u'count': len(res)
+            'schedules': res,
+            'count': len(res)
         }
         return resp
 
@@ -65,13 +65,13 @@ class GetSchedulerEntryResponseSchema(Schema):
 
 class GetSchedulerEntry(TaskApiView):
     definitions = {
-        u'GetSchedulerEntryResponseSchema': GetSchedulerEntryResponseSchema,
+        'GetSchedulerEntryResponseSchema': GetSchedulerEntryResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
     responses = SwaggerApiView.setResponses({
         200: {
-            u'description': u'success',
-            u'schema': GetSchedulerEntryResponseSchema
+            'description': 'success',
+            'schema': GetSchedulerEntryResponseSchema
         }
     })
 
@@ -81,17 +81,17 @@ class GetSchedulerEntry(TaskApiView):
         if data is not None:
             res = data.info()
         else:
-            raise ApiManagerError(u'Scheduler entry %s not found' % oid, code=404)
+            raise ApiManagerError('Scheduler entry %s not found' % oid, code=404)
         resp = {
-            u'schedule': res
+            'schedule': res
         }
         return resp
 
 
 ## create
 class CreateSchedulerEntryParamRequestSchema(Schema):
-    name = fields.String(required=True, default=u'discover')
-    task = fields.String(required=True, default=u'tasks.discover_vsphere')
+    name = fields.String(required=True, default='discover')
+    task = fields.String(required=True, default='tasks.discover_vsphere')
     args = fields.Raw(allow_none=True)
     kwargs = fields.Dict(default={}, allow_none=True)    
     options = fields.Dict(default={}, allow_none=True)
@@ -104,24 +104,24 @@ class CreateSchedulerEntryRequestSchema(Schema):
 
 
 class CreateSchedulerEntryBodyRequestSchema(Schema):
-    body = fields.Nested(CreateSchedulerEntryRequestSchema, context=u'body')
+    body = fields.Nested(CreateSchedulerEntryRequestSchema, context='body')
 
 
 class CreateSchedulerEntryResponseSchema(Schema):
-    name = fields.String(required=True, defualt=u'sched')
+    name = fields.String(required=True, defualt='sched')
 
 
 class CreateSchedulerEntry(TaskApiView):
     definitions = {
-        u'CreateSchedulerEntryResponseSchema': CreateSchedulerEntryResponseSchema,
-        u'CreateSchedulerEntryRequestSchema': CreateSchedulerEntryRequestSchema
+        'CreateSchedulerEntryResponseSchema': CreateSchedulerEntryResponseSchema,
+        'CreateSchedulerEntryRequestSchema': CreateSchedulerEntryRequestSchema
     }
     parameters = SwaggerHelper().get_parameters(CreateSchedulerEntryBodyRequestSchema)
     parameters_schema = CreateSchedulerEntryRequestSchema
     responses = SwaggerApiView.setResponses({
         202: {
-            u'description': u'success',
-            u'schema': CreateSchedulerEntryResponseSchema
+            'description': 'success',
+            'schema': CreateSchedulerEntryResponseSchema
         }
     })
     
@@ -131,22 +131,22 @@ class CreateSchedulerEntry(TaskApiView):
         Create scheduler schedule
         """        
         scheduler = controller.get_scheduler()
-        data = get_value(data, u'schedule', None, exception=True)
-        name = get_value(data, u'name', None, exception=True)
-        task = get_value(data, u'task', None, exception=True)
-        args = get_value(data, u'args', None)
-        kwargs = get_value(data, u'kwargs', None)
-        options = get_value(data, u'options', {})
-        relative = get_value(data, u'relative', None)
+        data = get_value(data, 'schedule', None, exception=True)
+        name = get_value(data, 'name', None, exception=True)
+        task = get_value(data, 'task', None, exception=True)
+        args = get_value(data, 'args', None)
+        kwargs = get_value(data, 'kwargs', None)
+        options = get_value(data, 'options', {})
+        relative = get_value(data, 'relative', None)
         
         # get schedule
-        schedule = get_value(data, u'schedule', None, exception=True)
+        schedule = get_value(data, 'schedule', None, exception=True)
         
         resp = scheduler.create_update_entry(name, task, schedule, 
                                              args=args, kwargs=kwargs,
                                              options=options, 
                                              relative=relative)
-        return {u'name': name}, 202
+        return {'name': name}, 202
 
 
 class DeleteSchedulerEntry(TaskApiView):
@@ -154,7 +154,7 @@ class DeleteSchedulerEntry(TaskApiView):
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
     responses = SwaggerApiView.setResponses({
         204: {
-            u'description': u'no response'
+            'description': 'no response'
         }
     }) 
     
@@ -164,7 +164,7 @@ class DeleteSchedulerEntry(TaskApiView):
         Delete scheduler schedule by name
         """
         scheduler = controller.get_scheduler()
-        # name = get_value(data, u'name', None, exception=True)
+        # name = get_value(data, 'name', None, exception=True)
         resp = scheduler.remove_entry(oid)
         return (resp, 204)
 
@@ -179,12 +179,12 @@ class ManagerPingResponseSchema(Schema):
 
 class ManagerPing(TaskApiView):
     definitions = {
-        u'ManagerPingResponseSchema': ManagerPingResponseSchema,
+        'ManagerPingResponseSchema': ManagerPingResponseSchema,
     }
     responses = SwaggerApiView.setResponses({
         200: {
-            u'description': u'success',
-            u'schema': ManagerPingResponseSchema
+            'description': 'success',
+            'schema': ManagerPingResponseSchema
         }
     })     
     
@@ -195,7 +195,7 @@ class ManagerPing(TaskApiView):
         """        
         task_manager = controller.get_task_manager()
         resp = task_manager.ping()
-        return {u'workers_ping':resp}
+        return {'workers_ping':resp}
 
 
 ## stats
@@ -205,12 +205,12 @@ class ManagerStatsResponseSchema(Schema):
 
 class ManagerStats(TaskApiView):
     definitions = {
-        u'ManagerStatsResponseSchema': ManagerStatsResponseSchema,
+        'ManagerStatsResponseSchema': ManagerStatsResponseSchema,
     }
     responses = SwaggerApiView.setResponses({
         200: {
-            u'description': u'success',
-            u'schema': ManagerStatsResponseSchema
+            'description': 'success',
+            'schema': ManagerStatsResponseSchema
         }
     })     
     
@@ -221,7 +221,7 @@ class ManagerStats(TaskApiView):
         """        
         task_manager = controller.get_task_manager()
         resp = task_manager.stats()
-        return {u'workers_stats':resp}
+        return {'workers_stats':resp}
 
 
 ## report
@@ -231,12 +231,12 @@ class ManagerReportResponseSchema(Schema):
 
 class ManagerReport(TaskApiView):
     definitions = {
-        u'ManagerReportResponseSchema': ManagerReportResponseSchema,
+        'ManagerReportResponseSchema': ManagerReportResponseSchema,
     }
     responses = SwaggerApiView.setResponses({
         200: {
-            u'description': u'success',
-            u'schema': ManagerReportResponseSchema
+            'description': 'success',
+            'schema': ManagerReportResponseSchema
         }
     })     
     
@@ -247,7 +247,7 @@ class ManagerReport(TaskApiView):
         """
         task_manager = controller.get_task_manager()
         resp = task_manager.report()
-        return {u'workers_report':resp}
+        return {'workers_report':resp}
 
 
 class ManagerActiveQueuesResponseSchema(Schema):
@@ -256,12 +256,12 @@ class ManagerActiveQueuesResponseSchema(Schema):
 
 class ManagerActiveQueues(TaskApiView):
     definitions = {
-        u'ManagerActiveQueuesResponseSchema': ManagerActiveQueuesResponseSchema,
+        'ManagerActiveQueuesResponseSchema': ManagerActiveQueuesResponseSchema,
     }
     responses = SwaggerApiView.setResponses({
         200: {
-            u'description': u'success',
-            u'schema': ManagerActiveQueuesResponseSchema
+            'description': 'success',
+            'schema': ManagerActiveQueuesResponseSchema
         }
     })
 
@@ -272,23 +272,23 @@ class ManagerActiveQueues(TaskApiView):
         """
         task_manager = controller.get_task_manager()
         resp = task_manager.get_active_queues()
-        return {u'workers_queues': resp}
+        return {'workers_queues': resp}
 
 
 ## definition
 class GetTasksDefinitionResponseSchema(Schema):
-    task_definitions = fields.List(fields.String(default=u'task.test'), required=True)
+    task_definitions = fields.List(fields.String(default='task.test'), required=True)
     count = fields.Integer(required=True, default=1)
 
 
 class GetTasksDefinition(TaskApiView):
     definitions = {
-        u'GetTasksDefinitionResponseSchema': GetTasksDefinitionResponseSchema,
+        'GetTasksDefinitionResponseSchema': GetTasksDefinitionResponseSchema,
     }
     responses = SwaggerApiView.setResponses({
         200: {
-            u'description': u'success',
-            u'schema': GetTasksDefinitionResponseSchema
+            'description': 'success',
+            'schema': GetTasksDefinitionResponseSchema
         }
     })     
     
@@ -300,27 +300,27 @@ class GetTasksDefinition(TaskApiView):
         task_manager = controller.get_task_manager()
         res = task_manager.get_registered_tasks()
         resp = {
-            u'task_definitions': res,
-            u'count': len(res)
+            'task_definitions': res,
+            'count': len(res)
         }
         return resp    
 
 
 class GetAllTasksParamsResponseSchema(Schema):
-    status = fields.String(required=True, default=u'SUCCESS')
-    traceback = fields.List(fields.String(default=u'error'), required=False, allow_none=True)
-    jobs = fields.List(fields.String(default=u'c518fa8b-1247-4f9f-9d73-785bcc24b8c7'), required=False, allow_none=True)
-    name = fields.String(required=True, default=u'beehive.module.scheduler.tasks.jobtest')
-    task_id = fields.String(required=True, default=u'c518fa8b-1247-4f9f-9d73-785bcc24b8c7')
+    status = fields.String(required=True, default='SUCCESS')
+    traceback = fields.List(fields.String(default='error'), required=False, allow_none=True)
+    jobs = fields.List(fields.String(default='c518fa8b-1247-4f9f-9d73-785bcc24b8c7'), required=False, allow_none=True)
+    name = fields.String(required=True, default='beehive.module.scheduler.tasks.jobtest')
+    task_id = fields.String(required=True, default='c518fa8b-1247-4f9f-9d73-785bcc24b8c7')
     kwargs = fields.Dict(required=False)
-    start_time = fields.String(required=True, default=u'16-06-2017 14:58:50.352286')
-    stop_time = fields.String(required=True, default=u'16-06-2017 14:58:50.399747')
+    start_time = fields.String(required=True, default='16-06-2017 14:58:50.352286')
+    stop_time = fields.String(required=True, default='16-06-2017 14:58:50.399747')
     # args = fields.List(required=False)
-    worker = fields.String(required=True, default=u'celery@tst-beehive-02')
+    worker = fields.String(required=True, default='celery@tst-beehive-02')
     elapsed = fields.Float(required=True, default=0.0474607944)
     # result = fields.Boolean(required=True, default=True)
     ttl = fields.Integer(required=True, default=83582)
-    type = fields.String(required=True, default=u'JOB')
+    type = fields.String(required=True, default='JOB')
     children = fields.List(fields.Dict(), required=False)
 
 
@@ -331,22 +331,22 @@ class GetAllTasksResponseSchema(Schema):
 
 class GetAllTasksRequestSchema(Schema):
     elapsed = fields.Integer(required=False, missing=60, example=60, allow_none=True,
-                             description=u'Used to filter key not older than')
-    ttype = fields.String(required=False, example=u'JOB', description=u'Used to filter key type',
-                          allow_none=True, validate=OneOf([u'JOB', u'JOBTASK', u'TASK']))
+                             description='Used to filter key not older than')
+    ttype = fields.String(required=False, example='JOB', description='Used to filter key type',
+                          allow_none=True, validate=OneOf(['JOB', 'JOBTASK', 'TASK']))
 
 
 class GetAllTasks(TaskApiView):
     definitions = {
-        u'GetAllTasksResponseSchema': GetAllTasksResponseSchema,
-        u'GetAllTasksRequestSchema': GetAllTasksRequestSchema
+        'GetAllTasksResponseSchema': GetAllTasksResponseSchema,
+        'GetAllTasksRequestSchema': GetAllTasksRequestSchema
     }
     parameters = SwaggerHelper().get_parameters(GetAllTasksRequestSchema)
     parameters_schema = GetAllTasksRequestSchema
     responses = SwaggerApiView.setResponses({
         200: {
-            u'description': u'success',
-            u'schema': GetAllTasksResponseSchema
+            'description': 'success',
+            'schema': GetAllTasksResponseSchema
         }
     })    
     
@@ -358,20 +358,20 @@ class GetAllTasks(TaskApiView):
         task_manager = controller.get_task_manager()
         res = task_manager.get_all_tasks(details=True, **data)
         resp = {
-            u'task_instances': res,
-            u'count': len(res)
+            'task_instances': res,
+            'count': len(res)
         }        
         return resp
 
 
 class GetTasksCount(TaskApiView):
     definitions = {
-        u'ApiObjecCountResponseSchema': ApiObjecCountResponseSchema,
+        'ApiObjecCountResponseSchema': ApiObjecCountResponseSchema,
     }
     responses = SwaggerApiView.setResponses({
         200: {
-            u'description': u'success',
-            u'schema': ApiObjecCountResponseSchema
+            'description': 'success',
+            'schema': ApiObjecCountResponseSchema
         }
     })     
     
@@ -390,20 +390,20 @@ class QueryTaskResponseSchema(Schema):
 
 
 class QueryTaskRequestSchema(GetApiObjectRequestSchema):
-    chain = fields.Boolean(required=False, default=True, missing=True, context=u'query')
+    chain = fields.Boolean(required=False, default=True, missing=True, context='query')
 
 
 class QueryTask(TaskApiView):
     definitions = {
-        u'QueryTaskResponseSchema': QueryTaskResponseSchema,
-        u'QueryTaskRequestSchema': QueryTaskRequestSchema,
+        'QueryTaskResponseSchema': QueryTaskResponseSchema,
+        'QueryTaskRequestSchema': QueryTaskRequestSchema,
     }
     parameters = SwaggerHelper().get_parameters(QueryTaskRequestSchema)
     parameters_schema = QueryTaskRequestSchema
     responses = SwaggerApiView.setResponses({
         200: {
-            u'description': u'success',
-            u'schema': QueryTaskResponseSchema
+            'description': 'success',
+            'schema': QueryTaskResponseSchema
         }
     }) 
         
@@ -413,8 +413,8 @@ class QueryTask(TaskApiView):
         Query single task by id and return description fields
         """
         task_manager = controller.get_task_manager()
-        res = task_manager.query_task(oid, chain=data.get(u'chain'))
-        resp = {u'task_instance': res}
+        res = task_manager.query_task(oid, chain=data.get('chain'))
+        resp = {'task_instance': res}
         return resp
 
 
@@ -424,14 +424,14 @@ class GetTaskGraphResponseSchema(Schema):
 
 class GetTaskGraph(TaskApiView):
     definitions = {
-        u'GetTaskGraphResponseSchema':GetTaskGraphResponseSchema,
-        u'GetApiObjectRequestSchema': GetApiObjectRequestSchema,
+        'GetTaskGraphResponseSchema':GetTaskGraphResponseSchema,
+        'GetApiObjectRequestSchema': GetApiObjectRequestSchema,
     }
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)    
     responses = SwaggerApiView.setResponses({
         200: {
-            u'description': u'success',
-            u'schema': GetTaskGraphResponseSchema
+            'description': 'success',
+            'schema': GetTaskGraphResponseSchema
         }
     }) 
         
@@ -442,7 +442,7 @@ class GetTaskGraph(TaskApiView):
         """ 
         task_manager = controller.get_task_manager()
         res = task_manager.get_task_graph(oid)
-        resp = {u'task_instance_graph':res}
+        resp = {'task_instance_graph':res}
         return resp    
     
 
@@ -452,7 +452,7 @@ class PurgeAllTasks(TaskApiView):
     }
     responses = SwaggerApiView.setResponses({
         204: {
-            u'description': u'success'
+            'description': 'success'
         }
     })    
     
@@ -475,12 +475,12 @@ class PurgeTasks(TaskApiView):
 ## delete
 class DeleteTask(TaskApiView):
     definitions = {
-        u'GetApiObjectRequestSchema': GetApiObjectRequestSchema,
+        'GetApiObjectRequestSchema': GetApiObjectRequestSchema,
     }
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)    
     responses = SwaggerApiView.setResponses({
         204: {
-            u'description': u'success'
+            'description': 'success'
         }
     })     
     
@@ -523,27 +523,27 @@ class RunJobTestBodyParamRequestSchema(Schema):
 
 
 class RunJobTestBodyRequestSchema(Schema):
-    body = fields.Nested(RunJobTestBodyParamRequestSchema, context=u'body')
+    body = fields.Nested(RunJobTestBodyParamRequestSchema, context='body')
 
 
 class RunJobTest(TaskApiView):
     definitions = {
-        u'RunJobTestBodyParamRequestSchema': RunJobTestBodyParamRequestSchema,
-        u'RunJobTestBodyRequestSchema': RunJobTestBodyRequestSchema
+        'RunJobTestBodyParamRequestSchema': RunJobTestBodyParamRequestSchema,
+        'RunJobTestBodyRequestSchema': RunJobTestBodyRequestSchema
     }
     parameters = SwaggerHelper().get_parameters(RunJobTestBodyRequestSchema)
     parameters_schema = RunJobTestBodyParamRequestSchema
     responses = SwaggerApiView.setResponses({
         201: {
-            u'description': u'success',
-            u'schema': CrudApiJobResponseSchema
+            'description': 'success',
+            'schema': CrudApiJobResponseSchema
         }
     })    
     
     def post(self, controller, data, *args, **kwargs):    
         task_manager = controller.get_task_manager()
         job = task_manager.run_jobtest(data)
-        return {u'jobid': job.id}, 201
+        return {'jobid': job.id}, 201
 
 
 class SchedulerAPI(ApiView):
@@ -552,10 +552,10 @@ class SchedulerAPI(ApiView):
     @staticmethod
     def register_api(module):
         rules = [
-            (u'%s/scheduler/entries' % module.base_path, u'GET', GetSchedulerEntries, {}),
-            (u'%s/scheduler/entries/<oid>' % module.base_path, u'GET', GetSchedulerEntry, {}),
-            (u'%s/scheduler/entries' % module.base_path, u'POST', CreateSchedulerEntry, {}),
-            (u'%s/scheduler/entries/<oid>' % module.base_path, u'DELETE', DeleteSchedulerEntry, {}),
+            ('%s/scheduler/entries' % module.base_path, 'GET', GetSchedulerEntries, {}),
+            ('%s/scheduler/entries/<oid>' % module.base_path, 'GET', GetSchedulerEntry, {}),
+            ('%s/scheduler/entries' % module.base_path, 'POST', CreateSchedulerEntry, {}),
+            ('%s/scheduler/entries/<oid>' % module.base_path, 'DELETE', DeleteSchedulerEntry, {}),
         ]
 
         ApiView.register_api(module, rules)
@@ -567,18 +567,18 @@ class TaskAPI(ApiView):
     @staticmethod
     def register_api(module):
         rules = [
-            (u'%s/worker/ping' % module.base_path, u'GET', ManagerPing, {}),
-            (u'%s/worker/stats' % module.base_path, u'GET', ManagerStats, {}),
-            (u'%s/worker/report' % module.base_path, u'GET', ManagerReport, {}),
-            (u'%s/worker/queues' % module.base_path, u'GET', ManagerActiveQueues, {}),
-            (u'%s/worker/tasks' % module.base_path, u'GET', GetAllTasks, {}),
-            (u'%s/worker/tasks/count' % module.base_path, u'GET', GetTasksCount, {}),
-            (u'%s/worker/tasks/definitions' % module.base_path, u'GET', GetTasksDefinition, {}),
-            (u'%s/worker/tasks/<oid>' % module.base_path, u'GET', QueryTask, {}),
-            (u'%s/worker/tasks/<oid>/graph' % module.base_path, u'GET', GetTaskGraph, {}),
-            (u'%s/worker/tasks' % module.base_path, u'DELETE', PurgeAllTasks, {}),
-            (u'%s/worker/tasks/<oid>' % module.base_path, u'DELETE', DeleteTask, {}),
-            (u'%s/worker/tasks/test' % module.base_path, u'POST', RunJobTest, {}),
+            ('%s/worker/ping' % module.base_path, 'GET', ManagerPing, {}),
+            ('%s/worker/stats' % module.base_path, 'GET', ManagerStats, {}),
+            ('%s/worker/report' % module.base_path, 'GET', ManagerReport, {}),
+            ('%s/worker/queues' % module.base_path, 'GET', ManagerActiveQueues, {}),
+            ('%s/worker/tasks' % module.base_path, 'GET', GetAllTasks, {}),
+            ('%s/worker/tasks/count' % module.base_path, 'GET', GetTasksCount, {}),
+            ('%s/worker/tasks/definitions' % module.base_path, 'GET', GetTasksDefinition, {}),
+            ('%s/worker/tasks/<oid>' % module.base_path, 'GET', QueryTask, {}),
+            ('%s/worker/tasks/<oid>/graph' % module.base_path, 'GET', GetTaskGraph, {}),
+            ('%s/worker/tasks' % module.base_path, 'DELETE', PurgeAllTasks, {}),
+            ('%s/worker/tasks/<oid>' % module.base_path, 'DELETE', DeleteTask, {}),
+            ('%s/worker/tasks/test' % module.base_path, 'POST', RunJobTest, {}),
         ]
 
         ApiView.register_api(module, rules)

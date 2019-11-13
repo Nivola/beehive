@@ -9,8 +9,8 @@ from beehive.common.task.manager import configure_task_manager,\
 from beehive.module.scheduler.tasks import jobtest, jobtest2
     
 tests = [
-u'test_run_jobtest',
-#u'test_run_jobtest2',
+'test_run_jobtest',
+#'test_run_jobtest2',
 ]
 
 class TaskTestCase(BeehiveTestCase):
@@ -27,14 +27,14 @@ class TaskTestCase(BeehiveTestCase):
         BeehiveTestCase.tearDown(self)
 
     def test_run_jobtest(self):
-        data = {u'x':2, u'y':234, u'numbers':[2, 78, 45, 90]}
-        task = jobtest.delay(u'123', **data)
+        data = {'x':2, 'y':234, 'numbers':[2, 78, 45, 90]}
+        task = jobtest.delay('123', **data)
         print task.id, task.status
     
     def test_run_jobtest2(self):
-        data = {u'suberror':False}
-        task = jobtest2.delay(u'123', **data)
+        data = {'suberror':False}
+        task = jobtest2.delay('123', **data)
         print task.id, task.status
 
-if __name__ == u'__main__':
+if __name__ == '__main__':
     runtest(TaskTestCase, tests)

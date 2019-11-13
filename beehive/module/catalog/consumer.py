@@ -27,7 +27,7 @@ class CatalogConsumerError(Exception): pass
 class CatalogConsumer(ConsumerMixin):
     def __init__(self, connection, api_manager):
         self.logger = getLogger(self.__class__.__module__+ \
-                                u'.'+self.__class__.__name__)
+                                '.'+self.__class__.__name__)
         
         self.connection = connection
         self.api_manager = api_manager
@@ -47,11 +47,11 @@ class CatalogConsumer(ConsumerMixin):
             # get db session
             operation.session = self.db_manager.get_session()
             
-            name = endpoint[u'name']
-            service = endpoint[u'service']
-            desc = endpoint[u'desc']
-            catalog = endpoint[u'catalog']
-            uri = endpoint[u'uri']
+            name = endpoint['name']
+            service = endpoint['service']
+            desc = endpoint['desc']
+            catalog = endpoint['catalog']
+            uri = endpoint['uri']
             
             catalog_obj = self.manager.get_entity(ModelCatalog, catalog)
             
@@ -63,19 +63,19 @@ class CatalogConsumer(ConsumerMixin):
                                              service=service, 
                                              catalog_id=catalog_obj.id, 
                                              uri=uri)
-                self.logger.debug(u'Update endpoint : %s' % endpoint)
+                self.logger.debug('Update endpoint : %s' % endpoint)
             except QueryError:
-                objid = u'%s//%s' % (catalog_obj.objid, id_gen())
+                objid = '%s//%s' % (catalog_obj.objid, id_gen())
                 res = self.manager.add_endpoint(objid, name, service, desc, catalog_obj.id, uri, active=True)
                 controller = CatalogController(None)
                 # create object and permission
                 CatalogEndpoint(controller, oid=res.id).\
-                    register_object(objid.split(u'//'), desc=endpoint[u'desc'])
-                self.logger.debug(u'Store endpoint : %s' % endpoint)                
+                    register_object(objid.split('//'), desc=endpoint['desc'])
+                self.logger.debug('Store endpoint : %s' % endpoint)                
                 
             '''
             try:
-                objid = u'%s//%s' % (catalog_obj.objid, id_gen())
+                objid = '%s//%s' % (catalog_obj.objid, id_gen())
                 res = self.manager.add_endpoint(objid, name, service, desc, 
                                             catalog_obj.id, uri, active=True)
                 controller = CatalogController(None)
@@ -84,8 +84,8 @@ class CatalogConsumer(ConsumerMixin):
                                       name=res.name, desc=res.desc, 
                                       active=res.active, model=res)
                 # create object and permission
-                obj.register_object(objid.split(u'//'), desc=endpoint[u'desc'])
-                self.logger.debug(u'Store endpoint : %s' % endpoint)
+                obj.register_object(objid.split('//'), desc=endpoint['desc'])
+                self.logger.debug('Store endpoint : %s' % endpoint)
             except (TransactionError) as ex:
                 if ex.code == 409:
                     self.manager.update_endpoint(oid=catalog_obj.id, 
@@ -94,10 +94,10 @@ class CatalogConsumer(ConsumerMixin):
                                                  service=service, 
                                                  catalog=catalog_obj.id, 
                                                  uri=uri)
-                    self.logger.debug(u'Update endpoint : %s' % endpoint)'''
+                    self.logger.debug('Update endpoint : %s' % endpoint)'''
             
         except (TransactionError, Exception) as ex:
-            self.logger.error(u'Error storing node : %s' % ex, exc_info=1)
+            self.logger.error('Error storing node : %s' % ex, exc_info=1)
             #raise CatalogConsumerError(ex)
         finally:
             if session is not None:
@@ -122,14 +122,14 @@ class CatalogConsumerRedis(CatalogConsumer):
         self.redis_channel = self.api_manager.redis_catalog_channel
         
         # kombu channel
-        self.exchange = Exchange(self.redis_channel, type=u'direct', delivery_mode=1)
-        self.queue_name = u'%s.queue' % self.redis_channel
-        self.routing_key = u'%s.key' % self.redis_channel
+        self.exchange = Exchange(self.redis_channel, type='direct', delivery_mode=1)
+        self.queue_name = '%s.queue' % self.redis_channel
+        self.routing_key = '%s.key' % self.redis_channel
         self.queue = Queue(self.queue_name, self.exchange, routing_key=self.routing_key)
 
     def get_consumers(self, Consumer, channel):
         return [Consumer(queues=self.queue,
-                         accept=[u'pickle', u'json'],
+                         accept=['pickle', 'json'],
                          callbacks=[self.store_endpoint],
                          on_decode_error=self.decode_error)]
 
@@ -141,24 +141,24 @@ def start_catalog_consumer(params, log_path=None):
     """Start catalog consumer
     """
     # setup kombu logger
-    #setup_logging(loglevel=u'DEBUG', loggers=[u''])
+    #setup_logging(loglevel='DEBUG', loggers=[''])
     
     # internal logger
-    logger = getLogger(u'beehive')   
+    logger = getLogger('beehive')   
     
     logger_level = DEBUG
     if log_path is None:
-        log_path = u'/var/log/%s/%s' % (params[u'api_package'], params[u'api_env'])
-    logname = u'%s/%s.catalog.consumer' % (log_path, params[u'api_id'])
-    logger_file = u'%s.log' % logname
+        log_path = '/var/log/%s/%s' % (params['api_package'], params['api_env'])
+    logname = '%s/%s.catalog.consumer' % (log_path, params['api_id'])
+    logger_file = '%s.log' % logname
     loggers = [getLogger(), logger]
     LoggerHelper.rotatingfile_handler(loggers, logger_level, logger_file)
 
     # performance logging
-    loggers = [getLogger(u'beecell.perf')]
-    logger_file = u'%s/%s.watch' % (log_path, params[u'api_id'])
+    loggers = [getLogger('beecell.perf')]
+    logger_file = '%s/%s.watch' % (log_path, params['api_id'])
     LoggerHelper.rotatingfile_handler(loggers, DEBUG, logger_file, 
-                                      frmt=u'%(asctime)s - %(message)s')
+                                      frmt='%(asctime)s - %(message)s')
 
     # setup api manager
     api_manager = ApiManager(params)
@@ -174,9 +174,9 @@ def start_catalog_consumer(params, log_path=None):
     with Connection(api_manager.redis_catalog_uri) as conn:
         try:
             worker = CatalogConsumerRedis(conn, api_manager)
-            logger.info(u'Start catalog consumer')
+            logger.info('Start catalog consumer')
             worker.run()
         except KeyboardInterrupt:
-            logger.info(u'Stop catalog consumer')
+            logger.info('Stop catalog consumer')
             
-    logger.info(u'Stop catalog consumer')
+    logger.info('Stop catalog consumer')

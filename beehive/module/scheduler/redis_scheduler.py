@@ -14,8 +14,6 @@ from celery.beat import ScheduleEntry
 # import redis_collections
 from beecell.simple import format_date
 
-#import pickle
-
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +113,7 @@ class RedisScheduleEntry(ScheduleEntry):
         """ """
         res = {'name': self.name,
                'task': self.task,
-               'schedule': str(self.schedule),
+               'schedule': self.schedule,
                'args': self.args,
                'kwargs': self.kwargs,
                'options': self.options,
@@ -157,23 +155,23 @@ class RedisScheduleEntry(ScheduleEntry):
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
         try:
-            if schedule[u'type'] == u'crontab':
-                minute = schedule.get(u'minute', u'*')
-                hour = schedule.get(u'hour', u'*')
-                day_of_week = schedule.get(u'day_of_week', u'*')
-                day_of_month = schedule.get(u'day_of_month', u'*')
-                month_of_year = schedule.get(u'month_of_year', u'*')
+            if schedule['type'] == 'crontab':
+                minute = schedule.get('minute', '*')
+                hour = schedule.get('hour', '*')
+                day_of_week = schedule.get('day_of_week', '*')
+                day_of_month = schedule.get('day_of_month', '*')
+                month_of_year = schedule.get('month_of_year', '*')
                 schedule = crontab(minute=minute,
                                    hour=hour,
                                    day_of_week=day_of_week,
                                    day_of_month=day_of_month,
                                    month_of_year=month_of_year)
-            elif schedule[u'type'] == u'timedelta':
-                days = schedule.get(u'days', 0)
-                seconds = schedule.get(u'seconds', 0)
-                minutes = schedule.get(u'minutes', 0)
-                hours = schedule.get(u'hours', 0)
-                weeks = schedule.get(u'weeks', 0)
+            elif schedule['type'] == 'timedelta':
+                days = schedule.get('days', 0)
+                seconds = schedule.get('seconds', 0)
+                minutes = schedule.get('minutes', 0)
+                hours = schedule.get('hours', 0)
+                weeks = schedule.get('weeks', 0)
                 schedule = timedelta(days=days,
                                      seconds=seconds,
                                      minutes=minutes,
@@ -182,22 +180,22 @@ class RedisScheduleEntry(ScheduleEntry):
 
             # new entry
             entry = {
-                u'name': name,
-                u'task': task,
-                u'schedule': schedule,
-                u'total_run_count': total_run_count
+                'name': name,
+                'task': task,
+                'schedule': schedule,
+                'total_run_count': total_run_count
             }
 
             if args is not None:
-                entry[u'args'] = args
+                entry['args'] = args
             if options is not None:
-                entry[u'options'] = options
+                entry['options'] = options
             if kwargs is not None:
-                entry[u'kwargs'] = kwargs
+                entry['kwargs'] = kwargs
             if relative is not None:
-                entry[u'relative'] = relative
+                entry['relative'] = relative
             if last_run_at is not None:
-                entry[u'last_run_at'] = datetime.strptime(last_run_at, u'%Y-%m-%dT%H:%M:%SZ')
+                entry['last_run_at'] = datetime.strptime(last_run_at, '%Y-%m-%dT%H:%M:%SZ')
 
             res = RedisScheduleEntry(**dict(entry, name=name, app=app))
 
@@ -244,12 +242,12 @@ class RedisScheduleEntry(ScheduleEntry):
 #         # self.install_default_entries(self.schedule)
 #         schedule = self.app.conf.CELERYBEAT_SCHEDULE
 #         schedule.update(self._schedule)
-#         logger.warn(u'Setup schedules: %s' % schedule)
+#         logger.warn('Setup schedules: %s' % schedule)
 #         self.update_from_dict(schedule)
 #
 #     @property
 #     def info(self):
-#         return u'<RedisScheduler>'
+#         return '<RedisScheduler>'
 
 
 class RedisScheduler(Scheduler):
@@ -280,34 +278,34 @@ class RedisScheduler(Scheduler):
     def open_schedule(self, with_last_run_at=False):
         try:
             # get all the schedules
-            keys = self._redis_manager.inspect(pattern=self._prefix + u'.*', debug=False)
-            logger.debug(u'Get %s schedule keys form redis' % keys)
+            keys = self._redis_manager.inspect(pattern=self._prefix + '.*', debug=False)
+            logger.debug('Get %s schedule keys form redis' % keys)
 
             data = self._redis_manager.query(keys, ttl=True)
             self._store = {}
-            for key, item in data.iteritems():
+            for key, item in data.items():
                 try:
                     val = json.loads(item[0])
                 except:
-                    logger.warn(u'', exc_info=1)
+                    logger.warn('', exc_info=1)
                     val = {}
-                name = val.get(u'name')
-                options = val.get(u'options', {})
-                options.update({u'queue': self.app.conf.CELERY_TASK_DEFAULT_QUEUE})
+                name = val.get('name')
+                options = val.get('options', {})
+                options.update({'queue': self.app.conf.CELERY_TASK_DEFAULT_QUEUE})
                 if with_last_run_at is True:
-                    self._store[name] = self.Entry.create(self.app, name, val.get(u'task'), val.get(u'schedule'),
-                                                          args=val.get(u'args'), kwargs=val.get(u'kwargs'),
-                                                          options=options, relative=val.get(u'relative'),
-                                                          total_run_count=val.get(u'total_run_count'),
-                                                          last_run_at=val.get(u'last_run_at'))
+                    self._store[name] = self.Entry.create(self.app, name, val.get('task'), val.get('schedule'),
+                                                          args=val.get('args'), kwargs=val.get('kwargs'),
+                                                          options=options, relative=val.get('relative'),
+                                                          total_run_count=val.get('total_run_count'),
+                                                          last_run_at=val.get('last_run_at'))
                 else:
-                    self._store[name] = self.Entry.create(self.app, name, val.get(u'task'), val.get(u'schedule'),
-                                                          args=val.get(u'args'), kwargs=val.get(u'kwargs'),
-                                                          options=options, relative=val.get(u'relative'),
-                                                          total_run_count=val.get(u'total_run_count'))
-            logger.debug(u'Get schedules from redis: %s' % self._store)
+                    self._store[name] = self.Entry.create(self.app, name, val.get('task'), val.get('schedule'),
+                                                          args=val.get('args'), kwargs=val.get('kwargs'),
+                                                          options=options, relative=val.get('relative'),
+                                                          total_run_count=val.get('total_run_count'))
+            logger.debug('Get schedules from redis: %s' % self._store)
         except Exception:
-            logger.error(u'', exc_info=1)
+            logger.error('', exc_info=1)
             self._store = None
         return self._store
 
@@ -315,11 +313,11 @@ class RedisScheduler(Scheduler):
         try:
             self._get_redis()
             # set queue
-            schedule[u'options'].update({u'queue': self.app.conf.CELERY_TASK_DEFAULT_QUEUE})
+            schedule['options'].update({'queue': self.app.conf.CELERY_TASK_DEFAULT_QUEUE})
 
-            key = self._prefix + u'.' + schedule.get(u'name')
+            key = self._prefix + '.' + schedule.get('name')
             res = self._redis_manager.set(key, json.dumps(schedule))
-            logger.debug(u'Create schedule %s to redis key %s: %s' % (schedule.get(u'name'), key, res))
+            logger.debug('Create schedule %s to redis key %s: %s' % (schedule.get('name'), key, res))
         except Exception as exc:
             logger.error(exc, exc_info=1)
             raise
@@ -328,9 +326,9 @@ class RedisScheduler(Scheduler):
     def delete_schedule(self, name):
         try:
             self._get_redis()
-            key = self._prefix + u'.' + name
+            key = self._prefix + '.' + name
             res = self._redis_manager.delete(key)
-            logger.debug(u'Delete schedule %s from redis key %s: %s' % (name, key, res))
+            logger.debug('Delete schedule %s from redis key %s: %s' % (name, key, res))
         except Exception as exc:
             logger.error(exc, exc_info=1)
             raise
@@ -360,12 +358,12 @@ class RedisScheduler(Scheduler):
 
     def get_schedule(self):
         res = self._store
-        # logger.warn(u'Get schedule: %s' % res)
+        # logger.warn('Get schedule: %s' % res)
         return res
 
     def set_schedule(self, schedule):
         self._store = schedule
-        # logger.warn(u'Set schedule: %s' % schedule)
+        # logger.warn('Set schedule: %s' % schedule)
 
     schedule = property(get_schedule, set_schedule)
 
@@ -378,12 +376,12 @@ class RedisScheduler(Scheduler):
     def reserve(self, entry):
         # new_entry = self.schedule[entry.name] = next(entry)
         new_entry = next(entry)
-        key = self._prefix + u'.' + new_entry.name
+        key = self._prefix + '.' + new_entry.name
         redis_entry = self._redis_manager.get(key)
         if redis_entry is not None:
             redis_entry = json.loads(redis_entry)
-            redis_entry[u'last_run_at'] = format_date(new_entry.last_run_at)
-            redis_entry[u'total_run_count'] = new_entry.total_run_count
+            redis_entry['last_run_at'] = format_date(new_entry.last_run_at)
+            redis_entry['total_run_count'] = new_entry.total_run_count
             res = self._redis_manager.set(key, json.dumps(redis_entry))
         return new_entry
 
@@ -392,4 +390,4 @@ class RedisScheduler(Scheduler):
 
     @property
     def info(self):
-        return u'RedisScheduler'
+        return 'RedisScheduler'
