@@ -144,7 +144,7 @@ def core_transaction(fn, rollback_throwable, *args, **kwargs):
         # format request params
         params = []
         for item in args:
-            params.append(u(item))
+            params.append(str(item))
         for k, v in kwargs.items():
             params.append(u"'%s':'%s'" % (k, v))
             
@@ -215,6 +215,7 @@ def core_transaction(fn, rollback_throwable, *args, **kwargs):
         logger.error('%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
                      fn.__name__, truncate(params), elapsed))
         # logger.error(ex, exc_info=1)
+        ex = str(ex)
         logger.error(ex)
         if rollback_throwable:
             rollback(session, commit)
@@ -303,7 +304,7 @@ def query(fn):
             # format request params
             params = []
             for item in args:
-                params.append(u(item))
+                params.append(str(item))
             for k, v in kwargs.items():
                 params.append(u"'%s':'%s'" % (k, v))
 

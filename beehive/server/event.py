@@ -13,12 +13,16 @@ Options:
                            Require args = service name
 """
 import sys, os
-from six.moves.configparser import ConfigParser
 from collections import OrderedDict
 
 if __name__ == '__main__':
     virtualenv = sys.argv[1:][0]
     config_file = sys.argv[1:][1]
+
+    activate_this = '%s/bin/activate_this.py' % virtualenv
+    execfile(activate_this, dict(__file__=activate_this))
+
+    from six.moves.configparser import RawConfigParser
 
     # from http://stackoverflow.com/questions/15848674/how-to-configparse-a-file-keeping-multiple-values-for-identical-keys
     # How to ConfigParse a file keeping multiple values for identical keys
@@ -30,16 +34,13 @@ if __name__ == '__main__':
             else:
                 super(MultiOrderedDict, self).__setitem__(key, value)
 
-    config = ConfigParser.RawConfigParser(dict_type=MultiOrderedDict)
+    config = RawConfigParser(dict_type=MultiOrderedDict)
     config.read(config_file)
 
     params = {i[0]: i[1] for i in config.items('uwsgi')}
     # params['task_module'] = params['task_module'].split('\n')
     params['api_module'] = params['api_module'].split('\n')
     params['event_handler'] = params['event_handler'].split('\n')
-
-    activate_this = '%s/bin/activate_this.py' % virtualenv
-    execfile(activate_this, dict(__file__=activate_this))
 
     import beecell.server.gevent_ssl
     from gevent import monkey; monkey.patch_all()

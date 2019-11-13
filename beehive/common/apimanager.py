@@ -2094,24 +2094,24 @@ class ApiObject(object):
         if etype is None:
             etype = self.SYNC_OPERATION
         if exception is not None:
-            response = (False, exception)
+            response = (False, str(exception))
         else:
             response = [response]
 
         action = op.split('.')[-1]
-        
+
+        import inspect
+
         # remove object from args - it does not serialize in event
         nargs = []
         for a in args:
-            if str(type(a)).find('class') < 0:
+            if inspect.isclass(a) is False:
                 nargs.append(a)
 
         event_params = {}
         for k, v in params.items():
-            if str(type(v)).find('class') > -1:
-                # params.pop(k)
-                continue
-            event_params[k] = v
+            if inspect.isclass(v) is False:
+                event_params[k] = v
         
         data = {
             'opid': opid,
@@ -2119,7 +2119,7 @@ class ApiObject(object):
             'op': op,
             'api_id': opid,
             'args': nargs,
-            'params': params,
+            'params': event_params,
             'elapsed': elapsed,
             'response': response
         }
@@ -2537,7 +2537,7 @@ class ApiViewResponse(ApiObject):
         """
         objid = '*'
         if exception is not None:
-            response = (False, exception)
+            response = (False, str(exception))
         else:
             response = [response]
 

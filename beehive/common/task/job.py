@@ -157,7 +157,7 @@ class AbstractJob(BaseTask):
         """
         response = [status]
         if ex is not None:
-            response.append(ex)
+            response.append(str(ex))
 
         action = task_local.op.split('.')[-1]
 
