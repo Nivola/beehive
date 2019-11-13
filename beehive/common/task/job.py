@@ -527,38 +527,24 @@ class JobTask(AbstractJob):
                 counter = inner_task.get('counter', 0)
                 elapsed = time() - start
                 # verify job is stalled
-<<<<<<< HEAD
                 if counter - start_counter == 0 and elapsed > 240:
-=======
-                if counter - start_counter == 0 and elapsed > 60:
->>>>>>> fd3fdc73586801a0d98cff6dd238aaa044d977dd
                     raise JobError('Job %s is stalled' % task_id)
 
-                self.update(
-                    'PROGRESS', msg='Job %s status %s after %ss' %
-                    (task_id, status, elapsed))
+                self.update('PROGRESS', msg='Job %s status %s after %ss' % (task_id, status, elapsed))
                 status = inner_task.get('status')
 
             elapsed = time() - start
             if status == 'FAILURE':
                 err = inner_task.get('traceback')[-1]
                 logger.error('Job %s error after %ss' % (task_id, elapsed))
-                self.update(
-                    'PROGRESS', msg='Job %s status %s after %ss' %
-                    (task_id, status, elapsed))
+                self.update('PROGRESS', msg='Job %s status %s after %ss' % (task_id, status, elapsed))
                 raise JobError(err)
             elif status == 'SUCCESS':
-                self.update(
-                    'PROGRESS', msg='Job %s success after %ss' %
-                    (task_id, elapsed))
+                self.update('PROGRESS', msg='Job %s success after %ss' % (task_id, elapsed))
                 res = inner_task
             else:
-                logger.error(
-                    'Job %s unknown error after %ss' %
-                    (task_id, elapsed))
-                self.update(
-                    'PROGRESS', msg='Job %s status %s after %ss' %
-                    (task_id, 'UNKNONWN', elapsed))
+                logger.error('Job %s unknown error after %ss' % (task_id, elapsed))
+                self.update('PROGRESS', msg='Job %s status %s after %ss' % (task_id, 'UNKNONWN', elapsed))
                 raise JobError('Unknown error')
 
             return res
