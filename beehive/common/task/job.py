@@ -25,7 +25,7 @@ logger = get_task_logger(__name__)
 class JobError(Exception):
     def __init__(self, value, code=0):
         self.code = code
-        self.value = str(value)
+        self.value = value
         Exception.__init__(self, value, code)
 
     def __repr__(self):
@@ -38,7 +38,7 @@ class JobError(Exception):
 class JobInvokeApiError(Exception):
     def __init__(self, value, code=0):
         self.code = code
-        self.value = str(value)
+        self.value = value
         Exception.__init__(self, value, code)
 
     def __repr__(self):
@@ -157,7 +157,7 @@ class AbstractJob(BaseTask):
         """
         response = [status]
         if ex is not None:
-            response.append(str(ex))
+            response.append(ex)
 
         action = task_local.op.split('.')[-1]
 
@@ -361,7 +361,7 @@ class Job(AbstractJob):
 
         The return value of this handler is ignored.
         """
-        err = str(exc)
+        err = exc
         BaseTask.on_failure(self, exc, task_id, args, kwargs, einfo)
         trace = format_tb(einfo.tb)
         trace.append(err)
@@ -527,7 +527,11 @@ class JobTask(AbstractJob):
                 counter = inner_task.get('counter', 0)
                 elapsed = time() - start
                 # verify job is stalled
+<<<<<<< HEAD
                 if counter - start_counter == 0 and elapsed > 240:
+=======
+                if counter - start_counter == 0 and elapsed > 60:
+>>>>>>> fd3fdc73586801a0d98cff6dd238aaa044d977dd
                     raise JobError('Job %s is stalled' % task_id)
 
                 self.update(
@@ -640,7 +644,7 @@ class JobTask(AbstractJob):
 
         The return value of this handler is ignored.
         """
-        err = str(exc)
+        err = exc
         BaseTask.on_failure(self, exc, task_id, args, kwargs, einfo)
         trace = format_tb(einfo.tb)
         trace.append(err)
