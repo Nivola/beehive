@@ -62,7 +62,7 @@ $ python console.py init event --path=/tmp/beehive-test-env/share/config
 #### Run auth server
 
 ```
-uwsgi -i share/config/auth.ini
+uwsgi -i share/config/event.ini
 ```
 
 ### Reload server

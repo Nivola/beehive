@@ -17,7 +17,6 @@ from beecell.simple import truncate, id_gen, check_vault, obscure_data, obscure_
 from multiprocessing import current_process
 from base64 import b64encode
 from beehive.common.jwtclient import JWTClient
-# from beecell.simple import is_py2, is_py3
 
 from six.moves.urllib.parse import urlencode, quote
 from six.moves import http_client
