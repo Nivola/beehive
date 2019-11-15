@@ -47,11 +47,47 @@ $ python /tmp/beehive-py2-test-env/bin/console.py init auth
 $ python /tmp/beehive-py2-test-env/bin/console.py start auth
 ```
 
-Make some test:
+##### Inspect server logs
+
+```
+$ tail -f /tmp/uwsgi.auth.log
+$ tail -f auth-01.log
+```
+
+##### Make some simple test
 
 ```
 $ curl http://localhost:8080/v1.0/server/ping
 $ curl http://localhost:8080/v1.0/server
+```
+
+##### Make some interesting test
+
+Create an authentication token:
+
+```
+$ python /tmp/beehive-py2-test-env/bin/console.py create-token
+token: ...
+seckey: ...
+```
+
+Make simple api requests using authentication token:
+
+```
+$ python /tmp/beehive-py2-test-env/bin/console.py get-tokens <token> <seckey>
+$ python /tmp/beehive-py2-test-env/bin/console.py get-users <token> <seckey>
+```
+
+#### Stop auth server
+
+```
+$ python /tmp/beehive-py2-test-env/bin/console.py stop auth
+```
+
+#### Remove servers database configuration
+
+```
+$ python /tmp/beehive-py2-test-env/bin/console.py drop
 ```
 
 ## Getting Started
@@ -60,28 +96,7 @@ Instructions useful to deploy software on a simple environment (local machine or
 ## Running the tests
 Results of vulnerability assessment and/or penetration test. If known explain how to run the automated tests for this system
 
-- Activate virtual env
 
-```
-$ source venv/bin/activate
-```
-
-- Open tests directory __beecell/tests__
-- Copy file beecell.yml in your home directory. Open the file and set correctly all the <BLANK> variables.
-- Run some tests:
-
-```
-$ python sendmail.py
-$ python cement_cmd.py 
-$ python paramiko_shell.py 
-$ python networkx_layout.py
-$ python db/manager_mysql.py 
-$ python db/manager_redis.py
-$ python db/manager_redis_cluster.py 
-$ python auth/perm.py 
-$ python auth/ldap_auth.py 
-$ python auth/database_auth.py 
-```
 
 ## Versioning
 We use Semantic Versioning for versioning. (http://semver.org)
