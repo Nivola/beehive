@@ -98,6 +98,7 @@ if __name__ == '__main__':
                      'beehive/server/catalog.py',
                      'beehive/server/event.py',
                      'beehive/server/console.py']),
+            ('share/test', ['config/beehive.yml'])
         ],
         package_data={},
         install_requires=install_requires([
@@ -128,7 +129,6 @@ if __name__ == '__main__':
             "pyzmq==18.1.0",
             "os-client-config==1.32.0",
             "dicttoxml==1.7.4",
-            #"pyvmomi==6.7.1.2018.12",
             "oslo.utils==3.41.0",
             "easywebdav==1.2.0",
             "networkx==2.2",

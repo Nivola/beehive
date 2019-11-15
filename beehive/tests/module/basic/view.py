@@ -1,8 +1,6 @@
-'''
-Created on Feb 09, 2018
-
-@author: darkbk
-'''
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 from beehive.common.test import runtest, BeehiveTestCase
 
 tests = [  
@@ -22,12 +20,15 @@ class BaseTestCase(BeehiveTestCase):
     """
     def setUp(self):
         BeehiveTestCase.setUp(self)
-        self.module = 'auth'
+        self.module = u'auth'
+        self.module_prefix = u'nas'
+        self.endpoint_service = u'auth'
         
     def tearDown(self):
         BeehiveTestCase.tearDown(self)
 
     def test_ping(self):
+        res = self.get(u'/v1.0/nrs/entities/{oid}')
         data = ''
         uri = '/v1.0/server/ping'
         res = self.call(self.module, uri, 'GET', data=data)
@@ -38,37 +39,11 @@ class BaseTestCase(BeehiveTestCase):
         uri = '/v1.0/server'
         res = self.call(self.module, uri, 'GET', data=data)
         self.logger.debug(self.pp.pformat(res))
-        
-    '''def test_processes(self):
-        data = ''
-        uri = '/v1.0/server/processes'
-        res = self.call(self.module, uri, 'GET', data=data, **self.users['admin'])
-        self.logger.debug(self.pp.pformat(res))
-        
-    def test_workers(self):
-        data = ''
-        uri = '/v1.0/server/workers'
-        res = self.call(self.module, uri, 'GET', data=data, **self.users['admin'])
-        self.logger.debug(self.pp.pformat(res))
-        
-    def test_configs(self):
-        data = ''
-        uri = '/v1.0/server/configs'
-        res = self.call(self.module, uri, 'GET', data=data, **self.users['admin'])
-        self.logger.debug(self.pp.pformat(res))
-
-    def test_uwsgi_configs(self):
-        data = ''
-        uri = '/v1.0/server/uwsgi/configs'
-        res = self.call(self.module, uri, 'GET', data=data, **self.users['admin'])
-        self.logger.debug(self.pp.pformat(res))
-
-    def test_reload(self):
-        data = ''
-        uri = '/v1.0/server/reload'
-        res = self.call(self.module, uri, 'PUT', data=data, **self.users['admin'])
-        self.logger.debug(self.pp.pformat(res))'''
 
 
-if __name__ == '__main__':
-    runtest(BaseTestCase, tests)
+def run(args):
+    runtest(BaseTestCase, tests, args)
+
+
+if __name__ == u'__main__':
+    run()

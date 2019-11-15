@@ -1,0 +1,33 @@
+---
+schema: resource
+db-uris:
+  auth:
+  event:
+  ssh:
+  resource:
+  service:
+redis:
+  uri:
+  cluster:
+broker:
+endpoints:
+  auth: http://localhost:8080
+  event: http://localhost:8081
+swagger:
+  auth: http://localhost:8080/apispec_1.json
+  event: http://localhost:8081/apispec_1.json
+users:
+ admin:
+   user: admin@local
+   pwd: admin
+   secret:
+   ip:
+   auth: keyauth
+   catalog: beehive-internal
+ test:
+   user: test1@local
+   pwd:
+   secret:
+   ip:
+   auth: keyauth
+   catalog: beehive-internal
