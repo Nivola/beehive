@@ -8,11 +8,11 @@ from beecell.remote import BadRequestException, NotFoundException,\
 
 tests = [
     'test_create_token',
-    # 'test_create_token_wrong_user_syntax',
-    # 'test_create_token_wrong_user',
-    # 'test_create_token_wrong_pwd',
-    # 'test_create_token_no_user',
-    # 'test_create_token_no_pwd',
+    'test_create_token_wrong_user_syntax',
+    'test_create_token_wrong_user',
+    'test_create_token_wrong_pwd',
+    'test_create_token_no_user',
+    'test_create_token_no_pwd',
 ]
 
 
