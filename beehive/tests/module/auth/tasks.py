@@ -1,8 +1,7 @@
-'''
-Created on Nov 6, 2015
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: darkbk
-'''
 import unittest
 from beehive.common.task.manager import configure_task_manager,\
     configure_task_scheduler
@@ -11,9 +10,10 @@ from beehive.module.auth.tasks import disable_expired_users,\
 from beehive.common.test import runtest, BeehiveTestCase
 
 tests = [
-#'test_disable_expired_users',
-'test_remove_expired_roles_from_users',
+    #'test_disable_expired_users',
+    'test_remove_expired_roles_from_users',
 ]
+
 
 class AuthTaskTestCase(BeehiveTestCase):
     """To execute this test you need a mysql instance, a user and a 

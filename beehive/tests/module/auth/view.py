@@ -1,8 +1,7 @@
-'''
-Created on Aug 9, 2017
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: darkbk
-'''
 import unittest
 from beehive.common.test import runtest, BeehiveTestCase, assert_exception
 from beecell.remote import BadRequestException, UnauthorizedException,\

@@ -2,18 +2,11 @@
 #
 # (C) Copyright 2018-2019 CSI-Piemonte
 
-import sys
 from beehive.common.test import runtest, BeehiveTestCase
 
 tests = [  
     'test_ping',
     'test_info',
-
-    ## 'test_processes',
-    ## 'test_workers',
-    ## 'test_configs'
-    ## 'test_uwsgi_configs',
-    ## 'test_reload',
 ]
 
 

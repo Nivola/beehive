@@ -107,9 +107,13 @@ $ source /tmp/beehive-py2-test-env/bin/activate
   correctly all the <BLANK> variables.
 - Run some tests:
 
+Test log can be seen in the home directory. Files: __test.run__ and __test.log__
+
 ```
 $ python module/basic/view.py conf=/tmp/beehive-py2-test-env/share/test/beehive.yml
 ```
+
+
 
 ## Versioning
 We use Semantic Versioning for versioning. (http://semver.org)

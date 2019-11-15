@@ -473,7 +473,7 @@ class BeehiveTestCase(unittest.TestCase):
             # RESET_CONTENT          205    HTTP/1.1, RFC 2616, Section 10.2.6
             # PARTIAL_CONTENT        206    HTTP/1.1, RFC 2616, Section 10.2.7
             # MULTI_STATUS           207    WEBDAV RFC 2518, Section 10.2
-            elif re.match('20[0-9]+', b(response.status_code)):
+            elif re.match('20[0-9]+', str(response.status_code)):
                 if resp_content_type.find('application/json') >= 0:
                     res = response.json()
                     if runlog is True:

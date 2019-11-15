@@ -1,8 +1,7 @@
-'''
-Created on Sep 2, 2013
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: darkbk
-'''
 import unittest
 from beehive.common.data import operation
 from beehive.common.model.authorization import AuthDbManager

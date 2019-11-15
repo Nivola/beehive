@@ -1,8 +1,7 @@
-'''
-Created on Aug 9, 2017
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: darkbk
-'''
 from beehive.common.test import runtest, BeehiveTestCase, assert_exception
 from beecell.remote import BadRequestException, NotFoundException,\
     UnauthorizedException
@@ -20,48 +19,63 @@ tests = [
 class AuthObjectTestCase(BeehiveTestCase):
     def setUp(self):
         BeehiveTestCase.setUp(self)
+        self.module = 'auth'
+        self.module_prefix = 'nas'
+        self.endpoint_service = 'auth'
         
     def tearDown(self):
         BeehiveTestCase.tearDown(self)
 
-    #
-    # keyauth token
-    #
     def test_create_token(self):
-        data = {'user':self.users['admin']['user'], 
-                'password':self.users['admin']['pwd'],
-                'login-ip':self.users['admin']['ip'],
-                'porva':None}
-        self.call('auth', '/v1.0/nas/keyauth/token', 'post', data=data)
+        data = {
+            'user': self.users['test1']['user'],
+            'password': self.users['test1']['pwd'],
+            'login-ip': self.users['test1']['ip']
+        }
+        self.post('/v1.0/nas/keyauth/token', data=data)
     
     @assert_exception(BadRequestException)
     def test_create_token_wrong_user_syntax(self):
-        data = {'user':'pippo', 
-                'password':'mypass'}
-        self.call('auth', '/v1.0/nas/keyauth/token', 'post', data=data)
+        data = {
+            'user': 'test1',
+            'password': 'mypass'
+        }
+        self.post('/v1.0/nas/keyauth/token', data=data)
         
     @assert_exception(NotFoundException)
     def test_create_token_wrong_user(self):
-        data = {'user':'pippo@local', 
-                'password':'mypass'}
-        self.call('auth', '/v1.0/nas/keyauth/token', 'post', data=data)
+        data = {
+            'user': 'prova@local',
+            'password': 'mypass'
+        }
+        self.post('/v1.0/nas/keyauth/token', data=data)
         
     @assert_exception(UnauthorizedException)
     def test_create_token_wrong_pwd(self):
-        data = {'user':self.users['admin']['user'], 
-                'password':'mypass'}
-        self.call('auth', '/v1.0/nas/keyauth/token', 'post', data=data) 
+        data = {
+            'user': self.users['test1']['user'],
+            'password': 'mypass'
+        }
+        self.post('/v1.0/nas/keyauth/token', data=data)
 
     @assert_exception(BadRequestException)
     def test_create_token_no_user(self):
-        data = {'password':self.users['admin']['pwd']}
-        self.call('auth', '/v1.0/nas/keyauth/token', 'post', data=data)
+        data = {
+            'password': self.users['test1']['pwd']
+        }
+        self.post('/v1.0/nas/keyauth/token', data=data)
     
     @assert_exception(BadRequestException)
     def test_create_token_no_pwd(self):
-        data = {'user':self.users['admin']['user']}
-        self.call('auth', '/v1.0/nas/keyauth/token', 'post', data=data)
+        data = {
+            'user': self.users['test1']['user']
+        }
+        self.post('/v1.0/nas/keyauth/token', data=data)
+
+
+def run(args):
+    runtest(AuthObjectTestCase, tests, args)
 
 
 if __name__ == '__main__':
-    runtest(AuthObjectTestCase, tests)
+    run({})
