@@ -371,8 +371,8 @@ class AuthTestCase(BeehiveTestCase):
                     'type': 'prova',
                 }
             ]
-        }        
-        res = self.call('auth', '/v1.0/nas/objects/types', 'post', data=data, **self.users['admin'])
+        }
+        res = self.post('/v1.0/nas/objects/types', data=data)
         oid = res['ids'][0]
 
     def test_add_type_twice(self):
@@ -383,16 +383,15 @@ class AuthTestCase(BeehiveTestCase):
                     'type': 'prova',
                 }
             ]
-        }        
-        self.call('auth', '/v1.0/nas/objects/types', 'post', data=data, **self.users['admin'])
-    
+        }
+        self.post('/v1.0/nas/objects/types')
+
     def test_get_types(self):
-        res = self.call('auth', '/v1.0/nas/objects/types', 'get', **self.users['admin'])
+        self.get('/v1.0/nas/objects/types')
 
     def test_delete_type(self):
         global oid
-        self.call('auth', '/v1.0/nas/objects/types/{oid}', 'delete', 
-                  params={'oid':oid}, **self.users['admin'])
+        self.delete('/v1.0/nas/objects/types/{oid}', params={'oid': oid})
 
     #
     # objects and perms
@@ -406,8 +405,8 @@ class AuthTestCase(BeehiveTestCase):
                 'objid': 'prova',
                 'desc': 'prova'
             }]
-        }        
-        res = self.call('auth', '/v1.0/nas/objects', 'post', data=data, **self.users['admin'])
+        }
+        res = self.post('/v1.0/nas/objects', data=data)
         oid = res['ids'][0]
     
     @assert_exception(ConflictException)
@@ -419,35 +418,33 @@ class AuthTestCase(BeehiveTestCase):
                 'objid': 'prova',
                 'desc': 'prova'
             }]
-        }        
-        self.call('auth', '/v1.0/nas/objects', 'post', data=data, **self.users['admin'])
-    
+        }
+        self.put('/v1.0/nas/objects', data=data)
+
     def test_get_objects(self):
-        self.call('auth', '/v1.0/nas/objects', 'get', **self.users['admin'])
+        self.get('/v1.0/nas/objects')
         
     def test_get_object(self):
         global oid
-        self.call('auth', '/v1.0/nas/objects/{oid}', 'get', params={'oid': oid}, **self.users['admin'])
+        self.get('/v1.0/nas/objects/{oid}', params={'oid': oid})
 
     def test_delete_object(self):
         global oid
-        self.call('auth', '/v1.0/nas/objects/{oid}', 'delete', params={'oid': oid}, **self.users['admin'])
+        self.delete('/v1.0/nas/objects/{oid}', params={'oid': 'oid'})
 
     def test_get_perms(self):
         global oid
-        res = self.call('auth', '/v1.0/nas/objects/perms', 'get', **self.users['admin'])
+        res = self.get('/v1.0/nas/objects/perms')
         oids = res['perms']
         if len(oids) > 0:
             oid = oids[0]['id']
             
     def test_get_perms_by_type(self):
-        res = self.call('auth', '/v1.0/nas/objects/perms', 'get',
-                        query={'subsystem': 'auth', 'type': 'Role', 'page': 1},
-                        **self.users['admin'])
+        self.get('/v1.0/nas/objects/perms', query={'subsystem': 'auth', 'type': 'Role', 'page': 1})
         
     def test_get_perm(self):
         global oid
-        self.call('auth', '/v1.0/nas/objects/perms/{oid}', 'get', params={'oid': oid}, **self.users['admin'])
+        self.get('/v1.0/nas/objects/perms/{oid}', params={'oid': oid})
 
 
 if __name__ == '__main__':
