@@ -7,6 +7,8 @@ import click
 import os
 from sys import prefix
 import requests
+
+from beehive.common.apiclient import BeehiveApiClient
 from beehive.common.helper import BeehiveHelper
 
 
@@ -124,7 +126,34 @@ def create_token():
     }
     headers = {'Content-type': 'application/json'}
     res = requests.post('http://localhost:8080/v1.0/nas/keyauth/token', data=json.dumps(data), headers=headers)
-    print(res.json())
+
+    seckey = res.get('seckey')
+    token = res.get('token')
+    print('token: %s' % token)
+    print('seckey: %s' % seckey)
+
+
+def invoke_api(method, uri, token, seckey):
+    headers = {'Content-type': 'application/json'}
+    auth_client = BeehiveApiClient([], 'keyauth', None, '', None)
+    sign = auth_client.sign_request(seckey, uri)
+    headers.update({'uid': token, 'sign': sign})
+    res = requests.request(method, 'http://localhost:8080' + uri, headers=headers, timeout=5, verify=False)
+    return res.json()
+
+
+@cli.command()
+@click.argument('token')
+@click.argument('seckey')
+def get_tokens(token, seckey):
+    print(invoke_api('get', '/v1.0/nas/tokens', token, seckey))
+
+
+@cli.command()
+@click.argument('token')
+@click.argument('seckey')
+def get_users(token, seckey):
+    print(invoke_api('get', '/v1.0/nas/users', token, seckey))
 
 
 if __name__ == '__main__':
