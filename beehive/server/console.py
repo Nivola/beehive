@@ -108,5 +108,14 @@ def stop(system):
     run_cmd('uwsgi --stop /tmp/uwsgi.%s.pid' % system)
 
 
+@cli.command()
+@click.argument('system')
+def restart(system):
+    click.echo('stop server')
+    run_cmd('uwsgi --stop /tmp/uwsgi.%s.pid' % system)
+    click.echo('start server')
+    run_cmd('uwsgi -i ../share/config/%s.ini' % system)
+
+
 if __name__ == '__main__':
     cli()
