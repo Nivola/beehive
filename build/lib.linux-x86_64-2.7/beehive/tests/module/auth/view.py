@@ -1,0 +1,485 @@
+'''
+Created on Aug 9, 2017
+
+@author: darkbk
+'''
+import unittest
+from beehive.common.test import runtest, BeehiveTestCase, assert_exception
+from beecell.remote import BadRequestException, UnauthorizedException,\
+    ConflictException
+
+oid = None
+
+tests = [
+    'test_add_role',
+    'test_add_role_twice',
+    'test_get_roles',
+    'test_get_role',
+    'test_update_role',
+    'test_add_role_perm',
+    'test_get_perms_by_role',
+    'test_remove_role_perm',
+    'test_delete_role',
+    
+    'test_add_user',
+    'test_add_user_twice',
+    'test_get_users',
+    'test_get_users_by_role',
+    'test_get_user',
+    'test_get_user_secret',
+    'test_get_user_roles',
+    'test_add_user_attributes',
+    'test_get_user_attributes',
+    'test_delete_user_attributes',
+    'test_update_user',
+    'test_add_user_role',
+    'test_get_perms_by_user',
+    'test_remove_user_role',
+    'test_delete_user',
+    
+    'test_add_group',
+    'test_add_group_twice',
+    'test_get_groups',
+    'test_get_group',
+    'test_update_group',
+    'test_add_group_user',
+    'test_get_groups_by_user',
+    'test_remove_group_user',
+    'test_add_group_role',
+    'test_get_groups_by_role',
+    'test_get_perms_by_group',
+    'test_remove_group_role',
+    'test_delete_group',
+    
+    'test_get_actions',
+
+    'test_add_type',
+    'test_add_type_twice',
+    'test_get_types',
+    'test_delete_type',
+
+    'test_add_object',
+    'test_add_object_twice',
+    'test_get_objects',
+    'test_get_object',
+    'test_delete_object',
+ 
+    'test_get_perms',
+    'test_get_perms_by_type',
+    'test_get_perm',
+
+    'test_get_providers',
+    'test_get_tokens',
+    'test_get_token',
+    'test_delete_token',
+]
+
+
+class AuthTestCase(BeehiveTestCase):
+    def setUp(self):
+        BeehiveTestCase.setUp(self)
+        
+    def tearDown(self):
+        BeehiveTestCase.tearDown(self)
+
+    #
+    # domains
+    #
+    def test_get_providers(self):
+        self.call('auth', '/v1.0/nas/providers', 'get')
+
+    #
+    # tokens
+    #
+    def test_get_tokens(self):
+        global oid
+        res = self.call('auth', '/v1.0/nas/tokens', 'get', **self.users['admin'])
+        oids = res['tokens']
+        if len(oids) > 0:
+            oid = oids[0]['token']
+    
+    def test_get_token(self):
+        global oid
+        self.call('auth', '/v1.0/nas/tokens/{oid}', 'get', 
+                  params={'oid': oid},
+                  **self.users['admin'])
+        
+    def test_delete_token(self):
+        global oid
+        self.call('auth', '/v1.0/nas/tokens/{oid}', 'delete', params={'oid':oid}, **self.users['admin'])
+
+    #
+    # roles
+    #
+    def test_add_role(self):
+        data = {
+            'role': {
+                'name': 'role_prova',
+                'desc': 'role_prova',
+                'alias': 'prova'
+            }
+        }        
+        self.call('auth', '/v1.0/nas/roles', 'post', data=data,
+                  **self.users['admin'])
+    
+    @assert_exception(ConflictException)
+    def test_add_role_twice(self):
+        data = {
+            'role':{
+                'name': 'role_prova',
+                'desc': 'role_prova',
+                'alias': 'prova'
+            }
+        }        
+        self.call('auth', '/v1.0/nas/roles', 'post', data=data, **self.users['admin'])
+    
+    def test_get_roles(self):
+        self.call('auth', '/v1.0/nas/roles', 'get', **self.users['admin'])
+        
+    def test_get_role(self):
+        self.call('auth', '/v1.0/nas/roles/{oid}', 'get', params={'oid': 'role_prova'}, **self.users['admin'])
+        
+    def test_update_role(self):
+        data = {
+            'role': {
+                'name': 'role_prova',
+                'desc': 'role_prova1',
+            }
+        }
+        self.call('auth', '/v1.0/nas/roles/{oid}', 'put', params={'oid':'role_prova'}, data=data,
+                  **self.users['admin'])
+        
+    def test_add_role_perm(self):
+        data = {
+            'role': {
+                'perms': {
+                    'append': [
+                        # {'id':1},
+                        {'subsystem': 'auth', 'type': 'Role', 'objid': '*', 'action': 'view'}]}
+            }
+        }
+        self.call('auth', '/v1.0/nas/roles/{oid}', 'put', params={'oid': 'role_prova'}, data=data,
+                  **self.users['admin'])
+        
+    def test_get_perms_by_role(self):
+        global oid
+        res = self.call('auth', '/v1.0/nas/objects/perms', 'get', query={'role': 'role_prova'},
+                        **self.users['admin'])        
+        
+    def test_remove_role_perm(self):
+        data = {
+            'role': {
+                'perms': {
+                    'remove': [
+                        # {'id':1},
+                        {'subsystem': 'auth', 'type': 'Role', 'objid': '*', 'action': 'view'}]}
+            }
+        }        
+        self.call('auth', '/v1.0/nas/roles/{oid}', 'put', params={'oid': 'role_prova'}, data=data,
+                  **self.users['admin'])     
+        
+    def test_delete_role(self):
+        self.call('auth', '/v1.0/nas/roles/{oid}', 'delete', params={'oid': 'role_prova'},
+                  **self.users['admin'])  
+
+    #
+    # users
+    #
+    def test_add_user(self):
+        data = {
+            'user': {
+                'name': 'user_prova@local',
+                'email': 'user_prova@local',
+                'desc': 'user_prova',
+                'active': True,
+                'expirydate': '2099-12-31',
+                'password': 'user_prova',
+                'base': True,
+                # 'system': True
+            }
+        }        
+        self.call('auth', '/v1.0/nas/users', 'post', data=data, **self.users['admin'])
+    
+    @assert_exception(ConflictException)
+    def test_add_user_twice(self):
+        data = {
+            'user': {
+                'name': 'user_prova@local',
+                'email': 'user_prova@local',
+                'desc': 'user_prova',
+                'active': True,
+                'expirydate': '2019-12-31',
+                'password': 'user_prova',
+                'base': True
+            }
+        }       
+        self.call('auth', '/v1.0/nas/users', 'post', data=data, **self.users['admin'])
+    
+    def test_get_users(self):
+        self.call('auth', '/v1.0/nas/users', 'get', query={'page': 0}, **self.users['admin'])
+        
+    def test_get_users_by_role(self):
+        self.call('auth', '/v1.0/nas/users', 'get', query={'role': 'Guest'}, **self.users['admin'])
+        
+    def test_get_user(self):
+        self.call('auth', '/v1.0/nas/users/{oid}', 'get', params={'oid': 'user_prova@local'},
+                  **self.users['admin'])
+
+    def test_get_user_secret(self):
+        self.call('auth', '/v1.0/nas/users/{oid}/secret', 'get', params={'oid': 'user_prova@local'},
+                  **self.users['admin'])
+
+    def test_get_user_roles(self):
+        self.call('auth', '/v1.0/nas/roles', 'get', query={'user': 'user_prova@local'}, **self.users['admin'])
+        
+    def test_add_user_attributes(self):
+        data = {
+            'user_attribute':{
+                'name': 'attr_prova',
+                'value': 'attr_prova_value',
+                'desc': 'attr_prova_desc'
+            }
+        }
+        self.call('auth', '/v1.0/nas/users/{oid}/attributes', 'post', params={'oid': 'user_prova@local'},
+                  data=data, **self.users['admin'])
+        
+    def test_get_user_attributes(self):
+        self.call('auth', '/v1.0/nas/users/{oid}/attributes', 'get', params={'oid': 'user_prova@local'},
+                  **self.users['admin'])
+          
+    def test_delete_user_attributes(self):
+        self.call('auth', '/v1.0/nas/users/{oid}/attributes/{aid}', 'delete',
+                  params={'oid': 'user_prova@local', 'aid': 'attr_prova'},
+                  **self.users['admin'])
+    
+    def test_update_user(self):
+        data = {
+            'user': {
+                'desc': 'user_prova1',
+            }
+        }
+        self.call('auth', '/v1.0/nas/users/{oid}', 'put', params={'oid': 'user_prova@local'}, data=data,
+                  **self.users['admin'])        
+        
+    def test_add_user_role(self):
+        data = {
+            'user': {
+                'roles': {'append': [('Guest', '2019-12-31')]}
+            }
+        }
+        self.call('auth', '/v1.0/nas/users/{oid}', 'put', params={'oid': 'user_prova@local'}, data=data,
+                  **self.users['admin'])
+        
+    def test_get_perms_by_user(self):
+        global oid
+        res = self.call('auth', '/v1.0/nas/objects/perms', 'get', query={'user': 'user_prova@local'},
+                        **self.users['admin'])        
+        
+    def test_remove_user_role(self):
+        data = {
+            'user': {
+                'roles': {'remove': ['Guest']}
+            }
+        }        
+        self.call('auth', '/v1.0/nas/users/{oid}', 'put', params={'oid': 'user_prova@local'}, data=data,
+                  **self.users['admin'])     
+        
+    def test_delete_user(self):
+        self.call('auth', '/v1.0/nas/users/{oid}', 'delete', params={'oid':'user_prova@local'},
+                  **self.users['admin'])  
+    
+    #
+    # groups
+    #
+    def test_add_group(self):
+        data = {
+            'group': {
+                'name': 'grp_prova',
+                'desc': 'grp_prova',
+                'active': True,
+                # 'expirydate':'2099-12-31'
+            }
+        }        
+        self.call('auth', '/v1.0/nas/groups', 'post', data=data, **self.users['admin'])
+    
+    @assert_exception(ConflictException)
+    def test_add_group_twice(self):
+        data = {
+            'group': {
+                'name': 'grp_prova',
+                'desc': 'grp_prova',
+                'active': True
+            }
+        }        
+        self.call('auth', '/v1.0/nas/groups', 'post', data=data, **self.users['admin'])
+    
+    def test_get_groups(self):
+        self.call('auth', '/v1.0/nas/groups', 'get', **self.users['admin'])
+        
+    def test_get_group(self):
+        self.call('auth', '/v1.0/nas/groups/{oid}', 'get', params={'oid':'grp_prova'}, **self.users['admin'])
+        
+    def test_update_group(self):
+        data = {
+            'group': {
+                'name': 'grp_prova',
+                'desc': 'grp_prova',
+                'active': True,
+                # 'expirydate':'2099-12-31T'
+            }
+        }
+        self.call('auth', '/v1.0/nas/groups/{oid}', 'put', params={'oid':'grp_prova'}, data=data,
+                  **self.users['admin'])        
+        
+    def test_add_group_user(self):
+        data = {
+            'group': {
+                'users': {'append': ['admin@local']}
+            }
+        }
+        self.call('auth', '/v1.0/nas/groups/{oid}', 'put', params={'oid':'grp_prova'}, data=data,
+                  **self.users['admin'])
+
+    def test_get_groups_by_user(self):
+        self.call('auth', '/v1.0/nas/groups', 'get', query={'user': 'admin@local'},
+                  **self.users['admin'])
+        
+    def test_remove_group_user(self):
+        data = {
+            'group': {
+                'users': {'remove': ['admin@local']}
+            }
+        }        
+        self.call('auth', '/v1.0/nas/groups/{oid}', 'put', params={'oid': 'grp_prova'}, data=data,
+                  **self.users['admin'])     
+        
+    def test_add_group_role(self):
+        data = {
+            'group': {
+                'roles': {'append': [('ApiSuperAdmin', '2019-12-31')]}
+            }
+        }
+        self.call('auth', '/v1.0/nas/groups/{oid}', 'put', params={'oid': 'grp_prova'}, data=data,
+                  **self.users['admin'])
+
+    def test_get_groups_by_role(self):
+        self.call('auth', '/v1.0/nas/groups', 'get', query={'role': 'ApiSuperAdmin'},
+                  **self.users['admin'])
+        
+    def test_get_perms_by_group(self):
+        self.call('auth', '/v1.0/nas/objects/perms', 'get', query={'group': 'grp_prova'},
+                  **self.users['admin'])
+        
+    def test_remove_group_role(self):
+        data = {
+            'group': {
+                'roles': {'remove': ['ApiSuperAdmin']}
+            }
+        }        
+        self.call('auth', '/v1.0/nas/groups/{oid}', 'put', params={'oid':'grp_prova'}, data=data,
+                  **self.users['admin'])
+        
+    def test_delete_group(self):
+        self.call('auth', '/v1.0/nas/groups/{oid}', 'delete', params={'oid':'grp_prova'},
+                  **self.users['admin'])  
+
+    #
+    # actions
+    #
+    def test_get_actions(self):
+        global oid
+        res = self.call('auth', '/v1.0/nas/objects/actions', 'get', **self.users['admin'])
+
+    #
+    # types
+    #
+    def test_add_type(self):
+        global oid
+        data = {
+            'object_types': [
+                {
+                    'subsystem': 'prova',
+                    'type': 'prova',
+                }
+            ]
+        }        
+        res = self.call('auth', '/v1.0/nas/objects/types', 'post', data=data, **self.users['admin'])
+        oid = res['ids'][0]
+
+    def test_add_type_twice(self):
+        data = {
+            'object_types': [
+                {
+                    'subsystem': 'prova',
+                    'type': 'prova',
+                }
+            ]
+        }        
+        self.call('auth', '/v1.0/nas/objects/types', 'post', data=data, **self.users['admin'])
+    
+    def test_get_types(self):
+        res = self.call('auth', '/v1.0/nas/objects/types', 'get', **self.users['admin'])
+
+    def test_delete_type(self):
+        global oid
+        self.call('auth', '/v1.0/nas/objects/types/{oid}', 'delete', 
+                  params={'oid':oid}, **self.users['admin'])
+
+    #
+    # objects and perms
+    #
+    def test_add_object(self):
+        global oid
+        data = {
+            'objects': [{
+                'subsystem': 'auth',
+                'type': 'Role',
+                'objid': 'prova',
+                'desc': 'prova'
+            }]
+        }        
+        res = self.call('auth', '/v1.0/nas/objects', 'post', data=data, **self.users['admin'])
+        oid = res['ids'][0]
+    
+    @assert_exception(ConflictException)
+    def test_add_object_twice(self):
+        data = {
+            'objects': [{
+                'subsystem': 'auth',
+                'type': 'Role',
+                'objid': 'prova',
+                'desc': 'prova'
+            }]
+        }        
+        self.call('auth', '/v1.0/nas/objects', 'post', data=data, **self.users['admin'])
+    
+    def test_get_objects(self):
+        self.call('auth', '/v1.0/nas/objects', 'get', **self.users['admin'])
+        
+    def test_get_object(self):
+        global oid
+        self.call('auth', '/v1.0/nas/objects/{oid}', 'get', params={'oid': oid}, **self.users['admin'])
+
+    def test_delete_object(self):
+        global oid
+        self.call('auth', '/v1.0/nas/objects/{oid}', 'delete', params={'oid': oid}, **self.users['admin'])
+
+    def test_get_perms(self):
+        global oid
+        res = self.call('auth', '/v1.0/nas/objects/perms', 'get', **self.users['admin'])
+        oids = res['perms']
+        if len(oids) > 0:
+            oid = oids[0]['id']
+            
+    def test_get_perms_by_type(self):
+        res = self.call('auth', '/v1.0/nas/objects/perms', 'get',
+                        query={'subsystem': 'auth', 'type': 'Role', 'page': 1},
+                        **self.users['admin'])
+        
+    def test_get_perm(self):
+        global oid
+        self.call('auth', '/v1.0/nas/objects/perms/{oid}', 'get', params={'oid': oid}, **self.users['admin'])
+
+
+if __name__ == '__main__':
+    runtest(AuthTestCase, tests)

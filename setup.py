@@ -4,7 +4,7 @@
 #
 # (C) Copyright 2018-2019 CSI-Piemonte
 
-from sys import prefix
+from sys import prefix, version_info
 from setuptools import setup
 from setuptools.command.install import install as _install
 
@@ -22,6 +22,14 @@ class install(_install):
         _install.run(self)
 
         self.post_install_script()
+
+
+def install_requires(requires):
+    if version_info.major == 3:
+        requires.append("ipaddress==1.0.23")
+    else:
+        requires.append("py2-ipaddress==3.4.1")
+    return requires
 
 
 if __name__ == '__main__':
@@ -81,7 +89,7 @@ if __name__ == '__main__':
                                'beehive/server/event.py']),
         ],
         package_data={},
-        install_requires=[
+        install_requires=install_requires([
             "SQLAlchemy==1.3.7",
             "Flask==1.1.1",
             "Flask-Babel==0.12.2",
@@ -124,7 +132,6 @@ if __name__ == '__main__':
             "proxmoxer==1.0.3",
             "geventhttpclient==1.3.1",
             "tabulate==0.8.3",
-            "ipaddress==1.0.23",
             "ansible==2.8.4",
             "oauthlib==3.1.0",
             "requests_oauthlib==1.2.0",
@@ -144,7 +151,7 @@ if __name__ == '__main__':
             "elasticsearch==7.0.4",
             "uwsgi==2.0.18",
             "click==7.0"
-        ],
+        ]),
         dependency_links=[],
         zip_safe=True,
         cmdclass={'install': install},
