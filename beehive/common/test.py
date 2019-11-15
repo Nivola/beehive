@@ -147,11 +147,12 @@ class BeehiveTestCase(unittest.TestCase):
         # cfg = config.get(env)
         cfg = config
         self.test_config = config.get('configs', {})
-        for key in self.test_config.get('resource').keys():
-            if 'configs' in cfg.keys() and 'resource' in cfg.get('configs').keys():
-                self.test_config.get('resource').get(key).update(cfg.get('configs').get('resource').get(key, {}))
-        if 'configs' in cfg.keys() and 'container' in cfg.get('configs').keys():
-            self.test_config.get('container').update(cfg.get('configs').get('container'))
+        if self.test_config.get('resource', None) is not None:
+            for key in self.test_config.get('resource').keys():
+                if 'configs' in cfg.keys() and 'resource' in cfg.get('configs').keys():
+                    self.test_config.get('resource').get(key).update(cfg.get('configs').get('resource').get(key, {}))
+            if 'configs' in cfg.keys() and 'container' in cfg.get('configs').keys():
+                self.test_config.get('container').update(cfg.get('configs').get('container'))
         self.fernet = fernet
 
         # endpoints
