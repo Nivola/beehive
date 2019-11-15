@@ -420,7 +420,7 @@ class AuthTestCase(BeehiveTestCase):
                 'desc': 'prova'
             }]
         }
-        self.put('/v1.0/nas/objects', data=data)
+        self.post('/v1.0/nas/objects', data=data)
 
     def test_get_objects(self):
         self.get('/v1.0/nas/objects')
