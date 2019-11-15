@@ -5,22 +5,15 @@
 
 import ujson as json
 from datetime import datetime, timedelta
-import pickle
-#from beecell.perf import watch
 from beecell.db.manager import RedisManagerError
-from beecell.simple import str2uni, id_gen, get_attrib, truncate
-from redis_collections import Dict
+from beecell.simple import str2uni, get_attrib, truncate
 from celery.schedules import crontab
-from celery.result import AsyncResult
 from networkx import DiGraph
 from networkx.readwrite import json_graph
 from beehive.common.apimanager import ApiController, ApiObject, ApiManagerError
 from beehive.module.scheduler.redis_scheduler import RedisScheduleEntry, RedisScheduler
 from beehive.common.task.manager import task_scheduler, task_manager
-from time import time
-from functools import wraps
 from beehive.common.data import trace
-from celery.app.control import Control
 from beehive.common.task.canvas import signature
 
 
