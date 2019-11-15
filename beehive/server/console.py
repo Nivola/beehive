@@ -101,8 +101,11 @@ def start(system):
     run_cmd('uwsgi -i ../share/config/%s.ini' % system)
 
 
-    #uwsgi -i share/config/auth.ini
-    #uwsgi --stop /tmp/project-master.pid
+@cli.command()
+@click.argument('system')
+def stop(system):
+    click.echo('stop server')
+    run_cmd('uwsgi --stop /tmp/uwsgi.%s.pid' % system)
 
 
 if __name__ == '__main__':
