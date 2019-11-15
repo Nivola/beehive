@@ -35,6 +35,8 @@ def install_requires(requires):
 
 if __name__ == '__main__':
     prefix = environ.get('VIRTUAL_ENV')
+    print('$$$$$$$$$$$$$$$$$$$$$$$$$')
+    print(prefix)
 
     setup(
         name='beehive',
