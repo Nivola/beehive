@@ -121,7 +121,7 @@ def restart(system):
 
 
 @cli.command()
-def create_token(self):
+def create_token():
     data = {
         'user': 'admin@local',
         'password': 'admin',
