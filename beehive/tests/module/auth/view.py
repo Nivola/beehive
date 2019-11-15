@@ -347,7 +347,7 @@ class AuthTestCase(BeehiveTestCase):
                 'roles': {'remove': ['ApiSuperAdmin']}
             }
         }
-        self.put('/v1.0/nas/groups', params={'oid': 'grp_prova'}, data=data)
+        self.put('/v1.0/nas/groups/{oid}', params={'oid': 'grp_prova'}, data=data)
 
     def test_delete_group(self):
         self.delete('/v1.0/nas/groups/{oid}', params={'oid': 'grp_prova'})
