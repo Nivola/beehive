@@ -29,7 +29,7 @@ from beehive.common.model import AbstractDbManager, BaseEntity, PaginatedQueryGe
 
 logger = logging.getLogger(__name__)
 
-# Many-to-Many Relationship among groups and users
+# Many-to-Many Relationship among groups and useradd_users
 group_user = Table('groups_users', Base.metadata,
     Column('id', Integer, primary_key=True),
     Column('group_id', Integer, ForeignKey('group.id')),
@@ -192,7 +192,8 @@ class User(Base, BaseEntity):
         if expiry_date is None:
             expiry_date = datetime.datetime.today()+datetime.timedelta(days=365)
         self.expiry_date = expiry_date
-        
+        print(type(password))
+        print(type(b(password)))
         if password is not None:
             # generate new salt, and hash a password 
             # self.password = sha256_crypt.encrypt(password)
