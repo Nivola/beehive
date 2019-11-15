@@ -16,6 +16,8 @@
         {"group":"tcpproxy", "name":"proxy01", "value":""},
         {"group":"httpproxy", "name":"proxy02", "value":""},
         {"group":"auth", "name":"local", "value":{"type":"db", "host":"localhost", "provider":"local", "ssl":false, "timeout":30}},
+        {"group":"queue", "name":"queue.event", "value":{"name":"queue.event", "queue":"beehive.event", "uri":"redis://localhost:6379/0"}},
+        {"group":"queue", "name":"queue.catalog", "value":{"name":"queue.catalog", "queue":"beehive.catalog", "uri":"redis://localhost:6379/0"}},
         {"group":"oauth2", "name":"endpoint", "value":"https://localhost"}
     ],
     "api":{
