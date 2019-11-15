@@ -36,22 +36,22 @@ tests = [
     'test_remove_user_role',
     'test_delete_user',
 
-    # 'test_add_group',
-    # 'test_add_group_twice',
-    # 'test_get_groups',
-    # 'test_get_group',
-    # 'test_update_group',
-    # 'test_add_group_user',
-    # 'test_get_groups_by_user',
-    # 'test_remove_group_user',
-    # 'test_add_group_role',
-    # 'test_get_groups_by_role',
-    # 'test_get_perms_by_group',
-    # 'test_remove_group_role',
-    # 'test_delete_group',
-    #
-    # 'test_get_actions',
-    #
+    'test_add_group',
+    'test_add_group_twice',
+    'test_get_groups',
+    'test_get_group',
+    'test_update_group',
+    'test_add_group_user',
+    'test_get_groups_by_user',
+    'test_remove_group_user',
+    'test_add_group_role',
+    'test_get_groups_by_role',
+    'test_get_perms_by_group',
+    'test_remove_group_role',
+    'test_delete_group',
+
+    'test_get_actions',
+
     # 'test_add_type',
     # 'test_add_type_twice',
     # 'test_get_types',
@@ -277,11 +277,10 @@ class AuthTestCase(BeehiveTestCase):
                 'name': 'grp_prova',
                 'desc': 'grp_prova',
                 'active': True,
-                # 'expirydate':'2099-12-31'
             }
-        }        
-        self.call('auth', '/v1.0/nas/groups', 'post', data=data, **self.users['admin'])
-    
+        }
+        self.post('/v1.0/nas/groups', data=data)
+
     @assert_exception(ConflictException)
     def test_add_group_twice(self):
         data = {
@@ -290,26 +289,24 @@ class AuthTestCase(BeehiveTestCase):
                 'desc': 'grp_prova',
                 'active': True
             }
-        }        
-        self.call('auth', '/v1.0/nas/groups', 'post', data=data, **self.users['admin'])
-    
+        }
+        self.post('/v1.0/nas/groups', data=data)
+
     def test_get_groups(self):
-        self.call('auth', '/v1.0/nas/groups', 'get', **self.users['admin'])
-        
+        self.get('/v1.0/nas/groups', data=data)
+
     def test_get_group(self):
-        self.call('auth', '/v1.0/nas/groups/{oid}', 'get', params={'oid':'grp_prova'}, **self.users['admin'])
-        
+        self.get('/v1.0/nas/groups/{oid}', params={'oid': 'grp_prova'})
+
     def test_update_group(self):
         data = {
             'group': {
                 'name': 'grp_prova',
                 'desc': 'grp_prova',
                 'active': True,
-                # 'expirydate':'2099-12-31T'
             }
         }
-        self.call('auth', '/v1.0/nas/groups/{oid}', 'put', params={'oid':'grp_prova'}, data=data,
-                  **self.users['admin'])        
+        self.put('/v1.0/nas/groups/{oid}', params={'oid': 'grp_prova'}, data=data)
         
     def test_add_group_user(self):
         data = {
@@ -317,21 +314,18 @@ class AuthTestCase(BeehiveTestCase):
                 'users': {'append': ['admin@local']}
             }
         }
-        self.call('auth', '/v1.0/nas/groups/{oid}', 'put', params={'oid':'grp_prova'}, data=data,
-                  **self.users['admin'])
+        self.put('/v1.0/nas/groups/{oid}', params={'oid': 'grp_prova'}, data=data)
 
     def test_get_groups_by_user(self):
-        self.call('auth', '/v1.0/nas/groups', 'get', query={'user': 'admin@local'},
-                  **self.users['admin'])
+        self.get('/v1.0/nas/groups', query={'user': 'admin@local'})
         
     def test_remove_group_user(self):
         data = {
             'group': {
                 'users': {'remove': ['admin@local']}
             }
-        }        
-        self.call('auth', '/v1.0/nas/groups/{oid}', 'put', params={'oid': 'grp_prova'}, data=data,
-                  **self.users['admin'])     
+        }
+        self.put('/v1.0/nas/groups/{oid}', params={'oid': 'grp_prova'}, data=data)
         
     def test_add_group_role(self):
         data = {
@@ -339,36 +333,31 @@ class AuthTestCase(BeehiveTestCase):
                 'roles': {'append': [('ApiSuperAdmin', '2019-12-31')]}
             }
         }
-        self.call('auth', '/v1.0/nas/groups/{oid}', 'put', params={'oid': 'grp_prova'}, data=data,
-                  **self.users['admin'])
+        self.put('/v1.0/nas/groups/{oid}', params={'oid': 'grp_prova'}, data=data)
 
     def test_get_groups_by_role(self):
-        self.call('auth', '/v1.0/nas/groups', 'get', query={'role': 'ApiSuperAdmin'},
-                  **self.users['admin'])
+        self.get('/v1.0/nas/groups', query={'role': 'ApiSuperAdmin'})
         
     def test_get_perms_by_group(self):
-        self.call('auth', '/v1.0/nas/objects/perms', 'get', query={'group': 'grp_prova'},
-                  **self.users['admin'])
+        self.get('/v1.0/nas/objects/perms', query={'group': 'grp_prova'})
         
     def test_remove_group_role(self):
         data = {
             'group': {
                 'roles': {'remove': ['ApiSuperAdmin']}
             }
-        }        
-        self.call('auth', '/v1.0/nas/groups/{oid}', 'put', params={'oid':'grp_prova'}, data=data,
-                  **self.users['admin'])
-        
+        }
+        self.put('/v1.0/nas/groups', params={'oid': 'grp_prova'}, data=data)
+
     def test_delete_group(self):
-        self.call('auth', '/v1.0/nas/groups/{oid}', 'delete', params={'oid':'grp_prova'},
-                  **self.users['admin'])  
+        self.delete('/v1.0/nas/groups/{oid}', params={'oid': 'grp_prova'})
 
     #
     # actions
     #
     def test_get_actions(self):
         global oid
-        res = self.call('auth', '/v1.0/nas/objects/actions', 'get', **self.users['admin'])
+        self.get('/v1.0/nas/objects/actions')
 
     #
     # types
