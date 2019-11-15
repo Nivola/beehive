@@ -623,24 +623,27 @@ class ApiManager(object):
                 ##### security configuration #####
                 # configure only with auth module
                 try:
-                    confs = configurator.get(app=self.app_name, group='auth')
-                    self.logger.info('Configure security - CONFIGURE')
-                    
-                    # Create authentication providers
-                    for conf in confs:
-                        item = json.loads(conf.value)
-                        if item['type'] == 'db':
-                            auth_provider = DatabaseAuth(AuthDbManager, self.db_manager, SystemUser)
-                        elif item['type'] == 'ldap':
-                            bind_pwd = decrypt_data(item['bind_pwd'])
-                            auth_provider = LdapAuth(item['host'], SystemUser, timeout=item['timeout'],
-                                                     ssl=item['ssl'], dn=item['dn'],
-                                                     search_filter=item['search_filter'], search_id=item['search_id'],
-                                                     bind_user=item['bind_user'], bind_pwd=bind_pwd)
-                        self.auth_providers[item['provider']] = auth_provider
-                        self.logger.info('Setup authentication provider: %s' % auth_provider)
+                    if configurator.exist(app=self.app_name, group='auth'):
+                        confs = configurator.get(app=self.app_name, group='auth')
+                        self.logger.info('Configure security - CONFIGURE')
 
-                    self.logger.info('Configure security - CONFIGURED')
+                        # Create authentication providers
+                        for conf in confs:
+                            item = json.loads(conf.value)
+                            if item['type'] == 'db':
+                                auth_provider = DatabaseAuth(AuthDbManager, self.db_manager, SystemUser)
+                            elif item['type'] == 'ldap':
+                                bind_pwd = decrypt_data(item['bind_pwd'])
+                                auth_provider = LdapAuth(item['host'], SystemUser, timeout=item['timeout'],
+                                                         ssl=item['ssl'], dn=item['dn'],
+                                                         search_filter=item['search_filter'], search_id=item['search_id'],
+                                                         bind_user=item['bind_user'], bind_pwd=bind_pwd)
+                            self.auth_providers[item['provider']] = auth_provider
+                            self.logger.info('Setup authentication provider: %s' % auth_provider)
+
+                        self.logger.info('Configure security - CONFIGURED')
+                    else:
+                        self.logger.warning('Configure security - NOT CONFIGURED')
                 except:
                     self.logger.warning('Configure security - NOT CONFIGURED')
                 ##### security configuration #####
@@ -698,39 +701,45 @@ class ApiManager(object):
 
                 ##### sendmail configuration #####
                 try:
-                    self.logger.debug('Configure sendmail - CONFIGURE')            
-                    confs = configurator.get(app=self.app_name, group='mail')
-                    for conf in confs:
-                        if conf.name == 'server1':
-                            mail_server = conf.value
-                            self.mailer = Mailer(mail_server)
-                            self.logger.info('Use mail server: %s' % mail_server)                        
-                        if conf.name == 'sender1':
-                            mail_sender = conf.value
-                            self.mail_sender = mail_sender
-                            self.logger.info('Use mail sender: %s' % mail_sender) 
-    
-                    self.logger.info('Configure sendmail - CONFIGURED')
+                    self.logger.debug('Configure sendmail - CONFIGURE')
+                    if configurator.exist(app=self.app_name, group='mail'):
+                        confs = configurator.get(app=self.app_name, group='mail')
+                        for conf in confs:
+                            if conf.name == 'server1':
+                                mail_server = conf.value
+                                self.mailer = Mailer(mail_server)
+                                self.logger.info('Use mail server: %s' % mail_server)
+                            if conf.name == 'sender1':
+                                mail_sender = conf.value
+                                self.mail_sender = mail_sender
+                                self.logger.info('Use mail sender: %s' % mail_sender)
+
+                        self.logger.info('Configure sendmail - CONFIGURED')
+                    else:
+                        self.logger.warning('Configure sendmail - NOT CONFIGURED')
                 except:
                     self.logger.warning('Configure sendmail - NOT CONFIGURED')
                 ##### sendmail configuration #####
     
                 ##### gateway configuration #####
-                try:    
-                    conf = configurator.get(app=self.app_name, group='gateway')
-                    self.logger.info('Configure gateway - CONFIGURE')
-                    for item in conf:
-                        gw = json.loads(item.value)
-                        self.gateways[gw['name']] = gw
-                        self.logger.info('Setup gateway: %s' % gw)
-                    self.logger.info('Configure gateway - CONFIGURED')
+                try:
+                    if configurator.exist(app=self.app_name, group='gateway'):
+                        conf = configurator.get(app=self.app_name, group='gateway')
+                        self.logger.info('Configure gateway - CONFIGURE')
+                        for item in conf:
+                            gw = json.loads(item.value)
+                            self.gateways[gw['name']] = gw
+                            self.logger.info('Setup gateway: %s' % gw)
+                        self.logger.info('Configure gateway - CONFIGURED')
+                    else:
+                        self.logger.warning('Configure gateway - NOT CONFIGURED')
                 except:
                     self.logger.warning('Configure gateway - NOT CONFIGURED')
                 ##### gateway configuration #####
         
                 ##### service queue configuration #####
                 try:
-                    self.logger.info('Configure service queue- CONFIGURE')        
+                    self.logger.info('Configure service queue - CONFIGURE')
         
                     self.redis_service_uri = self.params['redis_queue_uri']
                     self.redis_service_exchange = self.params['redis_queue_name']
@@ -743,25 +752,23 @@ class ApiManager(object):
                 ##### event queue configuration #####
                 try:
                     self.logger.info('Configure event queue- CONFIGURE')
-                    conf = configurator.get(app=self.app_name, 
-                                            group='queue',
-                                            name='queue.event')
-    
-                    # setup event producer
-                    conf = json.loads(conf[0].value)
-                    # set redis manager
-                    #self.redis_event_uri = conf['uri']
-                    self.redis_event_uri = self.params['redis_queue_uri']
-                    self.redis_event_exchange = conf['queue']
-                    # create instance of event producer
-                    self.event_producer = EventProducerRedis(
-                                                        self.redis_event_uri, 
-                                                        self.redis_event_exchange,
-                                                        framework='komb')
-                    self.logger.info('Configure exchange %s on %s' % 
-                                     (self.redis_event_exchange, 
-                                      self.redis_event_uri))
-                    self.logger.info('Configure event queue - CONFIGURED')
+                    if configurator.exist(app=self.app_name, group='queue', name='queue.event'):
+                        conf = configurator.get(app=self.app_name, group='queue', name='queue.event')
+
+                        # setup event producer
+                        conf = json.loads(conf[0].value)
+                        # set redis manager
+                        self.redis_event_uri = self.params['redis_queue_uri']
+                        self.redis_event_exchange = conf['queue']
+
+                        # create instance of event producer
+                        self.event_producer = EventProducerRedis(
+                            self.redis_event_uri, self.redis_event_exchange, framework='komb')
+                        self.logger.info('Configure exchange %s on %s' % (self.redis_event_exchange,
+                                                                          self.redis_event_uri))
+                        self.logger.info('Configure event queue - CONFIGURED')
+                    else:
+                        self.logger.warning('Configure event queue - NOT CONFIGURED')
                 except:
                     self.logger.warning('Configure event queue - NOT CONFIGURED')                
                 ##### event queue configuration #####
@@ -769,19 +776,22 @@ class ApiManager(object):
                 ##### catalog queue configuration #####
                 try:
                     self.logger.info('Configure catalog queue - CONFIGURE')
-                    conf = configurator.get(app=self.app_name, group='queue', name='queue.catalog')
-    
-                    # setup catalog producer
-                    conf = json.loads(conf[0].value)
-                    self.redis_catalog_uri = self.params['redis_queue_uri']
-                    #self.redis_catalog_uri = conf['uri']
-                    self.redis_catalog_channel = conf['queue']                    
-                        
-                    # create instance of catalog producer
-                    from beehive.module.catalog.producer import CatalogProducerRedis
-                    self.catalog_producer = CatalogProducerRedis(self.redis_catalog_uri, self.redis_catalog_channel)
-                    self.logger.info('Configure queue %s on %s' % (self.redis_catalog_channel, self.redis_catalog_uri))
-                    self.logger.info('Configure catalog queue - CONFIGURED')
+                    if configurator.exist(app=self.app_name, group='queue', name='queue.catalog'):
+                        conf = configurator.get(app=self.app_name, group='queue', name='queue.catalog')
+
+                        # setup catalog producer
+                        conf = json.loads(conf[0].value)
+                        self.redis_catalog_uri = self.params['redis_queue_uri']
+                        #self.redis_catalog_uri = conf['uri']
+                        self.redis_catalog_channel = conf['queue']
+
+                        # create instance of catalog producer
+                        from beehive.module.catalog.producer import CatalogProducerRedis
+                        self.catalog_producer = CatalogProducerRedis(self.redis_catalog_uri, self.redis_catalog_channel)
+                        self.logger.info('Configure queue %s on %s' % (self.redis_catalog_channel, self.redis_catalog_uri))
+                        self.logger.info('Configure catalog queue - CONFIGURED')
+                    else:
+                        self.logger.warning('Configure catalog queue - NOT CONFIGURED')
                 except:
                     self.logger.warning('Configure catalog queue - NOT CONFIGURED')
                 ##### catalog queue configuration #####
@@ -789,10 +799,13 @@ class ApiManager(object):
                 ##### tcp proxy configuration #####
                 try:
                     self.logger.info('Configure tcp proxy - CONFIGURE')
-                    conf = configurator.get(app=self.app_name, group='tcpproxy')                    
-                    self.tcp_proxy = conf[0].value
-                    self.logger.info('Setup tcp proxy: %s' % self.tcp_proxy)
-                    self.logger.info('Configure tcp proxy - CONFIGURED')
+                    if configurator.exist(app=self.app_name, group='tcpproxy'):
+                        conf = configurator.get(app=self.app_name, group='tcpproxy')
+                        self.tcp_proxy = conf[0].value
+                        self.logger.info('Setup tcp proxy: %s' % self.tcp_proxy)
+                        self.logger.info('Configure tcp proxy - CONFIGURED')
+                    else:
+                        self.logger.warning('Configure tcp proxy - NOT CONFIGURED')
                 except:
                     self.logger.warning('Configure tcp proxy - NOT CONFIGURED') 
                 ##### tcp proxy configuration #####
@@ -800,22 +813,28 @@ class ApiManager(object):
                 ##### http proxy configuration #####
                 try:
                     self.logger.info('Configure http proxy - CONFIGURE')
-                    conf = configurator.get(app=self.app_name, group='httpproxy')
-                    proxy = conf[0].value
-                    self.http_proxy = proxy
-                    self.logger.info('Setup http proxy: %s' % self.http_proxy)
-                    self.logger.info('Configure http proxy - CONFIGURED')
+                    if configurator.exist(app=self.app_name, group='httpproxy'):
+                        conf = configurator.get(app=self.app_name, group='httpproxy')
+                        proxy = conf[0].value
+                        self.http_proxy = proxy
+                        self.logger.info('Setup http proxy: %s' % self.http_proxy)
+                        self.logger.info('Configure http proxy - CONFIGURED')
+                    else:
+                        self.logger.warning('Configure http proxy - NOT CONFIGURED')
                 except:
-                    self.logger.warning('Configure http proxy - NOT CONFIGURED') 
+                    self.logger.warning('Configure http proxy - NOT CONFIGURED')
                 ##### http proxy configuration #####
 
                 ##### stacks uri reference configuration #####
                 try:
                     self.logger.info('Configure stacks uri reference - CONFIGURE')
-                    conf = configurator.get(app=self.app_name, group='resource', name='stacks_uri')
-                    self.stacks_uri = conf[0].value
-                    self.logger.info('Setup stacks uri reference: %s' % self.stacks_uri)
-                    self.logger.info('Configure stacks uri reference - CONFIGURED')
+                    if configurator.exist(app=self.app_name, group='resource', name='stacks_uri'):
+                        conf = configurator.get(app=self.app_name, group='resource', name='stacks_uri')
+                        self.stacks_uri = conf[0].value
+                        self.logger.info('Setup stacks uri reference: %s' % self.stacks_uri)
+                        self.logger.info('Configure stacks uri reference - CONFIGURED')
+                    else:
+                        self.logger.warning('Configure stacks uri reference - NOT CONFIGURED')
                 except:
                     self.logger.warning('Configure stacks uri reference - NOT CONFIGURED')
                 ##### stacks uri reference configuration #####
@@ -823,13 +842,12 @@ class ApiManager(object):
                 ##### git uri reference configuration #####
                 try:
                     self.logger.info('Configure git uri reference - CONFIGURE')
-                    conf = configurator.get(app=self.app_name, group='resource', name='stacks_uri')
                     self.git = {
                         'uri': self.params['git_uri'],
                         'branch': self.params['git_branch'],
                     }
                     self.logger.info('Setup git reference: %s' % self.git)
-                    self.logger.info('Configure stacks uri reference - CONFIGURED')
+                    self.logger.info('Configure git uri reference - CONFIGURED')
                 except:
                     self.logger.warning('Configure git uri reference - NOT CONFIGURED')
                 ##### git uri reference configuration #####
@@ -838,24 +856,13 @@ class ApiManager(object):
                 # not configure for auth module
                 try:
                     self.logger.info('Configure apiclient - CONFIGURE')
-                    
-                    # get auth catalog
-                    # self.catalog = configurator.get(app=self.app_name,
-                    #                                 group='api',
-                    #                                 name='catalog')[0].value
+
                     self.catalog = self.params['api_catalog']
                     self.logger.info('Get catalog: %s' % self.catalog)
 
                     endpoint = self.params.get('api_endpoint', None)
                     self.logger.info('Get api endpoint: %s' % endpoint)
 
-                    # get auth endpoints
-                    # try:
-                    #     endpoints = configurator.get(app=self.app_name, group='api', name='endpoints')[0].value
-                    #     self.endpoints = json.loads(endpoints)
-                    # except:
-                    #     # auth subsystem instance
-                    #     self.endpoints = [self.app_uri]
                     if endpoint is None:
                         self.endpoints = [self.app_uri]
                     else:
@@ -871,7 +878,7 @@ class ApiManager(object):
                     self.configure_api_client()                   
                     
                     self.logger.info('Configure apiclient - CONFIGURED')
-                except Exception as ex:
+                except:
                     self.logger.warning('Configure apiclient - NOT CONFIGURED')
                 ##### api authentication configuration #####
                 
