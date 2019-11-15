@@ -112,6 +112,10 @@ Test log can be seen in the home directory. Files: __test.run__ and __test.log__
 ```
 $ python module/basic/view.py conf=/tmp/beehive-py2-test-env/share/test/beehive.yml
 $ python module/auth/view_keyauth.py conf=/tmp/beehive-py2-test-env/share/test/beehive.yml
+$ python module/auth/view.py conf=/tmp/beehive-py2-test-env/share/test/beehive.yml user=admin
+
+
+
 ```
 
 
