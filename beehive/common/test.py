@@ -111,7 +111,7 @@ class BeehiveTestCase(unittest.TestCase):
         # load configs fernet key
         try:
             home = os.path.expanduser('~')
-            if self.main_fernet_file is None:
+            if self.main_config_file is None:
                 config_file = '%s/beehive.fernet' % home
                 self.main_fernet_file = config_file
             else:
