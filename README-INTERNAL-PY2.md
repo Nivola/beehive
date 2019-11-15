@@ -44,33 +44,15 @@ $ python /tmp/beehive-py2-test-env/bin/console.py init auth
 #### Run auth server
 
 ```
-$ uwsgi -i share/config/auth.ini
+$ python /tmp/beehive-py2-test-env/bin/console.py start auth
 ```
 
-#### Init event module
+Make some test:
 
 ```
-$ python console.py init event --path=/tmp/beehive-test-env/share/config
+$ curl http://localhost:8080/v1.0/server/ping
+$ curl http://localhost:8080/v1.0/server
 ```
-
-### Run servers
-
-#### Run auth server
-
-```
-uwsgi -i share/config/event.ini
-```
-
-### Reload server
-# using kill to send the signal
-kill -HUP `cat /tmp/project-master.pid`
-# or the convenience option --reload
-uwsgi --reload /tmp/project-master.pid
-
-### Stop server
-kill -INT `cat /tmp/project-master.pid`
-# or for convenience...
-uwsgi --stop /tmp/project-master.pid
 
 ## Getting Started
 Instructions useful to deploy software on a simple environment (local machine or simple server configuration infrastructure).

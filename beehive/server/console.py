@@ -6,6 +6,9 @@
 import click
 import os
 from sys import prefix
+
+import requests
+
 from beehive.common.helper import BeehiveHelper
 
 #CREATE SCHEMA `auth` DEFAULT CHARACTER SET latin1;
@@ -115,6 +118,17 @@ def restart(system):
     run_cmd('uwsgi --stop /tmp/uwsgi.%s.pid' % system)
     click.echo('start server')
     run_cmd('uwsgi -i ../share/config/%s.ini' % system)
+
+
+@cli.command()
+def create_token(self):
+    data = {
+        'user': 'admin@local',
+        'password': 'admin',
+        'login-ip': 'localhost'
+    }
+    res = requests.post('http://localhost:8080/v1.0/nas/keyauth/token', data=data)
+    print(res.json())
 
 
 if __name__ == '__main__':
