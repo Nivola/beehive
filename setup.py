@@ -4,7 +4,8 @@
 #
 # (C) Copyright 2018-2019 CSI-Piemonte
 
-from sys import prefix, version_info
+from os import environ
+from sys import version_info
 from setuptools import setup
 from setuptools.command.install import install as _install
 
@@ -33,6 +34,8 @@ def install_requires(requires):
 
 
 if __name__ == '__main__':
+    prefix = environ.get('VIRTUAL_ENV')
+
     setup(
         name='beehive',
         version='1.5',
