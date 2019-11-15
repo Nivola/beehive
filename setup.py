@@ -87,11 +87,11 @@ if __name__ == '__main__':
         ],
         entry_points={},
         data_files=[
-            ('prefix+''/share/config', ['config/auth.json',
+            ('share/config', ['config/auth.json',
                                       'config/event.json',
                                       'config/auth.ini',
                                       'config/event.ini']),
-            ('/bin', ['beehive/server/api.py',
+            ('bin', ['beehive/server/api.py',
                                'beehive/server/task.py',
                                'beehive/server/scheduler.py',
                                'beehive/server/catalog.py',
