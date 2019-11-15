@@ -2,18 +2,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # (C) Copyright 2018-2019 CSI-Piemonte
-
+import json
 import click
 import os
 from sys import prefix
-
 import requests
-
 from beehive.common.helper import BeehiveHelper
 
-#CREATE SCHEMA `auth` DEFAULT CHARACTER SET latin1;
-# CREATE USER 'newuser'@'%' IDENTIFIED BY 'user_password';
-#GRANT ALL PRIVILEGES ON database_name.* TO 'database_user'@'%';
 
 MYSQL_INIT = [
     {'schema': 'auth', 'user': 'auth', 'pwd': 'auth'},
@@ -128,7 +123,7 @@ def create_token():
         'login-ip': 'localhost'
     }
     headers = {'Content-type': 'application/json'}
-    res = requests.post('http://localhost:8080/v1.0/nas/keyauth/token', data=data, headers=headers)
+    res = requests.post('http://localhost:8080/v1.0/nas/keyauth/token', data=json.dumps(data), headers=headers)
     print(res.json())
 
 
