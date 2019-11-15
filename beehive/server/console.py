@@ -94,11 +94,13 @@ def drop(pwd, client):
         run_cmd(mysql_cmd.format(sql=MYSQL_DROP_SCHEMA.format(schema=schema)))
 
 
-
 @cli.command()
-@click.argument('name')
-def start():
+@click.argument('system')
+def start(system):
     click.echo('start server')
+    run_cmd('uwsgi -i ../share/config/%s.ini' % system)
+
+
     #uwsgi -i share/config/auth.ini
     #uwsgi --stop /tmp/project-master.pid
 
