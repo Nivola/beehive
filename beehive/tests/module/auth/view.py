@@ -20,63 +20,66 @@ tests = [
     'test_remove_role_perm',
     'test_delete_role',
     
-    'test_add_user',
-    'test_add_user_twice',
-    'test_get_users',
-    'test_get_users_by_role',
-    'test_get_user',
-    'test_get_user_secret',
-    'test_get_user_roles',
-    'test_add_user_attributes',
-    'test_get_user_attributes',
-    'test_delete_user_attributes',
-    'test_update_user',
-    'test_add_user_role',
-    'test_get_perms_by_user',
-    'test_remove_user_role',
-    'test_delete_user',
-    
-    'test_add_group',
-    'test_add_group_twice',
-    'test_get_groups',
-    'test_get_group',
-    'test_update_group',
-    'test_add_group_user',
-    'test_get_groups_by_user',
-    'test_remove_group_user',
-    'test_add_group_role',
-    'test_get_groups_by_role',
-    'test_get_perms_by_group',
-    'test_remove_group_role',
-    'test_delete_group',
-    
-    'test_get_actions',
-
-    'test_add_type',
-    'test_add_type_twice',
-    'test_get_types',
-    'test_delete_type',
-
-    'test_add_object',
-    'test_add_object_twice',
-    'test_get_objects',
-    'test_get_object',
-    'test_delete_object',
- 
-    'test_get_perms',
-    'test_get_perms_by_type',
-    'test_get_perm',
-
-    'test_get_providers',
-    'test_get_tokens',
-    'test_get_token',
-    'test_delete_token',
+    # 'test_add_user',
+    # 'test_add_user_twice',
+    # 'test_get_users',
+    # 'test_get_users_by_role',
+    # 'test_get_user',
+    # 'test_get_user_secret',
+    # 'test_get_user_roles',
+    # 'test_add_user_attributes',
+    # 'test_get_user_attributes',
+    # 'test_delete_user_attributes',
+    # 'test_update_user',
+    # 'test_add_user_role',
+    # 'test_get_perms_by_user',
+    # 'test_remove_user_role',
+    # 'test_delete_user',
+    #
+    # 'test_add_group',
+    # 'test_add_group_twice',
+    # 'test_get_groups',
+    # 'test_get_group',
+    # 'test_update_group',
+    # 'test_add_group_user',
+    # 'test_get_groups_by_user',
+    # 'test_remove_group_user',
+    # 'test_add_group_role',
+    # 'test_get_groups_by_role',
+    # 'test_get_perms_by_group',
+    # 'test_remove_group_role',
+    # 'test_delete_group',
+    #
+    # 'test_get_actions',
+    #
+    # 'test_add_type',
+    # 'test_add_type_twice',
+    # 'test_get_types',
+    # 'test_delete_type',
+    #
+    # 'test_add_object',
+    # 'test_add_object_twice',
+    # 'test_get_objects',
+    # 'test_get_object',
+    # 'test_delete_object',
+    #
+    # 'test_get_perms',
+    # 'test_get_perms_by_type',
+    # 'test_get_perm',
+    #
+    # 'test_get_providers',
+    # 'test_get_tokens',
+    # 'test_get_token',
+    # 'test_delete_token',
 ]
 
 
 class AuthTestCase(BeehiveTestCase):
     def setUp(self):
         BeehiveTestCase.setUp(self)
+        self.module = 'auth'
+        self.module_prefix = 'nas'
+        self.endpoint_service = 'auth'
         
     def tearDown(self):
         BeehiveTestCase.tearDown(self)
@@ -85,27 +88,25 @@ class AuthTestCase(BeehiveTestCase):
     # domains
     #
     def test_get_providers(self):
-        self.call('auth', '/v1.0/nas/providers', 'get')
+        self.get('/v1.0/nas/providers')
 
     #
     # tokens
     #
     def test_get_tokens(self):
         global oid
-        res = self.call('auth', '/v1.0/nas/tokens', 'get', **self.users['admin'])
+        res = self.get('/v1.0/nas/providers')
         oids = res['tokens']
         if len(oids) > 0:
             oid = oids[0]['token']
     
     def test_get_token(self):
         global oid
-        self.call('auth', '/v1.0/nas/tokens/{oid}', 'get', 
-                  params={'oid': oid},
-                  **self.users['admin'])
+        self.get('/v1.0/nas/tokens/{oid}', params={'oid': oid})
         
     def test_delete_token(self):
         global oid
-        self.call('auth', '/v1.0/nas/tokens/{oid}', 'delete', params={'oid':oid}, **self.users['admin'])
+        self.delete('/v1.0/nas/tokens/{oid}', params={'oid': oid})
 
     #
     # roles
@@ -117,26 +118,25 @@ class AuthTestCase(BeehiveTestCase):
                 'desc': 'role_prova',
                 'alias': 'prova'
             }
-        }        
-        self.call('auth', '/v1.0/nas/roles', 'post', data=data,
-                  **self.users['admin'])
+        }
+        self.post('/v1.0/nas/roles', data=data)
     
     @assert_exception(ConflictException)
     def test_add_role_twice(self):
         data = {
-            'role':{
+            'role': {
                 'name': 'role_prova',
                 'desc': 'role_prova',
                 'alias': 'prova'
             }
         }        
-        self.call('auth', '/v1.0/nas/roles', 'post', data=data, **self.users['admin'])
+        self.post('/v1.0/nas/roles', data=data)
     
     def test_get_roles(self):
-        self.call('auth', '/v1.0/nas/roles', 'get', **self.users['admin'])
+        self.get('/v1.0/nas/roles')
         
     def test_get_role(self):
-        self.call('auth', '/v1.0/nas/roles/{oid}', 'get', params={'oid': 'role_prova'}, **self.users['admin'])
+        self.get('/v1.0/nas/roles', params={'oid': 'role_prova'})
         
     def test_update_role(self):
         data = {
@@ -145,41 +145,34 @@ class AuthTestCase(BeehiveTestCase):
                 'desc': 'role_prova1',
             }
         }
-        self.call('auth', '/v1.0/nas/roles/{oid}', 'put', params={'oid':'role_prova'}, data=data,
-                  **self.users['admin'])
+        self.put('/v1.0/nas/roles/{oid}', params={'oid': 'role_prova'}, data=data)
         
     def test_add_role_perm(self):
         data = {
             'role': {
                 'perms': {
                     'append': [
-                        # {'id':1},
                         {'subsystem': 'auth', 'type': 'Role', 'objid': '*', 'action': 'view'}]}
             }
         }
-        self.call('auth', '/v1.0/nas/roles/{oid}', 'put', params={'oid': 'role_prova'}, data=data,
-                  **self.users['admin'])
+        self.put('/v1.0/nas/roles/{oid}', params={'oid': 'role_prova'}, data=data)
         
     def test_get_perms_by_role(self):
         global oid
-        res = self.call('auth', '/v1.0/nas/objects/perms', 'get', query={'role': 'role_prova'},
-                        **self.users['admin'])        
-        
+        self.get('/v1.0/nas/objects/perms', params={'oid': 'role_prova'})
+
     def test_remove_role_perm(self):
         data = {
             'role': {
                 'perms': {
                     'remove': [
-                        # {'id':1},
                         {'subsystem': 'auth', 'type': 'Role', 'objid': '*', 'action': 'view'}]}
             }
-        }        
-        self.call('auth', '/v1.0/nas/roles/{oid}', 'put', params={'oid': 'role_prova'}, data=data,
-                  **self.users['admin'])     
+        }
+        self.put('/v1.0/nas/roles/{oid}', params={'oid': 'role_prova'}, data=data)
         
     def test_delete_role(self):
-        self.call('auth', '/v1.0/nas/roles/{oid}', 'delete', params={'oid': 'role_prova'},
-                  **self.users['admin'])  
+        self.put('/v1.0/nas/roles/{oid}', params={'oid': 'role_prova'})
 
     #
     # users
