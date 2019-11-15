@@ -131,6 +131,7 @@ class ApiManager(object):
         self.app_subsytem = self.params['api_subsystem']
         self.app_fernet_key = self.params.get('api_fernet_key', None)
         self.app_endpoint_id = '%s-%s' % (self.params['api_id'], hostname)
+        self.swagger_spec_path = self.params.get('api_swagger_spec_path', 'swagger.yml')
         try:
             self.app_uri = 'http://%s%s' % (hostname, self.params['http-socket'])
             self.uwsgi_uri = 'uwsgi://%s%s' % (hostname, self.params['socket'])
@@ -142,7 +143,7 @@ class ApiManager(object):
         operation.encryption_key = self.app_fernet_key
 
         # swagger reference
-        self.swagger = Swagger(self.app, template_file='swagger.yml')
+        self.swagger = Swagger(self.app, template_file=self.swagger_spec_path)
 
         # instance configuration
         self.http_socket = self.params.get('http-socket')
