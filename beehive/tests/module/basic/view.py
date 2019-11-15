@@ -48,4 +48,4 @@ def run(args):
 
 
 if __name__ == u'__main__':
-    run(sys.argv)
+    run({})

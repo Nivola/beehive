@@ -628,14 +628,10 @@ def configure_test(testcase_class, args={}, log_file_name='test'):
     ]
     LoggerHelper.file_handler(loggers, logging.DEBUG, log_file, frmt=frmt, formatter=ColorFormatter)
 
-    try:
-        testcase_class.spec_config_file = sys.argv[1]
-    except:
-        pass
-    try:
-        testcase_class.validation_active = str2bool(sys.argv[2])
-    except:
-        pass
+    if args == {} and len(sys.argv[1:]) > 0:
+        for item in sys.argv[1:]:
+            k, v = item.split('=')
+            args[k] = v
 
     # read external params
     testcase_class.main_config_file = args.get('conf', None)

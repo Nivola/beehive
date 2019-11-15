@@ -98,7 +98,8 @@ if __name__ == '__main__':
                      'beehive/server/catalog.py',
                      'beehive/server/event.py',
                      'beehive/server/console.py']),
-            ('share/test', ['config/beehive.yml'])
+            ('share/test', ['config/beehive.yml',
+                            'config/beehive.fernet'])
         ],
         package_data={},
         install_requires=install_requires([

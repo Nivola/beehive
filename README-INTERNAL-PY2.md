@@ -108,7 +108,7 @@ $ source /tmp/beehive-py2-test-env/bin/activate
 - Run some tests:
 
 ```
-$ python basic/view.py
+$ python module/basic/view.py
 ```
 
 ## Versioning
