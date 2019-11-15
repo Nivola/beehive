@@ -79,7 +79,7 @@ if __name__ == '__main__':
         ],
         namespace_packages=[],
         py_modules=[
-            '__init__'
+            'beehive.__init__'
         ],
         classifiers=[
             'Development Status :: 1.5',

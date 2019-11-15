@@ -77,7 +77,7 @@ def init(module, pwd, path, client):
 @cli.command()
 @click.option('--pwd', default=None, help='mysql root password')
 @click.option('--client', default='localhost', help='mysql root host client')
-def dropdb(pwd, client):
+def drop(pwd, client):
     click.echo('Drop the database')
 
     mysql_cmd = BASE_MYSQL_CMD
