@@ -126,7 +126,7 @@ def create_token():
     }
     headers = {'Content-type': 'application/json'}
     res = requests.post('http://localhost:8080/v1.0/nas/keyauth/token', data=json.dumps(data), headers=headers)
-
+    res = res.json()
     seckey = res.get('seckey')
     token = res.get('token')
     print('token: %s' % token)
