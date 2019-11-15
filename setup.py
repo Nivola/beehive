@@ -5,7 +5,7 @@
 # (C) Copyright 2018-2019 CSI-Piemonte
 
 from os import environ
-from sys import version_info
+from sys import prefix, version_info
 from setuptools import setup
 from setuptools.command.install import install as _install
 
@@ -36,7 +36,8 @@ def install_requires(requires):
 if __name__ == '__main__':
     prefix = environ.get('VIRTUAL_ENV')
     f = open('/tmp/log', 'w')
-    f.write('$$$$$$$$$$$$$$$$$$$$$$$$$')
+    f.write(prefix)
+    f.write('\n')
     f.write(prefix)
     f.close()
 
@@ -86,11 +87,11 @@ if __name__ == '__main__':
         ],
         entry_points={},
         data_files=[
-            (prefix+'/share/config', ['config/auth.json',
+            ('prefix+''/share/config', ['config/auth.json',
                                       'config/event.json',
                                       'config/auth.ini',
                                       'config/event.ini']),
-            (prefix + '/bin', ['beehive/server/api.py',
+            ('/bin', ['beehive/server/api.py',
                                'beehive/server/task.py',
                                'beehive/server/scheduler.py',
                                'beehive/server/catalog.py',
