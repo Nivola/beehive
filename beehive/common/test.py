@@ -115,7 +115,7 @@ class BeehiveTestCase(unittest.TestCase):
                 config_file = '%s/beehive.fernet' % home
                 self.main_fernet_file = config_file
             else:
-                config_file = self.main_fernet_file.replace('yml', 'fernet')
+                config_file = self.main_config_file.replace('yml', 'fernet')
             fernet = self.load_file(config_file)
             logger.info('Get beehive test fernet key: %s' % config_file)
         except Exception as ex:
