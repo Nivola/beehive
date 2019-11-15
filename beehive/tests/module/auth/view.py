@@ -61,6 +61,7 @@ tests = [
     'test_add_object_twice',
     'test_get_objects',
     'test_get_object',
+    'test_get_objects_by_objid',
     'test_delete_object',
 
     'test_get_perms',
@@ -95,7 +96,7 @@ class AuthTestCase(BeehiveTestCase):
     #
     def test_get_tokens(self):
         global oid
-        res = self.get('/v1.0/nas/providers')
+        res = self.get('/v1.0/nas/tokens')
         oids = res['tokens']
         if len(oids) > 0:
             oid = oids[0]['token']
