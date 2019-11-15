@@ -127,7 +127,8 @@ def create_token():
         'password': 'admin',
         'login-ip': 'localhost'
     }
-    res = requests.post('http://localhost:8080/v1.0/nas/keyauth/token', data=data)
+    headers = {'Content-type': 'application/json'}
+    res = requests.post('http://localhost:8080/v1.0/nas/keyauth/token', data=data, headers=headers)
     print(res.json())
 
 
