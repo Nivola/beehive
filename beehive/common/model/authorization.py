@@ -192,7 +192,7 @@ class User(Base, BaseEntity):
         if expiry_date is None:
             expiry_date = datetime.datetime.today()+datetime.timedelta(days=365)
         self.expiry_date = expiry_date
-        
+
         password = password.encode('utf-8')
         if password is not None:
             # generate new salt, and hash a password 
