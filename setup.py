@@ -86,7 +86,8 @@ if __name__ == '__main__':
             (prefix + '/bin', ['beehive/server/task.py',
                                'beehive/server/scheduler.py',
                                'beehive/server/catalog.py',
-                               'beehive/server/event.py']),
+                               'beehive/server/event.py',
+                               'beehive/server/console.py']),
         ],
         package_data={},
         install_requires=install_requires([

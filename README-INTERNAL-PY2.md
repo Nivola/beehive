@@ -38,7 +38,7 @@ $ pip install -U git+https://gitlab.csi.it/nivola/cmp2/beehive.git@devel
 #### Init auth module
 
 ```
-$ python console.py init auth --path=/tmp/beehive-test-env/share/config
+$ python console.py init auth --path=/tmp/beehive-py2-test-env/share/config
 ```
 
 #### Run auth server
