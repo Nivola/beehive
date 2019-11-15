@@ -428,7 +428,7 @@ class AuthTestCase(BeehiveTestCase):
     def test_get_objects_by_objid(self):
         global oid
         res = self.get('/v1.0/nas/objects', query={'objid': 'prova'})
-        oid = res[0]['id']
+        oid = res['objects'][0]['id']
 
     def test_get_object(self):
         global oid
