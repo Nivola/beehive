@@ -870,14 +870,17 @@ class ApiManager(object):
                     self.logger.info('Get auth endpoints: %s' % self.endpoints)                    
                     
                     # get auth system user
-                    auth_user = configurator.get(app=self.app_name, group='api', name='user')[0].value
-                    self.auth_user = json.loads(auth_user)
-                    self.logger.info('Get auth user: %s' % self.auth_user.get('name', None))
+                    if configurator.exist(app=self.app_name, group='api', name='user'):
+                        auth_user = configurator.get(app=self.app_name, group='api', name='user')[0].value
+                        self.auth_user = json.loads(auth_user)
+                        self.logger.info('Get auth user: %s' % self.auth_user.get('name', None))
 
-                    # configure api client
-                    self.configure_api_client()                   
-                    
-                    self.logger.info('Configure apiclient - CONFIGURED')
+                        # configure api client
+                        self.configure_api_client()
+
+                        self.logger.info('Configure apiclient - CONFIGURED')
+                    else:
+                        self.logger.warning('Configure apiclient - NOT CONFIGURED')
                 except:
                     self.logger.warning('Configure apiclient - NOT CONFIGURED')
                 ##### api authentication configuration #####
