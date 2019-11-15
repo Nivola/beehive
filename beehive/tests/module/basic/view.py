@@ -22,30 +22,23 @@ class BaseTestCase(BeehiveTestCase):
     """
     def setUp(self):
         BeehiveTestCase.setUp(self)
-        self.module = u'auth'
-        self.module_prefix = u'nas'
-        self.endpoint_service = u'auth'
+        self.module = 'auth'
+        self.module_prefix = 'nas'
+        self.endpoint_service = 'auth'
         
     def tearDown(self):
         BeehiveTestCase.tearDown(self)
 
     def test_ping(self):
-        res = self.get(u'/v1.0/nrs/entities/{oid}')
-        data = ''
-        uri = '/v1.0/server/ping'
-        res = self.call(self.module, uri, 'GET', data=data)
-        self.logger.debug(self.pp.pformat(res))
+        self.get('/v1.0/server/ping')
 
     def test_info(self):
-        data = ''
-        uri = '/v1.0/server'
-        res = self.call(self.module, uri, 'GET', data=data)
-        self.logger.debug(self.pp.pformat(res))
+        self.get('/v1.0/server')
 
 
 def run(args):
     runtest(BaseTestCase, tests, args)
 
 
-if __name__ == u'__main__':
+if __name__ == '__main__':
     run({})
