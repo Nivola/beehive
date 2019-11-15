@@ -384,7 +384,7 @@ class AuthTestCase(BeehiveTestCase):
                 }
             ]
         }
-        self.post('/v1.0/nas/objects/types')
+        self.post('/v1.0/nas/objects/types', data=data)
 
     def test_get_types(self):
         self.get('/v1.0/nas/objects/types')
