@@ -75,6 +75,39 @@ class ConfigDbManager(AbstractDbManager):
         except exc.DBAPIError as e:
             raise Exception(e)
 
+    @query
+    def exist(self, app=None, group=None, oid=None, name=None):
+        """Cehck configuration properties exist.
+
+        :param app: property app [optional]
+        :param group: property group [optional]
+        :param oid: property id [optional]
+        :param name: property name [optional]
+        :return: True or False
+        """
+        session = self.get_session()
+        if oid is not None:
+            prop = session.query(ConfigProp).filter_by(id=oid)
+        elif name is not None:
+            prop = session.query(ConfigProp).filter_by(name=name)
+        elif app is not None or group is not None:
+            query = session.query(ConfigProp)
+            if app is not None:
+                query = query.filter_by(app=app)
+            if group is not None:
+                query = query.filter_by(group=group)
+            prop = query
+        else:
+            prop = session.query(ConfigProp)
+
+        if prop.count() > 0:
+            res = True
+        else:
+            res = False
+
+        self.logger.debug('Properties exist: %s' % res)
+        return res
+
     @query    
     def get(self, app=None, group=None, oid=None, name=None):
         """Get configuration properties.

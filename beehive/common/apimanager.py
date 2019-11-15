@@ -526,8 +526,6 @@ class ApiManager(object):
                 self.logger.info('Configure oauth2 - CONFIGURE')
                 try:
                     self.oauth2_endpoint = self.params.get('oauth2_endpoint')
-                    # self.oauth2_endpoint = configurator.get(
-                    #     app=self.app_name, group='oauth2', name='endpoint')[0].value
                     self.logger.info('Setup oauth2 endpoint: %s' % self.oauth2_endpoint)
                     self.logger.info('Configure oauth2 - CONFIGURED')
                 except:
@@ -651,12 +649,15 @@ class ApiManager(object):
                 try:
                     self.logger.info('Configure Camunda - CONFIGURE')            
                     from beedrones.camunda import WorkFlowEngine as CamundaEngine
-                    conf = configurator.get(app=self.app_name, group='bpmn', name='camunda.cluster')[0].value
-                    self.logger.info('Configure Camunda - CONFIG app %s: %s' % (self.app_name, conf))
-                    item = json.loads(conf)
+                    if configurator.exist(app=self.app_name, group='bpmn', name='camunda.cluster'):
+                        conf = configurator.get(app=self.app_name, group='bpmn', name='camunda.cluster')[0].value
+                        self.logger.info('Configure Camunda - CONFIG app %s: %s' % (self.app_name, conf))
+                        item = json.loads(conf)
 
-                    self.camunda_engine = CamundaEngine(item['conn'], user=item['user'], passwd=item['passwd'])
-                    self.logger.info('Configure Camunda  - CONFIGURED')            
+                        self.camunda_engine = CamundaEngine(item['conn'], user=item['user'], passwd=item['passwd'])
+                        self.logger.info('Configure Camunda  - CONFIGURED')
+                    else:
+                        self.logger.warning('Configure Camunda  - NOT CONFIGURED')
                 except:
                     self.logger.warning('Configure Camunda  - NOT CONFIGURED')
                 ##### camunda configuration #####
@@ -690,7 +691,6 @@ class ApiManager(object):
                         self.logger.info('Elasticsearch client: %s' % self.elasticsearch)
                         self.logger.info('Configure elasticsearch  - CONFIGURED')
                     else:
-                        self.logger.warning('Configure elasticsearch  - NOT CONFIGURED', exc_info=1)
                         self.logger.warning('Configure elasticsearch  - NOT CONFIGURED')
                 except:
                     self.logger.warning('Configure elasticsearch  - NOT CONFIGURED')
