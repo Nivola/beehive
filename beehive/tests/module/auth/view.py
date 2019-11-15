@@ -172,7 +172,7 @@ class AuthTestCase(BeehiveTestCase):
         self.put('/v1.0/nas/roles/{oid}', params={'oid': 'role_prova'}, data=data)
         
     def test_delete_role(self):
-        self.put('/v1.0/nas/roles/{oid}', params={'oid': 'role_prova'})
+        self.delete('/v1.0/nas/roles/{oid}', params={'oid': 'role_prova'})
 
     #
     # users
