@@ -1,8 +1,7 @@
-'''
-Created on Jan 12, 2017
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: darkbk
-'''
 import time
 import unittest
 from beehive.common.test import runtest, BeehiveTestCase, assert_exception
@@ -14,27 +13,28 @@ uid = None
 seckey = None
 
 tests = [
-#'test_create_keyauth_token',
-#'test_ping_subsystem',
-#'test_ping_endpoint',
+    #'test_create_keyauth_token',
+    #'test_ping_subsystem',
+    #'test_ping_endpoint',
 
-#'test_exist',
-#'test_load_catalog',
+    #'test_exist',
+    #'test_load_catalog',
 
-#'test_get_catalogs',
-'test_get_catalog',
-#'test_create_catalog',
-#'test_delete_catalog',
+    #'test_get_catalogs',
+    'test_get_catalog',
+    #'test_create_catalog',
+    #'test_delete_catalog',
 
-#'test_get_endpoints',
-#'test_get_endpoint',
-#'test_create_endpoint',
-#'test_delete_endpoint',
+    #'test_get_endpoints',
+    #'test_get_endpoint',
+    #'test_create_endpoint',
+    #'test_delete_endpoint',
 
-#'test_list_resources',    
+    #'test_list_resources',
 
-#'test_logout',
+    #'test_logout',
 ]
+
 
 class BeehiveApiClientTestCase(BeehiveTestCase):
     """

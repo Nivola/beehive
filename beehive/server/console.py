@@ -98,6 +98,7 @@ def drop(pwd, client):
 @click.argument('system')
 def start(system):
     click.echo('start server')
+    print(os.path.abspath(__file__))
     run_cmd('uwsgi -i ../share/config/%s.ini' % system)
 
 
