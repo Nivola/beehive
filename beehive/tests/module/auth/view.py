@@ -229,7 +229,7 @@ class AuthTestCase(BeehiveTestCase):
                 'desc': 'attr_prova_desc'
             }
         }
-        self.get('/v1.0/nas/users/{oid}/attributes', params={'oid': 'user_prova@local'}, data=data)
+        self.post('/v1.0/nas/users/{oid}/attributes', params={'oid': 'user_prova@local'}, data=data)
         
     def test_get_user_attributes(self):
         self.get('/v1.0/nas/users/{oid}/attributes', params={'oid': 'user_prova@local'})
