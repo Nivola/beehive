@@ -26,7 +26,7 @@ MYSQL_AUTH_USER = 'GRANT ALL ON {schema}.* TO `{user}`@`{host}`; FLUSH PRIVILEGE
 
 
 def run_cmd(cmd, trace=False):
-    # click.echo(cmd)
+    click.echo(cmd)
     out = os.popen(cmd).read()
     if trace is True:
         print(out)
@@ -100,8 +100,8 @@ def get_uwsgi_path():
 
 
 def get_config(config):
-    console_path = os.path.abspath(__file__).replace('console.py', '')
-    return console_path + '../share/config/{config}.ini'.format(config=config)
+    console_path = os.path.abspath(__file__).replace('bin/console.py', 'share/config')
+    return console_path + '/{config}.ini'.format(config=config)
 
 
 @cli.command()
