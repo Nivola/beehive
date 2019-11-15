@@ -24,7 +24,7 @@ users:
    ip:
    auth: keyauth
    catalog: beehive-internal
- test:
+ test1:
    user: test1@local
    pwd: test1
    secret:
