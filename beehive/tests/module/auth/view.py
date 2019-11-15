@@ -52,25 +52,25 @@ tests = [
 
     'test_get_actions',
 
-    # 'test_add_type',
-    # 'test_add_type_twice',
-    # 'test_get_types',
-    # 'test_delete_type',
-    #
-    # 'test_add_object',
-    # 'test_add_object_twice',
-    # 'test_get_objects',
-    # 'test_get_object',
-    # 'test_delete_object',
-    #
-    # 'test_get_perms',
-    # 'test_get_perms_by_type',
-    # 'test_get_perm',
-    #
-    # 'test_get_providers',
-    # 'test_get_tokens',
-    # 'test_get_token',
-    # 'test_delete_token',
+    'test_add_type',
+    'test_add_type_twice',
+    'test_get_types',
+    'test_delete_type',
+
+    'test_add_object',
+    'test_add_object_twice',
+    'test_get_objects',
+    'test_get_object',
+    'test_delete_object',
+
+    'test_get_perms',
+    'test_get_perms_by_type',
+    'test_get_perm',
+
+    'test_get_providers',
+    'test_get_tokens',
+    'test_get_token',
+    'test_delete_token',
 ]
 
 
@@ -293,7 +293,7 @@ class AuthTestCase(BeehiveTestCase):
         self.post('/v1.0/nas/groups', data=data)
 
     def test_get_groups(self):
-        self.get('/v1.0/nas/groups', data=data)
+        self.get('/v1.0/nas/groups')
 
     def test_get_group(self):
         self.get('/v1.0/nas/groups/{oid}', params={'oid': 'grp_prova'})
