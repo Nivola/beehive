@@ -94,9 +94,22 @@ $ python /tmp/beehive-py2-test-env/bin/console.py drop
 Instructions useful to deploy software on a simple environment (local machine or simple server configuration infrastructure).
 
 ## Running the tests
-Results of vulnerability assessment and/or penetration test. If known explain how to run the automated tests for this system
+Results of vulnerability assessment and/or penetration test.
 
+- Activate virtual env
 
+```
+$ source /tmp/beehive-py2-test-env/bin/activate
+```
+
+- Open tests directory __/tmp/beehive-py2-test-env/lib/python2.7/site-packages/beehive/tests__
+- Copy file beehive.yml from /tmp/beehive-py2-test-env/share/test in your home directory. Open the file and set 
+  correctly all the <BLANK> variables.
+- Run some tests:
+
+```
+$ python basic/view.py
+```
 
 ## Versioning
 We use Semantic Versioning for versioning. (http://semver.org)

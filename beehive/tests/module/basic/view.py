@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # (C) Copyright 2018-2019 CSI-Piemonte
+
+import sys
 from beehive.common.test import runtest, BeehiveTestCase
 
 tests = [  
@@ -46,4 +48,4 @@ def run(args):
 
 
 if __name__ == u'__main__':
-    run()
+    run(sys.argv)
