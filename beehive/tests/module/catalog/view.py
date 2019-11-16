@@ -82,7 +82,7 @@ class TestCase(BeehiveTestCase):
         self.get('/v1.0/ncs/catalogs/{oid}/perms', params={'oid': oid})
 
     def test_get_catalog_by_name(self):
-        self.get('/v1.0/ncs/catalogs/{oid}', params={'oid': 'beehive-internal-podto1'})
+        self.get('/v1.0/ncs/catalogs/{oid}', params={'oid': 'beehive-internal'})
 
     def test_update_catalog(self):
         data = {
