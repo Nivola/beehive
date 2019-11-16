@@ -1,8 +1,7 @@
-'''
-Created on Aug 18, 2017
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@catalogor: darkbk
-'''
 import unittest
 from beehive.common.test import runtest, BeehiveTestCase, assert_exception
 from beecell.remote import BadRequestException,\
@@ -10,7 +9,7 @@ from beecell.remote import BadRequestException,\
 
 oid = None
 
-tests = [
+tests_dir = [
     'test_add_catalog',
     'test_add_catalog_twice',
     'test_get_catalogs',
@@ -32,147 +31,137 @@ tests = [
 ]
 
 
-class CatalogTestCase(BeehiveTestCase):
+class TestCase(BeehiveTestCase):
     def setUp(self):
         BeehiveTestCase.setUp(self)
-        
+        self.module = 'auth'
+        self.module_prefix = 'nas'
+        self.endpoint_service = 'auth'
+
     def tearDown(self):
         BeehiveTestCase.tearDown(self)
-        
+
     #
     # catalogs
     #
     def test_add_catalog(self):
         data = {
-            'catalog':{
-                'name':'beehive', 
-                'desc':'beehive catalog',
-                'zone':'internal'
+            'catalog': {
+                'name': 'beehive',
+                'desc': 'beehive catalog',
+                'zone': 'internal'
             }
-        }        
-        self.call('auth', '/v1.0/ncs//catalogs', 'post', data=data,
-                  **self.users['admin'])
-    
+        }
+        self.post('/v1.0/ncs/catalogs', data=data)
+
     @assert_exception(ConflictException)
     def test_add_catalog_twice(self):
         data = {
-            'catalog':{
-                'name':'beehive', 
-                'desc':'beehive catalog',
-                'zone':'internal'  
-            }
-        }        
-        self.call('auth', '/v1.0/ncs//catalogs', 'post', data=data,
-                  **self.users['admin'])        
-    
-    def test_get_catalogs(self):
-        res = self.call('auth', '/v1.0/ncs//catalogs', 'get', **self.users['admin'])
-        global oid
-        oid = res['catalogs'][-1]['id']
-        
-    def test_get_catalogs_by_zone(self):
-        self.call('auth', '/v1.0/ncs//catalogs', 'get',
-                  query={'zone':'internal'},
-                  **self.users['admin'])   
-        
-    def test_get_catalog(self):
-        global oid
-        self.call('auth', '/v1.0/ncs//catalogs/{oid}', 'get',
-                  params={'oid':oid},
-                  **self.users['admin'])
-        
-    def test_get_catalog_perms(self):
-        global oid
-        self.call('auth', '/v1.0/ncs//catalogs/{oid}/perms', 'get',
-                  params={'oid':oid},
-                  **self.users['admin'])        
-        
-    def test_get_catalog_by_name(self):
-        self.call('auth', '/v1.0/ncs//catalogs/{oid}', 'get',
-                  params={'oid':'beehive-internal'},
-                  **self.users['admin'])
-        
-    def test_update_catalog(self):
-        data = {
-            'catalog':{
-                'name':'beehive', 
-                'desc':'beehive catalog1',
-                'zone':'internal1'  
+            'catalog': {
+                'name': 'beehive',
+                'desc': 'beehive catalog',
+                'zone': 'internal'
             }
         }
-        self.call('auth', '/v1.0/ncs//catalogs/{oid}', 'put', 
-                  params={'oid':'beehive'}, data=data,
-                  **self.users['admin'])        
+        self.post('/v1.0/ncs/catalogs', data=data)
+
+    def test_get_catalogs(self):
+        res = self.get('/v1.0/ncs/catalogs')
+        global oid
+        oid = res['catalogs'][-1]['id']
+
+    def test_get_catalogs_by_zone(self):
+        self.get('/v1.0/ncs/catalogs', query={'zone': 'internal'})
+
+    def test_get_catalog(self):
+        global oid
+        self.get('/v1.0/ncs/catalogs/{oid}', params={'oid': oid})
+
+    def test_get_catalog_perms(self):
+        global oid
+        self.get('/v1.0/ncs/catalogs/{oid}/perms', params={'oid': oid})
+
+    def test_get_catalog_by_name(self):
+        self.get('/v1.0/ncs/catalogs/{oid}', params={'oid': 'beehive-internal-podto1'})
+
+    def test_update_catalog(self):
+        data = {
+            'catalog': {
+                'name': 'beehive',
+                'desc': 'beehive catalog1',
+                'zone': 'internal1'
+            }
+        }
+        self.put('/v1.0/ncs/catalogs/{oid}', params={'oid': 'beehive'}, data=data)
 
     def test_delete_catalog(self):
-        self.call('auth', '/v1.0/ncs//catalogs/{oid}', 'delete', 
-                  params={'oid':'beehive'},
-                  **self.users['admin'])
+        self.delete('/v1.0/ncs/catalogs/{oid}', params={'oid': 'beehive'})
 
     #
     # endpoints
     #
     def test_add_endpoint(self):
         data = {
-            'endpoint':{
-                'catalog':'beehive',
-                'name':'endpoint-prova', 
-                'desc':'Authorization endpoint 01', 
-                'service':'auth', 
-                'uri':'http://localhost:6060/v1.0/auth/', 
-                'active':True
+            'endpoint': {
+                'catalog': 'beehive',
+                'name': 'endpoint-prova',
+                'desc': 'Authorization endpoint 01',
+                'service': 'auth',
+                'uri': 'http://localhost:6060/v1.0/auth/',
+                'active': True
             }
-        }        
-        self.call('auth', '/v1.0/ncs//endpoints', 'post', data=data,
-                  **self.users['admin'])
+        }
+        self.post('/v1.0/ncs/endpoints', data=data)
 
     @assert_exception(ConflictException)
     def test_add_endpoint_twice(self):
         data = {
-            'endpoint':{
-                'catalog':'beehive',
-                'name':'endpoint-prova', 
-                'desc':'Authorization endpoint 01', 
-                'service':'auth', 
-                'uri':'http://localhost:6060/v1.0/auth/', 
-                'active':True
-            }
-        }        
-        self.call('auth', '/v1.0/ncs//endpoints', 'post', data=data,
-                  **self.users['admin'])        
-    
-    def test_get_endpoints(self):
-        self.call('auth', '/v1.0/ncs//endpoints', 'get', 
-                  **self.users['admin'])
-        
-    def test_filter_endpoints(self):
-        self.call('auth', '/v1.0/ncs//endpoints', 'get',
-                  query={'service':'auth', 'catalog':'beehive'},
-                  **self.users['admin'])        
-        
-    def test_get_endpoint(self):
-        self.call('auth', '/v1.0/ncs//endpoints/{oid}', 'get',
-                  params={'oid':'endpoint-prova'}, 
-                  **self.users['admin'])
-        
-    def test_update_endpoint(self):
-        data = {
-            'endpoint':{
-                'name':'endpoint-prova', 
-                'desc':'Authorization endpoint 02', 
-                'service':'auth', 
-                'uri':'http://localhost:6060/v1.0/auth/', 
-                'active':True
+            'endpoint': {
+                'catalog': 'beehive',
+                'name': 'endpoint-prova',
+                'desc': 'Authorization endpoint 01',
+                'service': 'auth',
+                'uri': 'http://localhost:6060/v1.0/auth/',
+                'active': True
             }
         }
-        self.call('auth', '/v1.0/ncs//endpoints/{oid}', 'put', 
-                  params={'oid':'endpoint-prova'}, data=data,
-                  **self.users['admin'])        
-    
+        self.post('/v1.0/ncs/endpoints', data=data)
+
+    def test_get_endpoints(self):
+        self.get('/v1.0/ncs/endpoints')
+
+    def test_filter_endpoints(self):
+        self.get('/v1.0/ncs/endpoints', query={'service': 'auth', 'catalog': 'beehive'})
+
+    def test_get_endpoint(self):
+        self.get('/v1.0/ncs/endpoints/{oid}', params={'oid': 'endpoint-prova'})
+
+    def test_update_endpoint(self):
+        data = {
+            'endpoint': {
+                'name': 'endpoint-prova',
+                'desc': 'Authorization endpoint 02',
+                'service': 'auth',
+                'uri': 'http://localhost:6060/v1.0/auth/',
+                'active': True
+            }
+        }
+        self.put('/v1.0/ncs/endpoints/{oid}', params={'oid': 'endpoint-prova'}, data=data)
+
     def test_delete_endpoint(self):
-        self.call('auth', '/v1.0/ncs//endpoints/{oid}', 'delete', 
-                  params={'oid':'endpoint-prova'},
-                  **self.users['admin'])
-        
+        self.delete('/v1.0/ncs/endpoints/{oid}', params={'oid': 'endpoint-prova'})
+
+
+tests = []
+for test_plans in [
+    tests_dir
+]:
+    tests.extend(test_plans)
+
+
+def run(args):
+    runtest(TestCase, tests, args)
+
+
 if __name__ == '__main__':
-    runtest(CatalogTestCase, tests)  
+    run()
