@@ -153,7 +153,7 @@ def start_task_manager(params):
     logname = "%s.task" % params['api_id']
     frmt = '[%(asctime)s: %(levelname)s/%(task_name)s:%(task_id)s] %(name)s:%(funcName)s:%(lineno)d - %(message)s'
 
-    log_path, run_path = params.get('api_log', None)
+    log_path = run_path = params.get('api_log', None)
     if log_path is None:
         log_path = '/var/log/%s/%s' % (params['api_package'], params['api_env'])
         run_path = '/var/run/%s/%s' % (params['api_package'], params['api_env'])
@@ -233,7 +233,7 @@ def start_task_manager(params):
 
 def start_scheduler(params):
     """start celery scheduler """
-    log_path, run_path = params.get('api_log', None)
+    log_path = run_path = params.get('api_log', None)
     if log_path is None:
         log_path = '/var/log/%s/%s' % (params['api_package'], params['api_env'])
         run_path = '/var/run/%s/%s' % (params['api_package'], params['api_env'])
