@@ -52,6 +52,8 @@ $ python /tmp/beehive-py2-test-env/bin/console.py start auth
 ```
 $ tail -f /tmp/uwsgi.auth.log
 $ tail -f auth-01.log
+$ tail -f auth-01.log
+$ tail -f auth-01.log
 ```
 
 ##### Make some simple test

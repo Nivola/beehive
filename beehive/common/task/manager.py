@@ -176,20 +176,20 @@ def start_task_manager(params):
     LoggerHelper.rotatingfile_handler(main_loggers, logger_level, '%s/%s.log' % (log_path, logname),
                                       frmt=frmt, formatter=ExtTaskFormatter)
 
-    # transaction and db logging
-    loggers = [
-        # logging.getLogger('beehive.common.data'),
-        logging.getLogger('sqlalchemy.engine'),
-        logging.getLogger('sqlalchemy.pool')
-    ]
-    LoggerHelper.rotatingfile_handler(loggers, logger_level, '%s/%s.db.log' % (log_path, logname))
-
-    # performance logging
-    loggers = [
-        logging.getLogger('beecell.perf')
-    ]
-    LoggerHelper.rotatingfile_handler(loggers, logger_level, '%s/%s.watch' % (log_path, params['api_id']),
-                                      frmt='%(asctime)s - %(message)s')
+    # # transaction and db logging
+    # loggers = [
+    #     # logging.getLogger('beehive.common.data'),
+    #     logging.getLogger('sqlalchemy.engine'),
+    #     logging.getLogger('sqlalchemy.pool')
+    # ]
+    # LoggerHelper.rotatingfile_handler(loggers, logger_level, '%s/%s.db.log' % (log_path, logname))
+    #
+    # # performance logging
+    # loggers = [
+    #     logging.getLogger('beecell.perf')
+    # ]
+    # LoggerHelper.rotatingfile_handler(loggers, logger_level, '%s/%s.watch' % (log_path, params['api_id']),
+    #                                   frmt='%(asctime)s - %(message)s')
 
     # setup api manager
     api_manager = ApiManager(params, hostname=gethostname())
@@ -219,7 +219,7 @@ def start_task_manager(params):
         '--loglevel=%s' % logging.getLevelName(internal_logger_level),
         '--purge',
         '--logfile=%s' % logger_file,
-        '--pidfile=%s/%s.task.pid' % (run_path, logname),
+        '--pidfile=%s/%s.pid' % (run_path, logname),
     ]
 
     def terminate(*args):
@@ -247,17 +247,11 @@ def start_scheduler(params):
         logging.getLogger('beedrones'),
         logging.getLogger('celery'),
     ]
-    LoggerHelper.rotatingfile_handler(
-        loggers,
-        logger_level,
-        logger_file,
-        formatter=ExtTaskFormatter)
+    LoggerHelper.rotatingfile_handler(loggers, logger_level, logger_file, formatter=ExtTaskFormatter)
 
     api_manager = ApiManager(params)
     api_manager.configure()
     api_manager.register_modules()
-    # worker = ProcessEventConsumerRedis(api_manager)
-    # from beehive.module.tasks import task_manager
     task_scheduler.api_manager = api_manager
 
     configure_task_scheduler(
@@ -265,20 +259,14 @@ def start_scheduler(params):
         params['result_backend'],
         task_queue=params['broker_queue'])
 
-    # from beehive.module.scheduler.scheduler import RedisScheduler
     from beehive.module.scheduler.redis_scheduler import RedisScheduler
 
     beat = task_scheduler.Beat(loglevel=logging.getLevelName(internal_logger_level),
-                               logfile='%s/%s.scheduler.log' % (
-                                   log_path, params['api_id']),
-                               pidfile='%s/%s.scheduler.pid' % (
-                                   run_path, params['api_id']),
+                               logfile='%s/%s.scheduler.log' % (log_path, params['api_id']),
+                               pidfile='%s/%s.scheduler.pid' % (run_path, params['api_id']),
                                scheduler_cls=RedisScheduler)
 
     def terminate(*args):
-        # run_command(['celery', 'multi', 'stopwait', 'worker1',
-        #             '--pidfile="run/celery-%n.pid"'])
-        # beat.Service.stop()
         pass
 
     for sig in (SIGHUP, SIGABRT, SIGILL, SIGINT, SIGSEGV, SIGTERM, SIGQUIT):

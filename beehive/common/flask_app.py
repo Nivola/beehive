@@ -142,18 +142,19 @@ class BeehiveApp(Flask):
         # LoggerHelper.DEBUG2
         LoggerHelper.rotatingfile_handler(loggers, level, file_name)
         
-        # transaction and db logging
-        file_name = '%s/%s.db.log' % (self.log_path, logname)
-        loggers = [#logging.getLogger('beehive.common.data'),
-                   logging.getLogger('sqlalchemy.engine'),
-                   logging.getLogger('sqlalchemy.pool')]
-        LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, file_name)
-        
-        # performance logging
-        file_name = '%s/%s.watch' % (self.log_path, logname)
-        file_name = '%s/beehive.watch' % (self.log_path)
-        loggers = [logging.getLogger('beecell.perf')]
-        LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, file_name, frmt='%(asctime)s - %(message)s')
+        # # transaction and db logging
+        # file_name = '%s/%s.db.log' % (self.log_path, logname)
+        # loggers = [
+        #     logging.getLogger('sqlalchemy.engine'),
+        #     logging.getLogger('sqlalchemy.pool')
+        # ]
+        # LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, file_name)
+        #
+        # # performance logging
+        # file_name = '%s/%s.watch' % (self.log_path, logname)
+        # file_name = '%s/beehive.watch' % (self.log_path)
+        # loggers = [logging.getLogger('beecell.perf')]
+        # LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, file_name, frmt='%(asctime)s - %(message)s')
 
     def setup_additional_loggers(self, elasticsearch, level=LoggerHelper.DEBUG, tags=[], **custom_fields):
         """Setup loggers
