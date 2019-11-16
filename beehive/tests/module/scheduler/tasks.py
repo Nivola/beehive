@@ -1,8 +1,7 @@
-'''
-Created on Nov 6, 2015
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: darkbk
-'''
 from beehive.common.test import BeehiveTestCase, runtest
 from beehive.common.task.manager import configure_task_manager,\
     configure_task_scheduler

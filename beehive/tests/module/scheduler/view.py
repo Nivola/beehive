@@ -1,8 +1,7 @@
-'''
-Created on Feb 09, 2018
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# (C) Copyright 2018-2019 CSI-Piemonte
 
-@author: darkbk
-'''
 from beehive.common.test import runtest, BeehiveTestCase, assert_exception
 import ujson as json
 
