@@ -61,6 +61,7 @@ if __name__ == '__main__':
             'beehive.module.auth.views',
             'beehive.module.basic',
             'beehive.module.catalog',
+            'beehive.module.config',
             'beehive.module.event',
             'beehive.module.scheduler',
             'beehive.server',
@@ -71,7 +72,6 @@ if __name__ == '__main__':
             'beehive.tests.module.auth',
             'beehive.tests.module.basic',
             'beehive.tests.module.catalog',
-            'beehive.tests.module.config',
             'beehive.tests.module.event',
             'beehive.tests.module.scheduler'
         ],
