@@ -74,8 +74,7 @@ if __name__ == '__main__':
             'beehive.tests.module.catalog',
             'beehive.tests.module.config',
             'beehive.tests.module.event',
-            'beehive.tests.module.scheduler',
-            'beehive.tests.regression',
+            'beehive.tests.module.scheduler'
         ],
         namespace_packages=[],
         py_modules=[
