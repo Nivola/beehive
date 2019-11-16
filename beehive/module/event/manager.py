@@ -159,18 +159,17 @@ class EventConsumerRedis(ConsumerMixin):
             self.logger.error('Event %s can not be published: %s' % (event_id, ex), exc_info=1)
 
 
-def start_event_consumer(params, log_path=None):
+def start_event_consumer(params):
     """Start event consumer
     """
-    # setup kombu logger
-    #setup_logging(loglevel='DEBUG', loggers=[''])
-    
     # internal logger
     logger = logging.getLogger('beehive.module.event.manager')   
-    
-    logger_level = logging.DEBUG
+
+    logger_level = int(params.get('api_logging_level', logging.DEBUG))
+    log_path = params.get('api_log', None)
     if log_path is None:
         log_path = '/var/log/%s/%s' % (params['api_package'], params['api_env'])
+
     logname = '%s/%s.event.consumer' % (log_path, params['api_id'])
     logger_file = '%s.log' % logname
     loggers = [logger,
@@ -178,10 +177,10 @@ def start_event_consumer(params, log_path=None):
                logging.getLogger('beehive.module.event.model')]
     LoggerHelper.rotatingfile_handler(loggers, logger_level, logger_file)
 
-    # performance logging
-    loggers = [logging.getLogger('beecell.perf')]
-    logger_file = '%s/%s.watch' % (log_path, params['api_id'])
-    LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, logger_file, frmt='%(asctime)s - %(message)s')
+    # # performance logging
+    # loggers = [logging.getLogger('beecell.perf')]
+    # logger_file = '%s/%s.watch' % (log_path, params['api_id'])
+    # LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, logger_file, frmt='%(asctime)s - %(message)s')
 
     # get event handlers
     event_handlers = params.pop('event_handler', [])
