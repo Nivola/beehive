@@ -115,14 +115,14 @@ def start(system):
 @click.argument('system')
 def stop(system):
     click.echo('stop server')
-    run_cmd('uwsgi --stop /tmp/uwsgi.%s.pid' % system)
+    run_cmd('uwsgi --stop /tmp/%s.uwsgi.pid' % system)
 
 
 @cli.command()
 @click.argument('system')
 def restart(system):
     click.echo('stop server')
-    run_cmd('uwsgi --stop /tmp/uwsgi.%s.pid' % system)
+    run_cmd('uwsgi --stop /tmp/%s.uwsgi.pid' % system)
     click.echo('start server')
     run_cmd('{uwsgi} -i {config}'.format(uwsgi=get_uwsgi_path(), config=get_config(system)))
 
