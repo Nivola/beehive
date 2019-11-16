@@ -117,7 +117,7 @@ def start_catalog_consumer(params):
     # internal logger
     logger = getLogger('beehive')   
     
-    logger_level = params.get('api_logging_level', DEBUG)
+    logger_level = int(params.get('api_logging_level', DEBUG))
     log_path = params.get('api_log', None)
     if log_path is None:
         log_path = '/var/log/%s/%s' % (params['api_package'], params['api_env'])
