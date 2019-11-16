@@ -4,7 +4,7 @@
 # (C) Copyright 2018-2019 CSI-Piemonte
 
 """
-Usage: catalog.py config_file
+Usage: catalog.py virtual_env_path config_file
   
 Options:
   -h, --help               Print help and exit

@@ -31,9 +31,11 @@ def configure_server():
     config.read(config_file)
 
     params = {i[0]: i[1] for i in config.items('uwsgi')}
-    params['api_module'] = params['api_module'].split('\n')
-    if 'api_plugin' in params:
-        params['api_plugin'] = params['api_plugin'].split('\n')
+    params['task_module'] = params.get('task_module', '').split('\n')
+    params['api_module'] = params.get('api_module', '').split('\n')
+    params['api_plugin'] = params.get('api_plugin', '').split('\n')
+    # if 'api_plugin' in params:
+    #     params['api_plugin'] = params['api_plugin'].split('\n')
 
     import beecell.server.gevent_ssl
     from gevent import monkey

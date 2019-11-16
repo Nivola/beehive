@@ -153,10 +153,12 @@ def start_task_manager(params):
     logname = "%s.task" % params['api_id']
     frmt = '[%(asctime)s: %(levelname)s/%(task_name)s:%(task_id)s] %(name)s:%(funcName)s:%(lineno)d - %(message)s'
 
-    log_path = '/var/log/%s/%s' % (params['api_package'], params['api_env'])
-    run_path = '/var/run/%s/%s' % (params['api_package'], params['api_env'])
+    log_path, run_path = params.get('api_log', None)
+    if log_path is None:
+        log_path = '/var/log/%s/%s' % (params['api_package'], params['api_env'])
+        run_path = '/var/run/%s/%s' % (params['api_package'], params['api_env'])
 
-    logger_level = int(params['api_logging_level'])
+    logger_level = int(params['api_logging_level'], logging.DEBUG)
 
     # base logging
     main_loggers = [
@@ -211,21 +213,14 @@ def start_task_manager(params):
                            expire=params['expire'], task_queue=params['broker_queue'], logger_file=logger_file,
                            time_limit=params['task_time_limit'])
 
-    argv = ['',
-            '--hostname=' + params['broker_queue'] + '@%h',
-            '--loglevel=%s' % logging.getLevelName(internal_logger_level),
-            '--purge',
-            '--logfile=%s' % logger_file,
-            '--pidfile=%s/%s.task.pid' % (run_path, logname),
-            # '--pool=prefork',
-            # '--pool=gevent',
-            # '--pool=beehive.common.task.task_pool:TaskPool',
-            # '--time-limit=600',
-            # '--soft-time-limit=300',
-            # '--concurrency=1000',
-            # '--maxtasksperchild=1000',
-            # '--autoscale=100,10',
-            ]
+    argv = [
+        '',
+        '--hostname=' + params['broker_queue'] + '@%h',
+        '--loglevel=%s' % logging.getLevelName(internal_logger_level),
+        '--purge',
+        '--logfile=%s' % logger_file,
+        '--pidfile=%s/%s.task.pid' % (run_path, logname),
+    ]
 
     def terminate(*args):
         task_manager.stop()
@@ -238,12 +233,13 @@ def start_task_manager(params):
 
 def start_scheduler(params):
     """start celery scheduler """
-    log_path = '/var/log/%s/%s' % (params['api_package'],
-                                    params['api_env'])
-    run_path = '/var/run/%s/%s' % (params['api_package'],
-                                    params['api_env'])
+    log_path, run_path = params.get('api_log', None)
+    if log_path is None:
+        log_path = '/var/log/%s/%s' % (params['api_package'], params['api_env'])
+        run_path = '/var/run/%s/%s' % (params['api_package'], params['api_env'])
+
     logger_file = '%s/%s.scheduler.log' % (log_path, params['api_id'])
-    # logger_level = int(params['api_logging_level'])
+
     logger_level = logging.INFO
     loggers = [
         logging.getLogger('beehive'),
