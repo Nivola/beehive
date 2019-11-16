@@ -26,8 +26,7 @@ class CatalogConsumerError(Exception): pass
 
 class CatalogConsumer(ConsumerMixin):
     def __init__(self, connection, api_manager):
-        self.logger = getLogger(self.__class__.__module__+ \
-                                '.'+self.__class__.__name__)
+        self.logger = getLogger(self.__class__.__module__ + '.' + self.__class__.__name__)
         
         self.connection = connection
         self.api_manager = api_manager
@@ -71,34 +70,9 @@ class CatalogConsumer(ConsumerMixin):
                 # create object and permission
                 CatalogEndpoint(controller, oid=res.id).\
                     register_object(objid.split('//'), desc=endpoint['desc'])
-                self.logger.debug('Store endpoint : %s' % endpoint)                
-                
-            '''
-            try:
-                objid = '%s//%s' % (catalog_obj.objid, id_gen())
-                res = self.manager.add_endpoint(objid, name, service, desc, 
-                                            catalog_obj.id, uri, active=True)
-                controller = CatalogController(None)
-                obj = CatalogEndpoint(controller, Catalog(controller), 
-                                      oid=res.id, objid=res.objid, 
-                                      name=res.name, desc=res.desc, 
-                                      active=res.active, model=res)
-                # create object and permission
-                obj.register_object(objid.split('//'), desc=endpoint['desc'])
                 self.logger.debug('Store endpoint : %s' % endpoint)
-            except (TransactionError) as ex:
-                if ex.code == 409:
-                    self.manager.update_endpoint(oid=catalog_obj.id, 
-                                                 name=name, 
-                                                 desc=desc, 
-                                                 service=service, 
-                                                 catalog=catalog_obj.id, 
-                                                 uri=uri)
-                    self.logger.debug('Update endpoint : %s' % endpoint)'''
-            
         except (TransactionError, Exception) as ex:
             self.logger.error('Error storing node : %s' % ex, exc_info=1)
-            #raise CatalogConsumerError(ex)
         finally:
             if session is not None:
                 self.db_manager.release_session(operation.session)
@@ -137,16 +111,14 @@ class CatalogConsumerRedis(CatalogConsumer):
         self.logger.error(exc)
 
 
-def start_catalog_consumer(params, log_path=None):
+def start_catalog_consumer(params):
     """Start catalog consumer
     """
-    # setup kombu logger
-    #setup_logging(loglevel='DEBUG', loggers=[''])
-    
     # internal logger
     logger = getLogger('beehive')   
     
     logger_level = DEBUG
+    log_path = params.get('api_log', None)
     if log_path is None:
         log_path = '/var/log/%s/%s' % (params['api_package'], params['api_env'])
     logname = '%s/%s.catalog.consumer' % (log_path, params['api_id'])
@@ -157,8 +129,7 @@ def start_catalog_consumer(params, log_path=None):
     # performance logging
     loggers = [getLogger('beecell.perf')]
     logger_file = '%s/%s.watch' % (log_path, params['api_id'])
-    LoggerHelper.rotatingfile_handler(loggers, DEBUG, logger_file, 
-                                      frmt='%(asctime)s - %(message)s')
+    LoggerHelper.rotatingfile_handler(loggers, DEBUG, logger_file, frmt='%(asctime)s - %(message)s')
 
     # setup api manager
     api_manager = ApiManager(params)
