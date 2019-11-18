@@ -49,11 +49,17 @@ $ python /tmp/beehive-py2-test-env/bin/console.py start auth
 
 ##### Inspect server logs
 
+auth-01.log
+auth-01.uwsgi.log
+auth-01.catalog.consumer.log  
+auth-01.catalog.log  
+auth-01.scheduler.log  
+auth-01.task.log
+auth-01.worker1.log
+
 ```
-$ tail -f /tmp/uwsgi.auth.log
-$ tail -f auth-01.log
-$ tail -f auth-01.log
-$ tail -f auth-01.log
+$ tail -f /tmp/auth.log
+
 ```
 
 ##### Make some simple test

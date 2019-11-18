@@ -10,18 +10,18 @@ from beehive.module.auth.tasks import disable_expired_users,\
 from beehive.common.test import runtest, BeehiveTestCase
 
 tests = [
-    #'test_disable_expired_users',
-    'test_remove_expired_roles_from_users',
+    'test_disable_expired_users',
+    # 'test_remove_expired_roles_from_users',
 ]
 
 
 class AuthTaskTestCase(BeehiveTestCase):
-    """To execute this test you need a mysql instance, a user and a 
-    database associated to the user.
-    """
     def setUp(self):
         BeehiveTestCase.setUp(self)
-        
+        self.module = 'auth'
+        self.module_prefix = 'nas'
+        self.endpoint_service = 'auth'
+
         configure_task_manager(self.broker, self.broker)
         configure_task_scheduler(self.broker, self.broker)
 

@@ -56,11 +56,6 @@ class AuthJobTask(JobTask):
     def get_endpoints(self, oid=None):
         """Get all endpoints
         """
-        '''try:
-            endpoints = task_local.controller.manager.get_endpoints()
-        except:
-            endpoints = []
-            logger.debug('Get endpoints: %s' % endpoints)'''
         endpoints = task_local.controller.get_endpoints(oid=oid)
         logger.debug('Get endpoints: %s' % endpoints)
         return endpoints
@@ -86,20 +81,7 @@ def disable_expired_users(self, objid, params):
     :param objid: objid of the resource. Ex. 110//2222//334//*
     :param params: task input params
     :return: True  
-    :rtype: bool    
-    
-    Params
-        Params contains:
-        
-        * **cid**: container id
-
-        
-        .. code-block:: python
-    
-            {
-                'cid':..,
-
-            }
+    :rtype: bool
     """
     ops = self.get_options()
     self.set_shared_data(params)
@@ -134,20 +116,7 @@ def remove_expired_roles_from_users(self, objid, params):
     :param objid: objid of the resource. Ex. 110//2222//334//*
     :param params: task input params
     :return: True  
-    :rtype: bool    
-    
-    Params
-        Params contains:
-        
-        * **cid**: container id
-
-        
-        .. code-block:: python
-    
-            {
-                'cid':..,
-
-            }
+    :rtype: bool
     """
     ops = self.get_options()
     self.set_shared_data(params)
