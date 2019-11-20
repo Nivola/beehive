@@ -6,7 +6,7 @@
                    "beehive.module.scheduler.mod.SchedulerModule"],
     "api_plugins":[],
     "api_catalog":"beehive-internal",
-    "api_endpoint":"http://localhost:8070",
+    "api_endpoint":"http://localhost:8080",
     "db_uri":"mysql+pymysql://event:event@localhost:3306/event",
     "redis_identity_uri":"redis://localhost:6379/0",
     "db_managers":["beehive.module.event.model.EventDbManager"],
