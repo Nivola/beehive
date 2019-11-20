@@ -16,7 +16,7 @@ MYSQL_INIT = [
     {'schema': 'auth', 'user': 'auth', 'pwd': 'auth'},
     {'schema': 'event', 'user': 'event', 'pwd': 'event'},
 ]
-BASE_MYSQL_CMD = 'mysql -u root -e'
+BASE_MYSQL_CMD = 'mysql -u root'
 MYSQL_PWD = '-p %s'
 MYSQL_CREATE_SCHEMA = "CREATE SCHEMA IF NOT EXISTS `{schema}` DEFAULT CHARACTER SET latin1;"
 MYSQL_DROP_SCHEMA = "DROP SCHEMA IF EXISTS `{schema}`;"
@@ -47,7 +47,7 @@ def init(module, pwd, path, client):
     mysql_cmd = BASE_MYSQL_CMD
     if pwd is not None:
         mysql_cmd += MYSQL_PWD % pwd
-    mysql_cmd += " '{sql}'"
+    mysql_cmd += " -e '{sql}'"
 
     for item in MYSQL_INIT:
         schema = item.get('schema')
@@ -83,7 +83,7 @@ def drop(pwd, client):
     mysql_cmd = BASE_MYSQL_CMD
     if pwd is not None:
         mysql_cmd += MYSQL_PWD % pwd
-    mysql_cmd += " '{sql}'"
+    mysql_cmd += " -e '{sql}'"
 
     for item in MYSQL_INIT:
         schema = item.get('schema')

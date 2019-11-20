@@ -9,7 +9,7 @@ Fundamental requirements is python 3.5>.
 
 Required middleware:
 
-- mysql 5.7.x
+- mysql 5.7.x o mariadb 10.x
 - redis 5.x
 
 First of all you have to install some package:
@@ -49,13 +49,13 @@ $ python /tmp/beehive-py2-test-env/bin/console.py start auth
 
 ##### Inspect server logs
 
-auth-01.log
-auth-01.uwsgi.log
-auth-01.catalog.consumer.log  
-auth-01.catalog.log  
-auth-01.scheduler.log  
-auth-01.task.log
-auth-01.worker1.log
+- auth-01.log
+- auth-01.uwsgi.log
+- auth-01.catalog.consumer.log  
+- auth-01.catalog.log  
+- auth-01.scheduler.log  
+- auth-01.task.log
+- auth-01.worker1.log
 
 ```
 $ tail -f /tmp/auth.log
