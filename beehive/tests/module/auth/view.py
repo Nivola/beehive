@@ -453,5 +453,9 @@ class AuthTestCase(BeehiveTestCase):
         self.get('/v1.0/nas/objects/perms/{oid}', params={'oid': oid})
 
 
+def run(args):
+    runtest(AuthTestCase, tests, args)
+
+
 if __name__ == '__main__':
-    runtest(AuthTestCase, tests)
+    run({})

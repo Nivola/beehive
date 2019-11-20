@@ -5,7 +5,7 @@ __beehive__ is a project that contains tha core of the nivola cmp platform.
 Software parameters and their meaning.
 
 ## Prerequisites
-Fundamental requirements is python 3.5>.
+Fundamental requirements is python 2.7.x or python 3.5>.
 
 Required middleware:
 
@@ -33,21 +33,19 @@ $ pip install -U git+https://gitlab.csi.it/nivola/cmp3/beecell.git@devel
 $ pip install -U git+https://gitlab.csi.it/nivola/cmp2/beehive.git@devel
 ```
 
-### Post configuration
-
-#### Init auth module
+### Init auth module
 
 ```
 $ python /tmp/beehive-py2-test-env/bin/console.py init auth
 ```
 
-#### Run auth server
+### Run auth server
 
 ```
 $ python /tmp/beehive-py2-test-env/bin/console.py start auth
 ```
 
-##### Inspect server logs
+#### Inspect auth server logs
 
 - auth-01.log
 - auth-01.uwsgi.log
@@ -59,17 +57,18 @@ $ python /tmp/beehive-py2-test-env/bin/console.py start auth
 
 ```
 $ tail -f /tmp/auth.log
-
 ```
 
-##### Make some simple test
+### Test auth server
+
+#### Make some simple test
 
 ```
 $ curl http://localhost:8080/v1.0/server/ping
 $ curl http://localhost:8080/v1.0/server
 ```
 
-##### Make some interesting test
+#### Make some interesting test
 
 Create an authentication token:
 
@@ -86,46 +85,77 @@ $ python /tmp/beehive-py2-test-env/bin/console.py get-tokens <token> <seckey>
 $ python /tmp/beehive-py2-test-env/bin/console.py get-users <token> <seckey>
 ```
 
-#### Stop auth server
+### Init event module
 
 ```
-$ python /tmp/beehive-py2-test-env/bin/console.py stop auth
+$ python /tmp/beehive-py2-test-env/bin/console.py init event
 ```
 
-#### Remove servers database configuration
+### Run event server
 
 ```
-$ python /tmp/beehive-py2-test-env/bin/console.py drop
+$ python /tmp/beehive-py2-test-env/bin/console.py start event
 ```
 
-## Getting Started
-Instructions useful to deploy software on a simple environment (local machine or simple server configuration infrastructure).
+#### Inspect event server logs
+
+- event-01.log
+- event-01.uwsgi.log
+- auth-01.catalog.consumer.log  
+- auth-01.catalog.log  
+- auth-01.scheduler.log  
+- auth-01.task.log
+- auth-01.worker1.log
 
 ## Running the tests
 Results of vulnerability assessment and/or penetration test.
 
-- Activate virtual env
+Activate virtual env:
 
 ```
 $ source /tmp/beehive-py2-test-env/bin/activate
 ```
 
-- Open tests directory __/tmp/beehive-py2-test-env/lib/python2.7/site-packages/beehive/tests__
-- Copy file beehive.yml from /tmp/beehive-py2-test-env/share/test in your home directory. Open the file and set 
-  correctly all the <BLANK> variables.
-- Run some tests:
+Open tests directory __/tmp/beehive-py2-test-env/lib/python2.7/site-packages/beehive/tests__
 
-Test log can be seen in the home directory. Files: __test.run__ and __test.log__
+Copy file beehive.yml from /tmp/beehive-py2-test-env/share/test in your home directory. Open the file and set 
+  correctly all the <BLANK> variables.
+
+Run tests:
+
+Test log can be seen in the home directory. 
+Files: 
+- __test.run__ 
+- __test.log__
 
 ```
 $ python module/basic/view.py conf=/tmp/beehive-py2-test-env/share/test/beehive.yml
 $ python module/auth/view_keyauth.py conf=/tmp/beehive-py2-test-env/share/test/beehive.yml
 $ python module/auth/view.py conf=/tmp/beehive-py2-test-env/share/test/beehive.yml user=admin
 $ python module/catalog/view.py conf=/tmp/beehive-py2-test-env/share/test/beehive.yml user=admin
-
-
+$ python module/scheduler/view.py conf=/tmp/beehive-py2-test-env/share/test/beehive.yml user=admin
 ```
 
+
+## Administration
+
+### Stop auth server
+
+```
+$ python /tmp/beehive-py2-test-env/bin/console.py stop auth-01
+```
+
+### Stop event server
+
+```
+$ python /tmp/beehive-py2-test-env/bin/console.py stop event-01
+```
+
+### Remove current installation
+
+```
+$ python /tmp/beehive-py2-test-env/bin/console.py drop
+```
 
 
 ## Versioning

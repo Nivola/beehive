@@ -26,7 +26,7 @@ MYSQL_AUTH_USER = 'GRANT ALL ON {schema}.* TO `{user}`@`{host}`; FLUSH PRIVILEGE
 
 
 def run_cmd(cmd, trace=False):
-    click.echo(cmd)
+    # click.echo(cmd)
     out = os.popen(cmd).read()
     if trace is True:
         print(out)
