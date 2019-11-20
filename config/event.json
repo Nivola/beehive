@@ -22,7 +22,7 @@
     ],
     "api":{
         "endpoint":["http://localhost:8080"],
-        "user":"admin",
+        "user":"admin@local",
         "pwd":"admin",
         "catalog":"beehive-internal"
     }
