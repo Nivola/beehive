@@ -3,11 +3,14 @@
 #
 # (C) Copyright 2018-2019 CSI-Piemonte
 import json
+import logging
+
 import click
 import os
 from sys import prefix
 import requests
 
+from beecell.logger import LoggerHelper
 from beehive.common.apiclient import BeehiveApiClient
 from beehive.common.helper import BeehiveHelper
 
@@ -167,4 +170,10 @@ def get_users(token, seckey):
 
 
 if __name__ == '__main__':
+    loggers = [
+        logging.getLogger('beehive'),
+        logging.getLogger('beecell'),
+    ]
+    LoggerHelper.simple_handler(loggers, logging.DEBUG, frmt='[%(asctime)s - %(message)s')
+
     cli()
