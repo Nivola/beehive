@@ -3,20 +3,11 @@
 # (C) Copyright 2018-2019 CSI-Piemonte
 
 from sys import argv
-from six import PY2
 from collections import OrderedDict
 
 
 def configure_server():
-    virtualenv = argv[1:][0]
     config_file = argv[1:][1]
-
-    activate_this = '%s/bin/activate_this.py' % virtualenv
-    if PY2:
-        execfile(activate_this, dict(__file__=activate_this))
-    else:
-        import runpy
-        file_globals = runpy.run_path(activate_this)
 
     from six.moves.configparser import RawConfigParser
 
