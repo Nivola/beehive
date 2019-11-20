@@ -16,7 +16,7 @@ MYSQL_INIT = [
     {'schema': 'auth', 'user': 'auth', 'pwd': 'auth'},
     {'schema': 'event', 'user': 'event', 'pwd': 'event'},
 ]
-BASE_MYSQL_CMD = 'mysql -u root'
+BASE_MYSQL_CMD = 'mysql -u root '
 MYSQL_PWD = '-p %s'
 MYSQL_CREATE_SCHEMA = "CREATE SCHEMA IF NOT EXISTS `{schema}` DEFAULT CHARACTER SET latin1;"
 MYSQL_DROP_SCHEMA = "DROP SCHEMA IF EXISTS `{schema}`;"
