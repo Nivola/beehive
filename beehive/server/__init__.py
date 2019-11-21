@@ -25,6 +25,8 @@ def configure_server():
     params['task_module'] = params.get('task_module', '').split('\n')
     params['api_module'] = params.get('api_module', '').split('\n')
     params['api_plugin'] = params.get('api_plugin', '').split('\n')
+    params['event_handler'] = params.get('event_handler', '').split('\n')
+
     # if 'api_plugin' in params:
     #     params['api_plugin'] = params['api_plugin'].split('\n')
 
