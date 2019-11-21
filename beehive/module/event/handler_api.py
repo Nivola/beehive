@@ -18,7 +18,11 @@ class ApiEventHandler(EventHandler):
 
         # internal logger
         self.logger2 = logging.getLogger('ApiEventHandler')
-        log_path = '/var/log/%s/%s' % (params['api_package'], params['api_env'])
+
+        log_path = params.get('api_log', None)
+        if log_path is None:
+            log_path = '/var/log/%s/%s' % (params['api_package'], params['api_env'])
+
         logname = '%s/apis' % log_path
         logger_file = '%s.log' % logname
         loggers = [self.logger2]
