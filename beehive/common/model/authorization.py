@@ -663,7 +663,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             sysobj = SysObject(obj[0], obj[1], desc=obj[2])
             # session.add(sysobj)
             items.append(sysobj)
-            # session.flush()
+            session.flush()
             self.logger.debug('Add system object: %s' % sysobj)
             
             # add permissions

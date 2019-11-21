@@ -7,19 +7,19 @@ import ujson as json
 
 uid = None
 seckey = None
-task_id = 'd124ef29-7c57-423e-b6d9-b72d519d7600'
+task_id = '4dc35bd0-5494-4f54-8f52-4e8e0b3fc752'
 schedule_id = None
 
 tests = [
     'test_ping_task_manager',
-    'test_stat_task_manager',
-    'test_report_task_manager',
-    'test_queues_task_manager',
-    'test_get_task_definitions',
+    # 'test_stat_task_manager',
+    # 'test_report_task_manager',
+    # 'test_queues_task_manager',
+    # 'test_get_task_definitions',
+
     # 'test_run_job_test',
     # 'test_get_all_tasks',
     # 'test_count_all_tasks',
-    # 'test_run_job_test',
     # 'test_get_task',
     # 'test_get_task_graph',
     # 'test_delete_task',
@@ -58,7 +58,7 @@ class SchedulerAPITestCase(BeehiveTestCase):
         self.get('/v1.0/nas/worker/queues')
 
     def test_get_all_tasks(self):
-        self.get('/v1.0/nas/worker/tasks')
+        self.get('/v1.0/nas/worker/tasks', query={'elapsed': 3600})
 
     def test_count_all_tasks(self):
         self.get('/v1.0/nas/worker/tasks/count')
@@ -84,7 +84,8 @@ class SchedulerAPITestCase(BeehiveTestCase):
     def test_run_job_test(self):
         global task_id
         data = {'x': 2, 'y': 234, 'numbers': [2, 78, 45, 90], 'mul_numbers':[]}
-        res = self.delete('/v1.0/nas/worker/tasks/test', data=data)
+        res = self.post('/v1.0/nas/worker/tasks/test', data=data)
+        self.logger.debug(res)
         self.wait_job(res['jobid'], delta=1, accepted_state='SUCCESS')
         task_id = res['jobid']
 
@@ -92,51 +93,41 @@ class SchedulerAPITestCase(BeehiveTestCase):
     # scheduler
     #
     def test_get_scheduler_entries(self):
-        self.get('/v1.0/nas/providers')
-
-        data = ''
-        uri = '/v1.0/nas/scheduler/entries'
-        res = self.call(self.module, uri, 'get', data=data, **self.users['admin'])
+        res = self.get('/v1.0/nas/scheduler/entries')
         global schedule_id
         schedule_id = res['schedules'][0]['name']
 
     def test_get_scheduler_entry(self):
-        self.get('/v1.0/nas/providers')
-
         global schedule_id
-        data = ''
-        uri = '/v1.0/nas/scheduler/entries/%s' % schedule_id
-        res = self.call(self.module, uri, 'get', data=data, **self.users['admin'])
+        self.get('/v1.0/nas/scheduler/entries/%s' % schedule_id)
 
     def test_create_scheduler_entries(self):
-        self.get('/v1.0/nas/providers')
-
         data = {
-            'name':'celery.backend_cleanup',
+            'name': 'celery.backend_cleanup',
             'task': 'celery.backend_cleanup',
-            'schedule': {'type':'crontab',
-                        'minute':2,
-                        'hour':'*',
-                        'day_of_week':'*',
-                        'day_of_month':'*',
-                        'month_of_year':'*'},
+            'schedule': {
+                'type': 'crontab',
+                'minute': 2,
+                'hour': '*',
+                'day_of_week': '*',
+                'day_of_month': '*',
+                'month_of_year': '*'
+            },
             'options': {'expires': 60}
         }
-        data = {
-            'name':'celery.backend_cleanup',
-            'task': 'celery.backend_cleanup',
-            'schedule': {'type':'timedelta',
-                        'minutes':1},
-            'options': {'expires': 60}
-        }
-        uri = '/v1.0/nas/scheduler/entries'
-        self.call(self.module, uri, 'post', data={'schedule':data}, **self.users['admin'])
+        # data = {
+        #     'name': 'celery.backend_cleanup',
+        #     'task': 'celery.backend_cleanup',
+        #     'schedule': {
+        #         'type': 'timedelta',
+        #         'minutes': 1
+        #     },
+        #     'options': {'expires': 60}
+        # }
+        self.post('/v1.0/nas/scheduler/entries', data={'schedule': data})
 
     def test_delete_scheduler_entry(self):
-        self.get('/v1.0/nas/providers')
-
-        uri = '/v1.0/nas/scheduler/entries/%s' % 'celery.backend_cleanup'
-        self.call(self.module, uri, 'delete', data='', **self.users['admin'])
+        self.delete('/v1.0/nas/scheduler/entries/%s' % 'celery.backend_cleanup')
 
 
 def run(args):

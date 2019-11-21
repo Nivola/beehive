@@ -88,7 +88,6 @@ class GetSchedulerEntry(TaskApiView):
         return resp
 
 
-## create
 class CreateSchedulerEntryParamRequestSchema(Schema):
     name = fields.String(required=True, default='discover')
     task = fields.String(required=True, default='tasks.discover_vsphere')
@@ -142,9 +141,7 @@ class CreateSchedulerEntry(TaskApiView):
         # get schedule
         schedule = get_value(data, 'schedule', None, exception=True)
         
-        resp = scheduler.create_update_entry(name, task, schedule, 
-                                             args=args, kwargs=kwargs,
-                                             options=options, 
+        resp = scheduler.create_update_entry(name, task, schedule, args=args, kwargs=kwargs, options=options,
                                              relative=relative)
         return {'name': name}, 202
 

@@ -219,8 +219,8 @@ class TaskResult(object):
 
         # store task
         TaskResult.store(task_id, name=task.name, hostname=task.request.hostname, args=vargs, kwargs=kwargs,
-                         status='STARTING', retval=None, childs=[], traceback=None, inner_type=task.inner_type,
-                         msg=None, jobs=None)
+                         status='STARTING', retval=None, childs=[], traceback=None,
+                         inner_type=getattr(task, 'inner_type', None), msg=None, jobs=None)
 
     @staticmethod
     def task_postrun(**args):
@@ -270,15 +270,14 @@ class TaskResult(object):
 
         # reset status for JOB task to PROGRESS when status is SUCCESS
         # status SUCCESS will be set when the last child task end
-        # if task.inner_type == 'JOB' and task_local.opid == task_id and \
-        #   status == 'SUCCESS':
-        if task.inner_type == 'JOB' and status == 'SUCCESS':
+        inner_type = getattr(task, 'inner_type', None)
+        if inner_type == 'JOB' and status == 'SUCCESS':
             status = 'PROGRESS'
 
         # store task
         TaskResult.store(task_id, name=task.name, hostname=task.request.hostname, args=vargs, kwargs=kwargs,
                          status=status, retval=retval, start_time=None, stop_time=stop_time, childs=set(childs),
-                         traceback=None, inner_type=task.inner_type, msg=None, jobs=jobs)
+                         traceback=None, inner_type=inner_type, msg=None, jobs=jobs)
 
     @staticmethod
     def task_failure(**args):

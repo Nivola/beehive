@@ -130,7 +130,6 @@ class BeehiveApp(Flask):
             logger,
             logging.getLogger('oauthlib'),
             logging.getLogger('beehive'),
-            logging.getLogger('beehive.db'),
             logging.getLogger('beecell'),
             logging.getLogger('beedrones'),
             logging.getLogger('beehive_oauth2'),
@@ -149,12 +148,6 @@ class BeehiveApp(Flask):
         #     logging.getLogger('sqlalchemy.pool')
         # ]
         # LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, file_name)
-        #
-        # # performance logging
-        # file_name = '%s/%s.watch' % (self.log_path, logname)
-        # file_name = '%s/beehive.watch' % (self.log_path)
-        # loggers = [logging.getLogger('beecell.perf')]
-        # LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, file_name, frmt='%(asctime)s - %(message)s')
 
     def setup_additional_loggers(self, elasticsearch, level=LoggerHelper.DEBUG, tags=[], **custom_fields):
         """Setup loggers

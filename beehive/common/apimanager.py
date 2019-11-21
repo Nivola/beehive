@@ -788,7 +788,8 @@ class ApiManager(object):
                         # create instance of catalog producer
                         from beehive.module.catalog.producer import CatalogProducerRedis
                         self.catalog_producer = CatalogProducerRedis(self.redis_catalog_uri, self.redis_catalog_channel)
-                        self.logger.info('Configure queue %s on %s' % (self.redis_catalog_channel, self.redis_catalog_uri))
+                        self.logger.info('Configure queue %s on %s' % (self.redis_catalog_channel,
+                                                                       self.redis_catalog_uri))
                         self.logger.info('Configure catalog queue - CONFIGURED')
                     else:
                         self.logger.warning('Configure catalog queue - NOT CONFIGURED')
@@ -941,8 +942,8 @@ class ApiManager(object):
         catalog = self.catalog
         service = self.app_subsytem
         uri = self.app_uri        
-        self.catalog_producer.send(self.app_endpoint_id, self.app_desc, service, catalog, uri)
-        self.logger.info('Register %s instance in catalog' % self.app_endpoint_id)
+        self.catalog_producer.send_sync(self.app_endpoint_id, self.app_desc, service, catalog, uri)
+        # self.logger.info('Register %s instance in catalog' % self.app_endpoint_id)
             
     def register_monitor(self):
         """Register instance in monitor

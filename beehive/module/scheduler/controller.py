@@ -204,28 +204,28 @@ class Scheduler(ApiObject):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=404)
 
-    @trace(op='view')
-    def get_entries2(self, name=None):
-        """Get scheduler entries.
-
-        :param name: entry name
-        :return: list of (name, entry data) pairs.
-        :rtype: list
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
-        """
-        self.verify_permisssions('view')
-
-        try:
-            if name is not None:
-                entries = [(name, self.redis_entries.get(name))]
-            else:
-                entries = self.redis_entries.items()
-            self.logger.warn(self.redis_entries)
-            self.logger.info('Get scheduler entries: %s' % entries)
-            return entries
-        except Exception as ex:
-            self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=404)
+    # @trace(op='view')
+    # def get_entries2(self, name=None):
+    #     """Get scheduler entries.
+    #
+    #     :param name: entry name
+    #     :return: list of (name, entry data) pairs.
+    #     :rtype: list
+    #     :raises ApiManagerError: raise :class:`.ApiManagerError`
+    #     """
+    #     self.verify_permisssions('view')
+    #
+    #     try:
+    #         if name is not None:
+    #             entries = [(name, self.redis_entries.get(name))]
+    #         else:
+    #             entries = self.redis_entries.items()
+    #         self.logger.warn(self.redis_entries)
+    #         self.logger.info('Get scheduler entries: %s' % entries)
+    #         return entries
+    #     except Exception as ex:
+    #         self.logger.error(ex, exc_info=1)
+    #         raise ApiManagerError(ex, code=404)
 
     @trace(op='delete')
     def remove_entry(self, name):
@@ -307,6 +307,10 @@ class TaskManager(ApiObject):
             self.control = None
             self.prefix = ''
             self.prefix_base = ''
+
+        self.logger.warning(self.hostname)
+        self.logger.warning(self.prefix)
+        self.logger.warning(self.prefix_base)
 
         self.expire = float(self.api_manager.params.get('expire', 0))
 
@@ -472,9 +476,6 @@ class TaskManager(ApiObject):
                     val['start_time'] = self.__convert_timestamp(start_time)
                     
                     # task status
-                    # if tasktype == 'JOB':
-                    #    status = self.query_chain_status(tid)[2]            
-
                     available_ttypes = ['JOB', 'JOBTASK', 'TASK']
                     ttypes = available_ttypes
 
@@ -483,7 +484,6 @@ class TaskManager(ApiObject):
 
                     if tasktype in ttypes:
                         res.append(val)
-                        # res = AsyncResult(key, app=task_manager).get()
             
                     # sort task by date
                     res = sorted(res, key=lambda task: task['start_time'])
@@ -544,9 +544,6 @@ class TaskManager(ApiObject):
                     val['start_time'] = self.__convert_timestamp(start_time)
 
                     # task status
-                    # if tasktype == 'JOB':
-                    #    status = self.query_chain_status(tid)[2]
-
                     if tasktype in ['JOB', 'JOBTASK', 'TASK']:
                         res.append(val)
                         # res = AsyncResult(key, app=task_manager).get()
@@ -602,15 +599,7 @@ class TaskManager(ApiObject):
         except RedisManagerError as ex:
             raise ApiManagerError('Task %s not found' % task_id, code=404)
 
-        return task_data, task_ttl 
-        
-        # try:            
-        #     keys = manager.inspect(pattern=self.prefix + task_id, debug=False)
-        #     data = manager.query(keys, ttl=True)[self.prefix + task_id]            
-        # except Exception:
-        #     err = 'Task %s not found' % task_id
-        #     self.logger.error(err, exc_info=1)
-        #     raise ApiManagerError(err, code=404)
+        return task_data, task_ttl
 
     def _get_task_info(self, task_id):
         """ """
@@ -726,26 +715,10 @@ class TaskManager(ApiObject):
         self.verify_permisssions('view')     
         
         res = []
-        
-        # try:
-        #     res = []
-        #     manager = self.controller.redis_taskmanager
-        #     # keys = manager.inspect(pattern=self.prefix + task_id, debug=False)
-        #     # data = manager.query(keys, ttl=True)[self.prefix + task_id]
-        # 
-        #     task_data = manager.get(self.prefix + task_id)
-        #     task_ttl = manager.ttl(self.prefix + task_id)
-        # except Exception:
-        #     err = 'Task %s not found' % task_id
-        #     self.logger.error(err, exc_info=1)
-        #     raise ApiManagerError(err, code=404)
-
         task_data, task_ttl = self.__get_redis_task(task_id)
             
         try:
             # get task info and time to live
-            # val = json.loads(data[0])
-            # ttl = data[1]
             val = json.loads(task_data)
             ttl = task_ttl
             
@@ -778,7 +751,6 @@ class TaskManager(ApiObject):
                             first_child = self._get_task_info(first_child_id)
                             first_child['inner_type'] = 'start'
                             childs_index = {first_child_id: first_child}
-                            # self._get_task_childs(childs_index, first_child)
                             self._get_task_childs(childs_index, first_child)
 
                             # sort childs by date
@@ -818,22 +790,10 @@ class TaskManager(ApiObject):
 
         graph_data = None
 
-        # try:
-        #     manager = self.controller.redis_taskmanager
-        #     # keys = manager.inspect(pattern=self.prefix + task_id, debug=False)
-        #     # data = manager.query(keys, ttl=True)[self.prefix + task_id]
-        #
-        #     task_data = manager.get(self.prefix + task_id)
-        # except Exception:
-        #     err = 'Task %s not found' % task_id
-        #     self.logger.error(err, exc_info=1)
-        #     raise ApiManagerError(err, code=404)
-
         task_data, task_ttl = self.__get_redis_task(task_id)
 
         try:
             # get task info and time to live
-            # val = json.loads(data[0])
             val = json.loads(task_data)
 
             childs = val['children']
@@ -906,7 +866,6 @@ class TaskManager(ApiObject):
             childrens = res.get('children', [])
             for child_id in childrens:
                 self._delete_task_child(child_id)
-                # task_name = 'celery-task-meta-%s' % c.task_id
                 task_name = self.prefix + child_id
                 res = manager.delete(pattern=task_name)
                 self.logger.debug('Delete task instance %s: %s' % (child_id, res))
@@ -932,7 +891,6 @@ class TaskManager(ApiObject):
             
             # delete task instance
             manager = self.controller.redis_taskmanager
-            # task_name = 'celery-task-meta2-%s' % task_id
             task_name = self.prefix + task_id
             res = manager.delete(pattern=task_name)
             self.logger.debug('Delete task instance %s: %s' % (task_id, res))
@@ -940,43 +898,6 @@ class TaskManager(ApiObject):
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
-    
-    '''
-    @trace(op='view')
-    def revoke_task(self, task_id):
-        """Tell all (or specific) workers to revoke a task by id.
-        
-        :return: 
-        :rtype: dict        
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
-        """
-        try:
-            res = task_manager.control.revoke(task_id, 
-                                              terminate=True, 
-                                              signal='SIGKILL')
-            self.logger.debug('Revoke task %s: %s' % (task_id, res))
-            return res
-        except Exception as ex:
-            self.logger.error(ex)
-            raise ApiManagerError(ex, code=400)
-        
-    @trace(op='view')
-    def time_limit_task(self, task_name, limit):
-        """Tell all (or specific) workers to set time limits for a task by type.
-        
-        :param task_name: type of task
-        :param limit: time limit to set
-        :return: 
-        :rtype: dict        
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
-        """
-        try:
-            res = task_manager.control.time_limit(task_name, limit)
-            self.logger.debug('Set task %s time limit: %s' % (task_name, res))
-            return res
-        except Exception as ex:
-            self.logger.error(ex)
-            raise ApiManagerError(ex, code=400)'''
 
     @trace(op='view')
     def get_active_queue(self):

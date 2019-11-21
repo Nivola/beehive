@@ -11,6 +11,9 @@ from beehive.module.catalog.common import CatalogEndpoint
 from beecell.db.manager import RedisManager
 from re import match
 
+
+logger = getLogger(__name__)
+
     
 class CatalogProducer(object):
     def __init__(self):
@@ -68,7 +71,7 @@ class CatalogProducerRedis(CatalogProducer):
     def _send(self, name, desc, service, catalog, uri):
         try:
             # generate endpoint
-            endpoint = CatalogEndpoint(name, desc, service, catalog, uri) 
+            endpoint = CatalogEndpoint(name, desc, service, catalog, uri)
             with producers[self.conn].acquire() as producer:
                 msg = endpoint.dict()
                 producer.publish(msg,

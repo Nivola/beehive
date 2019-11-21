@@ -53,8 +53,8 @@ class CatalogConsumer(ConsumerMixin):
             uri = endpoint['uri']
             
             catalog_obj = self.manager.get_entity(ModelCatalog, catalog)
-            
-            try:
+
+            if self.manager.exist_entity(ModelEndpoint, name) is True:
                 endpoint = self.manager.get_entity(ModelEndpoint, name)
                 self.manager.update_endpoint(oid=endpoint.id,
                                              name=name, 
@@ -63,16 +63,15 @@ class CatalogConsumer(ConsumerMixin):
                                              catalog_id=catalog_obj.id, 
                                              uri=uri)
                 self.logger.debug('Update endpoint : %s' % endpoint)
-            except QueryError:
+            else:
                 objid = '%s//%s' % (catalog_obj.objid, id_gen())
                 res = self.manager.add_endpoint(objid, name, service, desc, catalog_obj.id, uri, active=True)
                 controller = CatalogController(None)
                 # create object and permission
-                CatalogEndpoint(controller, oid=res.id).\
-                    register_object(objid.split('//'), desc=endpoint['desc'])
-                self.logger.debug('Store endpoint : %s' % endpoint)
+                CatalogEndpoint(controller, oid=res.id).register_object(objid.split('//'), desc=endpoint['desc'])
+                self.logger.debug('Create endpoint : %s' % endpoint)
         except (TransactionError, Exception) as ex:
-            self.logger.error('Error storing node : %s' % ex, exc_info=1)
+            self.logger.error('Error storing endpoint: %s' % ex, exc_info=1)
         finally:
             if session is not None:
                 self.db_manager.release_session(operation.session)
@@ -125,11 +124,6 @@ def start_catalog_consumer(params):
     logger_file = '%s.log' % logname
     loggers = [getLogger(), logger]
     LoggerHelper.rotatingfile_handler(loggers, logger_level, logger_file)
-
-    # performance logging
-    loggers = [getLogger('beecell.perf')]
-    logger_file = '%s/%s.watch' % (log_path, params['api_id'])
-    LoggerHelper.rotatingfile_handler(loggers, DEBUG, logger_file, frmt='%(asctime)s - %(message)s')
 
     # setup api manager
     api_manager = ApiManager(params)
