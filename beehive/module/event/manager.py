@@ -184,8 +184,7 @@ def start_event_consumer(params):
 
     # get event handlers
     event_handlers = params.pop('event_handler', [])
-    print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
-    print(event_handlers)
+
     # setup api manager
     api_manager = ApiManager(params)
     api_manager.configure()
