@@ -56,7 +56,7 @@ $ python /tmp/beehive-py2-test-env/bin/console.py start auth
 - auth-01.worker1.log
 
 ```
-$ tail -f /tmp/auth.log
+$ tail -f /tmp/auth-01.log
 ```
 
 ### Test auth server
@@ -106,6 +106,20 @@ $ python /tmp/beehive-py2-test-env/bin/console.py start event
 - auth-01.scheduler.log  
 - auth-01.task.log
 - auth-01.worker1.log
+
+```
+$ tail -f /tmp/event-01.log
+```
+
+### Test event server
+
+#### Make some simple test
+
+```
+$ curl http://localhost:8081/v1.0/server/ping
+$ curl http://localhost:8081/v1.0/server
+```
+
 
 ## Running the tests
 Results of vulnerability assessment and/or penetration test.
