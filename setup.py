@@ -101,7 +101,7 @@ if __name__ == '__main__':
         ],
         package_data={},
         install_requires=install_requires([
-            "SQLAlchemy==1.3.7",
+            "sqlalchemy==1.3.7",
             "Flask==1.1.1",
             "Flask-Babel==0.12.2",
             "Flask-Login==0.4.1",

@@ -3,29 +3,25 @@
 # (C) Copyright 2018-2019 CSI-Piemonte
 
 import inspect
-import ujson as json
 import logging
 import datetime
-from six import b
 import bcrypt
-from beecell.auth import AuthDbManagerError, AbstractAuthDbManager
-from sqlalchemy import Column, Integer, String, Boolean, Table, ForeignKey, DateTime
+from beecell.auth import AbstractAuthDbManager
+from sqlalchemy import Column, Integer, String, Table, ForeignKey, DateTime
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy import create_engine, exc
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func
 from sqlalchemy.sql import text
-from beecell.perf import watch
 from beecell.simple import truncate, id_gen, random_password, is_encrypted
 from beecell.db import ModelError, QueryError
-from uuid import uuid4
-from beehive.common.data import operation, query, transaction, decrypt_data, encrypt_data
+from beehive.common.data import query, transaction, decrypt_data
 from sqlalchemy.dialects import mysql
 
 Base = declarative_base()
 
 from beehive.common.model import AbstractDbManager, BaseEntity, PaginatedQueryGenerator
+
 
 logger = logging.getLogger(__name__)
 
@@ -197,7 +193,7 @@ class User(Base, BaseEntity):
         if password is not None:
             # generate new salt, and hash a password 
             # self.password = sha256_crypt.encrypt(password)
-            self.password = bcrypt.hashpw(b(password), bcrypt.gensalt(14))
+            self.password = bcrypt.hashpw(password, bcrypt.gensalt(14))
 
         self.secret = random_password(length=100)
         self.last_login = None
@@ -210,7 +206,7 @@ class User(Base, BaseEntity):
         if is_encrypted(self.password):
             res = (decrypt_data(self.password) == password)
         else:
-            res = bcrypt.checkpw(b(password), b(self.password))
+            res = bcrypt.checkpw(password, self.password)
         return res
 
     def _check_secret(self, secret):
@@ -1582,7 +1578,6 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         :param objid: authorization id
         :param name: name of the user
         :param active: set if user is active [default=True]
-        :param password: user password [optional]
         :param desc: user desc [default='']
         :param expiry_date: user expiry date [default=365 days]. Set using a datetime object
         :param members: List with User instances. [Optional]
@@ -2066,8 +2061,10 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         :raises TransactionError: raise :class:`TransactionError`
         """
         # generate new salt, and hash a password
-        if 'password' in kvargs and kvargs['password'] != None:
-            kvargs['password'] = bcrypt.hashpw(b(kvargs['password']), bcrypt.gensalt(14))
+        password = kvargs.get('password', None)
+        if password is not None:
+            password = password.encode('utf-8')
+            kvargs['password'] = bcrypt.hashpw(password, bcrypt.gensalt(14))
         res = self.update_entity(User, *args, **kvargs)
         return res  
     
@@ -2129,7 +2126,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         """
         session = self.get_session()
         user = self.get_user(oid)
-        secret=random_password(length=100)
+        secret = random_password(length=100)
         res = self.update_entity(User, oid=user.id, secret=secret)
         self.logger.debug('Update user %s secret' % oid)
         return res

@@ -47,6 +47,8 @@ $ python /tmp/beehive-py2-test-env/bin/console.py start auth
 
 #### Inspect auth server logs
 
+Open directory /tmp
+
 - auth-01.log
 - auth-01.uwsgi.log
 - auth-01.catalog.consumer.log  
@@ -99,13 +101,15 @@ $ python /tmp/beehive-py2-test-env/bin/console.py start event
 
 #### Inspect event server logs
 
+Open directory /tmp
+
 - event-01.log
 - event-01.uwsgi.log
-- auth-01.catalog.consumer.log  
-- auth-01.catalog.log  
-- auth-01.scheduler.log  
-- auth-01.task.log
-- auth-01.worker1.log
+- event-01.event.consumer.log  
+- event-01.event.log  
+- event-01.scheduler.log  
+- event-01.task.log
+- event-01.worker1.log
 
 ```
 $ tail -f /tmp/event-01.log
@@ -120,6 +124,12 @@ $ curl http://localhost:8081/v1.0/server/ping
 $ curl http://localhost:8081/v1.0/server
 ```
 
+### Inspect api and access logs
+
+Open directory /tmp
+
+- apis.log
+- accesses.log
 
 ## Running the tests
 Results of vulnerability assessment and/or penetration test.
