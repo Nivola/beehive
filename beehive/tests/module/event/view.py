@@ -12,85 +12,74 @@ oid = None
 tests = [
     'test_get_event_types',
     'test_get_event_entities',
-    
+
     'test_get_events',
-    # 'test_get_events_by_type',
-    # 'test_get_events_by_objtype',
-    # 'test_get_events_by_objdef',
-    # 'test_get_events_by_objid',
-    # 'test_get_events_by_date',
-    # 'test_get_events_by_source',
-    # 'test_get_events_by_data',
-    # 'test_get_event_by_id',
-    # 'test_get_event_by_eventid'
+    'test_get_events_by_type',
+    'test_get_events_by_objtype',
+    'test_get_events_by_objdef',
+    'test_get_events_by_objid',
+    'test_get_events_by_date',
+    'test_get_events_by_source',
+    'test_get_events_by_data',
+    'test_get_event_by_eventid'
 ]
 
 
 class EventTestCase(BeehiveTestCase):
     def setUp(self):
         BeehiveTestCase.setUp(self)
-        
+        self.module = 'event'
+        self.module_prefix = 'nes'
+        self.endpoint_service = 'event'
+
     def tearDown(self):
         BeehiveTestCase.tearDown(self)
     
     def test_get_event_types(self):
-        self.call('event', '/v1.0/nes/events/types', 'get', 
-                  **self.users['admin'])
+        self.get('/v1.0/nes/events/types')
 
     def test_get_event_entities(self):
-        self.call('event', '/v1.0/nes/events/entities', 'get', 
-                  **self.users['admin'])
+        self.get('/v1.0/nes/events/entities')
         
     def test_get_events(self):
-        self.call('event', '/v1.0/nes/events', 'get',
-                  query={'page':1},
-                  **self.users['admin'])        
-        
+        global event_id, date
+        res = self.get('/v1.0/nes/events', query={'page': 1})
+        events = res.get('events', [])
+        if len(events) > 0:
+            event = events[0]
+            event_id = event['event_id']
+            date = event['date'][:-7]
+
     def test_get_events_by_type(self):
-        self.call('event', '/v1.0/nes/events', 'get',
-                  query={'type':'internal'},
-                  **self.users['admin'])
+        self.get('/v1.0/nes/events', query={'type': 'API'})
         
     def test_get_events_by_objtype(self):
-        self.call('event', '/v1.0/nes/events', 'get',
-                  query={'objtype':'internal'},
-                  **self.users['admin'])
+        self.get('/v1.0/nes/events', query={'objtype': 'auth'})
         
     def test_get_events_by_objdef(self):
-        self.call('event', '/v1.0/nes/events', 'get',
-                  query={'objdef':'internal'},
-                  **self.users['admin'])
+        self.get('/v1.0/nes/events', query={'objtype': 'auth', 'objdef': 'Token'})
         
     def test_get_events_by_objid(self):
-        self.call('event', '/v1.0/nes/events', 'get',
-                  query={'objid':'internal'},
-                  **self.users['admin'])
+        self.get('/v1.0/nes/events', query={'objid': '*'})
         
     def test_get_events_by_date(self):
-        self.call('event', '/v1.0/nes/events', 'get',
-                  query={'date':'internal'},
-                  **self.users['admin'])
+        global date
+        self.get('/v1.0/nes/events', query={'date': date})
         
     def test_get_events_by_source(self):
-        self.call('event', '/v1.0/nes/events', 'get',
-                  query={'source':'internal'},
-                  **self.users['admin'])
+        self.get('/v1.0/nes/events', query={'source': 'internal'})
         
     def test_get_events_by_data(self):
-        self.call('event', '/v1.0/nes/events', 'get',
-                  query={'data':'internal'},
-                  **self.users['admin'])        
-        
-    def test_get_event_by_id(self):
-        self.call('event', '/v1.0/nes/events/{oid}', 'get',
-                  params={'oid':4}, 
-                  **self.users['admin'])
+        self.get('/v1.0/nes/events', query={'data': "'op': {'method': 'POST'}"})
         
     def test_get_event_by_eventid(self):
-        self.call('event', '/v1.0/nes/events/{oid}', 'get',
-                  params={'oid':4}, 
-                  **self.users['admin'])
+        global event_id
+        self.get('/v1.0/nes/events/{oid}', params={'oid': event_id})
+
+
+def run(args):
+    runtest(EventTestCase, tests, args)
 
 
 if __name__ == '__main__':
-    runtest(EventTestCase, tests)  
+    run({})

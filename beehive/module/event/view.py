@@ -2,8 +2,8 @@
 #
 # (C) Copyright 2018-2019 CSI-Piemonte
 
-from beehive.common.apimanager import ApiView, PaginatedRequestQuerySchema,\
-    PaginatedResponseSchema, SwaggerApiView, GetApiObjectRequestSchema
+from beehive.common.apimanager import ApiView, PaginatedRequestQuerySchema, \
+    PaginatedResponseSchema, SwaggerApiView, GetApiObjectRequestSchema, ApiManagerError
 from marshmallow import fields, Schema
 from marshmallow.validate import OneOf
 from beecell.swagger import SwaggerHelper
@@ -12,21 +12,19 @@ from beecell.swagger import SwaggerHelper
 #
 # event
 #
-## list
 class ListEventsRequestSchema(PaginatedRequestQuerySchema):   
-    type = fields.String(default='API', context='query')
-    objid = fields.String(default='3638282dh82//dhedhw7d8we', context='query')
-    objdef = fields.String(default='CatalogEndpoint', context='query')
-    objtype = fields.String(default='directory', context='query')
+    type = fields.String(default='API', context='query', description='event type')
+    objid = fields.String(default='3638282dh82//dhedhw7d8we', context='query', description='authorization object id')
+    objdef = fields.String(default='CatalogEndpoint', context='query', description='authorization object definition')
+    objtype = fields.String(default='directory', context='query', description='authorization object type')
     date = fields.DateTime(default='1985-04-12T23:20:50.52Z', context='query')
     datefrom = fields.DateTime(default='1985-04-12T23:20:50.52Z', context='query')
     dateto = fields.DateTime(default='1985-04-12T23:20:50.52Z', context='query')
-    source = fields.String(default='{}', context='query')
-    dest = fields.String(default='{}', context='query')
-    data = fields.String(default='{}', context='query')
-    field = fields.String(validate=OneOf(['id', 'uuid', 'objid', 'name'],
-                                         error='Field can be id, uuid, objid, name'),
-                          description='enitities list order field. Ex. id, uuid, name',
+    source = fields.String(default='{}', context='query', description='event source')
+    dest = fields.String(default='{}', context='query', description='event destination')
+    data = fields.String(default='{}', context='query', description='event data')
+    field = fields.String(validate=OneOf(['id', 'uuid', 'objid', 'name'], error='Field can be id, uuid, objid, name'),
+                          description='entities list order field. Ex. id, uuid, name',
                           default='id', example='id', missing='id', context='query')
 
 
@@ -66,7 +64,11 @@ class ListEvents(SwaggerApiView):
         """
         List events
         Call this api to list all the existing events
-        """            
+        """
+        objdef = data.get('objdef', None)
+        objtype = data.get('objtype', None)
+        if objdef is not None and objtype is None:
+            raise ApiManagerError('objdef filter param require also objtype')
         events, total = controller.get_events(**data)
         res = [r.info() for r in events]
         return self.format_paginated_response(res, 'events', total, **data)

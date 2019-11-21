@@ -2,33 +2,30 @@
 #
 # (C) Copyright 2018-2019 CSI-Piemonte
 
-from beehive.common.test import runtest, BeehiveTestCase, assert_exception
-import ujson as json
+from beehive.common.test import runtest, BeehiveTestCase
 
-uid = None
-seckey = None
 task_id = '4dc35bd0-5494-4f54-8f52-4e8e0b3fc752'
 schedule_id = None
 
 tests = [
     'test_ping_task_manager',
-    # 'test_stat_task_manager',
-    # 'test_report_task_manager',
-    # 'test_queues_task_manager',
-    # 'test_get_task_definitions',
+    'test_stat_task_manager',
+    'test_report_task_manager',
+    'test_queues_task_manager',
+    'test_get_task_definitions',
 
-    # 'test_run_job_test',
-    # 'test_get_all_tasks',
-    # 'test_count_all_tasks',
-    # 'test_get_task',
-    # 'test_get_task_graph',
-    # 'test_delete_task',
-    # 'test_delete_all_tasks',
+    'test_run_job_test',
+    'test_get_all_tasks',
+    'test_count_all_tasks',
+    'test_get_task',
+    'test_get_task_graph',
+    'test_delete_task',
+    'test_delete_all_tasks',
 
-    # 'test_create_scheduler_entries',
-    # 'test_get_scheduler_entries',
-    # 'test_get_scheduler_entry',
-    # 'test_delete_scheduler_entry',
+    'test_create_scheduler_entries',
+    'test_get_scheduler_entries',
+    'test_get_scheduler_entry',
+    'test_delete_scheduler_entry',
 ]
 
 
@@ -83,7 +80,7 @@ class SchedulerAPITestCase(BeehiveTestCase):
         
     def test_run_job_test(self):
         global task_id
-        data = {'x': 2, 'y': 234, 'numbers': [2, 78, 45, 90], 'mul_numbers':[]}
+        data = {'x': 2, 'y': 234, 'numbers': [2, 78, 45, 90], 'mul_numbers': []}
         res = self.post('/v1.0/nas/worker/tasks/test', data=data)
         self.logger.debug(res)
         self.wait_job(res['jobid'], delta=1, accepted_state='SUCCESS')

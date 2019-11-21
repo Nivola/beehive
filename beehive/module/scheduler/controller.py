@@ -330,8 +330,8 @@ class TaskManager(ApiObject):
         
         try:
             control = task_manager.control
-            res = control.ping([self.hostname], timeout=1.0)
-            # res = Control(task_manager).ping(timeout=2)
+            # res = control.ping([self.hostname], timeout=1.0)
+            res = control.ping(timeout=1.0)
             self.logger.debug('Ping task manager workers: %s' % res)
             resp = {}
             for item in res:
@@ -352,7 +352,8 @@ class TaskManager(ApiObject):
         self.verify_permisssions('use')
         
         try:
-            control = task_manager.control.inspect([self.hostname], timeout=1.0)
+            # control = task_manager.control.inspect([self.hostname], timeout=1.0)
+            control = task_manager.control.inspect(timeout=1.0)
             res = control.stats()
             self.logger.debug('Get task manager workers stats: %s' % res)
             return res
@@ -371,7 +372,8 @@ class TaskManager(ApiObject):
         
         self.verify_permisssions('use')
         try:
-            control = task_manager.control.inspect([self.hostname], timeout=1.0)
+            # control = task_manager.control.inspect([self.hostname], timeout=1.0)
+            control = task_manager.control.inspect(timeout=1.0)
             res = control.report()
             self.logger.debug('Get task manager report: %s' % res)
             return res
@@ -390,7 +392,8 @@ class TaskManager(ApiObject):
         self.verify_permisssions('use')
 
         try:
-            control = task_manager.control.inspect([self.hostname], timeout=1.0)
+            # control = task_manager.control.inspect([self.hostname], timeout=1.0)
+            control = task_manager.control.inspect(timeout=1.0)
             res = control.active_queues()
             self.logger.debug('Get task manager active queues: %s' % res)
             return res
@@ -409,7 +412,8 @@ class TaskManager(ApiObject):
         self.verify_permisssions('view')
         
         try:
-            control = task_manager.control.inspect([self.hostname], timeout=1.0)
+            # control = task_manager.control.inspect([self.hostname], timeout=1.0)
+            control = task_manager.control.inspect(timeout=1.0)
             res = control.registered()
             if res is None:
                 res = []
