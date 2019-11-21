@@ -197,6 +197,7 @@ def start_event_consumer(params):
         signal(sig, terminate)    
     
     with Connection(api_manager.redis_event_uri) as conn:
+        print(event_handlers)
         try:
             worker = EventConsumerRedis(conn, api_manager, event_handlers=event_handlers)
             logger.info('Start event consumer')
