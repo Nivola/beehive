@@ -195,7 +195,7 @@ def start_event_consumer(params):
     
     for sig in (SIGHUP, SIGABRT, SIGILL, SIGINT, SIGSEGV, SIGTERM, SIGQUIT):
         signal(sig, terminate)    
-    
+
     with Connection(api_manager.redis_event_uri) as conn:
         try:
             worker = EventConsumerRedis(conn, api_manager, event_handlers=event_handlers)
@@ -206,5 +206,5 @@ def start_event_consumer(params):
             worker.run()
         except KeyboardInterrupt:
             logger.info('Stop event consumer')
-            
+
     logger.info('Stop event consumer')

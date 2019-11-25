@@ -20,7 +20,7 @@ from beehive.common.task.canvas import signature
 class SchedulerController(ApiController):
     """Scheduler Module controller.
     """    
-    version = 'v1.0'    
+    version = 'v2.0'
     
     def __init__(self, module):
         ApiController.__init__(self, module)
@@ -29,15 +29,6 @@ class SchedulerController(ApiController):
         
     def add_service_class(self, name, version, service_class):
         self.service_classes.append(service_class)
-
-    '''
-    def init_object(self):
-        """Register object types, objects and permissions related to module.
-        Call this function when initialize system first time.
-        """
-        # register all child class
-        for child_class in self.child_classes:
-            child_class(self).init_object()'''
 
     def get_task_manager(self):
         return TaskManager(self)
@@ -397,6 +388,43 @@ class TaskManager(ApiObject):
             return []
 
     @trace(op='view')
+    def get_tasks(self, *args, **kvargs):
+        """Get tasks.
+
+        :param name: user name [optional]
+        :param names: user name list [optional]
+        :param desc: user desc [optional]
+        :param role: role name, id or uuid [optional]
+        :param group: group name, id or uuid [optional]
+        :param perms_N: list of permissions like objtype,subsystem,objid,action [optional]
+        :param active: user status [optional]
+        :param expiry_date: user expiry date. Use gg-mm-yyyy [optional]
+        :param email: email [optional]
+        :param page: users list page to show [default=0]
+        :param size: number of users to show in list per page [default=0]
+        :param order: sort order [default=DESC]
+        :param field: sort field [default=id]
+        :return: List of :class:`User`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
+        """
+
+        def get_entities(*args, **kvargs):
+            tasks, total = self.manager.get_users(*args, **kvargs)
+
+            return users, total
+
+        # check group filter
+        group = kvargs.get('group', None)
+
+        # search users by group
+        if group is not None:
+            kvargs['group_id'] = self.get_entity(Group, ModelGroup, group).oid
+            operation.authorize = False
+
+        res, total = self.get_paginated_entities(User, get_entities, *args, **kvargs)
+        return res, total
+
+    @trace(op='view')
     def get_all_tasks(self, elapsed=60, ttype=None, details=False):
         """Get all task of type TASK and JOB. Inner job task are not returned.
         
@@ -465,69 +493,6 @@ class TaskManager(ApiObject):
                     # sort task by date
                     res = sorted(res, key=lambda task: task['start_time'])
             
-            self.logger.debug('Get all tasks: %s' % truncate(res))
-            return res
-        except Exception as ex:
-            self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=404)
-
-    @trace(op='view')
-    def get_all_tasks2(self, details=False):
-        """Get all task of type TASK and JOB. Inner job task are not returned.
-
-        :return:
-        :rtype: dict
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
-        """
-        self.verify_permisssions('view')
-
-        try:
-            res = []
-            manager = self.controller.redis_taskmanager
-            keys = manager.inspect(pattern=self.prefix + '*', debug=False)
-            self.logger.debug('Get %s keys form redis' % len(keys))
-            self.logger.debug('Get %s keys form redis' % truncate(keys))
-            if details is False:
-                for key in keys:
-                    key = key[0].lstrip(self.prefix + '-')
-                    res.append(key)
-            else:
-                data = manager.query(keys, ttl=True)
-                for key, item in data.items():
-                    try:
-                        val = json.loads(item[0])
-                    except:
-                        val = {}
-                    ttl = item[1]
-
-                    tasktype = val.get('type', None)
-                    val.pop('trace', None)
-
-                    # add time to live
-                    val['ttl'] = ttl
-
-                    # add elapsed
-                    stop_time = val.get('stop_time', 0)
-                    start_time = val.get('start_time', 0)
-                    elapsed = 0
-                    stop_time_str = 0
-                    if start_time is not None and stop_time is not None:
-                        elapsed = stop_time - start_time
-                        stop_time_str = self.__convert_timestamp(stop_time)
-
-                    # add elapsed
-                    val['elapsed'] = elapsed
-                    val['stop_time'] = stop_time_str
-                    val['start_time'] = self.__convert_timestamp(start_time)
-
-                    # task status
-                    if tasktype in ['JOB', 'JOBTASK', 'TASK']:
-                        res.append(val)
-                        # res = AsyncResult(key, app=task_manager).get()
-
-                    # sort task by date
-                    res = sorted(res, key=lambda task: task['start_time'])
-
             self.logger.debug('Get all tasks: %s' % truncate(res))
             return res
         except Exception as ex:

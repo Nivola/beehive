@@ -15,15 +15,14 @@ import hashlib
 from uuid import uuid4
 from re import match
 from sqlalchemy.dialects import mysql
+from sqlalchemy import *
+from sqlalchemy.schema import DDLElement
+from sqlalchemy.ext import compiler
+
 
 Base = declarative_base()
 
 logger = logging.getLogger(__name__)
-
-
-from sqlalchemy import *
-from sqlalchemy.schema import DDLElement 
-from sqlalchemy.ext import compiler
 
 
 class CreateView(DDLElement):
@@ -186,7 +185,7 @@ class PermTag(Base):
     __table_args__ = {'mysql_engine': 'InnoDB'}
     
     id = Column(Integer, primary_key=True)
-    value = Column(String(100), unique = True)
+    value = Column(String(100), unique=True)
     explain = Column(String(400))
     creation_date = Column(DateTime())
     
@@ -229,6 +228,103 @@ class PermTagEntity(Base):
     
     def __repr__(self):
         return '<PermTagEntity(%s, %s, %s, %s)>' % (self.id, self.tag, self.entity, self.type)
+
+
+class SchedulerState(object):
+    PENDING = 'PENDING'
+    STARTED = 'STARTED'
+    SUCCESS = 'SUCCESS'
+    FAILURE = 'FAILURE'
+    RETRY = 'RETRY'
+    REVOKED = 'REVOKED'
+
+
+class SchedulerTask(Base):
+    __tablename__ = 'scheduler_task'
+    __table_args__ = {'mysql_engine': 'InnoDB'}
+
+    id = Column(Integer, primary_key=True)
+    uuid = Column(String(50), unique=True, index=True)
+    objtype = Column(String(100))
+    objdef = Column(String(200))
+    objid = Column(String(400))
+    name = Column(String(100))
+    parent = Column(Integer)
+    worker = Column(String(50))
+    args = Column(String(400))
+    kwargs = Column(String(400))
+    status = Column(String(20), index=True)
+    result = Column(String(400))
+    start_time = Column(mysql.DATETIME(fsp=6))
+    stop_time = Column(mysql.DATETIME(fsp=6))
+    counter = Column(Integer)
+
+    def __init__(self, task_id, status, start_time):
+        self.uuid = str(task_id)
+        self.objtype = None
+        self.objdef = None
+        self.objid = None
+        self.name = None
+        self.parent = None
+        self.worker = None
+        self.args = None
+        self.kwargs = None
+        self.status = status
+        self.result = None
+        self.start_time = start_time
+        self.stop_time = None
+        self.counter = 0
+
+    def __repr__(self):
+        return '<SchedulerTask(%s, %s, %s)>' % (self.id, self.uuid, self.name)
+
+
+class SchedulerStep(Base):
+    __tablename__ = 'scheduler_step'
+    __table_args__ = {'mysql_engine': 'InnoDB'}
+
+    id = Column(Integer, primary_key=True)
+    uuid = Column(String(50), unique=True, index=True)
+    name = Column(String(100))
+    task_id = Column(String(50), index=True)
+    status = Column(String(20))
+    result = Column(String(400))
+    start_time = Column(mysql.DATETIME(fsp=6))
+    stop_time = Column(mysql.DATETIME(fsp=6))
+
+    def __init__(self, task_id, name):
+        self.uuid = str(uuid4())
+        self.name = name
+        self.task_id = task_id
+        self.status = SchedulerState.STARTED
+        self.result = None
+        self.start_time = datetime.today()
+        self.stop_time = None
+
+    def __repr__(self):
+        return '<SchedulerStep(%s, %s, %s)>' % (self.id, self.uuid, self.name)
+
+
+class SchedulerTrace(Base):
+    __tablename__ = 'scheduler_trace'
+    __table_args__ = {'mysql_engine': 'InnoDB'}
+
+    id = Column(Integer, primary_key=True)
+    task_id = Column(String(50), index=True)
+    step_id = Column(String(50), index=True)
+    message = Column(String(400))
+    level = Column(String(10))
+    date = Column(mysql.DATETIME(fsp=6))
+
+    def __init__(self, task_id, step_id, message, level):
+        self.task_id = task_id
+        self.step_id = step_id
+        self.message = message
+        self.level = level
+        self.date = datetime.today()
+
+    def __repr__(self):
+        return '<SchedulerTrace(%s, %s, %s)>' % (self.task_id, self.step_id, self.level)
 
 
 class PaginatedQueryGenerator(object):
@@ -730,9 +826,9 @@ class AbstractDbManager(object):
             entity = self.query_entities(entityclass, session, name=oid, **kvargs)
 
         res = entity.one_or_none()
-        resp = True
-        if res is None:
-            resp = False
+        resp = False
+        if res is not None:
+            resp = True
 
         self.logger.debug2('Check entity %s by %s exists: %s' % (entityclass.__name__, search_field, resp))
         return resp
@@ -858,8 +954,8 @@ class AbstractDbManager(object):
         """Add an entity.
         
         :param entityclass: entity model class
-        :param value: entity value.
-        :param desc: desc
+        :param args: positional args
+        :param kvargs: key value args
         :return: new entity
         :rtype: Oauth2entity
         :raises TransactionError: raise :class:`TransactionError`
@@ -888,7 +984,14 @@ class AbstractDbManager(object):
         
         # get entity
         oid = kvargs.pop('oid', None)
-        query = self.query_entities(entityclass, session, oid=oid)
+        uuid = kvargs.pop('uuid', None)
+        if oid is not None:
+            query = self.query_entities(entityclass, session, oid=oid)
+        elif uuid is not None:
+            query = self.query_entities(entityclass, session, uuid=uuid)
+            oid = uuid
+        else:
+            raise ModelError('Neither oid nor uuid are been specified', code=400)
 
         # check entity exists
         entity = query.first()
@@ -902,7 +1005,8 @@ class AbstractDbManager(object):
                 kvargs.pop(k)
 
         # create data dict with update
-        kvargs['modification_date'] = datetime.today()
+        if getattr(entityclass, 'modification_date', None) is not None:
+            kvargs['modification_date'] = datetime.today()
 
         query.update(kvargs)
         session.flush()
@@ -939,7 +1043,7 @@ class AbstractDbManager(object):
         query.update(kvargs)
         session.flush()
 
-        self.logger.debug2('UPDATE NULL %s %s with data: %s' % (entityclass.__name__, oid, kvargs))
+        self.logger.debug2('Update null %s %s with data: %s' % (entityclass.__name__, oid, kvargs))
         return oid
 
     @transaction

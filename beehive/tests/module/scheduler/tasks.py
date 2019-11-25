@@ -24,7 +24,6 @@ class TaskTestCase(BeehiveTestCase):
     def test_run_jobtest(self):
         data = {'x': 2, 'y': 234, 'numbers': [2, 78, 45, 90]}
         task = jobtest.delay('123', **data)
-        print task.id, task.status
 
 
 def run(args):

@@ -168,7 +168,7 @@ class BeehiveTestCase(unittest.TestCase):
                 self.redis = redis.StrictRedis(host=rhost, port=int(rport), db=int(db))
         
         # celery broker
-        self.broker = cfg.get('broker')
+        self.worker = cfg.get('worker')
         
         # mysql connection
         self.db_uris = cfg.get('db-uris')  

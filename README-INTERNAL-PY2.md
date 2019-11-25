@@ -160,6 +160,7 @@ $ python module/catalog/view.py conf=/tmp/beehive-py2-test-env/share/test/beehiv
 $ python module/scheduler/view.py conf=/tmp/beehive-py2-test-env/share/test/beehive.yml user=admin
 $ python module/event/view.py conf=/tmp/beehive-py2-test-env/share/test/beehive.yml user=admin
 $ python module/event/producer.py conf=/tmp/beehive-py2-test-env/share/test/beehive.yml user=admin
+python module/scheduler_v2/tasks.py conf=/tmp/beehive-py2-test-env/share/test/beehive.yml user=admin
 ```
 
 

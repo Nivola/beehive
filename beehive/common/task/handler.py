@@ -316,16 +316,16 @@ class TaskResult(object):
                          jobs=None, failure=True)
 
 
-@task_prerun.connect
-def task_prerun(**args):
-    TaskResult.task_prerun(**args)
-
-
-@task_postrun.connect
-def task_postrun(**args):
-    TaskResult.task_postrun(**args)
-
-
-@task_failure.connect
-def task_failure(**args):
-    TaskResult.task_failure(**args)
+# @task_prerun.connect
+# def task_prerun(**args):
+#     TaskResult.task_prerun(**args)
+#
+#
+# @task_postrun.connect
+# def task_postrun(**args):
+#     TaskResult.task_postrun(**args)
+#
+#
+# @task_failure.connect
+# def task_failure(**args):
+#     TaskResult.task_failure(**args)

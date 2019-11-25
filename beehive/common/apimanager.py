@@ -118,7 +118,7 @@ class ApiManager(object):
     # logger = logging.getLogger('gibbon.cloudapi')
     
     def __init__(self, params, app=None, hostname=None):
-        self.logger = logging.getLogger(self.__class__.__module__+ '.' + self.__class__.__name__)
+        self.logger = logging.getLogger(self.__class__.__module__ + '.' + self.__class__.__name__)
         
         # configuration params
         self.params = params       
@@ -237,10 +237,8 @@ class ApiManager(object):
             pool_size = dbconf[2]
             max_overflow = dbconf[3]
             pool_recycle = dbconf[4]
-            self.db_manager = MysqlManager('db_manager01', db_uri, 
-                                           connect_timeout=connect_timeout)
-            self.db_manager.create_pool_engine(pool_size=pool_size, 
-                                               max_overflow=max_overflow, 
+            self.db_manager = MysqlManager('db_manager01', db_uri, connect_timeout=connect_timeout)
+            self.db_manager.create_pool_engine(pool_size=pool_size, max_overflow=max_overflow,
                                                pool_recycle=pool_recycle)
         except SqlManagerError as ex:
             self.logger.error(ex, exc_info=True)
@@ -254,8 +252,7 @@ class ApiManager(object):
         try:
             db_uri = dbconf[0]
             connect_timeout = dbconf[1]
-            self.db_manager = MysqlManager('db_manager01', db_uri, 
-                                           connect_timeout=connect_timeout)
+            self.db_manager = MysqlManager('db_manager01', db_uri, connect_timeout=connect_timeout)
             self.db_manager.create_simple_engine()
         except SqlManagerError as ex:
             self.logger.error(ex, exc_info=True)
@@ -287,8 +284,9 @@ class ApiManager(object):
     def release_session(self, dbsession=None):
         """release db session"""
         try:
-            self.db_manager.release_session(operation.session)
-            operation.session = None
+            if operation.session is not None:
+                self.db_manager.release_session(operation.session)
+                operation.session = None
         except SqlManagerError as e:
             raise ApiManagerError(e)
 

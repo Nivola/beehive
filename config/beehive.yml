@@ -9,7 +9,10 @@ db-uris:
 redis:
   uri:
   cluster:
-broker:
+worker:
+  result: redis://localhost:6379/0
+  broker: redis://localhost:6379/0
+  queue: celery.auth
 endpoints:
   auth: http://localhost:8080
   event: http://localhost:8081

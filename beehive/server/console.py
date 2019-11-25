@@ -71,10 +71,26 @@ def init(module, pwd, path, client):
             continue
         helper = BeehiveHelper()
         if path is None:
-            path = prefix + '/share/config'
+            path = os.path.abspath(__file__).replace('bin/console.py', 'share/config')
         config = path + '/{schema}.json'.format(schema=schema)
         res = helper.create_subsystem(config)
-        # click.echo(res)
+
+
+@cli.command()
+@click.argument('module')
+@click.option('--path', default=None, help='configuration files path')
+def update(module, path):
+    click.echo('Update the database')
+
+    for item in MYSQL_INIT:
+        schema = item.get('schema')
+        if schema != module:
+            continue
+        helper = BeehiveHelper()
+        if path is None:
+            path = os.path.abspath(__file__).replace('bin/console.py', 'share/config')
+        config = path + '/{schema}.json'.format(schema=schema)
+        res = helper.create_subsystem(config, update=True)
 
 
 @cli.command()

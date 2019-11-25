@@ -223,7 +223,7 @@ def jobtest_task4(self, options):
         raise ApiManagerError('Test error in internal job')
 
     res = 0
-    for n in xrange(10000):
+    for n in range(10000):
         res += n
     sleep(3)
     return res
@@ -236,5 +236,5 @@ def test(self, objid, params):
     """
     ops = self.get_options()
     self.set_shared_data(params)
-    logger.warn('$$$$$$$$$$$$$$$$$ hello $$$$$$$$$$$$$$$$$')
+    logger.warn('warning')
     return True

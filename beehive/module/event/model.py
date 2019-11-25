@@ -36,8 +36,7 @@ class DbEvent(Base):
     source = Column(String(200), nullable=True)
     dest = Column(String(500), nullable=True)
     
-    def __init__(self, eventid, etype, objid, objdef, objtype, creation, data, 
-                 source, dest):
+    def __init__(self, eventid, etype, objid, objdef, objtype, creation, data, source, dest):
         """
         :param eventid: event id
         :param etype: event type
@@ -60,8 +59,7 @@ class DbEvent(Base):
         self.dest = dest
 
     def __repr__(self):
-        return "<DbEvent event_id=%s, type=%s, objid=%s, data=%s)>" % (\
-                    self.event_id, self.type, self.objid, self.data)
+        return "<DbEvent event_id=%s, type=%s, objid=%s, data=%s)>" % (self.event_id, self.type, self.objid, self.data)
 
 
 class EventDbManager(AbstractDbManager):
@@ -198,70 +196,6 @@ class EventDbManager(AbstractDbManager):
         query.set_pagination(page=page, size=size, order=order, field=field)
         res = query.run(tags, *args, **kvargs)
         return res
-
-    '''
-    @query
-    def gets(self, oid=None, etype=None, data=None, 
-                   source=None, dest=None, datefrom=None, dateto=None,
-                   page=0, size=10, objid=None, objdef=None, objtype=None):
-        """Get events. 
-        
-        :param oid str: event oid [optional]
-        :param etype str: list of event type [optional]
-        :param data str: event data [optional]
-        :param source str: event source [optional]
-        :param dest str: event destinatiaion [optional]
-        :param datefrom: event data from. Ex. '2015-3-9-15-23-56' [optional]
-        :param dateto: event data to. Ex. '2015-3-9-15-23-56' [optional]
-        :param page: event list page to show [default=0]
-        :param size: number of event to show in list per page [default=0]
-        :param objid str: entity id [optional]
-        :param objtype str: entity type [optional]
-        :param objdef str: entity definition [optional]
-        :raise QueryError: if query return error
-        """
-        session = self.get_session()
-        if oid is not None:
-            query = session.query(DbEvent).filter_by(event_id=oid)
-            count = query.count()
-            res = query.all()
-        else:
-            query = session.query(DbEvent)
-            if etype is not None:
-                query = query.filter(DbEvent.type.in_(etype))
-            if objid is not None:
-                query = query.filter(DbEvent.objid.like(objid))
-            if objtype is not None:
-                query = query.filter(DbEvent.objtype.like(objtype))
-            if objdef is not None:
-                query = query.filter(DbEvent.objdef.like(objdef))
-            if data is not None:
-                query = query.filter(DbEvent.data.like('%'+data+'%'))
-            if source is not None:
-                query = query.filter(DbEvent.source.like('%'+source+'%'))
-            if dest is not None:
-                query = query.filter(DbEvent.dest.like('%'+dest+'%'))
-            if datefrom is not None:
-                query = query.filter(DbEvent.creation >= datefrom)
-            if dateto is not None:
-                query = query.filter(DbEvent.creation <= dateto)
-            
-            count = query.count()
-            
-            start = size * page
-            end = size * (page+1)
-            res = query.order_by(DbEvent.creation.desc())[start:end]
-        
-        self.logger.debug('Get events count: %s' % count)
-        
-        if count == 0:
-            self.logger.error("No events found")
-            raise SQLAlchemyError("No events found")            
-        
-        self.logger.debug('Get events: %s' % truncate(res))
-        
-        return count, res
-        '''
 
     def add(self, eventid, etype, objid, objdef, objtype, creation, data, source, dest):
         """Add new event.
