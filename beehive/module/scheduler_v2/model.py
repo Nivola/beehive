@@ -4,8 +4,13 @@
 
 import ujson as json
 import logging
+
+from sqlalchemy import text, asc
+
+from beecell.simple import truncate
 from beehive.common.data import query
-from beehive.common.model import AbstractDbManager, PaginatedQueryGenerator, SchedulerTask
+from beehive.common.model import AbstractDbManager, PaginatedQueryGenerator, SchedulerTask, SchedulerStep, \
+    SchedulerTrace
 from beecell.db import ModelError
 
 
@@ -15,72 +20,37 @@ logger = logging.getLogger(__name__)
 class SchedulerDbManager(AbstractDbManager):
     """
     """
-    @query
-    def get_tasks(self):
-        """Get tasks.
+    def get_steps(self, task_id):
+        """Get task steps
 
-        :raise QueryError: if query return error
-        """
-        session = self.get_session()
-        query = session.query(distinct(DbEvent.type)).all()
-        res = [i[0] for i in query]
-
-        if len(res) == 0:
-            self.logger.error('No event types found')
-            raise SQLAlchemyError('No event types found')
-
-        self.logger.debug('Get event types: %s' % truncate(res))
-
-        return res
-
-    @query
-    def get_entity_definitions(self):
-        """Get event entity definition.
-
-        :raise QueryError: if query return error
-        """
-        session = self.get_session()
-        query = session.query(distinct(DbEvent.objdef)).all()
-        res = [i[0].lower() for i in query]
-
-        if len(res) == 0:
-            self.logger.error('No entity definitions found')
-            raise SQLAlchemyError('No entity definitions found')
-
-        self.logger.debug('Get entity definitions: %s' % truncate(res))
-
-        return res
-
-    def get_task(self, oid):
-        """Get task
-
-        :param oid: can be db id or event_id
-        :return: DbEvent instance
+        :param task_id: task id
+        :return: SchedulerStep instance list
         """
         session = self.get_session()
 
-        # get obj by uuid
-        if match('[0-9a-z]+', b(oid)):
-            query = session.query(DbEvent).filter_by(event_id=oid)
-        # get obj by id
-        elif match('[0-9]+', b(oid)):
-            query = session.query(DbEvent).filter_by(id=oid)
+        query = session.query(SchedulerStep).filter_by(task_id=task_id).order_by(asc(SchedulerStep.start_time))
+        steps = query.all()
+        self.logger.debug('Get task %s steps: %s' % (task_id, truncate(steps)))
+        return steps
 
-        entity = query.first()
+    def get_trace(self, task_id):
+        """Get task trace
 
-        if entity is None:
-            msg = 'No event found'
-            self.logger.error(msg)
-            raise ModelError(msg, code=404)
+        :param task_id: task id
+        :return: SchedulerTrace instance list
+        """
+        session = self.get_session()
 
-        self.logger.debug('Get event: %s' % (truncate(entity)))
-        return entity
+        query = session.query(SchedulerTrace).filter_by(task_id=task_id).order_by(asc(SchedulerTrace.date))
+        steps = query.all()
+        self.logger.debug('Get task %s trace: %s' % (task_id, truncate(steps)))
+        return steps
 
     @query
     def get_tasks(self, tags=[], page=0, size=10, order='DESC', field='id', with_perm_tag=None, *args, **kvargs):
         """Get tasks with some permission tags
 
-
+        :param task_id: task id
         :param tags: list of permission tags
         :param page: users list page to show [default=0]
         :param size: number of users to show in list per page [default=0]
@@ -95,7 +65,7 @@ class SchedulerDbManager(AbstractDbManager):
         query = PaginatedQueryGenerator(SchedulerTask, self.get_session(), with_perm_tag=with_perm_tag)
 
         # set filters
-        # query.add_relative_filter('AND t3.type = :type', 'type', kvargs)
+        query.add_relative_filter('AND t3.uuid = :task_id', 'task_id', kvargs)
         # query.add_relative_filter('AND t3.objid like :objid', 'objid', kvargs)
         # query.add_relative_filter('AND t3.objtype like :objtype', 'objtype', kvargs)
         # query.add_relative_filter('AND t3.objdef like :objdef', 'objdef', kvargs)
@@ -111,3 +81,4 @@ class SchedulerDbManager(AbstractDbManager):
 
     def delete(self, ):
         """Delete events"""
+        pass

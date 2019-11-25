@@ -245,9 +245,9 @@ class SchedulerTask(Base):
 
     id = Column(Integer, primary_key=True)
     uuid = Column(String(50), unique=True, index=True)
-    objtype = Column(String(100))
-    objdef = Column(String(200))
-    objid = Column(String(400))
+    objtype = Column(String(100), index=True)
+    objdef = Column(String(200), index=True)
+    objid = Column(String(400), index=True)
     name = Column(String(100))
     parent = Column(Integer)
     worker = Column(String(50))
@@ -255,7 +255,7 @@ class SchedulerTask(Base):
     kwargs = Column(String(400))
     status = Column(String(20), index=True)
     result = Column(String(400))
-    start_time = Column(mysql.DATETIME(fsp=6))
+    start_time = Column(mysql.DATETIME(fsp=6), index=True)
     stop_time = Column(mysql.DATETIME(fsp=6))
     counter = Column(Integer)
 
@@ -313,7 +313,7 @@ class SchedulerTrace(Base):
     task_id = Column(String(50), index=True)
     step_id = Column(String(50), index=True)
     message = Column(String(400))
-    level = Column(String(10))
+    level = Column(String(10), index=True)
     date = Column(mysql.DATETIME(fsp=6))
 
     def __init__(self, task_id, step_id, message, level):

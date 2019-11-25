@@ -2,11 +2,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # (C) Copyright 2018-2019 CSI-Piemonte
+from uuid import uuid4
 
 import ujson as json
 from datetime import datetime, timedelta
 from beecell.db.manager import RedisManagerError
-from beecell.simple import str2uni, get_attrib, truncate
+from beecell.simple import str2uni, get_attrib, truncate, import_class, format_date
 from celery.schedules import crontab
 from networkx import DiGraph
 from networkx.readwrite import json_graph
@@ -15,17 +16,19 @@ from beehive.module.scheduler.redis_scheduler import RedisScheduleEntry, RedisSc
 from beehive.common.task.manager import task_scheduler, task_manager
 from beehive.common.data import trace
 from beehive.common.task.canvas import signature
+from beehive.module.scheduler_v2.model import SchedulerDbManager
 
 
 class SchedulerController(ApiController):
-    """Scheduler Module controller.
-    """    
-    version = 'v2.0'
-    
+    """Scheduler v2.0 Module controller.
+    """
     def __init__(self, module):
         ApiController.__init__(self, module)
 
+        self.version = 'v2.0'
         self.child_classes = [Scheduler, TaskManager]
+
+        self.manager = SchedulerDbManager()
         
     def add_service_class(self, name, version, service_class):
         self.service_classes.append(service_class)
@@ -38,7 +41,7 @@ class SchedulerController(ApiController):
 
 
 class Scheduler(ApiObject):
-    module = 'SchedulerModule'
+    module = 'SchedulerModuleV2'
     objtype = 'task'
     objdef = 'Scheduler'
     objdesc = 'Scheduler'
@@ -257,7 +260,7 @@ class Scheduler(ApiObject):
 
 
 class TaskManager(ApiObject):
-    module = 'SchedulerModule'
+    module = 'SchedulerModuleV2'
     objtype = 'task'
     objdef = 'Manager'
     objdesc = 'Task Manager'
@@ -391,490 +394,464 @@ class TaskManager(ApiObject):
     def get_tasks(self, *args, **kvargs):
         """Get tasks.
 
-        :param name: user name [optional]
-        :param names: user name list [optional]
-        :param desc: user desc [optional]
-        :param role: role name, id or uuid [optional]
-        :param group: group name, id or uuid [optional]
-        :param perms_N: list of permissions like objtype,subsystem,objid,action [optional]
-        :param active: user status [optional]
-        :param expiry_date: user expiry date. Use gg-mm-yyyy [optional]
-        :param email: email [optional]
+        :param entity_class: entity_class owner of the tasks to query
+        :param task_id: task id
         :param page: users list page to show [default=0]
         :param size: number of users to show in list per page [default=0]
         :param order: sort order [default=DESC]
         :param field: sort field [default=id]
-        :return: List of :class:`User`
+        :return: List of :class:`Task`
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-
         def get_entities(*args, **kvargs):
-            tasks, total = self.manager.get_users(*args, **kvargs)
+            tasks, total = self.manager.get_tasks(*args, **kvargs)
 
-            return users, total
+            return tasks, total
 
-        # check group filter
-        group = kvargs.get('group', None)
+        entity_class = import_class(kvargs.pop('entity_class'))
 
-        # search users by group
-        if group is not None:
-            kvargs['group_id'] = self.get_entity(Group, ModelGroup, group).oid
-            operation.authorize = False
-
-        res, total = self.get_paginated_entities(User, get_entities, *args, **kvargs)
+        res, total = self.controller.get_paginated_entities(entity_class, get_entities, *args, **kvargs)
         return res, total
 
     @trace(op='view')
-    def get_all_tasks(self, elapsed=60, ttype=None, details=False):
-        """Get all task of type TASK and JOB. Inner job task are not returned.
-        
-        :return: 
-        :rtype: dict        
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
+    def get_task(self, entity_class_name, task_id):
+        """Get task
+
+        :param entity_class_name: entity_class owner of the tasks to query
+        :param task_id: task id
+        :return: :class:`Task` instance
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        self.verify_permisssions('view')
-        
-        try:
-            res = []
-            manager = self.controller.redis_taskmanager
-            keys1 = manager.inspect(pattern=self.prefix+'*', debug=False)
-            self.logger.debug('Get all %s keys form redis' % len(keys1))
+        tasks, tot = self.get_tasks(entity_class=entity_class_name, task_id=task_id)
+        if tot == 0:
+            raise ApiManagerError('task %s of entity %s does not exist' % (task_id, entity_class_name))
+        return tasks[0]
 
-            keys = []
-            for k in keys1:
-                if self.expire - float(k[2]) < elapsed:
-                    keys.append(k)
-
-            self.logger.debug('Get filtered %s keys form redis' % len(keys))
-
-            if details is False:
-                for key in keys:
-                    key = key[0].lstrip(self.prefix+'-')
-                    res.append(key)
-            else:
-                data = manager.query(keys, ttl=True)
-                for key, item in data.items():
-                    try:
-                        val = json.loads(item[0])
-                    except:
-                        val = {}
-                    ttl = item[1]
-                    
-                    tasktype = val.get('type', None)
-                    val.pop('trace', None)
-                    
-                    # add time to live
-                    val['ttl'] = ttl
-                    
-                    # add elapsed
-                    stop_time = val.get('stop_time', 0)
-                    start_time = val.get('start_time', 0)
-                    elapsed = 0
-                    stop_time_str = 0
-                    if start_time is not None and stop_time is not None:
-                        elapsed = stop_time - start_time
-                        stop_time_str = self.__convert_timestamp(stop_time)
-
-                    # add elapsed
-                    val['elapsed'] = elapsed
-                    val['stop_time'] = stop_time_str
-                    val['start_time'] = self.__convert_timestamp(start_time)
-                    
-                    # task status
-                    available_ttypes = ['JOB', 'JOBTASK', 'TASK']
-                    ttypes = available_ttypes
-
-                    if ttype is not None and ttype in available_ttypes:
-                        ttypes = [ttype]
-
-                    if tasktype in ttypes:
-                        res.append(val)
-            
-                    # sort task by date
-                    res = sorted(res, key=lambda task: task['start_time'])
-            
-            self.logger.debug('Get all tasks: %s' % truncate(res))
-            return res
-        except Exception as ex:
-            self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=404)
-
-    @trace(op='view')
-    def count_all_tasks(self):
-        """
-        
-        :return: 
-        :rtype: dict        
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
-        """
-        self.verify_permisssions('view')
-        
-        try:
-            res = []
-            manager = self.controller.redis_taskmanager
-            res = len(manager.inspect(pattern=self.prefix+'*', debug=False))
-            
-            self.logger.debug('Count all tasks: %s' % res)
-            return res
-        except Exception as ex:
-            self.logger.error(ex)
-            raise ApiManagerError(ex, code=400)
-
-    def __convert_timestamp(self, timestamp):
-        """
-        """
-        if isinstance(timestamp, float):
-            timestamp = datetime.fromtimestamp(timestamp)
-            return str2uni(timestamp.strftime('%d-%m-%Y %H:%M:%S.%f'))
-        return ''
-
-    def __get_redis_task(self, task_id):
-        """Get task from redis
-        
-        :param task_id: redis key
-        :return: task data
-        :raise ApiManagerError: if task was not found
-        """
-        try:
-            manager = self.controller.redis_taskmanager
-            task_data, task_ttl = manager.get_with_ttl(self.prefix + task_id, max_retry=3, delay=0.01)
-        except RedisManagerError as ex:
-            raise ApiManagerError('Task %s not found' % task_id, code=404)
-
-        return task_data, task_ttl
-
-    def _get_task_info(self, task_id):
-        """ """
-        manager = self.controller.redis_taskmanager
-        # keys = manager.inspect(pattern=self.prefix + task_id, debug=False)
-        # data = manager.query(keys, ttl=True)[self.prefix + task_id]
-        task_data, task_ttl = self.__get_redis_task(task_id)
-
-        # get task info and time to live
-        # val = json.loads(data[0])
-        # ttl = data[1]
-        val = json.loads(task_data)
-        ttl = task_ttl
-        
-        # add time to live
-        val['ttl'] = ttl
-        
-        # add elapsed
-        stop_time = val.get('stop_time', 0)
-        start_time = val.get('start_time', 0)
-        elapsed = 0
-        stop_time_str = 0
-        if start_time is not None and stop_time is not None:
-            elapsed = stop_time - start_time
-            stop_time_str = self.__convert_timestamp(stop_time)
-
-        # add elapsed
-        val['elapsed'] = elapsed
-        val['stop_time'] = stop_time_str
-        val['start_time'] = self.__convert_timestamp(start_time)
-        # val['trace'] = None
-
-        # get child jobs
-        jobs = val.get('jobs', [])
-        job_list = []
-        if jobs is not None and len(jobs) > 0:
-            for job in jobs:
-                job_list.append(self.query_task(job))
-        val['jobs'] = job_list
-        return val
-
-    def _get_task_graph(self, task, graph, index=1):
-        """Get task graph.
-   
-        :return: Dictionary with task node and link
-        :rtype: dict        
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
-        """
-        try:
-            child_ids = task['children']
-            child_index = index + 1
-            for child_id in child_ids:
-                try:
-                    child = self._get_task_info(child_id)
-                    if len(child['children']) == 0:
-                        task_type = 'end'
-                    else:
-                        task_type = 'inner'
-                    graph.add_node(child_id, 
-                                   id=child['task_id'], 
-                                   label=child['name'].split('.')[-1],
-                                   type=task_type,
-                                   details=child)
-                    graph.add_edge(task['task_id'], child_id)
-                    
-                    # call get_task_graph with task child
-                    self._get_task_graph(child, graph, child_index)
-                    child_index += 1
-                    self.logger.debug('Get child task %s' % child_id)
-                except:
-                    self.logger.warn('Child task %s does not exist' % child_id, exc_info=1)
-            
-            return graph
-        except Exception as ex:
-            self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=400)
-
-    def _get_task_childs(self, childs_index, task):
-        """Get task childs.
-
-        :param childs_index: dict with task references
-        :param task: task to explore
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
-        """
-        try:
-            child_ids = task.pop('children')
-            self.logger.debug2('Get task %s children: %s' % (task['task_id'], child_ids))
-            if child_ids is not None:
-                for child_id in child_ids:
-                    try:
-                        if child_id in childs_index:
-                            continue
-
-                        child = self._get_task_info(child_id)
-                        childs_index[child_id] = child
-                        self._get_task_childs(childs_index, child)
-                    except:
-                        self.logger.warn('Child task %s does not exist' % child_id)
-        except Exception as ex:
-            raise ApiManagerError(ex, code=400)
-
-    @trace(op='view')
-    def query_task(self, task_id, chain=True):
-        """Get task info. If task type JOB return graph composed by all the job childs.
-
-        :param task_id: id of the celery task
-        :param chain: if True get all task chain
-        :return: 
-        :rtype: dict        
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
-        """
-        # verify permissions
-        self.verify_permisssions('view')     
-        
-        res = []
-        task_data, task_ttl = self.__get_redis_task(task_id)
-            
-        try:
-            # get task info and time to live
-            val = json.loads(task_data)
-            ttl = task_ttl
-            
-            tasktype = val.get('type', 'JOB')
-            
-            # add time to live
-            val['ttl'] = ttl
-            
-            # JOB
-            if tasktype == 'JOB':
-                stop_time = val.get('stop_time', 0)
-                start_time = val.get('start_time', 0)
-                elapsed = 0
-                stop_time_str = 0
-                if start_time is not None and stop_time is not None:
-                    elapsed = stop_time - start_time
-                    stop_time_str = self.__convert_timestamp(stop_time)
-
-                # add elapsed
-                val['elapsed'] = elapsed
-                val['stop_time'] = stop_time_str
-                val['start_time'] = self.__convert_timestamp(start_time)
-
-                if chain is True:
-                    try:
-                        # get job childs
-                        childrens = val.pop('children', [])
-                        if len(childrens) > 0:
-                            first_child_id = childrens[0]
-                            first_child = self._get_task_info(first_child_id)
-                            first_child['inner_type'] = 'start'
-                            childs_index = {first_child_id: first_child}
-                            self._get_task_childs(childs_index, first_child)
-
-                            # sort childs by date
-                            childs = sorted(childs_index.values(), key=lambda task: task['start_time'])
-
-                            # get childs trace
-                            trace = []
-                            for c in childs:
-                                for t in c.pop('trace'):
-                                    trace.append((t[0], c['name'], c['task_id'], t[1]))
-                            # sort trace
-                            val['trace'] = sorted(trace, key=lambda row: row[0])
-                            val['children'] = childs
-                    except:
-                        self.logger.warn('', exc_info=1)
-                        val['children'] = None
-            else:
-                val['children'] = None
-                
-            res = val
-            self.logger.debug('Get task %s info: %s' % (task_id, truncate(res)))
-            return res
-        except Exception as ex:
-            self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=400)
-    
-    @trace(op='view')
-    def get_task_graph(self, task_id):
-        """Get job task child graph
-        
-        :return: 
-        :rtype: dict        
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
-        """
-        # verify permissions
-        self.verify_permisssions('view')
-
-        graph_data = None
-
-        task_data, task_ttl = self.__get_redis_task(task_id)
-
-        try:
-            # get task info and time to live
-            val = json.loads(task_data)
-
-            childs = val['children']
-            tasktype = val['type']
-            
-            # JOB
-            if tasktype == 'JOB':
-                # create graph
-                graph = DiGraph(name="Task %s child graph" % val['name'])
-                # populate graph
-                child = self._get_task_info(childs[0])
-                graph.add_node(child['task_id'], 
-                               id=child['task_id'], 
-                               label=child['name'].split('.')[-1],
-                               type='start',
-                               details=child)                
-                self._get_task_graph(child, graph)
-                # get graph
-                graph_data = json_graph.node_link_data(graph)
-            else:
-                raise Exception('Task %s is not of type JOB' % task_id)
-
-            res = graph_data
-            self.logger.debug('Get task %s graph: %s' % (task_id, truncate(res)))
-            return res
-        except Exception as ex:
-            self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=404)
-    
-    @trace(op='delete')
-    def delete_task_instances(self):
-        """
-        
-        :return: 
-        :rtype: dict        
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
-        """
-        # verify permissions
-        self.verify_permisssions('delete')
-        
-        try:
-            res = []
-            manager = self.controller.redis_taskmanager
-            res = manager.delete(pattern=self.prefix+'*')
-            
-            self.logger.debug('Purge all tasks: %s' % res)
-            return res
-        except Exception as ex:
-            self.logger.error(ex)
-            raise ApiManagerError(ex, code=400)
-        
-        self.manager.delete(pattern=self.prefix+'*')    
-    
-    def _delete_task_child(self, task_id):
-        """Delete task child instances from result db.
-        """
-        manager = self.controller.redis_taskmanager
-        
-        # res = AsyncResult(task_id, app=task_manager)
-
-        try:
-            res = manager.server.get(self.prefix + task_id)
-        except Exception as ex:
-            self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=404)
-
-        # get children
-        if res is not None:
-            res = json.loads(res)
-            childrens = res.get('children', [])
-            for child_id in childrens:
-                self._delete_task_child(child_id)
-                task_name = self.prefix + child_id
-                res = manager.delete(pattern=task_name)
-                self.logger.debug('Delete task instance %s: %s' % (child_id, res))
-        return True
-    
-    @trace(op='delete')
-    def delete_task_instance(self, task_id, propagate=True):
-        """Delete task instance result from results db.
-        
-        :param task_id: id of the task instance
-        :param propagate: if True delete all the childs
-        :return: 
-        :rtype: dict        
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
-        """
-        # verify permissions
-        self.verify_permisssions('delete')        
-        
-        try:
-            # delete childs
-            if propagate is True:
-                self._delete_task_child(task_id)
-            
-            # delete task instance
-            manager = self.controller.redis_taskmanager
-            task_name = self.prefix + task_id
-            res = manager.delete(pattern=task_name)
-            self.logger.debug('Delete task instance %s: %s' % (task_id, res))
-            return res
-        except Exception as ex:
-            self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=400)
-
-    @trace(op='view')
-    def get_active_queue(self):
-        """
-        
-        :return: 
-        :rtype: dict        
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
-        """
-        # verify permissions
-        self.verify_permisssions('view')        
-        
-        try:
-            control = task_manager.control.inspect([self.hostname])
-            res = control.active_queues()
-            self.logger.debug('Get task manager active queue: %s' % (res))
-            return res
-        except Exception as ex:
-            self.logger.error(ex)
-            raise ApiManagerError(ex, code=404)
+    # @trace(op='view')
+    # def get_all_tasks(self, elapsed=60, ttype=None, details=False):
+    #     """Get all task of type TASK and JOB. Inner job task are not returned.
+    #
+    #     :return:
+    #     :rtype: dict
+    #     :raises ApiManagerError: raise :class:`.ApiManagerError`
+    #     """
+    #     self.verify_permisssions('view')
+    #
+    #     try:
+    #         res = []
+    #         manager = self.controller.redis_taskmanager
+    #         keys1 = manager.inspect(pattern=self.prefix+'*', debug=False)
+    #         self.logger.debug('Get all %s keys form redis' % len(keys1))
+    #
+    #         keys = []
+    #         for k in keys1:
+    #             if self.expire - float(k[2]) < elapsed:
+    #                 keys.append(k)
+    #
+    #         self.logger.debug('Get filtered %s keys form redis' % len(keys))
+    #
+    #         if details is False:
+    #             for key in keys:
+    #                 key = key[0].lstrip(self.prefix+'-')
+    #                 res.append(key)
+    #         else:
+    #             data = manager.query(keys, ttl=True)
+    #             for key, item in data.items():
+    #                 try:
+    #                     val = json.loads(item[0])
+    #                 except:
+    #                     val = {}
+    #                 ttl = item[1]
+    #
+    #                 tasktype = val.get('type', None)
+    #                 val.pop('trace', None)
+    #
+    #                 # add time to live
+    #                 val['ttl'] = ttl
+    #
+    #                 # add elapsed
+    #                 stop_time = val.get('stop_time', 0)
+    #                 start_time = val.get('start_time', 0)
+    #                 elapsed = 0
+    #                 stop_time_str = 0
+    #                 if start_time is not None and stop_time is not None:
+    #                     elapsed = stop_time - start_time
+    #                     stop_time_str = self.__convert_timestamp(stop_time)
+    #
+    #                 # add elapsed
+    #                 val['elapsed'] = elapsed
+    #                 val['stop_time'] = stop_time_str
+    #                 val['start_time'] = self.__convert_timestamp(start_time)
+    #
+    #                 # task status
+    #                 available_ttypes = ['JOB', 'JOBTASK', 'TASK']
+    #                 ttypes = available_ttypes
+    #
+    #                 if ttype is not None and ttype in available_ttypes:
+    #                     ttypes = [ttype]
+    #
+    #                 if tasktype in ttypes:
+    #                     res.append(val)
+    #
+    #                 # sort task by date
+    #                 res = sorted(res, key=lambda task: task['start_time'])
+    #
+    #         self.logger.debug('Get all tasks: %s' % truncate(res))
+    #         return res
+    #     except Exception as ex:
+    #         self.logger.error(ex, exc_info=1)
+    #         raise ApiManagerError(ex, code=404)
+    #
+    # @trace(op='view')
+    # def count_all_tasks(self):
+    #     """
+    #
+    #     :return:
+    #     :rtype: dict
+    #     :raises ApiManagerError: raise :class:`.ApiManagerError`
+    #     """
+    #     self.verify_permisssions('view')
+    #
+    #     try:
+    #         res = []
+    #         manager = self.controller.redis_taskmanager
+    #         res = len(manager.inspect(pattern=self.prefix+'*', debug=False))
+    #
+    #         self.logger.debug('Count all tasks: %s' % res)
+    #         return res
+    #     except Exception as ex:
+    #         self.logger.error(ex)
+    #         raise ApiManagerError(ex, code=400)
+    #
+    # def __convert_timestamp(self, timestamp):
+    #     """
+    #     """
+    #     if isinstance(timestamp, float):
+    #         timestamp = datetime.fromtimestamp(timestamp)
+    #         return str2uni(timestamp.strftime('%d-%m-%Y %H:%M:%S.%f'))
+    #     return ''
+    #
+    # def __get_redis_task(self, task_id):
+    #     """Get task from redis
+    #
+    #     :param task_id: redis key
+    #     :return: task data
+    #     :raise ApiManagerError: if task was not found
+    #     """
+    #     try:
+    #         manager = self.controller.redis_taskmanager
+    #         task_data, task_ttl = manager.get_with_ttl(self.prefix + task_id, max_retry=3, delay=0.01)
+    #     except RedisManagerError as ex:
+    #         raise ApiManagerError('Task %s not found' % task_id, code=404)
+    #
+    #     return task_data, task_ttl
+    #
+    # def _get_task_info(self, task_id):
+    #     """ """
+    #     manager = self.controller.redis_taskmanager
+    #     # keys = manager.inspect(pattern=self.prefix + task_id, debug=False)
+    #     # data = manager.query(keys, ttl=True)[self.prefix + task_id]
+    #     task_data, task_ttl = self.__get_redis_task(task_id)
+    #
+    #     # get task info and time to live
+    #     # val = json.loads(data[0])
+    #     # ttl = data[1]
+    #     val = json.loads(task_data)
+    #     ttl = task_ttl
+    #
+    #     # add time to live
+    #     val['ttl'] = ttl
+    #
+    #     # add elapsed
+    #     stop_time = val.get('stop_time', 0)
+    #     start_time = val.get('start_time', 0)
+    #     elapsed = 0
+    #     stop_time_str = 0
+    #     if start_time is not None and stop_time is not None:
+    #         elapsed = stop_time - start_time
+    #         stop_time_str = self.__convert_timestamp(stop_time)
+    #
+    #     # add elapsed
+    #     val['elapsed'] = elapsed
+    #     val['stop_time'] = stop_time_str
+    #     val['start_time'] = self.__convert_timestamp(start_time)
+    #     # val['trace'] = None
+    #
+    #     # get child jobs
+    #     jobs = val.get('jobs', [])
+    #     job_list = []
+    #     if jobs is not None and len(jobs) > 0:
+    #         for job in jobs:
+    #             job_list.append(self.query_task(job))
+    #     val['jobs'] = job_list
+    #     return val
+    #
+    # def _get_task_graph(self, task, graph, index=1):
+    #     """Get task graph.
+    #
+    #     :return: Dictionary with task node and link
+    #     :rtype: dict
+    #     :raises ApiManagerError: raise :class:`.ApiManagerError`
+    #     """
+    #     try:
+    #         child_ids = task['children']
+    #         child_index = index + 1
+    #         for child_id in child_ids:
+    #             try:
+    #                 child = self._get_task_info(child_id)
+    #                 if len(child['children']) == 0:
+    #                     task_type = 'end'
+    #                 else:
+    #                     task_type = 'inner'
+    #                 graph.add_node(child_id,
+    #                                id=child['task_id'],
+    #                                label=child['name'].split('.')[-1],
+    #                                type=task_type,
+    #                                details=child)
+    #                 graph.add_edge(task['task_id'], child_id)
+    #
+    #                 # call get_task_graph with task child
+    #                 self._get_task_graph(child, graph, child_index)
+    #                 child_index += 1
+    #                 self.logger.debug('Get child task %s' % child_id)
+    #             except:
+    #                 self.logger.warn('Child task %s does not exist' % child_id, exc_info=1)
+    #
+    #         return graph
+    #     except Exception as ex:
+    #         self.logger.error(ex, exc_info=1)
+    #         raise ApiManagerError(ex, code=400)
+    #
+    # def _get_task_childs(self, childs_index, task):
+    #     """Get task childs.
+    #
+    #     :param childs_index: dict with task references
+    #     :param task: task to explore
+    #     :raises ApiManagerError: raise :class:`.ApiManagerError`
+    #     """
+    #     try:
+    #         child_ids = task.pop('children')
+    #         self.logger.debug2('Get task %s children: %s' % (task['task_id'], child_ids))
+    #         if child_ids is not None:
+    #             for child_id in child_ids:
+    #                 try:
+    #                     if child_id in childs_index:
+    #                         continue
+    #
+    #                     child = self._get_task_info(child_id)
+    #                     childs_index[child_id] = child
+    #                     self._get_task_childs(childs_index, child)
+    #                 except:
+    #                     self.logger.warn('Child task %s does not exist' % child_id)
+    #     except Exception as ex:
+    #         raise ApiManagerError(ex, code=400)
+    #
+    # @trace(op='view')
+    # def query_task(self, task_id, chain=True):
+    #     """Get task info. If task type JOB return graph composed by all the job childs.
+    #
+    #     :param task_id: id of the celery task
+    #     :param chain: if True get all task chain
+    #     :return:
+    #     :rtype: dict
+    #     :raises ApiManagerError: raise :class:`.ApiManagerError`
+    #     """
+    #     # verify permissions
+    #     self.verify_permisssions('view')
+    #
+    #     res = []
+    #     task_data, task_ttl = self.__get_redis_task(task_id)
+    #
+    #     try:
+    #         # get task info and time to live
+    #         val = json.loads(task_data)
+    #         ttl = task_ttl
+    #
+    #         tasktype = val.get('type', 'JOB')
+    #
+    #         # add time to live
+    #         val['ttl'] = ttl
+    #
+    #         # JOB
+    #         if tasktype == 'JOB':
+    #             stop_time = val.get('stop_time', 0)
+    #             start_time = val.get('start_time', 0)
+    #             elapsed = 0
+    #             stop_time_str = 0
+    #             if start_time is not None and stop_time is not None:
+    #                 elapsed = stop_time - start_time
+    #                 stop_time_str = self.__convert_timestamp(stop_time)
+    #
+    #             # add elapsed
+    #             val['elapsed'] = elapsed
+    #             val['stop_time'] = stop_time_str
+    #             val['start_time'] = self.__convert_timestamp(start_time)
+    #
+    #             if chain is True:
+    #                 try:
+    #                     # get job childs
+    #                     childrens = val.pop('children', [])
+    #                     if len(childrens) > 0:
+    #                         first_child_id = childrens[0]
+    #                         first_child = self._get_task_info(first_child_id)
+    #                         first_child['inner_type'] = 'start'
+    #                         childs_index = {first_child_id: first_child}
+    #                         self._get_task_childs(childs_index, first_child)
+    #
+    #                         # sort childs by date
+    #                         childs = sorted(childs_index.values(), key=lambda task: task['start_time'])
+    #
+    #                         # get childs trace
+    #                         trace = []
+    #                         for c in childs:
+    #                             for t in c.pop('trace'):
+    #                                 trace.append((t[0], c['name'], c['task_id'], t[1]))
+    #                         # sort trace
+    #                         val['trace'] = sorted(trace, key=lambda row: row[0])
+    #                         val['children'] = childs
+    #                 except:
+    #                     self.logger.warn('', exc_info=1)
+    #                     val['children'] = None
+    #         else:
+    #             val['children'] = None
+    #
+    #         res = val
+    #         self.logger.debug('Get task %s info: %s' % (task_id, truncate(res)))
+    #         return res
+    #     except Exception as ex:
+    #         self.logger.error(ex, exc_info=1)
+    #         raise ApiManagerError(ex, code=400)
+    #
+    # @trace(op='view')
+    # def get_task_graph(self, task_id):
+    #     """Get job task child graph
+    #
+    #     :return:
+    #     :rtype: dict
+    #     :raises ApiManagerError: raise :class:`.ApiManagerError`
+    #     """
+    #     # verify permissions
+    #     self.verify_permisssions('view')
+    #
+    #     graph_data = None
+    #
+    #     task_data, task_ttl = self.__get_redis_task(task_id)
+    #
+    #     try:
+    #         # get task info and time to live
+    #         val = json.loads(task_data)
+    #
+    #         childs = val['children']
+    #         tasktype = val['type']
+    #
+    #         # JOB
+    #         if tasktype == 'JOB':
+    #             # create graph
+    #             graph = DiGraph(name="Task %s child graph" % val['name'])
+    #             # populate graph
+    #             child = self._get_task_info(childs[0])
+    #             graph.add_node(child['task_id'],
+    #                            id=child['task_id'],
+    #                            label=child['name'].split('.')[-1],
+    #                            type='start',
+    #                            details=child)
+    #             self._get_task_graph(child, graph)
+    #             # get graph
+    #             graph_data = json_graph.node_link_data(graph)
+    #         else:
+    #             raise Exception('Task %s is not of type JOB' % task_id)
+    #
+    #         res = graph_data
+    #         self.logger.debug('Get task %s graph: %s' % (task_id, truncate(res)))
+    #         return res
+    #     except Exception as ex:
+    #         self.logger.error(ex, exc_info=1)
+    #         raise ApiManagerError(ex, code=404)
+    #
+    # @trace(op='delete')
+    # def delete_task_instances(self):
+    #     """
+    #
+    #     :return:
+    #     :rtype: dict
+    #     :raises ApiManagerError: raise :class:`.ApiManagerError`
+    #     """
+    #     # verify permissions
+    #     self.verify_permisssions('delete')
+    #
+    #     try:
+    #         res = []
+    #         manager = self.controller.redis_taskmanager
+    #         res = manager.delete(pattern=self.prefix+'*')
+    #
+    #         self.logger.debug('Purge all tasks: %s' % res)
+    #         return res
+    #     except Exception as ex:
+    #         self.logger.error(ex)
+    #         raise ApiManagerError(ex, code=400)
+    #
+    #     self.manager.delete(pattern=self.prefix+'*')
+    #
+    # def _delete_task_child(self, task_id):
+    #     """Delete task child instances from result db.
+    #     """
+    #     manager = self.controller.redis_taskmanager
+    #
+    #     # res = AsyncResult(task_id, app=task_manager)
+    #
+    #     try:
+    #         res = manager.server.get(self.prefix + task_id)
+    #     except Exception as ex:
+    #         self.logger.error(ex, exc_info=1)
+    #         raise ApiManagerError(ex, code=404)
+    #
+    #     # get children
+    #     if res is not None:
+    #         res = json.loads(res)
+    #         childrens = res.get('children', [])
+    #         for child_id in childrens:
+    #             self._delete_task_child(child_id)
+    #             task_name = self.prefix + child_id
+    #             res = manager.delete(pattern=task_name)
+    #             self.logger.debug('Delete task instance %s: %s' % (child_id, res))
+    #     return True
+    #
+    # @trace(op='delete')
+    # def delete_task_instance(self, task_id, propagate=True):
+    #     """Delete task instance result from results db.
+    #
+    #     :param task_id: id of the task instance
+    #     :param propagate: if True delete all the childs
+    #     :return:
+    #     :rtype: dict
+    #     :raises ApiManagerError: raise :class:`.ApiManagerError`
+    #     """
+    #     # verify permissions
+    #     self.verify_permisssions('delete')
+    #
+    #     try:
+    #         # delete childs
+    #         if propagate is True:
+    #             self._delete_task_child(task_id)
+    #
+    #         # delete task instance
+    #         manager = self.controller.redis_taskmanager
+    #         task_name = self.prefix + task_id
+    #         res = manager.delete(pattern=task_name)
+    #         self.logger.debug('Delete task instance %s: %s' % (task_id, res))
+    #         return res
+    #     except Exception as ex:
+    #         self.logger.error(ex, exc_info=1)
+    #         raise ApiManagerError(ex, code=400)
         
     #
     # test jobs
     #
     @trace(op='insert')
-    def run_jobtest(self, params):
-        """Run jobtest task
+    def run_test_task(self, params):
+        """Run test task
 
-        :param params: task input params
-                        
-                        {'x':.., 
-                         'y':.., 
-                         'numbers':[], 
-                         'mul_numbers':[]}      
-        
+        :param params: task input params {'x':.., 'y':.., 'numbers':[]}
         :return: celery task instance
         :rtype: Task
         :raises ApiManagerError if query empty return error.
@@ -883,13 +860,164 @@ class TaskManager(ApiObject):
         self.controller.check_authorization(self.objtype, self.objdef, None, 'insert')
 
         params.update(self.get_user())
-        task = signature('beehive.module.scheduler.tasks.jobtest', (self.objid, params), app=task_manager,
+        params['objid'] = str(uuid4())
+        task = signature('beehive.module.scheduler_v2.tasks.test_task', [params], app=task_manager,
                          queue=self.celery_broker_queue)
         job = task.apply_async()
 
-        # save job
-        add_job = getattr(self.controller.module.get_related_controller(), 'add_job', None)
-        if add_job is not None:
-            add_job(job.id, 'jobtest', params)
-
         return job
+
+
+class Task(ApiObject):
+    module = 'SchedulerModuleV2'
+    objtype = 'task'
+    objdef = 'Manager'
+    objdesc = 'Task'
+
+    def __init__(self, *args, **kvargs):
+        ApiObject.__init__(self, *args, **kvargs)
+
+        self.parent = None
+        self.worker = None
+        self.start_time = None
+        self.stop_time = None
+        self.result = None
+        self.status = None
+        self.args = None
+        self.kwargs = None
+        self.duration = None
+        self.api_id = None
+        self.server = None
+        self.user = None
+        self.identity = None
+        if self.model is not None:
+            self.parent = self.model.parent
+            self.worker = self.model.worker
+            self.status = self.model.status
+            self.start_time = self.model.start_time
+            self.stop_time = self.model.stop_time
+            self.result = self.model.result
+            if isinstance(self.start_time, datetime) and isinstance(self.stop_time, datetime):
+                self.duration = (self.stop_time - self.start_time).total_seconds()
+
+            try:
+                self.args = json.loads(self.model.args)[0]
+                self.args.pop('objid')
+                self.api_id = self.args.pop('api_id')
+                self.server = self.args.pop('server')
+                self.user = self.args.pop('user')
+                self.identity = self.args.pop('identity')
+            except:
+                self.args = None
+
+            try:
+                self.kwargs = json.loads(self.model.kwargs)
+            except:
+                self.kwargs = None
+
+        self.steps = []
+        self.trace = []
+
+    def info(self):
+        """Get object info
+
+        :return: Dictionary with object info.
+        :rtype: dict
+        :raises ApiManagerError: raise :class:`.ApiManagerError`
+        """
+        res = {
+            '__meta__': {
+                'objid': self.objid,
+                'type': self.objtype,
+                'definition': self.objdef,
+                'uri': self.objuri,
+            },
+            'id': self.oid,
+            'uuid': self.uuid,
+            'name': self.name,
+            'status': self.status,
+            'parent': self.parent,
+            'worker': self.worker,
+            'api_id': self.api_id,
+            'server': self.server,
+            'user': self.user,
+            'identity': self.identity,
+            'start_time': format_date(self.start_time),
+            'stop_time': format_date(self.stop_time),
+            'duration': self.duration
+        }
+        return res
+
+    def detail(self):
+        """Get object extended info
+
+        :return: Dictionary with object detail.
+        :rtype: dict
+        :raises ApiManagerError: raise :class:`.ApiManagerError`
+        """
+        res = {
+            '__meta__': {
+                'objid': self.objid,
+                'type': self.objtype,
+                'definition': self.objdef,
+                'uri': self.objuri,
+            },
+            'id': self.oid,
+            'uuid': self.uuid,
+            'name': self.name,
+            'status': self.status,
+            'parent': self.parent,
+            'worker': self.worker,
+            'api_id': self.api_id,
+            'server': self.server,
+            'user': self.user,
+            'identity': self.identity,
+            'start_time': format_date(self.start_time),
+            'stop_time': format_date(self.stop_time),
+            'duration': self.duration,
+            'result': self.result,
+            'args': self.args,
+            'kwargs': self.kwargs,
+            'steps': self.steps
+        }
+        return res
+
+    def get_trace(self):
+        """Get task trace
+
+        :raise ApiManagerError:
+        """
+        trace = []
+        for t in self.manager.get_trace(self.uuid):
+            trace.append({
+                'id': str(t.id),
+                'step': t.step_id,
+                'message': t.message,
+                'level': t.level,
+                'date': format_date(t.date)
+            })
+        return trace
+
+    #
+    # pre, post function
+    #
+    def post_get(self):
+        """Post get function. This function is used in get_entity method. Extend this function to extend description
+        info returned after query.
+
+        :raise ApiManagerError:
+        """
+        steps = self.manager.get_steps(self.uuid)
+        for s in steps:
+            duration = None
+            if isinstance(s.start_time, datetime) and isinstance(s.stop_time, datetime):
+                duration = (s.stop_time - s.start_time).total_seconds()
+            self.steps.append({
+                'uuid': s.uuid,
+                'name': s.name,
+                'status': s.status,
+                'result': s.result,
+                'start_time': format_date(s.start_time),
+                'stop_time': format_date(s.stop_time),
+                'duration': duration
+            })

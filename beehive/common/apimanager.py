@@ -1305,7 +1305,7 @@ class ApiController(object):
         """
         if len(needs.intersection(perms)) > 0:
             return True
-        self.logger.warn('Perms %s do not overlap needs %s' % (perms, needs))
+        self.logger.warning('Perms %s do not overlap needs %s' % (perms, needs))
         return False
 
     def get_needs(self, args):
@@ -1400,7 +1400,7 @@ class ApiController(object):
 
         if entity is None:
             entity_name = entity_class.__name__
-            self.logger.warn('%s %s not found' % (entity_name, oid))
+            self.logger.warning('%s %s not found' % (entity_name, oid))
             raise ApiManagerError('%s %s not found' % (entity_name, oid), code=404)
             
         # check authorization
@@ -1458,8 +1458,9 @@ class ApiController(object):
             entities, total = get_entities(tags=tags, page=page, size=size, order=order, field=field, *args, **kvargs)
             
             for entity in entities:
-                obj = entity_class(self, oid=entity.id, objid=entity.objid, name=entity.name, active=entity.active,
-                                   desc=entity.desc, model=entity)
+                obj = entity_class(self, oid=entity.id, objid=entity.objid, name=entity.name,
+                                   active=getattr(entity, 'active', None), desc=getattr(entity, 'desc', None),
+                                   model=entity)
                 res.append(obj)
         
             # customize enitities
@@ -1469,7 +1470,7 @@ class ApiController(object):
             self.logger.debug('Get %s (total:%s): %s' % (entity_class.__name__, total, truncate(res)))
             return res, total
         except QueryError as ex:         
-            self.logger.warn(ex, exc_info=1)
+            self.logger.warning(ex, exc_info=1)
             return [], 0
 
     def get_entities(self, entity_class, get_entities, *args, **kvargs):
@@ -1513,7 +1514,7 @@ class ApiController(object):
             self.logger.debug('Get %s : %s' % (entity_class.__name__, truncate(res)))
             return res
         except QueryError as ex:         
-            self.logger.warn(ex)
+            self.logger.warning(ex)
             return []
 
 
@@ -1570,7 +1571,7 @@ class ApiObject(object):
 
     def __repr__(self):
         return '<%s id=%s objid=%s name=%s>' % (self.__class__.__module__+'.'+self.__class__.__name__, self.oid,
-                                                 self.objid, self.name)
+                                                self.objid, self.name)
  
     @property
     def manager(self):
@@ -1785,7 +1786,7 @@ class ApiObject(object):
 
             self.logger.info('Init api object %s.%s - STOP' % (self.objtype, self.objdef))
         except ApiManagerError as ex:
-            self.logger.warn(ex.value)
+            self.logger.warning(ex.value)
             
         # init child classes
         for child in self.child_classes:
@@ -2154,8 +2155,7 @@ class ApiObject(object):
             client = self.controller.module.api_manager.event_producer
             client.send(etype, data, source, dest)
         except Exception as ex:
-            self.logger.warning('Event can not be published. Event producer '\
-                                'is not configured - %s' % ex)
+            self.logger.warning('Event can not be published. Event producer is not configured - %s' % ex)
 
     def get_field(self, obj, name):
         """Get object field if exist. Return None if it can be retrieved 
@@ -2343,7 +2343,7 @@ class ApiInternalObject(ApiObject):
             self.logger.info('Init api object %s.%s - STOP' % 
                               (self.objtype, self.objdef))
         except (QueryError, TransactionError) as ex:
-            self.logger.warn(ex.desc)
+            self.logger.warning(ex.desc)
             
         # init child classes
         for child in self.child_classes:
@@ -2518,7 +2518,7 @@ class ApiViewResponse(ApiObject):
             
             self.logger.debug('Register api object: %s' % objs)
         except (QueryError, TransactionError) as ex:
-            self.logger.warn(ex.desc)    
+            self.logger.warning(ex.desc)    
     
     def set_admin_permissions(self, role_name, args):
         """Set admin permissions
@@ -2695,7 +2695,7 @@ class ApiView(FlaskView):
             if not match('Basic [a-zA-z0-9]+', authorization):
                 raise Exception('Authorization field syntax is wrong')
             authorization = authorization.lstrip('Basic ')
-            self.logger.warn('Authorization: %s' % authorization)
+            self.logger.warning('Authorization: %s' % authorization)
             credentials = b64decode(authorization)
             user, pwd = credentials.split(':')
             user_ip = get_remote_ip(request)
@@ -2718,8 +2718,8 @@ class ApiView(FlaskView):
         redis = current_app.session_interface.redis
         key_prefix = current_app.session_interface.key_prefix
         
-        #self.logger.warn(session)
-        self.logger.warn(redis.keys('%s*' % key_prefix))
+        #self.logger.warning(session)
+        self.logger.warning(redis.keys('%s*' % key_prefix))
         '''
         if session is not None:
             sid = session.sid
@@ -2734,19 +2734,19 @@ class ApiView(FlaskView):
             
             
 
-            #self.logger.warn(key_prefix + sid)
-            #self.logger.warn(redis.get(key_prefix + sid))            
+            #self.logger.warning(key_prefix + sid)
+            #self.logger.warning(redis.get(key_prefix + sid))            
             #redis.expire(key_prefix + sid, 5)
             #redis.delete(key_prefix + sid)
-            #self.logger.warn(redis.keys('%s*' % key_prefix))
+            #self.logger.warning(redis.keys('%s*' % key_prefix))
             #session = None
 
             #redis.delete(key_prefix + sid)'''
             
         #session = None
-        self.logger.warn(session)
+        self.logger.warning(session)
         session['_permanent'] = False
-        self.logger.warn(session)
+        self.logger.warning(session)
         self.logger.debug('Invalidate user session')
 
     def authorize_request(self, module):
@@ -3115,7 +3115,7 @@ class ApiView(FlaskView):
         # get version
         if version is None:
             version = module.get_controller().version
-        
+
         # get app
         app = module.api_manager.app
         

@@ -376,6 +376,7 @@ class DeleteEndpoint(SwaggerApiView):
         resp = endpoint.delete()
         return (resp, 204)
 
+
 class CatalogAPI(ApiView):
     """CatalogAPI
     """
