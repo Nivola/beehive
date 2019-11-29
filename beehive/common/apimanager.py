@@ -26,7 +26,7 @@ from beecell.db import TransactionError, QueryError
 from beecell.db.manager import MysqlManager, SqlManagerError, RedisManager
 from beecell.auth import extract
 from beecell.simple import import_class, truncate, get_class_name, \
-    parse_redis_uri, get_remote_ip, str2bool, format_date, obscure_data
+    parse_redis_uri, get_remote_ip, str2bool, format_date, obscure_data, compat
 from beecell.sendmail import Mailer
 from beehive.common.data import operation, trace
 from beecell.auth import DatabaseAuth, LdapAuth, SystemUser
@@ -2114,15 +2114,18 @@ class ApiObject(object):
         import inspect
 
         # remove object from args - it does not serialize in event
-        nargs = []
-        for a in args:
-            if inspect.isclass(a) is False:
-                nargs.append(a)
+        # nargs = []
+        # for a in args:
+        #     if inspect.isclass(a) is False:
+        #         nargs.append(a)
+        #
+        # event_params = {}
+        # for k, v in params.items():
+        #     if inspect.isclass(v) is False:
+        #         event_params[k] = v
 
-        event_params = {}
-        for k, v in params.items():
-            if inspect.isclass(v) is False:
-                event_params[k] = v
+        nargs = compat(args)
+        event_params = compat(params)
         
         data = {
             'opid': opid,
@@ -2566,12 +2569,14 @@ class ApiViewResponse(ApiObject):
         #    action = 'use'
         elapsed = api.pop('elapsed')
 
+        event_params = compat(params)
+
         # send event
         data = {
             'opid': operation.id,
             'op': api,
             'api_id': operation.id,
-            'params': params,
+            'params': event_params,
             'elapsed': elapsed,
             'response': response
         }
