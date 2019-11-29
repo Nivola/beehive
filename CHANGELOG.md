@@ -7,6 +7,7 @@
 * Integrated ...
 * Various bugfixes
     * changed method common.job.wait_for_job_complete. elapsed to set a job as stalled increased from 60s to 240s
+    * correct bug in job_task. Celery worker does not release session if a task raise an Exception
 
 ## Version 1.5.0 (Sep 04, 2019)
 

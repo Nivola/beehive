@@ -791,8 +791,12 @@ def job_task(module='', synchronous=True):
             # task.update('STARTED', start_time=time(), msg='Start %s:%s' % (task.name, task.request.id))
             task.update('STARTED', msg='START - %s:%s' % (task.name, task.request.id))
             if synchronous:
-                res = fn(task, params, *args, **kwargs)
-                task.release_session()
+                try:
+                    res = fn(task, params, *args, **kwargs)
+                except:
+                    raise
+                finally:
+                    task.release_session()
             else:
                 try:
                     res = fn(task, params, *args, **kwargs)
