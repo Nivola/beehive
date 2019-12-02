@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # (C) Copyright 2018-2019 CSI-Piemonte
-import collections
 
+import collections
+from functools import wraps
 import ujson as json
 from logging import getLogger
 from celery import Task
@@ -239,6 +240,10 @@ class BaseTask(Task):
         self.user = operation.user
         self.api_id = params.pop('api_id', None)
 
+    def progress(self, step_id, msg=None):
+        logger.debug(msg)
+        self.task_result.step_progress(self.request.id, step_id, msg=msg)
+
     #
     # basic task step
     #
@@ -274,32 +279,70 @@ class BaseTask(Task):
         # open database session
         self.get_session()
 
-        # run start step
-        self.start_step()
-        self.task_result.task_update(self.request.id, objid=self.objid)
+        try:
+            self.task_result.task_start(self)
 
-        # run optional steps
-        for step in self.steps:
-            if isinstance(step, str):
-                step = import_func(step)
+            # run start step
+            self.start_step()
+            # self.task_result.task_update(self.request.id, objid=self.objid)
 
-            if not isinstance(step, collections.Callable):
-                raise TaskError('step is not a callable function')
+            # run optional steps
+            for step in self.steps:
+                if isinstance(step, str):
+                    step = import_func(step)
 
-            step_id = self.task_result.step_add(self.request.id, step.__name__)
-            try:
-                res = step(self, params)
-            except Exception as ex:
-                self.task_result.step_failure(step_id, str(ex))
-                raise
-            self.task_result.step_success(self.request.id, step_id, res)
+                if not isinstance(step, collections.Callable):
+                    raise TaskError('step is not a callable function')
 
-        # run optional custom_run
-        custom_run = getattr(self, 'custom_run', None)
-        if custom_run:
-            res = custom_run(params)
+                # step_id = self.task_result.step_add(self.request.id, step.__name__)
+                # try:
+                #     res = step(self, step_id, params)
+                # except Exception as ex:
+                #     self.task_result.step_failure(self.request.id, step_id, str(ex))
+                #     raise
+                # self.task_result.step_success(self.request.id, step_id, res)
 
-        # run end step
-        self.end_step()
+                res = step(self, None, params)
+
+            # run optional custom_run
+            custom_run = getattr(self, 'custom_run', None)
+            if custom_run:
+                res = custom_run(params)
+
+            # run end step
+            self.end_step()
+
+            self.task_result.task_success(self, str(res))
+        except Exception as err:
+            self.logger.error(err, exc_info=1)
+            self.task_result.task_failure(self, str(err))
+            raise
+        finally:
+            self.release_session()
 
         return res
+
+
+def task_step():
+    """Use this decorator to log a new task step
+
+    Example::
+
+        @task_step()
+        def fn(task, step_id, params, *args, **kwargs):
+            ....
+    """
+    def wrapper(fn):
+        @wraps(fn)
+        def decorated(task, step_id, params, *args, **kwargs):
+            step_id = task.task_result.step_add(task.request.id, fn.__name__)
+            try:
+                res = fn(task, step_id, params, *args, **kwargs)
+            except Exception as ex:
+                task.task_result.step_failure(task.request.id, step_id, str(ex))
+                raise
+            task.task_result.step_success(task.request.id, step_id, res)
+
+            return res
+        return decorated
+    return wrapper

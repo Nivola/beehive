@@ -144,17 +144,6 @@ class BaseAuthController(ApiController):
         self.manager = AuthDbManager()
         self.auth_manager = AuthDbManager()
     
-    '''
-    def init_object(self):
-        """Register object types, objects and permissions related to module.
-        Call this function when initialize system first time.
-        
-        :param args: 
-        """
-        # init container
-        for child in self.child_classes:
-            child(self).init_object()'''
-    
     def set_superadmin_permissions(self):
         """ """
         try:
@@ -790,11 +779,11 @@ class BaseAuthController(ApiController):
             # save identity in redis
             self.set_identity(uid, identity)
             
-            res = {'uid':uid,
-                   'user':user.get_dict(),
-                   'timestamp':identity['timestamp'],
-                   'pubkey':identity['pubkey'],
-                   'seckey':identity['seckey']}   
+            res = {'uid': uid,
+                   'user': user.get_dict(),
+                   'timestamp': identity['timestamp'],
+                   'pubkey': identity['pubkey'],
+                   'seckey': identity['seckey']}
 
             User(self).send_event('keyauth-login.uodate', params={'uid':uid})
         except QueryError as ex:
@@ -808,7 +797,7 @@ class BaseAuthController(ApiController):
 
 
 class AuthObject(ApiInternalObject):
-    pass
+    module = 'AuthModule'
 
 
 class User(AuthObject):

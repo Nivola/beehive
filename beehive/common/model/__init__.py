@@ -256,15 +256,16 @@ class SchedulerTask(Base):
     status = Column(String(20), index=True)
     result = Column(String(400))
     start_time = Column(mysql.DATETIME(fsp=6), index=True)
+    run_time = Column(mysql.DATETIME(fsp=6))
     stop_time = Column(mysql.DATETIME(fsp=6))
     counter = Column(Integer)
 
-    def __init__(self, task_id, status, start_time):
+    def __init__(self, task_id, name, status, start_time):
         self.uuid = str(task_id)
         self.objtype = None
         self.objdef = None
         self.objid = None
-        self.name = None
+        self.name = name
         self.parent = None
         self.worker = None
         self.args = None
@@ -272,6 +273,7 @@ class SchedulerTask(Base):
         self.status = status
         self.result = None
         self.start_time = start_time
+        self.run_time = start_time
         self.stop_time = None
         self.counter = 0
 
@@ -290,6 +292,7 @@ class SchedulerStep(Base):
     status = Column(String(20))
     result = Column(String(400))
     start_time = Column(mysql.DATETIME(fsp=6))
+    run_time = Column(mysql.DATETIME(fsp=6))
     stop_time = Column(mysql.DATETIME(fsp=6))
 
     def __init__(self, task_id, name):
@@ -299,6 +302,7 @@ class SchedulerStep(Base):
         self.status = SchedulerState.STARTED
         self.result = None
         self.start_time = datetime.today()
+        self.run_time = self.start_time
         self.stop_time = None
 
     def __repr__(self):
@@ -312,7 +316,7 @@ class SchedulerTrace(Base):
     id = Column(Integer, primary_key=True)
     task_id = Column(String(50), index=True)
     step_id = Column(String(50), index=True)
-    message = Column(String(400))
+    message = Column(String(5000))
     level = Column(String(10), index=True)
     date = Column(mysql.DATETIME(fsp=6))
 

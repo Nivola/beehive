@@ -156,12 +156,13 @@ Files:
 $ python module/basic/view.py conf=/tmp/beehive-py2-test-env/share/test/beehive.yml
 $ python module/auth/view_keyauth.py conf=/tmp/beehive-py2-test-env/share/test/beehive.yml
 $ python module/auth/view.py conf=/tmp/beehive-py2-test-env/share/test/beehive.yml user=admin
+$ python module/auth/tasks.py conf=/tmp/beehive-py2-test-env-01/share/test/beehive.yml user=admin
 $ python module/catalog/view.py conf=/tmp/beehive-py2-test-env/share/test/beehive.yml user=admin
-$ python module/scheduler/view.py conf=/tmp/beehive-py2-test-env/share/test/beehive.yml user=admin
+$ python module/catalog/tasks.py conf=/tmp/beehive-py2-test-env-01/share/test/beehive.yml user=admin
 $ python module/scheduler_v2/tasks.py conf=/tmp/beehive-py2-test-env/share/test/beehive.yml user=admin
+$ python module/scheduler_v2/view.py conf=/tmp/beehive-py2-test-env/share/test/beehive.yml user=admin
 $ python module/event/view.py conf=/tmp/beehive-py2-test-env/share/test/beehive.yml user=admin
 $ python module/event/producer.py conf=/tmp/beehive-py2-test-env/share/test/beehive.yml user=admin
-
 ```
 
 

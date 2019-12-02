@@ -10,7 +10,7 @@ from beehive.module.catalog.model import CatalogDbManager, \
     Catalog as ModelCatalog, CatalogEndpoint as ModelEndpoint
 from beehive.common.controller.authorization import BaseAuthController,\
     AuthObject, Token
-from beehive.common.data import trace
+from beehive.common.data import trace, operation
 
 
 class CatalogController(BaseAuthController):
@@ -121,17 +121,22 @@ class CatalogController(BaseAuthController):
             return entities, total
         
         def customize(entities, *args, **kvargs):
-            # verify permissions for catalogs
-            objs = self.can('view', Catalog.objtype, definition=Catalog.objdef)
-            objs = objs.get(Catalog.objdef.lower())
-            
-            # create permission tags
             tags = []
-            for p in objs:
-                tags.append(self.manager.hash_from_permission(Catalog.objdef, p))
-            
+            if operation.authorize is True:
+                # verify permissions for catalogs
+                objs = self.can('view', Catalog.objtype, definition=Catalog.objdef)
+                objs = objs.get(Catalog.objdef.lower())
+
+                # create permission tags
+                for p in objs:
+                    tags.append(self.manager.hash_from_permission(Catalog.objdef, p))
+                kvargs['tags'] = tags
+            else:
+                kvargs['with_perm_tag'] = False
+                self.logger.debug('Auhtorization disabled for command')
+
             # make catalog index
-            catalogs, total = self.manager.get(tags=tags)
+            catalogs, total = self.manager.get(**kvargs)
             catalogs_idx = {i.id: Catalog(self, oid=i.id, objid=i.objid, name=i.name, desc=i.desc, active=True,
                                           model=i) for i in catalogs}
             
@@ -173,7 +178,7 @@ class Catalog(AuthObject):
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
         info = AuthObject.info(self)
-        info.update({'zone':self.zone})
+        info.update({'zone': self.zone})
         return info
 
     def detail(self):

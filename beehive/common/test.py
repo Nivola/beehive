@@ -524,6 +524,8 @@ class BeehiveTestCase(unittest.TestCase):
                         headers=self.custom_headers, **user)
         if res is not None and 'jobid' in res:
             self.wait_job(res['jobid'])
+        if res is not None and 'taskid' in res:
+            self.wait_task(res['taskid'])
         return res
 
     def put(self, uri, data=None, query=None, params=None, timeout=600, user=None):
@@ -553,6 +555,9 @@ class BeehiveTestCase(unittest.TestCase):
             self.wait_job(res['jobid'])
         return res
 
+    #
+    # job
+    #
     def get_job_state(self, jobid):
         try:
             res = self.call(self.module, '/v1.0/%s/worker/tasks/{oid}' % self.module_prefix, 'get', 
@@ -578,6 +583,38 @@ class BeehiveTestCase(unittest.TestCase):
             self.runlogger.info('.')
             sleep(delta)
             state = self.get_job_state(jobid)
+            if elapsed > maxtime and state != accepted_state:
+                state = TIMEOUT
+        self.assertEqual(state, accepted_state)
+
+    #
+    # task
+    #
+    def get_task_status(self, jobid):
+        try:
+            res = self.call(self.module, '/v2.0/%s/worker/tasks/{oid}' % self.module_prefix, 'get',
+                            params={'oid': jobid}, runlog=False, **self.users[self.run_test_user])
+            job = res.get('task_instance')
+            state = job.get('status')
+            logger.debug('Get job %s state: %s' % (jobid, state))
+            if state == 'FAILURE':
+                for err in job.get('traceback', []):
+                    self.runlogger.error(err.rstrip())
+            return state
+        except (NotFoundException, Exception):
+            return 'EXPUNGED'
+
+    def wait_task(self, taskid, delta=3, accepted_state='SUCCESS', maxtime=600):
+        """Wait resource
+        """
+        logger.info('wait for:         %s' % taskid)
+        self.runlogger.info('wait for:         %s' % taskid)
+        state = self.get_task_status(taskid)
+        elapsed = 0
+        while state not in ['SUCCESS', 'FAILURE']:
+            self.runlogger.info('.')
+            sleep(delta)
+            state = self.get_task_status(taskid)
             if elapsed > maxtime and state != accepted_state:
                 state = TIMEOUT
         self.assertEqual(state, accepted_state)

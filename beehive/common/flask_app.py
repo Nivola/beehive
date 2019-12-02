@@ -81,7 +81,7 @@ class BeehiveApp(Flask):
         loggin_level = int(self.params['api_logging_level'])
         self.setup_loggers(level=loggin_level)
         
-        logger.info('##### SERVER STARTING #####')
+        logger.info('########## SERVER STARTING ##########')
         start = time()
         
         # api manager reference
@@ -110,7 +110,7 @@ class BeehiveApp(Flask):
         logger.info('Setup server over: %s' % self.api_manager.app_uri)
         logger.info('Setup server over: %s' % self.api_manager.uwsgi_uri)
         
-        logger.info('##### SERVER STARTED ##### - %s' % round(time() - start, 2))
+        logger.info('########## SERVER STARTED ########## - %s' % round(time() - start, 2))
     
     def del_configurations(self):
         del self.db_uri

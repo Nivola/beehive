@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # (C) Copyright 2018-2019 CSI-Piemonte
+import traceback
 
-from beehive.common.data import transaction, operation
+from beehive.common.data import transaction, operation, query
 from beehive.common.model import SchedulerTask, SchedulerState, AbstractDbManager, SchedulerTrace, SchedulerStep
 from datetime import datetime
 from celery.utils.log import get_task_logger
@@ -21,164 +22,172 @@ class TaskResult(object):
     @transaction
     def trace_add(self, task_id, step_id, message, level):
         entity = self.manager.add_entity(SchedulerTrace, task_id, step_id, message, level)
-        logger.debug('add new db task trace %s record' % entity)
+        logger.debug2('add new db task trace %s record' % entity)
 
     @transaction
     def step_add(self, task_id, name):
         entity = self.manager.add_entity(SchedulerStep, task_id, name)
-        logger.debug('add new db task step %s record' % entity)
-
+        logger.debug2('add new db task step %s record' % entity)
+        logger.info('add new step %s: %s' % (name, entity.uuid))
         self.trace_add(task_id, entity.uuid, 'start step', 'INFO')
         return entity.uuid
+
+    @transaction
+    def step_progress(self, task_id, step_id, msg=None):
+        run_time = datetime.today()
+        entity = self.manager.update_entity(SchedulerStep, uuid=step_id, run_time=run_time)
+        logger.debug2('update task step %s record' % entity)
+
+        entity = self.manager.update_entity(SchedulerTask, uuid=task_id, run_time=run_time)
+        logger.debug2('update db task %s record' % entity)
+
+        logger.info('step %s progress' % step_id)
+
+        if msg is not None:
+            self.trace_add(task_id, step_id, msg, 'INFO')
 
     @transaction
     def step_success(self, task_id, step_id, result):
         stop_time = datetime.today()
         entity = self.manager.update_entity(SchedulerStep, uuid=step_id, status=SchedulerState.SUCCESS, result=result,
-                                            stop_time=stop_time)
-        logger.debug('update task step %s record' % entity)
-
+                                            stop_time=stop_time, run_time=stop_time)
+        logger.debug2('update task step %s record' % entity)
+        logger.info('step %s success' % step_id)
         self.trace_add(task_id, step_id, 'end step with result: %s' % result, 'INFO')
 
     @transaction
-    def step_failure(self, step_id, error):
+    def step_failure(self, task_id, step_id, error):
         stop_time = datetime.today()
         entity = self.manager.update_entity(SchedulerStep, uuid=step_id, status=SchedulerState.FAILURE,
                                             stop_time=stop_time, result=error)
-        logger.debug('update task step %s record' % entity)
+        logger.debug2('update task step %s record' % entity)
+        logger.info('step %s error: %s' % (step_id, error))
+        self.trace_add(task_id, step_id, 'step error: %s' % error, 'ERROR')
 
-        self.trace_add(entity.task_id, step_id, 'step error: %s' % error, 'ERROR')
-
-    @transaction
-    def task_pending(self, task_id):
-        start_time = datetime.today()
-
-        # create task in pending state
-        status = SchedulerState.PENDING
-        entity = self.manager.add_entity(SchedulerTask, task_id, status, start_time)
-        logger.debug('add new db task %s record' % entity)
+    @query
+    def task_exists(self, task_id):
+        entity = self.manager.exist_entity(SchedulerTask, task_id)
+        if entity is True:
+            logger.error('task %s already exists' % task_id)
+            raise Exception('task %s already exists' % task_id)
 
     @transaction
     def task_prerun(self, **args):
-        # store task
+        """Dispatched when a task pre run.
+
+        :param args.task: celery task
+        :param args.task_id: celery task id
+        """
         task = args.get('task')
         task_id = args.get('task_id')
-        vargs = args.get('args')
-        kwargs = args.get('kwargs')
 
-        try:
-            vargs = json.dumps(vargs)
-        except:
-            vargs = ''
+        start_time = datetime.today()
 
-        try:
-            kwargs = json.dumps(kwargs)
-        except:
-            kwargs = ''
+        self.task_exists(task_id)
+
+        # create task in pending state
+        status = SchedulerState.PENDING
+        entity = self.manager.add_entity(SchedulerTask, task_id, task.name, status, start_time)
+        logger.debug2('add new db task %s record' % entity)
+        logger.info('send new task')
+
+    @transaction
+    def task_start(self, task):
+        """Dispatched when a task start.
+
+        :param task: celery task
+        """
+        task_id = task.request.id
+        vargs = task.request.argsrepr
+        kwargs = task.request.kwargsrepr
+
+        entity = self.manager.get_entity(SchedulerTask, task_id)
+        if entity.status != SchedulerState.PENDING:
+            raise Exception('task %s is not in PENDING status' % task_id)
 
         # update task in pending state
         status = SchedulerState.STARTED
         entity = self.manager.update_entity(SchedulerTask, uuid=task_id, name=task.name, worker=task.request.hostname,
                                             objid=task.objid, objtype=task.objtype, objdef=task.objdef, args=vargs,
                                             kwargs=kwargs, status=status)
-        logger.debug('update db task %s record' % entity)
-
+        logger.debug2('update db task %s record' % entity)
+        logger.info('start task')
         self.trace_add(task_id, None, 'start task', 'INFO')
 
     @transaction
-    def task_postrun(self, **args):
-        task = args.get('task')
-        task_id = args.get('task_id')
-        status = args.get('state')
-        result = args.get('retval')
+    def task_success(self, task, result):
+        """Dispatched when a task success.
+
+        :param task: celery task
+        :param result: task result
+        """
+        task_id = task.request.id
+
+        # set status
+        status = SchedulerState.SUCCESS
 
         # get task stop_time
         stop_time = datetime.today()
 
         # update task in pending state
-        entity = self.manager.update_entity(SchedulerTask, uuid=task_id, stop_time=stop_time, status=status,
-                                            result=result)
-        logger.debug('update db task %s record' % entity)
-
+        entity = self.manager.update_entity(SchedulerTask, uuid=task_id, stop_time=stop_time, run_time=stop_time,
+                                            status=status, result=result)
+        logger.debug2('update db task %s record' % entity)
+        logger.info('task finished')
         self.trace_add(task_id, None, 'end task with result: %s' % result, 'INFO')
 
     @transaction
-    def task_failure(self, **args):
-        """Dispatched when a task fails. Sender is the task object executed.
+    def task_failure(self, task, err):
+        """Dispatched when a task fails.
 
-        Provides arguments:
-        - task_id: Id of the task.
-        - exception: Exception instance raised.
-        - args: Positional arguments the task was called with.
-        - kwargs: Keyword arguments the task was called with.
-        - traceback: Stack trace object.
-        - einfo: The billiard.einfo.ExceptionInfo instance.
+        :param task: celery task
+        :param err: error message
         """
-        task_id = args.get('task_id')
-        exception = args.get('exception')
-        einfo = args.get('einfo')
+        task_id = task.request.id
 
         # set status
         status = SchedulerState.FAILURE
 
         # get exception info
-        err = str(exception)
-        trace = format_tb(einfo.tb)
-        trace.append(err)
+        trace = traceback.format_exc()
 
         # get task stop_time
         stop_time = datetime.today()
 
         # update task in pending state
-        entity = self.manager.update_entity(SchedulerTask, uuid=task_id, stop_time=stop_time, status=status, result=err)
+        entity = self.manager.update_entity(SchedulerTask, uuid=task_id, stop_time=stop_time, run_time=stop_time,
+                                            status=status, result=err)
         logger.debug('update db task %s record' % entity)
+        logger.info('task failed: %s' % trace)
 
-        self.trace_add(task_id, None, '\n'.join(trace), 'ERROR')
+        self.trace_add(task_id, None, trace, 'ERROR')
 
     @transaction
     def task_update(self, task_id, **args):
         entity = self.manager.update_entity(SchedulerTask, uuid=task_id, **args)
-        logger.debug('update db task %s record' % entity)
+        logger.debug2('update db task %s record' % entity)
 
         self.trace_add(task_id, None, 'update task', 'INFO')
 
 
 @task_prerun.connect
 def task_prerun(**args):
-    try:
-        task = args.get('task')
-        task.get_session()
-        operation.transaction = None
-        TaskResult().task_pending(str(task.request.id))
-        task.get_session(reopen=True)
-        TaskResult().task_prerun(**args)
-    except:
-        raise
-    finally:
-        task.release_session()
+    task = args.get('task')
+    task.get_session()
+    operation.transaction = None
+    TaskResult().task_prerun(**args)
+    task.release_session()
 
 
-@task_postrun.connect
-def task_postrun(**args):
-    try:
-        task = args.get('task')
-        task.get_session()
-        operation.transaction = None
-        TaskResult().task_postrun(**args)
-    except:
-        raise
-    finally:
-        task.release_session()
+# @task_postrun.connect
+# def task_postrun(**args):
+#     task = args.get('task')
+#     task.get_session()
+#     operation.transaction = None
+#     TaskResult().task_postrun(**args)
 
 
-@task_failure.connect
-def task_failure(**args):
-    try:
-        task = args.get('task')
-        task.get_session()
-        operation.transaction = None
-        TaskResult().task_failure(**args)
-    except:
-        raise
-    finally:
-        task.release_session()
+# @task_failure.connect
+# def task_failure(**args):
+#     operation.transaction = None
+#     TaskResult().task_failure(**args)

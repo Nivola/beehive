@@ -9,6 +9,94 @@ from beecell.db import QueryError, TransactionError
 from beecell.simple import id_gen
 from beehive.common.test import runtest, BeehiveTestCase
 
+tests = [
+    ##'test_remove_table',
+    ##'test_create_table',
+    ##'test_set_initial_data',
+
+    # system object type
+    ##'test_add_object_types',
+    ##'test_get_object_type',
+    ##'test_get_object_type_all',
+    ##'test_get_type_empty',
+
+    # system object action
+    ##'test_get_object_action',
+    ##'test_add_object_actions',
+    ##'test_get_object_action_all',
+
+    # system object
+    ##'test_add_object',
+    ##'test_add_object_bis',
+    ##'test_get_object_all',
+    ##'test_get_object',
+    ##'test_get_object_empty',
+
+    # system object permission
+    ##'test_get_permission_all',
+    ##'test_get_permission',
+    ##'test_get_permission_empty',
+
+    # role
+    ##'test_add_role',
+    'test_add_role_bis',
+    'test_get_role',
+    'test_update_role',
+    'test_append_role_permission',
+    'test_append_role_permission',
+    'test_get_role_permission',
+    'test_get_permission_roles',
+
+    # user
+    'test_add_user',
+    'test_get_user',
+    'test_get_user_roles',
+    'test_get_role_users',
+    'test_get_user_permissions',
+    'test_verify_user_password',
+    'test_verify_user_password_bad',
+    'test_append_user_role',
+    'test_append_user_role_bis',
+    'test_get_user_roles',
+    'test_remove_user_role',
+    'test_update_user',
+    'test_set_attribute',
+    'test_set_attribute_bis',
+    'test_get_attribute',
+    'test_remove_attribute',
+
+    # group
+    'test_add_group',
+    'test_get_group',
+    'test_get_group_roles',
+    'test_get_role_groups',
+    'test_get_group_members',
+    'test_get_user_groups',
+    'test_get_group_permissions',
+    'test_append_group_role',
+    'test_append_group_role_bis',
+    'test_append_group_member',
+    'test_append_group_member_bis',
+    'test_get_group_roles',
+    'test_get_group_members',
+    'test_get_user_groups',
+    'test_get_user_permissions2',
+    'test_get_group_permissions',
+    'test_remove_group_role',
+    'test_remove_group_member',
+    'test_update_group',
+
+    # delete all
+    'test_remove_group',
+    'test_remove_user',
+    'test_remove_role_permission',
+    'test_remove_role',
+    'test_remove_object',
+    'test_remove_object_empty',
+    'test_remove_object_action',
+    'test_remove_object_type',
+]
+
 
 class AuthManagerTestCase(BeehiveTestCase):
     """To execute this test you need a mysql instance, a user and a 
@@ -36,12 +124,10 @@ class AuthManagerTestCase(BeehiveTestCase):
 
     def test_get_object_type_all(self):
         res = self.manager.get_object_type()
-        #self.assertEqual(res.name, name, 'Error')
 
     def test_get_object_type(self):
         res = self.manager.get_object_type(objtype='resource')
         res = self.manager.get_object_type(objtype='resource', objdef='container.org.group.vm')
-        #self.assertEqual(res.name, name, 'Error')
 
     def test_get_type_empty(self):
         with self.assertRaises(QueryError):
@@ -54,7 +140,6 @@ class AuthManagerTestCase(BeehiveTestCase):
                     ['service', 'VirtualServerService', 'VirtualServer'],
                     ]
         res = self.manager.add_object_types(obj_type)
-        #self.assertEqual(res, True)
         
     def test_remove_object_type(self):
         res = self.manager.remove_object_type(objtype='service')
@@ -77,26 +162,20 @@ class AuthManagerTestCase(BeehiveTestCase):
             res = self.manager.remove_object_action(value=item)
 
     def test_add_object(self):
-        obj_type1 = self.manager.get_object_type(objtype='resource', 
-                                                objdef='container.org.group.vm')[0]
-        obj_type2 = self.manager.get_object_type(objtype='resource', 
-                                                objdef='container.org')[0]
-        obj_type3 = self.manager.get_object_type(objtype='service', 
-                                                objdef='vdcservice')[0]                                                
+        obj_type1 = self.manager.get_object_type(objtype='resource', objdef='container.org.group.vm')[0]
+        obj_type2 = self.manager.get_object_type(objtype='resource', objdef='container.org')[0]
+        obj_type3 = self.manager.get_object_type(objtype='service', objdef='vdcservice')[0]
         objs = [(obj_type1, 'c1.o1.g1.*', 'bla'),
                 (obj_type1, 'c1.o1.g1.v1', 'bla'),
                 (obj_type2, 'c1.o2', 'bla'),
                 (obj_type3, 'ser1', 'bla')]
         actions = self.manager.get_object_action()
         res = self.manager.add_object(objs, actions)
-        #self.assertEqual(res, True)
         
     def test_add_object_bis(self):
         with self.assertRaises(TransactionError):
-            obj_type1 = self.manager.get_object_type(objtype='resource', 
-                                                     objdef='container.org.group.vm')[0]
-            obj_type2 = self.manager.get_object_type(objtype='resource', 
-                                                     objdef='container.org')[0]
+            obj_type1 = self.manager.get_object_type(objtype='resource', objdef='container.org.group.vm')[0]
+            obj_type2 = self.manager.get_object_type(objtype='resource', objdef='container.org')[0]
             objs = [(obj_type1, 'c1.o1.g1.*'),
                     (obj_type1, 'c1.o1.g1.v1'),
                     (obj_type2, 'c1.o2')]
@@ -110,11 +189,8 @@ class AuthManagerTestCase(BeehiveTestCase):
         
     def test_get_object(self):
         res = self.manager.get_object(objid='c1.o2')
-        
-        obj_type1 = self.manager.get_object_type(objtype='resource', 
-                                                 objdef='container.org.group.vm')[0]
+        obj_type1 = self.manager.get_object_type(objtype='resource', objdef='container.org.group.vm')[0]
         res = self.manager.get_object(objtype=obj_type1)
-
         res = self.manager.get_object(objid='c1.o1.g1.*', objtype=obj_type1)
 
     def test_get_object_empty(self):
@@ -136,8 +212,7 @@ class AuthManagerTestCase(BeehiveTestCase):
         res = self.manager.get_permission_by_object(objid='c1.o1.g1.*')
         res = self.manager.get_permission_by_object(objtype='service')
         res = self.manager.get_permission_by_object(objdef='container.org')
-        res = self.manager.get_permission_by_object(objid='c1.o1.g1.*', 
-                                                    objtype='resource', 
+        res = self.manager.get_permission_by_object(objid='c1.o1.g1.*', objtype='resource',
                                                     objdef='container.org.group.vm')
     
     def test_get_permission_empty(self):
@@ -150,7 +225,6 @@ class AuthManagerTestCase(BeehiveTestCase):
         name = 'role1'
         description = 'role1'
         res = self.manager.add_role(objid, name, description)
-        #self.assertEqual(res, True)
         
     def test_add_role_bis(self):
         objid = id_gen()
@@ -171,8 +245,7 @@ class AuthManagerTestCase(BeehiveTestCase):
         name = 'role1'
         new_name = 'role2'
         new_description = 'role2_desc'
-        res = self.manager.update_role(name=name, new_name=new_name, 
-                                       new_description=new_description, )
+        res = self.manager.update_role(name=name, new_name=new_name, new_description=new_description, )
         self.assertEqual(res, True)
 
     def test_remove_role(self):
@@ -207,9 +280,7 @@ class AuthManagerTestCase(BeehiveTestCase):
         roles = [self.manager.get_role(name='role2')[0]]
         active = True
         password = 'mypass'
-        res = self.manager.add_user(objid, name, roles, 
-                                    active=active, password=password)
-        #self.assertEqual(res, True)
+        res = self.manager.add_user(objid, name, roles, active=active, password=password)
 
     def test_get_user(self):
         res = self.manager.get_user(name='user1')
@@ -276,17 +347,14 @@ class AuthManagerTestCase(BeehiveTestCase):
     def test_set_attribute(self):
         user = self.manager.get_user(name='user2')[0]
         res = self.manager.set_user_attribute(user, 'attr1', 'value1', '')
-        #self.assertEqual(res, True)
 
     def test_set_attribute_bis(self):
         user = self.manager.get_user(name='user2')[0]
         res = self.manager.set_user_attribute(user, 'attr1', 'value2', '')
-        #self.assertEqual(res, True)
 
     def test_get_attribute(self):
         user = self.manager.get_user(name='user2')[0]
         self.logger.debug(user.attrib)
-        #self.assertEqual(res, True)
 
     def test_remove_attribute(self):
         user = self.manager.get_user(name='user2')[0]
@@ -303,7 +371,6 @@ class AuthManagerTestCase(BeehiveTestCase):
         active = True
         password = 'mypass'
         res = self.manager.add_group(id_gen(), name, description, members, roles)
-        #self.assertEqual(res, True)
 
     def test_get_group(self):
         res = self.manager.get_group(name='group1')
@@ -333,8 +400,7 @@ class AuthManagerTestCase(BeehiveTestCase):
         name = 'group1'
         new_name = 'group2'
         new_description = 'group2'
-        res = self.manager.update_group(name=name, new_name=new_name, 
-                                        new_description=new_description)
+        res = self.manager.update_group(name=name, new_name=new_name, new_description=new_description)
         self.assertEqual(res, True)
 
     def test_append_group_role(self):
@@ -360,8 +426,7 @@ class AuthManagerTestCase(BeehiveTestCase):
 
     def test_append_group_member(self):
         group = self.manager.get_group(name='group1')[0]
-        if self.manager.add_user(id_gen(), 'user3', [], active=True, 
-                                 password='', description=''):
+        if self.manager.add_user(id_gen(), 'user3', [], active=True, password='', description=''):
             user = self.manager.get_user(name='user3')[0]
         res = self.manager.append_group_member(group, user)
         self.assertEqual(res, True)
@@ -384,95 +449,10 @@ class AuthManagerTestCase(BeehiveTestCase):
         res = self.manager.remove_group(name='group2')
         self.assertEqual(res, True)
 
-def test_suite():
-    tests = [
-        ##'test_remove_table',
-        ##'test_create_table',
-        ##'test_set_initial_data',
-        # system object type
-        ##'test_add_object_types',
-        ##'test_get_object_type',
-        ##'test_get_object_type_all',
-        ##'test_get_type_empty',
-        
-        # system object action
-        ##'test_get_object_action',             
-        ##'test_add_object_actions',
-        ##'test_get_object_action_all',
-        
-        # system object
-        ##'test_add_object',
-        ##'test_add_object_bis',
-        ##'test_get_object_all',
-        ##'test_get_object',
-        ##'test_get_object_empty',
-        
-        # system object permission
-        ##'test_get_permission_all',
-        ##'test_get_permission',
-        ##'test_get_permission_empty',          
-        
-        # role
-        ##'test_add_role',
-        #'test_add_role_bis',
-        #'test_get_role',
-        #'test_update_role',
-        #'test_append_role_permission',
-        #'test_append_role_permission',
-        #'test_get_role_permission',
-        #'test_get_permission_roles',
-        
-        # user
-        #'test_add_user',
-        #'test_get_user',
-        #'test_get_user_roles',
-        'test_get_role_users',
-        #'test_get_user_permissions',
-        #'test_verify_user_password',
-        #'test_verify_user_password_bad',
-        #'test_append_user_role',
-        #'test_append_user_role_bis',
-        'test_get_user_roles',
-        #'test_remove_user_role',
-        #'test_update_user',
-        #'test_set_attribute',
-        #'test_set_attribute_bis',
-        #'test_get_attribute',             
-        #'test_remove_attribute',
-        
-        # group
-        #'test_add_group',
-        #'test_get_group',
-        #'test_get_group_roles',
-        #'test_get_role_groups',
-        #'test_get_group_members',
-        #'test_get_user_groups',
-        #'test_get_group_permissions',
-        #'test_append_group_role',
-        #'test_append_group_role_bis',
-        #'test_append_group_member',
-        #'test_append_group_member_bis',          
-        #'test_get_group_roles',
-        #'test_get_group_members',
-        #'test_get_user_groups',
-        #'test_get_user_permissions2',
-        #'test_get_group_permissions',           
-        #'test_remove_group_role',
-        #'test_remove_group_member',
-        #'test_update_group',
-        
-        # delete all
-        #'test_remove_group',
-        #'test_remove_user',
-        #'test_remove_role_permission',
-        #'test_remove_role',
-        #'test_remove_object',
-        #'test_remove_object_empty',
-        #'test_remove_object_action',             
-        #'test_remove_object_type',
-    ]
-    return unittest.TestSuite(map(AuthManagerTestCase, tests))
+
+def run(args):
+    runtest(AuthManagerTestCase, tests, args)
+
 
 if __name__ == '__main__':
-    runtest(test_suite())
-    
+    run({})

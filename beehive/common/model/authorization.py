@@ -2108,10 +2108,10 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         :raises TransactionError: raise :class:`TransactionError`
         """
         session = self.get_session()
-        user = session.query(User).filter(User.expiry_date<=expiry_date)
-        user.update({'active':False})
+        user = session.query(User).filter(User.expiry_date <= expiry_date)
+        user.update({'active': False})
         res = [u.id for u in user.all()]
-        self.logger.debug('Disable exipred users: %s' % (res))
+        self.logger.debug('Disable exipred users: %s' % res)
         return res
 
     @transaction

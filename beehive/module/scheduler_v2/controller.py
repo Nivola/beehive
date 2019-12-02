@@ -6,7 +6,11 @@ from uuid import uuid4
 
 import ujson as json
 from datetime import datetime, timedelta
+
+from celery.result import AsyncResult
+
 from beecell.db.manager import RedisManagerError
+from beecell.db.util import QueryError
 from beecell.simple import str2uni, get_attrib, truncate, import_class, format_date
 from celery.schedules import crontab
 from networkx import DiGraph
@@ -14,7 +18,7 @@ from networkx.readwrite import json_graph
 from beehive.common.apimanager import ApiController, ApiObject, ApiManagerError
 from beehive.module.scheduler.redis_scheduler import RedisScheduleEntry, RedisScheduler
 from beehive.common.task.manager import task_scheduler, task_manager
-from beehive.common.data import trace
+from beehive.common.data import trace, operation
 from beehive.common.task.canvas import signature
 from beehive.module.scheduler_v2.model import SchedulerDbManager
 
@@ -403,18 +407,56 @@ class TaskManager(ApiObject):
         :return: List of :class:`Task`
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        def get_entities(*args, **kvargs):
-            tasks, total = self.manager.get_tasks(*args, **kvargs)
+        res = []
+        tags = []
 
-            return tasks, total
+        objdef = None
+        objtype = None
+        entity_class = kvargs.pop('entity_class')
+        if entity_class is not None:
+            entity_class = import_class(entity_class)
+            objdef = entity_class.objdef
+            objtype = entity_class.objtype
 
-        entity_class = import_class(kvargs.pop('entity_class'))
+        if operation.authorize is True:
+            try:
+                # use base permission over task manager - admin
+                self.verify_permisssions('view')
+                with_perm_tag = False
+            except:
+                if entity_class is None:
+                    raise ApiManagerError('entity_class must be specified')
 
-        res, total = self.controller.get_paginated_entities(entity_class, get_entities, *args, **kvargs)
-        return res, total
+                # use permission for a specific objtype:objdef - user
+                with_perm_tag = True
+
+                # verify permissions
+                objs = self.controller.can(u'view', objtype=objtype, definition=objdef)
+
+                # create permission tags
+                for entity_def, ps in objs.items():
+                    for p in ps:
+                        tags.append(self.manager.hash_from_permission(entity_def.lower(), p))
+                self.logger.debug(u'Permission tags to apply: %s' % truncate(tags))
+        else:
+            with_perm_tag = False
+            self.logger.debug(u'Auhtorization disabled for command')
+
+        try:
+            entities, total = self.manager.get_tasks(tags=tags, with_perm_tag=with_perm_tag, *args, **kvargs)
+
+            for entity in entities:
+                obj = Task(self.controller, oid=entity.id, objid=entity.objid, name=entity.name, model=entity)
+                res.append(obj)
+
+            self.logger.info(u'Get tasks (total:%s): %s' % (total, truncate(res)))
+            return res, total
+        except QueryError as ex:
+            self.logger.warn(ex, exc_info=1)
+            return [], 0
 
     @trace(op='view')
-    def get_task(self, entity_class_name, task_id):
+    def get_task(self, task_id, entity_class_name=None):
         """Get task
 
         :param entity_class_name: entity_class owner of the tasks to query
@@ -426,6 +468,30 @@ class TaskManager(ApiObject):
         if tot == 0:
             raise ApiManagerError('task %s of entity %s does not exist' % (task_id, entity_class_name))
         return tasks[0]
+
+    @trace(op='view')
+    def get_task_status(self, task_id, entity_class_name=None):
+        """Get task
+
+        :param entity_class_name: entity_class owner of the tasks to query
+        :param task_id: task id
+        :return: :class:`Task` instance
+        :raises ApiManagerError: raise :class:`ApiManagerError`
+        """
+        # get first task status from celery task stored in celery backend
+        task = AsyncResult(task_id, app=task_manager)
+        status = task.status
+        self.logger.debug('get task from celery: %s' % task)
+
+        # when celery task is removed from celery backend for key elapsed use task from db
+        tasks, tot = self.get_tasks(entity_class=entity_class_name, task_id=task_id)
+        if tot == 1:
+            task = tasks[0]
+            status = task.status
+            self.logger.debug('get task from database: %s' % task)
+
+        res = {'uuid': task_id, 'status': status}
+        return res
 
     # @trace(op='view')
     # def get_all_tasks(self, elapsed=60, ttype=None, details=False):
@@ -880,6 +946,7 @@ class Task(ApiObject):
         self.parent = None
         self.worker = None
         self.start_time = None
+        self.run_time = None
         self.stop_time = None
         self.result = None
         self.status = None
@@ -895,10 +962,11 @@ class Task(ApiObject):
             self.worker = self.model.worker
             self.status = self.model.status
             self.start_time = self.model.start_time
+            self.run_time = self.model.run_time
             self.stop_time = self.model.stop_time
             self.result = self.model.result
-            if isinstance(self.start_time, datetime) and isinstance(self.stop_time, datetime):
-                self.duration = (self.stop_time - self.start_time).total_seconds()
+            if isinstance(self.start_time, datetime) and isinstance(self.run_time, datetime):
+                self.duration = (self.run_time - self.start_time).total_seconds()
 
             try:
                 self.args = json.loads(self.model.args)[0]
@@ -943,6 +1011,7 @@ class Task(ApiObject):
             'user': self.user,
             'identity': self.identity,
             'start_time': format_date(self.start_time),
+            'run_time': format_date(self.run_time),
             'stop_time': format_date(self.stop_time),
             'duration': self.duration
         }
@@ -973,6 +1042,7 @@ class Task(ApiObject):
             'user': self.user,
             'identity': self.identity,
             'start_time': format_date(self.start_time),
+            'run_time': format_date(self.run_time),
             'stop_time': format_date(self.stop_time),
             'duration': self.duration,
             'result': self.result,
@@ -1010,14 +1080,17 @@ class Task(ApiObject):
         steps = self.manager.get_steps(self.uuid)
         for s in steps:
             duration = None
-            if isinstance(s.start_time, datetime) and isinstance(s.stop_time, datetime):
-                duration = (s.stop_time - s.start_time).total_seconds()
+            stop_time = None
+            if isinstance(s.start_time, datetime) and isinstance(s.run_time, datetime):
+                duration = (s.run_time - s.start_time).total_seconds()
+                stop_time = format_date(s.stop_time)
             self.steps.append({
                 'uuid': s.uuid,
                 'name': s.name,
                 'status': s.status,
                 'result': s.result,
                 'start_time': format_date(s.start_time),
-                'stop_time': format_date(s.stop_time),
+                'run_time': format_date(s.run_time),
+                'stop_time': stop_time,
                 'duration': duration
             })

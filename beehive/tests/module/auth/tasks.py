@@ -2,40 +2,74 @@
 #
 # (C) Copyright 2018-2019 CSI-Piemonte
 
-import unittest
-from beehive.common.task.manager import configure_task_manager,\
-    configure_task_scheduler
-from beehive.module.auth.tasks import disable_expired_users,\
-    remove_expired_roles_from_users
+from beehive.common.task_v2.manager import configure_task_manager, configure_task_scheduler
+from beehive.common.task_v2.canvas import signature
+from beehive.common.task_v2.manager import task_manager
 from beehive.common.test import runtest, BeehiveTestCase
+
 
 tests = [
     'test_disable_expired_users',
-    # 'test_remove_expired_roles_from_users',
+    'test_remove_expired_roles_from_users',
 ]
 
 
-class AuthTaskTestCase(BeehiveTestCase):
+class CatalogTaskManagerTestCase(BeehiveTestCase):
     def setUp(self):
         BeehiveTestCase.setUp(self)
-        self.module = 'auth'
-        self.module_prefix = 'nas'
-        self.endpoint_service = 'auth'
 
-        configure_task_manager(self.broker, self.broker)
-        configure_task_scheduler(self.broker, self.broker)
+        configure_task_manager(self.worker.get('broker'), self.worker.get('result'),
+                               task_queue=self.worker.get('queue'))
+        configure_task_scheduler(self.worker.get('broker'), self.worker.get('result'),
+                                 task_queue=self.worker.get('queue'))
 
     def tearDown(self):
         BeehiveTestCase.tearDown(self)
 
     def test_disable_expired_users(self):
+        params = {}
+        user = {
+            'user': 'user1',
+            'server': 'server1',
+            'identity': 'identity1',
+            'api_id': 'apiid1'
+        }
+        entity = {
+            'objid': 'objid1'
+        }
         data = {}
-        task = disable_expired_users.delay('*', data)
-        
+        params.update(user)
+        params.update(entity)
+        params.update(data)
+        task = signature('beehive.module.auth.tasks_v2.disable_expired_users_task', [params], app=task_manager,
+                         queue=self.worker.get('queue'))
+        res = task.apply_async()
+        self.logger.debug('start task: %s' % res)
+
     def test_remove_expired_roles_from_users(self):
+        params = {}
+        user = {
+            'user': 'user1',
+            'server': 'server1',
+            'identity': 'identity1',
+            'api_id': 'apiid1'
+        }
+        entity = {
+            'objid': 'objid1'
+        }
         data = {}
-        task = remove_expired_roles_from_users.delay('*', data)
+        params.update(user)
+        params.update(entity)
+        params.update(data)
+        task = signature('beehive.module.auth.tasks_v2.remove_expired_roles_from_users_task', [params],
+                         app=task_manager, queue=self.worker.get('queue'))
+        res = task.apply_async()
+        self.logger.debug('start task: %s' % res)
+
+
+def run(args):
+    runtest(CatalogTaskManagerTestCase, tests, args)
 
 
 if __name__ == '__main__':
-    runtest(AuthTaskTestCase, tests)
+    run({})

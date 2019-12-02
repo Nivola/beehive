@@ -302,9 +302,8 @@ class GetTasksDefinition(TaskApiView):
 
 
 class GetTasksRequestSchema(Schema):
-    entity_class = fields.String(required=True, default='beehive.module.scheduler_v2.controller.Task',
-                                 missing='beehive.module.scheduler_v2.controller.Task',
-                                 description='entity_class owner of the tasks to query')
+    entity_class = fields.String(required=False, example='beehive.module.scheduler_v2.controller.Manager',
+                                 missing=None, description='entity_class owner of the tasks to query')
     elapsed = fields.Integer(required=False, missing=60, example=60, allow_none=True,
                              description='Used to filter key not older than')
     ttype = fields.String(required=False, example='JOB', description='Used to filter key type',
@@ -318,10 +317,10 @@ class GetSingleTaskResponseSchema(Schema):
     name = fields.String(required=True, default='test', example='test')
     desc = fields.String(required=True, default='test', example='test')
     active = fields.Boolean(required=True, default=True, example=True)
-
-
-
     status = fields.String(required=True, default='SUCCESS')
+
+
+
     traceback = fields.List(fields.String(default='error'), required=False, allow_none=True)
     jobs = fields.List(fields.String(default='c518fa8b-1247-4f9f-9d73-785bcc24b8c7'), required=False, allow_none=True)
     name = fields.String(required=True, default='beehive.module.scheduler.tasks.jobtest')
@@ -368,9 +367,8 @@ class GetTasks(TaskApiView):
 
 
 class GetTaskRequestSchema(GetApiObjectRequestSchema):
-    entity_class = fields.String(required=True, default='beehive.module.scheduler_v2.controller.Task',
-                                 missing='beehive.module.scheduler_v2.controller.Task',
-                                 description='entity_class owner of the tasks to query')
+    entity_class = fields.String(required=False, example='beehive.module.scheduler_v2.controller.Manager',
+                                 missing=None, description='entity_class owner of the tasks to query')
 
 
 class GetTaskResponseSchema(Schema):
@@ -398,9 +396,45 @@ class GetTask(TaskApiView):
         """
         task_manager = controller.get_task_manager()
         entity_class_name = data.get('entity_class')
-        res = task_manager.get_task(entity_class_name, oid)
+        res = task_manager.get_task(oid, entity_class_name=entity_class_name)
         res.post_get()
         resp = {'task_instance': res.detail()}
+        return resp
+
+
+class GetSingleTaskStatusResponseSchema(Schema):
+    uuid = fields.String(required=True, default='4cdf0ea4-159a-45aa-96f2-708e461130e1',
+                         example='4cdf0ea4-159a-45aa-96f2-708e461130e1')
+    status = fields.String(required=True, default='SUCCESS')
+
+
+class GetTaskStatusResponseSchema(Schema):
+    task_instance = fields.Nested(GetSingleTaskStatusResponseSchema, required=True, allow_none=True)
+
+
+class GetTaskStatus(TaskApiView):
+    definitions = {
+        'GetTaskStatusResponseSchema': GetTaskStatusResponseSchema,
+        'GetTaskRequestSchema': GetTaskRequestSchema,
+    }
+    parameters = SwaggerHelper().get_parameters(GetTaskRequestSchema)
+    parameters_schema = GetTaskRequestSchema
+    responses = SwaggerApiView.setResponses({
+        200: {
+            'description': 'success',
+            'schema': GetTaskResponseSchema
+        }
+    })
+
+    def get(self, controller, data, oid, *args, **kwargs):
+        """
+        Get task info
+        Query single task by id and return description fields
+        """
+        task_manager = controller.get_task_manager()
+        entity_class_name = data.get('entity_class')
+        res = task_manager.get_task_status(oid, entity_class_name=entity_class_name)
+        resp = {'task_instance': res}
         return resp
 
 
@@ -437,7 +471,7 @@ class GetTrace(TaskApiView):
         """
         task_manager = controller.get_task_manager()
         entity_class_name = data.get('entity_class')
-        res = task_manager.get_task(entity_class_name, oid)
+        res = task_manager.get_task(oid, entity_class_name=entity_class_name)
         resp = {'task_trace': res.get_trace()}
         return resp
 
@@ -566,7 +600,7 @@ class RunTestTask(TaskApiView):
     
     def post(self, controller, data, *args, **kwargs):    
         task_manager = controller.get_task_manager()
-        task = task_manager.run_jobtest(data)
+        task = task_manager.run_test_task(data)
         return {'taskid': task.id}, 201
 
 
@@ -598,11 +632,12 @@ class TaskAPI(ApiView):
             ('%s/worker/tasks' % module.base_path, 'GET', GetTasks, {}),
             ('%s/worker/tasks/definitions' % module.base_path, 'GET', GetTasksDefinition, {}),
             ('%s/worker/tasks/<oid>' % module.base_path, 'GET', GetTask, {}),
+            ('%s/worker/tasks/<oid>/status' % module.base_path, 'GET', GetTaskStatus, {}),
             ('%s/worker/tasks/<oid>/trace' % module.base_path, 'GET', GetTrace, {}),
             # ('%s/worker/tasks/<oid>/graph' % module.base_path, 'GET', GetTaskGraph, {}),
             # ('%s/worker/tasks' % module.base_path, 'DELETE', PurgeAllTasks, {}),
             # ('%s/worker/tasks/<oid>' % module.base_path, 'DELETE', DeleteTask, {}),
-            # ('%s/worker/tasks/test' % module.base_path, 'POST', RunTestTask, {}),
+            ('%s/worker/tasks/test' % module.base_path, 'POST', RunTestTask, {}),
         ]
 
         ApiView.register_api(module, rules)

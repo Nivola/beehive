@@ -1459,8 +1459,7 @@ class ApiController(object):
             
             for entity in entities:
                 obj = entity_class(self, oid=entity.id, objid=entity.objid, name=entity.name,
-                                   active=getattr(entity, 'active', None), desc=getattr(entity, 'desc', None),
-                                   model=entity)
+                                   active=entity.active, desc=entity.desc, model=entity)
                 res.append(obj)
         
             # customize enitities

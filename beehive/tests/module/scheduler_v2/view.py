@@ -14,10 +14,11 @@ tests = [
     # 'test_queues_task_manager',
     # 'test_get_task_definitions',
     # 
-    # 'test_run_job_test',
-    'test_get_all_tasks',
-    'test_get_task',
-    'test_get_task_trace',
+    'test_run_test_task',
+    # 'test_get_all_tasks',
+    # 'test_get_task',
+    # 'test_get_task_status',
+    # 'test_get_task_trace',
     # 'test_get_task_graph',
     # 'test_delete_task',
     # 'test_delete_all_tasks',
@@ -66,6 +67,10 @@ class SchedulerAPITestCase(BeehiveTestCase):
         global task_id
         self.get('/v2.0/nas/worker/tasks/%s' % task_id)
 
+    def test_get_task_status(self):
+        global task_id
+        self.get('/v2.0/nas/worker/tasks/%s/status' % task_id)
+
     def test_get_task_trace(self):
         global task_id
         self.get('/v2.0/nas/worker/tasks/%s/trace' % task_id)
@@ -81,13 +86,11 @@ class SchedulerAPITestCase(BeehiveTestCase):
     #     global task_id
     #     self.delete('/v2.0/nas/worker/tasks/%s' % task_id)
     #
-    # def test_run_job_test(self):
-    #     global task_id
-    #     data = {'x': 2, 'y': 234, 'numbers': [2, 78, 45, 90], 'mul_numbers': []}
-    #     res = self.post('/v2.0/nas/worker/tasks/test', data=data)
-    #     self.logger.debug(res)
-    #     self.wait_job(res['jobid'], delta=1, accepted_state='SUCCESS')
-    #     task_id = res['jobid']
+    def test_run_test_task(self):
+        global task_id
+        data = {'x': 2, 'y': 234, 'numbers': [2, 78, 45, 90], 'mul_numbers': []}
+        res = self.post('/v2.0/nas/worker/tasks/test', data=data)
+        self.logger.debug(res)
 
     #
     # scheduler

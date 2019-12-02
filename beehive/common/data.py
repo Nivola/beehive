@@ -49,6 +49,10 @@ operation.authorize = True  #: enable or disable authorization check
 operation.cache = True  #: if True check cache. If False execute function decorated by @cache() also if cache exists
 
 
+OK_MSG = '%s.%s - %s - transaction - %s - %s - OK - %s'
+KO_MSG = '%s.%s - %s - transaction - %s - %s - KO - %s'
+
+
 #
 # encryption method
 #
@@ -139,7 +143,7 @@ def core_transaction(fn, rollback_throwable, *args, **kwargs):
         operation.id
     except: 
         operation.id = str(uuid4())
-        
+
     try:
         # format request params
         params = []
@@ -153,87 +157,59 @@ def core_transaction(fn, rollback_throwable, *args, **kwargs):
         
         if commit is True:
             session.commit()
-            logger.log(100, 'Commit transaction %s' % operation.transaction)
+            logger.log(-10, 'Commit transaction %s' % operation.transaction)
             operation.transaction = None
             
         elapsed = round(time() - start, 4)
-        logger.debug2('%s.%s - %s - transaction - %s - %s - OK - %s' % (operation.id, stmp_id, sessionid,
-                      fn.__name__, truncate(params),  elapsed))
+        logger.debug2(OK_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params),  elapsed))
                     
         return res
     except ModelError as ex:
         elapsed = round(time() - start, 4)
-        logger.error('%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
-                     fn.__name__, truncate(params), elapsed))
+        logger.error(KO_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params), elapsed))
+        err = str(ex)
         if ex.code not in [409]:
-            # logger.error(ex.desc, exc_info=1)
-            logger.error(ex.desc)
-
-        if rollback_throwable:
-            rollback(session, commit)
-        raise TransactionError(ex.desc, code=ex.code)
+            logger.error(err)
+        rollback_if_throwable(session, commit, rollback_throwable)
+        raise TransactionError(err, code=ex.code)
     except ArgumentError as ex:
         elapsed = round(time() - start, 4)
-        logger.error('%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
-                     fn.__name__, truncate(params), elapsed))
-        logger.error(str(ex))
-
-        if rollback_throwable:
-            rollback(session, commit) 
-            
+        logger.error(KO_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params), elapsed))
+        rollback_if_throwable(session, commit, rollback_throwable)
         raise TransactionError(str(ex), code=400)
     except IntegrityError as ex:
         elapsed = round(time() - start, 4)
-        logger.error('%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
-                     fn.__name__, truncate(params), elapsed))
-        logger.error(str(ex))
-
-        if rollback_throwable:
-            rollback(session, commit)
+        logger.error(KO_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params), elapsed))
+        rollback_if_throwable(session, commit, rollback_throwable)
         raise TransactionError(str(ex), code=409)
     except DBAPIError as ex:
         elapsed = round(time() - start, 4)
-        logger.error('%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
-                     fn.__name__, truncate(params), elapsed))
-        # logger.error(str(ex), exc_info=1)
-        # logger.error(str(ex))
-              
-        if rollback_throwable:
-            rollback(session, commit)
+        logger.error(KO_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params), elapsed))
+        rollback_if_throwable(session, commit, rollback_throwable)
         raise TransactionError(str(ex), code=400)
     except TransactionError as ex:
         elapsed = round(time() - start, 4)
-        logger.error('%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
-                     fn.__name__, truncate(params), elapsed))
-        # logger.error(ex.desc, exc_info=1)
-        logger.error(ex.desc)
-        if rollback_throwable:
-            rollback(session, commit)
+        logger.error(KO_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params), elapsed))
+        rollback_if_throwable(session, commit, rollback_throwable)
         raise
     except Exception as ex:
         elapsed = round(time() - start, 4)
-        logger.error('%s.%s - %s - transaction - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid,
-                     fn.__name__, truncate(params), elapsed))
-        # logger.error(ex, exc_info=1)
-        ex = str(ex)
-        logger.error(ex)
-        if rollback_throwable:
-            rollback(session, commit)
-        raise TransactionError(ex, code=400)
+        logger.error(KO_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params), elapsed))
+        rollback_if_throwable(session, commit, rollback_throwable)
+        raise TransactionError(str(ex), code=400)
     finally:
         if not rollback_throwable:
             if commit is True and operation.transaction is not None:
                 session.commit()
-                logger.log(100, 'Commit transaction on exception %s' % operation.transaction)
+                logger.log(-10, 'Commit transaction on exception %s' % operation.transaction)
                 operation.transaction = None
 
         # lock.release()
 
 
 def transaction2(rollback_throwable=True):
-    """Use this decorator to transform a function that contains delete, insert
-    and update statement in a transaction.
-    if rollback_throwable is false than then commits anyway
+    """Use this decorator to transform a function that contains delete, insert and update statement in a transaction.
+    If rollback_throwable is false than then commits anyway
     
     Example::
     
@@ -242,7 +218,6 @@ def transaction2(rollback_throwable=True):
             ....
     """
     def wrapper_transaction2(fn):
-        
         @wraps(fn)
         def transaction_wrap2(*args, **kwargs): #1
             return core_transaction(fn, rollback_throwable, *args, **kwargs)
@@ -269,8 +244,13 @@ def transaction(fn):
 def rollback(session, status):
     if status is True:
         session.rollback()
-        logger.warn('Rollback transaction %s' % operation.transaction)
+        logger.warning('Rollback transaction %s' % operation.transaction)
         operation.transaction = None
+
+
+def rollback_if_throwable(session, status, throwable):
+    if throwable is True:
+        rollback(session, status)
 
 
 def query(fn):

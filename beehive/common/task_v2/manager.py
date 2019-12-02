@@ -3,6 +3,8 @@
 # (C) Copyright 2018-2019 CSI-Piemonte
 
 import logging
+from time import time
+
 from beecell.logger.helper import LoggerHelper
 from signal import SIGHUP, SIGABRT, SIGILL, SIGINT, SIGSEGV, SIGTERM, SIGQUIT
 from signal import signal
@@ -12,7 +14,7 @@ from celery.utils.term import colored
 from celery.utils.log import ColorFormatter
 from celery import Celery
 from celery._state import get_current_task
-import celery.signals
+from celery.signals import setup_logging, worker_ready
 from kombu import Exchange, Queue
 from beehive.common.apimanager import ApiManager
 
@@ -49,9 +51,14 @@ task_scheduler = Celery('scheduler')
 
 
 # setup logging
-@celery.signals.setup_logging.connect
+@setup_logging.connect
 def on_celery_setup_logging(**args):
     pass
+
+
+@worker_ready.connect
+def on_celery_worker_ready(**args):
+    logger.info('########## WORKER STARTED ##########')
 
 
 def configure_task_manager(broker_url, result_backend, tasks=[], expire=60*60*24, task_queue='celery',
@@ -76,12 +83,7 @@ def configure_task_manager(broker_url, result_backend, tasks=[], expire=60*60*24
         TASK_DEFAULT_QUEUE=task_queue,
         TASK_DEFAULT_EXCHANGE=task_queue,
         TASK_DEAFAULT_ROUTING_KEY=task_queue,
-        CELERY_QUEUES=(
-            Queue(
-                task_queue,
-                Exchange(task_queue),
-                routing_key=task_queue),
-        ),
+        CELERY_QUEUES=(Queue(task_queue, Exchange(task_queue), routing_key=task_queue),),
         CELERY_RESULT_BACKEND=result_backend,
         CELERY_REDIS_RESULT_KEY_PREFIX='%s.celery-task-meta2-' % task_queue,
         CELERY_REDIS_RESULT_EXPIRES=expire,
@@ -104,6 +106,7 @@ def configure_task_manager(broker_url, result_backend, tasks=[], expire=60*60*24
                                 '%(name)s:%(funcName)s:%(lineno)d - %(message)s',
         CELERYD_MAX_TASKS_PER_CHILD=20
     )
+    logger.debug('register tasks path: %s' % tasks)
 
     return task_manager
 
@@ -173,6 +176,8 @@ def start_task_manager(params):
     ]
     LoggerHelper.rotatingfile_handler(main_loggers, logger_level, '%s/%s.log' % (log_path, logname),
                                       frmt=frmt, formatter=ExtTaskFormatter)
+
+    logger.info('########## WORKER STARTING ##########')
 
     # # transaction and db logging
     # loggers = [
