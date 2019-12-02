@@ -6,7 +6,8 @@ from marshmallow.validate import OneOf
 from beecell.simple import get_value
 from beehive.common.apimanager import ApiView, ApiManagerError, SwaggerApiView, \
     GetApiObjectRequestSchema, CrudApiObjectJobResponseSchema, \
-    ApiObjecCountResponseSchema, CrudApiJobResponseSchema, PaginatedResponseSchema
+    ApiObjecCountResponseSchema, CrudApiJobResponseSchema, PaginatedResponseSchema, PaginatedRequestQuerySchema, \
+    ApiObjectMetadataResponseSchema
 from marshmallow import fields, Schema
 from beecell.swagger import SwaggerHelper
 
@@ -41,8 +42,8 @@ class GetSchedulerEntries(TaskApiView):
             'description': 'success',
             'schema': GetSchedulerEntriesResponseSchema
         }
-    })    
-    
+    })
+
     def get(self, controller, data, *args, **kwargs):
         """
         List scheduler entries
@@ -91,7 +92,7 @@ class CreateSchedulerEntryParamRequestSchema(Schema):
     name = fields.String(required=True, default='discover')
     task = fields.String(required=True, default='tasks.discover_vsphere')
     args = fields.Raw(allow_none=True)
-    kwargs = fields.Dict(default={}, allow_none=True)    
+    kwargs = fields.Dict(default={}, allow_none=True)
     options = fields.Dict(default={}, allow_none=True)
     schedule = fields.Dict(required=True, default={}, allow_none=True)
     relative = fields.Boolean(allow_none=True)
@@ -122,12 +123,12 @@ class CreateSchedulerEntry(TaskApiView):
             'schema': CreateSchedulerEntryResponseSchema
         }
     })
-    
+
     def post(self, controller, data, *args, **kwargs):
         """
         Create schedule
         Create scheduler schedule
-        """        
+        """
         scheduler = controller.get_scheduler()
         data = get_value(data, 'schedule', None, exception=True)
         name = get_value(data, 'name', None, exception=True)
@@ -136,10 +137,10 @@ class CreateSchedulerEntry(TaskApiView):
         kwargs = get_value(data, 'kwargs', None)
         options = get_value(data, 'options', {})
         relative = get_value(data, 'relative', None)
-        
+
         # get schedule
         schedule = get_value(data, 'schedule', None, exception=True)
-        
+
         resp = scheduler.create_update_entry(name, task, schedule, args=args, kwargs=kwargs, options=options,
                                              relative=relative)
         return {'name': name}, 202
@@ -152,8 +153,8 @@ class DeleteSchedulerEntry(TaskApiView):
         204: {
             'description': 'no response'
         }
-    }) 
-    
+    })
+
     def delete(self, controller, data, oid, *args, **kwargs):
         """
         Delete schedule
@@ -168,7 +169,6 @@ class DeleteSchedulerEntry(TaskApiView):
 #
 # Task manager
 #
-## ping
 class ManagerPingResponseSchema(Schema):
     workers_ping = fields.List(fields.Dict(), required=True)
 
@@ -182,19 +182,18 @@ class ManagerPing(TaskApiView):
             'description': 'success',
             'schema': ManagerPingResponseSchema
         }
-    })     
-    
+    })
+
     def get(self, controller, data, *args, **kwargs):
         """
         Worker pings
         Ping all active workers
-        """        
+        """
         task_manager = controller.get_task_manager()
         resp = task_manager.ping()
         return {'workers_ping':resp}
 
 
-## stats
 class ManagerStatsResponseSchema(Schema):
     workers_stats = fields.List(fields.Dict(), required=True)
 
@@ -208,19 +207,18 @@ class ManagerStats(TaskApiView):
             'description': 'success',
             'schema': ManagerStatsResponseSchema
         }
-    })     
-    
+    })
+
     def get(self, controller, data, *args, **kwargs):
         """
         Worker statistics
         Get all active workers statistics
-        """        
+        """
         task_manager = controller.get_task_manager()
         resp = task_manager.stats()
         return {'workers_stats':resp}
 
 
-## report
 class ManagerReportResponseSchema(Schema):
     workers_report = fields.List(fields.Dict(), required=True)
 
@@ -234,8 +232,8 @@ class ManagerReport(TaskApiView):
             'description': 'success',
             'schema': ManagerReportResponseSchema
         }
-    })     
-    
+    })
+
     def get(self, controller, data, *args, **kwargs):
         """
         Worker Report
@@ -285,23 +283,23 @@ class GetTasksDefinition(TaskApiView):
             'description': 'success',
             'schema': GetTasksDefinitionResponseSchema
         }
-    })     
-    
+    })
+
     def get(self, controller, data, *args, **kwargs):
         """
         Get task definitions
         List all task definitions
-        """  
+        """
         task_manager = controller.get_task_manager()
         res = task_manager.get_registered_tasks()
         resp = {
             'task_definitions': res,
             'count': len(res)
         }
-        return resp    
+        return resp
 
 
-class GetTasksRequestSchema(Schema):
+class GetTasksRequestSchema(PaginatedRequestQuerySchema):
     entity_class = fields.String(required=False, example='beehive.module.scheduler_v2.controller.Manager',
                                  missing=None, description='entity_class owner of the tasks to query')
     elapsed = fields.Integer(required=False, missing=60, example=60, allow_none=True,
@@ -311,30 +309,22 @@ class GetTasksRequestSchema(Schema):
 
 
 class GetSingleTaskResponseSchema(Schema):
+    __meta__ = fields.Nested(ApiObjectMetadataResponseSchema, required=True)
     id = fields.Integer(required=True, default=10, example=10)
     uuid = fields.String(required=True, default='4cdf0ea4-159a-45aa-96f2-708e461130e1',
                          example='4cdf0ea4-159a-45aa-96f2-708e461130e1')
     name = fields.String(required=True, default='test', example='test')
-    desc = fields.String(required=True, default='test', example='test')
-    active = fields.Boolean(required=True, default=True, example=True)
     status = fields.String(required=True, default='SUCCESS')
-
-
-
-    traceback = fields.List(fields.String(default='error'), required=False, allow_none=True)
-    jobs = fields.List(fields.String(default='c518fa8b-1247-4f9f-9d73-785bcc24b8c7'), required=False, allow_none=True)
-    name = fields.String(required=True, default='beehive.module.scheduler.tasks.jobtest')
-    task_id = fields.String(required=True, default='c518fa8b-1247-4f9f-9d73-785bcc24b8c7')
-    kwargs = fields.Dict(required=False)
-    start_time = fields.String(required=True, default='16-06-2017 14:58:50.352286')
-    stop_time = fields.String(required=True, default='16-06-2017 14:58:50.399747')
-    # args = fields.List(required=False)
+    parent = fields.String(required=True, default='4cdf0ea4-159a-45aa-96f2-708e461130e1')
     worker = fields.String(required=True, default='celery@tst-beehive-02')
-    elapsed = fields.Float(required=True, default=0.0474607944)
-    # result = fields.Boolean(required=True, default=True)
-    ttl = fields.Integer(required=True, default=83582)
-    type = fields.String(required=True, default='JOB')
-    children = fields.List(fields.Dict(), required=False)
+    api_id = fields.String(required=True, default='12345')
+    server = fields.String(required=True, default='localhost')
+    user = fields.String(required=True, default='test1@local')
+    identity = fields.String(required=True, default='4cdf0ea4-159a-45aa-96f2-708e461130e1')
+    start_time = fields.DateTime(required=True, default='1990-12-31T23:59:59Z', example='1990-12-31T23:59:59Z')
+    run_time = fields.DateTime(required=True, default='1990-12-31T23:59:59Z', example='1990-12-31T23:59:59Z')
+    stop_time = fields.DateTime(required=True, default='1990-12-31T23:59:59Z', example='1990-12-31T23:59:59Z')
+    duration = fields.Integer(required=True, default=10)
 
 
 class GetTasksResponseSchema(PaginatedResponseSchema):
@@ -353,8 +343,8 @@ class GetTasks(TaskApiView):
             'description': 'success',
             'schema': GetTasksResponseSchema
         }
-    })    
-    
+    })
+
     def get(self, controller, data, *args, **kwargs):
         """
         List task instances
@@ -371,8 +361,27 @@ class GetTaskRequestSchema(GetApiObjectRequestSchema):
                                  missing=None, description='entity_class owner of the tasks to query')
 
 
+class GetSingleTaskstepchema(GetSingleTaskResponseSchema):
+    uuid = fields.String(required=True, default='4cdf0ea4-159a-45aa-96f2-708e461130e1',
+                         example='4cdf0ea4-159a-45aa-96f2-708e461130e1')
+    name = fields.String(required=True, default='test', example='test')
+    status = fields.String(required=True, default='SUCCESS')
+    result = fields.String(required=True, default='123')
+    start_time = fields.DateTime(required=True, default='1990-12-31T23:59:59Z', example='1990-12-31T23:59:59Z')
+    run_time = fields.DateTime(required=True, default='1990-12-31T23:59:59Z', example='1990-12-31T23:59:59Z')
+    stop_time = fields.DateTime(required=True, default='1990-12-31T23:59:59Z', example='1990-12-31T23:59:59Z')
+    duration = fields.Integer(required=True, default=10)
+
+
+class GetSingleTask1ResponseSchema(GetSingleTaskResponseSchema):
+    result = fields.String(required=True, default='23')
+    args = fields.String(required=True, default='....')
+    kwargs = fields.String(required=True, default='....')
+    steps = fields.Nested(GetSingleTaskstepchema, many=True, required=True, allow_none=True)
+
+
 class GetTaskResponseSchema(Schema):
-    task_instance = fields.Nested(GetSingleTaskResponseSchema, required=True, allow_none=True)
+    task_instance = fields.Nested(GetSingleTask1ResponseSchema, required=True, allow_none=True)
 
 
 class GetTask(TaskApiView):
@@ -387,8 +396,8 @@ class GetTask(TaskApiView):
             'description': 'success',
             'schema': GetTaskResponseSchema
         }
-    }) 
-        
+    })
+
     def get(self, controller, data, oid, *args, **kwargs):
         """
         Get task info
@@ -485,24 +494,24 @@ class GetTaskGraph(TaskApiView):
         'GetTaskGraphResponseSchema':GetTaskGraphResponseSchema,
         'GetApiObjectRequestSchema': GetApiObjectRequestSchema,
     }
-    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)    
+    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
     responses = SwaggerApiView.setResponses({
         200: {
             'description': 'success',
             'schema': GetTaskGraphResponseSchema
         }
-    }) 
-        
+    })
+
     def get(self, controller, data, oid, *args, **kwargs):
         """
         Get task graph
         Get list of nodes and link that represents the task childs graph
-        """ 
+        """
         task_manager = controller.get_task_manager()
         res = task_manager.get_task_graph(oid)
         resp = {'task_instance_graph':res}
-        return resp    
-    
+        return resp
+
 
 ## purge all
 class PurgeAllTasks(TaskApiView):
@@ -512,36 +521,36 @@ class PurgeAllTasks(TaskApiView):
         204: {
             'description': 'success'
         }
-    })    
-    
+    })
+
     def delete(self, controller, data, *args, **kwargs):
         """
         Delete all tasks
         Delete all tasks
-        """        
+        """
         task_manager = controller.get_task_manager()
         resp = task_manager.delete_task_instances()
         return (resp, 204)
-    
+
 '''
 class PurgeTasks(TaskApiView):
     def delete(self, controller, data, *args, **kwargs):
         task_manager = controller.get_task_manager()
         resp = task_manager.purge_tasks()
         return (resp, 202)  '''
-    
+
 ## delete
 class DeleteTask(TaskApiView):
     definitions = {
         'GetApiObjectRequestSchema': GetApiObjectRequestSchema,
     }
-    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)    
+    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
     responses = SwaggerApiView.setResponses({
         204: {
             'description': 'success'
         }
-    })     
-    
+    })
+
     def delete(self, controller, data, oid, *args, **kwargs):
         """
         Delete task
@@ -549,7 +558,7 @@ class DeleteTask(TaskApiView):
         """
         task_manager = controller.get_task_manager()
         resp = task_manager.delete_task_instance(oid)
-        return (resp, 204)  
+        return (resp, 204)
 
 '''
 class RevokeTask(TaskApiView):

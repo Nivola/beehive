@@ -333,12 +333,12 @@ class BeehiveApiClient(object):
                                   'ELAPSED=%s' % (reqid, response.getheader('remote-server', ''), response.status,
                                                    content_type, truncate(res), elapsed))
         else:
-            err = res
-            code = 400
-            if 'message' in res:
-                err = res['message']
-            if 'code' in res:
-                code = res['code']
+            if isinstance(res, dict):
+                err = res.get('message', '')
+                code = res.get('code', 400)
+            else:
+                err = res
+                code = 400
             self.logger.error(err, exc_info=0)
             raise BeehiveApiClientError(err, code=int(code))
 
