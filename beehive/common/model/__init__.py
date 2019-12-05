@@ -120,7 +120,8 @@ class BaseEntity(AuditData):
         :param filter_expiry_date_stop: expiry date stop
         :return: base filters
         """
-        filters=[]
+        filters = []
+
         # id is unique
         filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field('id', kvargs))
         filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field('uuid', kvargs))
@@ -128,6 +129,7 @@ class BaseEntity(AuditData):
         filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field('name', kvargs))
         filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field('desc', kvargs))
         filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field('active', kvargs))
+        filters.append(PaginatedQueryGenerator.get_like_sqlfilter_by_field('names', 'name', kvargs))
 
         # expired
         if 'filter_expired' in kvargs and kvargs.get('filter_expired') is not None: 
@@ -423,31 +425,41 @@ class PaginatedQueryGenerator(object):
     
     @staticmethod
     def get_sqlfilter_by_field(field, kvargs, op=' AND'):
-        """Add where condition like 
-            AND t3.<field>=:<field> 
-        if <field> in kvargs and not None..
+        """Add where condition like 'AND t3.<field>=:<field>' if <field> in kvargs and not None..
         
         :param field: field to search in kvargs
         :param kvargs: query custom params
         :param filter: sql filters 
         """
-        
-        if field in kvargs and kvargs.get(field) is not None: 
+        if kvargs.get(field, None) is not None:
+        # if field in kvargs and kvargs.get(field) is not None:
             return PaginatedQueryGenerator.create_sqlfilter(field, opLogical=op)
         else:
             return ''
-    
+
+    @staticmethod
+    def get_like_sqlfilter_by_field(field, column, kvargs, op=' AND'):
+        """Add where condition like 'AND t3.<field> like :<field>' if <field> in kvargs and not None..
+
+        :param field: field to search in kvargs
+        :param kvargs: query custom params
+        :param filter: sql filters
+        """
+        # if field in kvargs and kvargs.get(field) is not None:
+        if kvargs.get(field, None) is not None:
+            kvargs[column] = '%' + kvargs[column] + '%'
+            return PaginatedQueryGenerator.create_sqlfilter(field, column=column, opLogical=op, opComparison=' like ')
+        else:
+            return ''
+
     @staticmethod
     def create_sqlfilter(param, column=None, opLogical=' AND', opComparison='=', alias='t3'):
-        """create sql where condition filter like 
-            AND t3.<field>=:<field> 
-        if <field> in kvargs and not None..
+        """create sql where condition filter like 'AND t3.<field>=:<field>' if <field> in kvargs and not None..
         
         :param column: column to search in kvargs
         :param param: query custom params
         :param str filter: sql filters 
         """
-                 
         if column is None:
             column = param
  
