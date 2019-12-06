@@ -129,7 +129,6 @@ class BaseEntity(AuditData):
         filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field('name', kvargs))
         filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field('desc', kvargs))
         filters.append(PaginatedQueryGenerator.get_sqlfilter_by_field('active', kvargs))
-        filters.append(PaginatedQueryGenerator.get_like_sqlfilter_by_field('names', 'name', kvargs))
 
         # expired
         if 'filter_expired' in kvargs and kvargs.get('filter_expired') is not None: 
@@ -447,7 +446,6 @@ class PaginatedQueryGenerator(object):
         """
         # if field in kvargs and kvargs.get(field) is not None:
         if kvargs.get(field, None) is not None:
-            kvargs[column] = '%' + kvargs[column] + '%'
             return PaginatedQueryGenerator.create_sqlfilter(field, column=column, opLogical=op, opComparison=' like ')
         else:
             return ''
@@ -464,8 +462,9 @@ class PaginatedQueryGenerator(object):
             column = param
  
         if column is not None: 
-            return ' {opLogical} {alias}.{column}{opComparison}:{param}'.format(
+            res = ' {opLogical} {alias}.{column}{opComparison}:{param}'.format(
                 column=column, param=param, opLogical=opLogical, opComparison=opComparison, alias=alias)
+            return res
         else:
             return ''
 
