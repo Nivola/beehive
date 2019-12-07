@@ -1,108 +1,164 @@
 # beehive
 __beehive__ is a project that contains tha core of the nivola cmp platform.
 
-## Configurations (Optional)
-Software parameters and their meaning.
-
-## Prerequisites
-Fundamental requirements is python 3.5>.
-
-Required middleware:
-
-- mysql 5.7.x
-- redis 5.x
-
-First of all you have to install some package:
-
-```
-$ sudo apt-get install gcc
-$ sudo apt-get install -y python-dev libldap2-dev libsasl2-dev libssl-dev
-```
-
-At this point create a virtual env
-
-```
-$ python3 -m venv /tmp/beehive-test-env
-$ source /tmp/beehive-test-env/bin/activate
-$ pip3 install wheel
-```
-
 ## Installing
 
-```
-$ pip3 install -U git+https://github.com/Nivola/beecell.git
-$ pip3 install -U git+https://github.com/Nivola/beehive.git
+[Install in a python 2.7.x environment](PY2-INSTALL.md)
 
-$ pip3 install -U git+https://gitlab.csi.it/nivola/cmp3/beecell.git@devel
-$ pip3 install -U git+https://gitlab.csi.it/nivola/cmp2/beehive.git@devel
-```
+[Install in a python 3.5.x> environment](PY3-INSTALL.md)
 
-### Post configuration
-
-#### Init auth module
+### Init auth module
 
 ```
-$ python console.py init auth --path=/tmp/beehive-test-env/share/config
+$ python /tmp/beehive-py[2|3]-test-env/bin/console.py init auth
 ```
 
-#### Run auth server
+### Run auth server
 
 ```
-$ uwsgi -i share/config/auth.ini
+$ python /tmp/beehive-py[2|3]-test-env/bin/console.py start auth
 ```
 
-#### Init event module
+#### Inspect auth server logs
+
+Open directory /tmp. If server started correctly you can find these files:
+
+- auth-01.log
+- auth-01.uwsgi.log
+- auth-01.catalog.consumer.log  
+- auth-01.catalog.log  
+- auth-01.scheduler.log  
+- auth-01.task.log
+- auth-01.worker1.log
+
+Inspect main api server log file:
 
 ```
-$ python console.py init event --path=/tmp/beehive-test-env/share/config
+$ tail -f /tmp/auth-01.log
 ```
 
-### Run servers
+### Test auth server
 
-#### Run auth server
+#### Make some simple test
 
 ```
-uwsgi -i share/config/event.ini
+$ curl http://localhost:8080/v1.0/server/ping
+$ curl http://localhost:8080/v1.0/server
 ```
 
-### Reload server
-# using kill to send the signal
-kill -HUP `cat /tmp/project-master.pid`
-# or the convenience option --reload
-uwsgi --reload /tmp/project-master.pid
+#### Make some interesting test
 
-### Stop server
-kill -INT `cat /tmp/project-master.pid`
-# or for convenience...
-uwsgi --stop /tmp/project-master.pid
+Create an authentication token:
 
-## Getting Started
-Instructions useful to deploy software on a simple environment (local machine or simple server configuration infrastructure).
+```
+$ python /tmp/beehive-py[2|3]-test-env/bin/console.py create-token
+token: ...
+seckey: ...
+```
+
+Make simple api requests using authentication token:
+
+```
+$ python /tmp/beehive-py[2|3]-test-env/bin/console.py get-tokens <token> <seckey>
+$ python /tmp/beehive-py[2|3]-test-env/bin/console.py get-users <token> <seckey>
+```
+
+### Init event module
+
+```
+$ python /tmp/beehive-py[2|3]-test-env/bin/console.py init event
+```
+
+### Run event server
+
+```
+$ python /tmp/beehive-py[2|3]-test-env/bin/console.py start event
+```
+
+#### Inspect event server logs
+
+Open directory /tmp. If server started correctly you can find these files:
+
+- event-01.log
+- event-01.uwsgi.log
+- event-01.event.consumer.log  
+- event-01.event.log  
+- event-01.scheduler.log  
+- event-01.task.log
+- event-01.worker1.log
+
+Inspect main api server log file:
+
+```
+$ tail -f /tmp/event-01.log
+```
+
+### Test event server
+
+#### Make some simple test
+
+```
+$ curl http://localhost:8081/v1.0/server/ping
+$ curl http://localhost:8081/v1.0/server
+```
+
+### Inspect api and access logs
+
+Open directory /tmp.
+
+- apis.log
+- accesses.log
 
 ## Running the tests
-Results of vulnerability assessment and/or penetration test. If known explain how to run the automated tests for this system
-
-- Activate virtual env
+Activate virtual env:
 
 ```
-$ source venv/bin/activate
+$ source /tmp/beehive-py[2|3]-test-env/bin/activate
 ```
 
-- Open tests directory __beecell/tests__
-- Copy file beecell.yml in your home directory. Open the file and set correctly all the <BLANK> variables.
-- Run some tests:
+Open tests directory __/tmp/beehive-py[2|3]-test-env/lib/python[2.7|3.x]/site-packages/beehive/tests__
+
+Copy file beehive.yml from /tmp/beehive-py[2|3]-test-env/share/test in your home directory. Open the file and set 
+  correctly all the <BLANK> variables.
+
+Run tests:
+
+Test log can be seen in the home directory. 
+Files: 
+- __test.run__ 
+- __test.log__
 
 ```
-$ python sendmail.py
-$ python cement_cmd.py 
-$ python paramiko_shell.py 
-$ python networkx_layout.py
-$ python db/manager_mysql.py 
-$ python db/manager_redis.py
-$ python db/manager_redis_cluster.py 
-$ python auth/perm.py 
-$ python auth/ldap_auth.py 
-$ python auth/database_auth.py 
+$ python module/basic/view.py conf=/tmp/beehive-py[2|3]-test-env/share/test/beehive.yml
+$ python module/auth/view_keyauth.py conf=/tmp/beehive-py[2|3]-test-env/share/test/beehive.yml
+$ python module/auth/view.py conf=/tmp/beehive-py[2|3]-test-env/share/test/beehive.yml user=admin
+$ python module/auth/tasks.py conf=/tmp/beehive-py[2|3]-test-env-01/share/test/beehive.yml user=admin
+$ python module/catalog/view.py conf=/tmp/beehive-py[2|3]-test-env/share/test/beehive.yml user=admin
+$ python module/catalog/tasks.py conf=/tmp/beehive-py[2|3]-test-env-01/share/test/beehive.yml user=admin
+$ python module/scheduler_v2/tasks.py conf=/tmp/beehive-py[2|3]-test-env/share/test/beehive.yml user=admin
+$ python module/scheduler_v2/view.py conf=/tmp/beehive-py[2|3]-test-env/share/test/beehive.yml user=admin
+$ python module/event/view.py conf=/tmp/beehive-py[2|3]-test-env/share/test/beehive.yml user=admin
+$ python module/event/producer.py conf=/tmp/beehive-py[2|3]-test-env/share/test/beehive.yml user=admin
+```
+
+## Administration
+
+### Stop auth server
+
+```
+$ python /tmp/beehive-py[2|3]-test-env/bin/console.py stop auth-01
+```
+
+### Stop event server
+
+```
+$ python /tmp/beehive-py[2|3]-test-env/bin/console.py stop event-01
+```
+
+### Remove current installation
+
+```
+$ python /tmp/beehive-py[2|3]-test-env/bin/console.py drop
 ```
 
 ## Versioning

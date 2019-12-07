@@ -1,11 +1,10 @@
 #!/usr/bin/env python
-
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # (C) Copyright 2018-2019 CSI-Piemonte
+# (C) Copyright 2019-2020 CSI-Piemonte
 
-from os import environ
-from sys import prefix, version_info
+from sys import version_info
 from setuptools import setup
 from setuptools.command.install import install as _install
 
@@ -34,13 +33,6 @@ def install_requires(requires):
 
 
 if __name__ == '__main__':
-    prefix = environ.get('VIRTUAL_ENV')
-    f = open('/tmp/log', 'w')
-    f.write(prefix)
-    f.write('\n')
-    f.write(prefix)
-    f.close()
-
     setup(
         name='beehive',
         version='1.5',
