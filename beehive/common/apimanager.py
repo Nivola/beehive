@@ -13,7 +13,6 @@ from zlib import decompress
 from uuid import uuid4
 from base64 import b64decode
 from re import match
-from six import b, u
 from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA256
 from Crypto.Signature import PKCS1_v1_5
@@ -36,8 +35,8 @@ from beehive.common.apiclient import BeehiveApiClient, BeehiveApiClientError
 from beehive.common.model.config import ConfigDbManager
 from beehive.common.model.authorization import AuthDbManager, Role
 from beehive.common.event import EventProducerRedis
-
-from beehive.common.dicttoxml import dicttoxml
+#from beehive.common.dicttoxml import dicttoxml
+from dicttoxml import dicttoxml
 from rediscluster.client import RedisCluster
 try:
     from beecell.server.uwsgi_server.wrapper import uwsgi_util
@@ -2111,7 +2110,7 @@ class ApiObject(object):
 
         action = op.split('.')[-1]
 
-        import inspect
+        # import inspect
 
         # remove object from args - it does not serialize in event
         # nargs = []
@@ -2126,7 +2125,7 @@ class ApiObject(object):
 
         nargs = compat(args)
         event_params = compat(params)
-        
+
         data = {
             'opid': opid,
             # 'op': '%s.%s' % (self.objdef, op),

@@ -363,7 +363,7 @@ def trace(entity=None, op='view', noargs=False):
             # execute inner function
             try:
                 ret = fn(inst, *args, **kwargs)
-            
+
                 # calculate elasped time
                 elapsed = round(time() - start, 4)
                 method = '%s.%s.%s' % (inst.__module__, fn.__name__, op)
