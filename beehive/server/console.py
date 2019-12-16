@@ -129,7 +129,7 @@ def get_config(config):
 @click.argument('system')
 def start(system):
     click.echo('start server')
-    run_cmd('{uwsgi} -i {config}'.format(uwsgi=get_uwsgi_path(), config=get_config(system)))
+    run_cmd('{uwsgi} --yaml {config}'.format(uwsgi=get_uwsgi_path(), config=get_config(system)))
 
 
 @cli.command()
@@ -145,7 +145,7 @@ def restart(system):
     click.echo('stop server')
     run_cmd('uwsgi --stop /tmp/%s.pid' % system)
     click.echo('start server')
-    run_cmd('{uwsgi} -i {config}'.format(uwsgi=get_uwsgi_path(), config=get_config(system)))
+    run_cmd('{uwsgi} --yaml {config}'.format(uwsgi=get_uwsgi_path(), config=get_config(system)))
 
 
 @cli.command()
