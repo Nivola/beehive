@@ -40,14 +40,14 @@ def configure_server():
 
     params = params.get('uwsgi')
 
-    fields = ['api_module']
+    fields = ['task_module', 'event_handler']
     for field in fields:
         num = int(params.pop(field, 0))
         if num > 0:
             params[field] = []
             for i in range(1, num):
                 item = params.pop('%s.%s' % (field, i))
-                params[field].append(item)
+                params[field].append(item.encode('utf-8'))
 
     res = {}
     for k, v in params.items():

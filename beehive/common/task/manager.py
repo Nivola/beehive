@@ -71,22 +71,16 @@ def configure_task_manager(broker_url, result_backend, tasks=[], expire=60*60*24
     # redis_password = None
     # if result_backend.find('@') > 0:
     #     redis_password = match(r"redis:\/\/([\w\W\d]*)@.", result_backend).groups()[0]
-
     task_manager.conf.update(
-        BROKER_URL=broker_url,
+        BROKER_URL=broker_url.decode('utf-8'),
         BROKER_POOL_LIMIT=20,
         BROKER_HEARTBEAT=20,
         BROKER_CONNECTION_MAX_RETRIES=10,
         TASK_DEFAULT_QUEUE=task_queue,
         TASK_DEFAULT_EXCHANGE=task_queue,
         TASK_DEAFAULT_ROUTING_KEY=task_queue,
-        CELERY_QUEUES=(
-            Queue(
-                task_queue,
-                Exchange(task_queue),
-                routing_key=task_queue),
-        ),
-        CELERY_RESULT_BACKEND=result_backend,
+        CELERY_QUEUES=(Queue(task_queue, Exchange(task_queue), routing_key=task_queue),),
+        CELERY_RESULT_BACKEND=result_backend.decode('utf-8'),
         CELERY_REDIS_RESULT_KEY_PREFIX='%s.celery-task-meta2-' % task_queue,
         CELERY_REDIS_RESULT_EXPIRES=expire,
         CELERY_TASK_IGNORE_RESULT=True,
@@ -123,19 +117,14 @@ def configure_task_scheduler(broker_url, schedule_backend, tasks=[], task_queue=
     """
     task_scheduler.conf.update(
         CELERY_TASK_DEFAULT_QUEUE=task_queue,
-        # CELERY_TASK_DEFAULT_EXCHANGE=task_queue,
-        # CELERY_TASK_DEAFAULT_ROUTING_KEY=task_queue,
         BROKER_URL=broker_url,
-        CELERY_SCHEDULE_BACKEND=schedule_backend,
-        # CELERYBEAT_SCHEDULE_FILENAME='/tmp/celerybeat-schedule',
-        # CELERY_REDIS_SCHEDULER_KEY_PREFIX='celery-schedule',
+        CELERY_SCHEDULE_BACKEND=schedule_backend.decode('utf-8'),
         CELERY_REDIS_SCHEDULER_KEY_PREFIX=task_queue + b('.schedule'),
         CELERY_TASK_SERIALIZER='json',
         CELERY_ACCEPT_CONTENT=['json'],  # Ignore other content
         CELERY_RESULT_SERIALIZER='json',
         CELERY_TIMEZONE='Europe/Rome',
         CELERY_ENABLE_UTC=True,
-        # CELERY_IMPORTS=tasks,
         CELERYBEAT_MAX_LOOP_INTERVAL=5,
         CELERYBEAT_SCHEDULE={
             'test-every-30-minutes': {
@@ -152,7 +141,7 @@ def configure_task_scheduler(broker_url, schedule_backend, tasks=[], task_queue=
 def start_task_manager(params):
     """Start celery task manager
     """
-    logname = "%s.task" % params['api_id']
+    logname = params['api_id'] + b('.task')
     frmt = '[%(asctime)s: %(levelname)s/%(task_name)s:%(task_id)s] %(name)s:%(funcName)s:%(lineno)d - %(message)s'
 
     log_path = run_path = params.get('api_log', None)
@@ -162,9 +151,8 @@ def start_task_manager(params):
         run_path = '/var/run/%s/%s' % (params['api_package'], params['api_env'])
 
     logger_level = int(params.get('api_logging_level', logging.DEBUG))
-
     file_name = log_path + logname + b('.log')
-    file_name = file_name.decode('utf-8')
+    run_name = run_path + logname + b('.pid')
 
     # base logging
     main_loggers = [
@@ -181,21 +169,6 @@ def start_task_manager(params):
     ]
     LoggerHelper.rotatingfile_handler(main_loggers, logger_level, file_name, frmt=frmt, formatter=ExtTaskFormatter)
 
-    # # transaction and db logging
-    # loggers = [
-    #     # logging.getLogger('beehive.common.data'),
-    #     logging.getLogger('sqlalchemy.engine'),
-    #     logging.getLogger('sqlalchemy.pool')
-    # ]
-    # LoggerHelper.rotatingfile_handler(loggers, logger_level, '%s/%s.db.log' % (log_path, logname))
-    #
-    # # performance logging
-    # loggers = [
-    #     logging.getLogger('beecell.perf')
-    # ]
-    # LoggerHelper.rotatingfile_handler(loggers, logger_level, '%s/%s.watch' % (log_path, params['api_id']),
-    #                                   frmt='%(asctime)s - %(message)s')
-
     # setup api manager
     api_manager = ApiManager(params, hostname=gethostname())
     api_manager.configure()
@@ -211,20 +184,18 @@ def start_task_manager(params):
         LoggerHelper.elastic_handler(main_loggers, logger_level, api_manager.elasticsearch, index='cmp',
                                      frmt=frmt, tags=tags, server=api_manager.server_name, app=api_manager.app_id,
                                      component='task')
-
-    logger_file = '%s/%s.log' % (log_path, logname)
-
+    print(params)
     configure_task_manager(params['broker_url'], params['result_backend'], tasks=params['task_module'],
-                           expire=params['expire'], task_queue=params['broker_queue'], logger_file=logger_file,
+                           expire=params['expire'], task_queue=params['broker_queue'],
                            time_limit=params['task_time_limit'])
 
     argv = [
         '',
-        '--hostname=' + params['broker_queue'] + '@%h',
+        '--hostname=' + params['broker_queue'].decode('utf-8') + '@%h',
         '--loglevel=%s' % logging.getLevelName(internal_logger_level),
         '--purge',
-        '--logfile=%s' % logger_file,
-        '--pidfile=%s/%s.pid' % (run_path, logname),
+        '--logfile=%s' % file_name.decode('utf-8'),
+        '--pidfile=%s' % run_name.decode('utf-8'),
     ]
 
     def terminate(*args):
@@ -245,7 +216,6 @@ def start_scheduler(params):
         run_path = '/var/run/%s/%s' % (params['api_package'], params['api_env'])
 
     file_name = log_path + logname
-    file_name = file_name.decode('utf-8')
 
     logger_level = logging.INFO
     loggers = [
@@ -254,7 +224,7 @@ def start_scheduler(params):
         logging.getLogger('beedrones'),
         logging.getLogger('celery'),
     ]
-    LoggerHelper.rotatingfile_handler(loggers, logger_level, logger_file, formatter=ExtTaskFormatter)
+    LoggerHelper.rotatingfile_handler(loggers, logger_level, file_name, formatter=ExtTaskFormatter)
 
     api_manager = ApiManager(params)
     api_manager.configure()
