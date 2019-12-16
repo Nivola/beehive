@@ -44,7 +44,7 @@ def configure_server():
         if num > 0:
             params[field] = []
             for i in range(1, num):
-                item = params.get('%s.%s' % (field, i)).decode('utf-8')
+                item = params.get('%s.%s' % (field, i))
                 params[field].append(item)
 
     # import beecell.server.gevent_ssl
