@@ -20,6 +20,48 @@ uwsgi:
     #api_logging_level: -10
     api_logging_level: 10
 
+    # task manager / scheduler
+    broker_url: redis://localhost:6379/0
+    broker_queue: celery.auth
+    result_backend: redis://localhost:6379/0
+    expire: 86400
+    task_time_limit: 1200
+
+    # socket configuration uwsi,http
+    socket: ':8070'
+    http-socket: ':8080'
+
+    # startup user
+    #uid: uwsgi
+    #gid: uwsgi
+
+    # daemon configuration
+    daemonize: '/tmp/%(api_id).uwsgi.log'
+    pidfile: '/tmp/%(api_id).pid'
+    vacuum: true
+
+    # python configuration
+    virtualenv: '%d../../'
+    py-programname: python
+
+    # process configuration
+    master: true
+    enable-threads: true
+    workers: 2
+    gevent: 200
+    gevent-monkey-patch: true
+    procname: '%(api_id)'
+    cpu-affinity: 1
+
+    # queue configuration
+    #queue: 10
+    #queue-blocksize: 64000
+
+    #cache2: name=portal_cache,items=100
+
+    # app configuration
+    module: beehive.server.api:app
+
     oauth2_endpoint:
 
     # database uri
@@ -32,13 +74,6 @@ uwsgi:
 
     # elasticsearch nodes
     elasticsearch_nodes:
-
-    # task manager / scheduler
-    broker_url: redis://localhost:6379/0
-    broker_queue: celery.auth
-    result_backend: redis://localhost:6379/0
-    expire: 86400
-    task_time_limit: 1200
 
     #task_module: beehive.module.scheduler.tasks
     task_module:
@@ -56,43 +91,6 @@ uwsgi:
     event_handler:
     - beehive.module.auth.event.AuthEventHandler
     - beehive.module.event.handler_api.ApiEventHandler
-
-    # socket configuration uwsi,http
-    socket: ':8070'
-    http-socket: ':8080'
-
-    # process configuration
-    master: true
-    enable-threads: true
-
-    # startup user
-    #uid: uwsgi
-    #gid: uwsgi
-
-    # daemon configuration
-    daemonize: '/tmp/%(api_id).uwsgi.log'
-    pidfile: '/tmp/%(api_id).pid'
-    vacuum: true
-
-    # python configuration
-    virtualenv: '%d../../'
-    py-programname: python
-
-    # process configuration
-    workers: 2
-    gevent: 200
-    gevent-monkey-patch: true
-    procname: '%(api_id)'
-    cpu-affinity: 1
-
-    # queue configuration
-    #queue: 10
-    #queue-blocksize: 64000
-
-    #cache2: name=portal_cache,items=100
-
-    # app configuration
-    module: beehive.server.api:app
 
     # workers configuration
     #attach-daemon2: cmd=%(virtualenv)bin/task.py %(virtualenv) %p 2>&1 >/tmp/%(api_id).worker1.log,stopsignal=2,reloadsignal=1
