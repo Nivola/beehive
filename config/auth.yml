@@ -76,10 +76,7 @@ uwsgi:
     elasticsearch_nodes:
 
     #task_module: beehive.module.scheduler.tasks
-    task_module:
-    - beehive.module.scheduler_v2.tasks
-    - beehive.module.auth.tasks_v2
-    - beehive.module.catalog.tasks_v2
+    task_module: [beehive.module.scheduler_v2.tasks,beehive.module.auth.tasks_v2,beehive.module.catalog.tasks_v2]
 
     # api modules
     api_module:
