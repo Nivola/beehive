@@ -18,14 +18,17 @@ from sys import version_info
 
 
 if __name__ == '__main__':
-    virtualenv = argv[1:][0]
+    # virtualenv = argv[1:][0]
 
-    activate_this = '%s/bin/activate_this.py' % virtualenv
-    if version_info.major == 2:
-        execfile(activate_this, dict(__file__=activate_this))
-    else:
-        import runpy
-        file_globals = runpy.run_path(activate_this)
+    # activate_this = '%s/bin/activate_this.py' % virtualenv
+    # if version_info.major == 2:
+    #     execfile(activate_this, dict(__file__=activate_this))
+    # else:
+    #     import runpy
+    #     file_globals = runpy.run_path(activate_this)
+
+    # activate_this = '%s/bin/activate_this.py' % virtualenv
+    # exec(open(activate_this).read(), {'__file__': activate_this})
 
     from beehive.server import configure_server
     params = configure_server()

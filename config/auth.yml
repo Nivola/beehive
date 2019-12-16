@@ -28,8 +28,8 @@ uwsgi:
     task_time_limit: 1200
 
     # socket configuration uwsi,http
-    socket: ':8070'
-    http-socket: ':8080'
+    socket: :8070
+    http-socket: :8080
 
     # startup user
     #uid: uwsgi
@@ -95,6 +95,7 @@ uwsgi:
     # event_handler: 0
 
     # workers configuration
+    attach-daemon2: cmd=%(virtualenv)bin/pyenv.sh %(virtualenv) task.py %p 2>&1 >/tmp/%(api_id).worker1.log,stopsignal=2,reloadsignal=1
     #attach-daemon2: cmd=%(virtualenv)bin/task.py %(virtualenv) %p 2>&1 >/tmp/%(api_id).worker1.log,stopsignal=2,reloadsignal=1
     #attach-daemon2: cmd=%(virtualenv)bin/scheduler.py %(virtualenv) %p 2>&1 >/tmp/%(api_id).scheduler.log,stopsignal=2,reloadsignal=1
     #attach-daemon2: cmd=%(virtualenv)bin/catalog.py %(virtualenv) %p 2>&1 >/tmp/%(api_id).catalog.log,stopsignal=2,reloadsignal=1
