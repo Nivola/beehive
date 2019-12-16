@@ -88,7 +88,7 @@ def configure_task_manager(broker_url, result_backend, tasks=[], expire=60*60*24
         TASK_DEAFAULT_ROUTING_KEY=task_queue,
         CELERY_QUEUES=(Queue(task_queue, Exchange(task_queue), routing_key=task_queue),),
         CELERY_RESULT_BACKEND=result_backend,
-        CELERY_REDIS_RESULT_KEY_PREFIX='%s.celery-task-meta2-' % b(task_queue),
+        CELERY_REDIS_RESULT_KEY_PREFIX='%s.celery-task-meta2-' % task_queue,
         CELERY_REDIS_RESULT_EXPIRES=expire,
         CELERY_TASK_IGNORE_RESULT=True,
         CELERY_TASK_RESULT_EXPIRES=600,

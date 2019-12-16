@@ -802,6 +802,7 @@ class ApiManager(object):
                         self.logger.warning('Configure catalog queue - NOT CONFIGURED')
                 except:
                     self.logger.warning('Configure catalog queue - NOT CONFIGURED')
+                    self.logger.warning('Configure catalog queue - NOT CONFIGURED', exc_info=1)
                 ##### catalog queue configuration #####
         
                 ##### tcp proxy configuration #####
