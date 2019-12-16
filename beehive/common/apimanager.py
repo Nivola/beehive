@@ -624,6 +624,7 @@ class ApiManager(object):
                     self.logger.info('Configure scheduler reference - CONFIGURED')
                 except:
                     self.logger.warning('Configure scheduler reference - NOT CONFIGURED')
+                    self.logger.warning('Configure scheduler reference - NOT CONFIGURED', exc_info=1)
                 ##### scheduler reference configuration #####
                 
                 ##### security configuration #####
