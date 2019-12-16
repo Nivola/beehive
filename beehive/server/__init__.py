@@ -48,7 +48,7 @@ def configure_server():
                 params[field].append(item)
 
     res = {}
-    for k, v in params:
+    for k, v in params.items():
         res[k] = v.encode('utf-8')
 
     # import beecell.server.gevent_ssl
