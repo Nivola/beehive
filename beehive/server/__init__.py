@@ -36,7 +36,7 @@ def configure_server():
     params = yaml.full_load(data)
     f.close()
 
-    print(params)
+    params = params.get('uwsgi')
 
     fields = ['api_module']
     for field in fields:
