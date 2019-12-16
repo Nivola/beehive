@@ -11,6 +11,7 @@ from time import time
 from socket import gethostname, gethostbyname
 from flask import Flask, Response, request
 from os import urandom
+from six import b
 from beecell.logger.helper import LoggerHelper
 from beecell.server.uwsgi_server.wrapper import uwsgi_util
 from beecell.db.manager import MysqlManagerError
@@ -126,8 +127,8 @@ class BeehiveApp(Flask):
         logname = uwsgi_util.opt['api_id']
 
         # base logging
-        file_name = '%s%s.log' % (self.log_path, logname)
-        file_name = file_name
+        file_name = self.log_path + logname + b('.log')
+        file_name = file_name.decode('utf-8')
         loggers = [
             logger,
             logging.getLogger('oauthlib'),
