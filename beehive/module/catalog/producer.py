@@ -60,6 +60,8 @@ class CatalogProducerRedis(CatalogProducer):
         
         self.redis_uri = redis_uri
         self.redis_channel = redis_channel
+        logger.warning(redis_uri)
+        logger.warning(type(redis_uri))
         self.conn = Connection(redis_uri)
         self.exchange = Exchange(self.redis_channel, type='direct', delivery_mode=1)
         self.routing_key = '%s.key' % self.redis_channel
