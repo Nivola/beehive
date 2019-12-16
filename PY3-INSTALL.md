@@ -15,7 +15,7 @@ At this point create a virtualenv
 
 ```
 $ python3 -m venv /tmp/beehive-py3-test-env
-$ source /tmp/beehive-test-env/bin/activate
+$ source /tmp/beehive-py3-test-env/bin/activate
 $ pip3 install wheel
 ```
 

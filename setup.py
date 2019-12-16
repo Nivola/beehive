@@ -145,7 +145,7 @@ if __name__ == '__main__':
             "redis-py-cluster==2.0.0",
             "requests==2.22.0",
             "setuptools==41.2.0",
-            "librabbitmq==2.0.0",
+            #"librabbitmq==2.0.0",
             "dnspython==1.16.0",
             "python-dateutil==2.8.0",
             "billiard==3.6.0",
