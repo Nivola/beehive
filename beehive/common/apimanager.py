@@ -446,7 +446,6 @@ class ApiManager(object):
             module_classes = [module_classes]
         print(module_classes)
         for item in module_classes:
-            item = item.decode('utf-8')
             # check if module is primary
             main = False
             if item.find(',') > 0:
