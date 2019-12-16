@@ -237,7 +237,7 @@ class ApiManager(object):
         :param list dbconf: (uri, timeout, pool_size, max_overflow, pool_recycle)
         """
         try:
-            db_uri = dbconf[0]
+            db_uri = dbconf[0].decode('utf-8')
             connect_timeout = dbconf[1]
             pool_size = dbconf[2]
             max_overflow = dbconf[3]
