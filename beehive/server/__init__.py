@@ -60,4 +60,4 @@ def configure_server():
     from gevent import monkey
     monkey.patch_all()
 
-    return params
+    return res

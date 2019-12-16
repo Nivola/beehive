@@ -156,11 +156,15 @@ def start_task_manager(params):
     frmt = '[%(asctime)s: %(levelname)s/%(task_name)s:%(task_id)s] %(name)s:%(funcName)s:%(lineno)d - %(message)s'
 
     log_path = run_path = params.get('api_log', None)
+
     if log_path is None:
         log_path = '/var/log/%s/%s' % (params['api_package'], params['api_env'])
         run_path = '/var/run/%s/%s' % (params['api_package'], params['api_env'])
 
     logger_level = int(params.get('api_logging_level', logging.DEBUG))
+
+    file_name = log_path + logname + b('.log')
+    file_name = file_name.decode('utf-8')
 
     # base logging
     main_loggers = [
@@ -175,8 +179,7 @@ def start_task_manager(params):
         logging.getLogger('proxmoxer'),
         logging.getLogger('requests')
     ]
-    LoggerHelper.rotatingfile_handler(main_loggers, logger_level, '%s/%s.log' % (log_path, logname),
-                                      frmt=frmt, formatter=ExtTaskFormatter)
+    LoggerHelper.rotatingfile_handler(main_loggers, logger_level, file_name, frmt=frmt, formatter=ExtTaskFormatter)
 
     # # transaction and db logging
     # loggers = [
@@ -235,12 +238,14 @@ def start_task_manager(params):
 
 def start_scheduler(params):
     """start celery scheduler """
+    logname = "%s.scheduler.log" % params['api_id']
     log_path = run_path = params.get('api_log', None)
     if log_path is None:
         log_path = '/var/log/%s/%s' % (params['api_package'], params['api_env'])
         run_path = '/var/run/%s/%s' % (params['api_package'], params['api_env'])
 
-    logger_file = '%s/%s.scheduler.log' % (log_path, params['api_id'])
+    file_name = log_path + logname
+    file_name = file_name.decode('utf-8')
 
     logger_level = logging.INFO
     loggers = [
