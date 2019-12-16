@@ -133,8 +133,8 @@ class ApiManager(object):
         self.app_endpoint_id = '%s-%s' % (self.params['api_id'], hostname)
         self.swagger_spec_path = self.params.get('api_swagger_spec_path', 'swagger.yml')
         try:
-            self.app_uri = 'http://%s%s' % (hostname, self.params['http-socket'].decode('utf-8'))
-            self.uwsgi_uri = 'uwsgi://%s%s' % (hostname, self.params['socket'].decode('utf-8'))
+            self.app_uri = 'http://%s%s' % (hostname.encode('utf-8'), self.params['http-socket'])
+            self.uwsgi_uri = 'uwsgi://%s%s' % (hostname.encode('utf-8'), self.params['socket'])
         except:
             self.app_uri = None
             self.uwsgi_uri = None
