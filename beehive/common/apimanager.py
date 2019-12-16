@@ -444,7 +444,7 @@ class ApiManager(object):
         module_classes_num = int(self.params['api_module'])
 
         for i in range(1, module_classes_num):
-            item = self.params['api_module.%s' % i]
+            item = self.params['api_module.%s' % i].decode('utf-8')
 
             # check if module is primary
             main = False
@@ -465,7 +465,7 @@ class ApiManager(object):
             plugin_pkgs = []
 
             for i in range(1, api_plugin_num):
-                plugin_pkgs.append(self.params['api_plugin.%s' % i])
+                plugin_pkgs.append(self.params['api_plugin.%s' % i].decode('utf-8'))
 
             plugin_pkgs = self.params['api_plugin']
             if type(plugin_pkgs) is str:
