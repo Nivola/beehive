@@ -444,7 +444,7 @@ class ApiManager(object):
         module_classes = self.params['api_module']
         if type(module_classes) is str:
             module_classes = [module_classes]
-        
+        print(module_classes)
         for item in module_classes:
             # check if module is primary
             main = False
