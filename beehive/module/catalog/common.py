@@ -64,16 +64,16 @@ class CatalogEndpoint(object):
         else:
             modified = None            
         msg = {
-            'id':self.id, 
-            'name':self.name, 
-            'desc':self.desc,
-            'service':self.service,
-            'date':{'creation':creation, 'modified':modified},
-            'catalog':self.catalog_id,
-            'uri':self.uri,
-            'enabled':self.enabled
+            'id': self.id,
+            'name': self.name,
+            'desc': self.desc,
+            'service': self.service,
+            'date': {'creation': creation, 'modified': modified},
+            'catalog': self.catalog_id,
+            'uri': self.uri,
+            'enabled': self.enabled
         }
-        return msg      
+        return msg.decode('utf-8')
 
     def json(self):
         """Return json representation.

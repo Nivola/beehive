@@ -231,6 +231,7 @@ class Catalog(AuthObject):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=ex.code)
 
+
 class CatalogEndpoint(AuthObject):
     module = 'CatalogModule'
     objtype = 'directory'
@@ -266,9 +267,9 @@ class CatalogEndpoint(AuthObject):
         """
         info = AuthObject.info(self)
         info.update({
-            'catalog':self.catalog,
-            'service':self.model.service,
-            'endpoint':self.model.uri
+            'catalog': self.catalog,
+            'service': self.model.service,
+            'endpoint': self.model.uri
         })
         return info
 
@@ -281,4 +282,3 @@ class CatalogEndpoint(AuthObject):
         """
         info = self.info()
         return info
-                
