@@ -122,7 +122,7 @@ def get_uwsgi_path():
 
 def get_config(config):
     console_path = os.path.abspath(__file__).replace('bin/console.py', 'share/config')
-    return console_path + '/{config}.ini'.format(config=config)
+    return console_path + '/{config}.yml'.format(config=config)
 
 
 @cli.command()
