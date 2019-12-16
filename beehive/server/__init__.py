@@ -5,8 +5,7 @@
 
 from sys import argv
 from collections import OrderedDict
-
-from beecell.simple import read_file
+import yaml
 
 
 def configure_server():
@@ -31,8 +30,13 @@ def configure_server():
     # params['api_plugin'] = params.get('api_plugin', '').split('\n')
     # params['event_handler'] = params.get('event_handler', '').split('\n')
 
-    params = read_file(config_file)
-    params = params.replace('/%d', '')
+    f = open(config_file, 'r')
+    data = f.read()
+    data = data.replace('%d', '')
+    params = yaml.full_load(data)
+    f.close()
+
+    print(params)
 
     fields = ['api_module']
     for field in fields:
