@@ -56,7 +56,7 @@ uwsgi:
     event_handler: beehive.module.event.handler_api.ApiEventHandler
 
     # socket configuration uwsi,http
-    socket= :8070
+    socket: :8070
     http-socket: :8080
 
     # process configuration
