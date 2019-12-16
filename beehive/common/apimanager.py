@@ -624,7 +624,6 @@ class ApiManager(object):
                     self.logger.info('Configure scheduler reference - CONFIGURED')
                 except:
                     self.logger.warning('Configure scheduler reference - NOT CONFIGURED')
-                    self.logger.warning('Configure scheduler reference - NOT CONFIGURED', exc_info=1)
                 ##### scheduler reference configuration #####
                 
                 ##### security configuration #####
@@ -765,8 +764,8 @@ class ApiManager(object):
                         # setup event producer
                         conf = json.loads(conf[0].value)
                         # set redis manager
-                        self.redis_event_uri = self.params['redis_queue_uri']
-                        self.redis_event_exchange = conf['queue']
+                        self.redis_event_uri = self.params['redis_queue_uri'].decode('utf-8')
+                        self.redis_event_exchange = conf['queue'].decode('utf-8')
 
                         # create instance of event producer
                         self.event_producer = EventProducerRedis(
@@ -788,9 +787,9 @@ class ApiManager(object):
 
                         # setup catalog producer
                         conf = json.loads(conf[0].value)
-                        self.redis_catalog_uri = self.params['redis_queue_uri']
+                        self.redis_catalog_uri = self.params['redis_queue_uri'].decode('utf-8')
                         #self.redis_catalog_uri = conf['uri']
-                        self.redis_catalog_channel = conf['queue']
+                        self.redis_catalog_channel = conf['queue'].decode('utf-8')
 
                         # create instance of catalog producer
                         from beehive.module.catalog.producer import CatalogProducerRedis
