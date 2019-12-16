@@ -89,10 +89,12 @@ uwsgi:
     api_module.4: beehive.module.scheduler_v2.mod.SchedulerModuleV2
 
     # api plugins
-    # api_plugin: 0
+    api_plugin: 0
 
     # event handler
-    # event_handler: 0
+    event_handler: 2
+    event_handler.1: beehive.module.auth.event.AuthEventHandler
+    event_handler.2: beehive.module.event.handler_api.ApiEventHandler
 
     # workers configuration
     #attach-daemon2: cmd=%(virtualenv)bin/task.py %(virtualenv) %p 2>&1 >/tmp/%(api_id).worker1.log,stopsignal=2,reloadsignal=1

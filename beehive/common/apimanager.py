@@ -441,11 +441,11 @@ class ApiManager(object):
     def register_modules(self, register_api=True):
         self.logger.info('Configure modules - START')
         
-        module_classes = self.params['api_module']
-        if type(module_classes) is str:
-            module_classes = [module_classes]
-        print(module_classes)
-        for item in module_classes:
+        module_classes_num = self.params['api_module']
+
+        for i in range(1, module_classes_num):
+            item = self.params['api_module.' + i]
+
             # check if module is primary
             main = False
             if item.find(',') > 0:
@@ -461,6 +461,12 @@ class ApiManager(object):
             self.logger.info('Register module: %s' % item)
         
         if 'api_plugin' in self.params:
+            api_plugin_num = self.params['api_plugin']
+            plugin_pkgs = []
+
+            for i in range(1, api_plugin_num):
+                plugin_pkgs.append(self.params['api_plugin.' + i])
+
             plugin_pkgs = self.params['api_plugin']
             if type(plugin_pkgs) is str:
                 plugin_pkgs = [plugin_pkgs]
