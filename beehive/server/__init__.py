@@ -7,6 +7,8 @@ from sys import argv
 from collections import OrderedDict
 import yaml
 
+from beecell.simple import is_string
+
 
 def configure_server():
     # config_file = argv[1:][1]
@@ -49,7 +51,10 @@ def configure_server():
 
     res = {}
     for k, v in params.items():
-        res[k] = v.encode('utf-8')
+        if is_string(v):
+            res[k] = v.encode('utf-8')
+        else:
+            res[k] = v
 
     # import beecell.server.gevent_ssl
     from gevent import monkey
