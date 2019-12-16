@@ -127,7 +127,7 @@ class BeehiveApp(Flask):
 
         # base logging
         file_name = '%s/%s.log' % (self.log_path, logname)
-        file_name = file_name.decode('utf-8')
+        file_name = file_name
         loggers = [
             logger,
             logging.getLogger('oauthlib'),
