@@ -541,7 +541,7 @@ class ApiManager(object):
                 ##### redis configuration #####
                 self.logger.info('Configure redis - CONFIGURE')
                 # connect to redis
-                redis_uri = self.params['redis_identity_uri']
+                redis_uri = self.params['redis_identity_uri'].decode('utf-8')
                                              
                 # parse redis uri
                 parsed_uri = parse_redis_uri(redis_uri)
