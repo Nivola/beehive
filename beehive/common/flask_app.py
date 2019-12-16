@@ -53,6 +53,7 @@ class BeehiveApp(Flask):
         
         # api instance static config
         self.params = uwsgi_util.opt
+        print(self.params)
         
         # set logging path
         log_path = '/var/log/%s/%s' % (self.params['api_package'], self.params['api_env'])
