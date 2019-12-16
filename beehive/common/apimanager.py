@@ -144,8 +144,11 @@ class ApiManager(object):
 
         # swagger reference
         # self.swagger = Swagger(self.app, template_file=self.swagger_spec_path)
-        swagger_template = read_file(self.swagger_spec_path)
-        self.swagger = Swagger(self.app, template=swagger_template)
+        try:
+            swagger_template = read_file(self.swagger_spec_path)
+            self.swagger = Swagger(self.app, template=swagger_template)
+        except:
+            self.swagger = None
 
         # instance configuration
         self.http_socket = self.params.get('http-socket')
