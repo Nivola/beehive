@@ -36,12 +36,12 @@ uwsgi:
     #gid: uwsgi
 
     # daemon configuration
-    daemonize: '/tmp/%(api_id).uwsgi.log'
-    pidfile: '/tmp/%(api_id).pid'
+    daemonize: /tmp/%(api_id).uwsgi.log
+    pidfile: /tmp/%(api_id).pid
     vacuum: true
 
     # python configuration
-    virtualenv: '%d../../'
+    virtualenv: %d../../
     py-programname: python
 
     # process configuration
@@ -50,7 +50,7 @@ uwsgi:
     workers: 2
     gevent: 200
     gevent-monkey-patch: true
-    procname: '%(api_id)'
+    procname: %(api_id)
     cpu-affinity: 1
 
     # queue configuration
