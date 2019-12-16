@@ -8,9 +8,8 @@ from collections import OrderedDict
 
 
 def configure_server():
-    print('$$$$$$$$$$$$$$$$$$$$$')
-    print(argv)
-    config_file = argv[1:][1]
+    # config_file = argv[1:][1]
+    config_file = argv[1]
 
     from six.moves.configparser import RawConfigParser
 
