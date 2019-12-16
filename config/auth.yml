@@ -62,7 +62,7 @@ uwsgi:
     # app configuration
     module: beehive.server.api:app
 
-    oauth2_endpoint:
+    oauth2_endpoint: ''
 
     # database uri
     database_uri: mysql+pymysql://auth:auth@localhost:3306/auth
@@ -73,21 +73,21 @@ uwsgi:
     redis_celery_uri: redis://localhost:6379/0
 
     # elasticsearch nodes
-    elasticsearch_nodes:
+    elasticsearch_nodes: ''
 
     #task_module: beehive.module.scheduler.tasks
-    task_module: [beehive.module.scheduler_v2.tasks,beehive.module.auth.tasks_v2,beehive.module.catalog.tasks_v2]
+    task_module.1: beehive.module.scheduler_v2.tasks
+    task_module.2: beehive.module.auth.tasks_v2
+    task_module.3: beehive.module.catalog.tasks_v2
 
     # api modules
-    api_module:
-    - beehive.module.basic.mod.BasicModule
-    - beehive.module.auth.mod.AuthModule,true
-    - beehive.module.catalog.mod.CatalogModule
-    - beehive.module.scheduler_v2.mod.SchedulerModuleV2
+    api_module.1: beehive.module.basic.mod.BasicModule
+    api_module.2: beehive.module.auth.mod.AuthModule,true
+    api_module.3: beehive.module.catalog.mod.CatalogModule
+    api_module.4: beehive.module.scheduler_v2.mod.SchedulerModuleV2
 
-    event_handler:
-    - beehive.module.auth.event.AuthEventHandler
-    - beehive.module.event.handler_api.ApiEventHandler
+    event_handler.1: beehive.module.auth.event.AuthEventHandler
+    event_handler.2: beehive.module.event.handler_api.ApiEventHandler
 
     # workers configuration
     #attach-daemon2: cmd=%(virtualenv)bin/task.py %(virtualenv) %p 2>&1 >/tmp/%(api_id).worker1.log,stopsignal=2,reloadsignal=1
