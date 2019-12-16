@@ -441,7 +441,7 @@ class ApiManager(object):
     def register_modules(self, register_api=True):
         self.logger.info('Configure modules - START')
         
-        module_classes_num = self.params['api_module']
+        module_classes_num = int(self.params['api_module'])
 
         for i in range(1, module_classes_num):
             item = self.params['api_module.' + i]
@@ -461,7 +461,7 @@ class ApiManager(object):
             self.logger.info('Register module: %s' % item)
         
         if 'api_plugin' in self.params:
-            api_plugin_num = self.params['api_plugin']
+            api_plugin_num = int(self.params['api_plugin'])
             plugin_pkgs = []
 
             for i in range(1, api_plugin_num):
