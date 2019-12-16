@@ -765,7 +765,7 @@ class ApiManager(object):
                         conf = json.loads(conf[0].value)
                         # set redis manager
                         self.redis_event_uri = self.params['redis_queue_uri'].decode('utf-8')
-                        self.redis_event_exchange = conf['queue'].decode('utf-8')
+                        self.redis_event_exchange = conf['queue']
 
                         # create instance of event producer
                         self.event_producer = EventProducerRedis(
@@ -789,7 +789,7 @@ class ApiManager(object):
                         conf = json.loads(conf[0].value)
                         self.redis_catalog_uri = self.params['redis_queue_uri'].decode('utf-8')
                         #self.redis_catalog_uri = conf['uri']
-                        self.redis_catalog_channel = conf['queue'].decode('utf-8')
+                        self.redis_catalog_channel = conf['queue']
 
                         # create instance of catalog producer
                         from beehive.module.catalog.producer import CatalogProducerRedis
