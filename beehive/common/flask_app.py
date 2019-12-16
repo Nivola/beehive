@@ -126,7 +126,7 @@ class BeehiveApp(Flask):
         logname = uwsgi_util.opt['api_id']
 
         # base logging
-        file_name = '%s/%s.log' % (self.log_path, logname)
+        file_name = '%s%s.log' % (self.log_path, logname)
         file_name = file_name
         loggers = [
             logger,
