@@ -159,7 +159,7 @@ def start_task_manager(params):
     if log_path is None:
         log_path = '/var/log/%s/%s' % (params['api_package'], params['api_env'])
         run_path = '/var/run/%s/%s' % (params['api_package'], params['api_env'])
-
+    print(params)
     logger_level = int(params['api_logging_level'], logging.DEBUG)
 
     # base logging
