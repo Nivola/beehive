@@ -59,7 +59,6 @@ if __name__ == '__main__':
             'beehive.server',
             'beehive.tests',
             'beehive.tests.common',
-            'beehive.tests.glb',
             'beehive.tests.module',
             'beehive.tests.module.auth',
             'beehive.tests.module.basic',

@@ -56,7 +56,7 @@ class BeehiveApp(Flask):
         
         # set logging path
         log_path = '/var/log/%s/%s' % (self.params['api_package'], self.params['api_env'])
-        self.log_path = self.params.get('api_log', log_path)
+        self.log_path = self.params.get('api_log', log_path).decode('utf-8')
 
         def error405(e):
             error = {
@@ -123,8 +123,8 @@ class BeehiveApp(Flask):
         :param level:
         :return:
         """
-        logname = uwsgi_util.opt['api_id']
-        
+        logname = uwsgi_util.opt['api_id'].decode('utf-8')
+
         # base logging
         file_name = '%s/%s.log' % (self.log_path, logname)
         loggers = [
@@ -157,7 +157,7 @@ class BeehiveApp(Flask):
         :param level:
         :return:
         """
-        logname = uwsgi_util.opt['api_id']
+        # logname = uwsgi_util.opt['api_id']
 
         loggers = [
             logger,
