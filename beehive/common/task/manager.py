@@ -4,6 +4,9 @@
 # (C) Copyright 2019-2020 CSI-Piemonte
 
 import logging
+
+from six import b
+
 from beecell.logger.helper import LoggerHelper
 from signal import SIGHUP, SIGABRT, SIGILL, SIGINT, SIGSEGV, SIGTERM, SIGQUIT
 from signal import signal
@@ -84,7 +87,7 @@ def configure_task_manager(broker_url, result_backend, tasks=[], expire=60*60*24
                 routing_key=task_queue),
         ),
         CELERY_RESULT_BACKEND=result_backend,
-        CELERY_REDIS_RESULT_KEY_PREFIX='%s.celery-task-meta2-' % task_queue,
+        CELERY_REDIS_RESULT_KEY_PREFIX='%s.celery-task-meta2-' % b(task_queue),
         CELERY_REDIS_RESULT_EXPIRES=expire,
         CELERY_TASK_IGNORE_RESULT=True,
         CELERY_TASK_RESULT_EXPIRES=600,
@@ -126,7 +129,7 @@ def configure_task_scheduler(broker_url, schedule_backend, tasks=[], task_queue=
         CELERY_SCHEDULE_BACKEND=schedule_backend,
         # CELERYBEAT_SCHEDULE_FILENAME='/tmp/celerybeat-schedule',
         # CELERY_REDIS_SCHEDULER_KEY_PREFIX='celery-schedule',
-        CELERY_REDIS_SCHEDULER_KEY_PREFIX=task_queue + '.schedule',
+        CELERY_REDIS_SCHEDULER_KEY_PREFIX=task_queue + b('.schedule'),
         CELERY_TASK_SERIALIZER='json',
         CELERY_ACCEPT_CONTENT=['json'],  # Ignore other content
         CELERY_RESULT_SERIALIZER='json',
