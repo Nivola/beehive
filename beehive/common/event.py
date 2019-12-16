@@ -28,7 +28,7 @@ class ComplexEncoder(json.JSONEncoder):
         try:
             return json.dumps(o)
         except TypeError:
-            return b(o)
+            return str(o)
         
         # Let the base class default method raise the TypeError
         return json.JSONEncoder.default(self, o)

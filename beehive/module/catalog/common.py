@@ -36,8 +36,7 @@ class CatalogEndpoint(object):
         self.modified = modified
 
     def __str__(self):
-        res = "<Node id=%s, name=%s, service=%s, catalog=%s>" % \
-                (self.id, self.name, self.service, self.catalog_id)
+        res = "<Node id=%s, name=%s, service=%s, catalog=%s>" % (self.id, self.name, self.service, self.catalog_id)
         return res
 
     def dict(self):
@@ -73,7 +72,7 @@ class CatalogEndpoint(object):
             'uri': self.uri,
             'enabled': self.enabled
         }
-        return msg.decode('utf-8')
+        return msg
 
     def json(self):
         """Return json representation.
