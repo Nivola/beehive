@@ -32,6 +32,7 @@ def configure_server():
     # params['event_handler'] = params.get('event_handler', '').split('\n')
 
     params = read_file(config_file)
+    params = params.replace('%d', '')
 
     fields = ['api_module']
     for field in fields:
