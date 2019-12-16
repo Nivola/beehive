@@ -26,7 +26,7 @@ from beecell.db import TransactionError, QueryError
 from beecell.db.manager import MysqlManager, SqlManagerError, RedisManager
 from beecell.auth import extract
 from beecell.simple import import_class, truncate, get_class_name, \
-    parse_redis_uri, get_remote_ip, str2bool, format_date, obscure_data, compat
+    parse_redis_uri, get_remote_ip, str2bool, format_date, obscure_data, compat, read_file
 from beecell.sendmail import Mailer
 from beehive.common.data import operation, trace
 from beecell.auth import DatabaseAuth, LdapAuth, SystemUser
@@ -143,7 +143,9 @@ class ApiManager(object):
         operation.encryption_key = self.app_fernet_key
 
         # swagger reference
-        self.swagger = Swagger(self.app, template_file=self.swagger_spec_path)
+        # self.swagger = Swagger(self.app, template_file=self.swagger_spec_path)
+        swagger_template = read_file(self.swagger_spec_path)
+        self.swagger = Swagger(self.app, template=swagger_template)
 
         # instance configuration
         self.http_socket = self.params.get('http-socket')
