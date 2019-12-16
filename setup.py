@@ -79,7 +79,7 @@ if __name__ == '__main__':
             ('share', ['beehive/server/swagger.yml']),
             ('share/config', ['config/auth.json',
                               'config/event.json',
-                              'config/auth.ini',
+                              'config/auth.yml',
                               'config/event.ini']),
             ('bin', ['beehive/server/api.py',
                      'beehive/server/task.py',
