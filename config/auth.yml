@@ -41,9 +41,10 @@ uwsgi:
     task_time_limit: 1200
 
     #task_module: beehive.module.scheduler.tasks
-    task_module: beehive.module.scheduler_v2.tasks
-    task_module: beehive.module.auth.tasks_v2
-    task_module: beehive.module.catalog.tasks_v2
+    task_module:
+    - beehive.module.scheduler_v2.tasks
+    - beehive.module.auth.tasks_v2
+    - beehive.module.catalog.tasks_v2
 
     # api modules
     api_module:
@@ -52,12 +53,13 @@ uwsgi:
     - beehive.module.catalog.mod.CatalogModule
     - beehive.module.scheduler_v2.mod.SchedulerModuleV2
 
-    event_handler: beehive.module.auth.event.AuthEventHandler
-    event_handler: beehive.module.event.handler_api.ApiEventHandler
+    event_handler:
+    - beehive.module.auth.event.AuthEventHandler
+    - beehive.module.event.handler_api.ApiEventHandler
 
     # socket configuration uwsi,http
-    socket: :8070
-    http-socket: :8080
+    socket: ':8070'
+    http-socket: ':8080'
 
     # process configuration
     master: true
@@ -68,19 +70,19 @@ uwsgi:
     #gid: uwsgi
 
     # daemon configuration
-    daemonize: /tmp/%(api_id).uwsgi.log
-    pidfile: /tmp/%(api_id).pid
+    daemonize: '/tmp/%(api_id).uwsgi.log'
+    pidfile: '/tmp/%(api_id).pid'
     vacuum: true
 
     # python configuration
-    virtualenv: %d../../
+    virtualenv: '%d../../'
     py-programname: python
 
     # process configuration
     workers: 2
     gevent: 200
     gevent-monkey-patch: true
-    procname: %(api_id)
+    procname: '%(api_id)'
     cpu-affinity: 1
 
     # queue configuration
