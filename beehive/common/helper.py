@@ -82,8 +82,9 @@ class BeehiveHelper(object):
                       'api_name': config['api_system'],
                       'api_subsystem': config['api_subsystem'],
                       'database_uri': config['db_uri'],
-                      'api_module': ['beehive.module.process.mod.ConfigModule'],
-                      'api_plugin': []}
+                      'api_module': 1,
+                      'api_module.1': 'beehive.module.process.mod.ConfigModule',
+                      'api_plugin': 0}
             manager = ApiManager(params)    
     
             # remove and create scchema
@@ -145,10 +146,15 @@ class BeehiveHelper(object):
                       'api_subsystem': config['api_subsystem'],
                       'database_uri': config['db_uri'],
                       'redis_identity_uri': config['redis_identity_uri'],
-                      'api_module': config['api_modules'],
-                      'api_plugin': config['api_plugins'],
+                      'api_module': config['api_module'],
+                      'api_plugin': config['api_plugin'],
                       'api_endpoint': config['api_endpoint'],
                       'api_catalog': config['api_catalog']}
+            for i in range(1, params['api_module']+1):
+                params['api_module.%s' % i] = config['api_module.%s' % i]
+            if config['api_plugin'] > 0:
+                for i in range(1, params['api_plugin']+1):
+                    params['api_plugin.%s' % i] = config['api_plugin.%s' % i]
             manager = ApiManager(params)
             manager.configure()
             manager.register_modules()
@@ -163,8 +169,8 @@ class BeehiveHelper(object):
                 if update is False:
                     db_manager.remove_table(config['db_uri'])
                 db_manager.create_table(config['db_uri'])
-                self.logger.info('Create DB %s' % (db_manager_class))
-                msgs.append('Create DB %s' % (db_manager_class))
+                self.logger.info('Create DB %s' % db_manager_class)
+                msgs.append('Create DB %s' % db_manager_class)
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
             raise
@@ -172,7 +178,8 @@ class BeehiveHelper(object):
         self.set_permissions(classes=self.classes)
     
         # create module
-        for item in config['api_modules']:
+        for i in range(1, config['api_module']+1):
+            item = config['api_module.%s' % i]
             try:
                 self.logger.info('Load module %s' % item)
                 module = manager.modules[item.split('.')[-1]]

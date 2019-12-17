@@ -52,7 +52,6 @@ class CatalogConsumer(ConsumerMixin):
             desc = endpoint['desc']
             catalog = endpoint['catalog']
             uri = endpoint['uri']
-            
             catalog_obj = self.manager.get_entity(ModelCatalog, catalog)
 
             if self.manager.exist_entity(ModelEndpoint, name) is True:
@@ -115,16 +114,21 @@ def start_catalog_consumer(params):
     """Start catalog consumer
     """
     # internal logger
-    logger = getLogger('beehive')   
-    
+    logger = getLogger('beehive')
+
     logger_level = int(params.get('api_logging_level', DEBUG))
+
+    name = params['api_id'].decode('utf-8') + '.catalog'
     log_path = params.get('api_log', None)
+
     if log_path is None:
         log_path = '/var/log/%s/%s' % (params['api_package'], params['api_env'])
-    logname = '%s/%s.catalog.consumer' % (log_path, params['api_id'])
-    logger_file = '%s.log' % logname
+    else:
+        log_path = log_path.decode('utf-8')
+
+    file_name = log_path + name + '.log'
     loggers = [getLogger(), logger]
-    LoggerHelper.rotatingfile_handler(loggers, logger_level, logger_file)
+    LoggerHelper.rotatingfile_handler(loggers, logger_level, file_name)
 
     # setup api manager
     api_manager = ApiManager(params)

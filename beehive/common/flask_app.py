@@ -124,11 +124,11 @@ class BeehiveApp(Flask):
         :param level:
         :return:
         """
-        logname = uwsgi_util.opt['api_id']
+        logname = uwsgi_util.opt['api_id'].decode('utf-8')
 
         # base logging
-        file_name = self.log_path + logname + b('.log')
-        file_name = file_name.decode('utf-8')
+        file_name = self.log_path.decode('utf-8') + logname + '.api.log'
+
         loggers = [
             logger,
             logging.getLogger('oauthlib'),

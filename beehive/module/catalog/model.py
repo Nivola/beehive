@@ -103,8 +103,7 @@ class CatalogDbManager(AbstractDbManager):
         if 'zone' in kvargs and kvargs.get('zone') is not None:
             filters = ['AND zone=:zone']
         
-        res, total = self.get_paginated_entities(Catalog, filters=filters, 
-                                                 *args, **kvargs)     
+        res, total = self.get_paginated_entities(Catalog, filters=filters, *args, **kvargs)
         return res, total
     
     def add(self, objid, name, desc, zone):
@@ -168,8 +167,7 @@ class CatalogDbManager(AbstractDbManager):
         if 'catalog' in kvargs and kvargs.get('catalog') is not None:
             filters.append('AND catalog_id=:catalog')        
         
-        res, total = self.get_paginated_entities(CatalogEndpoint, filters=filters, 
-                                                 *args, **kvargs)     
+        res, total = self.get_paginated_entities(CatalogEndpoint, filters=filters, *args, **kvargs)
         return res, total    
         
     def add_endpoint(self, objid, name, service, desc, catalog, uri, active=True):
@@ -212,4 +210,3 @@ class CatalogDbManager(AbstractDbManager):
         """
         res = self.remove_entity(CatalogEndpoint, *args, **kvargs)
         return res        
-    

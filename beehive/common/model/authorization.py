@@ -201,13 +201,11 @@ class User(Base, BaseEntity):
         self.email = email
 
     def _check_password(self, password):
-        password = password.encode('utf-8')
-
         # verifying the password
         if is_encrypted(self.password):
-            res = (decrypt_data(self.password) == password)
+            res = (decrypt_data(self.password) == password.encode('utf-8'))
         else:
-            res = bcrypt.checkpw(password, self.password)
+            res = bcrypt.checkpw(password.encode('utf-8'), self.password.encode('utf-8'))
         return res
 
     def _check_secret(self, secret):

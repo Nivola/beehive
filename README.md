@@ -23,13 +23,14 @@ $ python /tmp/beehive-py[2|3]-test-env/bin/console.py start auth
 
 Open directory /tmp. If server started correctly you can find these files:
 
-- auth-01.log
-- auth-01.uwsgi.log
-- auth-01.catalog.consumer.log  
+- auth-01.api.log
+- auth-01.api.out
 - auth-01.catalog.log  
-- auth-01.scheduler.log  
-- auth-01.task.log
-- auth-01.worker1.log
+- auth-01.catalog.out  
+- auth-01.scheduler.log
+- auth-01.scheduler.out
+- auth-01.worker.log
+- auth-01.worker.out
 
 Inspect main api server log file:
 
@@ -79,13 +80,14 @@ $ python /tmp/beehive-py[2|3]-test-env/bin/console.py start event
 
 Open directory /tmp. If server started correctly you can find these files:
 
-- event-01.log
-- event-01.uwsgi.log
+- event-01.api.log
+- event-01.api.out
 - event-01.event.consumer.log  
 - event-01.event.log  
-- event-01.scheduler.log  
-- event-01.task.log
-- event-01.worker1.log
+- event-01.scheduler.log
+- event-01.scheduler.out
+- event-01.worker.log
+- event-01.worker.out
 
 Inspect main api server log file:
 
@@ -135,8 +137,8 @@ $ python module/auth/view.py conf=/tmp/beehive-py[2|3]-test-env/share/test/beehi
 $ python module/auth/tasks.py conf=/tmp/beehive-py[2|3]-test-env-01/share/test/beehive.yml user=admin
 $ python module/catalog/view.py conf=/tmp/beehive-py[2|3]-test-env/share/test/beehive.yml user=admin
 $ python module/catalog/tasks.py conf=/tmp/beehive-py[2|3]-test-env-01/share/test/beehive.yml user=admin
-$ python module/scheduler_v2/tasks.py conf=/tmp/beehive-py[2|3]-test-env/share/test/beehive.yml user=admin
-$ python module/scheduler_v2/view.py conf=/tmp/beehive-py[2|3]-test-env/share/test/beehive.yml user=admin
+$ python module/scheduleruler_v2/tasks.py conf=/tmp/beehive-py[2|3]-test-env/share/test/beehive.yml user=admin
+$ python module/scheduleruler_v2/view.py conf=/tmp/beehive-py[2|3]-test-env/share/test/beehive.yml user=admin
 $ python module/event/view.py conf=/tmp/beehive-py[2|3]-test-env/share/test/beehive.yml user=admin
 $ python module/event/producer.py conf=/tmp/beehive-py[2|3]-test-env/share/test/beehive.yml user=admin
 ```

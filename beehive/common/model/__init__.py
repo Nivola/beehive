@@ -5,7 +5,7 @@
 
 import logging
 from time import time
-from six import b
+from six import b, ensure_text
 from sqlalchemy import create_engine, exc
 from sqlalchemy.ext.declarative import declarative_base
 from beehive.common.data import operation, query, transaction
@@ -788,12 +788,11 @@ class AbstractDbManager(object):
         :return: list of entityclass
         :raises ModelError: raise :class:`ModelError`
         """
-        # session = self.get_session()
         if oid is not None:
             query = session.query(entityclass).filter_by(id=oid)
-        elif objid is not None:  
+        elif objid is not None:
             query = session.query(entityclass).filter_by(objid=objid)
-        elif uuid is not None:  
+        elif uuid is not None:
             query = session.query(entityclass).filter_by(uuid=uuid)
         elif name is not None:
             query = session.query(entityclass).filter_by(name=name)
@@ -804,13 +803,6 @@ class AbstractDbManager(object):
 
         self.logger.debug2('stmp: %s' % query.statement.compile(dialect=mysql.dialect()))
         self.logger.debug2('kvargs: %s' % kvargs)
-
-        # entity = query.first()
-        #
-        # if entity is None:
-        #     msg = 'No %s found' % entityclass.__name__
-        #     self.logger.error(msg)
-        #     raise ModelError(msg, code=404)
 
         return query
 
@@ -828,12 +820,16 @@ class AbstractDbManager(object):
         if oid is None:
             raise ModelError('%s %s not found' % (oid, entityclass))
 
+        if isinstance(oid, int):
+            oid = str(oid)
+        # oid = ensure_text(oid)
+
         # get obj by uuid
-        if match('[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', str(oid)):
+        if match('[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', oid):
             search_field = 'uuid'
             entity = self.query_entities(entityclass, session, uuid=oid, *args, **kvargs)
         # get obj by id
-        elif match('^\d+$', str(oid)):
+        elif match('^\d+$', oid):
             search_field = 'id'
             entity = self.query_entities(entityclass, session, oid=oid, *args, **kvargs)
         # get obj by name
@@ -846,7 +842,7 @@ class AbstractDbManager(object):
         if res is not None:
             resp = True
 
-        self.logger.debug2('Check entity %s by %s exists: %s' % (entityclass.__name__, search_field, resp))
+        self.logger.debug2('Check entity %s by %s %s exists: %s' % (entityclass.__name__, search_field, oid, resp))
         return resp
 
     @query
@@ -865,12 +861,18 @@ class AbstractDbManager(object):
         if oid is None:
             raise ModelError('%s %s not found' % (oid, entityclass))
 
+        # self.logger.warn(type(oid))
+        if isinstance(oid, int):
+            oid = str(oid)
+        # oid = ensure_text(oid)
+        # self.logger.warn(type(oid))
+
         # get obj by uuid
-        if match('[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', str(oid)):
+        if match('[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', oid):
             search_field = 'uuid'
             entity = self.query_entities(entityclass, session, uuid=oid, *args, **kvargs)
         # get obj by id
-        elif match('^\d+$', str(oid)):
+        elif match('^\d+$', oid):
             search_field = 'id'
             entity = self.query_entities(entityclass, session, oid=oid, *args, **kvargs)
         # get obj by name
@@ -889,7 +891,7 @@ class AbstractDbManager(object):
             self.logger.error(msg)
             raise ModelError(msg, code=404)
 
-        self.logger.debug2('Query entity %s by %s: %s' % (entityclass.__name__, search_field, res))
+        self.logger.debug2('Query entity %s by %s %s: %s' % (entityclass.__name__, search_field, oid, res))
         return res
     
     # @query

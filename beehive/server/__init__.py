@@ -23,6 +23,7 @@ def configure_server():
     for field in fields:
         num = int(params.pop(field, 0))
         if num > 0:
+            num += 1
             params[field] = []
             for i in range(1, num):
                 item = params.pop('%s.%s' % (field, i))

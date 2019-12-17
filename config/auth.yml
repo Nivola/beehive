@@ -36,7 +36,7 @@ uwsgi:
     #gid: uwsgi
 
     # daemon configuration
-    daemonize: /tmp/auth-01.uwsgi.log
+    daemonize: /tmp/auth-01.api.out
     pidfile: /tmp/auth-01.pid
     vacuum: true
 
@@ -95,7 +95,6 @@ uwsgi:
     # event_handler: 0
 
     # workers configuration
-    #attach-daemon2: cmd=%(virtualenv)bin/pyenv.sh %(virtualenv) task.py %p 2>&1 >/tmp/auth-01.worker1.log,stopsignal=2,reloadsignal=1
-    attach-daemon2: cmd=%(virtualenv)bin/pyenv.sh %(virtualenv) scheduler.py %p 2>&1 >/tmp/auth-01.worker1.log,stopsignal=2,reloadsignal=1
-    #attach-daemon2: cmd=%(virtualenv)bin/scheduler.py %(virtualenv) %p 2>&1 >/tmp/auth-01.scheduler.log,stopsignal=2,reloadsignal=1
-    #attach-daemon2: cmd=%(virtualenv)bin/catalog.py %(virtualenv) %p 2>&1 >/tmp/auth-01.catalog.log,stopsignal=2,reloadsignal=1
+    attach-daemon2: cmd=%(virtualenv)bin/pyenv.sh %(virtualenv) task.py %p 2>&1 >/tmp/auth-01.worker.out,stopsignal=2,reloadsignal=1
+    attach-daemon2: cmd=%(virtualenv)bin/pyenv.sh %(virtualenv) scheduler.py %p 2>&1 >/tmp/auth-01.scheduler.out,stopsignal=2,reloadsignal=1
+    attach-daemon2: cmd=%(virtualenv)bin/pyenv.sh %(virtualenv) catalog.py %p 2>&1 >/tmp/auth-01.catalog.out,stopsignal=2,reloadsignal=1

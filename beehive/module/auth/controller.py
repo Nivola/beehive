@@ -123,7 +123,7 @@ class AuthController(BaseAuthController):
   
             # search roles by groups_N
             elif groups is not None:
-                kvargs['group_id_list'] = [ b(self.get_entity(Group, ModelGroup, group).oid) for group in groups ]
+                kvargs['group_id_list'] = [str(self.get_entity(Group, ModelGroup, group).oid) for group in groups ]
                 iroles, total = self.manager.get_group_roles(*args, **kvargs)
                 roles = []
                 for role in iroles:
@@ -1037,7 +1037,7 @@ class Objects(AuthObject):
         for perm in perms:
             try:
                 pp, total = self.manager.get_permissions(objid=perm[2], objtype=perm[0], objdef=perm[1], action=perm[3])
-                perm_ids.append(b(pp[0].id))
+                perm_ids.append(str(pp[0].id))
             except:
                 self.logger.warn('Permission %s was not found' % perm)
 
@@ -1065,7 +1065,7 @@ class Objects(AuthObject):
         for perm in perms:
             try:
                 pp, total = self.manager.get_permissions(objid=perm[2], objtype=perm[0], objdef=perm[1], action=perm[3])
-                perm_ids.append(b(pp[0].id))
+                perm_ids.append(str(pp[0].id))
             except:
                 self.logger.warn('Permission %s was not found' % perm)
 
@@ -1093,7 +1093,7 @@ class Objects(AuthObject):
         for perm in perms:
             try:
                 pp, total = self.manager.get_permissions(objid=perm[2], objtype=perm[0], objdef=perm[1], action=perm[3])
-                perm_ids.append(b(pp[0].id))
+                perm_ids.append(str(pp[0].id))
             except:
                 self.logger.warn('Permission %s was not found' % perm)
 
@@ -1207,7 +1207,7 @@ class Role(AuthObject):
             
             res = self.manager.append_role_permissions(self.model, roleperms)
             self.logger.debug('Append role %s permission : %s' % (self.name, res))
-            return [b(p.id) for p in roleperms]
+            return [str(p.id) for p in roleperms]
         except QueryError as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex)
@@ -1242,7 +1242,7 @@ class Role(AuthObject):
             
             res = self.manager.remove_role_permission(self.model, roleperms)
             self.logger.debug('Remove role %s permission : %s' % (self.name, perms))
-            return [b(p.id) for p in roleperms]
+            return [str(p.id) for p in roleperms]
         except QueryError as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex)
@@ -1463,7 +1463,7 @@ class User(BaseUser):
 
             res = self.manager.append_role_permissions(role, roleperms)
             self.logger.debug('Append user %s permission : %s' % (self.uuid, res))
-            return [b(p.id) for p in roleperms]
+            return [str(p.id) for p in roleperms]
         except QueryError as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex)
@@ -1500,7 +1500,7 @@ class User(BaseUser):
 
             res = self.manager.remove_role_permission(role, roleperms)
             self.logger.debug('Remove user %s permission : %s' % (self.uuid, res))
-            return [b(p.id) for p in roleperms]
+            return [str(p.id) for p in roleperms]
         except QueryError as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex)
@@ -1758,7 +1758,7 @@ class Group(AuthObject):
 
             res = self.manager.append_role_permissions(role, roleperms)
             self.logger.debug('Append group %s permission : %s' % (self.uuid, res))
-            return [b(p.id) for p in roleperms]
+            return [str(p.id) for p in roleperms]
         except QueryError as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex)
@@ -1795,7 +1795,7 @@ class Group(AuthObject):
 
             res = self.manager.remove_role_permission(role, roleperms)
             self.logger.debug('Remove group %s permission : %s' % (self.uuid, res))
-            return [b(p.id) for p in roleperms]
+            return [str(p.id) for p in roleperms]
         except QueryError as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex)

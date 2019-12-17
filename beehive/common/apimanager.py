@@ -21,6 +21,8 @@ from flask import request, Response, session
 from flask.views import MethodView as FlaskView
 from flask_session import Session
 from flask import current_app
+from six import ensure_text
+
 from beecell.cache.client import CacheClient
 from beecell.db import TransactionError, QueryError
 from beecell.db.manager import MysqlManager, SqlManagerError, RedisManager
@@ -125,16 +127,18 @@ class ApiManager(object):
         
         # flask app reference
         self.app = app
-        self.app_name = self.params['api_name']
-        self.app_id = self.params['api_id']
-        self.app_desc = self.params['api_id']
-        self.app_subsytem = self.params['api_subsystem']
+        self.app_name = ensure_text(self.params['api_name'])
+        self.app_id = ensure_text(self.params['api_id'])
+        self.app_desc = ensure_text(self.params['api_id'])
+        self.app_subsytem = ensure_text(self.params['api_subsystem'])
         self.app_fernet_key = self.params.get('api_fernet_key', None)
-        self.app_endpoint_id = '%s-%s' % (self.params['api_id'], hostname)
+        if self.app_fernet_key is not None:
+            self.app_fernet_key = ensure_text(self.app_fernet_key)
+        self.app_endpoint_id = '%s-%s' % (ensure_text(self.params['api_id']), hostname)
         self.swagger_spec_path = self.params.get('api_swagger_spec_path', 'swagger.yml')
         try:
-            self.app_uri = 'http://%s%s' % (hostname, self.params['http-socket'].decode('utf-8'))
-            self.uwsgi_uri = 'uwsgi://%s%s' % (hostname, self.params['socket'].decode('utf-8'))
+            self.app_uri = 'http://%s%s' % (hostname, ensure_text(self.params['http-socket']))
+            self.uwsgi_uri = 'uwsgi://%s%s' % (hostname, ensure_text(self.params['socket']))
         except:
             self.app_uri = None
             self.uwsgi_uri = None
@@ -151,7 +155,9 @@ class ApiManager(object):
             self.swagger = None
 
         # instance configuration
-        self.http_socket = self.params.get('http-socket')
+        self.http_socket = self.params.get('http-socket', None)
+        if self.http_socket is not None:
+            self.http_socket = ensure_text(self.http_socket)
         self.server_name = hostname
         
         # modules
@@ -201,7 +207,7 @@ class ApiManager(object):
         
         # database manager
         self.db_manager = None
-        database_uri = self.params.get('database_uri', None)
+        database_uri = ensure_text(self.params.get('database_uri', None))
         if database_uri is not None:
             self.create_pool_engine((database_uri, 5, 10, 10, 1800))
         
@@ -237,7 +243,7 @@ class ApiManager(object):
         :param list dbconf: (uri, timeout, pool_size, max_overflow, pool_recycle)
         """
         try:
-            db_uri = dbconf[0].decode('utf-8')
+            db_uri = dbconf[0]
             connect_timeout = dbconf[1]
             pool_size = dbconf[2]
             max_overflow = dbconf[3]
@@ -425,7 +431,7 @@ class ApiManager(object):
             key = RSA.importKey(pub_key)
             
             # create data hash
-            hash_data = SHA256.new(data)
+            hash_data = SHA256.new(data.encode('utf-8'))
 
             # verify sign
             verifier = PKCS1_v1_5.new(key)
@@ -444,10 +450,9 @@ class ApiManager(object):
     def register_modules(self, register_api=True):
         self.logger.info('Configure modules - START')
         
-        module_classes_num = int(self.params['api_module'])
-
+        module_classes_num = int(self.params['api_module'])+1
         for i in range(1, module_classes_num):
-            item = self.params['api_module.%s' % i].decode('utf-8')
+            item = ensure_text(self.params['api_module.%s' % i])
 
             # check if module is primary
             main = False
@@ -464,13 +469,11 @@ class ApiManager(object):
             self.logger.info('Register module: %s' % item)
         
         if 'api_plugin' in self.params:
-            api_plugin_num = int(self.params['api_plugin'])
+            api_plugin_num = int(self.params['api_plugin'])+1
             plugin_pkgs = []
-
             for i in range(1, api_plugin_num):
-                plugin_pkgs.append(self.params['api_plugin.%s' % i].decode('utf-8'))
+                plugin_pkgs.append(ensure_text(self.params['api_plugin.%s' % i]))
 
-            plugin_pkgs = self.params['api_plugin']
             if type(plugin_pkgs) is str:
                 plugin_pkgs = [plugin_pkgs]
             
@@ -534,7 +537,7 @@ class ApiManager(object):
                 ##### oauth2 configuration #####
                 self.logger.info('Configure oauth2 - CONFIGURE')
                 try:
-                    self.oauth2_endpoint = self.params.get('oauth2_endpoint')
+                    self.oauth2_endpoint = ensure_text(self.params.get('oauth2_endpoint'))
                     self.logger.info('Setup oauth2 endpoint: %s' % self.oauth2_endpoint)
                     self.logger.info('Configure oauth2 - CONFIGURED')
                 except:
@@ -544,7 +547,7 @@ class ApiManager(object):
                 ##### redis configuration #####
                 self.logger.info('Configure redis - CONFIGURE')
                 # connect to redis
-                redis_uri = self.params['redis_identity_uri'].decode('utf-8')
+                redis_uri = ensure_text(self.params['redis_identity_uri'])
                                              
                 # parse redis uri
                 parsed_uri = parse_redis_uri(redis_uri)
@@ -608,9 +611,9 @@ class ApiManager(object):
                     from beehive.common.task.manager import configure_task_scheduler
                     
                     # task manager
-                    broker_url = self.params['broker_url']
-                    result_backend = self.params['result_backend']
-                    internal_result_backend = self.params['redis_celery_uri']
+                    broker_url = ensure_text(self.params['broker_url'])
+                    result_backend = ensure_text(self.params['result_backend'])
+                    internal_result_backend = ensure_text(self.params['redis_celery_uri'])
                     task_manager = configure_task_manager(broker_url, result_backend,
                                                           task_queue=self.params['broker_queue'])
                     task_manager.api_manager = self
@@ -618,8 +621,8 @@ class ApiManager(object):
                     self.redis_taskmanager = RedisManager(internal_result_backend)
 
                     # scheduler
-                    broker_url = self.params['broker_url']
-                    schedule_backend = self.params['result_backend']
+                    broker_url = ensure_text(self.params['broker_url'])
+                    schedule_backend = ensure_text(self.params['result_backend'])
                     # internal_schedule_backend = self.params['redis_celery_uri']
                     configure_task_scheduler(broker_url, schedule_backend, task_queue=self.params['broker_queue'])
                     self.redis_scheduler = RedisManager(schedule_backend)
@@ -689,7 +692,7 @@ class ApiManager(object):
                 ##### elasticsearch configuration #####
                 try:
                     self.logger.info('Configure elasticsearch - CONFIGURE')
-                    el_nodes = self.params.get('elasticsearch_nodes', None)
+                    el_nodes = ensure_text(self.params.get('elasticsearch_nodes', None))
                     if el_nodes is not None and el_nodes != '' and el_nodes != '':
                         self.elasticsearch = Elasticsearch(
                             el_nodes.split(','),
@@ -750,7 +753,7 @@ class ApiManager(object):
                 try:
                     self.logger.info('Configure service queue - CONFIGURE')
         
-                    self.redis_service_uri = self.params['redis_queue_uri']
+                    self.redis_service_uri = ensure_text(self.params['redis_queue_uri'])
                     self.redis_service_exchange = self.params['redis_queue_name']
         
                     self.logger.info('Configure service queue - CONFIGURED')
@@ -767,7 +770,7 @@ class ApiManager(object):
                         # setup event producer
                         conf = json.loads(conf[0].value)
                         # set redis manager
-                        self.redis_event_uri = self.params['redis_queue_uri'].decode('utf-8')
+                        self.redis_event_uri = ensure_text(self.params['redis_queue_uri'])
                         self.redis_event_exchange = conf['queue']
 
                         # create instance of event producer
@@ -780,7 +783,6 @@ class ApiManager(object):
                         self.logger.warning('Configure event queue - NOT CONFIGURED')
                 except:
                     self.logger.warning('Configure event queue - NOT CONFIGURED')
-                    self.logger.warning('Configure event queue - NOT CONFIGURED', exc_info=1)
                 ##### event queue configuration #####
         
                 ##### catalog queue configuration #####
@@ -791,7 +793,7 @@ class ApiManager(object):
 
                         # setup catalog producer
                         conf = json.loads(conf[0].value)
-                        self.redis_catalog_uri = self.params['redis_queue_uri'].decode('utf-8')
+                        self.redis_catalog_uri = ensure_text(self.params['redis_queue_uri'])
                         self.redis_catalog_channel = conf['queue']
 
                         # create instance of catalog producer
@@ -804,7 +806,6 @@ class ApiManager(object):
                         self.logger.warning('Configure catalog queue - NOT CONFIGURED')
                 except:
                     self.logger.warning('Configure catalog queue - NOT CONFIGURED')
-                    self.logger.warning('Configure catalog queue - NOT CONFIGURED', exc_info=1)
                 ##### catalog queue configuration #####
         
                 ##### tcp proxy configuration #####
@@ -854,8 +855,8 @@ class ApiManager(object):
                 try:
                     self.logger.info('Configure git uri reference - CONFIGURE')
                     self.git = {
-                        'uri': self.params['git_uri'],
-                        'branch': self.params['git_branch'],
+                        'uri': ensure_text(self.params['git_uri']),
+                        'branch': ensure_text(self.params['git_branch']),
                     }
                     self.logger.info('Setup git reference: %s' % self.git)
                     self.logger.info('Configure git uri reference - CONFIGURED')
@@ -868,10 +869,12 @@ class ApiManager(object):
                 try:
                     self.logger.info('Configure apiclient - CONFIGURE')
 
-                    self.catalog = self.params['api_catalog']
+                    self.catalog = ensure_text(self.params['api_catalog'])
                     self.logger.info('Get catalog: %s' % self.catalog)
 
                     endpoint = self.params.get('api_endpoint', None)
+                    if endpoint is not None:
+                        endpoint = ensure_text(endpoint)
                     self.logger.info('Get api endpoint: %s' % endpoint)
 
                     if endpoint is None:
@@ -1863,7 +1866,7 @@ class ApiObject(object):
         """
         self.logger.debug('Register api object: %s:%s %s - START' % (self.objtype, self.objdef, objids))
 
-        objids = [o.decode('utf-8') for o in objids]
+        objids = [ensure_text(o) for o in objids]
 
         # add object and permissions
         self.api_client.add_object(self.objtype, self.objdef, '//'.join(objids), desc)
@@ -1889,7 +1892,7 @@ class ApiObject(object):
         self.deregister_object_permtags()
         
         # remove object and permissions
-        objid = '//'.join([o.decode('utf-8') for o in objids])
+        objid = '//'.join([ensure_text(o) for o in objids])
         self.api_client.remove_object(self.objtype, self.objdef, objid)        
         
         objids.append('*')
@@ -2408,14 +2411,13 @@ class ApiInternalObject(ApiObject):
             obj_type = self.auth_db_manager.get_object_type(
                 objtype=self.objtype, objdef=self.objdef)[0][0]
             # objid = self._get_value(self.objdef, objids)
-            objid = '//'.join([o.decode('utf-8') for o in objids])
+            objid = '//'.join([ensure_text(o) for o in objids])
             self.auth_db_manager.remove_object(objid=objid, objtype=obj_type)
 
             # deregister event related to ApiObject
             # self.event_class(self.controller).deregister_object(objids)
             
-            self.logger.debug('Deregister api object %s:%s %s - STOP' %
-                              (self.objtype, self.objdef, objids))
+            self.logger.debug('Deregister api object %s:%s %s - STOP' % (self.objtype, self.objdef, objids))
         except (QueryError, TransactionError) as ex:
             self.logger.error('Deregister api object: %s - ERROR' % (ex.desc))
             raise ApiManagerError(ex.desc, code=400)       

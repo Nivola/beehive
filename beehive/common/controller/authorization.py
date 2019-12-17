@@ -7,6 +7,9 @@ import binascii
 import pickle
 import ujson as json
 from logging import getLogger
+
+from six import ensure_str
+
 from beecell.auth import AuthError
 #from beecell.perf import watch
 from beehive.common.apimanager import ApiController, ApiManagerError, ApiObject,\
@@ -519,7 +522,7 @@ class BaseAuthController(ApiController):
     def __set_user_perms(self, dbuser, user):
         """Set user permissions """
         perms = self.auth_manager.get_login_permissions(dbuser)
-        compress_perms = binascii.b2a_base64(compress(json.dumps(perms)))
+        compress_perms = binascii.b2a_base64(compress(json.dumps(perms).encode('utf-8')))
         user.set_perms(compress_perms)
     
     def __set_user_roles(self, dbuser, user):
