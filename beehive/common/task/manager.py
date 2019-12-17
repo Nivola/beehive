@@ -71,6 +71,7 @@ def configure_task_manager(broker_url, result_backend, tasks=[], expire=60*60*24
     # redis_password = None
     # if result_backend.find('@') > 0:
     #     redis_password = match(r"redis:\/\/([\w\W\d]*)@.", result_backend).groups()[0]
+    task_queue = task_queue.decode('utf-8')
     task_manager.conf.update(
         BROKER_URL=broker_url.decode('utf-8'),
         BROKER_POOL_LIMIT=20,
@@ -184,7 +185,6 @@ def start_task_manager(params):
         LoggerHelper.elastic_handler(main_loggers, logger_level, api_manager.elasticsearch, index='cmp',
                                      frmt=frmt, tags=tags, server=api_manager.server_name, app=api_manager.app_id,
                                      component='task')
-    print(params)
     configure_task_manager(params['broker_url'], params['result_backend'], tasks=params['task_module'],
                            expire=params['expire'], task_queue=params['broker_queue'],
                            time_limit=params['task_time_limit'])

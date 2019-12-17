@@ -95,7 +95,7 @@ uwsgi:
     # event_handler: 0
 
     # workers configuration
-    attach-daemon2: cmd=%(virtualenv)bin/pyenv.sh %(virtualenv) task.py %p 2>&1 >/tmp/auth-01.worker1.log,stopsignal=2,reloadsignal=1
-    #attach-daemon2: cmd=%(virtualenv)bin/task.py %(virtualenv) %p 2>&1 >/tmp/auth-01.worker1.log,stopsignal=2,reloadsignal=1
+    #attach-daemon2: cmd=%(virtualenv)bin/pyenv.sh %(virtualenv) task.py %p 2>&1 >/tmp/auth-01.worker1.log,stopsignal=2,reloadsignal=1
+    attach-daemon2: cmd=%(virtualenv)bin/pyenv.sh %(virtualenv) scheduler.py %p 2>&1 >/tmp/auth-01.worker1.log,stopsignal=2,reloadsignal=1
     #attach-daemon2: cmd=%(virtualenv)bin/scheduler.py %(virtualenv) %p 2>&1 >/tmp/auth-01.scheduler.log,stopsignal=2,reloadsignal=1
     #attach-daemon2: cmd=%(virtualenv)bin/catalog.py %(virtualenv) %p 2>&1 >/tmp/auth-01.catalog.log,stopsignal=2,reloadsignal=1

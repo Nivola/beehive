@@ -771,15 +771,16 @@ class ApiManager(object):
                         self.redis_event_exchange = conf['queue']
 
                         # create instance of event producer
-                        self.event_producer = EventProducerRedis(
-                            self.redis_event_uri, self.redis_event_exchange, framework='komb')
+                        self.event_producer = EventProducerRedis(self.redis_event_uri, self.redis_event_exchange,
+                                                                 framework='komb')
                         self.logger.info('Configure exchange %s on %s' % (self.redis_event_exchange,
                                                                           self.redis_event_uri))
                         self.logger.info('Configure event queue - CONFIGURED')
                     else:
                         self.logger.warning('Configure event queue - NOT CONFIGURED')
                 except:
-                    self.logger.warning('Configure event queue - NOT CONFIGURED')                
+                    self.logger.warning('Configure event queue - NOT CONFIGURED')
+                    self.logger.warning('Configure event queue - NOT CONFIGURED', exc_info=1)
                 ##### event queue configuration #####
         
                 ##### catalog queue configuration #####

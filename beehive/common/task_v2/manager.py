@@ -77,7 +77,7 @@ def configure_task_manager(broker_url, result_backend, tasks=[], expire=60*60*24
     # redis_password = None
     # if result_backend.find('@') > 0:
     #     redis_password = match(r"redis:\/\/([\w\W\d]*)@.", result_backend).groups()[0]
-
+    task_queue = task_queue.decode('utf-8')
     task_manager.conf.update(
         BROKER_URL=broker_url.decode('utf-8'),
         BROKER_POOL_LIMIT=20,
@@ -88,7 +88,7 @@ def configure_task_manager(broker_url, result_backend, tasks=[], expire=60*60*24
         TASK_DEAFAULT_ROUTING_KEY=task_queue,
         CELERY_QUEUES=(Queue(task_queue, Exchange(task_queue), routing_key=task_queue),),
         CELERY_RESULT_BACKEND=result_backend,
-        CELERY_REDIS_RESULT_KEY_PREFIX='%s.celery-task-meta2-' % task_queue,
+        #CELERY_REDIS_RESULT_KEY_PREFIX='%s.celery-task-meta2-' % task_queue,
         CELERY_REDIS_RESULT_EXPIRES=expire,
         CELERY_TASK_IGNORE_RESULT=True,
         CELERY_TASK_RESULT_EXPIRES=600,
