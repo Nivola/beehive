@@ -73,10 +73,9 @@ class RedisSessionInterface2(RedisSessionInterface):
 
 class ApiManagerWarning(Exception):
     """Main excpetion raised by api manager and childs
-    
-    
-        * **value: error description
-        * **code** (:py:class:`int`): error code [default=400]
+        
+    :param value: error description
+    :param code: error code [default=400]
     """
     def __init__(self, value, code=400):
         self.code = code
@@ -92,10 +91,9 @@ class ApiManagerWarning(Exception):
 
 class ApiManagerError(Exception):
     """Main exception raised by api manager and childs
-    
-    
-        * **value: error description
-        * **code** (:py:class:`int`): error code [default=400]
+        
+    :param value: error description
+    :param code: error code [default=400]
     """
     def __init__(self, value, code=400):
         self.code = code
@@ -112,13 +110,10 @@ class ApiManagerError(Exception):
 class ApiManager(object):
     """Api Manager
     
-    
-    
-        * **params** (:py:class:`dict`): configuration params
-        * **app** (:py:class:`int`): error code [default=400]    
+    :param params: configuration params
+    :param app: flask app reference
+    :param hostname: server hostname
     """
-    # logger = logging.getLogger('gibbon.cloudapi')
-    
     def __init__(self, params, app=None, hostname=None):
         self.logger = logging.getLogger(self.__class__.__module__ + '.' + self.__class__.__name__)
         
@@ -150,7 +145,6 @@ class ApiManager(object):
         # self.swagger = Swagger(self.app, template_file=self.swagger_spec_path)
         try:
             swagger_template = read_file(self.swagger_spec_path)
-            print(swagger_template)
             self.swagger = Swagger(self.app, template=swagger_template)
         except:
             self.swagger = None
@@ -184,17 +178,12 @@ class ApiManager(object):
         
         # event producer
         self.event_producer = None
-        
-        # process event producer
-        #self.process_event_producer = None
-        
+
         # api listener
         self.api_timeout = float(self.params.get('api_timeout', 10.0))
         
         # api endpoints
         self.endpoints = {}
-        #self.rpc_client = ApiRpcClient(self)
-        #self.rpc_httpclient = ApiRpcHttpClient(self)
         self.api_user = None
         self.api_user_pwd = None
         self.api_client = None     
@@ -237,6 +226,9 @@ class ApiManager(object):
 
         # git reference
         self.git = None
+
+        # oauth2 endpoint
+        self.oauth2_endpoint = None
 
     def create_pool_engine(self, dbconf):
         """Create mysql pool engine.
@@ -306,14 +298,7 @@ class ApiManager(object):
         """Get identity
         
         :param uid: identity id            
-        :return:
-            .. code-block:: python
-               
-               {'uid':..., 
-                'user':..., 
-                'timestamp':..., 
-                'pubkey':..., 
-                'seckey':...}
+        :return: {'uid':..., 'user':..., timestamp':..., 'pubkey':..., 'seckey':...}
         """
         identity = self.redis_manager.get(self.prefix + uid)
         if identity is not None:
@@ -328,17 +313,7 @@ class ApiManager(object):
     def get_identities(self):
         """Get identities
         
-        :return:
-            .. code-block:: python
-               
-               [
-                   {'uid':..., 
-                    'user':..., 
-                    'timestamp':..., 
-                    'ttl':..., 
-                    'ip':...},
-                ...
-                ]
+        :return: [{'uid':..., 'user':..., timestamp':..., 'pubkey':..., 'seckey':...}, ..]
         """
         try:
             res = []
@@ -346,9 +321,8 @@ class ApiManager(object):
                 identity = self.redis_manager.get(key)
                 data = pickle.loads(identity)
                 ttl = self.redis_manager.ttl(key)
-                res.append({'uid': data['uid'], 'user': data['user']['name'],
-                            'timestamp': data['timestamp'], 'ttl': ttl,
-                            'ip': data['ip']})
+                res.append({'uid': data['uid'], 'user': data['user']['name'], 'timestamp': data['timestamp'],
+                            'ttl': ttl, 'ip': data['ip']})
         except Exception as ex:
             self.logger.error('No identities found: %s' % ex)
             raise ApiManagerError('No identities found')
@@ -362,16 +336,8 @@ class ApiManager(object):
         :param user: user
         :param pwd: password
         :param user_ip: user ip address
-        :return:
-            .. code-block:: python
-               
-               {'uid':..., 
-                'user':..., 
-                'timestamp':..., 
-                'pubkey':..., 
-                'seckey':...}
-            
-        :raise ApiManagerError:         
+        :return: {'uid':..., 'user':..., timestamp':..., 'pubkey':..., 'seckey':...}            
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`         
         """
         try:
             identity = self.api_client.simplehttp_login(user, pwd, user_ip)
@@ -385,17 +351,8 @@ class ApiManager(object):
         """Get identity that correspond to oauth2 access token
         
         :param token: identity id
-        :return:
-
-            .. code-block:: python
-               
-               {'uid':..., 
-                'user':..., 
-                'timestamp':..., 
-                'pubkey':..., 
-                'seckey':...}
-            
-        :raise ApiManagerError:
+        :return: {'uid':..., 'user':..., timestamp':..., 'pubkey':..., 'seckey':...}   
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         identity = self.get_identity(token)
         self.redis_manager.expire(self.prefix + token, self.expire)
@@ -408,17 +365,8 @@ class ApiManager(object):
         :param uid: identity id
         :param sign: request sign
         :param data: request data
-        :return:
-
-            .. code-block:: python
-               
-               {'uid':..., 
-                'user':..., 
-                'timestamp':..., 
-                'pubkey':..., 
-                'seckey':...}
-            
-        :raise ApiManagerError:
+        :return: {'uid':..., 'user':..., timestamp':..., 'pubkey':..., 'seckey':...}   
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         # get identity
         identity = self.get_identity(uid)
@@ -449,6 +397,10 @@ class ApiManager(object):
         return identity
 
     def register_modules(self, register_api=True):
+        """Register ApiModule
+        
+        :param register_api: if True register api module
+        """
         self.logger.info('Configure modules - START')
         
         module_classes_num = int(self.params['api_module'])+1
@@ -507,7 +459,7 @@ class ApiManager(object):
         self.logger.info('Configure modules - STOP')
 
     def list_modules(self):
-        """Return list of configures modules.
+        """Return list of configured modules
         
         :param name: module name
         :return: ApiModule instance
@@ -515,7 +467,7 @@ class ApiManager(object):
         return self.modules
 
     def get_module(self, name):
-        """Return module by name.
+        """Return module by name
         
         :param name: module name
         :return: ApiModule instance
@@ -577,7 +529,6 @@ class ApiManager(object):
                 if self.app is not None:
                     self.app.config.update(
                         SESSION_COOKIE_NAME='auth-session',
-                        # SESSION_COOKIE_DOMAIN='beehive',
                         SESSION_COOKIE_SECURE=True,
                         PERMANENT_SESSION_LIFETIME=3600,
                         SESSION_TYPE='redis',
@@ -624,7 +575,6 @@ class ApiManager(object):
                     # scheduler
                     broker_url = ensure_text(self.params['broker_url'])
                     schedule_backend = ensure_text(self.params['result_backend'])
-                    # internal_schedule_backend = self.params['redis_celery_uri']
                     configure_task_scheduler(broker_url, schedule_backend, task_queue=self.params['broker_queue'])
                     self.redis_scheduler = RedisManager(schedule_backend)
     
@@ -959,21 +909,25 @@ class ApiManager(object):
         self.catalog_producer.send_sync(self.app_endpoint_id, self.app_desc, service, catalog, uri)
         # self.logger.info('Register %s instance in catalog' % self.app_endpoint_id)
             
-    def register_monitor(self):
-        """Register instance in monitor
-        """
-        register = self.params.get('register-monitor', True)
-        register = str2bool(register)
-        
-        # skip monitor registration - usefool for temporary instance
-        if register is False:
-            return
+    # def register_monitor(self):
+    #     """Register instance in monitor
+    #     """
+    #     register = self.params.get('register-monitor', True)
+    #     register = str2bool(register)
+    #     
+    #     # skip monitor registration - usefool for temporary instance
+    #     if register is False:
+    #         return
                         
         
 class ApiModule(object):
-    """ """
+    """Api module base class
+    
+    :param api_manager: ApiManager instance
+    :param name: module name
+    """
     def __init__(self, api_manager, name):
-        self.logger = logging.getLogger(self.__class__.__module__+  '.' + self.__class__.__name__)
+        self.logger = logging.getLogger(self.__class__.__module__ + '.' + self.__class__.__name__)
         
         self.api_manager = api_manager
         self.name = name
@@ -991,7 +945,7 @@ class ApiModule(object):
         
         :return: Dictionary with info.
         :rtype: dict        
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`.ApiManagerError`
         """
         res = {'name': self.name, 'api': self.api_routes}
         return res
@@ -1042,24 +996,16 @@ class ApiModule(object):
 
     def init_object(self):
         """Init object
-        
-        :param session: database session
         """
-        # session = self.get_session()
-        session = operation.session
         self.get_controller().init_object()
-        # self.release_session(session)
     
     def register_api(self):
         if self.api_manager.app is not None:
             for api in self.apis:
                 api.register_api(self)
-                # self.logger.debug('Register api view %s' % (api.__class__))
 
     def get_superadmin_permissions(self):
         """Get superadmin permissions
-        
-        :param session: database session
         """
         perms = self.get_controller().get_superadmin_permissions()
         return perms
@@ -1069,16 +1015,16 @@ class ApiModule(object):
 
 
 class ApiController(object):
-    """ """
+    """Base api controller
+    
+    :param module: ApiModule instance
+    """
     def __init__(self, module):
-        self.logger = logging.getLogger(self.__class__.__module__+ '.' + self.__class__.__name__)
+        self.logger = logging.getLogger(self.__class__.__module__ + '.' + self.__class__.__name__)
         
         self.module = module
         self.version = 'v1.0'
 
-        # base event_class. Change in every controller with ApiEvent subclass
-        # self.event_class = ApiEvent
-        
         # child classes
         self.child_classes = []
         
@@ -1093,7 +1039,7 @@ class ApiController(object):
         # db manager
         self.dbmanager = None
         
-    def resolve_fk_id(self, key, get_entity, data, new_key=None ):
+    def resolve_fk_id(self, key, get_entity, data, new_key=None):
         fk = data.get(key)        
         if fk is not None and not isinstance(fk, int) and not fk.isdigit():
             oid = self.resolve_oid(fk, get_entity)
@@ -1113,8 +1059,7 @@ class ApiController(object):
         return res
             
     def __repr__(self):
-        return "<%s id='%s'>" % (self.__class__.__module__+'.'+
-                                 self.__class__.__name__, id(self))    
+        return "<%s id='%s'>" % (self.__class__.__module__ + '.' + self.__class__.__name__, id(self))    
     
     @property
     def redis_manager(self):
@@ -1122,8 +1067,7 @@ class ApiController(object):
     
     @property
     def mailer(self):
-        return (self.module.api_manager.mailer, 
-                self.module.api_manager.mail_sender)
+        return (self.module.api_manager.mailer, self.module.api_manager.mail_sender)
 
     @property
     def api_manager(self):
@@ -1150,11 +1094,12 @@ class ApiController(object):
         return self.module.api_manager.redis_scheduler
     
     def init_object(self):
-        """Register object types, objects and permissions related to module.
-        Call this function when initialize system first time.
+        """Register object types, objects and permissions related to module. Call this function when initialize 
+        system first time.
         """
         self.logger.info('Init %s - START' % self)
         self.logger.info('Init childs: %s' % self.child_classes)
+        
         # init controller child classes
         for child in self.child_classes:
             child(self).init_object()
@@ -1181,20 +1126,15 @@ class ApiController(object):
         """Get identity
         
         :param uid: identity id
-        :return: dictionary like:
-        
-                 .. code-block:: python
-                   
-                   {'uid':..., 
-                    'user':..., 
-                    'timestamp':..., 
-                    'pubkey':..., 
-                    'seckey':...}
+        :return: {'uid':..., 'user':..., 'timestamp':..., 'pubkey':..., 'seckey':...}
         """    
         return self.module.api_manager.get_identity(uid)
     
     def get_identities(self):
-        """ """
+        """Get identities
+
+        :return: [{'uid':..., 'user':..., 'timestamp':..., 'pubkey':..., 'seckey':...}, ..]
+        """
         return self.module.api_manager.get_identities()
     
     def verify_request_signature(self, uid, sign, data):
@@ -1212,7 +1152,7 @@ class ApiController(object):
 
         :param token: identity id
         :return: identity
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         return self.module.api_manager.get_oauth2_identity(token)
 
@@ -1223,33 +1163,20 @@ class ApiController(object):
         :param pwd: password
         :param user_ip: user ip address
         :return: identity
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         return self.module.api_manager.verify_simple_http_credentials(user, pwd, user_ip)
 
     def can(self, action, objtype=None, definition=None):
-        """Verify if  user can execute an action over a certain object type.
-        Specify at least name or perms.
+        """Verify if  user can execute an action over a certain object type. Specify at least name or perms.
         
         :param objtype: object type. Es. 'resource', 'service' [optional]
         :param definition: object definition. Es. 'container.org.group.vm' [optional]                                    
-        :param action: object action. Es. \*, view, insert, update, delete, use
-        :return: dict like 
-        
-                 .. code-block:: python
-        
-                    {objdef1:[objid1, objid2, ..],
-                     objdef2:[objid3, objid4, ..],
-                     objdef3:[objid4, objid5, ..]}
-                     
-                 If definition is not None dict contains only 
-                 
-                 .. code-block:: python
-                 
-                    {objdef:[objid1, objid2, ..]}
-                 
+        :param action: object action. Es. *, view, insert, update, delete, use
+        :return: dict like {objdef1: [objid1, objid2, ..], objdef2: [objid3, objid4, ..], objdef3:[objid4, objid5, ..]}
+            If definition is not None dict contains only {objdef: [objid1, objid2, ..]}                 
         :rtype: dict
-        :raises ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         try:
             objids = []
@@ -1305,7 +1232,7 @@ class ApiController(object):
             else:
                 if definition is None:
                     definition = ''
-                raise Exception(u"Identity %s can not '%s' objects '%s:%s'" %
+                raise Exception("Identity %s can not '%s' objects '%s:%s'" %
                                 (operation.user[2], action, objtype, definition))
         except Exception as ex:
             self.logger.error(ex, exc_info=True)
@@ -1325,7 +1252,11 @@ class ApiController(object):
         return False
 
     def get_needs(self, args):
-        """"""
+        """Get needs
+
+        :param args:
+        :return:
+        """
         # first item *.*.*.....
         act_need = ['*' for i in args]
         needs = ['//'.join(act_need)]
@@ -1338,13 +1269,13 @@ class ApiController(object):
         return set(needs)
 
     def check_authorization(self, objtype, objdef, objid, action):
-        """This method combine can, get_needs and has_needs, Use when you want
-        to verify overlap between needs and permissions for a unique object.
+        """This method combine can, get_needs and has_needs, Use when you wantto verify overlap between needs and
+        permissions for a unique object.
         
         :param objtype: object type. Es. 'resource', 'service',
         :param definition: object definition. Es. 'container.org.group.vm' [optional]                                    
-        :param action: object action. Es. \*, view, insert, update, delete, use
-        :param objid: object unique id. Es. \*//\*//\*, nome1//nome2//\*, nome1//nome2//nome3        
+        :param action: object action. Es. *, view, insert, update, delete, use
+        :param objid: object unique id. Es. *//*//*, nome1//nome2//*, nome1//nome2//nome3
         :return: True if permissions overlap
         """
         try:
@@ -1366,7 +1297,7 @@ class ApiController(object):
             if res is False:
                 raise ApiManagerError('')
         except ApiManagerError:
-            msg = u"Identity %s can not '%s' objects '%s:%s.%s'" % (operation.user[2], action, objtype, objdef, objid)
+            msg = "Identity %s can not '%s' objects '%s:%s.%s'" % (operation.user[2], action, objtype, objdef, objid)
             self.logger.error(msg)
             raise ApiManagerError(msg, code=403)
         return res
@@ -1448,11 +1379,11 @@ class ApiController(object):
         :param order: sort order [default=DESC]
         :param field: sort field [default=id]
         :param customize: function used to customize entities. Signature
-                def customize(entities, *args, **kvargs)
+            def customize(entities, *args, **kvargs)
         :param args: custom params
         :param kvargs: custom params
         :return: (list of entity_class instances, total)
-        :raises ApiManagerError: raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         res = []
         tags = []
@@ -1500,7 +1431,7 @@ class ApiController(object):
         :param args: custom params
         :param kvargs: custom params
         :return: (list of entity_class instances, total)
-        :raises ApiManagerError: raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         res = []
         objs = []
@@ -1522,9 +1453,8 @@ class ApiController(object):
             entities = get_entities(tags=tags, *args, **kvargs)
 
             for entity in entities:
-                obj = entity_class(self, oid=entity.id, objid=entity.objid, 
-                               name=entity.name, active=entity.active, 
-                               desc=entity.desc, model=entity)
+                obj = entity_class(self, oid=entity.id, objid=entity.objid, name=entity.name, active=entity.active,
+                                   desc=entity.desc, model=entity)
                 res.append(obj)
             self.logger.debug('Get %s : %s' % (entity_class.__name__, truncate(res)))
             return res
@@ -1534,7 +1464,16 @@ class ApiController(object):
 
 
 class ApiObject(object):
-    """ """
+    """Base api object
+
+    :param controller: ApiController instance
+    :param oid: database id
+    :param objid: authorization id
+    :param name: name
+    :param desc: description
+    :param active: active
+    :param model: orm class instance
+    """
     module = None
     objtype = ''
     objdef = ''
@@ -1682,7 +1621,7 @@ class ApiObject(object):
 
         :return: Dictionary with object info.
         :rtype: dict
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`.ApiManagerError`
         """
         data = {
             '__meta__': {
@@ -1703,7 +1642,7 @@ class ApiObject(object):
         
         :return: Dictionary with object info.
         :rtype: dict        
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`.ApiManagerError`
         """
         res = {
             '__meta__': {
@@ -1724,7 +1663,7 @@ class ApiObject(object):
         
         :return: Dictionary with object info.
         :rtype: dict        
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`.ApiManagerError`
         """
         res = {
             '__meta__': {
@@ -1755,7 +1694,7 @@ class ApiObject(object):
         
         :return: Dictionary with object detail.
         :rtype: dict        
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`.ApiManagerError`
         """
         res = {
             '__meta__': {
@@ -1863,7 +1802,7 @@ class ApiObject(object):
         :param objids: objid split by //
         :param desc: object description        
         :return:
-        :raise ApiManagerError: 
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError` 
         """
         self.logger.debug('Register api object: %s:%s %s - START' % (self.objtype, self.objdef, objids))
 
@@ -1923,7 +1862,7 @@ class ApiObject(object):
 
         :param action: action to verify. Can be *, view, insert, update, delete, use
         :return: True if permissions overlap
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """        
         # check authorization
         if operation.authorize is True:
@@ -1938,7 +1877,7 @@ class ApiObject(object):
         :param order: sort order [default=DESC]
         :param field: sort field [default=id]        
         :return: [(perm, roles), ...]
-        :raise ApiManagerError: if query empty return error.
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError` if query empty return error.
         """
         try:
             # resource permissions
@@ -1958,7 +1897,7 @@ class ApiObject(object):
         """Post get function. This function is used in get_entity method. Extend this function to extend description
         info returned after query.
 
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         pass
     
@@ -1970,7 +1909,7 @@ class ApiObject(object):
         :param list args: custom params
         :param dict kvargs: custom params
         :return: kvargs
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         return kvargs
     
@@ -1982,7 +1921,7 @@ class ApiObject(object):
         :param list args: custom params
         :param dict kvargs: custom params
         :return: kvargs
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         return None
 
@@ -1994,7 +1933,7 @@ class ApiObject(object):
         :param list args: custom params
         :param dict kvargs: custom params
         :return: kvargs
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         return kvargs
 
@@ -2006,7 +1945,7 @@ class ApiObject(object):
         :param list args: custom params
         :param dict kvargs: custom params
         :return: kvargs
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         return None
 
@@ -2017,7 +1956,7 @@ class ApiObject(object):
         :param list args: custom params
         :param dict kvargs: custom params
         :return: kvargs
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """        
         return kvargs
 
@@ -2028,7 +1967,7 @@ class ApiObject(object):
         :param list args: custom params
         :param dict kvargs: custom params
         :return: True
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         return True
 
@@ -2039,7 +1978,7 @@ class ApiObject(object):
         :param list args: custom params
         :param dict kvargs: custom params
         :return: kvargs
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         return kvargs
 
@@ -2050,7 +1989,7 @@ class ApiObject(object):
         :param list args: custom params
         :param dict kvargs: custom params
         :return: kvargs
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         return kvargs
 
@@ -2061,7 +2000,7 @@ class ApiObject(object):
         :param list args: custom params
         :param dict kvargs: custom params
         :return: kvargs
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         return True
 
@@ -2072,7 +2011,7 @@ class ApiObject(object):
         :param list args: custom params
         :param dict kvargs: custom params
         :return: kvargs
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         return kvargs
 
@@ -2083,7 +2022,7 @@ class ApiObject(object):
         :param list args: custom params
         :param dict kvargs: custom params
         :return: kvargs
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         return True
 
@@ -2197,7 +2136,7 @@ class ApiObject(object):
         :param args: custom params
         :param kvargs: custom params
         :return: entity uuid
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         if self.update_object is None:
             raise ApiManagerError('Update is not supported for %s:%s' % (self.objtype, self.objdef))
@@ -2225,7 +2164,7 @@ class ApiObject(object):
         :param args: custom params
         :param kvargs: custom params
         :return: entity uuid
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         if self.patch_object is None:
             raise ApiManagerError('Patch is not supported for %s:%s' % (self.objtype, self.objdef))
@@ -2253,7 +2192,7 @@ class ApiObject(object):
         :param kvargs: custom params
         :param soft: if True make a soft delete            
         :return: None            
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         if self.delete_object is None:
             raise ApiManagerError('Delete is not supported for %s:%s' % (self.objtype, self.objdef))
@@ -2293,7 +2232,7 @@ class ApiObject(object):
 
         :param kvargs: custom params
         :return: None
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         if self.expunge_object is None:
             raise ApiManagerError('Expunge is not supported for %s:%s' % (self.objtype, self.objdef))
@@ -2461,7 +2400,7 @@ class ApiInternalObject(ApiObject):
         :param field: sort field [default=id]              
         :return: [perms]
         :rtype: list
-        :raises ApiManagerError: if query empty return error.  
+        :raises ApiManagerError: raise :class:`ApiManagerError` if query empty return error.  
         """
         try:
             # resource permissions
@@ -2671,7 +2610,7 @@ class ApiView(FlaskView):
     def __get_token(self):
         """get uid and sign from headers
         
-        :raises ApiManagerError: raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         try:
             header = request.headers
@@ -2688,7 +2627,7 @@ class ApiView(FlaskView):
     def __get_oauth2_token(self):
         """Get oauth2 access token from headers
         
-        :raises ApiManagerError: raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         try:
             header = request.headers
@@ -2703,7 +2642,7 @@ class ApiView(FlaskView):
         allowed for the user provided.
         
         :return: True
-        :raises ApiManagerError: raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         try:
             header = request.headers
@@ -2726,7 +2665,7 @@ class ApiView(FlaskView):
     def get_current_identity(self):
         """Get uid and sign from headers
         
-        :raises ApiManagerError: raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         return self.__get_token()
     
@@ -2773,7 +2712,7 @@ class ApiView(FlaskView):
         
         :param module: beehive module instance
         :raise AuthViewError:
-        :raises ApiManagerError: raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         self.logger.debug('Verify api %s [%s] authorization' % (request.path, request.method))
 
@@ -2841,7 +2780,7 @@ class ApiView(FlaskView):
     def get_error(self, exception, code, msg, module=None):
         """Return error response
 
-        :raises ApiManagerError: raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         headers = {'Cache-Control': 'no-store', 'Pragma': 'no-cache',
                    'remote-server': module.api_manager.server_name}
@@ -3362,7 +3301,7 @@ class ApiClient(BeehiveApiClient):
     def user_request(self, subsystem, path, method, data='', other_headers={}, silent=False):
         """Make api request using module current user credentials.
         
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
         """
         # propagate opernation.id to internal api call
         if isinstance(other_headers, dict):

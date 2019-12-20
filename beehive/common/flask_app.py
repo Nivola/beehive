@@ -106,7 +106,7 @@ class BeehiveApp(Flask):
         self.api_manager.register_catalog()
         
         # register in moitor
-        self.api_manager.register_monitor()
+        # self.api_manager.register_monitor()
         
         logger.info('Setup server over: %s' % self.api_manager.app_uri)
         logger.info('Setup server over: %s' % self.api_manager.uwsgi_uri)
