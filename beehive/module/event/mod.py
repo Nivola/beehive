@@ -10,6 +10,8 @@ from beehive.module.event.controller import EventController
 
 class EventModule(ApiModule):
     """Event Beehive Module
+
+    :param module: ApiModule instance
     """
     def __init__(self, api_manger):
         self.name = 'EventModule'

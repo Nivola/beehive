@@ -3,21 +3,18 @@
 # (C) Copyright 2018-2019 CSI-Piemonte
 # (C) Copyright 2019-2020 CSI-Piemonte
 
-from beecell.auth import extract
-#from beecell.perf import watch
-from beecell.simple import str2uni, id_gen, truncate
-from beecell.db.manager import SqlManagerError
+from beecell.simple import truncate
 from beecell.server.uwsgi_server.resource import UwsgiManager, UwsgiManagerError
-from beehive.common.apimanager import ApiController, ApiManagerError,\
-    ApiViewResponse
+from beehive.common.apimanager import ApiManagerError, ApiViewResponse
 from beehive.common.model.config import ConfigDbManager
-from beecell.db import TransactionError, QueryError
-from beehive.common.model.authorization import AuthDbManager
+from beecell.db import TransactionError
 from beehive.common.controller.authorization import BaseAuthController
 
 
 class BasicController(BaseAuthController):
     """Basic Module controller.
+
+    :param module: ApiModule instance
     """
     version = 'v1.0'
     
@@ -33,7 +30,7 @@ class BasicController(BaseAuthController):
     def ping(self):
         """Ping server
         
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         try:
             res = {
@@ -51,7 +48,7 @@ class BasicController(BaseAuthController):
     def info(self):
         """Server Info
         
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         try:
             res = {
@@ -68,7 +65,7 @@ class BasicController(BaseAuthController):
     def processes(self):
         """Get server process tree
         
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         try:
             res = self.resource.info()
@@ -80,7 +77,7 @@ class BasicController(BaseAuthController):
     def workers(self):
         """Get server workers statistics
         
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         try:
             res = self.resource.stats()
@@ -92,7 +89,7 @@ class BasicController(BaseAuthController):
     def reload(self):
         """Reload server
         
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         try:
             res = self.resource.reload()
@@ -135,82 +132,9 @@ class BasicController(BaseAuthController):
             
             res = []
             for k,v in confs.items():
-                res.append({'key':k, 'value':v})
+                res.append({'key': k, 'value': v})
             self.logger.debug('Get uwsgi configuration: %s' % truncate(res))
             return res
         except (TransactionError, Exception) as ex:
             self.logger.error(ex)     
             raise ApiManagerError(ex)          
-    
-    #
-    # database management
-    #
-    # TODO: profile methods
-    @property
-    def db_manager(self):
-        return self.module.api_manager.db_manager
-    
-    def database_ping(self):
-        return self.db_manager.ping()
-        
-    def database_tables(self):
-        """List tables name   
-        """
-        try:
-            tables = self.db_manager.get_tables_names()
-            return tables
-        except Exception as ex:
-            self.logger.error(ex)
-            raise ApiManagerError(ex, code=400)
-            
-    def database_table_desc(self, table_name):
-        """Describe a table
-
-        :param table_name: name of the table
-        :return: list of columns description (name, type, default, is index, 
-                                              is nullable, is primary key,
-                                              is unique)
-        :raise ApiManagerError:
-        """
-        try:
-            return self.db_manager.get_table_description(table_name)
-        except Exception as ex:
-            self.logger.error(ex)
-            raise ApiManagerError(ex, code=400)            
-            
-    def database_count(self, table_name=None, where=None):
-        """Count table rows
-        
-        :param table_name: name of the table to query [optional]
-        :param where: query filter [optional]
-        :return: rows count
-        :raise ApiManagerError:
-        """
-        try:
-            res = self.db_manager.count_table_rows(table_name=table_name, 
-                                                   where=where)
-            return res
-        except (SqlManagerError, Exception) as ex:
-            self.logger.error(ex)
-            raise ApiManagerError(ex, code=400)
-            
-    def database_query(self, table_name=None, where=None, fields='*', 
-                          rows=100, offset=0):
-        """Query a table
-        
-        :param table_name: name of the table to query [optional]
-        :param where: query filter [optional]
-        :param fields: list of fields to include in table qeury [optional]
-        :param rows: number of rows to fetch [default=100]
-        :param offset: row fecth offset [default=0]
-        :return: query rows
-        :raise ApiManagerError:
-        """
-        try:
-            res = self.db_manager.query_table(table_name=table_name, 
-                                              where=where, fields=fields, 
-                                              rows=rows, offset=offset)
-            return res
-        except (SqlManagerError, Exception) as ex:
-            self.logger.error(ex)
-            raise ApiManagerError(ex, code=400) 

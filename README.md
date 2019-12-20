@@ -111,6 +111,13 @@ Open directory /tmp.
 - apis.log
 - accesses.log
 
+#### Get openapi spec
+
+```
+$ curl http://localhost:8080/apispec_1.json
+$ curl http://localhost:8081/apispec_1.json
+```
+
 ## Running the tests
 Activate virtual env:
 
@@ -171,6 +178,7 @@ See the list of contributors who participated in this project in the file AUTHOR
 
 ## Copyright
 CSI Piemonte - 2018-2019
+CSI Piemonte - 2019-2020
 
 ## License
 See the LICENSE.txt file for details

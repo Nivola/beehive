@@ -6,16 +6,16 @@
 swagger: "2.0"
 info:
   title: Beehive API
-  description: API description in Markdown.
+  description: Beehive API
   contact:
-    email: me@csi.it
-    url: http://www.me.com
+    email: nivola.engineering@csi.it
+    url: http://nivola.csi.it
   license:
-    name: MIT
-    url: https://github.com/swagger-api/swagger-ui/blob/master/LICENSE    
-  termsOfService: http://me.com/terms
+    name: GPLv3
+    url: https://www.gnu.org/licenses/gpl-3.0.txt
+  # termsOfService: http://me.com/terms
   version: 1.0.0
-host: tst-beehive
+host:
 schemes: 
   - http
   - https

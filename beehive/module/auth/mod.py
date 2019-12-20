@@ -11,6 +11,8 @@ from beehive.common.controller.authorization import AuthenticationManager
 
 class AuthModule(ApiModule):
     """Beehive Authorization Module
+
+    :param module: ApiModule instance
     """
     def __init__(self, api_manger):
         self.name = 'AuthModule'

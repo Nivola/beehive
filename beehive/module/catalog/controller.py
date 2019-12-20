@@ -3,19 +3,19 @@
 # (C) Copyright 2018-2019 CSI-Piemonte
 # (C) Copyright 2019-2020 CSI-Piemonte
 
-from beecell.simple import import_class, truncate, id_gen, str2uni
+from beecell.simple import truncate, id_gen
 from beecell.db import ModelError, QueryError, TransactionError
-from beehive.common.apiclient import BeehiveApiClientError
-from beehive.common.apimanager import ApiController, ApiManagerError, ApiObject
+from beehive.common.apimanager import ApiManagerError
 from beehive.module.catalog.model import CatalogDbManager, \
     Catalog as ModelCatalog, CatalogEndpoint as ModelEndpoint
-from beehive.common.controller.authorization import BaseAuthController,\
-    AuthObject, Token
+from beehive.common.controller.authorization import BaseAuthController, AuthObject
 from beehive.common.data import trace, operation
 
 
 class CatalogController(BaseAuthController):
     """Catalog Module controller.
+
+    :param module: ApiModule instance
     """
     version = 'v1.0'
     
@@ -27,7 +27,13 @@ class CatalogController(BaseAuthController):
 
     @trace(entity='Catalog', op='insert')
     def add_catalog(self, name=None, desc=None, zone=None):
-        """ """
+        """Add catalog
+
+        :param name: name
+        :param desc: description
+        :param zone: zone
+        :return:
+        """
         # check authorization
         self.check_authorization(Catalog.objtype, Catalog.objdef, None, 'insert')
         
@@ -152,6 +158,7 @@ class CatalogController(BaseAuthController):
 
 
 class Catalog(AuthObject):
+    """Catalog class"""
     module = 'CatalogModule'
     objtype = 'directory'
     objdef = 'Catalog'
@@ -159,7 +166,6 @@ class Catalog(AuthObject):
     objdesc = 'dir/Catalog'
     
     def __init__(self, *args, **kvargs):
-        """ """
         AuthObject.__init__(self, *args, **kvargs)
 
         if self.model is not None:
@@ -200,7 +206,7 @@ class Catalog(AuthObject):
         info['services'] = [{'service': k, 'endpoints': v} for k, v in services.items()]
         return info
 
-    @trace(op='endpoints.insert')
+    @trace(op='insert')
     def add_endpoint(self, name=None, desc=None, service=None, uri=None, active=True):
         """Add endpoint.
         
@@ -233,6 +239,7 @@ class Catalog(AuthObject):
 
 
 class CatalogEndpoint(AuthObject):
+    """Catalog endpoint class"""
     module = 'CatalogModule'
     objtype = 'directory'
     objdef = 'Catalog.Endpoint'
@@ -240,7 +247,6 @@ class CatalogEndpoint(AuthObject):
     objdesc = 'Catalog endpoint'
     
     def __init__(self, *args, **kvargs):
-        """ """
         AuthObject.__init__(self, *args, **kvargs)
         
         self.catalog = None
@@ -253,9 +259,15 @@ class CatalogEndpoint(AuthObject):
         self.delete_object = self.manager.delete_endpoint
 
     def set_catalog(self, uuid, name):
+        """Set catalog
+
+        :param uuid: catalog uuid
+        :param name: catalog name
+        :return:
+        """
         self.catalog = {
-            'name':name,
-            'uuid':uuid,
+            'name': name,
+            'uuid': uuid,
         }
 
     def info(self):

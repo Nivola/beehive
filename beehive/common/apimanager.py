@@ -150,6 +150,7 @@ class ApiManager(object):
         # self.swagger = Swagger(self.app, template_file=self.swagger_spec_path)
         try:
             swagger_template = read_file(self.swagger_spec_path)
+            print(swagger_template)
             self.swagger = Swagger(self.app, template=swagger_template)
         except:
             self.swagger = None
@@ -1477,7 +1478,7 @@ class ApiController(object):
                                    active=entity.active, desc=entity.desc, model=entity)
                 res.append(obj)
         
-            # customize enitities
+            # customize entities
             if customize is not None:
                 customize(res, tags=tags, *args, **kvargs)
             
@@ -3161,18 +3162,16 @@ class ApiView(FlaskView):
 
 class PaginatedRequestQuerySchema(Schema):
     size = fields.Integer(default=10, example=10, missing=10, context='query',
-                          description='enitities list page size',
+                          description='entities list page size',
                           validate=Range(min=-1, max=10000, error='Size is out from range'))
     page = fields.Integer(default=0, example=0, missing=0, context='query',
-                          description='enitities list page selected',
+                          description='entities list page selected',
                           validate=Range(min=0, max=10000, error='Page is out from range'))
-    order = fields.String(validate=OneOf(['ASC', 'asc', 'DESC', 'desc'],
-                                         error='Order can be asc, ASC, desc, DESC'),
-                          description='enitities list order: ASC or DESC',
+    order = fields.String(validate=OneOf(['ASC', 'asc', 'DESC', 'desc'], error='Order can be asc, ASC, desc, DESC'),
+                          description='entities list order: ASC or DESC',
                           default='DESC', example='DESC', missing='DESC', context='query')
-    field = fields.String(validate=OneOf(['id', 'uuid', 'objid', 'name'],
-                                         error='Field can be id, uuid, objid, name'),
-                          description='enitities list order field. Ex. id, uuid, name',
+    field = fields.String(validate=OneOf(['id', 'uuid', 'objid', 'name'], error='Field can be id, uuid, objid, name'),
+                          description='entities list order field. Ex. id, uuid, name',
                           default='id', example='id', missing='id', context='query')
 
 

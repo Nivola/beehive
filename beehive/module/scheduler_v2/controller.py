@@ -27,6 +27,8 @@ from beehive.module.scheduler_v2.model import SchedulerDbManager
 
 class SchedulerController(ApiController):
     """Scheduler v2.0 Module controller.
+
+    :param module: ApiModule instance
     """
     def __init__(self, module):
         ApiController.__init__(self, module)
@@ -47,6 +49,10 @@ class SchedulerController(ApiController):
 
 
 class Scheduler(ApiObject):
+    """Scheduler v2.0 task scheduler class.
+
+    :param controller: SchedulerController instance
+    """
     module = 'SchedulerModuleV2'
     objtype = 'task'
     objdef = 'Scheduler'
@@ -71,9 +77,17 @@ class Scheduler(ApiObject):
 
     @trace(op='insert')
     def create_update_entry(self, name, task, schedule, args=None, kwargs=None, options={}, relative=None):
-        """Create scheduler entry.
+        """Create scheduler entry
 
-        :param name: entry name
+        :param name: schedule name
+        :param task: task name
+        :param schedule: schedule config
+        :param args: positional args
+        :param kwargs: key value args
+        :param options: task options
+        :param relative: relative
+        :return: {'schedule': <schdule_name>}
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         self.verify_permisssions('insert')
 
@@ -102,88 +116,88 @@ class Scheduler(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
 
-    @trace(op='insert')
-    def create_update_entry2(self, name, task, schedule, args=None, kwargs=None, options=None, relative=None):
-        """Create scheduler entry.
-        
-        :param name: entry name
-        :param task: The name of the task to execute.
-        :param schedule: The frequency of execution. This can be the number of 
-                         seconds as an integer, a timedelta, or a crontab. 
-                         You can also define your own custom schedule types, 
-                         by extending the interface of schedule.
-                        {'type':'crontab',
-                         'minute':0,
-                         'hour':4,
-                         'day_of_week':'*',
-                         'day_of_month':None,
-                         'month_of_year':None}
-                        {'type':} 
-        :param args: Positional arguments (list or tuple).
-        :param kwargs: Keyword arguments (dict).
-        :param options: Execution options (dict). This can be any argument 
-                        supported by apply_async(), e.g. exchange, routing_key, 
-                        expires, and so on.
-        :param relative: By default timedelta schedules are scheduled “by the 
-                         clock”. This means the frequency is rounded to the 
-                         nearest second, minute, hour or day depending on the 
-                         period of the timedelta.
-                         If relative is true the frequency is not rounded and 
-                         will be relative to the time when celery beat was started.
-        :return: 
-        :rtype:
-        :raises ApiManagerError: raise :class:`.ApiManagerError`  
-        """
-        self.verify_permisssions('insert')
-        
-        try:
-            if schedule['type'] == 'crontab':
-                minute = get_attrib(schedule, 'minute', '*')
-                hour = get_attrib(schedule, 'hour', '*')
-                day_of_week = get_attrib(schedule, 'day_of_week', '*')
-                day_of_month = get_attrib(schedule, 'day_of_month', '*')
-                month_of_year = get_attrib(schedule, 'month_of_year', '*')                
-                schedule = crontab(minute=minute, 
-                                   hour=hour, 
-                                   day_of_week=day_of_week, 
-                                   day_of_month=day_of_month, 
-                                   month_of_year=month_of_year)
-            elif schedule['type'] == 'timedelta':
-                days = get_attrib(schedule, 'days', 0)
-                seconds = get_attrib(schedule, 'seconds', 0)
-                minutes = get_attrib(schedule, 'minutes', 0)
-                hours = get_attrib(schedule, 'hours', 0)
-                weeks = get_attrib(schedule, 'weeks', 0)
-                schedule = timedelta(days=days, 
-                                     seconds=seconds, 
-                                     minutes=minutes, 
-                                     hours=hours, 
-                                     weeks=weeks)
-            
-            # new entry
-            entry = {
-                'task': task,
-                'schedule': schedule,
-                'options': {'queue': task_scheduler.conf.CELERY_TASK_DEFAULT_QUEUE}
-            }
-
-            if args is not None:
-                entry['args'] = args
-            if options is not None:
-                entry['options'] = options
-            if kwargs is not None:
-                entry['kwargs'] = kwargs
-            if relative is not None:
-                entry['relative'] = relative
-                
-            # insert entry in redis
-            self.redis_entries[name] = RedisScheduleEntry(**dict(entry, name=name, app=task_scheduler))
-            
-            self.logger.info("Create scheduler entry: %s" % entry)
-            return {'schedule': name}
-        except Exception as ex:
-            self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=400)
+    # @trace(op='insert')
+    # def create_update_entry2(self, name, task, schedule, args=None, kwargs=None, options=None, relative=None):
+    #     """Create scheduler entry.
+    #
+    #     :param name: entry name
+    #     :param task: The name of the task to execute.
+    #     :param schedule: The frequency of execution. This can be the number of
+    #                      seconds as an integer, a timedelta, or a crontab.
+    #                      You can also define your own custom schedule types,
+    #                      by extending the interface of schedule.
+    #                     {'type':'crontab',
+    #                      'minute':0,
+    #                      'hour':4,
+    #                      'day_of_week':'*',
+    #                      'day_of_month':None,
+    #                      'month_of_year':None}
+    #                     {'type':}
+    #     :param args: Positional arguments (list or tuple).
+    #     :param kwargs: Keyword arguments (dict).
+    #     :param options: Execution options (dict). This can be any argument
+    #                     supported by apply_async(), e.g. exchange, routing_key,
+    #                     expires, and so on.
+    #     :param relative: By default timedelta schedules are scheduled “by the
+    #                      clock”. This means the frequency is rounded to the
+    #                      nearest second, minute, hour or day depending on the
+    #                      period of the timedelta.
+    #                      If relative is true the frequency is not rounded and
+    #                      will be relative to the time when celery beat was started.
+    #     :return:
+    #     :rtype:
+    #     :raises ApiManagerError: raise :class:`.ApiManagerError`
+    #     """
+    #     self.verify_permisssions('insert')
+    #
+    #     try:
+    #         if schedule['type'] == 'crontab':
+    #             minute = get_attrib(schedule, 'minute', '*')
+    #             hour = get_attrib(schedule, 'hour', '*')
+    #             day_of_week = get_attrib(schedule, 'day_of_week', '*')
+    #             day_of_month = get_attrib(schedule, 'day_of_month', '*')
+    #             month_of_year = get_attrib(schedule, 'month_of_year', '*')
+    #             schedule = crontab(minute=minute,
+    #                                hour=hour,
+    #                                day_of_week=day_of_week,
+    #                                day_of_month=day_of_month,
+    #                                month_of_year=month_of_year)
+    #         elif schedule['type'] == 'timedelta':
+    #             days = get_attrib(schedule, 'days', 0)
+    #             seconds = get_attrib(schedule, 'seconds', 0)
+    #             minutes = get_attrib(schedule, 'minutes', 0)
+    #             hours = get_attrib(schedule, 'hours', 0)
+    #             weeks = get_attrib(schedule, 'weeks', 0)
+    #             schedule = timedelta(days=days,
+    #                                  seconds=seconds,
+    #                                  minutes=minutes,
+    #                                  hours=hours,
+    #                                  weeks=weeks)
+    #
+    #         # new entry
+    #         entry = {
+    #             'task': task,
+    #             'schedule': schedule,
+    #             'options': {'queue': task_scheduler.conf.CELERY_TASK_DEFAULT_QUEUE}
+    #         }
+    #
+    #         if args is not None:
+    #             entry['args'] = args
+    #         if options is not None:
+    #             entry['options'] = options
+    #         if kwargs is not None:
+    #             entry['kwargs'] = kwargs
+    #         if relative is not None:
+    #             entry['relative'] = relative
+    #
+    #         # insert entry in redis
+    #         self.redis_entries[name] = RedisScheduleEntry(**dict(entry, name=name, app=task_scheduler))
+    #
+    #         self.logger.info("Create scheduler entry: %s" % entry)
+    #         return {'schedule': name}
+    #     except Exception as ex:
+    #         self.logger.error(ex, exc_info=1)
+    #         raise ApiManagerError(ex, code=400)
         
     @trace(op='view')
     def get_entries(self, name=None):
@@ -209,8 +223,8 @@ class Scheduler(ApiObject):
         """Remove scheduler entry.
 
         :param name: entry name
-        :return:
-        :rtype:
+        :return: True
+        :rtype: bool
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
         self.verify_permisssions('delete')
@@ -223,49 +237,52 @@ class Scheduler(ApiObject):
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
 
-    @trace(op='delete')
-    def remove_entry2(self, name):
-        """Remove scheduler entry.
-        
-        :param name: entry name
-        :return: 
-        :rtype:
-        :raises ApiManagerError: raise :class:`.ApiManagerError`  
-        """
-        self.verify_permisssions('delete')
-        
-        try:
-            self.logger.warn(self.redis_entries)
-            del self.redis_entries[name]
-            self.logger.warn(self.redis_entries)
-            self.logger.info('Remove scheduler entry: %s' % name)
-            return True
-        except Exception as ex:
-            self.logger.error(ex)
-            raise ApiManagerError(ex, code=400)
+    # @trace(op='delete')
+    # def remove_entry2(self, name):
+    #     """Remove scheduler entry.
+    #
+    #     :param name: entry name
+    #     :return: True
+    #     :rtype: bool
+    #     :raises ApiManagerError: raise :class:`.ApiManagerError`
+    #     """
+    #     self.verify_permisssions('delete')
+    #
+    #     try:
+    #         self.logger.warn(self.redis_entries)
+    #         del self.redis_entries[name]
+    #         self.logger.warn(self.redis_entries)
+    #         self.logger.info('Remove scheduler entry: %s' % name)
+    #         return True
+    #     except Exception as ex:
+    #         self.logger.error(ex)
+    #         raise ApiManagerError(ex, code=400)
         
     @trace(op='delete')
     def clear_all_entries(self):
         """Clear all scheduler entries.
         
         :param name: entry name
-        :return: 
-        :rtype:
+        :return: True
+        :rtype: bool
         :raises ApiManagerError: raise :class:`.ApiManagerError`  
         """
         self.verify_permisssions('delete')
         
         try:
-            res = self.redis_entries.clear()
+            self.redis_entries.clear()
             self.logger.info('Remove all scheduler entries')
             return True
         except Exception as ex:
             self.logger.error(ex)
-            raise ApiManagerError(ex, code=400)        
-        self.redis_entries.clear()
+            raise ApiManagerError(ex, code=400)
 
 
 class TaskManager(ApiObject):
+    """Scheduler v2.0 task maanager class.
+
+    :param controller: SchedulerController instance
+    """
     module = 'SchedulerModuleV2'
     objtype = 'task'
     objdef = 'Manager'
@@ -318,7 +335,7 @@ class TaskManager(ApiObject):
     def stats(self):
         """Get stats from all task manager worker
         
-        :return: 
+        :return: usage info
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
@@ -338,7 +355,7 @@ class TaskManager(ApiObject):
     def report(self):
         """Get manager worker report
         
-        :return: 
+        :return: report info
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
@@ -358,7 +375,7 @@ class TaskManager(ApiObject):
     def get_active_queues(self):
         """Ping all task manager active queues.
 
-        :return:
+        :return: active queue
         :rtype: dict
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
@@ -378,7 +395,7 @@ class TaskManager(ApiObject):
     def get_registered_tasks(self):
         """Get task definitions
         
-        :return: 
+        :return: registered tasks
         :rtype: dict        
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """

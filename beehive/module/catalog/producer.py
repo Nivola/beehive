@@ -17,9 +17,8 @@ logger = getLogger(__name__)
 
     
 class CatalogProducer(object):
+    """Catalog producer"""    
     def __init__(self):
-        """Abstract node producer.
-        """
         self.logger = getLogger(self.__class__.__module__ + '.' + self.__class__.__name__)
     
     def _send(self, node_type, data, source, dest):
@@ -87,4 +86,4 @@ class CatalogProducerRedis(CatalogProducer):
         except exceptions.ConnectionLimitExceeded as ex:
             self.logger.error('Endpoint can not be send: %s' % ex)
         except Exception as ex:
-            self.logger.error('Endpoint can not be send: %s' % ex, exc_info=1)
+            self.logger.error('Endpoint can not be send: %s' % ex, exc_info=True)

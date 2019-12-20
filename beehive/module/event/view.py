@@ -47,6 +47,8 @@ class ListEventsResponseSchema(PaginatedResponseSchema):
 
 
 class ListEvents(SwaggerApiView):
+    summary = 'List events'
+    description = 'List events'
     tags = ['event']
     definitions = {
         'ListEventsResponseSchema': ListEventsResponseSchema,
@@ -62,10 +64,6 @@ class ListEvents(SwaggerApiView):
     })
     
     def get(self, controller, data, *args, **kwargs):
-        """
-        List events
-        Call this api to list all the existing events
-        """
         objdef = data.get('objdef', None)
         objtype = data.get('objtype', None)
         if objdef is not None and objtype is None:
@@ -80,6 +78,8 @@ class GetEventResponseSchema(Schema):
 
 
 class GetEvent(SwaggerApiView):
+    summary = 'Get event'
+    description = 'Get event'
     tags = ['event']
     definitions = {
         'GetEventResponseSchema': GetEventResponseSchema,
@@ -95,17 +95,18 @@ class GetEvent(SwaggerApiView):
     def get(self, controller, data, oid, *args, **kwargs):
         event = controller.get_event(oid)
         res = event.detail()
-        resp = {'event':res}        
+        resp = {'event': res}
         return resp
 
 
-# types
 class GetEventTypesResponseSchema(Schema):
     count = fields.Integer()
     event_types = fields.List(fields.String)
 
 
 class GetEventTypes(SwaggerApiView):
+    summary = 'Get event types'
+    description = 'Get event types'
     tags = ['event']
     definitions = {
         'GetEventTypesResponseSchema': GetEventTypesResponseSchema,
@@ -130,6 +131,8 @@ class GetEventEntityDefinitionResponseSchema(Schema):
 
 
 class GetEventEntityDefinition(SwaggerApiView):
+    summary = 'Get event entity definitions'
+    description = 'Get event entity definitions'
     tags = ['event']
     definitions = {
         'GetEventEntityDefinitionResponseSchema': GetEventEntityDefinitionResponseSchema,
@@ -149,7 +152,7 @@ class GetEventEntityDefinition(SwaggerApiView):
 
 
 class EventAPI(ApiView):
-    """
+    """Event api
     """
     @staticmethod
     def register_api(module):

@@ -10,9 +10,10 @@ from beehive.common.controller.authorization import AuthenticationManager
 
 
 class CatalogModule(ApiModule):
-    """Catalog Module. This module depends by Auth Module and does not work 
-    without it. Good deploy of this module is in server instance with Auth 
-    Module.
+    """Catalog Module. This module depends by Auth Module and does not work without it. Good deploy of this module is
+    in server instance with Auth Module.
+
+    :param module: ApiModule instance
     """
     def __init__(self, api_manger):
         self.name = 'CatalogModule'

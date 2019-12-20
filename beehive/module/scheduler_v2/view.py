@@ -35,6 +35,8 @@ class GetSchedulerEntriesResponseSchema(Schema):
 
 
 class GetSchedulerEntries(TaskApiView):
+    summary = 'List scheduler entries'
+    description = 'List scheduler entries'
     definitions = {
         'GetSchedulerEntriesResponseSchema': GetSchedulerEntriesResponseSchema,
     }
@@ -46,10 +48,6 @@ class GetSchedulerEntries(TaskApiView):
     })
 
     def get(self, controller, data, *args, **kwargs):
-        """
-        List scheduler entries
-        Call this api to list all the scheduler entries
-        """
         scheduler = controller.get_scheduler()
         data = scheduler.get_entries()
         res = [i.info() for i in data]
@@ -65,6 +63,8 @@ class GetSchedulerEntryResponseSchema(Schema):
 
 
 class GetSchedulerEntry(TaskApiView):
+    summary = 'Get scheduler entry'
+    description = 'Get scheduler entry'
     definitions = {
         'GetSchedulerEntryResponseSchema': GetSchedulerEntryResponseSchema,
     }
@@ -112,6 +112,8 @@ class CreateSchedulerEntryResponseSchema(Schema):
 
 
 class CreateSchedulerEntry(TaskApiView):
+    summary = 'Create scheduler entry'
+    description = 'Create scheduler entry'
     definitions = {
         'CreateSchedulerEntryResponseSchema': CreateSchedulerEntryResponseSchema,
         'CreateSchedulerEntryRequestSchema': CreateSchedulerEntryRequestSchema
@@ -126,10 +128,6 @@ class CreateSchedulerEntry(TaskApiView):
     })
 
     def post(self, controller, data, *args, **kwargs):
-        """
-        Create schedule
-        Create scheduler schedule
-        """
         scheduler = controller.get_scheduler()
         data = get_value(data, 'schedule', None, exception=True)
         name = get_value(data, 'name', None, exception=True)
@@ -148,6 +146,8 @@ class CreateSchedulerEntry(TaskApiView):
 
 
 class DeleteSchedulerEntry(TaskApiView):
+    summary = 'Delete scheduler entry'
+    description = 'Delete scheduler entry'
     definitions = {}
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
     responses = SwaggerApiView.setResponses({
@@ -157,14 +157,10 @@ class DeleteSchedulerEntry(TaskApiView):
     })
 
     def delete(self, controller, data, oid, *args, **kwargs):
-        """
-        Delete schedule
-        Delete scheduler schedule by name
-        """
         scheduler = controller.get_scheduler()
         # name = get_value(data, 'name', None, exception=True)
         resp = scheduler.remove_entry(oid)
-        return (resp, 204)
+        return resp, 204
 
 
 #
@@ -175,6 +171,8 @@ class ManagerPingResponseSchema(Schema):
 
 
 class ManagerPing(TaskApiView):
+    summary = 'Workers ping'
+    description = 'Workers ping'
     definitions = {
         'ManagerPingResponseSchema': ManagerPingResponseSchema,
     }
@@ -186,10 +184,6 @@ class ManagerPing(TaskApiView):
     })
 
     def get(self, controller, data, *args, **kwargs):
-        """
-        Worker pings
-        Ping all active workers
-        """
         task_manager = controller.get_task_manager()
         resp = task_manager.ping()
         return {'workers_ping':resp}
@@ -200,6 +194,8 @@ class ManagerStatsResponseSchema(Schema):
 
 
 class ManagerStats(TaskApiView):
+    summary = 'Workers statistics'
+    description = 'Workers statistics'
     definitions = {
         'ManagerStatsResponseSchema': ManagerStatsResponseSchema,
     }
@@ -211,10 +207,6 @@ class ManagerStats(TaskApiView):
     })
 
     def get(self, controller, data, *args, **kwargs):
-        """
-        Worker statistics
-        Get all active workers statistics
-        """
         task_manager = controller.get_task_manager()
         resp = task_manager.stats()
         return {'workers_stats':resp}
@@ -225,6 +217,8 @@ class ManagerReportResponseSchema(Schema):
 
 
 class ManagerReport(TaskApiView):
+    summary = 'Workers report'
+    description = 'Workers report'
     definitions = {
         'ManagerReportResponseSchema': ManagerReportResponseSchema,
     }
@@ -236,10 +230,6 @@ class ManagerReport(TaskApiView):
     })
 
     def get(self, controller, data, *args, **kwargs):
-        """
-        Worker Report
-        Get all active workers report
-        """
         task_manager = controller.get_task_manager()
         resp = task_manager.report()
         return {'workers_report':resp}
@@ -250,6 +240,8 @@ class ManagerActiveQueuesResponseSchema(Schema):
 
 
 class ManagerActiveQueues(TaskApiView):
+    summary = 'Workers active queues'
+    description = 'Workers active queues'
     definitions = {
         'ManagerActiveQueuesResponseSchema': ManagerActiveQueuesResponseSchema,
     }
@@ -261,10 +253,6 @@ class ManagerActiveQueues(TaskApiView):
     })
 
     def get(self, controller, data, *args, **kwargs):
-        """
-        Worker Report
-        Get all active workers report
-        """
         task_manager = controller.get_task_manager()
         resp = task_manager.get_active_queues()
         return {'workers_queues': resp}
@@ -276,6 +264,8 @@ class GetTasksDefinitionResponseSchema(Schema):
 
 
 class GetTasksDefinition(TaskApiView):
+    summary = 'Get task definitions'
+    description = 'Get task definitions'
     definitions = {
         'GetTasksDefinitionResponseSchema': GetTasksDefinitionResponseSchema,
     }
@@ -287,10 +277,6 @@ class GetTasksDefinition(TaskApiView):
     })
 
     def get(self, controller, data, *args, **kwargs):
-        """
-        Get task definitions
-        List all task definitions
-        """
         task_manager = controller.get_task_manager()
         res = task_manager.get_registered_tasks()
         resp = {
@@ -333,6 +319,8 @@ class GetTasksResponseSchema(PaginatedResponseSchema):
 
 
 class GetTasks(TaskApiView):
+    summary = 'List task instances'
+    description = 'List task instances'
     definitions = {
         'GetTasksResponseSchema': GetTasksResponseSchema,
         'GetTasksRequestSchema': GetTasksRequestSchema
@@ -347,10 +335,6 @@ class GetTasks(TaskApiView):
     })
 
     def get(self, controller, data, *args, **kwargs):
-        """
-        List task instances
-        Call this api to list all the task instances
-        """
         objs, total = controller.get_task_manager().get_tasks(**data)
         res = [r.info() for r in objs]
 
@@ -386,6 +370,8 @@ class GetTaskResponseSchema(Schema):
 
 
 class GetTask(TaskApiView):
+    summary = 'Get task instance info'
+    description = 'Get task instance info'
     definitions = {
         'GetTaskResponseSchema': GetTaskResponseSchema,
         'GetTaskRequestSchema': GetTaskRequestSchema,
@@ -400,10 +386,6 @@ class GetTask(TaskApiView):
     })
 
     def get(self, controller, data, oid, *args, **kwargs):
-        """
-        Get task info
-        Query single task by id and return description fields
-        """
         task_manager = controller.get_task_manager()
         entity_class_name = data.get('entity_class')
         res = task_manager.get_task(oid, entity_class_name=entity_class_name)
@@ -423,6 +405,8 @@ class GetTaskStatusResponseSchema(Schema):
 
 
 class GetTaskStatus(TaskApiView):
+    summary = 'Get task instance status'
+    description = 'Get task instance status'
     definitions = {
         'GetTaskStatusResponseSchema': GetTaskStatusResponseSchema,
         'GetTaskRequestSchema': GetTaskRequestSchema,
@@ -437,10 +421,6 @@ class GetTaskStatus(TaskApiView):
     })
 
     def get(self, controller, data, oid, *args, **kwargs):
-        """
-        Get task info
-        Query single task by id and return description fields
-        """
         task_manager = controller.get_task_manager()
         entity_class_name = data.get('entity_class')
         res = task_manager.get_task_status(oid, entity_class_name=entity_class_name)
@@ -461,6 +441,8 @@ class GetTraceResponseSchema(Schema):
 
 
 class GetTrace(TaskApiView):
+    summary = 'Get task instance trace'
+    description = 'Get task instance trace'
     definitions = {
         'GetTraceResponseSchema': GetTraceResponseSchema,
         'GetTaskRequestSchema': GetTaskRequestSchema,
@@ -475,10 +457,6 @@ class GetTrace(TaskApiView):
     })
 
     def get(self, controller, data, oid, *args, **kwargs):
-        """
-        Get task trace
-        Query single task by id and return execution trace
-        """
         task_manager = controller.get_task_manager()
         entity_class_name = data.get('entity_class')
         res = task_manager.get_task(oid, entity_class_name=entity_class_name)
@@ -486,80 +464,72 @@ class GetTrace(TaskApiView):
         return resp
 
 
-class GetTaskGraphResponseSchema(Schema):
-    task_instance_graph = fields.Dict(required=True, default={})
+# class GetTaskGraphResponseSchema(Schema):
+#     task_instance_graph = fields.Dict(required=True, default={})
+#
+#
+# class GetTaskGraph(TaskApiView):
+#     definitions = {
+#         'GetTaskGraphResponseSchema':GetTaskGraphResponseSchema,
+#         'GetApiObjectRequestSchema': GetApiObjectRequestSchema,
+#     }
+#     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
+#     responses = SwaggerApiView.setResponses({
+#         200: {
+#             'description': 'success',
+#             'schema': GetTaskGraphResponseSchema
+#         }
+#     })
+#
+#     def get(self, controller, data, oid, *args, **kwargs):
+#         """
+#         Get task graph
+#         Get list of nodes and link that represents the task childs graph
+#         """
+#         task_manager = controller.get_task_manager()
+#         res = task_manager.get_task_graph(oid)
+#         resp = {'task_instance_graph':res}
+#         return resp
 
 
-class GetTaskGraph(TaskApiView):
-    definitions = {
-        'GetTaskGraphResponseSchema':GetTaskGraphResponseSchema,
-        'GetApiObjectRequestSchema': GetApiObjectRequestSchema,
-    }
-    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
-    responses = SwaggerApiView.setResponses({
-        200: {
-            'description': 'success',
-            'schema': GetTaskGraphResponseSchema
-        }
-    })
+# class PurgeAllTasks(TaskApiView):
+#     definitions = {
+#     }
+#     responses = SwaggerApiView.setResponses({
+#         204: {
+#             'description': 'success'
+#         }
+#     })
+#
+#     def delete(self, controller, data, *args, **kwargs):
+#         """
+#         Delete all tasks
+#         Delete all tasks
+#         """
+#         task_manager = controller.get_task_manager()
+#         resp = task_manager.delete_task_instances()
+#         return (resp, 204)
 
-    def get(self, controller, data, oid, *args, **kwargs):
-        """
-        Get task graph
-        Get list of nodes and link that represents the task childs graph
-        """
-        task_manager = controller.get_task_manager()
-        res = task_manager.get_task_graph(oid)
-        resp = {'task_instance_graph':res}
-        return resp
-
-
-## purge all
-class PurgeAllTasks(TaskApiView):
-    definitions = {
-    }
-    responses = SwaggerApiView.setResponses({
-        204: {
-            'description': 'success'
-        }
-    })
-
-    def delete(self, controller, data, *args, **kwargs):
-        """
-        Delete all tasks
-        Delete all tasks
-        """
-        task_manager = controller.get_task_manager()
-        resp = task_manager.delete_task_instances()
-        return (resp, 204)
-
-'''
-class PurgeTasks(TaskApiView):
-    def delete(self, controller, data, *args, **kwargs):
-        task_manager = controller.get_task_manager()
-        resp = task_manager.purge_tasks()
-        return (resp, 202)  '''
-
-## delete
-class DeleteTask(TaskApiView):
-    definitions = {
-        'GetApiObjectRequestSchema': GetApiObjectRequestSchema,
-    }
-    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
-    responses = SwaggerApiView.setResponses({
-        204: {
-            'description': 'success'
-        }
-    })
-
-    def delete(self, controller, data, oid, *args, **kwargs):
-        """
-        Delete task
-        Delete task by id
-        """
-        task_manager = controller.get_task_manager()
-        resp = task_manager.delete_task_instance(oid)
-        return (resp, 204)
+# ## delete
+# class DeleteTask(TaskApiView):
+#     definitions = {
+#         'GetApiObjectRequestSchema': GetApiObjectRequestSchema,
+#     }
+#     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
+#     responses = SwaggerApiView.setResponses({
+#         204: {
+#             'description': 'success'
+#         }
+#     })
+#
+#     def delete(self, controller, data, oid, *args, **kwargs):
+#         """
+#         Delete task
+#         Delete task by id
+#         """
+#         task_manager = controller.get_task_manager()
+#         resp = task_manager.delete_task_instance(oid)
+#         return (resp, 204)
 
 '''
 class RevokeTask(TaskApiView):
@@ -580,7 +550,6 @@ class SetTaskTimeLimit(TaskApiView):
         return resp'''
 
 
-## create
 class RunTestTaskBodyParamRequestSchema(Schema):
     x = fields.Integer(required=True, default=2, missing=2)
     y = fields.Integer(required=True, default=223, missing=223)
@@ -595,6 +564,8 @@ class RunTestTaskBodyRequestSchema(Schema):
 
 
 class RunTestTask(TaskApiView):
+    summary = 'Run test task'
+    description = 'Run test task'
     definitions = {
         'RunTestTaskBodyParamRequestSchema': RunTestTaskBodyParamRequestSchema,
         'RunTestTaskBodyRequestSchema': RunTestTaskBodyRequestSchema
@@ -615,7 +586,7 @@ class RunTestTask(TaskApiView):
 
 
 class SchedulerAPI(ApiView):
-    """
+    """Task scheduler api
     """
     @staticmethod
     def register_api(module):
@@ -630,7 +601,7 @@ class SchedulerAPI(ApiView):
 
         
 class TaskAPI(ApiView):
-    """
+    """Task manager api
     """
     @staticmethod
     def register_api(module):

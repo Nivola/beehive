@@ -3,6 +3,8 @@
 # (C) Copyright 2018-2019 CSI-Piemonte
 # (C) Copyright 2019-2020 CSI-Piemonte
 
+# --- DEPRECATED ---
+
 import datetime
 from celery.utils.log import get_task_logger
 from beehive.common.apiclient import BeehiveApiClient

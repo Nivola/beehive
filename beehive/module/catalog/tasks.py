@@ -3,6 +3,8 @@
 # (C) Copyright 2018-2019 CSI-Piemonte
 # (C) Copyright 2019-2020 CSI-Piemonte
 
+# --- DEPRECATED ---
+
 from celery.utils.log import get_task_logger
 from beehive.common.apiclient import BeehiveApiClient
 from beehive.common.task.job import Job, task_local, job, JobTask, job_task

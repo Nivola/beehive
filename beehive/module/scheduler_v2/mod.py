@@ -10,6 +10,8 @@ from beehive.common.apimanager import ApiModule
 
 class SchedulerModuleV2(ApiModule):
     """Beehive Scheduler Module
+
+    :param module: ApiModule instance
     """
     def __init__(self, api_manger):
         self.name = 'SchedulerModuleV2'

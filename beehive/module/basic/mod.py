@@ -10,6 +10,8 @@ from beehive.common.apimanager import ApiModule
 
 class BasicModule(ApiModule):
     """Beehive Basic Module
+
+    :param module: ApiModule instance
     """
     def __init__(self, api_manger):
         self.name = 'BasicModule'

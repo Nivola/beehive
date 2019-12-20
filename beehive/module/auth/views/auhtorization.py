@@ -62,6 +62,8 @@ class ListProvidersResponseSchema(Schema):
 
 
 class ListProviders(SwaggerApiView):
+    summary = 'List authentication providers'
+    description = 'List authentication providers'
     tags = ['authorization']
     definitions = {
         'ListProvidersResponseSchema': ListProvidersResponseSchema,
@@ -74,10 +76,6 @@ class ListProviders(SwaggerApiView):
     })
 
     def get(self, controller, data, *args, **kwargs):
-        """
-        List authentication providers
-        Call this api to list authentication providers
-        """
         auth_providers = controller.module.authentication_manager.auth_providers
         res = []
         for provider, auth_provider in auth_providers.items():
@@ -109,6 +107,8 @@ class ListTokensResponseSchema(Schema):
 
 
 class ListTokens(SwaggerApiView):
+    summary = 'List authentication tokens'
+    description = 'List authentication tokens'
     tags = ['authorization']
     definitions = {
         'ListTokensResponseSchema': ListTokensResponseSchema
@@ -123,10 +123,6 @@ class ListTokens(SwaggerApiView):
     })
 
     def get(self, controller, data, *args, **kwargs):
-        """
-        List authentication tokens
-        Call this api to list authentication tokens
-        """        
         identities = controller.get_identities()        
         res = []
         for i in identities:            
@@ -174,6 +170,8 @@ class GetTokenResponseSchema(Schema):
 
 
 class GetToken(SwaggerApiView):
+    summary = 'Get authentication tokens'
+    description = 'Get authentication tokens'
     tags = ['authorization']
     definitions = {
         'GetTokenResponseSchema': GetTokenResponseSchema,
@@ -187,10 +185,6 @@ class GetToken(SwaggerApiView):
     })
 
     def get(self, controller, data, oid, *args, **kwargs):
-        """
-        Get authentication token
-        Call this api to get authentication token                      
-        """                
         data = controller.get_identity(oid)
         res = {
             'token': data['uid'],
@@ -204,6 +198,8 @@ class GetToken(SwaggerApiView):
 
 
 class DeleteToken(SwaggerApiView):
+    summary = 'Delete authentication tokens'
+    description = 'Delete authentication tokens'
     tags = ['authorization']
     definitions = {}
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
@@ -214,10 +210,6 @@ class DeleteToken(SwaggerApiView):
     })
 
     def delete(self, controller, data, oid, *args, **kwargs):
-        """
-        Delete authentication token
-        Call this api to delete an authentication token     
-        """        
         resp = controller.remove_identity(oid)
         return resp, 204
 
@@ -244,6 +236,8 @@ class ListUsersResponseSchema(PaginatedResponseSchema):
 
 
 class ListUsers(SwaggerApiView):
+    summary = 'List users'
+    description = 'List users'
     tags = ['authorization']
     definitions = {
         'ListUsersResponseSchema': ListUsersResponseSchema,
@@ -258,10 +252,6 @@ class ListUsers(SwaggerApiView):
     })
     
     def get(self, controller, data, *args, **kwargs):
-        """
-        List users
-        Call this api to list users
-        """
         objs, total = controller.get_users(**data)
         res = [r.info() for r in objs]
 
@@ -278,6 +268,8 @@ class GetUserResponseSchema(Schema):
 
 
 class GetUser(SwaggerApiView):
+    summary = 'Get user'
+    description = 'Get user'
     tags = ['authorization']
     definitions = {
         'GetUserResponseSchema': GetUserResponseSchema,
@@ -291,10 +283,6 @@ class GetUser(SwaggerApiView):
     })    
     
     def get(self, controller, data, oid, *args, **kwargs):
-        """
-        Get user
-        Call this api to get user by id, uuid or name
-        """
         obj = controller.get_user(oid)
         res = obj.detail()
         resp = {'user': res}
@@ -310,6 +298,8 @@ class UserSecretResponseSchema(Schema):
 
 
 class GetUserSecret(SwaggerApiView):
+    summary = 'Get user secret'
+    description = 'Get user secret'
     tags = ['authorization']
     definitions = {
         'UserSecretResponseSchema': UserSecretResponseSchema,
@@ -323,10 +313,6 @@ class GetUserSecret(SwaggerApiView):
     })
 
     def get(self, controller, data, oid, *args, **kwargs):
-        """
-        Get user secret
-        Call this api to get user secret
-        """
         secret = controller.get_user_secret(oid)
         resp = {'user': {'secret': secret}}
         return resp
@@ -341,11 +327,13 @@ class UserSecretRequestSchema (Schema):
     user = fields.Nested(UserSecretParamsRequestSchema, required=True, allow_none=True)
 
 
-class ResetUserSecretBodyRequestSchema(Schema):
+class ResetUserSecretBodyRequestSchema(GetApiObjectRequestSchema):
     body = fields.Nested(UserSecretRequestSchema, context='body')
 
 
 class ResetUserSecret(SwaggerApiView):
+    summary = 'Reset user secret'
+    description = 'Reset user secret'
     tags = ['authorization']
     definitions = {
         'UserSecretRequestSchema': UserSecretRequestSchema,
@@ -360,11 +348,6 @@ class ResetUserSecret(SwaggerApiView):
     })    
     
     def put(self, controller, data, oid, *args, **kwargs):
-        """
-        Reset user secret
-        Call this api to reset user secret
-        """
-        
         old_secret = data.get('user', {}).get('old_secret', None)
         secret = controller.reset_user_secret(oid, old_secret=old_secret)
         resp = {'user': {'secret': secret}}
@@ -383,6 +366,8 @@ class GetUserAtributesResponseSchema(Schema):
 
 
 class GetUserAtributes(SwaggerApiView):
+    summary = 'Get user attributes'
+    description = 'Get user attributes'
     tags = ['authorization']
     definitions = {
         'GetUserAtributesResponseSchema': GetUserAtributesResponseSchema,
@@ -396,10 +381,6 @@ class GetUserAtributes(SwaggerApiView):
     })     
     
     def get(self, controller, data, oid, *args, **kwargs):
-        """
-        Get user attributes
-        Call this api to get user attributes
-        """
         user = controller.get_user(oid)
         res = user.get_attribs()
         resp = {'user_attributes': res, 'count': len(res)}
@@ -429,10 +410,12 @@ class CreateUserBodyRequestSchema(Schema):
 
 
 class CreateUser(SwaggerApiView):
+    summary = 'Create a user'
+    description = 'Create a user'
     tags = ['authorization']
     definitions = {
         'CreateUserRequestSchema': CreateUserRequestSchema,
-        'CrudApiObjectResponseSchema':CrudApiObjectResponseSchema
+        'CrudApiObjectResponseSchema': CrudApiObjectResponseSchema
     }
     parameters = SwaggerHelper().get_parameters(CreateUserBodyRequestSchema)
     parameters_schema = CreateUserRequestSchema
@@ -444,10 +427,6 @@ class CreateUser(SwaggerApiView):
     })
     
     def post(self, controller, data, *args, **kwargs):
-        """
-        Create a user
-        Call this api to create a user               
-        """
         resp = controller.add_user(**data.get('user'))
         return {'uuid': resp}, 201
 
@@ -889,6 +868,8 @@ class ListGroupsResponseSchema(PaginatedResponseSchema):
 
 
 class ListGroups(SwaggerApiView):
+    summary = 'List groups'
+    description = 'List authorization groups'
     tags = ['authorization']
     definitions = {
         'ListGroupsResponseSchema': ListGroupsResponseSchema,
@@ -903,10 +884,6 @@ class ListGroups(SwaggerApiView):
     })
     
     def get(self, controller, data, *args, **kwargs):
-        """
-        List groups
-        Call this api to list groups                      
-        """
         objs, total = controller.get_groups(**data)
         
         res = [r.info() for r in objs]  
@@ -1155,8 +1132,7 @@ class DeleteGroup(SwaggerApiView):
 #
 class ListObjectsRequestSchema(PaginatedRequestQuerySchema):
     field = fields.String(validate=OneOf(['subsystem', 'type', 'id', 'objid'],
-                          error='Field can be subsystem, type, id, objid'),
-                          missing='id')    
+                          error='Field can be subsystem, type, id, objid'), missing='id')
     subsystem = fields.String(context='query')
     type = fields.String(context='query')
     objid = fields.String(context='query')
@@ -1204,7 +1180,6 @@ class ListObjects(SwaggerApiView):
         return self.format_paginated_response(res, 'objects', total, **data)
 
 
-## get
 class GetObjectResponseSchema(Schema):
     object = fields.Nested(ListObjectsParamsResponseSchema, required=True, allow_none=True)
 
@@ -1233,7 +1208,6 @@ class GetObject(SwaggerApiView):
         return resp
 
 
-## create
 class CreateObjectParamRequestSchema(Schema):
     subsystem = fields.String(required=True)
     type = fields.String(required=True)

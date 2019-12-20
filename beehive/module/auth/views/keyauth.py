@@ -4,9 +4,9 @@
 # (C) Copyright 2019-2020 CSI-Piemonte
 
 from flask import request
-from beecell.simple import get_value, str2bool, get_remote_ip
+from beecell.simple import get_remote_ip
 from beecell.swagger import SwaggerHelper
-from beehive.common.apimanager import ApiView, ApiManagerError, SwaggerApiView
+from beehive.common.apimanager import ApiView, SwaggerApiView
 from beehive.common.data import operation
 from marshmallow import fields, Schema, validates, ValidationError
 
@@ -19,13 +19,17 @@ class CreateTokenRequestSchema(Schema):
     user = fields.String(required=True, error_messages={'required': 'user is required.'})
     password = fields.String(required=True, error_messages={'required': 'password is required.'})
     login_ip = fields.String(load_from='login-ip', missing=get_ip)
-    
+
     @validates('user')
     def validate_user(self, value):
         try:
             value.index('@')
         except ValueError:
             raise ValidationError('User syntax must be <user>@<domain>')
+
+
+class CreateTokenBodyRequestSchema(Schema):
+    body = fields.Nested(CreateTokenRequestSchema, context='body')
 
 
 class CreateTokenResponseSchema(Schema):
@@ -39,12 +43,14 @@ class CreateTokenResponseSchema(Schema):
 
 
 class CreateToken(SwaggerApiView):
+    summary = 'Create keyauth token'
+    description = 'Create keyauth token'
     tags = ['authorization']
     definitions = {
         'CreateTokenRequestSchema': CreateTokenRequestSchema,
         'CreateTokenResponseSchema': CreateTokenResponseSchema
     }
-    parameters = SwaggerHelper().get_parameters(CreateTokenRequestSchema)
+    parameters = SwaggerHelper().get_parameters(CreateTokenBodyRequestSchema)
     parameters_schema = CreateTokenRequestSchema
     responses = SwaggerApiView.setResponses({
         200: {
@@ -54,10 +60,6 @@ class CreateToken(SwaggerApiView):
     })
 
     def post(self, controller, data, *args, **kwargs):
-        """
-        Create keyauth token
-        Call this api to create keyauth token
-        """
         innerperms = [
             (1, 1, 'auth', 'objects', 'ObjectContainer', '*', 1, '*'),
             (1, 1, 'auth', 'role', 'RoleContainer', '*', 1, '*'),
@@ -73,11 +75,7 @@ class KeyAuthApi(ApiView):
     """
     @staticmethod
     def register_api(module):
-        # base = 'keyauth'
         rules = [
-            # ('%s/token' % base, 'POST', CreateToken, {'secure': False}),
-
-            # new routes
             ('%s/keyauth/token' % module.base_path, 'POST', CreateToken, {'secure': False}),
         ]
         

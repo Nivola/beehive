@@ -5,7 +5,6 @@
 
 from datetime import datetime
 from beecell.auth import extract
-from six import b
 from beecell.simple import id_gen, truncate, str2bool, format_date
 from beehive.common.apimanager import ApiManagerError
 from beecell.db import TransactionError, QueryError
@@ -36,14 +35,12 @@ class AuthController(BaseAuthController):
         :param args: 
         """
         # add actions
-        actions = ['*', 'view', 'insert', 'update', 'delete', 'use',
-                   'disable', 'recover']
+        actions = ['*', 'view', 'insert', 'update', 'delete', 'use', 'disable', 'recover']
         for action in actions:        
             try:
                 self.manager.add_object_action(action)
             except TransactionError as ex:
-                self.logger.warn(ex)
-                #raise ApiManagerError(ex, code=ex.code)
+                self.logger.warning(ex)
         
         BaseAuthController.init_object(self)
     
@@ -52,10 +49,10 @@ class AuthController(BaseAuthController):
         """
         try:
             res = {
-                'users':self.manager.count_entities(ModelUser),
-                'groups':self.manager.count_entities(ModelGroup),
-                'roles':self.manager.count_entities(ModelRole),
-                'objects':self.manager.count_entities(ModelObject)
+                'users': self.manager.count_entities(ModelUser),
+                'groups': self.manager.count_entities(ModelGroup),
+                'roles': self.manager.count_entities(ModelRole),
+                'objects': self.manager.count_entities(ModelObject)
             }
             return res
         except QueryError as ex:
@@ -162,10 +159,10 @@ class AuthController(BaseAuthController):
             self.logger.debug('Add new role: %s' % name)
             return role
         except TransactionError as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=ex.code)
         except Exception as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=400)
     
     @trace(entity='Role', op='insert')
@@ -198,7 +195,7 @@ class AuthController(BaseAuthController):
         try:
             self.manager.append_role_permissions(role, perms)
         except (QueryError, TransactionError) as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=ex.code)
     
         return role
@@ -241,11 +238,11 @@ class AuthController(BaseAuthController):
         try:
             entity = self.manager.get_entity(ModelUser, oid, for_update=False)
         except QueryError as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError('%s %s not found or name is not unique' % (entity_name, oid), code=404)
 
         if entity is None:
-            self.logger.warn('%s %s not found' % (entity_name, oid))
+            self.logger.warning('%s %s not found' % (entity_name, oid))
             raise ApiManagerError('%s %s not found' % (entity_name, oid), code=404)
 
         # check authorization
@@ -270,6 +267,7 @@ class AuthController(BaseAuthController):
     def _verify_operation_user_role(self, role='ApiSuperadmin'):
         """Check if operation user has a specific role.
 
+        :param role: role to check [default=ApiSuperadmin]
         :return: Boolean
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
@@ -297,7 +295,7 @@ class AuthController(BaseAuthController):
             self.logger.debug('User %s has role %s' % (user_name, role))
             return True
 
-        self.logger.warn('User %s has not role %s' % (user_name, role))
+        self.logger.warning('User %s has not role %s' % (user_name, role))
         return False
 
     @trace(entity='User', op='use')
@@ -329,11 +327,11 @@ class AuthController(BaseAuthController):
         """reset user secret.
 
         :param oid: entity model id or name or uuid
-        :param old_secret:  old secret key to reset
+        :param match_old_secret: if True match old secret [default=False]
+        :param old_secret: old secret key to reset [optional]
         :return: User
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-
         matched = True
         
         if self._verify_operation_user_role() is False:
@@ -350,11 +348,11 @@ class AuthController(BaseAuthController):
                 res = self.manager.set_user_secret(user.model.id)  
             self.logger.debug('Reset user %s secret' % user.uuid)
             return user.model.secret
-        except (TransactionError) as ex:
-            self.logger.error(ex.desc, exc_info=1)
+        except TransactionError as ex:
+            self.logger.error(ex.desc, exc_info=True)
             raise ApiManagerError(ex.desc, code=ex.code)
-        except (Exception) as ex:
-            self.logger.error(ex, exc_info=1)
+        except Exception as ex:
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=400)
 
     @trace(entity='User', op='view')
@@ -427,8 +425,7 @@ class AuthController(BaseAuthController):
         :param storetype: type of the user store. Can be DBUSER, LDAPUSER
         :param active: User status. If True user is active [Optional] [Default=True]
         :param desc: User desc. [Optional]
-        :param password: Password of the user. Set only for user like 
-                         <user>@local [Optional]
+        :param password: Password of the user. Set only for user like <user>@local [Optional]
         :param expiry_date: user expiry date. Set as gg-mm-yyyy [default=365 days]
         :param base: if True create a private role for the user [default=False]
         :param system: if True assign super admin role [default=False]
@@ -460,11 +457,11 @@ class AuthController(BaseAuthController):
             
             self.logger.debug('Add new user: %s' % name)
             return obj.uuid
-        except (TransactionError) as ex:
-            self.logger.error(ex.desc, exc_info=1)
+        except TransactionError as ex:
+            self.logger.error(ex.desc, exc_info=True)
             raise ApiManagerError(ex.desc, code=ex.code)
-        except (Exception) as ex:
-            self.logger.error(ex, exc_info=1)
+        except Exception as ex:
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=400)
     
     #
@@ -547,19 +544,18 @@ class AuthController(BaseAuthController):
         
         try:
             objid = id_gen()
-            group = self.manager.add_group(objid, name, desc=desc, 
-                                           active=active, expiry_date=expiry_date)
+            group = self.manager.add_group(objid, name, desc=desc, active=active, expiry_date=expiry_date)
             
             # add object and permission
             Group(self, oid=group.id).register_object([objid], desc=desc)          
             
             self.logger.debug('Add new group: %s' % name)
             return group.uuid
-        except (TransactionError) as ex:
-            self.logger.error(ex.desc, exc_info=1)
+        except TransactionError as ex:
+            self.logger.error(ex.desc, exc_info=True)
             raise ApiManagerError(ex.desc, code=ex.code)
-        except (Exception) as ex:
-            self.logger.error(ex, exc_info=1)
+        except Exception as ex:
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=400)
 
 
@@ -576,9 +572,8 @@ class Objects(AuthObject):
     #
     # System Object Type manipulation methods
     #    
-    @trace(op='types.view')
-    def get_type(self, oid=None, subsystem=None, type=None,
-                 page=0, size=10, order='DESC', field='id'):
+    @trace(op='view')
+    def get_type(self, oid=None, subsystem=None, type=None, page=0, size=10, order='DESC', field='id'):
         """Get system object type.
         
         :param oid: id of the system object type [optional]
@@ -590,40 +585,39 @@ class Objects(AuthObject):
         :param size: sort field [default=id]        
         :return: List of Tuple (id, type, definition, objclass)
         :rtype: list
-        :raises ApiManagerError if query empty return error.
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         :raises ApiAuthorizationError if query empty return error.
         """
         # verify permissions
         self.verify_permisssions('view')
 
         try:  
-            data, total = self.manager.get_object_type(
-                        oid=oid, objtype=subsystem, objdef=type, 
-                        page=page, size=size, order=order, field=field)
+            data, total = self.manager.get_object_type(oid=oid, objtype=subsystem, objdef=type, page=page, size=size,
+                                                       order=order, field=field)
 
             res = [{
-                'id':i.id, 
-                'subsystem':i.objtype, 
-                'type':i.objdef,
-                'date':{
-                    'creation':format_date(i.creation_date)
+                'id': i.id,
+                'subsystem': i.objtype,
+                'type': i.objdef,
+                'date': {
+                    'creation': format_date(i.creation_date)
                 }                
             }
-            for i in data] #if i.objtype != 'event']
+            for i in data]
 
             return res, total
         except QueryError as ex:    
-            self.logger.error(ex.desc, exc_info=1)
+            self.logger.error(ex.desc, exc_info=True)
             return [], 0
     
-    @trace(op='types.insert')
+    @trace(op='insert')
     def add_types(self, obj_types):
         """Add a system object types
         
         :param obj_types: list of dict {'subsystem':.., 'type':..}
         :return: True if operation is successful
         :rtype: bool
-        :raises ApiManagerError if query empty return error.
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # verify permissions
         self.verify_permisssions('insert')
@@ -633,10 +627,10 @@ class Objects(AuthObject):
             res = self.manager.add_object_types(data)
             return [i.id for i in res]
         except TransactionError as ex:
-            self.logger.error(ex.desc, exc_info=1)
+            self.logger.error(ex.desc, exc_info=True)
             raise ApiManagerError(ex.desc, code=ex.code)
     
-    @trace(op='types.delete')
+    @trace(op='delete')
     def remove_type(self, oid=None, objtype=None, objdef=None):
         """Remove system object type.
         
@@ -645,23 +639,22 @@ class Objects(AuthObject):
         :param objdef: definition of the system object type [optional]
         :return: True if operation is successful
         :rtype: bool
-        :raises ApiManagerError if query empty return error.
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # verify permissions
         self.verify_permisssions('delete')
                 
         try:  
-            res = self.manager.remove_object_type(oid=oid, objtype=objtype, 
-                                                 objdef=objdef)     
+            res = self.manager.remove_object_type(oid=oid, objtype=objtype, objdef=objdef)
             return None
         except TransactionError as ex:
-            self.logger.error(ex.desc, exc_info=1)
+            self.logger.error(ex.desc, exc_info=True)
             raise ApiManagerError(ex.desc, code=ex.code)
 
     #
     # System Object Action manipulation methods
     #
-    @trace(op='actions.view')
+    @trace(op='view')
     def get_action(self, oid=None, value=None):
         """Get system object action.
         
@@ -669,7 +662,7 @@ class Objects(AuthObject):
         :param value: value of the system object action [optional]
         :return: List of Tuple (id, value)   
         :rtype: list
-        :raises ApiManagerError if query empty return error.
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # verify permissions
         self.verify_permisssions('view')
@@ -680,20 +673,20 @@ class Objects(AuthObject):
                 raise QueryError('No data found')
             if type(data) is not list:
                 data = [data]            
-            res = [{'id':i.id, 'value':i.value} for i in data]
+            res = [{'id': i.id, 'value': i.value} for i in data]
             return res
         except QueryError as ex:
-            self.logger.error(ex.desc, exc_info=1)
+            self.logger.error(ex.desc, exc_info=True)
             raise ApiManagerError(ex.desc)
 
-    @trace(op='actions.insert')
+    @trace(op='insert')
     def add_actions(self, actions):
         """Add a system object action
         
         :param actions: list of string like 'use', 'view'
         :return: True if operation is successful   
         :rtype: bool
-        :raises ApiManagerError if query empty return error.
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # verify permissions
         self.verify_permisssions('insert')
@@ -702,10 +695,10 @@ class Objects(AuthObject):
             res = self.manager.add_object_actions(actions)
             return True
         except TransactionError as ex:
-            self.logger.error(ex.desc, exc_info=1)
+            self.logger.error(ex.desc, exc_info=True)
             raise ApiManagerError(ex.desc, code=ex.code)
         
-    @trace(op='actions.delete')
+    @trace(op='delete')
     def remove_action(self, oid=None, value=None):
         """Add a system object action
         
@@ -713,7 +706,7 @@ class Objects(AuthObject):
         :param value: string like 'use', 'view' [optional]
         :return: True if operation is successful   
         :rtype: bool
-        :raises ApiManagerError if query empty return error.
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # verify permissions
         self.verify_permisssions('delete')
@@ -722,19 +715,19 @@ class Objects(AuthObject):
             res = self.manager.remove_object_action(oid=oid, value=value)
             return None
         except TransactionError as ex:
-            self.logger.error(ex.desc, exc_info=1)
+            self.logger.error(ex.desc, exc_info=True)
             raise ApiManagerError(ex.desc, code=ex.code)
 
     #
     # System Object manipulation methods
     #
-    @trace(op='perms.view')
+    @trace(op='view')
     def get_object(self, oid):
         """Get system object filtered by id
         
         :param oid: object id
         :return: dict with object desc
-        :raises ApiManagerError if query empty return error.
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # verify permissions
         self.verify_permisssions('view')
@@ -743,28 +736,27 @@ class Objects(AuthObject):
             data, total = self.manager.get_object(oid=oid)
             data = data[0]
             res = {
-                'id':data.id,
-                'uuid':data.uuid,
-                'subsystem':data.type.objtype,
-                'type':data.type.objdef,
-                'objid':data.objid,
-                'desc':data.desc,
-                'active':str2bool(data.active),
-                'date':{
-                    'creation':format_date(data.creation_date),
-                    'modified':format_date(data.modification_date),
-                    'expiry':''
+                'id': data.id,
+                'uuid': data.uuid,
+                'subsystem': data.type.objtype,
+                'type': data.type.objdef,
+                'objid': data.objid,
+                'desc': data.desc,
+                'active': str2bool(data.active),
+                'date': {
+                    'creation': format_date(data.creation_date),
+                    'modified': format_date(data.modification_date),
+                    'expiry': ''
                 }                
             }
             self.logger.debug('Get object: %s' % res)
             return res
         except QueryError as ex:         
-            self.logger.error(ex.desc, exc_info=1)
+            self.logger.error(ex.desc, exc_info=True)
             raise ApiManagerError('Object %s not found' % (oid), code=404)    
     
     @trace(op='view')
-    def get_objects(self, objid=None, subsystem=None, type=None, 
-            page=0, size=10, order='DESC', field='id'):
+    def get_objects(self, objid=None, subsystem=None, type=None, page=0, size=10, order='DESC', field='id'):
         """Get system object with some filter.
 
         :param objid: Total or partial objid [optional]
@@ -776,53 +768,46 @@ class Objects(AuthObject):
         :param field: sort field [default=id]
         :return: List of Tuple (id, type, value) 
         :rtype: list
-        :raises ApiManagerError if query empty return error.
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # verify permissions
         self.verify_permisssions('view')
                 
         try:
-            data, total = self.manager.get_object(objid=objid, 
-                    objtype=subsystem, objdef=type, page=page, size=size,
-                    order=order, field=field)
+            data, total = self.manager.get_object(objid=objid, objtype=subsystem, objdef=type, page=page, size=size,
+                                                  order=order, field=field)
                     
             res = [{
-                'id':i.id,
-                'uuid':i.uuid,
-                'subsystem':i.type.objtype,
-                'type':i.type.objdef,
-                'objid':i.objid,
-                'desc':i.desc,
-                'active':str2bool(i.active),
-                'date':{
-                    'creation':format_date(i.creation_date),
-                    'modified':format_date(i.modification_date),
-                    'expiry':''
+                'id': i.id,
+                'uuid': i.uuid,
+                'subsystem': i.type.objtype,
+                'type': i.type.objdef,
+                'objid': i.objid,
+                'desc': i.desc,
+                'active': str2bool(i.active),
+                'date': {
+                    'creation': format_date(i.creation_date),
+                    'modified': format_date(i.modification_date),
+                    'expiry': ''
                 }
             } for i in data]
             self.logger.debug('Get objects: %s' % len(res))
             return res, total
         except QueryError as ex:
-            self.logger.error(ex.desc, exc_info=1)
+            self.logger.error(ex.desc, exc_info=True)
             return [], 0
         except Exception as ex:        
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             return [], 0        
 
     @trace(op='insert')
     def add_objects(self, objs):
-        """Add a list ofsystem objects with all the permission related to available 
-        action.
+        """Add a list ofsystem objects with all the permission related to available action.
         
-        :param objs: list of dict like {
-                'subsystem':..,
-                'type':.., 
-                'objid':.., 
-                'desc':..        
-            }
+        :param objs: list of dict like {'subsystem':.., 'type':.., 'objid':.., 'desc':..}
         :return: list of uuid
         :rtype: bool
-        :raises ApiManagerError if query empty return error.
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # verify permissions
         self.verify_permisssions('insert')
@@ -834,21 +819,19 @@ class Objects(AuthObject):
             # create objects
             data = []
             for obj in objs:
-                obj_type, total = self.manager.get_object_type(
-                    objtype=obj['subsystem'], objdef=obj['type'])
+                obj_type, total = self.manager.get_object_type(objtype=obj['subsystem'], objdef=obj['type'])
                 data.append((obj_type[0], obj['objid'], obj['desc']))
 
             res = self.manager.add_object(data, actions)
             self.logger.debug('Add objects: %s' % res)
             return [i.id for i in res]
         except (QueryError, TransactionError) as ex:
-            self.logger.error(ex.desc, exc_info=1)
+            self.logger.error(ex.desc, exc_info=True)
             raise ApiManagerError(ex.desc, code=ex.code)  
 
     @trace(op='delete')
     def remove_object(self, oid=None, objid=None, objtype=None, objdef=None):
-        """Delete system object filtering by id, by name or by type. System 
-        remove also all the related permission. 
+        """Delete system object filtering by id, by name or by type. System remove also all the related permission.
         
         Examples:
             manager.remove_object(oid='123242')
@@ -861,7 +844,7 @@ class Objects(AuthObject):
         :param objdef: definition of the system object [optional]
         :return: True if operation is successful
         :rtype: bool
-        :raises ApiManagerError if query empty return error.
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # verify permissions
         self.verify_permisssions('delete')
@@ -869,58 +852,18 @@ class Objects(AuthObject):
         try:
             if objtype is not None or objdef is not None:
                 # get object types
-                obj_types = self.manager.get_object_type(objtype=objtype, 
-                                                        objdef=objdef)
+                obj_types = self.manager.get_object_type(objtype=objtype, objdef=objdef)
                 for obj_type in obj_types:            
-                    res = self.manager.remove_object(oid=oid, objid=objid, 
-                                                    objtype=obj_type)
+                    res = self.manager.remove_object(oid=oid, objid=objid, objtype=obj_type)
             else:
                 res = self.manager.remove_object(oid=oid, objid=objid)
             self.logger.debug('Remove objects: %s' % res)
             return None
         except TransactionError as ex:
-            self.logger.error(ex.desc, exc_info=1)
-            raise ApiManagerError(ex, code=ex.code)          
+            self.logger.error(ex.desc, exc_info=True)
+            raise ApiManagerError(ex, code=ex.code)
 
-    '''
-    @trace(op='perms.view')
-    def get_permission(self, permission_id=None, objid=None, objtype=None, 
-                             objdef=None, action=None):
-        """Get system object permisssion.
-        
-        :param permission_id: System Object Permission id [optional]
-        :param objid: Total or partial objid [optional]
-        :param objtype str: Object type [optional]
-        :param objdef str: Object definition [optional]
-        :param action str: Object action [optional]
-        :return: list of tuple like ("id", "oid", "type", "definition", 
-                 "objclass", "objid", "aid", "action").
-        :rtype: list
-        :raises ApiManagerError if query empty return error.
-        """
-        # verify permissions
-        self.verify_permisssions('view')
-                
-        try:
-            if permission_id is not None:
-                res = self.manager.get_permission(permission_id)
-            elif objid is not None or objtype is not None or objdef is not None:
-                res = self.manager.get_permissions(
-                    objid=objid, objtype=objtype, objdef=objdef, action=action)
-            else:
-                res = self.manager.get_permission()
-            
-            res = [(i.id, i.obj.id, i.obj.type.objtype, i.obj.type.objdef,
-                    i.obj.objid, i.action.id, 
-                    i.action.value, i.obj.desc) for i in res]            
-
-            self.logger.debug('Get permissions: %s' % len(res))    
-            return res
-        except QueryError as ex:
-            self.logger.error(ex, exc_info=1)
-            return []'''
-
-    @trace(op='perms.view')
+    @trace(op='view')
     def get_permission(self, oid=None, objid=None, objtype=None, objdef=None, action=None):
         """Get system object permisssion with roles.
 
@@ -930,7 +873,7 @@ class Objects(AuthObject):
         :param objdef: Object definition [optional]
         :param action: Object action [optional]
         :return: dict with permission desc
-        :raises ApiManagerError if query empty return error.
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # verify permissions
         self.verify_permisssions('view')
@@ -953,10 +896,10 @@ class Objects(AuthObject):
             }
             return res
         except QueryError as ex:         
-            self.logger.error(ex.desc, exc_info=1)
+            self.logger.error(ex.desc, exc_info=True)
             raise ApiManagerError('Permission %s not found' % (oid), code=404)
 
-    @trace(op='perms.view')
+    @trace(op='view')
     def get_permissions(self, objid=None, subsystem=None, type=None, cascade=False, page=0, size=10, order='DESC',
                         field='id', **kvargs):
         """Get system object permisssions with roles.
@@ -971,7 +914,7 @@ class Objects(AuthObject):
         :param order: sort order [default=DESC]
         :param size: sort field [default=id]        
         :return: list of dict with permission desc
-        :raises ApiManagerError if query empty return error.
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # verify permissions
         self.verify_permisssions('view')
@@ -1016,10 +959,10 @@ class Objects(AuthObject):
             self.logger.debug('Get permissions: %s' % len(res))      
             return res, total
         except QueryError as ex:
-            self.logger.error(ex.desc, exc_info=1)
+            self.logger.error(ex.desc, exc_info=True)
             return [], 0
 
-    @trace(op='perms.view')
+    @trace(op='view')
     def get_permissions_roles(self, perms, *args, **kvargs):
         """List all roles associated to a set of permissions
 
@@ -1039,7 +982,7 @@ class Objects(AuthObject):
                 pp, total = self.manager.get_permissions(objid=perm[2], objtype=perm[0], objdef=perm[1], action=perm[3])
                 perm_ids.append(str(pp[0].id))
             except:
-                self.logger.warn('Permission %s was not found' % perm)
+                self.logger.warning('Permission %s was not found' % perm)
 
         if len(perm_ids) > 0:
             roles, total = self.manager.get_permissions_roles(perms=perm_ids, *args, **kvargs)
@@ -1047,7 +990,7 @@ class Objects(AuthObject):
         self.logger.debug('Permissions %s are used by roles: %s' % (perms, roles))
         return roles, total
 
-    @trace(op='perms.view')
+    @trace(op='view')
     def get_permissions_users(self, perms, *args, **kvargs):
         """List all users associated to a set of permissions
 
@@ -1067,7 +1010,7 @@ class Objects(AuthObject):
                 pp, total = self.manager.get_permissions(objid=perm[2], objtype=perm[0], objdef=perm[1], action=perm[3])
                 perm_ids.append(str(pp[0].id))
             except:
-                self.logger.warn('Permission %s was not found' % perm)
+                self.logger.warning('Permission %s was not found' % perm)
 
         if len(perm_ids) > 0:
             users, total = self.manager.get_permissions_users(perms=perm_ids, *args, **kvargs)
@@ -1075,7 +1018,7 @@ class Objects(AuthObject):
         self.logger.debug('Permissions %s are used by users: %s' % (perms, users))
         return users, total
 
-    @trace(op='perms.view')
+    @trace(op='view')
     def get_permissions_groups(self, perms, *args, **kvargs):
         """List all groups associated to a set of permissions
 
@@ -1095,7 +1038,7 @@ class Objects(AuthObject):
                 pp, total = self.manager.get_permissions(objid=perm[2], objtype=perm[0], objdef=perm[1], action=perm[3])
                 perm_ids.append(str(pp[0].id))
             except:
-                self.logger.warn('Permission %s was not found' % perm)
+                self.logger.warning('Permission %s was not found' % perm)
 
         if len(perm_ids) > 0:
             groups, total = self.manager.get_permissions_groups(perms=perm_ids, *args, **kvargs)
@@ -1109,10 +1052,8 @@ class Role(AuthObject):
     objdesc = 'System roles'
     objuri = 'nas/roles'
     
-    def __init__(self, controller, oid=None, objid=None, name=None, desc=None, 
-                 model=None, active=True):
-        AuthObject.__init__(self, controller, oid=oid, objid=objid, name=name, 
-                            desc=desc, active=active, model=model)
+    def __init__(self, controller, oid=None, objid=None, name=None, desc=None, model=None, active=True):
+        AuthObject.__init__(self, controller, oid=oid, objid=objid, name=name, desc=desc, active=active, model=model)
         
         self.update_object = self.manager.update_role
         self.delete_object = self.manager.remove_role
@@ -1141,8 +1082,8 @@ class Role(AuthObject):
         info['alias'] = self.model.alias
         return info
 
-    @trace(op='perms.view')
-    def get_permissions(self, page=0, size=10, order='DESC', field='id',**kvargs):
+    @trace(op='view')
+    def get_permissions(self, page=0, size=10, order='DESC', field='id', **kvargs):
         """Get users permissions.
 
         :param page: perm list page to show [default=0]
@@ -1173,10 +1114,10 @@ class Role(AuthObject):
             self.logger.debug('Get role %s permissions: %s' % (self.name, truncate(role_perms)))
             return role_perms, total
         except QueryError as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             return [], 0    
 
-    @trace(op='perms.update')
+    @trace(op='update')
     def append_permissions(self, perms):
         """Append permission to role
         
@@ -1209,10 +1150,10 @@ class Role(AuthObject):
             self.logger.debug('Append role %s permission : %s' % (self.name, res))
             return [str(p.id) for p in roleperms]
         except QueryError as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex)
 
-    @trace(op='perms.update')
+    @trace(op='update')
     def remove_permissions(self, perms):
         """Remove permission from role
         
@@ -1244,7 +1185,7 @@ class Role(AuthObject):
             self.logger.debug('Remove role %s permission : %s' % (self.name, perms))
             return [str(p.id) for p in roleperms]
         except QueryError as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex)
 
 
@@ -1287,7 +1228,7 @@ class User(BaseUser):
 
         return info
 
-    @trace(op='attribs-get.update')
+    @trace(op='update')
     def get_attribs(self):
         # verify permissions
         self.verify_permisssions('use')
@@ -1296,7 +1237,7 @@ class User(BaseUser):
         self.logger.debug('User %s attributes: %s' % (self.name, attrib))
         return attrib
     
-    @trace(op='attribs-set.update')
+    @trace(op='update')
     def set_attribute(self, name=None, value=None, desc='', new_name=None):
         """Set an attribute
         
@@ -1313,16 +1254,14 @@ class User(BaseUser):
         self.verify_permisssions('update')
 
         try:
-            res = self.manager.set_user_attribute(self.model, name, value=value, 
-                                                 desc=desc, new_name=new_name)
-            self.logger.debug('Set user %s attribute %s: %s' % 
-                              (self.name, name, value))
+            res = self.manager.set_user_attribute(self.model, name, value=value, desc=desc, new_name=new_name)
+            self.logger.debug('Set user %s attribute %s: %s' % (self.name, name, value))
             return res
         except (QueryError, TransactionError) as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=ex.code)
     
-    @trace(op='attribs-unset.update')
+    @trace(op='update')
     def remove_attribute(self, name):
         """Remove an attribute
         
@@ -1339,10 +1278,10 @@ class User(BaseUser):
             self.logger.debug('Remove user %s attribute %s' % (self.name, name))
             return None
         except (QueryError, TransactionError) as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=ex.code)
     
-    @trace(op='roles-set.update')
+    @trace(op='update')
     def append_role(self, role_id, expiry_date=None):
         """Append role to user.
         
@@ -1370,10 +1309,10 @@ class User(BaseUser):
                 self.logger.debug('Role %s already linked with user %s' % (role, self.name))
             return role_id
         except (QueryError, TransactionError) as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=ex.code)
 
-    @trace(op='roles-unset.update')
+    @trace(op='update')
     def remove_role(self, role_id):
         """Remove role from user.
         
@@ -1393,10 +1332,10 @@ class User(BaseUser):
             self.logger.debug('Remove role %s from user %s' % (role, self.name))          
             return role_id
         except (QueryError, TransactionError) as ex:         
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=ex.code)
 
-    @trace(op='perms.view')
+    @trace(op='view')
     def get_permissions(self, page=0, size=10, order='DESC', field='id', **kvargs):
         """Get users permissions.
 
@@ -1427,11 +1366,10 @@ class User(BaseUser):
             self.logger.debug('Get user %s permissions: %s' % (self.name, truncate(user_perms)))
             return user_perms, total
         except QueryError as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex)
-        return [], 0
 
-    @trace(op='perms.update')
+    @trace(op='update')
     def append_permissions(self, perms):
         """Append permission to user internal role
 
@@ -1465,10 +1403,10 @@ class User(BaseUser):
             self.logger.debug('Append user %s permission : %s' % (self.uuid, res))
             return [str(p.id) for p in roleperms]
         except QueryError as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex)
 
-    @trace(op='perms.update')
+    @trace(op='update')
     def remove_permissions(self, perms):
         """Remove permission from user internal role
 
@@ -1502,13 +1440,12 @@ class User(BaseUser):
             self.logger.debug('Remove user %s permission : %s' % (self.uuid, res))
             return [str(p.id) for p in roleperms]
         except QueryError as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex)
         
-    @trace(op='perms.use')
+    @trace(op='use')
     def can(self, action, objtype, definition=None, name=None, perms=None):
-        """Verify if  user can execute an action over a certain object type.
-        Specify at least name or perms.
+        """Verify if  user can execute an action over a certain object type. Specify at least name or perms.
         
         :param perms: user permissions. Pandas Series with permissions 
                       (pid, oid, type, definition, class, objid, aid, action) [optional]
@@ -1517,9 +1454,7 @@ class User(BaseUser):
         :param action: object action. Es. *, view, insert, update, delete, use
         :return: list of non redundant permission objids
         :rtype: list
-        :raises ApiManagerError: if there are problems retrieving permissions
-                                  or user is not enabled to execute action
-                                  over object with type specified
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # verify permissions
         self.verify_permisssions('use')        
@@ -1528,7 +1463,7 @@ class User(BaseUser):
             try:
                 perms = self.get_permissions(self.name)
             except QueryError as ex:
-                self.logger.error(ex, exc_info=1)
+                self.logger.error(ex, exc_info=True)
                 raise ApiManagerError(ex)
 
         try:
@@ -1568,7 +1503,7 @@ class User(BaseUser):
                                 (self.name, action, objtype, definition))
 
         except Exception as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex)
 
 
@@ -1584,7 +1519,7 @@ class Group(AuthObject):
         self.patch_object = self.manager.patch_group
         self.delete_object = self.manager.remove_group
 
-    @trace(op='roles-set.update')
+    @trace(op='update')
     def append_role(self, role_id, expiry_date=None):
         """Append role to group.
         
@@ -1612,10 +1547,10 @@ class Group(AuthObject):
                 self.logger.debug('Role %s already linked with group %s' % (role, self.name))
             return role_id
         except (QueryError, TransactionError) as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=ex.code)
 
-    @trace(op='roles-unset.update')
+    @trace(op='update')
     def remove_role(self, role_id):
         """Remove role from group.
         
@@ -1635,10 +1570,10 @@ class Group(AuthObject):
             self.logger.debug('Remove role %s from group %s' % (role, self.name))   
             return role_id
         except (QueryError, TransactionError) as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=ex.code)
 
-    @trace(op='users-set.update')
+    @trace(op='update')
     def append_user(self, user_id):
         """Append user to group.
         
@@ -1664,10 +1599,10 @@ class Group(AuthObject):
                 self.logger.debug('User %s already linked with group %s' % (user, self.name))
             return user_id
         except (QueryError, TransactionError) as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=ex.code)
 
-    @trace(op='users-unset.update')
+    @trace(op='update')
     def remove_user(self, user_id):
         """Remove user from group.
         
@@ -1687,10 +1622,10 @@ class Group(AuthObject):
             self.logger.debug('Remove user %s from group %s' % (user, self.name))
             return user_id
         except (QueryError, TransactionError) as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=ex.code)
 
-    @trace(op='perms.view')
+    @trace(op='view')
     def get_permissions(self, page=0, size=10, order='DESC', field='id', **kvargs):
         """Get groups permissions.
 
@@ -1722,11 +1657,10 @@ class Group(AuthObject):
             self.logger.debug('Get group %s permissions: %s' % (self.name, truncate(group_perms)))
             return group_perms, total
         except QueryError as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex)
-        return [], 0
 
-    @trace(op='perms.update')
+    @trace(op='update')
     def append_permissions(self, perms):
         """Append permission to group internal role
 
@@ -1760,10 +1694,10 @@ class Group(AuthObject):
             self.logger.debug('Append group %s permission : %s' % (self.uuid, res))
             return [str(p.id) for p in roleperms]
         except QueryError as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex)
 
-    @trace(op='perms.update')
+    @trace(op='update')
     def remove_permissions(self, perms):
         """Remove permission from group internal role
 
@@ -1797,13 +1731,12 @@ class Group(AuthObject):
             self.logger.debug('Remove group %s permission : %s' % (self.uuid, res))
             return [str(p.id) for p in roleperms]
         except QueryError as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex)
 
-    @trace(op='perms.use')
+    @trace(op='use')
     def can(self, action, objtype, definition=None, name=None, perms=None):
-        """Verify if  group can execute an action over a certain object type.
-        Specify at least name or perms.
+        """Verify if  group can execute an action over a certain object type. Specify at least name or perms.
         
         :param perms: group permissions. Pandas Series with permissions 
                       (pid, oid, type, definition, class, objid, aid, action) [optional]
@@ -1812,9 +1745,7 @@ class Group(AuthObject):
         :param action: object action. Es. *, view, insert, update, delete, use
         :return: list of non redundant permission objids
         :rtype: list
-        :raises ApiManagerError: if there are problems retrieving permissions
-                                  or group is not enabled to execute action
-                                  over object with type specified
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # verify permissions
         self.verify_permisssions('use')
@@ -1823,7 +1754,7 @@ class Group(AuthObject):
             try:
                 perms = self.get_permissions(self.name)
             except QueryError as ex:
-                self.logger.error(ex, exc_info=1)
+                self.logger.error(ex, exc_info=True)
                 raise ApiManagerError(ex)
 
         try:
@@ -1841,10 +1772,10 @@ class Group(AuthObject):
                 if definition is not None:
                     # verify object type, definition and action. If they match 
                     # objid to values list
-                    if (perm_objtype == objtype and perm_definition == definition and perm_action in ['*', action]):
+                    if perm_objtype == objtype and perm_definition == definition and perm_action in ['*', action]:
                         objids.append(perm_objid)
                 else:
-                    if (perm_objtype == objtype and perm_action in ['*', action]):
+                    if perm_objtype == objtype and perm_action in ['*', action]:
                         if perm_definition not in defs:
                             defs.append(perm_definition)
 
@@ -1856,13 +1787,11 @@ class Group(AuthObject):
                 return res
             # loop between object definition
             elif len(defs) > 0:
-                self.logger.debug('Group %s can %s objects {%s, %s}' % 
-                                  (self.name, action, objtype, defs))
+                self.logger.debug('Group %s can %s objects {%s, %s}' % (self.name, action, objtype, defs))
                 return defs
             else:
-                raise Exception('Group %s can not \'%s\' objects \'%s:%s\'' % 
-                                (self.name, action, objtype, definition))
+                raise Exception('Group %s can not \'%s\' objects \'%s:%s\'' % (self.name, action, objtype, definition))
 
         except Exception as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex)

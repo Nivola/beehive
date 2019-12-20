@@ -28,6 +28,10 @@ class SimpleHttpLoginRequestSchema(Schema):
             raise ValidationError('User syntax must be <user>@<domain>')
 
 
+class SimpleHttpLoginBodyRequestSchema(Schema):
+    body = fields.Nested(SimpleHttpLoginRequestSchema, context='body')
+
+
 class SimpleHttpLoginResponseSchema(Schema):
     uid = fields.String(required=True, example='')
     type = fields.String(example='simplehttp')
@@ -36,12 +40,14 @@ class SimpleHttpLoginResponseSchema(Schema):
 
 
 class SimpleHttpLogin(SwaggerApiView):
+    summary = 'Login user with simple http authentication'
+    description = 'Login user with simple http authentication'
     tags = ['authorization']
     definitions = {
         'SimpleHttpLoginRequestSchema': SimpleHttpLoginRequestSchema,
         'SimpleHttpLoginResponseSchema': SimpleHttpLoginResponseSchema
     }
-    parameters = SwaggerHelper().get_parameters(SimpleHttpLoginRequestSchema)
+    parameters = SwaggerHelper().get_parameters(SimpleHttpLoginBodyRequestSchema)
     parameters_schema = SimpleHttpLoginRequestSchema
     responses = SwaggerApiView.setResponses({
         200: {
@@ -51,10 +57,6 @@ class SimpleHttpLogin(SwaggerApiView):
     })
 
     def post(self, controller, data, *args, **kwargs):
-        """
-        Login user with simple http authentication
-        Login user with simple http authentication
-        """
         user = get_value(data, 'user', None, exception=True)
         password = get_value(data, 'password', None, exception=True)
         login_ip = get_value(data, 'login-ip', None, exception=True)
@@ -83,13 +85,7 @@ class SimpleHttpAuthApi(ApiView):
     """
     @staticmethod
     def register_api(module):
-        # base = 'simplehttp'
         rules = [
-            # ('%s/login/domains' % base, 'GET', ListDomains, {'secure': False}),
-            # ('%s/login' % base, 'POST', Login, {'secure': False}),
-
-            # new routes
-            # ('%s/simplehttp/login/domains' % module.base_path, 'GET', ListDomains, {'secure': False}),
             ('%s/simplehttp/login' % module.base_path, 'POST', SimpleHttpLogin, {'secure': False})
         ]
         

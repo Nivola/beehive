@@ -19,7 +19,9 @@ logger = logging.getLogger(__name__)
 
 
 class SchedulerDbManager(AbstractDbManager):
-    """
+    """Scheduler db manager
+
+    :param session: sqlalchemy session
     """
     def get_steps(self, task_id):
         """Get task steps
@@ -80,6 +82,6 @@ class SchedulerDbManager(AbstractDbManager):
         res = query.run(tags, *args, **kvargs)
         return res
 
-    def delete(self, ):
+    def delete(self):
         """Delete events"""
         pass

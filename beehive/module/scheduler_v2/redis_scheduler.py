@@ -123,7 +123,7 @@ class RedisScheduleEntry(ScheduleEntry):
 
             return res
         except Exception as ex:
-            logger.error(ex, exc_info=1)
+            logger.error(ex, exc_info=True)
             raise
 
 
@@ -164,7 +164,7 @@ class RedisScheduler(Scheduler):
                 try:
                     val = json.loads(item[0])
                 except:
-                    logger.warn('', exc_info=1)
+                    logger.warn('', exc_info=True)
                     val = {}
                 name = val.get('name')
                 options = val.get('options', {})
@@ -181,8 +181,8 @@ class RedisScheduler(Scheduler):
                                                           options=options, relative=val.get('relative'),
                                                           total_run_count=val.get('total_run_count'))
             logger.debug('Get schedules from redis: %s' % self._store)
-        except Exception:
-            logger.error('', exc_info=1)
+        except Exception as exc:
+            logger.error(exc, exc_info=True)
             self._store = None
         return self._store
 
@@ -196,7 +196,7 @@ class RedisScheduler(Scheduler):
             res = self._redis_manager.set(key, json.dumps(schedule))
             logger.debug('Create schedule %s to redis key %s: %s' % (schedule.get('name'), key, res))
         except Exception as exc:
-            logger.error(exc, exc_info=1)
+            logger.error(exc, exc_info=True)
             raise
         return res
 
@@ -207,7 +207,7 @@ class RedisScheduler(Scheduler):
             res = self._redis_manager.delete(key)
             logger.debug('Delete schedule %s from redis key %s: %s' % (name, key, res))
         except Exception as exc:
-            logger.error(exc, exc_info=1)
+            logger.error(exc, exc_info=True)
             raise
         return res
 
@@ -220,7 +220,7 @@ class RedisScheduler(Scheduler):
             else:
                 entries = entries.values()
         except Exception as exc:
-            logger.error(exc, exc_info=1)
+            logger.error(exc, exc_info=True)
             entries = []
         return entries
 
@@ -230,7 +230,7 @@ class RedisScheduler(Scheduler):
             self._store = self.open_schedule()
             self._store.keys()
         except Exception as exc:
-            logger.error(exc, exc_info=1)
+            logger.error(exc, exc_info=True)
             self._store = None
 
     def get_schedule(self):
@@ -245,13 +245,10 @@ class RedisScheduler(Scheduler):
     schedule = property(get_schedule, set_schedule)
 
     def sync(self):
-        # new_store = self.open_schedule()
-        # new_store.update(self._store)
         if self._store is not None:
             self._store = self.open_schedule()
 
     def reserve(self, entry):
-        # new_entry = self.schedule[entry.name] = next(entry)
         new_entry = next(entry)
         key = self._prefix + '.' + new_entry.name
         redis_entry = self._redis_manager.get(key)

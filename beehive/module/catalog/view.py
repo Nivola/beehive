@@ -3,7 +3,7 @@
 # (C) Copyright 2018-2019 CSI-Piemonte
 # (C) Copyright 2019-2020 CSI-Piemonte
 
-from beehive.common.apimanager import ApiView, ApiManagerError, PaginatedRequestQuerySchema,\
+from beehive.common.apimanager import ApiView, PaginatedRequestQuerySchema,\
     PaginatedResponseSchema, ApiObjectResponseSchema, SwaggerApiView,\
     CrudApiObjectResponseSchema, GetApiObjectRequestSchema,\
     ApiObjectPermsResponseSchema, ApiObjectPermsRequestSchema
@@ -14,7 +14,6 @@ from beecell.swagger import SwaggerHelper
 #
 # catalog
 #
-## list
 class ListCatalogsRequestSchema(PaginatedRequestQuerySchema):
     zone = fields.String(context='query', default='internal')
 
@@ -28,6 +27,8 @@ class ListCatalogsResponseSchema(PaginatedResponseSchema):
 
 
 class ListCatalogs(SwaggerApiView):
+    summary = 'List catalogs'
+    description = 'List catalogs'
     tags = ['directory']
     definitions = {
         'ListCatalogsResponseSchema': ListCatalogsResponseSchema,
@@ -42,16 +43,11 @@ class ListCatalogs(SwaggerApiView):
     })
     
     def get(self, controller, data, *args, **kwargs):
-        """
-        List catalogs
-        Call this api to list all the existing catalogs
-        """            
         catalogs, total = controller.get_catalogs(**data)
         res = [r.info() for r in catalogs]
         return self.format_paginated_response(res, 'catalogs', total, **data)
 
 
-## get
 class GetCatalogParamsServicesResponseSchema(Schema):
     service = fields.String(required=True, default='auth')
     endpoints = fields.List(fields.String(default='http://localhost:6060'))
@@ -67,6 +63,8 @@ class GetCatalogResponseSchema(Schema):
 
 
 class GetCatalog(SwaggerApiView):
+    summary = 'Get catalog'
+    description = 'Get catalog'
     tags = ['directory']
     definitions = {
         'GetCatalogResponseSchema': GetCatalogResponseSchema,
@@ -85,8 +83,10 @@ class GetCatalog(SwaggerApiView):
         resp = {'catalog':res}        
         return resp
 
-## get perms
+
 class GetCatalogPerms(SwaggerApiView):
+    summary = 'Get catalog permissions'
+    description = 'Get catalog permissions'
     tags = ['directory']
     definitions = {
         'ApiObjectPermsRequestSchema': ApiObjectPermsRequestSchema,
@@ -107,7 +107,6 @@ class GetCatalogPerms(SwaggerApiView):
         return self.format_paginated_response(res, 'perms', total, **data)
 
 
-## create
 class CreateCatalogParamRequestSchema(Schema):
     name = fields.String(required=True)
     desc = fields.String(required=True)
@@ -123,6 +122,8 @@ class CreateCatalogBodyRequestSchema(Schema):
 
 
 class CreateCatalog(SwaggerApiView):
+    summary = 'Create catalog'
+    description = 'Create catalog'
     tags = ['directory']
     definitions = {
         'CreateCatalogRequestSchema': CreateCatalogRequestSchema,
@@ -139,10 +140,9 @@ class CreateCatalog(SwaggerApiView):
     
     def post(self, controller, data, *args, **kwargs):
         resp = controller.add_catalog(**data.get('catalog'))
-        return ({'uuid':resp}, 201)
+        return {'uuid': resp}, 201
 
 
-## update
 class UpdateCatalogParamRequestSchema(Schema):
     name = fields.String()
     desc = fields.String()
@@ -158,10 +158,12 @@ class UpdateCatalogBodyRequestSchema(GetApiObjectRequestSchema):
 
 
 class UpdateCatalog(SwaggerApiView):
+    summary = 'Update catalog'
+    description = 'Update catalog'
     tags = ['directory']
     definitions = {
-        'UpdateCatalogRequestSchema':UpdateCatalogRequestSchema,
-        'CrudApiObjectResponseSchema':CrudApiObjectResponseSchema
+        'UpdateCatalogRequestSchema': UpdateCatalogRequestSchema,
+        'CrudApiObjectResponseSchema': CrudApiObjectResponseSchema
     }
     parameters = SwaggerHelper().get_parameters(UpdateCatalogBodyRequestSchema)
     parameters_schema = UpdateCatalogRequestSchema
@@ -177,8 +179,10 @@ class UpdateCatalog(SwaggerApiView):
         resp = catalog.update(**data.get('catalog'))
         return {'uuid':resp}
     
-## delete
+
 class DeleteCatalog(SwaggerApiView):
+    summary = 'Delete catalog'
+    description = 'Delete catalog'
     tags = ['directory']
     definitions = {}
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
@@ -218,6 +222,8 @@ class ListEndpointsResponseSchema(PaginatedResponseSchema):
 
 
 class ListEndpoints(SwaggerApiView):
+    summary = 'List catalog endpoints'
+    description = 'List catalog endpoints'
     tags = ['directory']
     definitions = {
         'ListEndpointsResponseSchema': ListEndpointsResponseSchema,
@@ -237,12 +243,13 @@ class ListEndpoints(SwaggerApiView):
         return self.format_paginated_response(res, 'endpoints', total, **data)
 
 
-## get
 class GetEndpointResponseSchema(Schema):
     endpoint = fields.Nested(ListEndpointsParamsResponseSchema, required=True, allow_none=True)
 
 
 class GetEndpoint(SwaggerApiView):
+    summary = 'Get catalog endpoint'
+    description = 'Get catalog endpoint'
     tags = ['directory']
     definitions = {
         'GetEndpointResponseSchema': GetEndpointResponseSchema,
@@ -261,8 +268,10 @@ class GetEndpoint(SwaggerApiView):
         resp = {'endpoint':res}        
         return resp
         
-## get perms
+
 class GetEndpointPerms(SwaggerApiView):
+    summary = 'Get catalog endpoint permissions'
+    description = 'Get catalog endpoint permissions'
     tags = ['directory']
     definitions = {
         'ApiObjectPermsRequestSchema': ApiObjectPermsRequestSchema,
@@ -283,7 +292,6 @@ class GetEndpointPerms(SwaggerApiView):
         return self.format_paginated_response(res, 'perms', total, **data)    
 
 
-## create
 class CreateEndpointParamRequestSchema(Schema):
     name = fields.String()
     desc = fields.String()
@@ -302,10 +310,12 @@ class CreateEndpointBodyRequestSchema(Schema):
 
 
 class CreateEndpoint(SwaggerApiView):
+    summary = 'Create catalog endpoint'
+    description = 'Create catalog endpoint'
     tags = ['directory']
     definitions = {
         'CreateEndpointRequestSchema': CreateEndpointRequestSchema,
-        'CrudApiObjectResponseSchema':CrudApiObjectResponseSchema
+        'CrudApiObjectResponseSchema': CrudApiObjectResponseSchema
     }
     parameters = SwaggerHelper().get_parameters(CreateEndpointBodyRequestSchema)
     parameters_schema = CreateEndpointRequestSchema
@@ -324,7 +334,6 @@ class CreateEndpoint(SwaggerApiView):
         return ({'uuid':resp}, 201)
 
 
-## update
 class UpdateEndpointParamRequestSchema(Schema):
     name = fields.String()
     desc = fields.String()
@@ -342,10 +351,12 @@ class UpdateEndpointBodyRequestSchema(GetApiObjectRequestSchema):
 
 
 class UpdateEndpoint(SwaggerApiView):
+    summary = 'Update catalog endpoint'
+    description = 'Update catalog endpoint'
     tags = ['directory']
     definitions = {
-        'UpdateEndpointRequestSchema':UpdateEndpointRequestSchema,
-        'CrudApiObjectResponseSchema':CrudApiObjectResponseSchema
+        'UpdateEndpointRequestSchema': UpdateEndpointRequestSchema,
+        'CrudApiObjectResponseSchema': CrudApiObjectResponseSchema
     }
     parameters = SwaggerHelper().get_parameters(UpdateEndpointBodyRequestSchema)
     parameters_schema = UpdateEndpointRequestSchema
@@ -359,10 +370,12 @@ class UpdateEndpoint(SwaggerApiView):
     def put(self, controller, data, oid, *args, **kwargs):
         endpoint = controller.get_endpoint(oid)
         resp = endpoint.update(**data.get('endpoint'))
-        return {'uuid':resp}
+        return {'uuid': resp}
     
-## delete
+
 class DeleteEndpoint(SwaggerApiView):
+    summary = 'Delete catalog endpoint'
+    description = 'Delete catalog endpoint'
     tags = ['directory']
     definitions = {}
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
@@ -375,7 +388,7 @@ class DeleteEndpoint(SwaggerApiView):
     def delete(self, controller, data, oid, *args, **kwargs):
         endpoint = controller.get_endpoint(oid)
         resp = endpoint.delete()
-        return (resp, 204)
+        return resp, 204
 
 
 class CatalogAPI(ApiView):
@@ -383,25 +396,7 @@ class CatalogAPI(ApiView):
     """
     @staticmethod
     def register_api(module):
-        base = 'directory'
         rules = [
-            # ('%s/catalogs' % base, 'GET', ListCatalogs, {}),
-            # ('%s/catalogs/<oid>' % base, 'GET', GetCatalog, {}),
-            # #('%s/catalog/<oid>/<zone>' % base, 'GET', FilterCatalog, {}),
-            # ('%s/catalogs/<oid>/perms' % base, 'GET', GetCatalogPerms, {}),
-            # ('%s/catalogs' % base, 'POST', CreateCatalog, {}),
-            # ('%s/catalogs/<oid>' % base, 'PUT', UpdateCatalog, {}),
-            # ('%s/catalogs/<oid>' % base, 'DELETE', DeleteCatalog, {}),
-            # #('%s/catalogs/<oid>/services' % base, 'GET', GetCatalogServices, {}),
-            #
-            # ('%s/endpoints' % base, 'GET', ListEndpoints, {}),
-            # ('%s/endpoints/<oid>' % base, 'GET', GetEndpoint, {}),
-            # ('%s/endpoints/<oid>/perms' % base, 'GET', GetEndpointPerms, {}),
-            # ('%s/endpoints' % base, 'POST', CreateEndpoint, {}),
-            # ('%s/endpoints/<oid>' % base, 'PUT', UpdateEndpoint, {}),
-            # ('%s/endpoints/<oid>' % base, 'DELETE', DeleteEndpoint, {}),
-
-            # new routes
             ('%s/catalogs' % module.base_path, 'GET', ListCatalogs, {}),
             ('%s/catalogs/<oid>' % module.base_path, 'GET', GetCatalog, {}),
             # ('%s/catalog/<oid>/<zone>' % module.base_path, 'GET', FilterCatalog, {}),

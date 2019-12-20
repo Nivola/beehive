@@ -26,6 +26,11 @@ class CatalogConsumerError(Exception): pass
 
 
 class CatalogConsumer(ConsumerMixin):
+    """Catalog consumer
+    
+    :param connection: consumer connection
+    :param api_manager: ApiManager instance
+    """    
     def __init__(self, connection, api_manager):
         self.logger = getLogger(self.__class__.__module__ + '.' + self.__class__.__name__)
         
@@ -39,7 +44,8 @@ class CatalogConsumer(ConsumerMixin):
     def store_endpoint(self, endpoint, message):
         """Store node in db.
         
-        :param node json: node to store
+        :param endpoint: endpoint
+        :param message: message
         :raise CatalogConsumerError:
         """
         session = None
@@ -71,7 +77,7 @@ class CatalogConsumer(ConsumerMixin):
                 CatalogEndpoint(controller, oid=res.id).register_object(objid.split('//'), desc=endpoint['desc'])
                 self.logger.debug('Create endpoint : %s' % endpoint)
         except (TransactionError, Exception) as ex:
-            self.logger.error('Error storing endpoint: %s' % ex, exc_info=1)
+            self.logger.error('Error storing endpoint: %s' % ex, exc_info=True)
         finally:
             if session is not None:
                 self.db_manager.release_session(operation.session)
@@ -81,11 +87,10 @@ class CatalogConsumer(ConsumerMixin):
 
 class CatalogConsumerRedis(CatalogConsumer):
     def __init__(self, connection, api_manager):
-        """Catalog consumer that create a zmq forwarder and a zmq subscriber.
+        """Catalog consumer based on redis kombu queue
         
-        :param host: hostname to use when open zmq socket
-        :param port: listen port of the zmq forwarder. Sobscriber connect to 
-                     forwarder backend port = port+1
+        :param connection: consumer connection
+        :param api_manager: ApiManager instance
         :raise CatalogConsumerError:
         """
         super(CatalogConsumerRedis, self).__init__(connection, api_manager)
@@ -112,6 +117,8 @@ class CatalogConsumerRedis(CatalogConsumer):
 
 def start_catalog_consumer(params):
     """Start catalog consumer
+    
+    :param params: configuration params    
     """
     # internal logger
     logger = getLogger('beehive')

@@ -12,6 +12,10 @@ from beehive.common.event import EventHandler
 
 
 class ApiEventHandler(EventHandler):
+    """Base event handler
+
+    :param api_manager: ApiManager instance
+    """
     def __init__(self, api_manager):
         EventHandler.__init__(self, api_manager)
 
@@ -20,20 +24,23 @@ class ApiEventHandler(EventHandler):
         # internal logger
         self.logger2 = logging.getLogger('ApiEventHandler')
 
+        name = params['api_id'].decode('utf-8') + '.apis'
         log_path = params.get('api_log', None)
+
         if log_path is None:
             log_path = '/var/log/%s/%s' % (params['api_package'], params['api_env'])
+        else:
+            log_path = log_path.decode('utf-8')
 
-        logname = '%s/apis' % log_path
-        logger_file = '%s.log' % logname
+        file_name = log_path + name + '.log'
         loggers = [self.logger2]
-        LoggerHelper.rotatingfile_handler(loggers, logging.INFO, logger_file, frmt='%(message)s')
+        LoggerHelper.rotatingfile_handler(loggers, logging.INFO, file_name, frmt='%(message)s')
 
     def callback(self, event, message):
         """Consume event relative to api where new access token is requested
 
-        :param event:
-        :param message:
+        :param event: event received
+        :param message: message received
         :return:
         """
         event_type = event.get('type')
@@ -56,4 +63,3 @@ class ApiEventHandler(EventHandler):
                 'params': truncate(json.dumps(data.get('params')))
             }
             self.logger2.info(tmpl % log)
-            # self.logger.debug(tmpl % log)

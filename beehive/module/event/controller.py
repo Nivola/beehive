@@ -17,7 +17,9 @@ from beehive.common.data import trace
 
 
 class EventController(ApiController):
-    """Event Module controller.
+    """Event Module controller
+    
+    :param module: ApiModule instance
     """    
     version = 'v1.0'
     
@@ -107,7 +109,7 @@ class EventController(ApiController):
             self.logger.debug('Get events (total:%s): %s' % (total, truncate(res)))
             return res, total
         except QueryError as ex:         
-            self.logger.warn(ex)
+            self.logger.warning(ex)
             return [], 0
 
     @trace(entity='GenericEvent', op='view')
@@ -127,9 +129,7 @@ class EventController(ApiController):
         except QueryError as ex:
             self.logger.error(ex)
             raise ApiManagerError(ex)
-        
-        #res = event_types_available.intersection(event_types)
-            
+
         self.logger.debug('Get event types: %s' % res)
         return res
     
@@ -165,19 +165,23 @@ class GenericEvent(ApiObject):
 
 
 class BaseEvent(object):
+    """Base event class
+
+    :param event: event
+    """
     def __init__(self, event):
         self.logger = logging.getLogger(self.__class__.__module__+'.'+self.__class__.__name__)
 
         self.event = event
     
     def info(self):
-        """
+        """Get event info
         """
         data = {}
         try:
             data = json.loads(self.event.data)
         except Exception as ex:
-            self.logger.warn('Can not parse event %s data' % self.event.id)
+            self.logger.warning('Can not parse event %s data' % self.event.id)
                             
         obj = {'id': self.event.id,
                'event_id': self.event.event_id,
@@ -192,6 +196,6 @@ class BaseEvent(object):
         return obj
     
     def detail(self):
-        """
+        """Get event detail
         """
         return self.info()

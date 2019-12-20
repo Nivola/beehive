@@ -10,6 +10,8 @@ from beehive.module.config.controller import ConfigController
 
 class ConfigModule(ApiModule):
     """Beehive Config Module
+
+    :param module: ApiModule instance
     """
     def __init__(self, api_manger):
         """ """

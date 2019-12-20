@@ -53,32 +53,41 @@ class CatalogEndpoint(Base, BaseEntity):
 
 
 class CatalogDbManager(AbstractDbManager):
+    """Catalog db manager
+
+    :param session: sqlalchemy session
+    """
+
     @staticmethod
     def create_table(db_uri):
-        """Create all tables in the engine. This is equivalent to "Create Table"
-        statements in raw SQL."""
+        """Create all tables in the engine. This is equivalent to "Create Table" statements in raw SQL
+
+        :param db_uri: db uri
+        """
         try:
             engine = create_engine(db_uri)
-            engine.execute("SET FOREIGN_KEY_CHECKS=1;")
+            engine.execute('SET FOREIGN_KEY_CHECKS=1;')
             Base.metadata.create_all(engine)
-            logger.info('Create tables on : %s' % (db_uri))
+            logger.info('Create tables on : %s' % db_uri)
             del engine
         except exc.DBAPIError as e:
             raise Exception(e)
-    
+
     @staticmethod
     def remove_table(db_uri):
-        """ Remove all tables in the engine. This is equivalent to "Drop Table"
-        statements in raw SQL."""
+        """Remove all tables in the engine. This is equivalent to "Drop Table" statements in raw SQL
+
+        :param db_uri: db uri
+        """
         try:
             engine = create_engine(db_uri)
-            engine.execute("SET FOREIGN_KEY_CHECKS=0;")
+            engine.execute('SET FOREIGN_KEY_CHECKS=1;')
             Base.metadata.drop_all(engine)
-            logger.info('Remove tables from : %s' % (db_uri))
+            logger.info('Remove tables from : %s' % db_uri)
             del engine
         except exc.DBAPIError as e:
-            raise Exception(e)    
-    
+            raise Exception(e)
+
     #
     # catalog
     #
@@ -108,7 +117,8 @@ class CatalogDbManager(AbstractDbManager):
     
     def add(self, objid, name, desc, zone):
         """Add catalog.
-  
+
+        :param objid: authorization id
         :param name: catalog name
         :param desc: catalog description
         :param zone: catalog zone. Value like internal or external
@@ -183,8 +193,7 @@ class CatalogDbManager(AbstractDbManager):
         :return: :class:`CatalogEndpoint`
         :raises TransactionError: raise :class:`TransactionError`
         """        
-        res = self.add_entity(CatalogEndpoint, objid, name, service, desc, 
-                              catalog, uri, active)
+        res = self.add_entity(CatalogEndpoint, objid, name, service, desc, catalog, uri, active)
         return res
     
     def update_endpoint(self, *args, **kvargs):
@@ -204,6 +213,7 @@ class CatalogDbManager(AbstractDbManager):
     
     def delete_endpoint(self, *args, **kvargs):
         """Remove catalog endpoint.
+
         :param int oid: entity id. [optional]
         :return: :class:`Catalog`
         :raises TransactionError: raise :class:`TransactionError`

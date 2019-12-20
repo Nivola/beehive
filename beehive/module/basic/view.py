@@ -17,6 +17,8 @@ class ServerPingResponseSchema(Schema):
 
 
 class ServerPing(SwaggerApiView):
+    summary = 'Server ping api'
+    description = 'Server ping api'
     tags = ['base']
     definitions = {
         'ServerPingResponseSchema': ServerPingResponseSchema,
@@ -29,10 +31,6 @@ class ServerPing(SwaggerApiView):
     })    
     
     def get(self, controller, data, *args, **kwargs):
-        """
-        Server ping api
-        Call this api to ping server
-        """
         resp = controller.ping()
         return resp
 
@@ -44,6 +42,8 @@ class ServerInfoResponseSchema(Schema):
 
 
 class ServerInfo(SwaggerApiView):
+    summary = 'Server info api'
+    description = 'Server info api'
     tags = ['base']
     definitions = {
         'ServerInfoResponseSchema': ServerInfoResponseSchema,
@@ -56,61 +56,57 @@ class ServerInfo(SwaggerApiView):
     })
 
     def get(self, controller, data, *args, **kwargs):
-        """
-        Server info api
-        Call this api to get server info
-        """  
         resp = controller.info()
         return resp
 
 
-class ServerProcessTree(ApiView):
-    def dispatch(self, controller, data, *args, **kwargs):
-        """
-        bla bla
-        ---
-        """        
-        resp = controller.processes()
-        return resp
-
-
-class ServerWorkers(ApiView):
-    def get(self, controller, data, *args, **kwargs):
-        """
-
-        """        
-        resp = controller.workers()
-        return resp
-
-
-class ServerConfigs(ApiView):
-    def dispatch(self, controller, data, *args, **kwargs):
-        """
-        bla bla
-        ---
-        """        
-        resp = controller.get_configs()
-        return resp
-
-
-class ServerUwsgiConfigs(ApiView):
-    def dispatch(self, controller, data, *args, **kwargs):
-        """
-        bla bla
-        ---
-        """        
-        resp = controller.get_uwsgi_configs()
-        return resp
-
-
-class ServerReload(ApiView):
-    def dispatch(self, controller, data, *args, **kwargs):
-        """
-        bla bla
-        ---
-        """        
-        resp = controller.reload()
-        return resp
+# class ServerProcessTree(ApiView):
+#     def dispatch(self, controller, data, *args, **kwargs):
+#         """
+#         bla bla
+#         ---
+#         """
+#         resp = controller.processes()
+#         return resp
+#
+#
+# class ServerWorkers(ApiView):
+#     def get(self, controller, data, *args, **kwargs):
+#         """
+#
+#         """
+#         resp = controller.workers()
+#         return resp
+#
+#
+# class ServerConfigs(ApiView):
+#     def dispatch(self, controller, data, *args, **kwargs):
+#         """
+#         bla bla
+#         ---
+#         """
+#         resp = controller.get_configs()
+#         return resp
+#
+#
+# class ServerUwsgiConfigs(ApiView):
+#     def dispatch(self, controller, data, *args, **kwargs):
+#         """
+#         bla bla
+#         ---
+#         """
+#         resp = controller.get_uwsgi_configs()
+#         return resp
+#
+#
+# class ServerReload(ApiView):
+#     def dispatch(self, controller, data, *args, **kwargs):
+#         """
+#         bla bla
+#         ---
+#         """
+#         resp = controller.reload()
+#         return resp
 
 
 class BaseAPI(ApiView):

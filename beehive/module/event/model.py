@@ -7,12 +7,12 @@ import ujson as json
 import logging
 from re import match
 from six import b
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String
 from sqlalchemy import create_engine, exc
 from sqlalchemy.dialects.mysql import DATETIME
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import distinct, desc
+from sqlalchemy import distinct
 from beecell.simple import truncate
 from beehive.common.data import query
 from beehive.common.model import AbstractDbManager, PaginatedQueryGenerator
@@ -24,6 +24,18 @@ logger = logging.getLogger(__name__)
 
 
 class DbEvent(Base):
+    """Event orm class
+
+    :param eventid: event id
+    :param etype: event type
+    :param objid: event object id
+    :param objdef: event object definition
+    :param objtype: event object objtype
+    :param creation: creation time
+    :param data: operation data
+    :param source: event source
+    :param dest: event destionation
+    """
     __tablename__ = 'event'
 
     id = Column(Integer, primary_key=True)
@@ -38,17 +50,6 @@ class DbEvent(Base):
     dest = Column(String(500), nullable=True)
     
     def __init__(self, eventid, etype, objid, objdef, objtype, creation, data, source, dest):
-        """
-        :param eventid: event id
-        :param etype: event type
-        :param objid: event object id
-        :param objdef: event object definition
-        :param objtype: event object objtype
-        :param creation: creation time
-        :param data: operation data
-        :param source: event source
-        :param dest: event destionation
-        """
         self.event_id = eventid
         self.type = etype
         self.objid = objid
@@ -64,37 +65,40 @@ class DbEvent(Base):
 
 
 class EventDbManager(AbstractDbManager):
+    """Event db manager
+
+    :param session: sqlalchemy session
     """
-    """
+
     @staticmethod
     def create_table(db_uri):
-        """Create all tables in the engine. This is equivalent to "Create Table"
-        statements in raw SQL."""
-        AbstractDbManager.create_table(db_uri)
-        
+        """Create all tables in the engine. This is equivalent to "Create Table" statements in raw SQL
+
+        :param db_uri: db uri
+        """
         try:
             engine = create_engine(db_uri)
-            engine.execute("SET FOREIGN_KEY_CHECKS=1;")
+            engine.execute('SET FOREIGN_KEY_CHECKS=1;')
             Base.metadata.create_all(engine)
-            logger.info('Create tables on : %s' % (db_uri))
+            logger.info('Create tables on : %s' % db_uri)
             del engine
         except exc.DBAPIError as e:
             raise Exception(e)
-    
+
     @staticmethod
     def remove_table(db_uri):
-        """ Remove all tables in the engine. This is equivalent to "Drop Table"
-        statements in raw SQL."""
-        AbstractDbManager.remove_table(db_uri)
-        
+        """Remove all tables in the engine. This is equivalent to "Drop Table" statements in raw SQL
+
+        :param db_uri: db uri
+        """
         try:
             engine = create_engine(db_uri)
-            engine.execute("SET FOREIGN_KEY_CHECKS=0;")
+            engine.execute('SET FOREIGN_KEY_CHECKS=1;')
             Base.metadata.drop_all(engine)
-            logger.info('Remove tables from : %s' % (db_uri))
+            logger.info('Remove tables from : %s' % db_uri)
             del engine
         except exc.DBAPIError as e:
-            raise Exception(e)    
+            raise Exception(e)
     
     @query
     def get_types(self):

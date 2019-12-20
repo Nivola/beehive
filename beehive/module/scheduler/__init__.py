@@ -2,3 +2,5 @@
 #
 # (C) Copyright 2018-2019 CSI-Piemonte
 # (C) Copyright 2019-2020 CSI-Piemonte
+
+# --- DEPRECATED ---

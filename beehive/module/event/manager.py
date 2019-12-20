@@ -62,15 +62,32 @@ class EventConsumerRedis(ConsumerMixin):
         self.conn = Connection(self.redis_uri)
  
     def get_consumers(self, Consumer, channel):
+        """Get consumer
+
+        :param Consumer: kombu consumer
+        :param channel: kombu channel
+        :return:
+        """
         return [Consumer(queues=self.queue, accept=['pickle', 'json'], callbacks=[self.callback],
                          on_decode_error=self.decode_error)]
 
     def decode_error(self, message, exc):
+        """Decode error
+
+        :param message: message received
+        :param exc: exception raised
+        :return:
+        """
         self.logger.error(exc)
 
     def callback(self, event, message):
+        """Consume event
+
+        :param event: event received
+        :param message: message received
+        :return:
+        """
         event['data'] = obscure_data(event['data'])
-        # event['data']['params'] = truncate(event['data']['params'], 4000)
         self.log_event(event, message)
         self.store_event(event, message)
         self.publish_event_to_subscriber(event, message)
@@ -82,7 +99,8 @@ class EventConsumerRedis(ConsumerMixin):
     def log_event(self, event, message):
         """Log received event
         
-        :param event json: event to store
+        :param event: event received
+        :param message: message received
         :raise EventConsumerError:
         """
         message.ack()        
@@ -91,7 +109,8 @@ class EventConsumerRedis(ConsumerMixin):
     def store_event(self, event, message):
         """Store event in db.
         
-        :param event json: event to store
+        :param event: event received
+        :param message: message received
         :raise EventConsumerError:
         """
         try:
@@ -128,7 +147,8 @@ class EventConsumerRedis(ConsumerMixin):
     def publish_event_to_subscriber(self, event, message):
         """Publish event to subscriber queue.
         
-        :param event json: event to store
+        :param event: event received
+        :param message: message received
         :raise EventConsumerError:        
         """
         self.__publish_event_simple(event['id'], event['type'], event['data'], event['source'], event['dest'])
@@ -162,26 +182,27 @@ class EventConsumerRedis(ConsumerMixin):
 
 def start_event_consumer(params):
     """Start event consumer
+
+    :param params: configuration params
     """
     # internal logger
-    logger = logging.getLogger('beehive.module.event.manager')   
+    logger = logging.getLogger('beehive.module.event.manager')
 
     logger_level = int(params.get('api_logging_level', logging.DEBUG))
+
+    name = params['api_id'].decode('utf-8') + '.event.consumer'
     log_path = params.get('api_log', None)
+
     if log_path is None:
         log_path = '/var/log/%s/%s' % (params['api_package'], params['api_env'])
+    else:
+        log_path = log_path.decode('utf-8')
 
-    logname = '%s/%s.event.consumer' % (log_path, params['api_id'])
-    logger_file = '%s.log' % logname
+    file_name = log_path + name + '.log'
     loggers = [logger,
                logging.getLogger('beehive.common.event'),
                logging.getLogger('beehive.module.event.model')]
-    LoggerHelper.rotatingfile_handler(loggers, logger_level, logger_file)
-
-    # # performance logging
-    # loggers = [logging.getLogger('beecell.perf')]
-    # logger_file = '%s/%s.watch' % (log_path, params['api_id'])
-    # LoggerHelper.rotatingfile_handler(loggers, logging.DEBUG, logger_file, frmt='%(asctime)s - %(message)s')
+    LoggerHelper.rotatingfile_handler(loggers, logger_level, file_name)
 
     # get event handlers
     event_handlers = params.pop('event_handler', [])
