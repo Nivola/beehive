@@ -5,13 +5,11 @@
 
 import logging
 from uuid import uuid4
-from six import b
 import ujson as json
 import datetime
-
 from beehive.common.apimanager import ApiManager
 from beehive.common.data import operation
-from beecell.simple import import_class, random_password, get_value
+from beecell.simple import import_class, random_password, get_value, read_file
 from beehive.module.auth.controller import Objects, Role, User, Group
 from beehive.common.apiclient import BeehiveApiClient, BeehiveApiClientError
 from beehive.module.catalog.controller import Catalog, CatalogEndpoint
@@ -28,7 +26,6 @@ except ImportError:
 
 class BeehiveHelper(object):
     """Beehive subsystem manager helper.
-    
     """
     classes = [
         Objects,
@@ -40,10 +37,12 @@ class BeehiveHelper(object):
     ]
     
     def __init__(self):
-        self.logger = logging.getLogger(self.__class__.__module__+  '.' + self.__class__.__name__)
+        self.logger = logging.getLogger(self.__class__.__module__ + '.' + self.__class__.__name__)
     
     def get_permission_id(self, objdef):
         """Get operation objid
+
+        :param objdef: objecy definition
         """
         temp = objdef.split('.')
         ids = ['*' for i in temp]
@@ -62,17 +61,12 @@ class BeehiveHelper(object):
         except Exception as ex:
             raise Exception('Permissions assign error: %s' % ex)
     
-    def read_config(self, filename):
-        """
-        """
-        f = open(filename, 'r')
-        config = f.read()
-        config = json.loads(config)
-        f.close()
-        return config    
-    
     def __configure(self, config, update=True):
-        """
+        """Main configuration steps
+
+        :param config: subsystem configuration
+        :param update: if update is True don't replace database schema
+        :return:
         """
         msgs = []
         manager = None
@@ -133,7 +127,7 @@ class BeehiveHelper(object):
     def __init_subsystem(self, config, update=True):
         """Init beehive subsystem
         
-        :param dict config: subsystem configuration
+        :param config: subsystem configuration
         :param update: if update is True don't replace database schema
         :return: trace of execution
         """
@@ -229,6 +223,12 @@ class BeehiveHelper(object):
     
     def __create_main_users(self, controller, config, config_db_manager, update):
         """Create auth subsystem main users
+
+        :param controller: catalog controller instance
+        :param config: config
+        :param config_db_manager: config db manager instance
+        :param update: if update is True don't replace database schema
+        :return:
         """
         msgs = []
     
@@ -279,6 +279,11 @@ class BeehiveHelper(object):
     
     def __create_main_catalogs(self, controller, config, config_db_manager):
         """Create auth/catalog subsystem main catalog
+
+        :param controller: catalog controller instance
+        :param config: config
+        :param config_db_manager: config db manager instance
+        :return:
         """
         msgs = []
         
@@ -290,7 +295,6 @@ class BeehiveHelper(object):
                 controller.get_catalog(catalog['name'])
                 self.logger.warning('Catalog %s already exist' % (catalog['name']))
                 msgs.append('Catalog %s already exist' % (catalog['name']))
-                # res = cats[0]['oid']
             except:
                 # create new catalog
                 cat = controller.add_catalog(catalog['name'], catalog['desc'], catalog['zone'])
@@ -308,7 +312,6 @@ class BeehiveHelper(object):
                     controller.get_endpoint(endpoint['name'])
                     self.logger.warning('Endpoint %s already exist' % (endpoint['name']))
                     msgs.append('Endpoint %s already exist' % (endpoint['name']))
-                    # res = cats[0]['oid']
                 except:
                     # create new endpoint
                     cat = controller.get_catalog(catalog['name'])
@@ -322,6 +325,8 @@ class BeehiveHelper(object):
     
     def __setup_kombu_queue(self, config):
         """Setup kombu redis key fro queue
+
+        :param config: queue config
         """
         configs = config['config']
         for item in configs:
@@ -336,13 +341,13 @@ class BeehiveHelper(object):
         """Create subsystem.
         
         :param subsystem_config: subsystem configuration file
+        :param update: if update is True don't replace database schema [default=False]
         """
         res = []
         
         # read subsystem config
-        config = self.read_config(subsystem_config)
+        config = read_file(subsystem_config)
         subsystem = get_value(config, 'api_subsystem', None, exception=True)
-        # update = get_value(config, 'update', False)
         api_config = get_value(config, 'api', {})
 
         if update is True:

@@ -9,25 +9,38 @@ from beehive.common.data import transaction, operation, query
 from beehive.common.model import SchedulerTask, SchedulerState, AbstractDbManager, SchedulerTrace, SchedulerStep
 from datetime import datetime
 from celery.utils.log import get_task_logger
-from celery.signals import task_prerun, task_postrun, task_failure
-from traceback import format_tb
-import ujson as json
+from celery.signals import task_prerun
 
 
 logger = get_task_logger(__name__)
 
 
 class TaskResult(object):
+    """Utility class used to manage task, step and trace in database"""
     def __init__(self):
         self.manager = AbstractDbManager()
 
     @transaction
     def trace_add(self, task_id, step_id, message, level):
+        """Add a task trace
+
+        :param task_id: task id
+        :param step_id: step id
+        :param message: trace message
+        :param level: trace level
+        :return:
+        """
         entity = self.manager.add_entity(SchedulerTrace, task_id, step_id, message, level)
         logger.debug2('add new db task trace %s record' % entity)
 
     @transaction
     def step_add(self, task_id, name):
+        """Add a step
+
+        :param task_id: task id
+        :param name: step name
+        :return:
+        """
         entity = self.manager.add_entity(SchedulerStep, task_id, name)
         logger.debug2('add new db task step %s record' % entity)
         logger.info('add new step %s: %s' % (name, entity.uuid))
@@ -36,6 +49,13 @@ class TaskResult(object):
 
     @transaction
     def step_progress(self, task_id, step_id, msg=None):
+        """Update a step
+
+        :param task_id: task id
+        :param step_id: step id
+        :param msg: progress message
+        :return:
+        """
         run_time = datetime.today()
         entity = self.manager.update_entity(SchedulerStep, uuid=step_id, run_time=run_time)
         logger.debug2('update task step %s record' % entity)
@@ -50,6 +70,13 @@ class TaskResult(object):
 
     @transaction
     def step_success(self, task_id, step_id, result):
+        """Update a step with success
+
+        :param task_id: task id
+        :param step_id: step id
+        :param result: step result
+        :return:
+        """
         stop_time = datetime.today()
         entity = self.manager.update_entity(SchedulerStep, uuid=step_id, status=SchedulerState.SUCCESS, result=result,
                                             stop_time=stop_time, run_time=stop_time)
@@ -59,6 +86,13 @@ class TaskResult(object):
 
     @transaction
     def step_failure(self, task_id, step_id, error):
+        """Update a step with failure
+
+        :param task_id: task id
+        :param step_id: step id
+        :param error: step error
+        :return:
+        """
         stop_time = datetime.today()
         entity = self.manager.update_entity(SchedulerStep, uuid=step_id, status=SchedulerState.FAILURE,
                                             stop_time=stop_time, result=error)
@@ -68,6 +102,11 @@ class TaskResult(object):
 
     @query
     def task_exists(self, task_id):
+        """Check task exists
+
+        :param task_id: task id
+        :return:
+        """
         entity = self.manager.exist_entity(SchedulerTask, task_id)
         if entity is True:
             logger.error('task %s already exists' % task_id)
@@ -166,6 +205,12 @@ class TaskResult(object):
 
     @transaction
     def task_update(self, task_id, **args):
+        """Update a task
+
+        :param task_id: task id
+        :param args: key value args
+        :return:
+        """
         entity = self.manager.update_entity(SchedulerTask, uuid=task_id, **args)
         logger.debug2('update db task %s record' % entity)
 

@@ -10,12 +10,7 @@ from six import b
 import gevent.monkey
 from beehive.common.apiclient import BeehiveApiClient
 from beehive.common.log import ColorFormatter
-
-# from _random import Random
-# os.environ['GEVENT_RESOLVER'] = 'ares'
-# os.environ['GEVENTARES_SERVERS'] = 'ares'
-# import beecell.server.gevent_ssl
-from beecell.simple import truncate, str2bool, dict_get
+from beecell.simple import truncate, read_file, dict_get
 
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -67,6 +62,8 @@ def assert_exception(exception):
 
 
 class BeehiveTestCase(unittest.TestCase):
+    """Base beehive testunit class
+    """
     logger = logging.getLogger('beehive.test.log')
     runlogger = logging.getLogger('beehive.test.run')
     pp = pprint.PrettyPrinter(width=200)
@@ -133,19 +130,6 @@ class BeehiveTestCase(unittest.TestCase):
 
         logger.info('Validation active: %s' % cls.validation_active)
 
-        # print('Configurations:')
-        # print('Main config file: %s' % cls.main_config_file)
-        # print('Extra config file: %s' % cls.spec_config_file)
-        # print('Validation active: %s' % cls.validation_active)
-        # print('Test user: %s' % cls.run_test_user)
-        # print('')
-        # print('Tests:')
-
-        # env = config.get('env', None)
-        # if env is None:
-        #     raise Exception('Test environment was not specified')
-        # current_schema = config.get('schema')
-        # cfg = config.get(env)
         cfg = config
         self.test_config = config.get('configs', {})
         if self.test_config.get('resource', None) is not None:
@@ -185,8 +169,6 @@ class BeehiveTestCase(unittest.TestCase):
         self.schema = {}
         for subsystem, endpoint in self.endpoints.items():
             self.api[subsystem] = RemoteClient(endpoint, keyfile=keyfile, certfile=certfile)
-            # self.logger.info('Load swagger schema from %s' % endpoint)
-            # self.schema[subsystem] = self.validate_swagger_schema(endpoint)
 
         self.load_result()
 
@@ -210,13 +192,7 @@ class BeehiveTestCase(unittest.TestCase):
 
     @classmethod
     def load_file(cls, file_config):
-        f = open(file_config, 'r')
-        config = f.read()
-        if file_config.find('.json') > 0:
-            config = json.loads(config)
-        elif file_config.find('.yml') > 0:
-            config = yaml.load(config, Loader=Loader)
-        f.close()
+        config = read_file(file_config)
         return config
 
     @classmethod
@@ -291,7 +267,6 @@ class BeehiveTestCase(unittest.TestCase):
     
     def open_mysql_session(self, db_uri):
         engine = create_engine(db_uri)
-        # engine = create_engine(app.db_uri, pool_size=10, max_overflow=10, pool_recycle=3600)
         db_session = sessionmaker(bind=engine, autocommit=False, autoflush=False)
         return db_session
     
@@ -368,7 +343,6 @@ class BeehiveTestCase(unittest.TestCase):
     
             endpoint = self.endpoints[subsystem]
             swagger_endpoint = self.swagger_endpoints[subsystem]
-            # schema = self.schema[subsystem]
             schema = self.get_schema(subsystem, swagger_endpoint, timeout=timeout)
             if 'Content-Type' not in headers:
                 headers['Content-Type'] = 'application/json'            

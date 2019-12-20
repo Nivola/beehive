@@ -66,8 +66,6 @@ class Event(object):
         
         # fire time of event 
         self.creation = time.time()
-        # datetime.datetime.utcnow()
-        #time.strftime("%d-%m-%y %H:%M:%S")
 
         # event operation data
         self.data = data
@@ -80,8 +78,8 @@ class Event(object):
         self.dest = dest
 
     def __str__(self):
-        creation = str2uni(self.creation.strftime("%d-%m-%y %H:%M:%S"))
-        res = "<Event id=%s, type=%s, creation=%s, data='%s', source='%s', dest='%s'>" % \
+        creation = str2uni(self.creation.strftime('%d-%m-%y %H:%M:%S'))
+        res = '<Event id=%s, type=%s, creation=%s, data=%s, source=%s, dest=%s>' % \
               (self.id, self.type, creation, self.data, self.source, self.dest)
         return res
     
@@ -116,12 +114,12 @@ class Event(object):
         
         .. code-block:: python
         
-            {"id":.., 
-             "type":.., 
-             "creation":.., 
-             "data":.., 
-             "source":.., 
-             "dest":..}        
+            {'id':..,
+             'type':..,
+             'creation':..,
+             'data':..,
+             'source':..,
+             'dest':..}
         
         :return: json string
         """
@@ -142,7 +140,7 @@ class EventProducer(object):
     def __init__(self):
         """Abstract event producer.
         """
-        self.logger = logging.getLogger(self.__class__.__module__+'.'+self.__class__.__name__)
+        self.logger = logging.getLogger(self.__class__.__module__ + '.' + self.__class__.__name__)
     
     def _send(self, event_type, data, source, dest):
         raise NotImplementedError()
@@ -174,8 +172,7 @@ class EventProducerRedis(EventProducer):
         
         :param redis_uri: redis uri
         :param redis_exchange: redis channel
-        :param framework: framework used to manage redis pub sub. 
-            Ex. kombu, simple         
+        :param framework: framework used to manage redis pub sub. Ex. kombu, simple
         """
         EventProducer.__init__(self)
         
@@ -221,9 +218,9 @@ class EventProducerRedis(EventProducer):
                                  delivery_mode=1)
                 # self.logger.debug('Send event : %s' % msg['id'])
         except exceptions.ConnectionLimitExceeded as ex:
-            self.logger.error('Event can not be send: %s' % ex, exc_info=1)
+            self.logger.error('Event can not be send: %s' % str(ex))
         except Exception as ex:
-            self.logger.error('Event can not be send: %s' % ex, exc_info=1)            
+            self.logger.error('Event can not be send: %s' % str(ex))
             
     def _send_simple(self, event_type, data, source, dest):
         try:
@@ -235,9 +232,9 @@ class EventProducerRedis(EventProducer):
             self.redis_manager.publish(self.redis_exchange, message)
             self.logger.debug('Send event %s : %s' % (event.id, truncate(message)))
         except redis.PubSubError as ex:
-            self.logger.error('Event can not be send: %s' % ex, exc_info=1)
+            self.logger.error('Event can not be send: %s' % str(ex))
         except Exception as ex:
-            self.logger.error('Event can not be encoded: %s' % ex, exc_info=1) 
+            self.logger.error('Event can not be encoded: %s' % str(ex))
 
 
 class EventProducerZmq(EventProducer):
@@ -255,9 +252,8 @@ class EventProducerZmq(EventProducer):
     def _send(self, event_type, data, source, dest):
         """Send event
         
-        :param event_type: event type. Stirng like user, role, cloudstack.org.grp.vm
-        :param data: event data. Dict like {'opid':.., 'op':.., 'params':.., 
-                                            'response':..}
+        :param event_type: event type. String like user, role, cloudstack.org.grp.vm
+        :param data: event data. Dict like {'opid':.., 'op':.., 'params':.., 'response':..}
         :param source: event source. Dict like {'user':.., 'ip':..}
         :param dest: event dist. Dict like {'user':.., 'ip':..}
         """
@@ -267,8 +263,8 @@ class EventProducerZmq(EventProducer):
             # create context and open socket
             context = zmq.Context()
             zmq_socket = context.socket(zmq.PUB)
-            zmq_socket.connect("tcp://%s:%s" % (self._host, self._port))
-            self.logger.debug("Connect to %s:%s" % (self._host, self._port))
+            zmq_socket.connect('tcp://%s:%s' % (self._host, self._port))
+            self.logger.debug('Connect to %s:%s' % (self._host, self._port))
                         
             # generate event
             event = Event(event_type, data, source, dest)        
@@ -276,11 +272,9 @@ class EventProducerZmq(EventProducer):
             message = event.json()
             gevent.sleep(0.01)
             zmq_socket.send(message)
-            self.logger.debug("Send event %s : %s" % (event.id, message))
-            #resp = zmq_socket.recv_json()
-            #self.logger.debug("Event %s received by %s" % (resp['req'], resp['server']))
+            self.logger.debug('Send event %s : %s' % (event.id, message))
         except zmq.error.ZMQError as ex:
-            self.logger.error("Event can not be send: %s" % ex)
+            self.logger.error('Event can not be send: %s' % ex)
         finally:
             # close socket and terminate context         
             if zmq_socket is not None:
@@ -291,7 +285,7 @@ class EventProducerZmq(EventProducer):
 
 class SimpleEventConsumer(object):
     def __init__(self, redis_uri, redis_exchange):
-        self.logger = logging.getLogger(self.__class__.__module__+ '.' + self.__class__.__name__)
+        self.logger = logging.getLogger(self.__class__.__module__ + '.' + self.__class__.__name__)
         
         self.redis_uri = redis_uri
         self.redis_exchange = redis_exchange     
@@ -304,7 +298,7 @@ class SimpleEventConsumer(object):
         self.pp = pprint.PrettyPrinter(indent=2)
 
     def start_subscriber(self):
-        """
+        """Start subscriber
         """
         channel = self.redis.pubsub()
         channel.subscribe(self.redis_exchange)
@@ -328,8 +322,7 @@ class SimpleEventConsumer(object):
 
 class SimpleEventConsumerKombu(ConsumerMixin):
     def __init__(self, connection, redis_exchange):
-        self.logger = logging.getLogger(self.__class__.__module__+ \
-                                        '.'+self.__class__.__name__)
+        self.logger = logging.getLogger(self.__class__.__module__ + '.'+self.__class__.__name__)
         
         self.connection = connection
 

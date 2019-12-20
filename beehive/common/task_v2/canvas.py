@@ -6,7 +6,6 @@
 import logging
 from celery.canvas import Signature as CelerySignature
 from celery.utils import abstract
-from beehive.common.task_v2.handler import TaskResult
 
 logger = logging.getLogger('beehive.common')
 
@@ -25,7 +24,6 @@ class Signature(CelerySignature):
             :meth:`~@Task.apply_async` and the :ref:`guide-calling` guide.
         """
         taskid = CelerySignature.apply_async(self, args, kwargs, route_name, **options)
-        # task = TaskResult().task_pending(str(taskid))
         logger.debug('Create new task: %s' % taskid)
         return taskid
 

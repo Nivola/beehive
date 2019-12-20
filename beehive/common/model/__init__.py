@@ -5,11 +5,11 @@
 
 import logging
 from time import time
-from six import b, ensure_text
-from sqlalchemy import create_engine, exc
+from six import b
+from sqlalchemy import  exc
 from sqlalchemy.ext.declarative import declarative_base
 from beehive.common.data import operation, query, transaction
-from beecell.simple import truncate, encrypt_data, decrypt_data, id_gen
+from beecell.simple import truncate, id_gen
 from beecell.db import ModelError, QueryError
 from datetime import datetime
 import hashlib
@@ -39,9 +39,7 @@ class DropView(DDLElement):
 
 @compiler.compiles(CreateView)
 def compile_create_view(element, compiler, **kw):
-    return "CREATE OR REPLACE VIEW %s AS %s" % (
-        element.name, 
-        compiler.sql_compiler.process(element.selectable))
+    return "CREATE OR REPLACE VIEW %s AS %s" % (element.name, compiler.sql_compiler.process(element.selectable))
 
 
 @compiler.compiles(DropView)
@@ -62,8 +60,9 @@ def view(name, metadata, selectable=None, sql=None):
 
 
 class AuditData(object):
-    """
-        Column of common audit
+    """Basic orm audit entity
+    
+    :param creation_date: creation date
     """
     def __init__(self, creation_date=None):
         if creation_date is not None:
@@ -80,8 +79,13 @@ class AuditData(object):
 
 
 class BaseEntity(AuditData):
-    """
+    """Basic orm entity
         
+    :param id: database id
+    :param uuid: unique id
+    :param objid: authorization id
+    :param desc: description
+    :param active: active [true or false]     
     """
     __table_args__ = {'mysql_engine': 'InnoDB'}
 
@@ -170,7 +174,6 @@ class BaseEntity(AuditData):
     def is_active(self):
         res = (self.active is True or self.active == 1) and self.expiry_date is None
         return res
-        # return self.active is True or (self.expiry_date is None or self.expiry_date < datetime.today())
     
     def disable(self):
         self.expiry_date = datetime.today()
@@ -183,6 +186,11 @@ class BaseEntity(AuditData):
      
 
 class PermTag(Base):
+    """Permission tag
+
+    :param value: tag value
+    :param explain: tag explain
+    """
     __tablename__ = 'perm_tag'
     __table_args__ = {'mysql_engine': 'InnoDB'}
     
@@ -192,10 +200,6 @@ class PermTag(Base):
     creation_date = Column(DateTime())
     
     def __init__(self, value, explain=None):
-        """Create new permission tag
-        
-        :param value: tag value
-        """
         self.creation_date = datetime.today()
         self.value = value
         self.explain = explain
@@ -205,6 +209,12 @@ class PermTag(Base):
 
 
 class PermTagEntity(Base):
+    """Permission tag entity association
+
+    :param tag: tag id
+    :param entity: entity id
+    :param type: entity type
+    """
     __tablename__ = 'perm_tag_entity'
     __table_args__ = {'mysql_engine': 'InnoDB'}
     
@@ -218,12 +228,6 @@ class PermTagEntity(Base):
     )    
     
     def __init__(self, tag, entity, type):
-        """Create new permission tag entity association
-        
-        :param tag: tag id
-        :param entity: entity id
-        :param type: entity type
-        """
         self.tag = tag
         self.entity = entity
         self.type = type
@@ -242,6 +246,13 @@ class SchedulerState(object):
 
 
 class SchedulerTask(Base):
+    """Scheduler task
+
+    :param task_id: task id
+    :param name: task name
+    :param status: task status
+    :param start_time: task start time
+    """
     __tablename__ = 'scheduler_task'
     __table_args__ = {'mysql_engine': 'InnoDB'}
 
@@ -284,6 +295,11 @@ class SchedulerTask(Base):
 
 
 class SchedulerStep(Base):
+    """Scheduler task step
+
+    :param task_id: task id
+    :param name: step name
+    """
     __tablename__ = 'scheduler_step'
     __table_args__ = {'mysql_engine': 'InnoDB'}
 
@@ -312,6 +328,13 @@ class SchedulerStep(Base):
 
 
 class SchedulerTrace(Base):
+    """Scheduler task trace
+
+    :param task_id: task id
+    :param step_id: step id
+    :param message: task message
+    :param level: task message level
+    """
     __tablename__ = 'scheduler_trace'
     __table_args__ = {'mysql_engine': 'InnoDB'}
 
@@ -334,17 +357,17 @@ class SchedulerTrace(Base):
 
 
 class PaginatedQueryGenerator(object):
+    """Use this class to generate and configure query with pagination and filtering based on tagged entity.
+    Base table : perm_tag t1, perm_tag_entity t2, {entitytable} t3
+
+    :param entity: main mapper entity
+    :param session: sqlalchemy session
+    :param other_entities: other mapper entities [default=[]]
+    :param custom_select: custom select used instead of entity table [optional]
+    :param with_perm_tag: check permission tags [optional]
+    """    
     def __init__(self, entity, session, other_entities=[], custom_select=None, with_perm_tag=True):
-        """Use this class to generate and configure query with pagination
-        and filtering based on tagged entity.
-        Base table : perm_tag t1, perm_tag_entity t2, {entitytable} t3
-        
-        :param entity: main mapper entity
-        :param other_entities: other mapper entities [optional] [default=[]]
-        :param custom_select: custom select used instead of entity table
-        :param with_perm_tag: check permission tags.
-        """
-        self.logger = logging.getLogger(self.__class__.__module__+ '.' + self.__class__.__name__)
+        self.logger = logging.getLogger(self.__class__.__module__ + '.' + self.__class__.__name__)
         
         self.session = session
         self.entity = entity
@@ -410,8 +433,8 @@ class PaginatedQueryGenerator(object):
         self.select_fields.append(field)             
     
     def add_filter_by_field(self, field, kvargs, custom_filter=None):
-        """Add where condition like AND t3.<field>=:<field> if <field> in kvargs
-        and not None. If you want a different filter syntax use custom_filter.
+        """Add where condition like AND t3.<field>=:<field> if <field> in kvargs and not None. If you want a different 
+        filter syntax use custom_filter.
         
         :param field: field to search in kvargs
         :param kvargs: query custom params
@@ -429,11 +452,10 @@ class PaginatedQueryGenerator(object):
         
         :param field: field to search in kvargs
         :param kvargs: query custom params
-        :param filter: sql filters 
+        :param op: operation [default=' AND']
         """
         if kvargs.get(field, None) is not None:
-        # if field in kvargs and kvargs.get(field) is not None:
-            return PaginatedQueryGenerator.create_sqlfilter(field, opLogical=op)
+            return PaginatedQueryGenerator.create_sqlfilter(field, op_logical=op)
         else:
             return ''
 
@@ -442,29 +464,32 @@ class PaginatedQueryGenerator(object):
         """Add where condition like 'AND t3.<field> like :<field>' if <field> in kvargs and not None..
 
         :param field: field to search in kvargs
+        :param column: name of the column in table
         :param kvargs: query custom params
-        :param filter: sql filters
+        :param op: operation [default=' AND']
         """
         # if field in kvargs and kvargs.get(field) is not None:
         if kvargs.get(field, None) is not None:
-            return PaginatedQueryGenerator.create_sqlfilter(field, column=column, opLogical=op, opComparison=' like ')
+            return PaginatedQueryGenerator.create_sqlfilter(field, column=column, op_logical=op, op_comparison=' like ')
         else:
             return ''
 
     @staticmethod
-    def create_sqlfilter(param, column=None, opLogical=' AND', opComparison='=', alias='t3'):
+    def create_sqlfilter(param, column=None, op_logical=' AND', op_comparison='=', alias='t3'):
         """create sql where condition filter like 'AND t3.<field>=:<field>' if <field> in kvargs and not None..
-        
-        :param column: column to search in kvargs
+
         :param param: query custom params
-        :param str filter: sql filters 
+        :param column: name of the column in table [optional]
+        :param op_logical: operation [default=' AND']
+        :param op_comparison: comparison [default='=']
+        :param alias: table alias [default='t3']
         """
         if column is None:
             column = param
  
         if column is not None: 
-            res = ' {opLogical} {alias}.{column}{opComparison}:{param}'.format(
-                column=column, param=param, opLogical=opLogical, opComparison=opComparison, alias=alias)
+            res = ' {op_logical} {alias}.{column}{op_comparison}:{param}'.format(
+                column=column, param=param, op_logical=op_logical, op_comparison=op_comparison, alias=alias)
             return res
         else:
             return ''
@@ -554,6 +579,8 @@ class PaginatedQueryGenerator(object):
         """Make query
         
         :param list tags: list of permission tags
+        :param args: custom args
+        :param kvargs: custom kvargs
         """
         start = time()
 
@@ -658,6 +685,8 @@ class PaginatedQueryGenerator(object):
         """Make query. Use base_smtp2
 
         :param list tags: list of permission tags
+        :param args: custom args
+        :param kvargs: custom kvargs
         """
         start = time()
 
@@ -697,6 +726,8 @@ class PaginatedQueryGenerator(object):
 
 class AbstractDbManager(object):
     """Abstract db manager
+
+    :param session: sqlalchemy session
     """
     def __init__(self, session=None):
         self.logger = logging.getLogger(self.__class__.__module__+  '.' + self.__class__.__name__)
@@ -720,26 +751,30 @@ class AbstractDbManager(object):
 
     @staticmethod
     def create_table(db_uri):
-        """Create all tables in the engine. This is equivalent to "Create Table"
-        statements in raw SQL."""
+        """Create all tables in the engine. This is equivalent to "Create Table" statements in raw SQL
+
+        :param db_uri: db uri
+        """
         try:
             engine = create_engine(db_uri)
-            engine.execute("SET FOREIGN_KEY_CHECKS=1;")
+            engine.execute('SET FOREIGN_KEY_CHECKS=1;')
             Base.metadata.create_all(engine)
-            logger.info('Create tables on : %s' % (db_uri))
+            logger.info('Create tables on : %s' % db_uri)
             del engine
         except exc.DBAPIError as e:
             raise Exception(e)
     
     @staticmethod
     def remove_table(db_uri):
-        """ Remove all tables in the engine. This is equivalent to "Drop Table"
-        statements in raw SQL."""
+        """Remove all tables in the engine. This is equivalent to "Drop Table" statements in raw SQL
+
+        :param db_uri: db uri
+        """
         try:
             engine = create_engine(db_uri)
-            engine.execute("SET FOREIGN_KEY_CHECKS=0;")
+            engine.execute('SET FOREIGN_KEY_CHECKS=1;')
             Base.metadata.drop_all(engine)
-            logger.info('Remove tables from : %s' % (db_uri))
+            logger.info('Remove tables from : %s' % db_uri)
             del engine
         except exc.DBAPIError as e:
             raise Exception(e)
@@ -822,7 +857,6 @@ class AbstractDbManager(object):
 
         if isinstance(oid, int):
             oid = str(oid)
-        # oid = ensure_text(oid)
 
         # get obj by uuid
         if match('[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', oid):
@@ -861,11 +895,8 @@ class AbstractDbManager(object):
         if oid is None:
             raise ModelError('%s %s not found' % (oid, entityclass))
 
-        # self.logger.warn(type(oid))
         if isinstance(oid, int):
             oid = str(oid)
-        # oid = ensure_text(oid)
-        # self.logger.warn(type(oid))
 
         # get obj by uuid
         if match('[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', oid):
@@ -893,54 +924,71 @@ class AbstractDbManager(object):
 
         self.logger.debug2('Query entity %s by %s %s: %s' % (entityclass.__name__, search_field, oid, res))
         return res
-    
-    # @query
-    # def get_entities(self, entityclass, filters, *args, **kvargs):
-    #     """Get model entities
-    #
-    #     :param entityclass: entity model class
-    #     :param filters: entity model filters function. Return query with additional filter
-    #     :param int oid: entity id. [optional]
-    #     :param str objid: entity authorization id. [optional]
-    #     :param str uuid: entity uuid. [optional]
-    #     :param str name: entity name. [optional]
-    #     :param args: custom params
-    #     :param kvargs: custom params
-    #     :return: list of entityclass
-    #     :raises QueryError: raise :class:`QueryError`
-    #     """
-    #     session = self.get_session()
-    #     query = self.query_entities(entityclass, session, *args, **kvargs)
-    #     query = filters(query, *args, **kvargs)
-    #
-    #     # make query
-    #     res = query.all()
-    #     self.logger.debug2('Get %s: %s' % (entityclass.__name__, truncate(res)))
-    #     return res
-    
+
+    def add_base_entity_filters(query, *args, **kvargs):
+        """Add base filter to sqlalchemy entity query
+
+        :param args: positional args
+        :param kvargs: key value args
+        :param kvargs.id: database id [optional]
+        :param kvargs.uuid: unique id [optional]
+        :param kvargs.objid: authorization id [optional]
+        :param kvargs.name: name [optional]
+        :param kvargs.desc: description [optional]
+        :param kvargs.active: active [optional]
+        :return: query with filters
+        """
+        oid = kvargs.get('id', None)
+        uuid = kvargs.get('uuid', None)
+        objid = kvargs.get('objid', None)
+        name = kvargs.get('name', None)
+        desc = kvargs.get('desc', None)
+        active = kvargs.get('active', None)
+
+        # id is unique
+        if oid is not None:
+            query = query.filter_by(id=oid)
+
+        # uuid is unique
+        if uuid is not None:
+            query = query.filter_by(uuid=uuid)
+
+        # Non unique filters
+        if objid is not None:
+            query = query.filter_by(objid=objid)
+        if name is not None:
+            query = query.filter_by(name=name)
+        if desc is not None:
+            query = query.filter_by(desc=desc)
+        if active is not None:
+            query = query.filter_by(active=active)
+
+        return query
+
     @query
     def get_paginated_entities(self, entity, tags=[], page=0, size=10, order='DESC', field='t3.id', filters=[],
                                tables=[], select_fields=[], custom_select=None, with_perm_tag=True, *args, **kvargs):
         """Get entities associated with some permission tags
 
-        :param with_perm_tag: if False disable control of permission tags [default=True]
-        :param tables: sql tables to add (table_name, alias) [optional]
-        :param filters: sql filters to apply [optional]
-        :param select_fields: list of fields to add to select [optional]
-        :param args: custom params
-        :param kvargs: custom params        
         :param entity: entity
         :param tags: list of permission tags
-        :param name: name [optional]
-        :param desc: desc [optional]
-        :param names: name like [optional]
-        :param active: active [optional]
-        :param creation_date: creation_date [optional]
-        :param modification_date: modification_date [optional]
         :param page: users list page to show [default=0]
         :param size: number of users to show in list per page [default=0]
         :param order: sort order [default=DESC]
-        :param field: sort field [default=id]
+        :param field: sort field [default=t3.id]
+        :param filters: sql filters to apply [optional]
+        :param tables: sql tables to add (table_name, alias) [optional]
+        :param select_fields: list of fields to add to select [optional]
+        :param custom_select: custom select [optional]    
+        :param with_perm_tag: if False disable control of permission tags [default=True]        
+        :param args: custom params
+        :param kvargs: custom params                
+        :param kvargs.name: name [optional]
+        :param kvargs.desc: desc [optional]
+        :param kvargs.names: name like [optional]
+        :param kvargs.active: active [optional]
+        :param kvargs.creation_date: creation_date [optional]
+        :param kvargs.modification_date: modification_date [optional]
         :return: list of entityclass
         :raises QueryError: raise :class:`QueryError`           
         """
@@ -953,8 +1001,8 @@ class AbstractDbManager(object):
         # add select fields
         for item in select_fields:
             query.add_select_field(item)
+            
         # set filters
-        # query.add_filter_by_field('name', kvargs)
         query.add_filter_by_field('name', kvargs, custom_filter='AND t3.name like :name')
         query.add_filter_by_field('desc', kvargs, custom_filter='AND t3.desc like :desc')
         query.add_filter_by_field('active', kvargs)
@@ -975,7 +1023,6 @@ class AbstractDbManager(object):
         :param args: positional args
         :param kvargs: key value args
         :return: new entity
-        :rtype: Oauth2entity
         :raises TransactionError: raise :class:`TransactionError`
         """
         session = self.get_session()
@@ -993,8 +1040,10 @@ class AbstractDbManager(object):
         """Update entity.
 
         :param entityclass: entity model class
-        :param int oid: entity id. [optional]
-        :param kvargs str: date to update. [optional]
+        :param args: positional args
+        :param kvargs: date to update. [optional]
+        :param kvargs.oid: database id [optional]  
+        :param kvargs.uuid: unique id [optional]        
         :return: entity oid
         :raises TransactionError: raise :class:`TransactionError`        
         """        
@@ -1037,16 +1086,25 @@ class AbstractDbManager(object):
         """Update entity.
 
         :param entityclass: entity model class
-        :param int oid: entity id. [optional]
-        :param kvargs str: date to update. [optional]
-        :return: entity
+        :param args: positional args
+        :param kvargs: date to update. [optional]
+        :param kvargs.oid: database id [optional]  
+        :param kvargs.uuid: unique id [optional]        
+        :return: entity oid
         :raises TransactionError: raise :class:`TransactionError`
         """
         session = self.get_session()
 
         # get entity
         oid = kvargs.pop('oid', None)
-        query = self.query_entities(entityclass, session, oid=oid)
+        uuid = kvargs.pop('uuid', None)
+        if oid is not None:
+            query = self.query_entities(entityclass, session, oid=oid)
+        elif uuid is not None:
+            query = self.query_entities(entityclass, session, uuid=uuid)
+            oid = uuid
+        else:
+            raise ModelError('Neither oid nor uuid are been specified', code=400)
 
         # check entity exists
         entity = query.first()
@@ -1069,8 +1127,11 @@ class AbstractDbManager(object):
         """Remove entity.
         
         :param entityclass: entity model class
-        :param int oid: entity id. [optional]
-        :return: entity
+        :param args: positional args
+        :param kvargs: date to update. [optional]
+        :param kvargs.oid: database id [optional]  
+        :param kvargs.uuid: unique id [optional]        
+        :return: entity oid
         :raises TransactionError: raise :class:`TransactionError`
         """
         session = self.get_session()
@@ -1090,7 +1151,124 @@ class AbstractDbManager(object):
         
         self.logger.debug2('Remove %s %s' % (entityclass.__name__, entity.id))
         return entity.id
-    
+
+    @transaction
+    def add(self, entity):
+        """Add an entity using as input parameter the orm entity instance
+
+        :param entity: orm entity instance
+        :return: orm entity instance
+        :raises TransactionError: raise :class:`TransactionError`
+        """
+        if entity is None:
+            raise QueryError('Error: can\'t not add None entity')
+
+        session = self.get_session()
+        session.add(entity)
+        session.flush()
+        self.logger.debug2('Add %s entity %s' % (entity.__class__.__name__, entity))
+        return entity
+
+    @transaction
+    def add_all(self, entities):
+        """Add a list of entities using as input parameter the list of orm entity instances
+
+        :param entities: list of orm entity instance
+        :return: num of orm entity instance
+        :raises TransactionError: raise :class:`TransactionError`
+        """
+        if entities is None:
+            raise QueryError('Error: can\'t not add None entity')
+
+        session = self.get_session()
+        session.add_all(entities)
+        session.flush()
+        self.logger.debug2('Add all %s entity %s' % (entities[0].__class__.__name__, len(entities)))
+        return len(entities)
+
+    @transaction
+    def update(self, entity):
+        """Update an entity using as input parameter the orm entity instance
+
+        :param entity: orm entity instance
+        :return: orm entity instance
+        :raises TransactionError: raise :class:`TransactionError`
+        """
+        if entity is None:
+            raise QueryError('Error: can\'t not update None entity')
+
+        self.logger.info('Update %s entity %s' % (entity.__class__.__name__, entity))
+        if isinstance(entity, AuditData):
+            entity.modification_date = datetime.now()
+
+        session = self.get_session()
+        session.merge(entity)
+        session.flush()
+        self.logger.info('Updated')
+        return entity
+
+    @transaction
+    def bulk_save_entities(self, entities):
+        """Perform a bulk save of the given list of entities
+
+        :param entities: list of orm entity instance
+        :return: list of orm entity instance
+        :raises TransactionError: raise :class:`TransactionError`
+        """
+        if entities is None:
+            raise QueryError('Error: can \'t not bulk update None entities')
+
+        for entity in entities:
+            self.logger.debug('Update %s entity %s' % (entities.__class__.__name__, entity))
+            if isinstance(entity, BaseEntity):
+                entity.modification_date = datetime.today()
+
+        session = self.get_session()
+        session.bulk_save_objects(entities)
+        session.flush()
+        self.logger.info('Bulk updated %s entities' % len(entities))
+        return entities
+
+    @transaction
+    def delete(self, entity):
+        """Delete entity
+
+        :param entity: orm entity instance
+        :return: orm entity instance
+        :raises TransactionError: raise :class:`TransactionError`
+        """
+        if entity is None:
+            raise QueryError('Error: can\'t not delete None entity')
+
+        self.logger.debug2('Delete %s entity %s' % (entity.__class__.__name__, entity))
+        if isinstance(entity, BaseEntity):
+            if entity.is_active():
+                entity.disable()
+                self.update(entity)
+                logger.info('Disable entity %s' % entity.id)
+            else:
+                logger.info('Nothing to do on %s !' % entity)
+        else:
+            self.purge(entity)
+            logger.info('Purge entity %s' % entity.id)
+        return entity
+
+    @transaction
+    def purge(self, entity):
+        """Hard delete entity
+
+        :param entity: entity
+        :return Boolean:
+        """
+        if entity is None:
+            logger.warning('Warning: can\'t not purge None entity')
+            return entity
+
+        session = self.get_session()
+        session.delete(entity)
+        session.flush()
+        logger.debug2('Delete %s entity %s' % (entity.__class__.__name__, entity))
+
     #
     # permission tag
     #
@@ -1145,20 +1323,9 @@ class AbstractDbManager(object):
             self.logger.debug2('Add permtag %s' % tagrecord)
         except:
             # permtag already exists. Get reference
-            self.logger.warn('Permtag %s already exists' % tagrecord)
+            self.logger.warning('Permtag %s already exists' % tagrecord)
             session.rollback()
             tagrecord = session.query(PermTag).filter_by(value=tag).first()
-
-        # query = session.query(PermTag).filter_by(value=tag)
-        # tagrecord = query.one_or_none()
-        # if tagrecord is None:
-        #     # create permtag
-        #     tagrecord = PermTag(tag, explain=explain)
-        #     session.add(tagrecord)
-        #     session.flush()
-        #     self.logger.debug2('Add permtag %s' % tagrecord)
-        # else:
-        #     self.logger.warn('Permtag %s already exists' % tagrecord)
 
         # create tag entity association
         # record = None
@@ -1196,135 +1363,10 @@ class AbstractDbManager(object):
             tagrecord = session.query(PermTag).filter_by(value=tag).first()
             if tagrecord is not None:
                 tagusage = session.query(func.count(PermTagEntity.id)).filter_by(tag=tagrecord.id).scalar()
-                # tagusage = session.query(PermTagEntity).filter_by(tag=tagrecord.id).all()
-                # if len(tagusage) > 0:
                 if tagusage > 0:
-                    self.logger.warn('Tag %s is used by other entities' % tag)
+                    self.logger.warning('Tag %s is used by other entities' % tag)
                 else:
                     session.delete(tagrecord)
                     self.logger.debug2('Delete tag %s' % tag)
 
         return True
-
-    @transaction
-    def add(self, entity):
-        """
-
-        :param entity:
-        :return:
-        """
-        if entity is None:
-            raise QueryError("Error: can't not add None entity")
-        
-        session = self.get_session()
-        session.add(entity)
-        session.flush()
-        self.logger.debug2('Add %s entity %s' % (entity.__class__.__name__, entity))
-        return entity
-    
-    @transaction
-    def add_all(self, entities):
-        """
-
-        :param entities:
-        :return: num of entities 
-        """
-        if entities is None:
-            raise QueryError("Error: can't not add None entity")
-        
-        session = self.get_session()
-        session.add_all(entities)
-        session.flush()
-        self.logger.debug2('Add all %s entity %s' % (entities[0].__class__.__name__, len(entities)))
-        return len(entities)
-    
-    @transaction
-    def update(self, entity):
-        if entity is None:
-            raise QueryError("Error: can't not update None entity")
-        
-        self.logger.info('Update %s entity %s' % (entity.__class__.__name__, entity))
-        if isinstance(entity, AuditData):
-            entity.modification_date = datetime.now()
-        
-        session = self.get_session()
-        session.merge(entity)
-        session.flush()
-        self.logger.info('Updated')
-        return entity   
-    
-    @transaction
-    def bulk_save_objects(self, entities):
-        if entities is None:
-            raise QueryError("Error: can't not bulk update None entities")
-        
-        for entity in entities:
-            self.logger.debug('Update %s entity %s' % (entities.__class__.__name__, entity))
-            if isinstance(entity, BaseEntity):
-                entity.modification_date = datetime.today()
-        
-        session = self.get_session()
-        session.bulk_save_objects(entities)
-        session.flush()
-        self.logger.info('Bulk updated %s entities' %len(entities))
-        return entities   
-
-    @transaction
-    def delete(self, entity):
-        """Delete entity
-
-        :param entity: entity
-        """
-        if entity is None:
-            raise QueryError("Error: can't not delete None entity")
-        
-        self.logger.debug2('Delete %s entity %s' % (entity.__class__.__name__, entity))
-        if isinstance(entity, BaseEntity):
-            if entity.is_active():
-                entity.disable()
-                self.update(entity)
-                logger.info('Disable entity %s' % entity.id)
-            else:
-                logger.info('Nothing to do on %s !' % entity)
-        else:
-            self.purge(entity)
-            logger.info('Purge entity %s' % entity.id)
-        return entity
-        
-    @transaction
-    def purge(self, entity):
-        """Hard Delete entity
-
-        :param entity: entity
-        :return Boolean:
-        """
-        if entity is None:
-            logger.warn('Warning: can\'t not purge None entity')
-            return entity
-        
-        session = self.get_session()
-        session.delete(entity)
-        session.flush()
-        logger.debug2('Delete %s entity %s' % (entity.__class__.__name__, entity))
-
-    @staticmethod   
-    def add_base_entity_filters(query, *args, **kvargs):
-        
-        # id is unique
-        if 'id' in kvargs and kvargs.get('id') is not None:
-            query = query.filter_by(id=kvargs.get('id'))
-        # uuid is unique
-        if 'uuid' in kvargs and kvargs.get('uuid') is not None:
-            query = query.filter_by(uuid=kvargs.get('uuid')) 
-        
-        # Non unique filters
-        if 'objid' in kvargs and kvargs.get('objid') is not None:
-            query = query.filter_by(objid=kvargs.get('objid'))
-        if 'name' in kvargs and kvargs.get('name') is not None:
-            query = query.filter_by(name=kvargs.get('name'))
-        if 'desc' in kvargs and kvargs.get('desc') is not None:
-            query = query.filter_by(desc=kvargs.get('desc'))
-        if 'active' in kvargs and kvargs.get('active') is not None:
-            query = query.filter_by(active=kvargs.get('active')) 
-            
-        return query

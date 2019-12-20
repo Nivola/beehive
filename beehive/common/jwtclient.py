@@ -30,29 +30,43 @@ class GrantType(object):
 
 
 class OAuth2Error(errors.OAuth2Error):
-    def __init__(self, description=None, uri=None, state=None, status_code=None,
-                 request=None, error=None):
+    def __init__(self, description=None, uri=None, state=None, status_code=None, request=None, error=None):
         self.error = error
         errors.OAuth2Error.__init__(self, description, uri, state, status_code, request)
 
 
 class JWTClient(Client):
-    """A client that implement the use case 'JWTs as Authorization Grants' of 
-    the rfc7523.
+    """A client that implement the use case 'JWTs as Authorization Grants' of  the rfc7523.
     """
     def prepare_request_body(self, body='', scope=None, **kwargs):
-        """Add the client credentials to the request body.
+        """Add the client credentials to the request body
+
+        :param body: request body
+        :param scope: oauth2 scope
+        :param kwargs: key value args
+        :return:
         """
         grant_type = GrantType.JWT_BEARER
         return prepare_token_request(grant_type, body=body, scope=scope, **kwargs)
         
     def parse_request_body_response(self, body, scope=None, **kwargs):
+        """Parse request body response
+
+        :param body: request body
+        :param scope: oauth2 scope
+        :param kwargs: key value args
+        :return:
+        """
         self.token = self.__parse_token_response(body, scope=scope)
-        self._populate_attributes(self.token)
+        # self._populate_attributes(self.token)
+        self.populate_token_attributes(self.token)
         return self.token     
 
     def __parse_token_response(self, body, scope=None):
         """Parse the JSON token response body into a dict.
+
+        :param body: request body
+        :param scope: oauth2 scope
         """
         try:
             params = json.loads(body)
@@ -81,7 +95,10 @@ class JWTClient(Client):
         return params
     
     def __validate_token_parameters(self, params):
-        """Ensures token precence, token type, expiration and scope in params."""
+        """Ensures token precence, token type, expiration and scope in params
+
+        :param params: input params to validate
+        """
         if 'error' in params:
             kwargs = {
                 'description': params.get('error_description'),
@@ -97,7 +114,13 @@ class JWTClient(Client):
     @staticmethod
     def create_token(client_id, client_email, client_scope, private_key, client_token_uri, sub):
         """Create access token using jwt grant
-        
+
+        :param client_id: client uuid
+        :param client_email: client email
+        :param client_scope: oauth2 scope
+        :param private_key: private key
+        :param client_token_uri: token uri
+        :param sub: sub field
         :return: token
         """
         client = JWTClient(client_id=client_id)

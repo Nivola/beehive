@@ -40,6 +40,11 @@ class RunTaskError(Exception):
 
 
 class BaseTask(Task):
+    """Base beehive celery task class
+
+    :param args: positional arg
+    :param kwargs: key value arg
+    """
     abstract = True
     inner_type = 'TASK'
     prefix = 'celery-task-shared-'
@@ -47,7 +52,6 @@ class BaseTask(Task):
     expire = 3600
     entity_class = None
     controller = None
-
     _redis = None
 
     def __init__(self, *args, **kwargs):
@@ -242,6 +246,11 @@ class BaseTask(Task):
         self.api_id = params.pop('api_id', None)
 
     def progress(self, step_id, msg=None):
+        """Update progress task step status
+
+        :param step_id: step id
+        :param msg: progress message
+        """
         logger.debug(msg)
         self.task_result.step_progress(self.request.id, step_id, msg=msg)
 
@@ -249,10 +258,12 @@ class BaseTask(Task):
     # basic task step
     #
     def start_step(self):
+        """Start step"""
         step_id = self.task_result.step_add(self.request.id, 'start_step')
         self.task_result.step_success(self.request.id, step_id, None)
 
     def end_step(self):
+        """End step"""
         step_id = self.task_result.step_add(self.request.id, 'end_step')
         self.task_result.step_success(self.request.id, step_id, None)
 

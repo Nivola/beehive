@@ -27,12 +27,11 @@ class BeehiveAppError(Exception):
 
 class BeehiveApp(Flask):
     """Custom Flask app used to read configuration and initialize security.
-    
+
+    :param args: positional args
+    :param kwargs: key value args
     """
     def __init__(self, *args, **kwargs):
-        """ """
-        # self._config = kwargs.pop('config')
-        
         super(BeehiveApp, self).__init__(*args, **kwargs)
 
         # set debug mode
@@ -159,8 +158,6 @@ class BeehiveApp(Flask):
         :param level:
         :return:
         """
-        # logname = uwsgi_util.opt['api_id']
-
         loggers = [
             logger,
             logging.getLogger('oauthlib'),

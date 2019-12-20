@@ -48,6 +48,12 @@ role_template_policy = Table('role_template_policy', Base.metadata,
 
 
 class RoleUser(Base):
+    """Authorizationrole user association
+
+    :param user_id: user id
+    :param role_id: role id
+    :param expiry_date: relation expiry date [default=365 days]. Set using a datetime object
+    """
     __tablename__ = 'roles_users'
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('user.id'))
@@ -57,13 +63,6 @@ class RoleUser(Base):
     role = relationship('Role', back_populates='user')
     
     def __init__(self, user_id, role_id, expiry_date=None):
-        """Create new role user association
-        
-        :param user_id: user id
-        :param role_id: role id
-        :param expiry_date: relation expiry date [default=365 days]. Set using a 
-                datetime object
-        """
         self.user_id = user_id
         self.role_id = role_id
         if expiry_date is None:
@@ -75,6 +74,12 @@ class RoleUser(Base):
 
 
 class RoleGroup(Base):
+    """Authorizationrole group association
+
+    :param group_id: group id
+    :param role_id: role id
+    :param expiry_date: relation expiry date [default=365 days]. Set using a datetime object
+    """
     __tablename__ = 'roles_groups'
     id = Column(Integer, primary_key=True)
     group_id = Column(Integer, ForeignKey('group.id'))
@@ -84,13 +89,6 @@ class RoleGroup(Base):
     role = relationship('Role', back_populates='group')
     
     def __init__(self, group_id, role_id, expiry_date=None):
-        """Create new role group association
-        
-        :param group_id: group id
-        :param role_id: role id
-        :param expiry_date: relation expiry date [default=365 days]. Set using a 
-                datetime object
-        """
         self.group_id = group_id
         self.role_id = role_id
         if expiry_date is None:
@@ -101,25 +99,31 @@ class RoleGroup(Base):
         return u"<RoleGroup group=%s role=%s expiry=%s>" % (self.group_id, self.role_id, self.expiry_date)
 
 
-# Systems role templates
-class RoleTemplate(Base, BaseEntity):
-    __tablename__ = 'role_template'
-
-    policy = relationship('SysPolicy', secondary=role_template_policy,
-                          backref=backref('role_template', lazy='dynamic'))
-
-    def __init__(self, objid, name, policy, desc='', active=True):
-        BaseEntity.__init__(self, objid, name, desc, active)
-
-        self.policy = policy
+# # Systems role templates
+# class RoleTemplate(Base, BaseEntity):
+#     __tablename__ = 'role_template'
+#
+#     policy = relationship('SysPolicy', secondary=role_template_policy, backref=backref('role_template', lazy='dynamic'))
+#
+#     def __init__(self, objid, name, policy, desc='', active=True):
+#         BaseEntity.__init__(self, objid, name, desc, active)
+#         self.policy = policy
 
 
 # Systems roles
 class Role(Base, BaseEntity):
+    """Authorization role
+
+    :param objid: authorization id
+    :param name: name
+    :param permission: permission
+    :param desc: description [optional]
+    :param active: active [default=True]
+    :param alias: alias [default='']
+    """
     __tablename__ = 'role'
 
-    permission = relationship('SysObjectPermission', secondary=role_permission,
-                              backref=backref('role', lazy='dynamic'))
+    permission = relationship('SysObjectPermission', secondary=role_permission, backref=backref('role', lazy='dynamic'))
     user = relationship('RoleUser', back_populates='role')
     group = relationship('RoleGroup', back_populates='role')
     alias = Column(String(100))
@@ -134,6 +138,13 @@ class Role(Base, BaseEntity):
 
 # Systems roles
 class UserAttribute(Base):
+    """Authorization user attribute
+
+    :param user: user id
+    :param name: attribute name
+    :param value: attribute value
+    :param desc: attribute desc
+    """
     __tablename__ = 'user_attribute'
     __table_args__ = {'mysql_engine': 'InnoDB'}
         
@@ -144,12 +155,6 @@ class UserAttribute(Base):
     user_id = Column(Integer(), ForeignKey('user.id'))
 
     def __init__(self, user, name, value, desc=''):
-        """Create a user attribute
-        :param user: user id
-        :param name: attribute name
-        :param value: attribute value
-        :param desc: attribute desc
-        """
         self.user_id = user
         self.name = name
         self.value = value
@@ -160,7 +165,15 @@ class UserAttribute(Base):
 
 
 class User(Base, BaseEntity):
-    """User
+    """Authorization user
+
+    :param objid: authorization id
+    :param username: name of the user
+    :param active: set if user is active [default=True]
+    :param password: user password [optional]
+    :param desc: user desc [default='']
+    :param expiry_date: user expiry date [default=365 days]. Set using a datetime object
+    :param email: email [optional]
     """
     __tablename__ = 'user'
 
@@ -172,16 +185,6 @@ class User(Base, BaseEntity):
     last_login = Column(DateTime())
 
     def __init__(self, objid, name, active=True, password=None, desc='', expiry_date=None, email=None):
-        """Create new user
-        
-        :param objid: authorization id
-        :param username: name of the user
-        :param active: set if user is active [default=True]
-        :param password: user password [optional]
-        :param desc: user desc [default='']
-        :param expiry_date: user expiry date [default=365 days]. Set using a datetime object
-        :param email: email [optional]
-        """
         BaseEntity.__init__(self, objid, name, desc, active)
         
         self.role = []
@@ -215,6 +218,16 @@ class User(Base, BaseEntity):
 
 
 class Group(Base, BaseEntity):
+    """Authorization group
+
+    :param objid: authorization id
+    :param name: name of the group
+    :param member: user member [default=[]]
+    :param role: role [optional]
+    :param desc: group desc [default='']
+    :param active: set if group is active [default=True]
+    :param expiry_date: group expiry date [default=365 days]. Set using a datetime object
+    """
     __tablename__ = 'group'
 
     member = relationship('User', secondary=group_user, backref=backref('group', lazy='dynamic'))
@@ -233,8 +246,14 @@ class Group(Base, BaseEntity):
 
 # System object types
 class SysObjectType(Base):
+    """Authorization object type
+
+    :param objtype: object type. String like service, resource, container
+    :param objdef: object defintition. String like vdcservice, openstack
+    :param objclass: object class. String like Openstack
+    """
     __tablename__ = 'sysobject_type'
-    __table_args__ = {'mysql_engine':'InnoDB'}    
+    __table_args__ = {'mysql_engine': 'InnoDB'}
     
     id = Column(Integer, primary_key=True)
     objtype = Column(String(100))
@@ -243,27 +262,28 @@ class SysObjectType(Base):
     creation_date = Column(DateTime())
 
     def __init__(self, objtype, objdef, objclass):
-        """
-        :param objtype: object type. String like service, resource, container
-        :param objdef: object defintition. String like vdcservice, cloudstack
-        :param objclass: object class. String like Cloudstack
-        """
         self.objtype = objtype
         self.objdef = objdef
         self.objclass = None
         self.creation_date = datetime.datetime.today()   
     
     def __repr__(self):
-        return u"<SysObjectType id=%s type=%s def=%s>" % (self.id, self.objtype, self.objdef)
+        return '<SysObjectType id=%s type=%s def=%s>' % (self.id, self.objtype, self.objdef)
 
 
 # System objects
 class SysObject(Base, BaseEntity):
+    """Authorization object
+
+    :param objid: authorization id
+    :param otype: object type
+    :param desc: object desc [default='']
+    """
     __tablename__ = 'sysobject'
 
     name = Column(String(100))
     type_id = Column(Integer(), ForeignKey('sysobject_type.id'))
-    type = relationship(u"SysObjectType", backref=u"sysobject") 
+    type = relationship('SysObjectType', backref='sysobject')
 
     def __init__(self, otype, objid, desc=''):
         BaseEntity.__init__(self, objid, '', desc, True)
@@ -271,11 +291,15 @@ class SysObject(Base, BaseEntity):
         self.type = otype     
     
     def __repr__(self):
-        return u"<SysObject id=%s type=%s def=%s objid=%s>" % (self.id, self.type.objtype, self.type.objdef, self.objid)
+        return '<SysObject id=%s type=%s def=%s objid=%s>' % (self.id, self.type.objtype, self.type.objdef, self.objid)
 
 
 # System object actions
 class SysObjectAction(Base):
+    """Authorization object action
+
+    :param value: action
+    """
     __tablename__ = 'sysobject_action'
     __table_args__ = {'mysql_engine':'InnoDB'}    
     
@@ -286,11 +310,16 @@ class SysObjectAction(Base):
         self.value = value
     
     def __repr__(self):
-        return u"<SysObjectAction id=%s value=%s>" % (self.id, self.value)
+        return '<SysObjectAction id=%s value=%s>' % (self.id, self.value)
 
 
 # System object permissions
 class SysObjectPermission(Base):
+    """Authorization object permission
+
+    :param obj: object
+    :param action: action
+    """
     __tablename__ = 'sysobject_permission'
     __table_args__ = {'mysql_engine': 'InnoDB'}
     
@@ -305,33 +334,35 @@ class SysObjectPermission(Base):
         self.action = action
         
     def __repr__(self):
-        return u"<SysObjectPermission id=%s type=%s def=%s objid=%s action=%s>" % (
+        return '<SysObjectPermission id=%s type=%s def=%s objid=%s action=%s>' % (
                     self.id, self.obj.type.objtype, self.obj.type.objdef, self.obj.objid, self.action.value)
 
 
-# System object policy
-class SysPolicy(Base):
-    __tablename__ = 'syspolicy'
-    __table_args__ = {'mysql_engine': 'InnoDB'}
-    
-    id = Column(Integer, primary_key=True)
-    objid_tmpl = Column(String(400))
-    type_id = Column(Integer(), ForeignKey('sysobject_type.id'))
-    type = relationship(u"SysObjectType", backref=u"sysobject_type") 
-    action_id = Column(Integer(), ForeignKey('sysobject_action.id'))
-    action = relationship('SysObjectAction')
-
-    def __init__(self, objid_tmpl, type, action):
-        self.type = type
-        self.action = action
-        
-    def __repr__(self):
-        return u"<SysPolicy id=%s type=%s def=%s action=%s>" % (
-                    self.id, self.type.objtype, self.type.objdef, self.action.value)
+# # System object policy
+# class SysPolicy(Base):
+#     __tablename__ = 'syspolicy'
+#     __table_args__ = {'mysql_engine': 'InnoDB'}
+#
+#     id = Column(Integer, primary_key=True)
+#     objid_tmpl = Column(String(400))
+#     type_id = Column(Integer(), ForeignKey('sysobject_type.id'))
+#     type = relationship(u"SysObjectType", backref=u"sysobject_type")
+#     action_id = Column(Integer(), ForeignKey('sysobject_action.id'))
+#     action = relationship('SysObjectAction')
+#
+#     def __init__(self, objid_tmpl, type, action):
+#         self.type = type
+#         self.action = action
+#
+#     def __repr__(self):
+#         return u"<SysPolicy id=%s type=%s def=%s action=%s>" % (
+#                     self.id, self.type.objtype, self.type.objdef, self.action.value)
 
 
 class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
-    """Authorization db manager                                                                                    
+    """Authorization db manager
+
+    :param session: sqlalchemy session
     """
     def __init__(self, session=None):
         AbstractDbManager.__init__(self, session)
@@ -339,30 +370,34 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
     
     @staticmethod
     def create_table(db_uri):
-        """Create all tables in the engine. This is equivalent to "Create Table"
-        statements in raw SQL."""
+        """Create all tables in the engine. This is equivalent to "Create Table" statements in raw SQL
+
+        :param db_uri: db uri
+        """
         AbstractDbManager.create_table(db_uri)
 
         try:
             engine = create_engine(db_uri)
-            engine.execute("SET FOREIGN_KEY_CHECKS=1;")
+            engine.execute('SET FOREIGN_KEY_CHECKS=1;')
             Base.metadata.create_all(engine)
-            logger.info('Create tables on : %s' % (db_uri))
+            logger.info('Create tables on : %s' % db_uri)
             del engine
         except exc.DBAPIError as e:
             raise Exception(e)
     
     @staticmethod
     def remove_table(db_uri):
-        """ Remove all tables in the engine. This is equivalent to "Drop Table"
-        statements in raw SQL."""
+        """Remove all tables in the engine. This is equivalent to "Drop Table" statements in raw SQL
+
+        :param db_uri: db uri
+        """
         AbstractDbManager.remove_table(db_uri)
 
         try:
             engine = create_engine(db_uri)
-            engine.execute("SET FOREIGN_KEY_CHECKS=0;")
+            engine.execute('SET FOREIGN_KEY_CHECKS=1;')
             Base.metadata.drop_all(engine)
-            logger.info('Remove tables from : %s' % (db_uri))
+            logger.info('Remove tables from : %s' % db_uri)
             del engine
         except exc.DBAPIError as e:
             raise Exception(e)
@@ -373,8 +408,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         @transaction(self.get_session())
         def func(session):
             # object actions
-            actions = ['*', 'view', 'insert', 'update', 'delete', 'use', 
-                       'disable', 'recover']
+            actions = ['*', 'view', 'insert', 'update', 'delete', 'use', 'disable', 'recover']
             data = []
             for item in actions:
                 data.append(SysObjectAction(item))
@@ -396,8 +430,8 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         :param size: number of types to show in list per page [default=10]
         :param order: sort order [default=DESC]
         :param size: sort field [default=id]           
-        :return: SysObjectType corresponding to oid or value. If no param are 
-                 specified return all the system object types.                
+        :return: SysObjectType corresponding to oid or value. If no param are  specified return all the system object
+            types.
         :rtype: list of :class:`SysObjectType`
         :raises QueryError: raise :class:`QueryError`  
         """
@@ -490,8 +524,8 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         
         :param oid: id of the system object action [optional]
         :param value: value of the system object action [optional]
-        :return: SysObjectAction corresponding to oid or value. If no param are 
-                 specified return all the system object actions.
+        :return: SysObjectAction corresponding to oid or value. If no param are specified return all the system object
+            actions.
         :rtype: list of :class:`SysObjectAction`
         :raises QueryError: raise :class:`QueryError`
         """
@@ -509,8 +543,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
     def add_object_actions(self, items):
         """Add a list of system object actions.
         
-        :param items: list of strings that define the action. 
-                      Es. 'view', 'use', 'insert'
+        :param items: list of strings that define the action. Es. 'view', 'use', 'insert'
         :return: True if operation is successful, False otherwise
         :rtype: bool
         :raises TransactionError: raise :class:`TransactionError`
@@ -591,17 +624,11 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         :return: one SysObject or a list of SysObject
         :rtype: :class:`SysObject` or list of :class:`SysObject`
         :raises QueryError: raise :class:`.decorator.QueryError` if query return error
-        
-        .. versionadded:: 0.0
         """
         session = self.get_session()
-        sqlcount = ['SELECT count(t1.id) as count',
-                    'FROM sysobject t1, sysobject_type t2', 
-                    'WHERE t1.type_id=t2.id']                    
-        sql = ['SELECT t1.id as id, t1.objid as objid, t2.objtype as objtype, '
-               't2.objdef as objdef',
-               'FROM sysobject t1, sysobject_type t2', 
-               'WHERE t1.type_id=t2.id']
+        sqlcount = ['SELECT count(t1.id) as count FROM sysobject t1, sysobject_type t2 WHERE t1.type_id=t2.id']
+        sql = ['SELECT t1.id as id, t1.objid as objid, t2.objtype as objtype, t2.objdef as objdef',
+               'FROM sysobject t1, sysobject_type t2 WHERE t1.type_id=t2.id']
                 
         params = {}
         if oid is not None:
@@ -725,9 +752,8 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         session = self.get_session()
         
         # query object
-        sql = ["SELECT t1.id as id, t1.objid as objid, t2.objtype as objtype, t2.objdef as objdef",
-               "FROM sysobject t1, sysobject_type t2", 
-               "WHERE t1.type_id=t2.id "]
+        sql = ['SELECT t1.id as id, t1.objid as objid, t2.objtype as objtype, t2.objdef as objdef',
+               'FROM sysobject t1, sysobject_type t2 WHERE t1.type_id=t2.id ']
                 
         params = {}
         if oid is not None:
@@ -771,13 +797,10 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         :raises QueryError: raise :class:`QueryError`
         """
         session = self.get_session()
-        sql = ["SELECT t4.id as id, t1.id as oid, t1.objid as objid,",
-               "t2.objtype as objtype, t2.objdef as objdef,", 
-               "t3.id as aid, t3.value as action",
-               "FROM sysobject t1, sysobject_type t2,",
-               "sysobject_action t3, sysobject_permission t4",
-               "WHERE t4.obj_id=t1.id AND t4.action_id=t3.id",
-               "AND t1.type_id=t2.id AND t4.id=:permission_id"]
+        sql = ['SELECT t4.id as id, t1.id as oid, t1.objid as objid, t2.objtype as objtype, t2.objdef as objdef,',
+               't3.id as aid, t3.value as action FROM sysobject t1, sysobject_type t2, sysobject_action t3, ',
+               'sysobject_permission t4 WHERE t4.obj_id=t1.id AND t4.action_id=t3.id AND t1.type_id=t2.id ',
+               'AND t4.id=:permission_id']
                 
         params = {'permission_id': permission_id}
                      
@@ -802,13 +825,9 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         :raises QueryError: raise :class:`QueryError`
         """
         session = self.get_session()
-        sql = ["SELECT t4.id as id, t1.id as oid, t1.objid as objid,",
-               "t2.objtype as objtype, t2.objdef as objdef,", 
-               "t3.id as aid, t3.value as action",
-               "FROM sysobject t1, sysobject_type t2,",
-               "sysobject_action t3, sysobject_permission t4",
-               "WHERE t4.obj_id=t1.id AND t4.action_id=t3.id",
-               "AND t1.type_id=t2.id"]
+        sql = ['SELECT t4.id as id, t1.id as oid, t1.objid as objid, t2.objtype as objtype, t2.objdef as objdef, ',
+               't3.id as aid, t3.value as action FROM sysobject t1, sysobject_type t2, sysobject_action t3, ',
+               'sysobject_permission t4 WHERE t4.obj_id=t1.id AND t4.action_id=t3.id AND t1.type_id=t2.id']
                 
         params = {}
         if object_id is not None:
@@ -955,17 +974,12 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         """
         session = self.get_session()
         sqlcount = ['SELECT count(t4.id)',
-                    'FROM sysobject t1, sysobject_type t2,',
-                    'sysobject_action t3, sysobject_permission t4',
-                    'WHERE t4.obj_id=t1.id AND t4.action_id=t3.id',
-                    'AND t1.type_id=t2.id']        
-        sql = ['SELECT t4.id as id, t1.id as oid, t1.objid as objid,',
-               't2.objtype as objtype, t2.objdef as objdef,', 
+                    'FROM sysobject t1, sysobject_type t2, sysobject_action t3, sysobject_permission t4',
+                    'WHERE t4.obj_id=t1.id AND t4.action_id=t3.id AND t1.type_id=t2.id']
+        sql = ['SELECT t4.id as id, t1.id as oid, t1.objid as objid, t2.objtype as objtype, t2.objdef as objdef,',
                't3.id as aid, t3.value as action',
-               'FROM sysobject t1, sysobject_type t2,',
-               'sysobject_action t3, sysobject_permission t4',
-               'WHERE t4.obj_id=t1.id AND t4.action_id=t3.id',
-               'AND t1.type_id=t2.id']
+               'FROM sysobject t1, sysobject_type t2, sysobject_action t3, sysobject_permission t4',
+               'WHERE t4.obj_id=t1.id AND t4.action_id=t3.id AND t1.type_id=t2.id']
                 
         params = {}
         if objids is not None:
@@ -1007,143 +1021,143 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         self.logger.debug('Get object permissions: %s' % truncate(res))
         return res, total
 
+    # #
+    # # RoleTemplateTemplate manipulation methods
+    # #
+    # def get_role_templates(self, *args, **kvargs):
+    #     """Get role_templates
     #
-    # RoleTemplateTemplate manipulation methods
+    #     :param tags: list of permission tags
+    #     :param name: name like [optional]
+    #     :param active: active [optional]
+    #     :param creation_date: creation_date [optional]
+    #     :param modification_date: modification_date [optional]
+    #     :param expiry_date: expiry_date [optional]
+    #     :param page: users list page to show [default=0]
+    #     :param size: number of users to show in list per page [default=0]
+    #     :param order: sort order [default=DESC]
+    #     :param field: sort field [default=id]
+    #     :return: list of :class:`RoleTemplate`
+    #     :raises QueryError: raise :class:`QueryError`
+    #     """
+    #     filters = []
+    #     res, total = self.get_paginated_entities(RoleTemplate, filters=filters, *args, **kvargs)
     #
-    def get_role_templates(self, *args, **kvargs):
-        """Get role_templates
-
-        :param tags: list of permission tags
-        :param name: name like [optional]
-        :param active: active [optional]
-        :param creation_date: creation_date [optional]
-        :param modification_date: modification_date [optional]
-        :param expiry_date: expiry_date [optional]
-        :param page: users list page to show [default=0]
-        :param size: number of users to show in list per page [default=0]
-        :param order: sort order [default=DESC]
-        :param field: sort field [default=id]
-        :return: list of :class:`RoleTemplate`
-        :raises QueryError: raise :class:`QueryError`
-        """
-        filters = []
-        res, total = self.get_paginated_entities(RoleTemplate, filters=filters, *args, **kvargs)
-
-        return res, total
-
-    @query
-    def get_permission_role_templates(self, tags=None, perm=None, page=0, size=10, order='DESC', field='id',
-                                      *args, **kvargs):
-        """Get role_templates related to a permission.
-
-        :param perm: permission id
-        :param page: role_templates list page to show [default=0]
-        :param size: number of role_templates to show in list per page [default=0]
-        :param order: sort order [default=DESC]
-        :param field: sort field [default=id]
-        :return: List of RoleTemplate instances
-        :rtype: list of :class:`RoleTemplate`
-        :raises QueryError: raise :class:`QueryError`
-        """
-        session = self.get_session()
-        query = PaginatedQueryGenerator(RoleTemplate, session)
-        query.add_filter('AND role_template_permission.permission_id=:perm_id')
-        query.set_pagination(page=page, size=size, order=order, field=field)
-        res = query.run(tags, permn_id=perm, *args, **kvargs)
-        return res
-
-    @transaction
-    def add_role_template(self, objid, name, desc, policies):
-        """Add a role_template.
-
-        :param objid: role_template objid
-        :param name: role_template name
-        :param policies: list of policies {'objid_tmpl':.., 'type':.., 'action':..}
-            Ex. [{'objid_tmpl':'%account_objid', 'type':'service:Org.Div.Account', 'action':'*'},..]
-        :param desc: role_template desc
-        :return: True if operation is successful, False otherwise
-        :rtype: bool
-        :raises TransactionError: raise :class:`TransactionError`
-        """
-        session = self.get_session()
-
-        rt_policies = []
-        for policy in policies:
-            # get object type
-            objtype, objdef = policy.get('type').split(':')
-            policy_type = session.query(SysObjectType).filter_by(objtype=objtype).filter_by(objdef=objdef).first()
-            if policy_type is None:
-                raise ModelError('Type %s not found' % policy.get('type'))
-            # get action
-            objtype, objdef = policy.get('type').split(':')
-            policy_act = session.query(SysObjectAction).filter_by(objtype=objtype).filter_by(objdef=objdef).first()
-            if policy_act is None:
-                raise ModelError('Type %s not found' % policy.get('type'))
-            # TODO: add control to objid
-            rt_policies.append(SysPolicy(policy.get('objid_tmpl'), policy_type, policy_act))
-
-        record = RoleTemplate(objid, name, rt_policies, desc=desc, active=True)
-        session.add(record)
-
-        self.logger.debug('Add role_template %s' % name)
-        return record
-
-    @transaction
-    def remove_role_template(self, *args, **kvargs):
-        """Remove role_template.
-
-        :param int oid: entity id. [optional]
-        :raises TransactionError: raise :class:`TransactionError`
-        """
-        # remove policies
-
-        res = self.remove_entity(RoleTemplate, *args, **kvargs)
-        return res
-
-    @transaction
-    def append_role_template_permissions(self, role_template, perms):
-        """Append permission to role_template
-
-        :param role_template: RoleTemplate instance
-        :param perms: list of permissions
-        :return: True if operation is successful, False otherwise
-        :rtype: bool
-        :raises TransactionError: raise :class:`TransactionError`
-        """
-        session = self.get_session()
-        append_perms = []
-        for perm in perms:
-            # append permission to role_template if it doesn't already exists
-            if role_template not in perm.role_template:
-                role_template.permission.append(perm)
-                append_perms.append(perm.id)
-            else:
-                self.logger.warn('Permission %s already exists in role_template %s' % (
-                    perm, role_template))
-
-        self.logger.debug('Append to role_template %s permissions: %s' % (role_template, perms))
-        return append_perms
-
-    @transaction
-    def remove_role_template_permission(self, role_template, perms):
-        """Remove permission from role_template
-
-        :param role_template: RoleTemplate instance
-        :param perms: list of permissions
-        :return: True if operation is successful, False otherwise
-        :rtype: bool
-        :raises TransactionError: raise :class:`TransactionError`
-        """
-        session = self.get_session()
-        remove_perms = []
-        for perm in perms:
-            # remove permission from role_template
-            # if len(perm.role_template.all()) > 0:
-            role_template.permission.remove(perm)
-            remove_perms.append(perm.id)
-
-        self.logger.debug('Remove from role_template %s permissions: %s' % (role_template, perms))
-        return remove_perms
+    #     return res, total
+    #
+    # @query
+    # def get_permission_role_templates(self, tags=None, perm=None, page=0, size=10, order='DESC', field='id',
+    #                                   *args, **kvargs):
+    #     """Get role_templates related to a permission.
+    #
+    #     :param perm: permission id
+    #     :param page: role_templates list page to show [default=0]
+    #     :param size: number of role_templates to show in list per page [default=0]
+    #     :param order: sort order [default=DESC]
+    #     :param field: sort field [default=id]
+    #     :return: List of RoleTemplate instances
+    #     :rtype: list of :class:`RoleTemplate`
+    #     :raises QueryError: raise :class:`QueryError`
+    #     """
+    #     session = self.get_session()
+    #     query = PaginatedQueryGenerator(RoleTemplate, session)
+    #     query.add_filter('AND role_template_permission.permission_id=:perm_id')
+    #     query.set_pagination(page=page, size=size, order=order, field=field)
+    #     res = query.run(tags, permn_id=perm, *args, **kvargs)
+    #     return res
+    #
+    # @transaction
+    # def add_role_template(self, objid, name, desc, policies):
+    #     """Add a role_template.
+    #
+    #     :param objid: role_template objid
+    #     :param name: role_template name
+    #     :param policies: list of policies {'objid_tmpl':.., 'type':.., 'action':..}
+    #         Ex. [{'objid_tmpl':'%account_objid', 'type':'service:Org.Div.Account', 'action':'*'},..]
+    #     :param desc: role_template desc
+    #     :return: True if operation is successful, False otherwise
+    #     :rtype: bool
+    #     :raises TransactionError: raise :class:`TransactionError`
+    #     """
+    #     session = self.get_session()
+    #
+    #     rt_policies = []
+    #     for policy in policies:
+    #         # get object type
+    #         objtype, objdef = policy.get('type').split(':')
+    #         policy_type = session.query(SysObjectType).filter_by(objtype=objtype).filter_by(objdef=objdef).first()
+    #         if policy_type is None:
+    #             raise ModelError('Type %s not found' % policy.get('type'))
+    #         # get action
+    #         objtype, objdef = policy.get('type').split(':')
+    #         policy_act = session.query(SysObjectAction).filter_by(objtype=objtype).filter_by(objdef=objdef).first()
+    #         if policy_act is None:
+    #             raise ModelError('Type %s not found' % policy.get('type'))
+    #         # TODO: add control to objid
+    #         rt_policies.append(SysPolicy(policy.get('objid_tmpl'), policy_type, policy_act))
+    #
+    #     record = RoleTemplate(objid, name, rt_policies, desc=desc, active=True)
+    #     session.add(record)
+    #
+    #     self.logger.debug('Add role_template %s' % name)
+    #     return record
+    #
+    # @transaction
+    # def remove_role_template(self, *args, **kvargs):
+    #     """Remove role_template.
+    #
+    #     :param int oid: entity id. [optional]
+    #     :raises TransactionError: raise :class:`TransactionError`
+    #     """
+    #     # remove policies
+    #
+    #     res = self.remove_entity(RoleTemplate, *args, **kvargs)
+    #     return res
+    #
+    # @transaction
+    # def append_role_template_permissions(self, role_template, perms):
+    #     """Append permission to role_template
+    #
+    #     :param role_template: RoleTemplate instance
+    #     :param perms: list of permissions
+    #     :return: True if operation is successful, False otherwise
+    #     :rtype: bool
+    #     :raises TransactionError: raise :class:`TransactionError`
+    #     """
+    #     session = self.get_session()
+    #     append_perms = []
+    #     for perm in perms:
+    #         # append permission to role_template if it doesn't already exists
+    #         if role_template not in perm.role_template:
+    #             role_template.permission.append(perm)
+    #             append_perms.append(perm.id)
+    #         else:
+    #             self.logger.warn('Permission %s already exists in role_template %s' % (
+    #                 perm, role_template))
+    #
+    #     self.logger.debug('Append to role_template %s permissions: %s' % (role_template, perms))
+    #     return append_perms
+    #
+    # @transaction
+    # def remove_role_template_permission(self, role_template, perms):
+    #     """Remove permission from role_template
+    #
+    #     :param role_template: RoleTemplate instance
+    #     :param perms: list of permissions
+    #     :return: True if operation is successful, False otherwise
+    #     :rtype: bool
+    #     :raises TransactionError: raise :class:`TransactionError`
+    #     """
+    #     session = self.get_session()
+    #     remove_perms = []
+    #     for perm in perms:
+    #         # remove permission from role_template
+    #         # if len(perm.role_template.all()) > 0:
+    #         role_template.permission.remove(perm)
+    #         remove_perms.append(perm.id)
+    #
+    #     self.logger.debug('Remove from role_template %s permissions: %s' % (role_template, perms))
+    #     return remove_perms
 
     #
     # Role manipulation methods
@@ -1190,23 +1204,17 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         """
         session = self.get_session()
         sqlcount = [
-            "SELECT count(distinct t4.id)",
-            "FROM sysobject t1, sysobject_type t2,",
-            "sysobject_action t3, sysobject_permission t4,"
-            "role t5, role_permission t6",
-            "WHERE t4.obj_id=t1.id and t4.action_id=t3.id and",
-            "t1.type_id=t2.id and t6.role_id = t5.id and",
-            "t6.permission_id=t4.id and t5.name IN :role_names"
+            'SELECT count(distinct t4.id) FROM sysobject t1, sysobject_type t2, sysobject_action t3, ',
+            'sysobject_permission t4, role t5, role_permission t6',
+            'WHERE t4.obj_id=t1.id and t4.action_id=t3.id and t1.type_id=t2.id and t6.role_id = t5.id and',
+            't6.permission_id=t4.id and t5.name IN :role_names'
         ]
-        sql = ["SELECT t4.id as id, t1.id as oid, t1.objid as objid, ",
-               "t2.objtype as objtype, t2.objdef as objdef, t3.id as aid,"
-               "t3.value as action",
-               "FROM sysobject t1, sysobject_type t2,",
-               "sysobject_action t3, sysobject_permission t4,"
-               "role t5, role_permission t6",
-               "WHERE t4.obj_id=t1.id and t4.action_id=t3.id and",
-               "t1.type_id=t2.id and t6.role_id = t5.id and",
-               "t6.permission_id=t4.id and t5.name IN :role_names GROUP BY t4.id"]
+        sql = ['SELECT t4.id as id, t1.id as oid, t1.objid as objid,  t2.objtype as objtype, t2.objdef as objdef, ',
+               't3.id as aid, t3.value as action',
+               'FROM sysobject t1, sysobject_type t2, sysobject_action t3, sysobject_permission t4,',
+               'role t5, role_permission t6',
+               'WHERE t4.obj_id=t1.id and t4.action_id=t3.id and t1.type_id=t2.id and t6.role_id = t5.id and',
+               't6.permission_id=t4.id and t5.name IN :role_names GROUP BY t4.id']
 
         # get total rows
         query = session.execute(' '.join(sqlcount), {'role_names': names})
@@ -1265,10 +1273,8 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         perms_string = ','.join(perms)
 
         custom_select = '(SELECT t1.*, GROUP_CONCAT(DISTINCT t2.permission_id ORDER BY t2.permission_id) as perms ' \
-                        'FROM role t1, role_permission t2  ' \
-                        'WHERE t2.role_id=t1.id ' \
-                        'and (t2.permission_id in :perms) ' \
-                        'GROUP BY t1.id)'
+                        'FROM role t1, role_permission t2 ' \
+                        'WHERE t2.role_id=t1.id and (t2.permission_id in :perms) GROUP BY t1.id)'
 
         query = PaginatedQueryGenerator(Role, session, custom_select=custom_select)
         query.add_filter('AND t3.perms=:perms_string')
@@ -1296,8 +1302,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
 
         custom_select = '(SELECT t1.*, GROUP_CONCAT(DISTINCT t2.permission_id ORDER BY t2.permission_id) as perms ' \
                         'FROM user t1, role_permission t2, roles_users t3 ' \
-                        'WHERE t2.role_id=t3.role_id AND t3.user_id=t1.id ' \
-                        'and (t2.permission_id in :perms) ' \
+                        'WHERE t2.role_id=t3.role_id AND t3.user_id=t1.id and (t2.permission_id in :perms) ' \
                         'GROUP BY t1.id)'
 
         query = PaginatedQueryGenerator(User, session, custom_select=custom_select)
@@ -1326,8 +1331,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
 
         custom_select = '(SELECT t1.*, GROUP_CONCAT(DISTINCT t2.permission_id ORDER BY t2.permission_id) as perms ' \
                         'FROM `group` t1, role_permission t2, roles_groups t3 ' \
-                        'WHERE t2.role_id=t3.role_id AND t3.group_id=t1.id ' \
-                        'and (t2.permission_id in :perms) ' \
+                        'WHERE t2.role_id=t3.role_id AND t3.group_id=t1.id and (t2.permission_id in :perms) ' \
                         'GROUP BY t1.id)'
 
         query = PaginatedQueryGenerator(Group, session, custom_select=custom_select)
@@ -1447,8 +1451,8 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         return res, total
     
     @query
-    def get_group_roles(self, tags=None, group_id=None, group_id_list=None, page=0, size=10, 
-            order='DESC', field='id', *args, **kvargs):
+    def get_group_roles(self, tags=None, group_id=None, group_id_list=None, page=0, size=10, order='DESC', field='id',
+                        *args, **kvargs):
         """Get roles of a user with expiry date of the association
         
         :param tags: list of permission tags
@@ -1492,7 +1496,8 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         tables = [('roles_groups', 't4')]
         filters = [
             'AND t3.id=t4.group_id',
-            'AND t4.role_id=:role_id']
+            'AND t4.role_id=:role_id'
+        ]
         res, total = self.get_paginated_entities(Group, filters=filters, tables=tables, *args, **kvargs)
         return res, total    
 
@@ -1629,8 +1634,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         :param name: name of the group
         :param active: set if group is active [optional]
         :param desc: group desc [optional]
-        :param expiry_date: group expiry date. Set using a datetime object 
-            [optional]
+        :param expiry_date: group expiry date. Set using a datetime object [optional]
         :raises TransactionError: raise :class:`TransactionError`
         """
         res = self.update_entity(Group, *args, **kvargs)
@@ -1787,9 +1791,10 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         """
         filters = []
         email = kvargs.get('email', None)
+        expiry_date = kvargs.get('expiry_date', None)
         if email is not None:
             filters.append('AND t3.email=:email')
-        if 'expiry_date' in kvargs and kvargs.get('expiry_date') is not None:
+        if expiry_date is not None:
             filters.append('AND expiry_date>=:expiry_date')
         res, total = self.get_paginated_entities(User, filters=filters, *args, **kvargs)
         
@@ -1882,38 +1887,6 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             perms, total = self.get_role_permissions(names=roles, page=page, size=size, order=order, field=field)
         self.logger.debug('Get user %s perms: %s' % (user.name, truncate(perms)))
         return perms, total
-    
-    '''
-    @query
-    def get_user_permissions2(self, user, *args, **kvargs):
-        """Get user permissions.
-        
-        :param user: Orm User instance
-        :return: Pandas Series of SysObjectPermission
-        :rtype: pands.Series
-        :raises QueryError: raise :class:`QueryError`
-        """
-        session = self.get_session()
-        
-        if user is None:
-            raise ModelError('User is not correct or does not exist')
-        
-        # get all user roles
-        roles = []
-        user_roles = session.query(Role)\
-                            .join(RoleUser)\
-                            .filter(RoleUser.user_id == user.id).all()      
-        for role in user_roles:
-            roles.append(role.name)
-        for group in user.group:
-            for role in group.role:
-                roles.append(role.name)
-
-        # get user permissions from user roles
-        perms = self.get_role_permissions2(names=roles)
-
-        self.logger.debug('Get user %s perms: %s' % (user, truncate(perms)))
-        return perms'''
         
     @query
     def get_login_permissions(self, user, *args, **kvargs):
@@ -1943,14 +1916,11 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
 
         if len(roles) > 0:
             # get user permissions from user roles
-            sql = ['SELECT t4.id as id, t1.id as oid, t1.objid as objid, ',
-                   't2.objtype as objtype, t2.objdef as objdef, ',
+            sql = ['SELECT t4.id as id, t1.id as oid, t1.objid as objid, t2.objtype as objtype, t2.objdef as objdef, ',
                    't3.id as aid, t3.value as action',
-                   'FROM sysobject t1, sysobject_type t2,',
-                   'sysobject_action t3, sysobject_permission t4,',
+                   'FROM sysobject t1, sysobject_type t2, sysobject_action t3, sysobject_permission t4,',
                    'role t5, role_permission t6',
-                   'WHERE t4.obj_id=t1.id and t4.action_id=t3.id and',
-                   't1.type_id=t2.id and t6.role_id = t5.id and',
+                   'WHERE t4.obj_id=t1.id and t4.action_id=t3.id and t1.type_id=t2.id and t6.role_id = t5.id and',
                    't6.permission_id=t4.id and t5.name IN :role_name']
 
             columns = ['id', 'oid', 'objtype', 'objdef', 'objid', 'aid', 'action']

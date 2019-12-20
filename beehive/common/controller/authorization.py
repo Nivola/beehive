@@ -7,40 +7,33 @@ import binascii
 import pickle
 import ujson as json
 from logging import getLogger
-
-from six import ensure_str
-
 from beecell.auth import AuthError
-#from beecell.perf import watch
-from beehive.common.apimanager import ApiController, ApiManagerError, ApiObject,\
-    ApiInternalObject
+from beehive.common.apimanager import ApiController, ApiManagerError, ApiInternalObject
 from beehive.common.model.authorization import AuthDbManager
 from beecell.db import QueryError, TransactionError
-from ipaddress import IPv4Address, IPv4Network
+from ipaddress import IPv4Network
 from beecell.simple import truncate, str2uni, id_gen, token_gen
 from beehive.common.data import operation, trace
-from socket import gethostbyname
 from zlib import compress
 from datetime import datetime, timedelta
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
-from beehive.common.model.authorization import User as ModelUser, \
-    Role as ModelRole, Group as ModelGroup, SysObject as ModelObject
+from beehive.common.model.authorization import User as ModelUser
 
 
 class AuthenticationManager(object):
     """Manager used to login and logout user on authentication provider.
-    
+
+    :param auth_providers: list of authentication providers
     """
     def __init__(self, auth_providers):
-        self.logger = getLogger(self.__class__.__module__+ \
-                                '.'+self.__class__.__name__)        
+        self.logger = getLogger(self.__class__.__module__ + '.' + self.__class__.__name__)
         
         self.auth_providers = auth_providers
 
     def __str__(self):
-        return "<AuthenticationManager id:%s>" % id(self)
+        return '<AuthenticationManager id:%s>' % id(self)
 
     def check(self, user_uuid, username, domain, ipaddr):
         """Login user using identity provider.
@@ -61,9 +54,6 @@ class AuthenticationManager(object):
         except KeyError:
             self.logger.error('Authentication domain %s does not exist' % domain)
             raise AuthError('', 'Authentication domain %s does not exist' % domain, code=10)
-
-        # login over authentication provider and get user attributes
-        # username = '%s@%s' % (username, domain)
 
         auth_user = auth_provider.check(user_uuid, username)
 
@@ -94,9 +84,6 @@ class AuthenticationManager(object):
         except KeyError:
             self.logger.error('Authentication domain %s does not exist' % domain)
             raise AuthError('', 'Authentication domain %s does not exist' % domain, code=10)
-        
-        # login over authentication provider and get user attributes
-        # username = '%s@%s' % (username, domain)
 
         auth_user = auth_provider.login(username, password)
 
@@ -149,7 +136,10 @@ class BaseAuthController(ApiController):
         self.auth_manager = AuthDbManager()
     
     def set_superadmin_permissions(self):
-        """ """
+        """Set superadmin permissions
+        
+        :raises ApiManagerError: raise :class:`ApiManagerError`
+        """
         try:
             self.set_admin_permissions('ApiSuperadmin', [])
         except (QueryError, TransactionError) as ex:
@@ -157,7 +147,12 @@ class BaseAuthController(ApiController):
             raise ApiManagerError(ex, code=ex.code)    
     
     def set_admin_permissions(self, role_name, args):
-        """ """
+        """Set admin permissions
+        
+        :param role_name: role name
+        :param args: permission args
+        :raises ApiManagerError: raise :class:`ApiManagerError`
+        """
         try:
             for item in self.child_classes:
                 item(self).set_admin_permissions(role_name, args)
@@ -166,13 +161,13 @@ class BaseAuthController(ApiController):
             raise ApiManagerError(ex, code=ex.code)
     
     def verify_simple_http_credentials(self, user, pwd, user_ip):
-        """Verify simple ahttp credentials.
+        """Verify simple http credentials.
         
         :param user: user
         :param pwd: password
         :param user_ip: user ip address
         :return: identity
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         name, domain = user.split('@')
         identity = self.simple_http_login(name, domain, pwd, user_ip)
@@ -204,6 +199,8 @@ class BaseAuthController(ApiController):
         """Remove beehive identity with token uid
         
         :param uid: authorization token
+        :return: None
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         self.check_authorization(Token.objtype, Token.objdef, '*', 'delete')
         
@@ -248,6 +245,7 @@ class BaseAuthController(ApiController):
         
         :return: {'uid':..., 'user':..., 'timestamp':..., 'pubkey':..., 'seckey':...}
         :rtype: dict
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         try:
             identity = self.module.redis_manager.get(self.prefix + uid)
@@ -258,18 +256,18 @@ class BaseAuthController(ApiController):
         if identity is not None:
             data = pickle.loads(identity)
             data['ttl'] = self.module.redis_manager.ttl(self.prefix + uid)
-            # User(self).send_event('identity.get', params={'uid':uid})
-            self.logger.debug('Get identity %s from redis: %s' % 
-                              (uid, truncate(data)))   
+            self.logger.debug('Get identity %s from redis: %s' % (uid, truncate(data)))
             return data
         else:
             self.logger.error('Identity %s does not exist or is expired' % uid)
-            raise ApiManagerError('Identity %s does not exist or is '\
-                                  'expired' % uid, code=404)
+            raise ApiManagerError('Identity %s does not exist or is expired' % uid, code=404)
 
     @trace(entity='Token', op='view')
     def get_identities(self):
         """Get list of active identities
+
+        :return: list of {'uid':..., 'user':..., 'timestamp':..., 'pubkey':..., 'seckey':...}
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         self.check_authorization(Token.objtype, Token.objdef, '*', 'view')
         
@@ -300,8 +298,7 @@ class BaseAuthController(ApiController):
         :param domain: user authentication domain
         :param password: user password
         :param login_ip: user login_ip
-        
-        :raise ApiManagerError:        
+        :raises ApiManagerError: raise :class:`ApiManagerError`        
         """
         if domain is None:
             domain = 'local'    
@@ -323,21 +320,20 @@ class BaseAuthController(ApiController):
                 msg = 'Domain is not provided or syntax is wrong'
                 self.logger.error(msg)
                 raise ApiManagerError(msg, code=400)
-            
-            '''
-            try:
-                login_ip = gethostbyname(login_ip)
-                IPv4Address(str2uni(login_ip))
-            except Exception as ex:
-                msg = 'Ip address is not provided or syntax is wrong'
-                self.logger.error(msg, exc_info=1)
-                raise ApiManagerError(msg, code=400)'''
+
+            # try:
+            #     login_ip = gethostbyname(login_ip)
+            #     IPv4Address(str2uni(login_ip))
+            # except Exception as ex:
+            #     msg = 'Ip address is not provided or syntax is wrong'
+            #     self.logger.error(msg, exc_info=1)
+            #     raise ApiManagerError(msg, code=400)
             
             self.logger.debug('User %s@%s:%s validated' % (name, domain, login_ip))
         except ApiManagerError as ex:
             raise ApiManagerError(ex.value, code=ex.code)
     
-    @trace(entity='Token', op='user.check.insert', noargs=True)
+    @trace(entity='Token', op='insert', noargs=True)
     def check_login_user(self, name, domain, password, login_ip):
         """Simple http authentication login.
         
@@ -345,9 +341,8 @@ class BaseAuthController(ApiController):
         :param domain: user authentication domain
         :param password: user password
         :param login_ip: user login_ip
-        
         :return: database user instance, user attributes as dict
-        :raise ApiManagerError:        
+        :raises ApiManagerError: raise :class:`ApiManagerError`        
         """
         # verify user exists in beehive database
         try:
@@ -366,7 +361,12 @@ class BaseAuthController(ApiController):
 
     @trace(entity='Token', op='insert', noargs=True)
     def set_user_last_login(self, name, domain):
-        # user = '%s@%s' % (name, domain)
+        """Set user last login
+
+        :param name: user name
+        :param domain: user domain [unused]
+        :return:
+        """
         user = name
         try:
             self.auth_manager.set_user_last_login(user)
@@ -394,7 +394,7 @@ class BaseAuthController(ApiController):
         :param dbuser: database user instance
         :param dbuser_attribs: user attributes as dict
         :return: SystemUser instance, user attributes as dict
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """        
         # login user
         try:
@@ -422,7 +422,7 @@ class BaseAuthController(ApiController):
         
         return user, dbuser_attribs
 
-    @trace(entity='Token', op='login.extended.insert', noargs=True)
+    @trace(entity='Token', op='insert', noargs=True)
     def extended_login(self, name, domain, password, login_ip, dbuser, dbuser_attribs):
         """Extended login. Like base login but if password check fails make secret check using password.
 
@@ -433,7 +433,7 @@ class BaseAuthController(ApiController):
         :param dbuser: database user instance
         :param dbuser_attribs: user attributes as dict
         :return: SystemUser instance, user attributes as dict
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # login user
         try:
@@ -472,7 +472,7 @@ class BaseAuthController(ApiController):
 
         return user, dbuser_attribs
 
-    @trace(entity='Token', op='login.check.insert', noargs=True)
+    @trace(entity='Token', op='insert', noargs=True)
     def check_base_login(self, name, domain, secret, login_ip, dbuser, dbuser_attribs):
         """Base check login.
 
@@ -483,7 +483,7 @@ class BaseAuthController(ApiController):
         :param dbuser: database user instance
         :param dbuser_attribs: user attributes as dict
         :return: SystemUser instance, user attributes as dict
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # login user
         try:
@@ -516,24 +516,39 @@ class BaseAuthController(ApiController):
         return user, dbuser_attribs
 
     def __set_user_attribs(self, user, attribs):
-        """Set user attributes"""
+        """Set user attributes
+
+        :param user: user object
+        :param attribs: user attributes
+        :return:
+        """
         user.set_attributes(attribs)
     
     def __set_user_perms(self, dbuser, user):
-        """Set user permissions """
+        """Set user permissions
+
+        :param dbuser: orm user class instance
+        :param user: user object
+        :return:
+        """
         perms = self.auth_manager.get_login_permissions(dbuser)
         compress_perms = binascii.b2a_base64(compress(json.dumps(perms).encode('utf-8')))
         user.set_perms(compress_perms)
     
     def __set_user_roles(self, dbuser, user):
-        """Set user roles """    
+        """Set user roles
+
+        :param dbuser: orm user class instance
+        :param user: user object
+        :return:
+        """
         roles = self.auth_manager.get_login_roles(dbuser)
         user.set_roles([r.name for r in roles])      
     
     #
     # simple http login
     #
-    @trace(entity='Token', op='login.simple.insert', noargs=True)
+    @trace(entity='Token', op='insert', noargs=True)
     def simple_http_login(self, name, domain, password, login_ip):
         """Simple http authentication login
         
@@ -542,7 +557,7 @@ class BaseAuthController(ApiController):
         :param password: user password
         :param login_ip: user login_ip
         :return: True
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         user_name = '%s@%s' % (name, domain)
         
@@ -597,7 +612,7 @@ class BaseAuthController(ApiController):
     #
     # keyauth login, logout, refresh_user
     #
-    # @trace(entity='Token', op='login.key.insert')
+    # @trace(entity='Token', op='insert')
     def gen_authorization_key(self, user, domain, name, login_ip, attrib):
         """Generate asymmetric key for keyauth filter.
         
@@ -606,14 +621,13 @@ class BaseAuthController(ApiController):
         :param password: user password
         :param login_ip: user login_ip
         :param attrib: user attributes
-        
-        :raise ApiManagerError: 
+        :raises ApiManagerError: raise :class:`ApiManagerError` 
         """
         user_name = '%s@%s' % (name, domain) 
         
         try:
             uid = token_gen()
-            timestamp = datetime.now()#.strftime('%H-%M_%d-%m-%Y')     
+            timestamp = datetime.now()
             private_key = rsa.generate_private_key(public_exponent=65537, key_size=1024, backend=default_backend())
             public_key = private_key.public_key()
             pem = public_key.public_bytes(encoding=serialization.Encoding.PEM,
@@ -656,7 +670,7 @@ class BaseAuthController(ApiController):
         
         return res    
     
-    @trace(entity='Token', op='login.keyauth.insert', noargs=True)
+    @trace(entity='Token', op='insert', noargs=True)
     def create_keyauth_token(self, user=None, password=None, login_ip=None):
         """Create asymmetric keys authentication token
         
@@ -664,7 +678,7 @@ class BaseAuthController(ApiController):
         :param password: user password
         :param login_ip: user login_ip
         :return: True
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         name, domain = user.split('@')
         
@@ -694,7 +708,7 @@ class BaseAuthController(ApiController):
 
         return res    
     
-    @trace(entity='Token', op='login.keyauth.insert', noargs=True)
+    @trace(entity='Token', op='insert', noargs=True)
     def login(self, name, domain, password, login_ip):
         """Asymmetric keys authentication login
         
@@ -703,7 +717,7 @@ class BaseAuthController(ApiController):
         :param password: user password
         :param login_ip: user login_ip
         :return: True
-        :raise ApiManagerError:
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # validate input params
         try:
@@ -731,9 +745,14 @@ class BaseAuthController(ApiController):
         
         return res
     
-    @trace(entity='Token', op='logout.keyauth.insert')
+    @trace(entity='Token', op='insert')
     def logout(self, uid, sign, data):
         """Logout user
+
+        :param uid: identity id
+        :param sign: [not used]
+        :param data: [not used]
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # get identity and verify signature
         identity = self.get_identity(uid)
@@ -744,18 +763,20 @@ class BaseAuthController(ApiController):
     
             res = 'Identity %s successfully logout' % identity['uid']
             self.logger.debug(res)
-            #User(self).send_event('keyauth-login.delete', params={'uid':uid})
         except Exception as ex:
-            #User(self).send_event('keyauth-login.delete', params={'uid':uid}, 
-            #                      exception=ex)
             self.logger.error(ex.desc)
             raise ApiManagerError(ex.desc, code=400)
                 
         return None
     
-    @trace(entity='Token', op='refresh.keyauth.insert')
+    @trace(entity='Token', op='insert')
     def refresh_user(self, uid, sign, data):
         """Refresh permissions stored in redis identity for a logged user
+
+        :param uid: identity id
+        :param sign: [not used]
+        :param data: [not used]
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         self.logger.info('Refresh identity: %s' % uid)        
         identity = self.get_identity(uid)

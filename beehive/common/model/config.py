@@ -20,9 +20,14 @@ logger = logging.getLogger(__name__)
 
 class ConfigProp(Base):
     """Model mapping for configuration table
+
+    :param app: application
+    :param group: group
+    :param name: name
+    :param value: value
     """
     __tablename__ = 'configuration'
-    __table_args__ = {'mysql_engine':'InnoDB'}
+    __table_args__ = {'mysql_engine': 'InnoDB'}
     
     id = Column(Integer, primary_key=True)
     app = Column(String(30), nullable=False, unique=False)
@@ -46,32 +51,38 @@ class ConfigProp(Base):
 
 class ConfigDbManager(AbstractDbManager):
     """Db Manager used to manage configuration tables
+
+    :param session: sqlalchemy session
     """
     def __init__(self, session=None):
         AbstractDbManager.__init__(self, session)
-        
+
     @staticmethod
     def create_table(db_uri):
-        """Create all tables in the engine. This is equivalent to "Create Table"
-        statements in raw SQL."""
+        """Create all tables in the engine. This is equivalent to "Create Table" statements in raw SQL
+
+        :param db_uri: db uri
+        """
         try:
             engine = create_engine(db_uri)
-            engine.execute("SET FOREIGN_KEY_CHECKS=1;")
+            engine.execute('SET FOREIGN_KEY_CHECKS=1;')
             Base.metadata.create_all(engine)
-            logger.info('Create tables on : %s' % (db_uri))
+            logger.info('Create tables on : %s' % db_uri)
             del engine
         except exc.DBAPIError as e:
             raise Exception(e)
-    
+
     @staticmethod
     def remove_table(db_uri):
-        """ Remove all tables in the engine. This is equivalent to "Drop Table"
-        statements in raw SQL."""
+        """Remove all tables in the engine. This is equivalent to "Drop Table" statements in raw SQL
+
+        :param db_uri: db uri
+        """
         try:
             engine = create_engine(db_uri)
-            engine.execute("SET FOREIGN_KEY_CHECKS=0;")
+            engine.execute('SET FOREIGN_KEY_CHECKS=1;')
             Base.metadata.drop_all(engine)
-            logger.info('Remove tables from : %s' % (db_uri))
+            logger.info('Remove tables from : %s' % db_uri)
             del engine
         except exc.DBAPIError as e:
             raise Exception(e)
@@ -173,9 +184,9 @@ class ConfigDbManager(AbstractDbManager):
         session = self.get_session()
         modification_date = datetime.today()
         res = session.query(ConfigProp).filter_by(name=name).update(
-            {"value": value, "modification_date": modification_date})
+            {'value': value, 'modification_date': modification_date})
             
-        self.logger.debug('Set property "%s:%s"' % (name, value))
+        self.logger.debug('Set property %s:%s' % (name, value))
         return res
         
     @transaction
@@ -194,12 +205,12 @@ class ConfigDbManager(AbstractDbManager):
         elif name is not None:
             prop = session.query(ConfigProp).filter_by(name=name).first()
         else:
-            self.logger.error("Specify at least oid or name")
-            raise ModelError("Specify at least oid or name")
+            self.logger.error('Specify at least oid or name')
+            raise ModelError('Specify at least oid or name')
 
         if prop is None:
-            self.logger.error("No property found")
-            raise ModelError("No property found")  
+            self.logger.error('No property found')
+            raise ModelError('No property found')
         
         res = session.delete(prop)
             

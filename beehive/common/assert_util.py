@@ -3,7 +3,7 @@
 # (C) Copyright 2018-2019 CSI-Piemonte
 # (C) Copyright 2019-2020 CSI-Piemonte
 
-from beehive.common.apimanager import ApiManagerError, ApiManagerWarning
+from beehive.common.apimanager import ApiManagerError
 
 
 class AssertUtil(object):
@@ -20,42 +20,52 @@ class AssertUtil(object):
         return result[:AssertUtil.MAX_LENGTH] + ' [truncated]...'
     
     @staticmethod
-    def _formatMessage( msg, standardMsg):
-        """Honour the longMessage attribute when generating failure messages.
-        If longMessage is False this means:
-        * Use only an explicit message if it is provided
-        * Otherwise use the standard message for the assert
+    def _format_message(msg, standard_msg):
+        """Format message
 
-        If longMessage is True:
-        * Use the standard message
-        * If an explicit message is provided, plus ' : ' and the explicit message
+        :param msg: error message
+        :param standard_msg: standard error message
+        :return:
         """
-        
         if msg is None:
-            return standardMsg
+            return standard_msg
         try:
             # don't switch to '{}' formatting in Python 2.X
             # it changes the way unicode input is handled
-            return '%s : %s' % (standardMsg, msg)
+            return '%s : %s' % (standard_msg, msg)
         except UnicodeDecodeError:
-            return  '%s : %s' % (AssertUtil.safe_repr(standardMsg), AssertUtil.safe_repr(msg))
+            return '%s : %s' % (AssertUtil.safe_repr(standard_msg), AssertUtil.safe_repr(msg))
     
     @staticmethod
     def fail(msg=None):
-        """Fail immediately, with the given message."""
+        """Fail immediately, with the given message
+
+        :param msg: error message
+        :return:
+        """
         raise ApiManagerError(msg)
     
     @staticmethod
-    def assertIsNone(obj, msg=None):
-        """Same as self.assertTrue(obj is None), with a nicer default message."""
+    def assert_is_none(obj, msg=None):
+        """Same as self.assertTrue(obj is None), with a nicer default message
+
+        :param obj: obj to check
+        :param msg: error message
+        :return:
+        """
         if obj is not None:
-            standardMsg = '%s is not None' % (AssertUtil.safe_repr(obj),)
-            AssertUtil.fail(AssertUtil._formatMessage(msg, standardMsg))
+            standard_msg = '%s is not None' % (AssertUtil.safe_repr(obj),)
+            AssertUtil.fail(AssertUtil._format_message(msg, standard_msg))
     
     @staticmethod
-    def assertIsNotNone(obj, msg=None):
-        """Included for symmetry with assertIsNone."""
+    def assert_is_not_none(obj, msg=None):
+        """Included for symmetry with assert_is_none
+
+        :param obj: obj to check
+        :param msg: error message
+        :return:
+        """
         if obj is None:
-            standardMsg = 'unexpectedly None'
-            AssertUtil.fail(AssertUtil._formatMessage(msg, standardMsg))
+            standard_msg = 'unexpectedly None'
+            AssertUtil.fail(AssertUtil._format_message(msg, standard_msg))
 

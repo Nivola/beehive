@@ -46,7 +46,6 @@ class ExtTaskFormatter(ColorFormatter):
         return ColorFormatter.format(self, record)
 
 
-# logger_level = LoggerHelper.DEBUG
 internal_logger_level = LoggerHelper.DEBUG
 
 task_manager = Celery('tasks')
@@ -65,13 +64,13 @@ def on_celery_worker_ready(**args):
 
 
 def configure_task_manager(broker_url, result_backend, tasks=[], expire=60*60*24, task_queue='celery',
-                           logger_file=None, time_limit=1200):
+                           time_limit=1200):
     """Configure Task manager
 
     :param broker_url: url of the broker
     :param result_backend: url of the result backend
-    :param tasks: list of tasks module. Ex.
-                  ['beehive.module.scheduler.tasks', 'beehive.module.service.plugins.filesharing',]
+    :param tasks: list of tasks module. 
+        Ex. ['beehive.module.scheduler.tasks', 'beehive.module.service.plugins.filesharing',]
     """
     # # get redis password
     # redis_password = None
@@ -113,7 +112,7 @@ def configure_task_manager(broker_url, result_backend, tasks=[], expire=60*60*24
     return task_manager
 
 
-def configure_task_scheduler(broker_url, schedule_backend, tasks=[], task_queue=None):
+def configure_task_scheduler(broker_url, schedule_backend, task_queue=None):
     """Configure task scheduler
 
     :param broker_url: url of the broker
@@ -147,6 +146,8 @@ def configure_task_scheduler(broker_url, schedule_backend, tasks=[], task_queue=
 
 def start_task_manager(params):
     """Start celery task manager
+
+    :param params: configuration params
     """
     name = ensure_text(params['api_id']) + '.worker'
     log_path = run_path = params.get('api_log', None)
@@ -160,7 +161,7 @@ def start_task_manager(params):
     file_name = log_path + name + '.log'
     pid_name = run_path + name + '.pid'
 
-    frmt = u'[%(asctime)s: %(levelname)s/%(task_name)s:%(task_id)s] %(name)s:%(funcName)s:%(lineno)d - %(message)s'
+    frmt = '[%(asctime)s: %(levelname)s/%(task_name)s:%(task_id)s] %(name)s:%(funcName)s:%(lineno)d - %(message)s'
 
     logger_level = int(params.get('api_logging_level', logging.DEBUG))
     main_loggers = [
@@ -204,6 +205,7 @@ def start_task_manager(params):
         '--logfile=%s' % file_name,
         '--pidfile=%s' % pid_name,
     ]
+
     def terminate(*args):
         task_manager.stop()
 
@@ -214,7 +216,10 @@ def start_task_manager(params):
 
 
 def start_scheduler(params):
-    """start celery scheduler """
+    """start celery scheduler
+
+    :param params: configuration params
+    """
     name = ensure_text(params['api_id']) + '.scheduler'
     log_path = run_path = params.get('api_log', None)
 

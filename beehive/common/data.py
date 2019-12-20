@@ -7,7 +7,6 @@ import logging
 from time import time
 from functools import wraps
 from uuid import uuid4
-from six import u, b
 from sqlalchemy.exc import IntegrityError, DBAPIError, ArgumentError
 from beecell.logger.helper import ExtendedLogger
 from beecell.simple import id_gen, truncate
@@ -54,6 +53,10 @@ OK_MSG = '%s.%s - %s - transaction - %s - %s - OK - %s'
 KO_MSG = '%s.%s - %s - transaction - %s - %s - KO - %s'
 
 
+OK_Q_MSG = '%s.%s - %s - query - %s - %s - OK - %s'
+KO_Q_MSG = '%s.%s - %s - query - %s - %s - KO - %s'
+
+
 #
 # encryption method
 #
@@ -94,28 +97,28 @@ def get_operation_params():
 
 def set_operation_params(param):
     """set in the current greenlet/thread the parameter stored in param"""
-    val = param.get("user", "--")
-    if val != "--":
+    val = param.get('user', '--')
+    if val != '--':
         operation.user = val
     
-    val = param.get("perms", "--")
-    if val != "--":
+    val = param.get('perms', '--')
+    if val != '--':
         operation.perms = val
     
-    val = param.get("opid", "--")
-    if val != "--":
+    val = param.get('opid', '--')
+    if val != '--':
         operation.opid = val
     
-    val = param.get("transaction", "--")
-    if val != "--":
+    val = param.get('transaction', '--')
+    if val != '--':
         operation.transaction = val
     
-    val = param.get("encryption_key", "--")
-    if val != "--":
+    val = param.get('encryption_key', '--')
+    if val != '--':
         operation.encryption_key = val
 
-    val = param.get("authorize", "--")
-    if val != "--":
+    val = param.get('authorize', '--')
+    if val != '--':
         operation.authorize = val
 
 
@@ -278,10 +281,6 @@ def query(fn):
             operation.id = str(uuid4())
         
         try:
-            # get runtime info
-            cp = current_process()
-            ct = current_thread()            
-            
             # format request params
             params = []
             for item in args:
@@ -292,40 +291,31 @@ def query(fn):
             # call internal function
             res = fn(*args, **kwargs)
             elapsed = round(time() - start, 4)
-            logger.debug2('%s.%s - %s - query - %s - %s - OK - %s' % (operation.id, stmp_id, sessionid, fn.__name__,
-                          truncate(params),  elapsed))
+            logger.debug2(OK_Q_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params),  elapsed))
             return res
         except ModelError as ex:
             elapsed = round(time() - start, 4)
-            logger.error('%s.%s - %s - query - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid, fn.__name__,
-                         truncate(params), elapsed))
-            # logger.error(ex.desc, exc_info=1)
+            logger.error(KO_Q_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params), elapsed))
             logger.error(ex.desc)
             raise QueryError(ex.desc, code=ex.code)
         except ArgumentError as ex:
             elapsed = round(time() - start, 4)
-            logger.error('%s.%s - %s - query - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid, fn.__name__,
-                         truncate(params), elapsed))
+            logger.error(KO_Q_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params), elapsed))
             logger.error(str(ex))
             raise QueryError(str(ex), code=400)
         except DBAPIError as ex:
             elapsed = round(time() - start, 4)
-            logger.error('%s.%s - %s - query - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid, fn.__name__,
-                         truncate(params), elapsed))
-            # logger.error(str(ex), exc_info=1)
+            logger.error(KO_Q_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params), elapsed))
             logger.error(str(ex))
             raise QueryError(str(ex), code=400)
         except TypeError as ex:
             elapsed = round(time() - start, 4)
-            logger.error('%s.%s - %s - query - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid, fn.__name__,
-                         truncate(params), elapsed))
+            logger.error(KO_Q_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params), elapsed))
             logger.error(ex)
             raise QueryError(ex, code=400)
         except Exception as ex:
             elapsed = round(time() - start, 4)
-            logger.error('%s.%s - %s - query - %s - %s - KO - %s' % (operation.id, stmp_id, sessionid, fn.__name__,
-                         truncate(params), elapsed))
-            logger.error(str(ex), exc_info=1)
+            logger.error(KO_Q_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params), elapsed))
             logger.error(str(ex))
             raise QueryError(str(ex), code=400)
     return query_wrap
@@ -474,10 +464,6 @@ def maybe_run_batch_greenlet(controller, batch, timeout=600):
                     try:
                         # set local thread operation
                         set_operation_params(op_params)
-                        # operation.user = user
-                        # operation.perms = perms
-                        # operation.id = opid
-                        # operation.encryption_key = encryption_key
                         operation.transaction = None
 
                         # open db session
@@ -498,12 +484,7 @@ def maybe_run_batch_greenlet(controller, batch, timeout=600):
 
                     return False
 
-                # user = operation.user
-                # perms = operation.perms
-                # opid = operation.id
-                # encryption_key = operation.encryption_key
                 op_params = get_operation_params()
-                # res = gevent.spawn(inner_fn, user, perms, opid, encryption_key, *args, **kwargs)
                 res = gevent.spawn(inner_fn, op_params, *args, **kwargs)
                 if batch is True:
                     logger.debug('Start batch operation: %s' % res)

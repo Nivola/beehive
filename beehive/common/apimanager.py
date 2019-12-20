@@ -607,8 +607,8 @@ class ApiManager(object):
                 self.logger.info('Configure scheduler reference - CONFIGURE')
                 
                 try:
-                    from beehive.common.task.manager import configure_task_manager
-                    from beehive.common.task.manager import configure_task_scheduler
+                    from beehive.common.task_v2.manager import configure_task_manager
+                    from beehive.common.task_v2.manager import configure_task_scheduler
                     
                     # task manager
                     broker_url = ensure_text(self.params['broker_url'])
