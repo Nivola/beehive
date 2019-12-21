@@ -1,5 +1,24 @@
 # beehive
-__beehive__ is a project that contains tha core of the nivola cmp platform.
+__beehive__ is a project that contains tha core of the nivola cmp platform. With beehive you can start the authorization
+module, the api endpoint catalog, the base scheduler module and the event module.
+All code is written using python and support versions 2.7.x and 3.6.x>. Python was deployed using basic linux process
+and uwsgi as application server.
+
+Beehive is deployed using subsystem. A subsystem is composed of a database (mysql) schema, some redis (or rabbimq) queue,
+a redis database where store keys, some python process.
+
+Subsytem runtime is composed of:
+
+- a uwsgi api server
+- some python processes with celery worker
+- a python process with celery beat
+- some python processes with custom kombu queue consumer
+
+Miminal subsystem to deply are:
+
+- auth subsytem: the first to configure anc deploy. Is is composed by base module, auth module, catalog module and 
+  scheduler module.
+- event subsystem: useful to store system events. Is is composed by base module, event module, and scheduler module.
 
 ## Installing
 

@@ -62,7 +62,7 @@ class RedisSessionInterface2(RedisSessionInterface):
 
     def save_session(self, app, session, response):
         RedisSessionInterface.save_session(self, app, session, response)
-        # oauth2_user = session.get('oauth2_user', None)
+
         if response.mimetype not in ['text/html']:
             self.redis.delete(self.key_prefix + session.sid)
             logger.debug('Delete user session. This is an Api request')
@@ -142,7 +142,6 @@ class ApiManager(object):
         operation.encryption_key = self.app_fernet_key
 
         # swagger reference
-        # self.swagger = Swagger(self.app, template_file=self.swagger_spec_path)
         try:
             swagger_template = read_file(self.swagger_spec_path)
             self.swagger = Swagger(self.app, template=swagger_template)
@@ -277,16 +276,16 @@ class ApiManager(object):
         except SqlManagerError as e:
             raise ApiManagerError(e)
         
-    def flush_session(self, dbsession=None):
-        """release db session"""
+    def flush_session(self):
+        """Flush db session"""
         try:
             if operation.session is not None:
                 operation.session.flush()
         except SqlManagerError as e:
             raise ApiManagerError(e)          
         
-    def release_session(self, dbsession=None):
-        """release db session"""
+    def release_session(self):
+        """Release db session"""
         try:
             if operation.session is not None:
                 self.db_manager.release_session(operation.session)
@@ -337,12 +336,12 @@ class ApiManager(object):
         :param pwd: password
         :param user_ip: user ip address
         :return: {'uid':..., 'user':..., timestamp':..., 'pubkey':..., 'seckey':...}            
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`         
+        :raises ApiManagerError: raise :class:`ApiManagerError`         
         """
         try:
             identity = self.api_client.simplehttp_login(user, pwd, user_ip)
         except BeehiveApiClientError as ex:
-            self.logger.error(ex.value, exc_info=1)
+            self.logger.error(ex.value, exc_info=True)
             raise ApiManagerError(ex.value, code=ex.code)
         
         return identity
@@ -352,7 +351,7 @@ class ApiManager(object):
         
         :param token: identity id
         :return: {'uid':..., 'user':..., timestamp':..., 'pubkey':..., 'seckey':...}   
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         identity = self.get_identity(token)
         self.redis_manager.expire(self.prefix + token, self.expire)
@@ -366,7 +365,7 @@ class ApiManager(object):
         :param sign: request sign
         :param data: request data
         :return: {'uid':..., 'user':..., timestamp':..., 'pubkey':..., 'seckey':...}   
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # get identity
         identity = self.get_identity(uid)
@@ -945,7 +944,7 @@ class ApiModule(object):
         
         :return: Dictionary with info.
         :rtype: dict        
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`.ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         res = {'name': self.name, 'api': self.api_routes}
         return res
@@ -977,22 +976,11 @@ class ApiModule(object):
     
     def get_session(self):
         """open db session"""
-        try:
-            if self.api_manager.db_manager is not None:
-                operation.session = self.api_manager.db_manager.get_session()
-                return operation.session
-            else:
-                return None
-        except SqlManagerError as e:
-            raise ApiManagerError(e)
+        self.api_manager.get_session()
         
-    def release_session(self, dbsession):
+    def release_session(self):
         """release db session"""
-        try:
-            self.api_manager.db_manager.release_session(operation.session)
-            operation.session = None
-        except SqlManagerError as e:
-            raise ApiManagerError(e)
+        self.api_manager.release_session()
 
     def init_object(self):
         """Init object
@@ -1107,11 +1095,11 @@ class ApiController(object):
     
     def get_session(self):
         """open db session"""
-        return self.module.get_session()
+        return self.module.api_manager.get_session()
         
     def release_session(self, dbsession):
         """release db session"""
-        return self.module.release_session(dbsession)   
+        return self.module.api_manager.release_session()
     
     @staticmethod
     def _get_value(objtype, args):
@@ -1152,7 +1140,7 @@ class ApiController(object):
 
         :param token: identity id
         :return: identity
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         return self.module.api_manager.get_oauth2_identity(token)
 
@@ -1163,7 +1151,7 @@ class ApiController(object):
         :param pwd: password
         :param user_ip: user ip address
         :return: identity
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         return self.module.api_manager.verify_simple_http_credentials(user, pwd, user_ip)
 
@@ -1341,7 +1329,7 @@ class ApiController(object):
         try:
             entity = self.manager.get_entity(model_class, oid, for_update, *args, **kvargs)
         except QueryError as ex:         
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             entity_name = entity_class.__name__
             raise ApiManagerError('%s %s not found or name is not unique' % (entity_name, oid), code=404)
 
@@ -1383,7 +1371,7 @@ class ApiController(object):
         :param args: custom params
         :param kvargs: custom params
         :return: (list of entity_class instances, total)
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         res = []
         tags = []
@@ -1416,7 +1404,7 @@ class ApiController(object):
             self.logger.debug('Get %s (total:%s): %s' % (entity_class.__name__, total, truncate(res)))
             return res, total
         except QueryError as ex:         
-            self.logger.warning(ex, exc_info=1)
+            self.logger.warning(ex, exc_info=True)
             return [], 0
 
     def get_entities(self, entity_class, get_entities, *args, **kvargs):
@@ -1431,7 +1419,7 @@ class ApiController(object):
         :param args: custom params
         :param kvargs: custom params
         :return: (list of entity_class instances, total)
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         res = []
         objs = []
@@ -1564,23 +1552,27 @@ class ApiObject(object):
     
     @staticmethod
     def get_type(self):
-        """ """        
+        """Get type"""        
         return self.type, self.definition, self.__class__
     
     def get_user(self):
-        """ """
+        """Get user info"""
         user = {
             'user': operation.user[0],
             'server': operation.user[1],
             'identity': operation.user[2],
             'api_id': operation.id
-            # 'encryption_key': operation.encryption_key,
         }
         return user
     
     @staticmethod
     def _get_value(objtype, args):
-        # logging.getLogger('gibbon.cloudapi.process').debug(objtype)
+        """Get value
+        
+        :param objtype: object type
+        :param args: value args
+        :return: 
+        """
         data = ['*' for i in objtype.split('.')]
         pos = 0
         for arg in args:
@@ -1589,7 +1581,10 @@ class ApiObject(object):
         return '//'.join(data)
 
     def convert_timestamp(self, timestamp):
-        """
+        """Convert timestamp to string
+        
+        :param timestamp: timestamp
+        :return: timestamp converted 
         """
         timestamp = datetime.fromtimestamp(timestamp)
         return format_date(timestamp)
@@ -1621,7 +1616,7 @@ class ApiObject(object):
 
         :return: Dictionary with object info.
         :rtype: dict
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`.ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         data = {
             '__meta__': {
@@ -1642,7 +1637,7 @@ class ApiObject(object):
         
         :return: Dictionary with object info.
         :rtype: dict        
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`.ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         res = {
             '__meta__': {
@@ -1663,7 +1658,7 @@ class ApiObject(object):
         
         :return: Dictionary with object info.
         :rtype: dict        
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`.ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         res = {
             '__meta__': {
@@ -1694,7 +1689,7 @@ class ApiObject(object):
         
         :return: Dictionary with object detail.
         :rtype: dict        
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`.ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         res = {
             '__meta__': {
@@ -1767,16 +1762,11 @@ class ApiObject(object):
         return objdis    
     
     def register_object_permtags(self, args):
-        """Register object permission tags. Create new permission tags in 
-        perm_tag if they do not already exist. Create association between
-        permission tags and object in perm_tag_entity.
+        """Register object permission tags. Create new permission tags in perm_tag if they do not already exist. 
+        Create association between permission tags and object in perm_tag_entity.
         
         :param args: objid split by //
         """
-        # reopen session
-        # self.release_session(None)
-        # self.get_session()
-
         if self.oid is not None:
             ids = self.get_all_valid_objids(args)
             for i in ids:
@@ -1801,8 +1791,7 @@ class ApiObject(object):
         
         :param objids: objid split by //
         :param desc: object description        
-        :return:
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError` 
+        :raises ApiManagerError: raise :class:`ApiManagerError` 
         """
         self.logger.debug('Register api object: %s:%s %s - START' % (self.objtype, self.objdef, objids))
 
@@ -1824,7 +1813,6 @@ class ApiObject(object):
         """Deregister object types, objects and permissions related to module.
         
         :param objids: objid split by //
-        :param objid: parent objid
         """
         self.logger.debug('Deregister api object %s:%s %s - START' % (self.objtype, self.objdef, objids))
         
@@ -1846,23 +1834,31 @@ class ApiObject(object):
         self.set_admin_permissions('ApiSuperadmin', [])
         
     def set_admin_permissions(self, role, args):
-        """ """
+        """Set admin permissions
+        
+        :param role: authorization role
+        :param args: permissions args
+        """
         # set main permissions
-        self.api_client.append_role_permissions(role, self.objtype, self.objdef,
-                                                self._get_value(self.objdef, args), '*')
+        self.api_client.append_role_permissions(role, self.objtype, self.objdef, self._get_value(self.objdef, args), 
+                                                '*')
         
     def set_viewer_permissions(self, role, args):
-        """ """
+        """Set viewer permissions
+
+        :param role: authorization role
+        :param args: permissions args
+        """
         # set main permissions
-        self.api_client.append_role_permissions(role, self.objtype, self.objdef,
-                                                self._get_value(self.objdef, args), 'view')
+        self.api_client.append_role_permissions(role, self.objtype, self.objdef, self._get_value(self.objdef, args), 
+                                                'view')
     
     def verify_permisssions(self, action, *args, **kvargs):
         """Short method to verify permissions.
 
         :param action: action to verify. Can be *, view, insert, update, delete, use
         :return: True if permissions overlap
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """        
         # check authorization
         if operation.authorize is True:
@@ -1877,11 +1873,11 @@ class ApiObject(object):
         :param order: sort order [default=DESC]
         :param field: sort field [default=id]        
         :return: [(perm, roles), ...]
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError` if query empty return error.
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         try:
             # resource permissions
-            if objid == None:
+            if objid is None:
                 objid = self.objid
             perms, total = self.api_client.get_permissions(self.objtype, self.objdef, objid, cascade=True, **kvargs)
 
@@ -1897,7 +1893,7 @@ class ApiObject(object):
         """Post get function. This function is used in get_entity method. Extend this function to extend description
         info returned after query.
 
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         pass
     
@@ -1906,10 +1902,11 @@ class ApiObject(object):
         """Check input params before resource creation. This function is used in container resource_factory method.
         Extend this function to manipulate and validate create input params.
         
-        :param list args: custom params
-        :param dict kvargs: custom params
+        :param controller: ApiController instance
+        :param list args: positional args
+        :param dict kvargs: key value args
         :return: kvargs
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         return kvargs
     
@@ -1918,10 +1915,11 @@ class ApiObject(object):
         """Post create function. This function is used in object_factory method. Used only for synchronous creation.
         Extend this function to execute some operation after entity was created.
         
-        :param list args: custom params
-        :param dict kvargs: custom params
+        :param controller: ApiController instance
+        :param list args: positional args
+        :param dict kvargs: key value args
         :return: kvargs
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         return None
 
@@ -1930,10 +1928,11 @@ class ApiObject(object):
         """Check input params before resource creation. This function is used in container resource_factory method.
         Extend this function to manipulate and validate import input params.
 
-        :param list args: custom params
-        :param dict kvargs: custom params
+        :param controller: ApiController instance
+        :param list args: positional args
+        :param dict kvargs: key value args
         :return: kvargs
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         return kvargs
 
@@ -1942,10 +1941,11 @@ class ApiObject(object):
         """Post import function. This function is used in object_factory method. Used only for synchronous creation.
         Extend this function to execute some operation after entity was importd.
 
-        :param list args: custom params
-        :param dict kvargs: custom params
+        :param controller: ApiController instance
+        :param list args: positional args
+        :param dict kvargs: key value args
         :return: kvargs
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         return None
 
@@ -1953,10 +1953,10 @@ class ApiObject(object):
         """Pre update function. This function is used in update method. Extend this function to manipulate and
         validate update input params.
         
-        :param list args: custom params
-        :param dict kvargs: custom params
+        :param list args: positional args
+        :param dict kvargs: key value args
         :return: kvargs
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """        
         return kvargs
 
@@ -1964,10 +1964,10 @@ class ApiObject(object):
         """Post update function. This function is used in update method. Extend this function to manipulate and
         validate update input params.
 
-        :param list args: custom params
-        :param dict kvargs: custom params
+        :param list args: positional args
+        :param dict kvargs: key value args
         :return: True
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         return True
 
@@ -1975,10 +1975,10 @@ class ApiObject(object):
         """Pre patch function. This function is used in update method. Extend this function to manipulate and
         validate patch input params.
 
-        :param list args: custom params
-        :param dict kvargs: custom params
+        :param list args: positional args
+        :param dict kvargs: key value args
         :return: kvargs
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         return kvargs
 
@@ -1986,10 +1986,10 @@ class ApiObject(object):
         """Pre delete function. This function is used in delete method. Extend this function to manipulate and
         validate delete input params.
         
-        :param list args: custom params
-        :param dict kvargs: custom params
+        :param list args: positional args
+        :param dict kvargs: key value args
         :return: kvargs
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         return kvargs
 
@@ -1997,10 +1997,10 @@ class ApiObject(object):
         """Post delete function. This function is used in delete method. Extend this function to execute action after
         object was deleted.
 
-        :param list args: custom params
-        :param dict kvargs: custom params
+        :param list args: positional args
+        :param dict kvargs: key value args
         :return: kvargs
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         return True
 
@@ -2008,10 +2008,10 @@ class ApiObject(object):
         """Pre expunge function. This function is used in expunge method. Extend this function to manipulate and
         validate expunge input params.
 
-        :param list args: custom params
-        :param dict kvargs: custom params
+        :param list args: positional args
+        :param dict kvargs: key value args
         :return: kvargs
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         return kvargs
 
@@ -2019,10 +2019,10 @@ class ApiObject(object):
         """Post expunge function. This function is used in expunge method. Extend this function to execute action after
         object was expunged.
 
-        :param list args: custom params
-        :param dict kvargs: custom params
+        :param list args: positional args
+        :param dict kvargs: key value args
         :return: kvargs
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         return True
 
@@ -2033,9 +2033,9 @@ class ApiObject(object):
         """open db session"""
         return self.controller.get_session()
         
-    def release_session(self, dbsession):
+    def release_session(self):
         """release db session"""
-        return self.controller.release_session(dbsession)
+        return self.controller.release_session()
     
     #
     # event
@@ -2065,25 +2065,11 @@ class ApiObject(object):
 
         action = op.split('.')[-1]
 
-        # import inspect
-
-        # remove object from args - it does not serialize in event
-        # nargs = []
-        # for a in args:
-        #     if inspect.isclass(a) is False:
-        #         nargs.append(a)
-        #
-        # event_params = {}
-        # for k, v in params.items():
-        #     if inspect.isclass(v) is False:
-        #         event_params[k] = v
-
         nargs = compat(args)
         event_params = compat(params)
 
         data = {
             'opid': opid,
-            # 'op': '%s.%s' % (self.objdef, op),
             'op': op,
             'api_id': opid,
             'args': nargs,
@@ -2136,7 +2122,7 @@ class ApiObject(object):
         :param args: custom params
         :param kvargs: custom params
         :return: entity uuid
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         if self.update_object is None:
             raise ApiManagerError('Update is not supported for %s:%s' % (self.objtype, self.objdef))
@@ -2154,7 +2140,7 @@ class ApiObject(object):
             self.logger.debug('Update %s %s with data %s' % (self.objdef, self.oid, truncate(kvargs)))
             return self.uuid
         except TransactionError as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=ex.code)
 
     @trace(op='update')
@@ -2164,7 +2150,7 @@ class ApiObject(object):
         :param args: custom params
         :param kvargs: custom params
         :return: entity uuid
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         if self.patch_object is None:
             raise ApiManagerError('Patch is not supported for %s:%s' % (self.objtype, self.objdef))
@@ -2182,7 +2168,7 @@ class ApiObject(object):
             self.logger.debug('Patch %s %s' % (self.objdef, self.oid))
             return self.uuid
         except TransactionError as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=ex.code)
 
     @trace(op='delete')
@@ -2192,7 +2178,7 @@ class ApiObject(object):
         :param kvargs: custom params
         :param soft: if True make a soft delete            
         :return: None            
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         if self.delete_object is None:
             raise ApiManagerError('Delete is not supported for %s:%s' % (self.objtype, self.objdef))
@@ -2217,7 +2203,7 @@ class ApiObject(object):
                 self.delete_object(self.model)
                 self.logger.debug('Soft delete %s: %s' % (self.objdef, self.oid))
         except TransactionError as ex:
-            self.logger.error(ex.desc, exc_info=1)
+            self.logger.error(ex.desc, exc_info=True)
             raise ApiManagerError(ex, code=ex.code)
 
         # custom action
@@ -2232,7 +2218,7 @@ class ApiObject(object):
 
         :param kvargs: custom params
         :return: None
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         if self.expunge_object is None:
             raise ApiManagerError('Expunge is not supported for %s:%s' % (self.objtype, self.objdef))
@@ -2252,7 +2238,7 @@ class ApiObject(object):
 
             self.logger.debug('Expunge %s: %s' % (self.objdef, self.oid))
         except TransactionError as ex:
-            self.logger.error(ex.desc, exc_info=1)
+            self.logger.error(ex.desc, exc_info=True)
             raise ApiManagerError(ex, code=ex.code)
 
         # custom action
@@ -2263,6 +2249,16 @@ class ApiObject(object):
 
 
 class ApiInternalObject(ApiObject):
+    """Base api object used in base, auth and catalog module. This class use orm to create permissions.
+
+    :param controller: ApiController instance
+    :param oid: database id
+    :param objid: authorization id
+    :param name: name
+    :param desc: description
+    :param active: active
+    :param model: orm class instance
+    """
     objtype = 'auth'
     objdef = 'abstract'
     objdesc = 'Authorization abstract object'
@@ -2278,8 +2274,7 @@ class ApiInternalObject(ApiObject):
         """Register object types, objects and permissions related to module.
         Call this function when initialize system first time.
         """
-        self.logger.info('Init api object %s.%s - START' % 
-                          (self.objtype, self.objdef))
+        self.logger.info('Init api object %s.%s - START' % (self.objtype, self.objdef))
         
         try:
             # call only once during db initialization
@@ -2288,17 +2283,12 @@ class ApiInternalObject(ApiObject):
             self.auth_db_manager.add_object_types(obj_types)
             
             # add object and permissions
-            obj_type = self.auth_db_manager.get_object_type(
-                objtype=self.objtype, objdef=self.objdef)[0][0]
+            obj_type = self.auth_db_manager.get_object_type(objtype=self.objtype, objdef=self.objdef)[0][0]
             objs = [(obj_type, self._get_value(self.objdef, []), self.objdesc)]
             actions = self.auth_db_manager.get_object_action()
             self.auth_db_manager.add_object(objs, actions)
-            
-            # register event related to ApiObject
-            #self.event_class(self.controller).init_object()
-            
-            self.logger.info('Init api object %s.%s - STOP' % 
-                              (self.objtype, self.objdef))
+
+            self.logger.info('Init api object %s.%s - STOP' % (self.objtype, self.objdef))
         except (QueryError, TransactionError) as ex:
             self.logger.warning(ex.desc)
             
@@ -2311,7 +2301,6 @@ class ApiInternalObject(ApiObject):
         
         :param objids: objid split by //
         :param desc: object description
-        :param objid: parent objid
         """
         self.logger.debug('Register api object %s:%s %s - START' % (self.objtype, self.objdef, objids))
 
@@ -2338,25 +2327,19 @@ class ApiInternalObject(ApiObject):
     def deregister_object(self, objids):
         """Deregister object types, objects and permissions related to module.
         
-        :param args: objid split by //
+        :param objids: objid split by //
         """
-        self.logger.debug('Deregister api object %s:%s %s - START' % 
-                          (self.objtype, self.objdef, objids))
+        self.logger.debug('Deregister api object %s:%s %s - START' % (self.objtype, self.objdef, objids))
         
         # deregister permission tags
         self.deregister_object_permtags()
         
         try:
             # remove object and permissions
-            obj_type = self.auth_db_manager.get_object_type(
-                objtype=self.objtype, objdef=self.objdef)[0][0]
-            # objid = self._get_value(self.objdef, objids)
+            obj_type = self.auth_db_manager.get_object_type(objtype=self.objtype, objdef=self.objdef)[0][0]
             objid = '//'.join([ensure_text(o) for o in objids])
             self.auth_db_manager.remove_object(objid=objid, objtype=obj_type)
 
-            # deregister event related to ApiObject
-            # self.event_class(self.controller).deregister_object(objids)
-            
             self.logger.debug('Deregister api object %s:%s %s - STOP' % (self.objtype, self.objdef, objids))
         except (QueryError, TransactionError) as ex:
             self.logger.error('Deregister api object: %s - ERROR' % (ex.desc))
@@ -2369,14 +2352,14 @@ class ApiInternalObject(ApiObject):
     
     def set_admin_permissions(self, role_name, args):
         """Set admin permissions
+
+        :param role_name: authorization role
+        :param args: permissions args
         """
         try:
             role = self.auth_db_manager.get_entity(Role, role_name)
-            perms, total = self.auth_db_manager.get_permissions(
-                                    objid=self._get_value(self.objdef, args),
-                                    objtype=None, 
-                                    objdef=self.objdef,
-                                    action='*')            
+            perms, total = self.auth_db_manager.get_permissions(objid=self._get_value(self.objdef, args), objtype=None,
+                                                                objdef=self.objdef, action='*')
             
             # set container main permissions
             self.auth_db_manager.append_role_permissions(role, perms)
@@ -2384,10 +2367,9 @@ class ApiInternalObject(ApiObject):
             # set child resources permissions
             for child in self.child_classes:
                 res = child(self.controller, self)
-                res.set_admin_permissions(role_name, self._get_value(
-                            res.objdef, args).split('//'))            
+                res.set_admin_permissions(role_name, self._get_value(res.objdef, args).split('//'))
         except Exception as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=400)
         
     def authorization(self, objid=None, *args, **kvargs):
@@ -2400,11 +2382,11 @@ class ApiInternalObject(ApiObject):
         :param field: sort field [default=id]              
         :return: [perms]
         :rtype: list
-        :raises ApiManagerError: raise :class:`ApiManagerError` if query empty return error.  
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         try:
             # resource permissions
-            if objid == None:
+            if objid is None:
                 objid = self.objid
             objids = [objid, 
                       objid+'//*',
@@ -2418,14 +2400,14 @@ class ApiInternalObject(ApiObject):
             res = []
             for p in perms:
                 res.append({
-                    'id':p.id, 
-                    'oid':p.obj.id, 
-                    'subsystem':p.obj.type.objtype, 
-                    'type':p.obj.type.objdef,
-                    'objid':p.obj.objid, 
-                    'aid':p.action.id, 
-                    'action':p.action.value, 
-                    'desc':p.obj.desc
+                    'id': p.id,
+                    'oid': p.obj.id,
+                    'subsystem': p.obj.type.objtype,
+                    'type': p.obj.type.objdef,
+                    'objid': p.obj.objid,
+                    'aid': p.action.id,
+                    'action': p.action.value,
+                    'desc': p.obj.desc
                 })
 
             self.logger.debug('Get permissions %s: %s' % (self.oid, truncate(res)))
@@ -2436,6 +2418,10 @@ class ApiInternalObject(ApiObject):
 
 
 class ApiViewResponse(ApiObject):
+    """Base api object used when create api response
+
+    :param controller: ApiController instance
+    """
     objtype = 'api'
     objdef = 'Response'
     objdesc = 'Api Response'
@@ -2463,34 +2449,30 @@ class ApiViewResponse(ApiObject):
             self.auth_db_manager.add_object_types(obj_types)
             
             # add object and permissions
-            obj_type = self.auth_db_manager.get_object_type(
-                objtype=self.objtype, objdef=self.objdef)[0][0]
+            obj_type = self.auth_db_manager.get_object_type(objtype=self.objtype, objdef=self.objdef)[0][0]
             objs = [(obj_type, self._get_value(self.objdef, []), self.objdesc)]
             actions = self.auth_db_manager.get_object_action()
             self.auth_db_manager.add_object(objs, actions)
-            
-            # register event related to ApiObject
-            # self.event_class(self.controller).init_object()
-            
+
             self.logger.debug('Register api object: %s' % objs)
         except (QueryError, TransactionError) as ex:
             self.logger.warning(ex.desc)    
     
     def set_admin_permissions(self, role_name, args):
         """Set admin permissions
+
+        :param role_name: authorization role
+        :param args: permission args
         """
         try:
             role = self.auth_db_manager.get_entity(Role, role_name)
-            perms, total = self.auth_db_manager.get_permissions(
-                                    objid=self._get_value(self.objdef, args),
-                                    objtype=None, 
-                                    objdef=self.objdef,
-                                    action='*')            
+            perms, total = self.auth_db_manager.get_permissions(objid=self._get_value(self.objdef, args), objtype=None,
+                                                                objdef=self.objdef, action='*')
             
             # set container main permissions
             self.auth_db_manager.append_role_permissions(role, perms)
         except Exception as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=400)
 
     def send_event(self, api, params={}, response=True, exception=None):
@@ -2559,7 +2541,8 @@ class ApiViewResponse(ApiObject):
 
 
 class ApiView(FlaskView):
-    """ """
+    """Base api object used when create an api view
+    """
     prefix = 'identity:'
     expire = 3600
     parameters = []
@@ -2576,7 +2559,7 @@ class ApiView(FlaskView):
         self.logger = logging.getLogger(self.__class__.__module__ + '.' + self.__class__.__name__)
     
     def _get_response_mime_type(self):
-        """ """
+        """Get response mime type"""
         try:
             self.response_mime = request.headers['Content-Type']
         except:
@@ -2591,26 +2574,23 @@ class ApiView(FlaskView):
         if self.response_mime is None:
             self.response_mime = 'application/json'
 
-        # self.logger.debug('Response mime type: %s' % self.response_mime)
-    
     def __get_auth_filter(self):
         """Get authentication filter. It can be keyauth, oauth2, simplehttp or ...
         """
         headers = request.headers
         if 'uid' in headers and 'sign' in headers:
             return 'keyauth'
-        if 'Authorization' in headers and \
-           headers.get('Authorization').find('Basic') >= 0:
+        if 'Authorization' in headers and headers.get('Authorization').find('Basic') >= 0:
             return 'simplehttp'
-        if 'Authorization' in headers and \
-           headers.get('Authorization').find('Bearer') >= 0:
+        if 'Authorization' in headers and headers.get('Authorization').find('Bearer') >= 0:
             return 'oauth2'
         return None
      
     def __get_token(self):
         """get uid and sign from headers
-        
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+
+        :return: authorization token, sign, request data
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         try:
             header = request.headers
@@ -2626,8 +2606,9 @@ class ApiView(FlaskView):
     
     def __get_oauth2_token(self):
         """Get oauth2 access token from headers
-        
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+
+        :return: authorization token
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         try:
             header = request.headers
@@ -2638,11 +2619,10 @@ class ApiView(FlaskView):
         return token
     
     def __get_http_credentials(self):
-        """Verify that simple http authentication contains valid fields and is 
-        allowed for the user provided.
+        """Verify that simple http authentication contains valid fields and is allowed for the user provided.
         
         :return: True
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         try:
             header = request.headers
@@ -2658,14 +2638,15 @@ class ApiView(FlaskView):
             user, pwd = credentials.split(':')
             user_ip = get_remote_ip(request)
         except Exception as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError('Error retrieving Authorization from http header', code=401)
         return user, pwd, user_ip
     
     def get_current_identity(self):
         """Get uid and sign from headers
-        
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+
+        :return: authorization token, sign, request data
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         return self.__get_token()
     
@@ -2675,33 +2656,31 @@ class ApiView(FlaskView):
         serializer = current_app.session_interface.serializer
         redis = current_app.session_interface.redis
         key_prefix = current_app.session_interface.key_prefix
-        
-        #self.logger.warning(session)
+
         self.logger.warning(redis.keys('%s*' % key_prefix))
-        '''
-        if session is not None:
-            sid = session.sid
-        if sid is not None:
 
-            
-            # save session not already in redis
-            val = serializer.dumps(dict(session))
-            redis.setex(name=key_prefix + sid, value=val, time=5)            
-            
-            #current_app.session_interface.save_session(current_app, request)
-            
-            
+        # if session is not None:
+        #     sid = session.sid
+        # if sid is not None:
+        #
+        #
+        #     # save session not already in redis
+        #     val = serializer.dumps(dict(session))
+        #     redis.setex(name=key_prefix + sid, value=val, time=5)
+        #
+        #     #current_app.session_interface.save_session(current_app, request)
+        #
+        #
+        #
+        #     #self.logger.warning(key_prefix + sid)
+        #     #self.logger.warning(redis.get(key_prefix + sid))
+        #     #redis.expire(key_prefix + sid, 5)
+        #     #redis.delete(key_prefix + sid)
+        #     #self.logger.warning(redis.keys('%s*' % key_prefix))
+        #     #session = None
+        #
+        #     #redis.delete(key_prefix + sid)'''
 
-            #self.logger.warning(key_prefix + sid)
-            #self.logger.warning(redis.get(key_prefix + sid))            
-            #redis.expire(key_prefix + sid, 5)
-            #redis.delete(key_prefix + sid)
-            #self.logger.warning(redis.keys('%s*' % key_prefix))
-            #session = None
-
-            #redis.delete(key_prefix + sid)'''
-            
-        #session = None
         self.logger.warning(session)
         session['_permanent'] = False
         self.logger.warning(session)
@@ -2711,8 +2690,8 @@ class ApiView(FlaskView):
         """Authorize http request
         
         :param module: beehive module instance
-        :raise AuthViewError:
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+        :raise AuthViewError: raise :class:`AuthViewError`
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         self.logger.debug('Verify api %s [%s] authorization' % (request.path, request.method))
 
@@ -2737,7 +2716,7 @@ class ApiView(FlaskView):
             identity = controller.get_oauth2_identity(uid)
             if identity['type'] != 'oauth2':
                 msg = 'Token type oauth2 does not match with supplied token'
-                self.logger.error(msg, exc_info=1)
+                self.logger.error(msg, exc_info=True)
                 raise ApiManagerError(msg, code=401)  
 
         # - simple http authentication
@@ -2760,7 +2739,6 @@ class ApiView(FlaskView):
             # get user permission
             user = identity['user']
             name = user['name']
-            # name = user['id']
             compress_perms = user['perms']
             
             # get permissions
@@ -2769,21 +2747,34 @@ class ApiView(FlaskView):
             self.logger.debug2('Get user %s permissions: %s' % (name, truncate(operation.perms)))
         except Exception as ex:
             msg = 'Error retrieving user %s permissions: %s' % (name, ex)
-            self.logger.error(msg, exc_info=1)
+            self.logger.error(msg, exc_info=True)
             raise ApiManagerError(msg, code=401)
         
     # response methods
     def get_warning(self, exception, code, msg, module=None):
+        """Return warning response
+
+        :param exception: exception raised
+        :param code: exception code
+        :param msg: exception message
+        :param module: current module [optional]
+        :return: Flask Response
+        :raises ApiManagerError: raise :class:`ApiManagerError`
+        """
         return self.get_error(exception, code, msg, module=module)
 
     # response methods
     def get_error(self, exception, code, msg, module=None):
         """Return error response
 
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+        :param exception: exception raised
+        :param code: exception code
+        :param msg: exception message
+        :param module: current module [optional]
+        :return: Flask Response
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        headers = {'Cache-Control': 'no-store', 'Pragma': 'no-cache',
-                   'remote-server': module.api_manager.server_name}
+        headers = {'Cache-Control': 'no-store', 'Pragma': 'no-cache', 'remote-server': module.api_manager.server_name}
         
         error = {
             'code': code,
@@ -2800,36 +2791,28 @@ class ApiView(FlaskView):
         else:
             status = 400
         
-        self.logger.error('Code: %s, Error: %s' % (code, exception), 
-                          exc_info=True)
+        self.logger.error('Code: %s, Error: %s' % (code, exception), exc_info=True)
         if self.response_mime == 'application/json':
-            return Response(response=json.dumps(error), 
-                            mimetype='application/json', 
-                            status=status,
-                            headers=headers)
+            return Response(response=json.dumps(error), mimetype='application/json', status=status, headers=headers)
         elif self.response_mime == 'application/bson':
-            return Response(response=json.dumps(error), 
-                            mimetype='application/bson', 
-                            status=status,
-                            headers=headers)
+            return Response(response=json.dumps(error), mimetype='application/bson', status=status, headers=headers)
         elif self.response_mime in ['text/xml', 'application/xml']:
             xml = dicttoxml(error, root=False, attr_type=False)
-            return Response(response=xml, 
-                            mimetype='application/xml', 
-                            status=status,
-                            headers=headers)
+            return Response(response=xml, mimetype='application/xml', status=status, headers=headers)
         else:  
             # 415 Unsupported Media Type
             res = {'msg': 'Unsupported media type'}
-            return Response(response=res,
-                            mimetype='application/xml',
-                            status=415,
-                            headers=headers)           
+            return Response(response=res, mimetype='application/xml', status=415,headers=headers)
 
     def get_response(self, response, code=200, headers={}, module=None):
-        """Return response
+        """Return api response
 
-        **raise** :class:`ApiManagerError`
+        :param response: api response
+        :param code: api response code [default=200]
+        :param headers: custom headers
+        :param module: current module [optional]
+        :return: Flask Response
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         headers.update({'Cache-Control': 'no-store', 'Pragma': 'no-cache',
                         'remote-server': module.api_manager.server_name})
@@ -2887,10 +2870,10 @@ class ApiView(FlaskView):
         
         :param response: response
         :param entity: entity like users
-        :param page: page number
+        :param page: page number [optional]
         :param total: total response records that user can view
-        :param field: sorting field
-        :param order: sorting order
+        :param field: sorting field [default=id]
+        :param order: sorting order [default=DESC]
         :return: dict with data
         """
         resp = {
@@ -2907,11 +2890,22 @@ class ApiView(FlaskView):
         return resp
     
     def dispatch(self, controller, data, *args, **kwargs):
-        """http inner function. Override to implement apis.
+        """http inner function. Override to implement apis
+
+        :param controller: ApiController instance
+        :param data: request data
+        :param args: positional args
+        :param kwargs: key value args
+        :return: response
         """
         raise NotImplementedError()
 
     def to_dict(self, querystring):
+        """Convert query string to dict
+
+        :param querystring: query string
+        :return:
+        """
         res = {}
         for k, v in querystring.items(multi=True):
             if k[-2:] == '.N':
@@ -2924,7 +2918,13 @@ class ApiView(FlaskView):
         return res
 
     def dispatch_request(self, module=None, secure=True, *args, **kwargs):
-        """Base dispatch_request method. Extend this method in your child class.
+        """Base dispatch_request method. Extend this method in your child class
+
+        :param module: ApiModule instance
+        :param secure: if True dispatch request after authorization [default=True]
+        :param args: positional args
+        :param kwargs: key value args
+        :return: Flask Response
         """
         # set reqeust timeout
         res = None
@@ -2934,11 +2934,11 @@ class ApiView(FlaskView):
         self.logger.debug2('Set response timeout to: %s' % module.api_manager.api_timeout)
 
         start = time.time()
-        dbsession = None
         data = None
 
         # open database session.
-        dbsession = module.get_session()
+        # dbsession = module.get_session()
+        module.get_session()
         controller = module.get_controller()
 
         try:
@@ -2965,11 +2965,7 @@ class ApiView(FlaskView):
                 request_data = request.data
 
             self._get_response_mime_type()
-            
-            # # open database session.
-            # dbsession = module.get_session()
-            # controller = module.get_controller()
-            
+
             # check security
             if secure is True:
                 self.authorize_request(module)
@@ -2986,7 +2982,6 @@ class ApiView(FlaskView):
             # validate query/input data
             if self.parameters_schema is not None:
                 if request.method.lower() == 'get':
-                    # parsed = self.parameters_schema().load(request.args.to_dict())
                     query_string.update(kwargs)
                     parsed = self.parameters_schema().load(query_string)
                     self.logger.debug('Api request data: %s' % truncate(obscure_data(deepcopy(query_string))))
@@ -3055,8 +3050,7 @@ class ApiView(FlaskView):
             ApiViewResponse(controller).send_event(event_data, data, exception=ex.message)
             return self.get_error('Exception', 400, ex.message, module=module)
         finally:
-            if dbsession is not None:
-                module.release_session(dbsession)
+            module.release_session()
             timeout.cancel()
             self.logger.debug('Timeout released')
 
@@ -3064,9 +3058,11 @@ class ApiView(FlaskView):
     
     @staticmethod
     def register_api(module, rules, version=None):
-        """
+        """Register api as Flask route
+
         :param module: beehive module
         :param rules: route to register. Ex. [('/jobs', 'GET', ListJobs.as_view('jobs')), {'secure':False}]
+        :param version: custom api version [optional]
         """
         logger = logging.getLogger(__name__)
         
@@ -3173,8 +3169,7 @@ class ApiObjectResponseSchema(AuditResponseSchema):
 
 
 class PaginatedResponseSortSchema(Schema):
-    order = fields.String(required=True, validate=OneOf(['ASC', 'asc', 'DESC', 'desc']),
-                          default='DESC', example='DESC')
+    order = fields.String(required=True, validate=OneOf(['ASC', 'asc', 'DESC', 'desc']), default='DESC', example='DESC')
     field = fields.String(required=True, default='id', example='id')
 
 
@@ -3228,6 +3223,10 @@ class ApiObjectPermsResponseSchema(PaginatedResponseSchema):
 
 
 class SwaggerApiView(ApiView, SwaggerView):
+    """Base api object used when create api response
+
+    :param controller: ApiController instance
+    """
     consumes = ['application/json',
                 'application/xml']
     produces = ['application/json',
@@ -3261,21 +3260,23 @@ class SwaggerApiView(ApiView, SwaggerView):
 
 
 class ApiClient(BeehiveApiClient):
-    """ """
+    """Base ApiClient class used by ApiManager"""
     def __init__(self, auth_endpoints, user, pwd, secret, catalog_id=None, authtype='keyauth'):
         BeehiveApiClient.__init__(self, auth_endpoints, authtype, user, pwd, secret, catalog_id)
     
-    def admin_request(self, subsystem, path, method, data='', other_headers={}, silent=False):
-        """Make api request using module internal admin user credentials.
+    def admin_request(self, subsystem, path, method, data='', other_headers={}, silent=False, timeout=60):
+        """Make api request using module internal admin user credentials
 
-        :param subsystem:
-        :param path:
-        :param method:
-        :param data:
-        :param other_headers:
-        :param silent:
-        :return:
-        :raise: :class:`ApiManagerError`
+        :param subsystem: subsystem
+        :param path: request path
+        :param method: http method
+        :param data: request data
+        :param other_headers: other headers
+        :param timeout: timeout
+        :param silent: if True does not log request
+        :return: request response
+        :rtype: dict
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # propagate opernation.id to internal api call
         if isinstance(other_headers, dict):
@@ -3290,18 +3291,28 @@ class ApiClient(BeehiveApiClient):
             raise ApiManagerError(ex.value, code=ex.code)
         
         try:
-            res = self.send_request(subsystem, path, method, data, self.uid, self.seckey, other_headers, silent=silent)
+            res = self.send_request(subsystem, path, method, data, self.uid, self.seckey, other_headers, silent=silent,
+                                    timeout=timeout)
             self.logger.debug('Send admin request to %s using uid %s' % (path, self.uid))
         except BeehiveApiClientError as ex:
-            self.logger.error('Send admin request to %s using uid %s: %s' % (path, self.uid, ex.value), exc_info=1)
+            self.logger.error('Send admin request to %s using uid %s: %s' % (path, self.uid, ex.value), exc_info=True)
             raise ApiManagerError(ex.value, code=ex.code)
 
         return res
 
-    def user_request(self, subsystem, path, method, data='', other_headers={}, silent=False):
-        """Make api request using module current user credentials.
-        
-        :raises ApiManagerError: raise :class:`ApiManagerError` raise :class:`ApiManagerError`
+    def user_request(self, subsystem, path, method, data='', other_headers={}, silent=False, timeout=timeout):
+        """Make api request using module current user credentials
+
+        :param subsystem: subsystem
+        :param path: request path
+        :param method: http method
+        :param data: request data
+        :param other_headers: other headers
+        :param timeout: timeout
+        :param silent: if True does not log request
+        :return: request response
+        :rtype: dict
+        :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # propagate opernation.id to internal api call
         if isinstance(other_headers, dict):
@@ -3314,10 +3325,10 @@ class ApiClient(BeehiveApiClient):
             uid = operation.user[2]
             seckey = operation.user[3]
             res = self.send_request(subsystem, path, method, data, uid, seckey, other_headers, silent=silent,
-                                    api_authtype=operation.token_type)
+                                    api_authtype=operation.token_type, timeout=timeout)
             self.logger.debug('Send user request to %s using uid %s' % (path, self.uid))
         except BeehiveApiClientError as ex:
-            self.logger.error('Send user request to %s using uid %s: %s' % (path, self.uid, ex.value), exc_info=1)
+            self.logger.error('Send user request to %s using uid %s: %s' % (path, self.uid, ex.value), exc_info=True)
             raise
 
         return res

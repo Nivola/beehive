@@ -114,13 +114,12 @@ class BeehiveHelper(object):
                     self.logger.info('Add configuration %s' % res)
                     msgs.append('Add configuration %s' % res)
         except Exception as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise
         finally:
             # release session
             if manager is not None:
-                manager.release_session(operation.session)
-            operation.session = None
+                manager.release_session()
             
         return msgs
     
@@ -166,7 +165,7 @@ class BeehiveHelper(object):
                 self.logger.info('Create DB %s' % db_manager_class)
                 msgs.append('Create DB %s' % db_manager_class)
         except Exception as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise
     
         self.set_permissions(classes=self.classes)
@@ -209,12 +208,11 @@ class BeehiveHelper(object):
                     msgs.extend('Populate service database')
               
             except Exception as ex:
-                self.logger.error(ex, exc_info=1)
+                self.logger.error(ex, exc_info=True)
                 raise
             finally:
                 # release session
-                module.release_session(operation.session)
-                operation.session = None
+                module.release_session()
                 
         self.logger.info('Init subsystem %s' % (config['api_subsystem']))
         msgs.append('Init subsystem %s' % (config['api_subsystem']))

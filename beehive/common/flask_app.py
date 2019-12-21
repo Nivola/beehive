@@ -177,18 +177,20 @@ class BeehiveApp(Flask):
     def open_db_session(self):
         """Open database session.
         """
-        try:
-            operation.session = self.api_manager.db_manager.get_session()
-            return operation.session
-        except MysqlManagerError as e:
-            logger.error(e)
-            raise BeehiveAppError(e)
+        operation.session = self.api_manager.get_session()
+        # try:
+        #     operation.session = self.api_manager.db_manager.get_session()
+        #     return operation.session
+        # except MysqlManagerError as e:
+        #     logger.error(e)
+        #     raise BeehiveAppError(e)
     
     def release_db_session(self):
         """Release database session.
         """
-        try:
-            self.api_manager.db_manager.release_session(operation.session)
-        except MysqlManagerError as e:
-            logger.error(e)
-            raise BeehiveAppError(e)
+        self.api_manager.release_session()
+        # try:
+        #     self.api_manager.db_manager.release_session()
+        # except MysqlManagerError as e:
+        #     logger.error(e)
+        #     raise BeehiveAppError(e)
