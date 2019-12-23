@@ -7,19 +7,12 @@
 from uuid import uuid4
 
 import ujson as json
-from datetime import datetime, timedelta
-
+from datetime import datetime
 from celery.result import AsyncResult
-
-from beecell.db.manager import RedisManagerError
 from beecell.db.util import QueryError
-from beecell.simple import str2uni, get_attrib, truncate, import_class, format_date
-from celery.schedules import crontab
-from networkx import DiGraph
-from networkx.readwrite import json_graph
+from beecell.simple import truncate, import_class, format_date
 from beehive.common.apimanager import ApiController, ApiObject, ApiManagerError
-from beehive.module.scheduler.redis_scheduler import RedisScheduleEntry, RedisScheduler
-# from beehive.common.task.manager import task_scheduler, task_manager
+from beehive.module.scheduler_v2.redis_scheduler import RedisScheduler
 from beehive.common.data import trace, operation
 from beehive.common.task_v2.canvas import signature
 from beehive.module.scheduler_v2.model import SchedulerDbManager
