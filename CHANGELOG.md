@@ -1,6 +1,6 @@
 # Changelog
 
-## Version 1.6.0 (, 2019)
+## Version 1.6.0 (Dec 23, 2019)
 
 * Added ...
 * Fixed ...

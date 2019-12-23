@@ -23,13 +23,13 @@ $ source /tmp/beehive-py2-test-env/bin/activate
 public packages:
 
 ```
-$ pip3 install -U git+https://github.com/Nivola/beecell.git
-$ pip3 install -U git+https://github.com/Nivola/beehive.git
+$ pip install -U git+https://github.com/Nivola/beecell.git
+$ pip install -U git+https://github.com/Nivola/beehive.git
 ```
 
 internal packages:
 
 ```
-$ pip3 install -U git+https://gitlab.csi.it/nivola/cmp3/beecell.git@devel
-$ pip3 install -U git+https://gitlab.csi.it/nivola/cmp2/beehive.git@devel
+$ pip install -U git+https://gitlab.csi.it/nivola/cmp3/beecell.git@devel
+$ pip install -U git+https://gitlab.csi.it/nivola/cmp2/beehive.git@devel
 ```
