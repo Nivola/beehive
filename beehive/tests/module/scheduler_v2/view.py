@@ -9,17 +9,17 @@ task_id = '4dc35bd0-5494-4f54-8f52-4e8e0b3fc752'
 schedule_id = None
 
 tests = [
-    # 'test_ping_task_manager',
-    # 'test_stat_task_manager',
-    # 'test_report_task_manager',
-    # 'test_queues_task_manager',
-    # 'test_get_task_definitions',
+    'test_ping_task_manager',
+    'test_stat_task_manager',
+    'test_report_task_manager',
+    'test_queues_task_manager',
+    'test_get_task_definitions',
 
-    # 'test_run_test_task',
-    # 'test_get_all_tasks',
-    # 'test_get_task',
-    # 'test_get_task_status',
-    # 'test_get_task_trace',
+    'test_run_test_task',
+    'test_get_all_tasks',
+    'test_get_task',
+    'test_get_task_status',
+    'test_get_task_trace',
 
     'test_create_scheduler_entries',
     'test_get_scheduler_entries',
