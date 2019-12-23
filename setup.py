@@ -47,7 +47,7 @@ if __name__ == '__main__':
             'beehive.common',
             'beehive.common.controller',
             'beehive.common.model',
-            'beehive.common.task',
+            'beehive.common.task_v2',
             'beehive.module',
             'beehive.module.auth',
             'beehive.module.auth.views',
@@ -55,7 +55,7 @@ if __name__ == '__main__':
             'beehive.module.catalog',
             'beehive.module.config',
             'beehive.module.event',
-            'beehive.module.scheduler',
+            'beehive.module.scheduler_v2',
             'beehive.server',
             'beehive.tests',
             'beehive.tests.common',
@@ -64,7 +64,7 @@ if __name__ == '__main__':
             'beehive.tests.module.basic',
             'beehive.tests.module.catalog',
             'beehive.tests.module.event',
-            'beehive.tests.module.scheduler'
+            'beehive.tests.module.scheduler_v2'
         ],
         namespace_packages=[],
         py_modules=[
