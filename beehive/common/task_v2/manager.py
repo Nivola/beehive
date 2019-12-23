@@ -99,7 +99,6 @@ def configure_task_manager(broker_url, result_backend, tasks=[], expire=60*60*24
         task_time_limit=time_limit,
         task_soft_time_limit=time_limit,
         worker_concurrency=10,
-        worker_pool='beehive.common.task.task_pool:TaskPool',
         worker_task_log_format='[%(asctime)s: %(levelname)s/%(processName)s] [%(task_name)s:%(task_id)s] '
                                '%(name)s:%(funcName)s:%(lineno)d - %(message)s',
         worker_max_tasks_per_child=20
