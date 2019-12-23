@@ -4,7 +4,7 @@
     "api_module": 3,
     "api_module.1": "beehive.module.event.mod.EventModule",
     "api_module.2": "beehive.module.config.mod.ConfigModule",
-    "api_module.3": "beehive.module.scheduler_v2.mod.SchedulerModule",
+    "api_module.3": "beehive.module.scheduler_v2.mod.SchedulerModuleV2",
     "api_plugin": 0,
     "api_catalog":"beehive-internal",
     "api_endpoint":"http://localhost:8080",
