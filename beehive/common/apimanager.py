@@ -568,14 +568,17 @@ class ApiManager(object):
                     task_manager = configure_task_manager(broker_url, result_backend,
                                                           task_queue=self.params['broker_queue'])
                     task_manager.api_manager = self
-                    self.celery_broker_queue = self.params['broker_queue']
+                    self.celery_broker_queue = ensure_text(self.params['broker_queue'])
                     self.redis_taskmanager = RedisManager(internal_result_backend)
+                    self.task_manager = task_manager
 
                     # scheduler
                     broker_url = ensure_text(self.params['broker_url'])
                     schedule_backend = ensure_text(self.params['result_backend'])
-                    configure_task_scheduler(broker_url, schedule_backend, task_queue=self.params['broker_queue'])
+                    task_scheduler = configure_task_scheduler(broker_url, schedule_backend,
+                                                              task_queue=self.params['broker_queue'])
                     self.redis_scheduler = RedisManager(schedule_backend)
+                    self.task_scheduler = task_scheduler
     
                     self.logger.info('Configure scheduler reference - CONFIGURED')
                 except:
@@ -1542,6 +1545,14 @@ class ApiObject(object):
     @property
     def celery_broker_queue(self):
         return self.controller.module.api_manager.celery_broker_queue
+
+    @property
+    def task_manager(self):
+        return self.api_manager.task_manager
+
+    @property
+    def task_scheduler(self):
+        return self.api_manager.task_scheduler
 
     @staticmethod
     def join_typedef(parent, child):
@@ -3047,8 +3058,8 @@ class ApiView(FlaskView):
             elapsed = round(time.time() - start, 4)
             self.logger.error('Invoke api: %s [%s] - ERROR - %s' % (request.path, request.method, elapsed))
             event_data = {'path': request.path, 'method': request.method, 'elapsed': elapsed, 'code': 400}
-            ApiViewResponse(controller).send_event(event_data, data, exception=ex.message)
-            return self.get_error('Exception', 400, ex.message, module=module)
+            ApiViewResponse(controller).send_event(event_data, data, exception=str(ex))
+            return self.get_error('Exception', 400, str(ex), module=module)
         finally:
             module.release_session()
             timeout.cancel()
@@ -3272,7 +3283,7 @@ class ApiClient(BeehiveApiClient):
         :param method: http method
         :param data: request data
         :param other_headers: other headers
-        :param timeout: timeout
+        :param timeout: timeout [default=60]
         :param silent: if True does not log request
         :return: request response
         :rtype: dict
@@ -3300,7 +3311,7 @@ class ApiClient(BeehiveApiClient):
 
         return res
 
-    def user_request(self, subsystem, path, method, data='', other_headers={}, silent=False, timeout=timeout):
+    def user_request(self, subsystem, path, method, data='', other_headers={}, silent=False, timeout=60):
         """Make api request using module current user credentials
 
         :param subsystem: subsystem
@@ -3308,7 +3319,7 @@ class ApiClient(BeehiveApiClient):
         :param method: http method
         :param data: request data
         :param other_headers: other headers
-        :param timeout: timeout
+        :param timeout: timeout [default=60]
         :param silent: if True does not log request
         :return: request response
         :rtype: dict

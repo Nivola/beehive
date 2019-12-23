@@ -2,17 +2,15 @@
 #
 # (C) Copyright 2018-2019 CSI-Piemonte
 # (C) Copyright 2019-2020 CSI-Piemonte
-
+import copy
+import heapq
 import logging
 import ujson as json
+from celery.schedules import crontab
 from beecell.db.manager import RedisManager
 from celery.beat import Scheduler
 from datetime import timedelta, datetime
-from celery.schedules import maybe_schedule, crontab, schedule as interval
-from celery.beat import ScheduleEntry 
-# from celery.five import items
-# from kombu.utils import reprcall
-# import redis_collections
+from celery.beat import ScheduleEntry, event_t
 from beecell.simple import format_date
 
 
@@ -83,11 +81,11 @@ class RedisScheduleEntry(ScheduleEntry):
                 day_of_week = schedule.get('day_of_week', '*')
                 day_of_month = schedule.get('day_of_month', '*')
                 month_of_year = schedule.get('month_of_year', '*')
-                schedule = crontab(minute=minute,
-                                   hour=hour,
-                                   day_of_week=day_of_week,
-                                   day_of_month=day_of_month,
-                                   month_of_year=month_of_year)
+                schedule = crontab(minute=str(minute),
+                                   hour=str(hour),
+                                   day_of_week=str(day_of_week),
+                                   day_of_month=str(day_of_month),
+                                   month_of_year=str(month_of_year))
             elif schedule['type'] == 'timedelta':
                 days = schedule.get('days', 0)
                 seconds = schedule.get('seconds', 0)
@@ -149,8 +147,8 @@ class RedisScheduler(Scheduler):
     def _get_redis(self):
         # set redis manager
         if self._redis_manager is None:
-            self._redis_manager = RedisManager(self.app.conf.CELERY_SCHEDULE_BACKEND)
-        self._prefix = self.app.conf.CELERY_REDIS_SCHEDULER_KEY_PREFIX
+            self._redis_manager = RedisManager(self.app.conf.scheduler_backend)
+        self._prefix = self.app.conf.scheduler_key_prefix
 
     def open_schedule(self, with_last_run_at=False):
         try:
@@ -164,11 +162,12 @@ class RedisScheduler(Scheduler):
                 try:
                     val = json.loads(item[0])
                 except:
-                    logger.warn('', exc_info=True)
+                    logger.warning('', exc_info=True)
                     val = {}
                 name = val.get('name')
                 options = val.get('options', {})
-                options.update({'queue': self.app.conf.CELERY_TASK_DEFAULT_QUEUE})
+                options.update({'queue': self.app.conf.task_default_queue})
+
                 if with_last_run_at is True:
                     self._store[name] = self.Entry.create(self.app, name, val.get('task'), val.get('schedule'),
                                                           args=val.get('args'), kwargs=val.get('kwargs'),
@@ -190,7 +189,7 @@ class RedisScheduler(Scheduler):
         try:
             self._get_redis()
             # set queue
-            schedule['options'].update({'queue': self.app.conf.CELERY_TASK_DEFAULT_QUEUE})
+            schedule['options'].update({'queue': self.app.conf.task_default_queue})
 
             key = self._prefix + '.' + schedule.get('name')
             res = self._redis_manager.set(key, json.dumps(schedule))
@@ -235,12 +234,12 @@ class RedisScheduler(Scheduler):
 
     def get_schedule(self):
         res = self._store
-        # logger.warn('Get schedule: %s' % res)
+        # logger.warning('Get schedule: %s' % res)
         return res
 
     def set_schedule(self, schedule):
         self._store = schedule
-        # logger.warn('Set schedule: %s' % schedule)
+        # logger.warning('Set schedule: %s' % schedule)
 
     schedule = property(get_schedule, set_schedule)
 

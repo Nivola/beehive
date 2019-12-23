@@ -80,7 +80,7 @@ class ConfigDbManager(AbstractDbManager):
         """
         try:
             engine = create_engine(db_uri)
-            engine.execute('SET FOREIGN_KEY_CHECKS=1;')
+            engine.execute('SET FOREIGN_KEY_CHECKS=0;')
             Base.metadata.drop_all(engine)
             logger.info('Remove tables from : %s' % db_uri)
             del engine

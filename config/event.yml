@@ -28,15 +28,15 @@ uwsgi:
     task_time_limit: 1200
 
     # socket configuration uwsi,http
-    socket: ':8070'
-    http-socket: ':8080'
+    socket: :8071
+    http-socket: :8081
 
     # startup user
     #uid: uwsgi
     #gid: uwsgi
 
     # daemon configuration
-    daemonize: /tmp/event-01.uwsgi.log
+    daemonize: /tmp/event-01.api.out
     pidfile: /tmp/event-01.pid
     vacuum: true
 
@@ -90,7 +90,7 @@ uwsgi:
 
     # event handler
     event_handler: 2
-    event_handler.1: beehive.module.event.event.AuthEventHandler
+    event_handler.1: beehive.module.auth.event.AuthEventHandler
     event_handler.2: beehive.module.event.handler_api.ApiEventHandler
 
     # workers configuration

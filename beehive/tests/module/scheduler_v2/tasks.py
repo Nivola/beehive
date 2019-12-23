@@ -3,6 +3,9 @@
 # (C) Copyright 2018-2019 CSI-Piemonte
 # (C) Copyright 2019-2020 CSI-Piemonte
 
+import gevent.monkey
+gevent.monkey.patch_all()
+
 from beehive.common.test import BeehiveTestCase, runtest
 from beehive.common.task_v2.manager import configure_task_manager, configure_task_scheduler
 from beehive.common.task_v2.canvas import signature

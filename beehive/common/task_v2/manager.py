@@ -4,10 +4,7 @@
 # (C) Copyright 2019-2020 CSI-Piemonte
 
 import logging
-from time import time
-
-from six import b, ensure_text
-
+from six import ensure_text
 from beecell.logger.helper import LoggerHelper
 from signal import SIGHUP, SIGABRT, SIGILL, SIGINT, SIGSEGV, SIGTERM, SIGQUIT
 from signal import signal
@@ -78,34 +75,34 @@ def configure_task_manager(broker_url, result_backend, tasks=[], expire=60*60*24
     #     redis_password = match(r"redis:\/\/([\w\W\d]*)@.", result_backend).groups()[0]
     task_queue = ensure_text(task_queue)
     task_manager.conf.update(
-        BROKER_URL=ensure_text(broker_url),
-        BROKER_POOL_LIMIT=20,
-        BROKER_HEARTBEAT=20,
-        BROKER_CONNECTION_MAX_RETRIES=10,
-        TASK_DEFAULT_QUEUE=task_queue,
-        TASK_DEFAULT_EXCHANGE=task_queue,
-        TASK_DEAFAULT_ROUTING_KEY=task_queue,
-        CELERY_QUEUES=(Queue(task_queue, Exchange(task_queue), routing_key=task_queue),),
-        CELERY_RESULT_BACKEND=ensure_text(result_backend),
-        CELERY_REDIS_RESULT_EXPIRES=expire,
-        CELERY_TASK_IGNORE_RESULT=True,
-        CELERY_TASK_RESULT_EXPIRES=600,
-        CELERY_TASK_SERIALIZER='json',
-        CELERY_ACCEPT_CONTENT=['json'],  # Ignore other content
-        CELERY_RESULT_SERIALIZER='json',
-        CELERY_TIMEZONE='Europe/Rome',
-        CELERY_ENABLE_UTC=True,
-        CELERY_IMPORTS=tasks,
-        CELERY_DISABLE_RATE_LIMITS=True,
-        CELERY_TRACK_STARTED=True,
-        CELERY_CHORD_PROPAGATES=True,
-        CELERYD_TASK_TIME_LIMIT=time_limit,
-        CELERYD_TASK_SOFT_TIME_LIMIT=time_limit,
-        CELERYD_CONCURRENCY=10,
-        CELERYD_POOL='beehive.common.task.task_pool:TaskPool',
-        CELERYD_TASK_LOG_FORMAT='[%(asctime)s: %(levelname)s/%(processName)s] [%(task_name)s:%(task_id)s] '
-                                '%(name)s:%(funcName)s:%(lineno)d - %(message)s',
-        CELERYD_MAX_TASKS_PER_CHILD=20
+        broker_url=ensure_text(broker_url),
+        broker_pool_limit=20,
+        broker_heartbeat=20,
+        broker_connection_max_retries=10,
+        task_default_queue=task_queue,
+        task_default_exchange=task_queue,
+        task_default_routing_key=task_queue,
+        task_queues=(Queue(task_queue, Exchange(task_queue), routing_key=task_queue),),
+        result_backend=ensure_text(result_backend),
+        # CELERY_REDIS_RESULT_EXPIRES=expire,
+        task_ignore_result=True,
+        result_expires=600,
+        task_serializer='json',
+        accept_content=['json'],  # Ignore other content
+        result_serializer='json',
+        timezone='Europe/Rome',
+        enable_utc=True,
+        imports=tasks,
+        worker_disable_rate_limits=True,
+        task_track_started=True,
+        #CELERY_CHORD_PROPAGATES=True,
+        task_time_limit=time_limit,
+        task_soft_time_limit=time_limit,
+        worker_concurrency=10,
+        worker_pool='beehive.common.task.task_pool:TaskPool',
+        worker_task_log_format='[%(asctime)s: %(levelname)s/%(processName)s] [%(task_name)s:%(task_id)s] '
+                               '%(name)s:%(funcName)s:%(lineno)d - %(message)s',
+        worker_max_tasks_per_child=20
     )
     logger.debug('register tasks path: %s' % tasks)
 
@@ -122,20 +119,21 @@ def configure_task_scheduler(broker_url, schedule_backend, task_queue=None):
     """
     task_queue = ensure_text(task_queue)
     task_scheduler.conf.update(
-        CELERY_TASK_DEFAULT_QUEUE=task_queue,
-        BROKER_URL=ensure_text(broker_url),
-        CELERY_SCHEDULE_BACKEND=ensure_text(schedule_backend),
-        CELERY_REDIS_SCHEDULER_KEY_PREFIX=task_queue + '.schedule',
-        CELERY_TASK_SERIALIZER='json',
-        CELERY_ACCEPT_CONTENT=['json'],  # Ignore other content
-        CELERY_RESULT_SERIALIZER='json',
-        CELERY_TIMEZONE='Europe/Rome',
-        CELERY_ENABLE_UTC=True,
-        CELERYBEAT_MAX_LOOP_INTERVAL=5,
-        CELERYBEAT_SCHEDULE={
+        task_default_queue=task_queue,
+        broker_url=ensure_text(broker_url),
+        scheduler_backend=ensure_text(schedule_backend),
+        scheduler_key_prefix=task_queue + '.schedule',
+        task_serializer='json',
+        accept_content=['json'],  # Ignore other content
+        result_serializer='json',
+        timezone='Europe/Rome',
+        enable_utc=True,
+        beat_max_loop_interval=5,
+        beat_scheduler='beehive.module.scheduler_v2.redis_scheduler:RedisScheduler',
+        beat_schedule={
             'test-every-30-minutes': {
-                'task': 'beehive.module.scheduler.tasks.test',
-                'schedule': timedelta(minutes=30),
+                'task': 'beehive.module.scheduler_v2.tasks.test',
+                'schedule': timedelta(minutes=1),
                 'args': ('*', {}),
                 'options': {'queue': task_queue}
             },
@@ -246,17 +244,9 @@ def start_scheduler(params):
     api_manager.register_modules()
     task_scheduler.api_manager = api_manager
 
-    configure_task_scheduler(
-        params['broker_url'],
-        params['result_backend'],
-        task_queue=params['broker_queue'])
-
-    from beehive.module.scheduler.redis_scheduler import RedisScheduler
-
+    configure_task_scheduler(params['broker_url'], params['result_backend'], task_queue=params['broker_queue'])
     beat = task_scheduler.Beat(loglevel=logging.getLevelName(internal_logger_level),
-                               logfile=file_name,
-                               pidfile=pid_name,
-                               scheduler_cls=RedisScheduler)
+                               logfile=file_name, pidfile=pid_name)
 
     def terminate(*args):
         pass

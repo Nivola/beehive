@@ -186,7 +186,7 @@ class ManagerPing(TaskApiView):
     def get(self, controller, data, *args, **kwargs):
         task_manager = controller.get_task_manager()
         resp = task_manager.ping()
-        return {'workers_ping':resp}
+        return {'workers_ping': resp}
 
 
 class ManagerStatsResponseSchema(Schema):

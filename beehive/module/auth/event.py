@@ -24,7 +24,7 @@ class AuthEventHandler(EventHandler):
         # internal logger
         self.logger2 = logging.getLogger('ApiEventHandler')
 
-        name = params['api_id'].decode('utf-8') + '.accesses'
+        # name = params['api_id'].decode('utf-8') + '.accesses'
         log_path = params.get('api_log', None)
 
         if log_path is None:
@@ -32,7 +32,7 @@ class AuthEventHandler(EventHandler):
         else:
             log_path = log_path.decode('utf-8')
 
-        file_name = log_path + name + '.log'
+        file_name = log_path + '/accesses.log'
         loggers = [self.logger2]
         LoggerHelper.rotatingfile_handler(loggers, logging.INFO, file_name, frmt='%(message)s')
 

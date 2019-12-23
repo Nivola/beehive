@@ -220,10 +220,11 @@ class TaskResult(object):
 @task_prerun.connect
 def task_prerun(**args):
     task = args.get('task')
-    task.get_session()
-    operation.transaction = None
-    TaskResult().task_prerun(**args)
-    task.release_session()
+    if getattr(task, 'get_session', None):
+        task.get_session()
+        operation.transaction = None
+        TaskResult().task_prerun(**args)
+        task.release_session()
 
 
 # @task_postrun.connect

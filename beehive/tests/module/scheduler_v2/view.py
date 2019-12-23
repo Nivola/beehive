@@ -14,20 +14,17 @@ tests = [
     # 'test_report_task_manager',
     # 'test_queues_task_manager',
     # 'test_get_task_definitions',
-    # 
-    'test_run_test_task',
+
+    # 'test_run_test_task',
     # 'test_get_all_tasks',
     # 'test_get_task',
     # 'test_get_task_status',
     # 'test_get_task_trace',
-    # 'test_get_task_graph',
-    # 'test_delete_task',
-    # 'test_delete_all_tasks',
-    # 
-    # 'test_create_scheduler_entries',
-    # 'test_get_scheduler_entries',
-    # 'test_get_scheduler_entry',
-    # 'test_delete_scheduler_entry',
+
+    'test_create_scheduler_entries',
+    'test_get_scheduler_entries',
+    'test_get_scheduler_entry',
+    'test_delete_scheduler_entry',
 ]
 
 
@@ -76,22 +73,12 @@ class SchedulerAPITestCase(BeehiveTestCase):
         global task_id
         self.get('/v2.0/nas/worker/tasks/%s/trace' % task_id)
 
-    # def test_get_task_graph(self):
-    #     global task_id
-    #     self.get('/v2.0/nas/worker/tasks/%s/graph' % task_id)
-    #
-    # def test_delete_all_tasks(self):
-    #     self.delete('/v2.0/nas/worker/tasks')
-    #
-    # def test_delete_task(self):
-    #     global task_id
-    #     self.delete('/v2.0/nas/worker/tasks/%s' % task_id)
-    #
     def test_run_test_task(self):
         global task_id
         data = {'x': 2, 'y': 234, 'numbers': [2, 78, 45, 90], 'mul_numbers': []}
         res = self.post('/v2.0/nas/worker/tasks/test', data=data)
         self.logger.debug(res)
+        self.wait_task(res['taskid'])
 
     #
     # scheduler
@@ -111,7 +98,7 @@ class SchedulerAPITestCase(BeehiveTestCase):
             'task': 'celery.backend_cleanup',
             'schedule': {
                 'type': 'crontab',
-                'minute': 2,
+                'minute': '*/2',
                 'hour': '*',
                 'day_of_week': '*',
                 'day_of_month': '*',
@@ -119,13 +106,32 @@ class SchedulerAPITestCase(BeehiveTestCase):
             },
             'options': {'expires': 60}
         }
+        # params = {}
+        # user = {
+        #     'user': 'user1',
+        #     'server': 'server1',
+        #     'identity': 'identity1',
+        #     'api_id': 'apiid1'
+        # }
+        # entity = {
+        #     'objid': 'objid1'
+        # }
         # data = {
-        #     'name': 'celery.backend_cleanup',
-        #     'task': 'celery.backend_cleanup',
+        #     'x': 2,
+        #     'y': 234,
+        #     'numbers': [2, 78, 45, 90]
+        # }
+        # params.update(user)
+        # params.update(entity)
+        # params.update(data)
+        # data = {
+        #     'name': 'beehive.module.scheduler_v2.tasks.test_task',
+        #     'task': 'beehive.module.scheduler_v2.tasks.test_task',
         #     'schedule': {
         #         'type': 'timedelta',
         #         'minutes': 1
         #     },
+        #     'args': [params],
         #     'options': {'expires': 60}
         # }
         self.post('/v2.0/nas/scheduler/entries', data={'schedule': data})

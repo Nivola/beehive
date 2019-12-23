@@ -123,7 +123,7 @@ class RedisScheduleEntry(ScheduleEntry):
 
             return res
         except Exception as ex:
-            logger.error(ex, exc_info=1)
+            logger.error(ex, exc_info=True)
             raise
 
 
@@ -149,8 +149,8 @@ class RedisScheduler(Scheduler):
     def _get_redis(self):
         # set redis manager
         if self._redis_manager is None:
-            self._redis_manager = RedisManager(self.app.conf.CELERY_SCHEDULE_BACKEND)
-        self._prefix = self.app.conf.CELERY_REDIS_SCHEDULER_KEY_PREFIX
+            self._redis_manager = RedisManager(self.app.conf.scheduler_backend)
+        self._prefix = self.app.conf.scheduler_key_prefix
 
     def open_schedule(self, with_last_run_at=False):
         try:
@@ -164,11 +164,11 @@ class RedisScheduler(Scheduler):
                 try:
                     val = json.loads(item[0])
                 except:
-                    logger.warn('', exc_info=1)
+                    logger.warning('', exc_info=True)
                     val = {}
                 name = val.get('name')
                 options = val.get('options', {})
-                options.update({'queue': self.app.conf.CELERY_TASK_DEFAULT_QUEUE})
+                options.update({'queue': self.app.conf.task_default_queue})
                 if with_last_run_at is True:
                     self._store[name] = self.Entry.create(self.app, name, val.get('task'), val.get('schedule'),
                                                           args=val.get('args'), kwargs=val.get('kwargs'),
@@ -182,7 +182,7 @@ class RedisScheduler(Scheduler):
                                                           total_run_count=val.get('total_run_count'))
             logger.debug('Get schedules from redis: %s' % self._store)
         except Exception:
-            logger.error('', exc_info=1)
+            logger.error('', exc_info=True)
             self._store = None
         return self._store
 
@@ -190,13 +190,13 @@ class RedisScheduler(Scheduler):
         try:
             self._get_redis()
             # set queue
-            schedule['options'].update({'queue': self.app.conf.CELERY_TASK_DEFAULT_QUEUE})
+            schedule['options'].update({'queue': self.app.conf.task_default_queue})
 
             key = self._prefix + '.' + schedule.get('name')
             res = self._redis_manager.set(key, json.dumps(schedule))
             logger.debug('Create schedule %s to redis key %s: %s' % (schedule.get('name'), key, res))
         except Exception as exc:
-            logger.error(exc, exc_info=1)
+            logger.error(exc, exc_info=True)
             raise
         return res
 
@@ -207,7 +207,7 @@ class RedisScheduler(Scheduler):
             res = self._redis_manager.delete(key)
             logger.debug('Delete schedule %s from redis key %s: %s' % (name, key, res))
         except Exception as exc:
-            logger.error(exc, exc_info=1)
+            logger.error(exc, exc_info=True)
             raise
         return res
 
@@ -220,7 +220,7 @@ class RedisScheduler(Scheduler):
             else:
                 entries = entries.values()
         except Exception as exc:
-            logger.error(exc, exc_info=1)
+            logger.error(exc, exc_info=True)
             entries = []
         return entries
 
@@ -230,28 +230,24 @@ class RedisScheduler(Scheduler):
             self._store = self.open_schedule()
             self._store.keys()
         except Exception as exc:
-            logger.error(exc, exc_info=1)
+            logger.error(exc, exc_info=True)
             self._store = None
 
     def get_schedule(self):
         res = self._store
-        # logger.warn('Get schedule: %s' % res)
+        # logger.warning('Get schedule: %s' % res)
         return res
 
     def set_schedule(self, schedule):
         self._store = schedule
-        # logger.warn('Set schedule: %s' % schedule)
 
     schedule = property(get_schedule, set_schedule)
 
     def sync(self):
-        # new_store = self.open_schedule()
-        # new_store.update(self._store)
         if self._store is not None:
             self._store = self.open_schedule()
 
     def reserve(self, entry):
-        # new_entry = self.schedule[entry.name] = next(entry)
         new_entry = next(entry)
         key = self._prefix + '.' + new_entry.name
         redis_entry = self._redis_manager.get(key)

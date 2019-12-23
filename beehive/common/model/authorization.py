@@ -39,12 +39,12 @@ role_permission = Table('role_permission', Base.metadata,
     Column('permission_id', Integer, ForeignKey('sysobject_permission.id'))
 )
 
-# Many-to-Many Relationship among system role_templates and policies
-role_template_policy = Table('role_template_policy', Base.metadata,
-    Column('id', Integer, primary_key=True),
-    Column('role_template_id', Integer, ForeignKey('role_template.id')),
-    Column('policy_id', Integer, ForeignKey('syspolicy.id'))
-)
+# # Many-to-Many Relationship among system role_templates and policies
+# role_template_policy = Table('role_template_policy', Base.metadata,
+#     Column('id', Integer, primary_key=True),
+#     Column('role_template_id', Integer, ForeignKey('role_template.id')),
+#     Column('policy_id', Integer, ForeignKey('syspolicy.id'))
+# )
 
 
 class RoleUser(Base):
@@ -395,7 +395,7 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
 
         try:
             engine = create_engine(db_uri)
-            engine.execute('SET FOREIGN_KEY_CHECKS=1;')
+            engine.execute('SET FOREIGN_KEY_CHECKS=0;')
             Base.metadata.drop_all(engine)
             logger.info('Remove tables from : %s' % db_uri)
             del engine

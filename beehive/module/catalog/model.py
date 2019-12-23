@@ -47,9 +47,8 @@ class CatalogEndpoint(Base, BaseEntity):
         self.uri = uri
 
     def __repr__(self):
-        return '<CatalogEndpoint id=%s, uuid=%s, obid=%s, name=%s, service=%s,'\
-               ' catalog=%s, active=%s, >' % (self.id, self.uuid, self.objid, 
-                    self.name, self.service, self.catalog, self.active)
+        return '<CatalogEndpoint id=%s, uuid=%s, obid=%s, name=%s, service=%s, catalog=%s, active=%s, >' % (
+            self.id, self.uuid, self.objid, self.name, self.service, self.catalog, self.active)
 
 
 class CatalogDbManager(AbstractDbManager):
@@ -81,7 +80,7 @@ class CatalogDbManager(AbstractDbManager):
         """
         try:
             engine = create_engine(db_uri)
-            engine.execute('SET FOREIGN_KEY_CHECKS=1;')
+            engine.execute('SET FOREIGN_KEY_CHECKS=0;')
             Base.metadata.drop_all(engine)
             logger.info('Remove tables from : %s' % db_uri)
             del engine

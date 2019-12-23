@@ -19,9 +19,9 @@ from networkx import DiGraph
 from networkx.readwrite import json_graph
 from beehive.common.apimanager import ApiController, ApiObject, ApiManagerError
 from beehive.module.scheduler.redis_scheduler import RedisScheduleEntry, RedisScheduler
-from beehive.common.task.manager import task_scheduler, task_manager
+# from beehive.common.task.manager import task_scheduler, task_manager
 from beehive.common.data import trace, operation
-from beehive.common.task.canvas import signature
+from beehive.common.task_v2.canvas import signature
 from beehive.module.scheduler_v2.model import SchedulerDbManager
 
 
@@ -70,7 +70,7 @@ class Scheduler(ApiObject):
             # self.redis_entries = Dict(key=self._prefix, redis=self._redis)
 
             self.objid = '*'
-            self.scheduler = RedisScheduler(task_scheduler, lazy=True)
+            self.scheduler = RedisScheduler(self.task_scheduler, lazy=True)
             self.scheduler.set_redis(self.controller.redis_scheduler)
         except:
             self.logger.warn('', exc_info=1)
@@ -295,8 +295,8 @@ class TaskManager(ApiObject):
         try:
             self.hostname = self.celery_broker_queue + '@' + self.api_manager.server_name
             # self.control = task_manager.control.inspect([self.hostname])
-            self.prefix = task_manager.conf.CELERY_REDIS_RESULT_KEY_PREFIX
-            self.prefix_base = 'celery-task-meta'
+            # self.prefix = task_manager.conf.CELERY_REDIS_RESULT_KEY_PREFIX
+            # self.prefix_base = 'celery-task-meta'
         except:
             self.control = None
             self.prefix = ''
@@ -307,7 +307,7 @@ class TaskManager(ApiObject):
         # print i.memdump()
         # print i.memsample()
         # print i.objgraph()
-        
+
     @trace(op='use')
     def ping(self):
         """Ping all task manager workers.
@@ -319,13 +319,13 @@ class TaskManager(ApiObject):
         self.verify_permisssions('use')
         
         try:
-            control = task_manager.control
-            # res = control.ping([self.hostname], timeout=1.0)
+            control = self.task_manager.control
             res = control.ping(timeout=1.0)
             self.logger.debug('Ping task manager workers: %s' % res)
             resp = {}
             for item in res:
-                resp.update(item)
+                if list(item.keys())[0].find(self.celery_broker_queue) >= 0:
+                    resp.update(item)
             return resp
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
@@ -342,11 +342,14 @@ class TaskManager(ApiObject):
         self.verify_permisssions('use')
         
         try:
-            # control = task_manager.control.inspect([self.hostname], timeout=1.0)
-            control = task_manager.control.inspect(timeout=1.0)
+            control = self.task_manager.control.inspect(timeout=1.0)
             res = control.stats()
             self.logger.debug('Get task manager workers stats: %s' % res)
-            return res
+            resp = {}
+            for k, v in res.items():
+                if k.find(self.celery_broker_queue) >= 0:
+                    resp[k] = v
+            return resp
         except Exception as ex:
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
@@ -362,11 +365,14 @@ class TaskManager(ApiObject):
         
         self.verify_permisssions('use')
         try:
-            # control = task_manager.control.inspect([self.hostname], timeout=1.0)
-            control = task_manager.control.inspect(timeout=1.0)
+            control = self.task_manager.control.inspect(timeout=1.0)
             res = control.report()
             self.logger.debug('Get task manager report: %s' % res)
-            return res
+            resp = {}
+            for k, v in res.items():
+                if k.find(self.celery_broker_queue) >= 0:
+                    resp[k] = v
+            return resp
         except Exception as ex:
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
@@ -382,11 +388,14 @@ class TaskManager(ApiObject):
         self.verify_permisssions('use')
 
         try:
-            # control = task_manager.control.inspect([self.hostname], timeout=1.0)
-            control = task_manager.control.inspect(timeout=1.0)
+            control = self.task_manager.control.inspect(timeout=1.0)
             res = control.active_queues()
             self.logger.debug('Get task manager active queues: %s' % res)
-            return res
+            resp = {}
+            for k, v in res.items():
+                if k.find(self.celery_broker_queue) >= 0:
+                    resp[k] = v
+            return resp
         except Exception as ex:
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
@@ -402,13 +411,16 @@ class TaskManager(ApiObject):
         self.verify_permisssions('view')
         
         try:
-            # control = task_manager.control.inspect([self.hostname], timeout=1.0)
-            control = task_manager.control.inspect(timeout=1.0)
+            control = self.task_manager.control.inspect(timeout=1.0)
             res = control.registered()
             if res is None:
                 res = []
             self.logger.debug('Get registered tasks: %s' % res)
-            return res
+            resp = {}
+            for k, v in res.items():
+                if k.find(self.celery_broker_queue) >= 0:
+                    resp[k] = v
+            return resp
         except Exception as ex:
             self.logger.error('No registered tasks found')
             return []
@@ -498,7 +510,7 @@ class TaskManager(ApiObject):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # get first task status from celery task stored in celery backend
-        task = AsyncResult(task_id, app=task_manager)
+        task = AsyncResult(task_id, app=self.task_manager)
         status = task.status
         self.logger.debug('get task from celery: %s' % task)
 
@@ -882,7 +894,7 @@ class TaskManager(ApiObject):
     #     """
     #     manager = self.controller.redis_taskmanager
     #
-    #     # res = AsyncResult(task_id, app=task_manager)
+    #     # res = AsyncResult(task_id, app=self.task_manager)
     #
     #     try:
     #         res = manager.server.get(self.prefix + task_id)
@@ -946,7 +958,7 @@ class TaskManager(ApiObject):
 
         params.update(self.get_user())
         params['objid'] = str(uuid4())
-        task = signature('beehive.module.scheduler_v2.tasks.test_task', [params], app=task_manager,
+        task = signature('beehive.module.scheduler_v2.tasks.test_task', [params], app=self.task_manager,
                          queue=self.celery_broker_queue)
         job = task.apply_async()
 

@@ -145,10 +145,10 @@ class EventDbManager(AbstractDbManager):
         session = self.get_session()
         
         # get obj by uuid
-        if match('[0-9a-z]+', b(oid)):
+        if match('[0-9a-z]+', str(oid)):
             query = session.query(DbEvent).filter_by(event_id=oid)
         # get obj by id
-        elif match('[0-9]+', b(oid)):
+        elif match('[0-9]+', str(oid)):
             query = session.query(DbEvent).filter_by(id=oid)
 
         entity = query.first()

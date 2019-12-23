@@ -772,7 +772,7 @@ class AbstractDbManager(object):
         """
         try:
             engine = create_engine(db_uri)
-            engine.execute('SET FOREIGN_KEY_CHECKS=1;')
+            engine.execute('SET FOREIGN_KEY_CHECKS=0;')
             Base.metadata.drop_all(engine)
             logger.info('Remove tables from : %s' % db_uri)
             del engine
@@ -1067,9 +1067,12 @@ class AbstractDbManager(object):
             self.logger.error(msg)
             raise ModelError(msg, code=404)
 
+        params = {}
         for k, v in kvargs.items():
-            if v is None:
-                kvargs.pop(k)
+            if v is not None:
+                params[k] = v
+            # if v is None:
+            #     kvargs.pop(k)
 
         # create data dict with update
         if getattr(entityclass, 'modification_date', None) is not None:

@@ -225,7 +225,7 @@ class Catalog(AuthObject):
         
         try:
             # create catalog endpoint reference
-            objid = b'%s//%s' % (self.objid, id_gen())
+            objid = '%s//%s' % (self.objid, id_gen())
             res = self.manager.add_endpoint(objid, name, service, desc, self.oid, uri, active)
             
             # create object and permission

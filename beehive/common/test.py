@@ -4,10 +4,12 @@
 # (C) Copyright 2018-2019 CSI-Piemonte
 # (C) Copyright 2019-2020 CSI-Piemonte
 
+import gevent.monkey
+gevent.monkey.patch_all()
+
 import os
 import sys
 from six import b
-import gevent.monkey
 from beehive.common.apiclient import BeehiveApiClient
 from beehive.common.log import ColorFormatter
 from beecell.simple import truncate, read_file, dict_get
@@ -16,8 +18,6 @@ try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
     from yaml import Loader, Dumper
-
-gevent.monkey.patch_all()
 
 import logging
 import unittest
@@ -256,13 +256,13 @@ class BeehiveTestCase(unittest.TestCase):
         return result.get(key, None)
 
     def setUp(self):
-        logger.log(70, '========== %s ==========' % self.id()[8:])
+        logger.log(70, '========== %s ==========' % self.id()[9:])
         logging.getLogger('beehive.test.run').log(70, '========== %s ==========' % self.id()[9:])
         self.start = time.time()
         
     def tearDown(self):
         elapsed = round(time.time() - self.start, 4)
-        logger.log(70, '========== %s ========== : %ss' % (self.id()[8:], elapsed))
+        logger.log(70, '========== %s ========== : %ss' % (self.id()[9:], elapsed))
         logging.getLogger('beehive.test.run').log(70, '========== %s ========== : %ss' % (self.id()[9:], elapsed))
     
     def open_mysql_session(self, db_uri):
@@ -565,13 +565,13 @@ class BeehiveTestCase(unittest.TestCase):
     #
     # task
     #
-    def get_task_status(self, jobid):
+    def get_task_status(self, taskid):
         try:
-            res = self.call(self.module, '/v2.0/%s/worker/tasks/{oid}' % self.module_prefix, 'get',
-                            params={'oid': jobid}, runlog=False, **self.users[self.run_test_user])
+            res = self.call(self.module, '/v2.0/%s/worker/tasks/{oid}/status' % self.module_prefix, 'get',
+                            params={'oid': taskid}, runlog=True, **self.users[self.run_test_user])
             job = res.get('task_instance')
             state = job.get('status')
-            logger.debug('Get job %s state: %s' % (jobid, state))
+            logger.debug('Get task %s state: %s' % (taskid, state))
             if state == 'FAILURE':
                 for err in job.get('traceback', []):
                     self.runlogger.error(err.rstrip())
