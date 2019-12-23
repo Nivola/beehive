@@ -173,7 +173,11 @@ class ApiManager(object):
         self.job_manager = None
         self.max_concurrent_jobs = 2
         self.job_interval = 1.0
-        self.job_timeout = 1200        
+        self.job_timeout = 1200
+
+        # task manager
+        self.task_manager = None
+        self.task_scheduler = None
         
         # event producer
         self.event_producer = None
