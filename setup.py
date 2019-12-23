@@ -80,7 +80,7 @@ if __name__ == '__main__':
             ('share/config', ['config/auth.json',
                               'config/event.json',
                               'config/auth.yml',
-                              'config/event.yaml']),
+                              'config/event.yml']),
             ('bin', ['beehive/server/pyenv.sh',
                      'beehive/server/api.py',
                      'beehive/server/task.py',
