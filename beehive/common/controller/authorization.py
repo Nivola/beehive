@@ -270,17 +270,16 @@ class BaseAuthController(ApiController):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         self.check_authorization(Token.objtype, Token.objdef, '*', 'view')
-        
-        try:
-            res =  []
-            for key in self.module.redis_manager.keys(self.prefix+'*'):
+
+        res = []
+        for key in self.module.redis_manager.keys(self.prefix+'*'):
+            try:
                 identity = self.module.redis_manager.get(key)
                 data = pickle.loads(identity)
                 data['ttl'] = self.module.redis_manager.ttl(key)
                 res.append(data)
-        except Exception as ex:
-            self.logger.error('No identities found: %s' % ex)
-            raise ApiManagerError('No identities found')
+            except Exception as ex:
+                self.logger.warn('Identity %s can not be retrieved: %s' % (key, ex))
 
         self.logger.debug('Get identities from redis: %s' % truncate(res))
         return res    
