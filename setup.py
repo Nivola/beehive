@@ -35,7 +35,7 @@ def install_requires(requires):
 if __name__ == '__main__':
     setup(
         name='beehive',
-        version='1.5',
+        version='1.6',
         description='Nivola core',
         long_description='Nivola main server package',
         author='CSI Piemonte',
@@ -71,7 +71,7 @@ if __name__ == '__main__':
             'beehive.__init__'
         ],
         classifiers=[
-            'Development Status :: 1.5',
+            'Development Status :: 1.6',
             'Programming Language :: Python'
         ],
         entry_points={},
