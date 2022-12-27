@@ -1,19 +1,18 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 from beehive.common.apimanager import ApiView, PaginatedRequestQuerySchema, \
     PaginatedResponseSchema, SwaggerApiView, GetApiObjectRequestSchema, ApiManagerError
 from marshmallow import fields, Schema
-from marshmallow.validate import OneOf
+from marshmallow.validate import OneOf, Range
 from beecell.swagger import SwaggerHelper
 
 
 #
 # event
 #
-class ListEventsRequestSchema(PaginatedRequestQuerySchema):   
+class ListEventsRequestSchema(PaginatedRequestQuerySchema):
     type = fields.String(default='API', context='query', description='event type')
     objid = fields.String(default='3638282dh82//dhedhw7d8we', context='query', description='authorization object id')
     objdef = fields.String(default='CatalogEndpoint', context='query', description='authorization object definition')
@@ -62,7 +61,7 @@ class ListEvents(SwaggerApiView):
             'schema': ListEventsResponseSchema
         }
     })
-    
+
     def get(self, controller, data, *args, **kwargs):
         objdef = data.get('objdef', None)
         objtype = data.get('objtype', None)
@@ -91,7 +90,7 @@ class GetEvent(SwaggerApiView):
             'schema': GetEventResponseSchema
         }
     })
-    
+
     def get(self, controller, data, oid, *args, **kwargs):
         event = controller.get_event(oid)
         res = event.detail()
@@ -117,9 +116,9 @@ class GetEventTypes(SwaggerApiView):
             'description': 'success',
             'schema': GetEventTypesResponseSchema
         }
-    })    
-    
-    def get(self, controller, data, *args, **kwargs):    
+    })
+
+    def get(self, controller, data, *args, **kwargs):
         resp = controller.get_event_types()
         return {'event_types': resp,
                 'count': len(resp)}
@@ -143,24 +142,113 @@ class GetEventEntityDefinition(SwaggerApiView):
             'description': 'success',
             'schema': GetEventEntityDefinitionResponseSchema
         }
-    })    
-    
-    def get(self, controller, data, *args, **kwargs):    
+    })
+
+    def get(self, controller, data, *args, **kwargs):
         resp = controller.get_entity_definitions()
-        return {'event_entities': resp,
-                'count': len(resp)}
+        return {'event_entities': resp, 'count': len(resp)}
+
+
+#
+# api event
+#
+class ListApisRequestSchema(PaginatedRequestQuerySchema):
+    eventid = fields.String(example='1f2435a8ad', context='query', description='api event id')
+    uri = fields.String(example='/v1.0/nes/apis:GET', context='query', description='api uri:method')
+    user = fields.String(example='guest', context='query', description='api source user')
+    ip = fields.String(example='10.10.10.10', context='query', description='api source ip')
+    pod = fields.String(example='uwsgi-resource-app-69f86b989-g2md', context='query', description='api destination pod')
+
+
+class ApisParamsResponseSchema(Schema):
+    id = fields.Integer(required=True, example='5c958c4605', description='event id')
+    type = fields.String(required=True, example='API', description='event type')
+    creation = fields.DateTime(required=True, example='1985-04-12T23:20:50.52Z')
+    data = fields.Dict(required=True, description='event internal data')
+    source = fields.Dict(required=True, description='event source info')
+    dest = fields.Dict(required=True, description='event destination info')
+
+
+class ListApisResponseSchema(PaginatedResponseSchema):
+    apis = fields.Nested(ApisParamsResponseSchema, many=True, required=True, allow_none=True)
+
+
+class ListApis(SwaggerApiView):
+    summary = 'List api events'
+    description = 'List api events'
+    tags = ['event']
+    definitions = {
+        'ListApisResponseSchema': ListApisResponseSchema,
+        'ListApisRequestSchema': ListApisRequestSchema
+    }
+    parameters = SwaggerHelper().get_parameters(ListApisRequestSchema)
+    parameters_schema = ListApisRequestSchema
+    responses = SwaggerApiView.setResponses({
+        200: {
+            'description': 'success',
+            'schema': ListApisResponseSchema
+        }
+    })
+
+    def get(self, controller, data, *args, **kwargs):
+        apis, total = controller.get_api_events(**data)
+        return self.format_paginated_response(apis, 'apis', total, **data)
+
+
+class GetApiLogLineResponseSchema(PaginatedResponseSchema):
+    values = fields.List(fields.String, required=True, example='some text', description='log message')
+
+
+class GetApiLogResponseSchema(Schema):
+    task_log = fields.Nested(GetApiLogLineResponseSchema, required=True, allow_none=True)
+
+
+class GetApiLogRequestSchema(Schema):
+    oid = fields.String(example='4d5e87cd-0139-400d-a787-5a15eba786e9', context='path', description='task id')
+    size = fields.Integer(default=20, example=20, missing=20, context='query',
+                          description='log list page size. -1 to get all the logs',
+                          validate=Range(min=-1, max=1000, error='Size is out from range'))
+    page = fields.Integer(default=0, example=0, missing=0, context='query',
+                          description='log list page selected',
+                          validate=Range(min=0, max=10000, error='Page is out from range'))
+
+
+class GetApiLog(SwaggerApiView):
+    summary = 'List api events'
+    description = 'List api events'
+    tags = ['event']
+    definitions = {
+        'GetApiLogResponseSchema': GetApiLogResponseSchema,
+        'GetApiLogRequestSchema': GetApiLogRequestSchema,
+    }
+    parameters = SwaggerHelper().get_parameters(GetApiLogRequestSchema)
+    parameters_schema = GetApiLogRequestSchema
+    responses = SwaggerApiView.setResponses({
+        200: {
+            'description': 'success',
+            'schema': GetApiLogResponseSchema
+        }
+    })
+
+    def get(self, controller, data, oid, *args, **kwargs):
+        apis = controller.get_api_event_logs(oid, **data)
+        resp = {'api_log': apis}
+        return resp
 
 
 class EventAPI(ApiView):
     """Event api
     """
     @staticmethod
-    def register_api(module):
+    def register_api(module, **kwargs):
         rules = [
             ('%s/events' % module.base_path, 'GET', ListEvents, {}),
             ('%s/events/<oid>' % module.base_path, 'GET', GetEvent, {}),
             ('%s/events/types' % module.base_path, 'GET', GetEventTypes, {}),
             ('%s/events/entities' % module.base_path, 'GET', GetEventEntityDefinition, {}),
+
+            ('%s/apis' % module.base_path, 'GET', ListApis, {}),
+            ('%s/apis/<oid>/log' % module.base_path, 'GET', GetApiLog, {}),
         ]
 
-        ApiView.register_api(module, rules)
+        ApiView.register_api(module, rules, **kwargs)

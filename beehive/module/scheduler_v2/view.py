@@ -1,9 +1,8 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
-from marshmallow.validate import OneOf
+from marshmallow.validate import OneOf, Range
 from beecell.simple import get_value
 from beehive.common.apimanager import ApiView, ApiManagerError, SwaggerApiView, \
     GetApiObjectRequestSchema, CrudApiObjectJobResponseSchema, \
@@ -287,6 +286,8 @@ class GetTasksDefinition(TaskApiView):
 
 
 class GetTasksRequestSchema(PaginatedRequestQuerySchema):
+    objid = fields.String(required=False, default='396587362//3328462822', example='396587362//3328462822',
+                          description='authorization id')
     entity_class = fields.String(required=False, example='beehive.module.scheduler_v2.controller.Manager',
                                  missing=None, description='entity_class owner of the tasks to query')
     elapsed = fields.Integer(required=False, missing=60, example=60, allow_none=True,
@@ -346,7 +347,7 @@ class GetTaskRequestSchema(GetApiObjectRequestSchema):
                                  missing=None, description='entity_class owner of the tasks to query')
 
 
-class GetSingleTaskstepchema(GetSingleTaskResponseSchema):
+class GetSingleTaskStepSchema(GetSingleTaskResponseSchema):
     uuid = fields.String(required=True, default='4cdf0ea4-159a-45aa-96f2-708e461130e1',
                          example='4cdf0ea4-159a-45aa-96f2-708e461130e1')
     name = fields.String(required=True, default='test', example='test')
@@ -362,7 +363,7 @@ class GetSingleTask1ResponseSchema(GetSingleTaskResponseSchema):
     result = fields.String(required=True, default='23')
     args = fields.String(required=True, default='....')
     kwargs = fields.String(required=True, default='....')
-    steps = fields.Nested(GetSingleTaskstepchema, many=True, required=True, allow_none=True)
+    steps = fields.Nested(GetSingleTaskStepSchema, many=True, required=True, allow_none=True)
 
 
 class GetTaskResponseSchema(Schema):
@@ -464,6 +465,48 @@ class GetTrace(TaskApiView):
         return resp
 
 
+class GetLogLineResponseSchema(PaginatedResponseSchema):
+    values = fields.List(fields.String, required=True, example='some text', description='log message')
+
+
+class GetLogResponseSchema(Schema):
+    task_log = fields.Nested(GetLogLineResponseSchema, required=True, allow_none=True)
+
+
+class GetLogRequestSchema(Schema):
+    oid = fields.String(example='4d5e87cd-0139-400d-a787-5a15eba786e9', context='path', description='task id')
+    size = fields.Integer(default=20, example=20, missing=20, context='query',
+                          description='log list page size. -1 to get all the logs',
+                          validate=Range(min=-1, max=1000, error='Size is out from range'))
+    page = fields.Integer(default=0, example=0, missing=0, context='query',
+                          description='log list page selected',
+                          validate=Range(min=0, max=10000, error='Page is out from range'))
+
+
+class GetLog(TaskApiView):
+    summary = 'Get task instance log'
+    description = 'Get task instance log'
+    definitions = {
+        'GetLogResponseSchema': GetLogResponseSchema,
+        'GetLogRequestSchema': GetLogRequestSchema,
+    }
+    parameters = SwaggerHelper().get_parameters(GetLogRequestSchema)
+    parameters_schema = GetLogRequestSchema
+    responses = SwaggerApiView.setResponses({
+        200: {
+            'description': 'success',
+            'schema': GetLogResponseSchema
+        }
+    })
+
+    def get(self, controller, data, oid, *args, **kwargs):
+        task_manager = controller.get_task_manager()
+        entity_class_name = data.get('entity_class')
+        res = task_manager.get_task(oid, entity_class_name=entity_class_name)
+        resp = {'task_log': res.get_log(**data)}
+        return resp
+
+
 # class GetTaskGraphResponseSchema(Schema):
 #     task_instance_graph = fields.Dict(required=True, default={})
 #
@@ -536,10 +579,10 @@ class RevokeTask(TaskApiView):
     def dispatch(self, controller, data, oid, *args, **kwargs):
         task_manager = controller.get_task_manager()
         resp = task_manager.revoke_task(oid)
-        return (resp, 202)  
-    
+        return (resp, 202)
+
 class SetTaskTimeLimit(TaskApiView):
-    def dispatch(self, controller, data, *args, **kwargs):    
+    def dispatch(self, controller, data, *args, **kwargs):
         task_manager = controller.get_task_manager()
         cmd = get_value(data, 'cmd', None)
         # set tasks category time limit
@@ -551,8 +594,8 @@ class SetTaskTimeLimit(TaskApiView):
 
 
 class RunTestTaskBodyParamRequestSchema(Schema):
-    x = fields.Integer(required=True, default=2, missing=2)
-    y = fields.Integer(required=True, default=223, missing=223)
+    x = fields.Integer(required=True, default=2)
+    y = fields.Integer(required=True, default=223)
     numbers = fields.List(fields.Integer(default=1), required=True)
     mul_numbers = fields.List(fields.Integer(default=1), required=True)
     error = fields.Boolean(required=False, default=False, missing=False)
@@ -578,18 +621,83 @@ class RunTestTask(TaskApiView):
             'schema': CrudApiJobResponseSchema
         }
     })
-    
-    def post(self, controller, data, *args, **kwargs):    
+
+    def post(self, controller, data, *args, **kwargs):
         task_manager = controller.get_task_manager()
         task = task_manager.run_test_task(data)
         return {'taskid': task.id}, 201
+
+
+class RunTest2TaskBodyParamRequestSchema(Schema):
+    pass
+
+
+class RunTest2TaskBodyRequestSchema(Schema):
+    body = fields.Nested(RunTest2TaskBodyParamRequestSchema, context='body')
+
+
+class RunTest2ResponseSchema(Schema):
+    schedule_name = fields.String(required=True, example='prova', description='schedule name')
+
+
+class RunTest2Task(TaskApiView):
+    summary = 'Run test task'
+    description = 'Run test task'
+    definitions = {
+        'RunTest2TaskBodyRequestSchema': RunTest2TaskBodyRequestSchema,
+        'RunTest2ResponseSchema': RunTest2ResponseSchema
+    }
+    parameters = SwaggerHelper().get_parameters(RunTest2TaskBodyRequestSchema)
+    parameters_schema = RunTest2TaskBodyParamRequestSchema
+    responses = SwaggerApiView.setResponses({
+        200: {
+            'description': 'success',
+            'schema': RunTest2ResponseSchema
+        }
+    })
+
+    def post(self, controller, data, *args, **kwargs):
+        task_manager = controller.get_task_manager()
+        schedule_name = task_manager.run_test_scheduled_action()
+        return {'schedule_name': schedule_name}, 200
+
+
+class RunTestInlineTaskBodyParamRequestSchema(Schema):
+    x = fields.Integer(required=True, default=2)
+    y = fields.Integer(required=True, default=223)
+
+
+class RunTestInlineTaskBodyRequestSchema(Schema):
+    body = fields.Nested(RunTestInlineTaskBodyParamRequestSchema, context='body')
+
+
+class RunTestInlineTask(TaskApiView):
+    summary = 'Run test task'
+    description = 'Run test task'
+    definitions = {
+        'RunTestInlineTaskBodyParamRequestSchema': RunTestInlineTaskBodyParamRequestSchema,
+        'RunTestInlineTaskBodyRequestSchema': RunTestInlineTaskBodyRequestSchema
+    }
+    parameters = SwaggerHelper().get_parameters(RunTestInlineTaskBodyRequestSchema)
+    parameters_schema = RunTestInlineTaskBodyParamRequestSchema
+    responses = SwaggerApiView.setResponses({
+        201: {
+            'description': 'success',
+            'schema': CrudApiJobResponseSchema
+        }
+    })
+
+    def post(self, controller, data, *args, **kwargs):
+        task_manager = controller.get_task_manager()
+        res = task_manager.run_test_inline_task(data)
+        return res
 
 
 class SchedulerAPI(ApiView):
     """Task scheduler api
     """
     @staticmethod
-    def register_api(module):
+    def register_api(module, **kwargs):
         rules = [
             ('%s/scheduler/entries' % module.base_path, 'GET', GetSchedulerEntries, {}),
             ('%s/scheduler/entries/<oid>' % module.base_path, 'GET', GetSchedulerEntry, {}),
@@ -597,14 +705,14 @@ class SchedulerAPI(ApiView):
             ('%s/scheduler/entries/<oid>' % module.base_path, 'DELETE', DeleteSchedulerEntry, {}),
         ]
 
-        ApiView.register_api(module, rules)
+        ApiView.register_api(module, rules, **kwargs)
 
-        
+
 class TaskAPI(ApiView):
     """Task manager api
     """
     @staticmethod
-    def register_api(module):
+    def register_api(module, **kwargs):
         rules = [
             ('%s/worker/ping' % module.base_path, 'GET', ManagerPing, {}),
             ('%s/worker/stats' % module.base_path, 'GET', ManagerStats, {}),
@@ -615,10 +723,13 @@ class TaskAPI(ApiView):
             ('%s/worker/tasks/<oid>' % module.base_path, 'GET', GetTask, {}),
             ('%s/worker/tasks/<oid>/status' % module.base_path, 'GET', GetTaskStatus, {}),
             ('%s/worker/tasks/<oid>/trace' % module.base_path, 'GET', GetTrace, {}),
+            ('%s/worker/tasks/<oid>/log' % module.base_path, 'GET', GetLog, {}),
             # ('%s/worker/tasks/<oid>/graph' % module.base_path, 'GET', GetTaskGraph, {}),
             # ('%s/worker/tasks' % module.base_path, 'DELETE', PurgeAllTasks, {}),
             # ('%s/worker/tasks/<oid>' % module.base_path, 'DELETE', DeleteTask, {}),
             ('%s/worker/tasks/test' % module.base_path, 'POST', RunTestTask, {}),
+            ('%s/worker/tasks/test2' % module.base_path, 'POST', RunTest2Task, {}),
+            ('%s/worker/tasks/test3' % module.base_path, 'POST', RunTestInlineTask, {}),
         ]
 
-        ApiView.register_api(module, rules)
+        ApiView.register_api(module, rules, **kwargs)

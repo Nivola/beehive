@@ -1,7 +1,6 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 uwsgi:
     api_id: event-01
@@ -9,7 +8,7 @@ uwsgi:
     api_subsystem: event
     api_package: beehive
     api_env: beehive200
-    api_fernet_key: wwN8462BS0RQCfBeREcCL6UGuUNbsUpZu7eAHuxzu4M=
+    api_fernet_key: xxxkey
     api_host: localhost
     api_fqdn: localhost
     api_catalog: beehive-internal

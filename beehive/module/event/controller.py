@@ -1,16 +1,13 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 import logging
 from datetime import datetime, timedelta
-
-from beecell.perf import watch
-from beecell.simple import str2uni, id_gen, truncate, format_date
+from beecell.simple import truncate, format_date
 import ujson as json
-from beehive.common.apimanager import ApiController, ApiManagerError,\
-    ApiViewResponse, ApiObject
+from beehive.common.apimanager import ApiController, ApiManagerError, ApiObject
+from beehive.common.event import Event
 from beehive.module.event.model import EventDbManager
 from beecell.db import QueryError
 from beehive.common.data import trace
@@ -157,6 +154,78 @@ class EventController(ApiController):
         self.logger.debug('Get event entity definitions: %s' % res)
         return res
 
+    #
+    # event api
+    #
+    @trace(entity='GenericEvent', op='use')
+    def get_api_events(self, *args, **kwargs):
+        """Get events of type api
+
+        :param kwargs.eventid: event id [optional]
+        :param kwargs.uri: api request ri. uri:method', default=None)
+        :param kwargs.user: api request source user', default=None)
+        :param kwargs.ip: api request source ip', default=None)
+        :param kwargs.pod: api request destination pod name
+        :param kwargs.date: day to query. Syntax YYYY.MM.DD
+        :param kwargs.page: query page [default=0]
+        :param kwargs.size: query size [default=20]
+        :return:
+        """
+        # verify permissions
+        self.check_authorization(GenericEvent.objtype, GenericEvent.objdef, '*', 'view')
+
+        kwargs['type'] = 'API'
+        uri = kwargs.pop('uri', None)
+        user = kwargs.pop('user', None)
+        ip = kwargs.pop('ip', None)
+        pod = kwargs.pop('pod', None)
+        if uri is not None:
+            kwargs['event_op'] = uri
+        if user is not None:
+            kwargs['source_user'] = user
+        if ip is not None:
+            kwargs['source_ip'] = ip
+        if pod is not None:
+            kwargs['dest_pod'] = pod
+        events = Event.get_from_elastic(self.api_manager.app_env, self.api_manager.elasticsearch, **kwargs)
+        res = [e.dict() for e in events.get('values')]
+        self.logger.debug('get api events: %s' % truncate(res))
+        return res, events.get('total')
+
+    def get_api_event_logs(self, event_id, size=100, page=0, *args, **kwargs):
+        """Get api event log
+
+        :param event_id: event id
+        :param page: page number
+        :param size: page size
+        :return: log list
+        :raise ApiManagerError:
+        """
+        # verify permissions
+        self.check_authorization(GenericEvent.objtype, GenericEvent.objdef, '*', 'view')
+
+        # get event
+        kwargs['type'] = 'API'
+        kwargs['eventid'] = event_id
+        events = Event.get_from_elastic(self.api_manager.app_env, self.api_manager.elasticsearch, **kwargs)\
+            .get('values', [])
+        if len(events) < 1:
+            raise ApiManagerError('no api event %s found' % event_id)
+
+        event = events[0]
+        self.logger.debug('get event: %s' % event)
+
+        kwargs = {
+            'size': size,
+            'page': page,
+            'pod': event.dest.get('pod'),
+            'op': event.data.get('api_id'),
+            'date': '.'.join(event.creation.split('T')[0].split('-'))
+        }
+        logs = self.get_log_from_elastic(**kwargs)
+        self.logger.debug('get api event %s log: %s' % (event_id, truncate(logs)))
+        return logs
+
 
 class GenericEvent(ApiObject):
     objtype = 'event'
@@ -183,16 +252,18 @@ class BaseEvent(object):
         except Exception as ex:
             self.logger.warning('Can not parse event %s data' % self.event.id)
                             
-        obj = {'id': self.event.id,
-               'event_id': self.event.event_id,
-               'type': self.event.type,
-               'objid': self.event.objid,
-               'objdef': self.event.objdef,
-               'objtype': self.event.objtype,
-               'date': format_date(self.event.creation, microsec=True),
-               'data': data,
-               'source': json.loads(self.event.source),
-               'dest': json.loads(self.event.dest)}
+        obj = {
+            'id': self.event.id,
+            'event_id': self.event.event_id,
+            'type': self.event.type,
+            'objid': self.event.objid,
+            'objdef': self.event.objdef,
+            'objtype': self.event.objtype,
+            'date': format_date(self.event.creation, microsec=True),
+            'data': data,
+            'source': json.loads(self.event.source),
+            'dest': json.loads(self.event.dest)
+        }
         return obj
     
     def detail(self):

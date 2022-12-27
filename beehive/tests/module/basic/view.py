@@ -1,13 +1,12 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 from beehive.common.test import runtest, BeehiveTestCase
 
 tests = [  
-    'test_ping',
-    'test_info',
+    'test_ping'
+    #'test_info',
 ]
 
 

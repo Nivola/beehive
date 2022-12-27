@@ -1,18 +1,18 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 import binascii
 import pickle
 import ujson as json
 from logging import getLogger
+from six import ensure_text
 from beecell.auth import AuthError
 from beehive.common.apimanager import ApiController, ApiManagerError, ApiInternalObject
 from beehive.common.model.authorization import AuthDbManager
 from beecell.db import QueryError, TransactionError
 from ipaddress import IPv4Network
-from beecell.simple import truncate, str2uni, id_gen, token_gen
+from beecell.simple import truncate, id_gen, token_gen, dict_get
 from beehive.common.data import operation, trace
 from zlib import compress
 from datetime import datetime, timedelta
@@ -20,6 +20,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 from beehive.common.model.authorization import User as ModelUser
+# from beecell.simple import jsonDumps
 
 
 class AuthenticationManager(object):
@@ -143,7 +144,7 @@ class BaseAuthController(ApiController):
         try:
             self.set_admin_permissions('ApiSuperadmin', [])
         except (QueryError, TransactionError) as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=ex.code)    
     
     def set_admin_permissions(self, role_name, args):
@@ -157,7 +158,7 @@ class BaseAuthController(ApiController):
             for item in self.child_classes:
                 item(self).set_admin_permissions(role_name, args)
         except (QueryError, TransactionError) as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=ex.code)
     
     def verify_simple_http_credentials(self, user, pwd, user_ip):
@@ -188,10 +189,18 @@ class BaseAuthController(ApiController):
         """
         if expire_time is None:
             expire_time = self.expire
+
         val = pickle.dumps(identity)
-        self.module.redis_manager.setex(self.prefix + uid, expire_time, val)
+        user = dict_get(identity, 'user.id')
+        self.module.redis_identity_manager.conn.setex(self.prefix + uid, expire_time, val)
         if expire is False:
-            self.module.redis_manager.persist(self.prefix + uid)
+            self.module.redis_identity_manager.conn.persist(self.prefix + uid)
+
+        # add identity to identity user index
+        self.module.redis_identity_manager.conn.lpush(self.prefix_index + user, uid)
+        # set index expire time
+        self.module.redis_identity_manager.conn.expire(self.prefix_index + user, expire_time)
+
         self.logger.info('Set identity %s in redis' % uid)
     
     @trace(entity='Token', op='delete')
@@ -203,21 +212,29 @@ class BaseAuthController(ApiController):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         self.check_authorization(Token.objtype, Token.objdef, '*', 'delete')
-        
-        if self.module.redis_manager.get(self.prefix + uid) is None:
+
+        identity = self.module.redis_identity_manager.conn.get(self.prefix + uid)
+        data = pickle.loads(identity)
+        user = dict_get(data, 'user.id')
+
+        if identity is None:
             err = 'Identity %s does not exist' % uid
             User(self).send_event('identity.delete', params={'uid': uid}, exception=err)
             self.logger.error(err)
             raise ApiManagerError(err, code=404)            
         
         try:
-            self.module.redis_manager.delete(self.prefix + uid)
+            self.module.redis_identity_manager.conn.delete(self.prefix + uid)
+
+            # delete identity from identity user index
+            self.module.redis_identity_manager.conn.lrem(self.prefix_index + user, 1, uid)
+
             self.logger.debug('Remove identity %s from redis' % uid)
             return None
         except Exception as ex:
             err = 'Can not remove identity %s' % uid
             self.logger.error(err)
-            raise ApiManagerError(err, code=400)       
+            raise ApiManagerError(err, code=400)
 
     @trace(entity='Token', op='view')
     def exist_identity(self, uid):
@@ -227,16 +244,16 @@ class BaseAuthController(ApiController):
         :rtype: bool
         """
         try:
-            identity = self.module.redis_manager.get(self.prefix + uid)
+            identity = self.module.redis_identity_manager.conn.get(self.prefix + uid)
         except Exception as ex:
-            self.logger.warn('Identity %s retrieve error: %s' % (uid, ex))
+            self.logger.warning('Identity %s retrieve error: %s' % (uid, ex))
             return False
         
         if identity is not None:
             self.logger.debug('Identity %s exists' % (uid))           
             return True
         else:
-            self.logger.warn('Identity does not %s exists' % (uid))           
+            self.logger.warning('Identity does not %s exists' % (uid))           
             return False
 
     @trace(entity='Token', op='view')
@@ -248,14 +265,14 @@ class BaseAuthController(ApiController):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         try:
-            identity = self.module.redis_manager.get(self.prefix + uid)
+            identity = self.module.redis_identity_manager.conn.get(self.prefix + uid)
         except Exception as ex:
             self.logger.error('Identity %s retrieve error: %s' % (uid, ex))
             raise ApiManagerError('Identity %s retrieve error' % uid, code=404)
             
         if identity is not None:
             data = pickle.loads(identity)
-            data['ttl'] = self.module.redis_manager.ttl(self.prefix + uid)
+            data['ttl'] = self.module.redis_identity_manager.conn.ttl(self.prefix + uid)
             self.logger.debug('Get identity %s from redis: %s' % (uid, truncate(data)))
             return data
         else:
@@ -272,14 +289,14 @@ class BaseAuthController(ApiController):
         self.check_authorization(Token.objtype, Token.objdef, '*', 'view')
 
         res = []
-        for key in self.module.redis_manager.keys(self.prefix+'*'):
+        for key in self.module.redis_identity_manager.conn.keys(self.prefix+'*'):
             try:
-                identity = self.module.redis_manager.get(key)
+                identity = self.module.redis_identity_manager.conn.get(key)
                 data = pickle.loads(identity)
-                data['ttl'] = self.module.redis_manager.ttl(key)
+                data['ttl'] = self.module.redis_identity_manager.conn.ttl(key)
                 res.append(data)
             except Exception as ex:
-                self.logger.warn('Identity %s can not be retrieved: %s' % (key, ex))
+                self.logger.warning('Identity %s can not be retrieved: %s' % (key, ex))
 
         self.logger.debug('Get identities from redis: %s' % truncate(res))
         return res    
@@ -322,10 +339,10 @@ class BaseAuthController(ApiController):
 
             # try:
             #     login_ip = gethostbyname(login_ip)
-            #     IPv4Address(str2uni(login_ip))
+            #     IPv4Address(ensure_text(login_ip))
             # except Exception as ex:
             #     msg = 'Ip address is not provided or syntax is wrong'
-            #     self.logger.error(msg, exc_info=1)
+            #     self.logger.error(msg, exc_info=True)
             #     raise ApiManagerError(msg, code=400)
             
             self.logger.debug('User %s@%s:%s validated' % (name, domain, login_ip))
@@ -351,7 +368,7 @@ class BaseAuthController(ApiController):
             dbuser_attribs = {a.name: (a.value, a.desc) for a in dbuser.attrib}
         except (QueryError, Exception) as ex:
             msg = 'User %s does not exist' % user_name
-            self.logger.error(msg, exc_info=1)
+            self.logger.error(msg, exc_info=True)
             raise ApiManagerError(msg, code=404)
         
         self.logger.debug('User %s exists' % user_name)
@@ -370,7 +387,7 @@ class BaseAuthController(ApiController):
         try:
             self.auth_manager.set_user_last_login(user)
         except:
-            self.logger.warn('User %s last login date can not be updated' % user, exc_info=1)
+            self.logger.warning('User %s last login date can not be updated' % user, exc_info=True)
 
     def get_login_email(self, dbuser):
         """Get valid login email
@@ -399,7 +416,7 @@ class BaseAuthController(ApiController):
         try:
             user = self.module.authentication_manager.login(dbuser.name, self.get_login_email(dbuser), password,
                                                             domain, login_ip)
-        except (AuthError) as ex:
+        except AuthError as ex:
             self.logger.error(ex.desc)
             raise ApiManagerError(ex.desc, code=401)
         
@@ -416,8 +433,8 @@ class BaseAuthController(ApiController):
             # set user roles
             self.__set_user_roles(dbuser, user)
         except QueryError as ex:
-            self.logger.error(ex.desc)
-            raise ApiManagerError(ex.desc, code=401)
+            self.logger.error(ex)
+            raise ApiManagerError(ex, code=401)
         
         return user, dbuser_attribs
 
@@ -439,7 +456,7 @@ class BaseAuthController(ApiController):
             user = self.module.authentication_manager.login(dbuser.name, self.get_login_email(dbuser), password,
                                                             domain, login_ip)
         except AuthError as ex:
-            self.logger.warn(ex.desc)
+            self.logger.warning(ex.desc)
 
             # check secret
             res = self.auth_manager.verify_user_secret(dbuser, password)
@@ -466,8 +483,8 @@ class BaseAuthController(ApiController):
             # set user roles
             self.__set_user_roles(dbuser, user)
         except QueryError as ex:
-            self.logger.error(ex.desc)
-            raise ApiManagerError(ex.desc, code=401)
+            self.logger.error(ex)
+            raise ApiManagerError(ex, code=401)
 
         return user, dbuser_attribs
 
@@ -509,8 +526,8 @@ class BaseAuthController(ApiController):
             # set user roles
             self.__set_user_roles(dbuser, user)
         except QueryError as ex:
-            self.logger.error(ex.desc, exc_info=1)
-            raise ApiManagerError(ex.desc, code=401)
+            self.logger.error(ex, exc_info=True)
+            raise ApiManagerError(ex, code=401)
 
         return user, dbuser_attribs
 
@@ -583,7 +600,7 @@ class BaseAuthController(ApiController):
         auth_cidrs = dbuser_attribs.get('auth-cidrs', '')[0].split(',')
         allowed = False
         for auth_cidr in auth_cidrs:
-            allowed_cidr = IPv4Network(str2uni(auth_cidr))
+            allowed_cidr = IPv4Network(ensure_text(auth_cidr))
             user_ip = IPv4Network('%s/32' % login_ip)
             if user_ip.overlaps(allowed_cidr) is True:
                 allowed = True
@@ -654,6 +671,7 @@ class BaseAuthController(ApiController):
                 self.logger.debug('Login system user')
             self.set_identity(uid, identity, expire=expire)
 
+            expires_at = timestamp+timedelta(seconds=self.expire)
             res = {
                 'token_type': 'Bearer',
                 'user': user.get_dict().get('id'),
@@ -661,10 +679,10 @@ class BaseAuthController(ApiController):
                 'pubkey': pubkey,
                 'seckey': seckey,
                 'expires_in': self.expire,
-                'expires_at': timestamp+timedelta(seconds=self.expire),
-            }  
+                'expires_at': expires_at.timestamp(),
+            }
         except Exception as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=401)            
         
         return res    
@@ -763,8 +781,8 @@ class BaseAuthController(ApiController):
             res = 'Identity %s successfully logout' % identity['uid']
             self.logger.debug(res)
         except Exception as ex:
-            self.logger.error(ex.desc)
-            raise ApiManagerError(ex.desc, code=400)
+            self.logger.error(ex)
+            raise ApiManagerError(ex, code=400)
                 
         return None
     
@@ -811,10 +829,10 @@ class BaseAuthController(ApiController):
 
             User(self).send_event('keyauth-login.uodate', params={'uid':uid})
         except QueryError as ex:
-            self.logger.error(ex.desc, exc_info=1)
-            raise ApiManagerError(ex.desc, code=400)
+            self.logger.error(ex, exc_info=True)
+            raise ApiManagerError(ex, code=400)
         except Exception as ex:
-            self.logger.error(ex, exc_info=1)
+            self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=400)        
 
         return res    

@@ -1,13 +1,13 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 from celery import Task
 from celery.utils.log import get_task_logger
 import ujson as json
 from beecell.simple import truncate
 from beehive.common.data import operation
+from beecell.simple import jsonDumps
 
 logger = get_task_logger(__name__)
 
@@ -51,7 +51,7 @@ class BaseTask(Task):
         # get actual data
         current_data = self.get_shared_data()
         current_data.update(data)
-        val = json.dumps(current_data)
+        val = jsonDumps(current_data)
         self._redis.setex(self.prefix + task_id, self.expire, val)
         return True
 
@@ -80,7 +80,7 @@ class BaseTask(Task):
         """Set data to shared memory stack. Use this to pass data from different
         tasks that must ensure synchronization.
         """
-        val = json.dumps(data)
+        val = jsonDumps(data)
         self._redis.lpush(self.prefix_stack + task_id, val)
         logger.debug('Push stack data for job %s: %s' %
                      (task_id, truncate(data)))

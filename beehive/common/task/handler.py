@@ -1,25 +1,24 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 import ujson as json
-from six import b
+from six import b, ensure_text
 from beehive.common.task.manager import task_manager
-from beecell.simple import str2uni, truncate
+from beecell.simple import truncate
 from datetime import datetime
 from time import time, sleep
 from celery.utils.log import get_task_logger
 from celery.result import AsyncResult, GroupResult
-from celery.signals import task_prerun, task_postrun, task_failure
 from traceback import format_tb
+from beecell.simple import jsonDumps
 
 
 logger = get_task_logger(__name__)
 
 # job operation
 try:
-    import gevent
+    import gevent.local
     task_local = gevent.local.local()
 except BaseException:
     import threading
@@ -69,7 +68,7 @@ class TaskResult(object):
         key = '%s%s' % (_prefix, task_id)
 
         # serialize data
-        data = json.dumps(value)
+        data = jsonDumps(value)
 
         # save data
         _redis.setex(key, _expire, data)
@@ -185,7 +184,7 @@ class TaskResult(object):
                     msg1 = 'ERROR %s' % msg1
                 else:
                     msg1 = 'DEBUG %s' % msg1
-                _timestamp = str2uni(datetime.today().strftime('%d-%m-%y %H:%M:%S-%f'))
+                _timestamp = ensure_text(datetime.today().strftime('%d-%m-%y %H:%M:%S-%f'))
                 result['trace'].append((_timestamp, msg1))
 
             # save data

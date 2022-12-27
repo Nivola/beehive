@@ -1,14 +1,13 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 import json
 import unittest
 from beehive.common.test import runtest, BeehiveTestCase
 import logging
 from beecell.logger.helper import LoggerHelper
-from beecell.simple import parse_redis_uri
+from beecell.db.manager import parse_redis_uri
 import pprint
 import redis
 import gevent

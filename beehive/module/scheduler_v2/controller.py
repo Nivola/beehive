@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 from uuid import uuid4
 
@@ -12,6 +11,7 @@ from celery.result import AsyncResult
 from beecell.db.util import QueryError
 from beecell.simple import truncate, import_class, format_date
 from beehive.common.apimanager import ApiController, ApiObject, ApiManagerError
+from beehive.common.task_v2 import run_async
 from beehive.module.scheduler_v2.redis_scheduler import RedisScheduler
 from beehive.common.data import trace, operation
 from beehive.common.task_v2.canvas import signature
@@ -38,7 +38,21 @@ class SchedulerController(ApiController):
         return TaskManager(self)
         
     def get_scheduler(self):
-        return Scheduler(self)        
+        return Scheduler(self)
+
+    def get_entity_for_task(self, entity_class, oid, *args, **kvargs):
+        """Get single entity usable bya a celery task
+
+        :param entity_class: Controller ApiObject Extension class. Specify when you want to verif match between
+            objdef of the required resource and find resource
+        :param oid: entity id
+        :return: entity instance
+        :raise ApiManagerError`:
+        """
+        if entity_class == TaskManager:
+            return self.get_task_manager()
+        elif entity_class == Scheduler:
+            return self.get_scheduler()
 
 
 class Scheduler(ApiObject):
@@ -54,14 +68,6 @@ class Scheduler(ApiObject):
     def __init__(self, controller):
         ApiObject.__init__(self, controller, oid='', name='', desc='', active='')
         try:
-            # self._prefix = task_scheduler.conf.CELERY_REDIS_SCHEDULER_KEY_PREFIX
-            # # self._redis = task_scheduler.conf.CELERY_SCHEDULE_BACKEND
-            # self._redis = self.controller.redis_scheduler.conn
-            # self._pickler = pickle
-            # self.objid = '*'
-            # # create or get dictionary from redis
-            # self.redis_entries = Dict(key=self._prefix, redis=self._redis)
-
             self.objid = '*'
             self.scheduler = None
             if self.task_scheduler is not None:
@@ -318,6 +324,7 @@ class TaskManager(ApiObject):
 
         :param entity_class: entity_class owner of the tasks to query
         :param task_id: task id
+        :param objid: authorization id
         :param page: users list page to show [default=0]
         :param size: number of users to show in list per page [default=0]
         :param order: sort order [default=DESC]
@@ -425,11 +432,54 @@ class TaskManager(ApiObject):
 
         params.update(self.get_user())
         params['objid'] = str(uuid4())
+        params['alias'] = 'test_task'
         task = signature('beehive.module.scheduler_v2.tasks.test_task', [params], app=self.task_manager,
                          queue=self.celery_broker_queue)
-        job = task.apply_async()
+        task_id = task.apply_async()
 
-        return job
+        return task_id
+
+    @trace(op='insert')
+    def run_test_scheduled_action(self, schedule=None):
+        """Run test scheduled action
+
+        :param schedule: schedule [optional]
+        :return: schedule name
+        :raises ApiManagerError if query empty return error.
+        """
+        # verify permissions
+        self.controller.check_authorization(self.objtype, self.objdef, None, 'insert')
+
+        if schedule is None:
+            schedule = {
+                'type': 'timedelta',
+                'minutes': 1
+            }
+        params = {
+            'key1': 'value1',
+            'steps': [
+                # 'beehive.module.scheduler_v2.tasks.ScheduledActionTask.remove_schedule_step',
+                'beehive.module.scheduler_v2.tasks.ScheduledActionTask.task_step'
+            ]
+        }
+        schedule_name = self.scheduled_action('test', schedule, params=params)
+
+        return schedule_name
+
+    #
+    # inline task step
+    #
+    @run_async(action='use', alias='test_inline_task')
+    def run_test_inline_task(self, params):
+        """Run test task
+
+        :param params: task input params {'x': .., 'y': ..}
+        :return: test result
+        :raises ApiManagerError if query empty return error.
+        """
+        res = params.get('x') + params.get('y')
+        self.logger.debug('test inline task result from params %s: %s' % (params, res))
+        return res
 
 
 class Task(ApiObject):
@@ -455,6 +505,7 @@ class Task(ApiObject):
         self.server = None
         self.user = None
         self.identity = None
+        self.api_id = None
         if self.model is not None:
             self.parent = self.model.parent
             self.worker = self.model.worker
@@ -463,18 +514,25 @@ class Task(ApiObject):
             self.run_time = self.model.run_time
             self.stop_time = self.model.stop_time
             self.result = self.model.result
+            self.api_id = self.model.api_id
             if isinstance(self.start_time, datetime) and isinstance(self.run_time, datetime):
                 self.duration = (self.run_time - self.start_time).total_seconds()
-
             try:
-                self.args = json.loads(self.model.args)[0]
-                self.args.pop('objid')
-                self.api_id = self.args.pop('api_id')
+                args = self.model.args
+                # args = self.model.args[1:-2]
+                # args = args.replace('\'', '"').replace('False', 'false').replace('True', 'true').replace('None', 'null')
+                self.args = json.loads(args)[0]
+                self.args.pop('objid', None)
+                self.args.pop('api_id', None)
+                self.args.pop('steps', None)
                 self.server = self.args.pop('server')
                 self.user = self.args.pop('user')
                 self.identity = self.args.pop('identity')
+                self.alias = self.args.pop('alias', self.name)
             except:
+                self.logger.warn('error parsing task %s args %s' % (self.oid, self.model.args), exc_info=True)
                 self.args = None
+                self.alias = self.name
 
             try:
                 self.kwargs = json.loads(self.model.kwargs)
@@ -501,6 +559,7 @@ class Task(ApiObject):
             'id': self.oid,
             'uuid': self.uuid,
             'name': self.name,
+            'alias': self.alias,
             'status': self.status,
             'parent': self.parent,
             'worker': self.worker,
@@ -532,6 +591,7 @@ class Task(ApiObject):
             'id': self.oid,
             'uuid': self.uuid,
             'name': self.name,
+            'alias': self.alias,
             'status': self.status,
             'parent': self.parent,
             'worker': self.worker,
@@ -555,16 +615,41 @@ class Task(ApiObject):
 
         :raise ApiManagerError:
         """
-        trace = []
-        for t in self.manager.get_trace(self.uuid):
-            trace.append({
-                'id': str(t.id),
-                'step': t.step_id,
-                'message': t.message,
-                'level': t.level,
-                'date': format_date(t.date)
+        traces = []
+        for trace, step in self.manager.get_trace(self.uuid):
+            traces.append({
+                'id': str(trace.id),
+                'step': trace.step_id,
+                'step_name': step.name,
+                'message': trace.message,
+                'level': trace.level,
+                'date': format_date(trace.date)
             })
-        return trace
+        return traces
+
+    def get_log(self, size=100, page=0, *args, **kwargs):
+        """Get task log
+
+        :param page: page number
+        :param size: page size
+        :return: log list
+        :raise ApiManagerError:
+        """
+        worker_split = self.worker.split('@')
+        if len(worker_split) > 1:
+            worker = worker_split[1]
+        else:
+            worker = worker_split[0]
+        kwargs = {
+            'size': size,
+            'page': page,
+            'pod': worker,
+            'op': '%s::%s:%s' % (self.api_id, self.name.split('.')[-1], self.uuid),
+            'date': format_date(self.start_time, format='%Y.%m.%d')
+        }
+        logs = self.controller.get_log_from_elastic(**kwargs)
+        self.logger.debug('get task %s log: %s' % (self.uuid, truncate(logs)))
+        return logs
 
     #
     # pre, post function

@@ -1,7 +1,6 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 import ujson as json
 import logging
@@ -17,6 +16,7 @@ from beecell.simple import truncate
 from beehive.common.data import query
 from beehive.common.model import AbstractDbManager, PaginatedQueryGenerator
 from beecell.db import ModelError
+from beecell.simple import jsonDumps
 
 Base = declarative_base()
 
@@ -220,9 +220,9 @@ class EventDbManager(AbstractDbManager):
 
         # add event
         if objid is not None:
-            data = truncate(json.dumps(data), size=4000)
-            res = self.add_entity(DbEvent, eventid, etype, objid, objdef, objtype, creation, data, json.dumps(source),
-                                  json.dumps(dest))
+            data = truncate(jsonDumps(data), size=4000)
+            res = self.add_entity(DbEvent, eventid, etype, objid, objdef, objtype, creation, data, jsonDumps(source),
+                                  jsonDumps(dest))
 
             # add permtag
             ids = self.get_all_valid_objids(objid.split('//'))

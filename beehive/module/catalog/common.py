@@ -1,10 +1,10 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 import ujson as json
-from beecell.simple import id_gen, str2uni
+from six import ensure_text
+from beecell.simple import id_gen
 
 
 class CatalogEndpoint(object):
@@ -44,11 +44,11 @@ class CatalogEndpoint(object):
         :return: dict {'id':.., 'name':.., 'desc':.., 'service':.., catalog':.., 'uri':.., 'enabled':..}
         """
         if self.creation is not None:
-            creation = str2uni(self.creation.strftime('%d-%m-%y %H:%M:%S'))
+            creation = ensure_text(self.creation.strftime('%d-%m-%y %H:%M:%S'))
         else:
             creation = None
         if self.modified is not None:
-            modified = str2uni(self.modified.strftime('%d-%m-%y %H:%M:%S'))
+            modified = ensure_text(self.modified.strftime('%d-%m-%y %H:%M:%S'))
         else:
             modified = None            
         msg = {
@@ -69,11 +69,11 @@ class CatalogEndpoint(object):
         :return: json string {"id":..,  "name":.., "desc":.., "service":.., "catalog":.., "uri":..,"enabled":..}
         """
         if self.creation is not None:
-            creation = str2uni(self.creation.strftime('%d-%m-%y %H:%M:%S'))
+            creation = ensure_text(self.creation.strftime('%d-%m-%y %H:%M:%S'))
         else:
             creation = None
         if self.modified is not None:
-            modified = str2uni(self.modified.strftime('%d-%m-%y %H:%M:%S'))
+            modified = ensure_text(self.modified.strftime('%d-%m-%y %H:%M:%S'))
         else:
             modified = None            
         msg = {

@@ -1,10 +1,8 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
-from re import match
-
+import logging
 from beecell.simple import id_gen
 from beecell.logger.helper import LoggerHelper
 from signal import signal
@@ -20,9 +18,11 @@ from beecell.db import TransactionError, QueryError
 from beehive.common.apimanager import ApiManager
 from beehive.module.catalog.model import Catalog as ModelCatalog, \
     CatalogEndpoint as ModelEndpoint
+import os
 
 
-class CatalogConsumerError(Exception): pass
+class CatalogConsumerError(Exception):
+    pass
 
 
 class CatalogConsumer(ConsumerMixin):
@@ -52,7 +52,7 @@ class CatalogConsumer(ConsumerMixin):
         try:
             # get db session
             operation.session = self.db_manager.get_session()
-            
+            self.logger.warning(endpoint)
             name = endpoint['name']
             service = endpoint['service']
             desc = endpoint['desc']
@@ -85,33 +85,43 @@ class CatalogConsumer(ConsumerMixin):
         message.ack()
 
 
-class CatalogConsumerRedis(CatalogConsumer):
+class CatalogConsumerKombu(CatalogConsumer):
     def __init__(self, connection, api_manager):
-        """Catalog consumer based on redis kombu queue
+        """Catalog consumer based on kombu queue
         
         :param connection: consumer connection
         :param api_manager: ApiManager instance
         :raise CatalogConsumerError:
         """
-        super(CatalogConsumerRedis, self).__init__(connection, api_manager)
+        # super(CatalogConsumerRedis, self).__init__(connection, api_manager)
+        super(CatalogConsumerKombu, self).__init__(connection, api_manager)
+
+        self.broker_uri = self.api_manager.broker_catalog_uri
+        self.broker_exchange = self.api_manager.broker_catalog_exchange
 
         # redis
-        self.redis_uri = self.api_manager.redis_catalog_uri
-        self.redis_channel = self.api_manager.redis_catalog_channel
+        # self.redis_uri = self.api_manager.redis_catalog_uri
+        # self.redis_channel = self.api_manager.redis_catalog_channel
         
         # kombu channel
-        self.exchange = Exchange(self.redis_channel, type='direct', delivery_mode=1)
-        self.queue_name = '%s.queue' % self.redis_channel
-        self.routing_key = '%s.key' % self.redis_channel
+        # self.exchange = Exchange(self.redis_channel, type='direct', delivery_mode=1)
+        self.exchange = Exchange(self.broker_exchange, type='direct')  # , delivery_mode=1, durable=False)
+        self.logger.debug('declare exchange %s' % self.exchange)
+        self.queue_name = '%s.queue' % self.broker_exchange
+        self.routing_key = '%s.key' % self.broker_exchange
         self.queue = Queue(self.queue_name, self.exchange, routing_key=self.routing_key)
 
     def get_consumers(self, Consumer, channel):
-        return [Consumer(queues=self.queue,
-                         accept=['pickle', 'json'],
-                         callbacks=[self.store_endpoint],
+        return [Consumer(queues=self.queue, accept=['pickle', 'json'], callbacks=[self.store_endpoint],
                          on_decode_error=self.decode_error)]
 
     def decode_error(self, message, exc):
+        """Decode error
+
+        :param message: message received
+        :param exc: exception raised
+        :return:
+        """
         self.logger.error(exc)
 
 
@@ -123,19 +133,24 @@ def start_catalog_consumer(params):
     # internal logger
     logger = getLogger('beehive')
 
-    logger_level = int(params.get('api_logging_level', DEBUG))
+    # logger_level = int(params.get('api_logging_level', DEBUG))
+    logger_level = int(os.getenv('LOGGING_LEVEL', logging.DEBUG))
 
-    name = params['api_id'].decode('utf-8') + '.catalog'
-    log_path = params.get('api_log', None)
+    class BeehiveLogRecord(logging.LogRecord):
+        def __init__(self, *args, **kwargs):
+            super(BeehiveLogRecord, self).__init__(*args, **kwargs)
+            self.api_id = getattr(operation, 'id', 'xxx')
 
-    if log_path is None:
-        log_path = '/var/log/%s/%s' % (params['api_package'], params['api_env'])
-    else:
-        log_path = log_path.decode('utf-8')
+    logging.setLogRecordFactory(BeehiveLogRecord)
 
-    file_name = log_path + name + '.log'
-    loggers = [getLogger(), logger]
-    LoggerHelper.rotatingfile_handler(loggers, logger_level, file_name)
+    loggers = [
+        logger,
+        getLogger('beecell')
+    ]
+    frmt = "%(asctime)s %(levelname)s %(process)s:%(thread)s %(api_id)s " \
+           "%(name)s:%(funcName)s:%(lineno)d | %(message)s"
+    LoggerHelper.simple_handler(loggers, logger_level, frmt=frmt, formatter=None)
+    # LoggerHelper.simple_handler(loggers, logger_level)
 
     # setup api manager
     api_manager = ApiManager(params)
@@ -148,10 +163,13 @@ def start_catalog_consumer(params):
     for sig in (SIGHUP, SIGABRT, SIGILL, SIGINT, SIGSEGV, SIGTERM, SIGQUIT):
         signal(sig, terminate)
 
-    with Connection(api_manager.redis_catalog_uri) as conn:
+    # with Connection(api_manager.redis_catalog_uri) as conn:
+    with Connection(api_manager.broker_event_uri) as conn:
         try:
-            worker = CatalogConsumerRedis(conn, api_manager)
+            worker = CatalogConsumerKombu(conn, api_manager)
             logger.info('Start catalog consumer')
+            logger.debug('Active worker: %s' % worker)
+            logger.debug('Use broker connection: %s' % conn)
             worker.run()
         except KeyboardInterrupt:
             logger.info('Stop catalog consumer')

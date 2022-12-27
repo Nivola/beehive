@@ -1,7 +1,6 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 import unittest
 from beehive.common.test import runtest, BeehiveTestCase, assert_exception
@@ -9,10 +8,12 @@ from beecell.remote import BadRequestException,\
     ConflictException
 
 oid = None
+event_id = None
+date = None
 
 tests = [
-    'test_get_event_types',
-    'test_get_event_entities',
+    #'test_get_event_types',
+    #'test_get_event_entities',
 
     'test_get_events',
     'test_get_events_by_type',
@@ -50,6 +51,10 @@ class EventTestCase(BeehiveTestCase):
             event = events[0]
             event_id = event['event_id']
             date = event['date'][:-7]
+            print('event - event_id: %s' % event_id)
+            print('event - date: %s' % date)
+        else:
+            print('no event')
 
     def test_get_events_by_type(self):
         self.get('/v1.0/nes/events', query={'type': 'API'})
@@ -65,7 +70,9 @@ class EventTestCase(BeehiveTestCase):
         
     def test_get_events_by_date(self):
         global date
-        self.get('/v1.0/nes/events', query={'date': date})
+        print('date: %s' % date)
+        if date is not None:
+            self.get('/v1.0/nes/events', query={'date': date})
         
     def test_get_events_by_source(self):
         self.get('/v1.0/nes/events', query={'source': 'internal'})
@@ -75,7 +82,9 @@ class EventTestCase(BeehiveTestCase):
         
     def test_get_event_by_eventid(self):
         global event_id
-        self.get('/v1.0/nes/events/{oid}', params={'oid': event_id})
+        print('event_id: %s' % event_id)
+        if event_id is not None:
+            self.get('/v1.0/nes/events/{oid}', params={'oid': event_id})
 
 
 def run(args):

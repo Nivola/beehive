@@ -1,18 +1,17 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 import json
 import time
 import logging
-from re import match
-
+from datetime import datetime
 import redis
-#import zmq.green as zmq
 import gevent
-from beecell.simple import str2uni, id_gen, parse_redis_uri, truncate
-
+from six import ensure_text
+from beecell.types.type_string import truncate
+from beecell.db.manager import parse_redis_uri
+from beecell.types.type_id import id_gen
 from kombu.mixins import ConsumerMixin
 from kombu.pools import producers
 from kombu import Exchange, Queue
@@ -20,7 +19,7 @@ from kombu import Connection, exceptions
 from signal import *
 import pprint
 from beecell.db.manager import RedisManager
-from six import b
+from beecell.simple import jsonDumps
 
 
 class ComplexEncoder(json.JSONEncoder):
@@ -78,7 +77,9 @@ class Event(object):
         self.dest = dest
 
     def __str__(self):
-        creation = str2uni(self.creation.strftime('%d-%m-%y %H:%M:%S'))
+        creation = self.creation
+        if isinstance(creation, datetime):
+            creation = ensure_text(self.creation.strftime('%d-%m-%y %H:%M:%S'))
         res = '<Event id=%s, type=%s, creation=%s, data=%s, source=%s, dest=%s>' % \
               (self.id, self.type, creation, self.data, self.source, self.dest)
         return res
@@ -124,12 +125,108 @@ class Event(object):
         :return: json string
         """
         msg = self.dict()
-        return json.dumps(msg)
+        return jsonDumps(msg)
+
+    @staticmethod
+    def get_from_elastic(env, elasticsearch, *args, **kvargs):
+        """Get events from elastic search
+
+        :param env: platform environment. Ex. prod, test
+        :param elastic: elastic search instance
+        :param args:
+        :param kvargs:
+        :param kvargs.date: day to query. Syntax YYYY.MM.DD
+        :param kvargs.eventid: event id [optional]
+        :param kvargs.event_type: event type. Ex. API, CMD, SSH
+        :param kvargs.event_op: event operation
+        :param kvargs.source_user: event source user
+        :param kvargs.source_ip: event source ip
+        :param kvargs.dest_pod: event destination pod
+        :param kvargs.page: query page [default=0]
+        :param kvargs.size: query size [default=20]
+        :param kvargs.sort: query sort [default=date:desc]
+        :param kvargs.input: query by event data kvargs [optional]
+        :return: list of events
+        """
+        date = kvargs.get('date', None)
+        eventid = kvargs.get('eventid', None)
+        event_type = kvargs.get('event_type', 'API')
+        page = kvargs.get('page', 0)
+        size = kvargs.get('size', 20)
+        sort = kvargs.get('sort', 'timestamp:desc')
+        event_input = kvargs.get('input', None)
+        event_op = kvargs.get('event_op', None)
+        source_user = kvargs.get('source_user', None)
+        source_ip = kvargs.get('source_ip', None)
+        dest_pod = kvargs.get('dest_pod', None)
+
+        if date is None:
+            date = datetime.now().strftime('%Y.%m.%d')
+        index = 'cmp-event-%s-pylogbeat-2.0.0-%s-cmp_nivola*' % (env, date)
+
+        if eventid is None:
+            match = [
+                {'match': {'type': {'query': event_type, 'operator': 'or'}}},
+            ]
+        else:
+            match = [
+                {'match': {'event_id': {'query': eventid, 'operator': 'and'}}},
+            ]
+
+        if dest_pod is not None:
+            match.append({'match': {'dest.pod': {'query': dest_pod, 'operator': 'and'}}})
+        if event_op is not None:
+            match.append({'match': {'data.op': {'query': event_op, 'operator': 'and'}}})
+        if source_user is not None:
+            match.append({'match': {'source.user': {'query': source_user, 'operator': 'and'}}})
+        if source_ip is not None:
+            match.append({'match': {'source.ip': {'query': source_ip, 'operator': 'and'}}})
+
+        if event_input is not None:
+            match.append({'match_phrase': {'data.kwargs': event_input}})
+
+        query = {
+            'bool': {
+                'must': match
+            }
+        }
+
+        page = page * size
+        body = {'query': query}
+        body.update({'sort': [{f[0]: f[1]} for f in [sort.split(':')]]})
+        res = elasticsearch.search(index=index, body=body, from_=page, size=size, sort=sort)
+        logger.debug2('query elastic: %s' % truncate(res))
+        hits = res.get('hits', {})
+        values = []
+        if len(hits.get('hits', [])) > 0:
+            fields = ['_id']
+            fields.extend(hits.get('hits', [])[0].get('_source').keys())
+            headers = fields
+            headers[0] = 'id'
+        for hit in hits.get('hits', []):
+            value = hit.get('_source')
+            value['id'] = hit.get('_id')
+            event = Event(value['type'], value['data'], value['source'], value['dest'])
+            event.id = value['event_id']
+            event.creation = value['timestamp']
+            values.append(event)
+        total = hits.get('total', {})
+        if isinstance(total, dict):
+            total = total.get('value', 0)
+        resp = {
+            'page': page,
+            'count': size,
+            'total': total,
+            'sort': sort,
+            'values': values
+        }
+        logger.debug('query events: %s' % truncate(resp))
+        return resp
 
 
 class EventHandler(object):
     def __init__(self, api_manager):
-        self.logger = logging.getLogger('beehive.common.event.EventHandler')
+        self.logger = logging.getLogger(self.__class__.__module__ + '.' + self.__class__.__name__)
         self.api_manager = api_manager
 
     def callback(self, event, message):
@@ -153,7 +250,8 @@ class EventProducer(object):
         :param source: event source
         :param dest: event destination       
         """
-        gevent.spawn(self._send, event_type, data, source, dest)
+        self._send(event_type, data, source, dest)
+        # gevent.spawn(self._send, event_type, data, source, dest)
         
     def send_sync(self, event_type, data, source, dest):
         """Send sync new event.
@@ -163,38 +261,38 @@ class EventProducer(object):
         :param source: event source
         :param dest: event destination      
         """
-        self._send(event_type, data, source, dest)          
+        self._send(event_type, data, source, dest)
 
 
 class EventProducerRedis(EventProducer):
-    def __init__(self, redis_uri, redis_exchange, framework='komb'):
+    def __init__(self, broker_uri, broker_exchange, framework='komb'):
         """Redis event producer
         
-        :param redis_uri: redis uri
-        :param redis_exchange: redis channel
+        :param broker_uri: broker uri
+        :param broker_exchange: redis channel
         :param framework: framework used to manage redis pub sub. Ex. kombu, simple
         """
         EventProducer.__init__(self)
         
-        self.redis_uri = redis_uri
-        self.redis_exchange = redis_exchange
+        self.broker_uri = broker_uri
+        self.broker_exchange = broker_exchange
         self.framework = framework
         
         if framework == 'simple':
             # set redis manager
-            res = parse_redis_uri(redis_uri)
+            res = parse_redis_uri(broker_uri)
             self.redis_manager = redis.StrictRedis(host=res['host'], port=int(res['port']), db=int(res['db']),
                                                    password=res['pwd'])
         
         elif framework == 'komb':
-            self.conn = Connection(redis_uri)
-            self.exchange = Exchange(self.redis_exchange, type='direct', delivery_mode=1, durable=False)
-            self.routing_key = '%s.key' % self.redis_exchange
+            self.conn = Connection(broker_uri)
+            self.exchange = Exchange(self.broker_exchange, type='direct', delivery_mode=1, durable=False)
+            self.routing_key = '%s.key' % self.broker_exchange
     
-            self.queue_name = '%s.temp' % self.redis_exchange 
+            self.queue_name = '%s.temp' % self.broker_exchange
             self.queue = Queue(self.queue_name, exchange=self.exchange)
             self.queue.declare(channel=self.conn.channel())
-            server = RedisManager(redis_uri)
+            server = RedisManager(broker_uri)
             server.delete(self.queue_name)
     
     def _send(self, event_type, data, source, dest):
@@ -229,12 +327,61 @@ class EventProducerRedis(EventProducer):
             # send message
             message = event.json()
             # publish message to redis
-            self.redis_manager.publish(self.redis_exchange, message)
+            self.redis_manager.publish(self.broker_exchange, message)
             self.logger.debug('Send event %s : %s' % (event.id, truncate(message)))
         except redis.PubSubError as ex:
             self.logger.error('Event can not be send: %s' % str(ex))
         except Exception as ex:
             self.logger.error('Event can not be encoded: %s' % str(ex))
+
+
+class EventProducerKombu(EventProducer):
+    def __init__(self, broker_uri, broker_exchange):
+        """Kombu event producer
+
+        :param broker_uri: broker uri
+        :param broker_exchange: kombu channel
+        """
+        EventProducer.__init__(self)
+
+        self.broker_uri = broker_uri
+        self.broker_exchange = broker_exchange
+
+        self.conn = Connection(broker_uri)
+        self.exchange = Exchange(self.broker_exchange, type='direct') #, delivery_mode=1, durable=False)
+        self.queue_name = '%s.queue' % self.broker_exchange
+        self.routing_key = '%s.key' % self.broker_exchange
+        self.queue = Queue(self.queue_name, self.exchange, routing_key=self.routing_key)
+        # self.routing_key = '%s.key' % self.broker_exchange
+        # self.queue_name = '%s.temp' % self.broker_exchange
+        # self.queue = Queue(self.queue_name, exchange=self.exchange)
+        #self.queue.declare(channel=self.conn.channel())
+        # server = RedisManager(broker_uri)
+        # server.delete(self.queue_name)
+
+    def _send(self, event_type, data, source, dest):
+        return self._send_kombu(event_type, data, source, dest)
+
+    def _send_kombu(self, event_type, data, source, dest):
+        try:
+            event = Event(event_type, data, source, dest)
+            with producers[self.conn].acquire() as producer:
+                msg = event.dict()
+                producer.publish(msg,
+                                 serializer='json',
+                                 compression='bzip2',
+                                 exchange=self.exchange,
+                                 declare=[self.exchange],
+                                 routing_key=self.routing_key,
+                                 # expiration=60,
+                                 # delivery_mode=1
+                                )
+                self.logger.debug2('Send event to exchange %s with routing key %s: %s' %
+                                   (self.exchange, self.routing_key, msg['id']))
+        except exceptions.ConnectionLimitExceeded as ex:
+            self.logger.error('Event can not be send: %s' % str(ex))
+        except Exception as ex:
+            self.logger.error('Event can not be send: %s' % str(ex))
 
 
 class EventProducerZmq(EventProducer):
@@ -284,14 +431,14 @@ class EventProducerZmq(EventProducer):
 
 
 class SimpleEventConsumer(object):
-    def __init__(self, redis_uri, redis_exchange):
+    def __init__(self, broker_uri, broker_exchange):
         self.logger = logging.getLogger(self.__class__.__module__ + '.' + self.__class__.__name__)
         
-        self.redis_uri = redis_uri
-        self.redis_exchange = redis_exchange     
+        self.broker_uri = broker_uri
+        self.broker_exchange = broker_exchange
         
         # set redis manager
-        host, port, db = parse_redis_uri(redis_uri)
+        host, port, db = parse_redis_uri(broker_uri)
         self.redis = redis.StrictRedis(
             host=host, port=int(port), db=int(db))
         
@@ -301,9 +448,9 @@ class SimpleEventConsumer(object):
         """Start subscriber
         """
         channel = self.redis.pubsub()
-        channel.subscribe(self.redis_exchange)
+        channel.subscribe(self.broker_exchange)
 
-        self.logger.info('Start event consumer on redis channel %s:%s' % (self.redis_uri, self.redis_exchange))
+        self.logger.info('Start event consumer on redis channel %s:%s' % (self.broker_uri, self.broker_exchange))
         while True:
             try:
                 msg = channel.get_message()
@@ -317,22 +464,22 @@ class SimpleEventConsumer(object):
             except (gevent.Greenlet.GreenletExit, Exception) as ex:
                 self.logger.error('Error receiving message: %s', exc_info=1)                 
                     
-        self.logger.info('Stop event consumer on redis channel %s:%s' % (self.redis_uri, self.redis_exchange))
+        self.logger.info('Stop event consumer on redis channel %s:%s' % (self.broker_uri, self.broker_exchange))
 
 
 class SimpleEventConsumerKombu(ConsumerMixin):
-    def __init__(self, connection, redis_exchange):
+    def __init__(self, connection, broker_exchange):
         self.logger = logging.getLogger(self.__class__.__module__ + '.'+self.__class__.__name__)
         
         self.connection = connection
 
         # redis
-        self.redis_exchange = redis_exchange
+        self.broker_exchange = broker_exchange
         
         # kombu channel
-        self.exchange = Exchange(self.redis_exchange+'.sub', type='topic', delivery_mode=1)
-        self.queue_name = '%s.queue.%s' % (self.redis_exchange, id_gen())   
-        self.routing_key = '%s.sub.key' % self.redis_exchange
+        self.exchange = Exchange(self.broker_exchange+'.sub', type='topic', delivery_mode=1)
+        self.queue_name = '%s.queue.%s' % (self.broker_exchange, id_gen())
+        self.routing_key = '%s.sub.key' % self.broker_exchange
         self.queue = Queue(self.queue_name, self.exchange, routing_key=self.routing_key)
 
     def get_consumers(self, Consumer, channel):
@@ -355,7 +502,7 @@ class SimpleEventConsumerKombu(ConsumerMixin):
         message.ack()
                 
     @staticmethod
-    def start_subscriber(event_redis_uri, event_redis_exchange):
+    def start_subscriber(event_broker_uri, event_broker_exchange):
         """
         """    
         def terminate(*args):
@@ -364,12 +511,12 @@ class SimpleEventConsumerKombu(ConsumerMixin):
         for sig in (SIGHUP, SIGABRT, SIGILL, SIGINT, SIGSEGV, SIGTERM, SIGQUIT):
             signal(sig, terminate)    
         
-        with Connection(event_redis_uri) as conn:
+        with Connection(event_broker_uri) as conn:
             try:
-                worker = SimpleEventConsumerKombu(conn, event_redis_exchange)
-                logger.info('Start event consumer on redis channel %s:%s' % (event_redis_uri, event_redis_exchange))
+                worker = SimpleEventConsumerKombu(conn, event_broker_exchange)
+                logger.info('Start event consumer on redis channel %s:%s' % (event_broker_uri, event_broker_exchange))
                 worker.run()
             except KeyboardInterrupt:
-                logger.info('Stop event consumer on redis channel %s:%s' % (event_redis_uri, event_redis_exchange))
+                logger.info('Stop event consumer on redis channel %s:%s' % (event_broker_uri, event_broker_exchange))
                 
-        logger.info('Stop event consumer on redis channel %s:%s' % (event_redis_uri, event_redis_exchange))
+        logger.info('Stop event consumer on redis channel %s:%s' % (event_broker_uri, event_broker_exchange))

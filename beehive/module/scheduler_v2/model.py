@@ -1,7 +1,6 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 import ujson as json
 import logging
@@ -36,6 +35,19 @@ class SchedulerDbManager(AbstractDbManager):
         self.logger.debug('Get task %s steps: %s' % (task_id, truncate(steps)))
         return steps
 
+    def get_step(self, step_id):
+        """Get task step
+
+        :param step_id: step id
+        :return: SchedulerStep instance list
+        """
+        session = self.get_session()
+
+        query = session.query(SchedulerStep).filter_by(uuid=step_id)
+        steps = query.one()
+        self.logger.debug('Get task step %s: %s' % (step_id, truncate(steps)))
+        return steps
+
     def get_trace(self, task_id):
         """Get task trace
 
@@ -44,7 +56,11 @@ class SchedulerDbManager(AbstractDbManager):
         """
         session = self.get_session()
 
-        query = session.query(SchedulerTrace).filter_by(task_id=task_id).order_by(asc(SchedulerTrace.date))
+        query = session.query(SchedulerTrace, SchedulerStep). \
+            filter(SchedulerTrace.step_id == SchedulerStep.uuid). \
+            filter(SchedulerTrace.task_id == task_id). \
+            order_by(asc(SchedulerTrace.date))
+        # query = session.query(SchedulerTrace).filter_by(task_id=task_id).order_by(asc(SchedulerTrace.date))
         steps = query.all()
         self.logger.debug('Get task %s trace: %s' % (task_id, truncate(steps)))
         return steps
@@ -54,6 +70,7 @@ class SchedulerDbManager(AbstractDbManager):
         """Get tasks with some permission tags
 
         :param task_id: task id
+        :param objid: authorization id
         :param tags: list of permission tags
         :param page: users list page to show [default=0]
         :param size: number of users to show in list per page [default=0]
@@ -69,7 +86,7 @@ class SchedulerDbManager(AbstractDbManager):
 
         # set filters
         query.add_relative_filter('AND t3.uuid = :task_id', 'task_id', kvargs)
-        # query.add_relative_filter('AND t3.objid like :objid', 'objid', kvargs)
+        query.add_relative_filter('AND t3.objid like :objid', 'objid', kvargs)
         # query.add_relative_filter('AND t3.objtype like :objtype', 'objtype', kvargs)
         # query.add_relative_filter('AND t3.objdef like :objdef', 'objdef', kvargs)
         # query.add_relative_filter('AND t3.data like :data', 'data', kvargs)

@@ -1,7 +1,6 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 from marshmallow.validate import OneOf
 
@@ -43,8 +42,8 @@ class GetSchedulerEntries(TaskApiView):
             'description': 'success',
             'schema': GetSchedulerEntriesResponseSchema
         }
-    })    
-    
+    })
+
     def get(self, controller, data, *args, **kwargs):
         """
         List scheduler entries
@@ -93,7 +92,7 @@ class CreateSchedulerEntryParamRequestSchema(Schema):
     name = fields.String(required=True, default='discover')
     task = fields.String(required=True, default='tasks.discover_vsphere')
     args = fields.Raw(allow_none=True)
-    kwargs = fields.Dict(default={}, allow_none=True)    
+    kwargs = fields.Dict(default={}, allow_none=True)
     options = fields.Dict(default={}, allow_none=True)
     schedule = fields.Dict(required=True, default={}, allow_none=True)
     relative = fields.Boolean(allow_none=True)
@@ -124,12 +123,12 @@ class CreateSchedulerEntry(TaskApiView):
             'schema': CreateSchedulerEntryResponseSchema
         }
     })
-    
+
     def post(self, controller, data, *args, **kwargs):
         """
         Create schedule
         Create scheduler schedule
-        """        
+        """
         scheduler = controller.get_scheduler()
         data = get_value(data, 'schedule', None, exception=True)
         name = get_value(data, 'name', None, exception=True)
@@ -138,10 +137,10 @@ class CreateSchedulerEntry(TaskApiView):
         kwargs = get_value(data, 'kwargs', None)
         options = get_value(data, 'options', {})
         relative = get_value(data, 'relative', None)
-        
+
         # get schedule
         schedule = get_value(data, 'schedule', None, exception=True)
-        
+
         resp = scheduler.create_update_entry(name, task, schedule, args=args, kwargs=kwargs, options=options,
                                              relative=relative)
         return {'name': name}, 202
@@ -154,8 +153,8 @@ class DeleteSchedulerEntry(TaskApiView):
         204: {
             'description': 'no response'
         }
-    }) 
-    
+    })
+
     def delete(self, controller, data, oid, *args, **kwargs):
         """
         Delete schedule
@@ -184,13 +183,13 @@ class ManagerPing(TaskApiView):
             'description': 'success',
             'schema': ManagerPingResponseSchema
         }
-    })     
-    
+    })
+
     def get(self, controller, data, *args, **kwargs):
         """
         Worker pings
         Ping all active workers
-        """        
+        """
         task_manager = controller.get_task_manager()
         resp = task_manager.ping()
         return {'workers_ping':resp}
@@ -210,13 +209,13 @@ class ManagerStats(TaskApiView):
             'description': 'success',
             'schema': ManagerStatsResponseSchema
         }
-    })     
-    
+    })
+
     def get(self, controller, data, *args, **kwargs):
         """
         Worker statistics
         Get all active workers statistics
-        """        
+        """
         task_manager = controller.get_task_manager()
         resp = task_manager.stats()
         return {'workers_stats':resp}
@@ -236,8 +235,8 @@ class ManagerReport(TaskApiView):
             'description': 'success',
             'schema': ManagerReportResponseSchema
         }
-    })     
-    
+    })
+
     def get(self, controller, data, *args, **kwargs):
         """
         Worker Report
@@ -288,20 +287,24 @@ class GetTasksDefinition(TaskApiView):
             'description': 'success',
             'schema': GetTasksDefinitionResponseSchema
         }
-    })     
-    
+    })
+
     def get(self, controller, data, *args, **kwargs):
         """
         Get task definitions
         List all task definitions
-        """  
-        task_manager = controller.get_task_manager()
+        """
+        from beehive.module.scheduler_v2.controller import SchedulerController
+        from beehive.module.scheduler_v2.controller import TaskManager
+        
+        schedulerController: SchedulerController = controller
+        task_manager: TaskManager = schedulerController.get_task_manager()
         res = task_manager.get_registered_tasks()
         resp = {
             'task_definitions': res,
             'count': len(res)
         }
-        return resp    
+        return resp
 
 
 class GetAllTasksParamsResponseSchema(Schema):
@@ -346,19 +349,19 @@ class GetAllTasks(TaskApiView):
             'description': 'success',
             'schema': GetAllTasksResponseSchema
         }
-    })    
-    
+    })
+
     def get(self, controller, data, *args, **kwargs):
         """
         List task instances
         Call this api to list all the task instances
-        """  
+        """
         task_manager = controller.get_task_manager()
         res = task_manager.get_all_tasks(details=True, **data)
         resp = {
             'task_instances': res,
             'count': len(res)
-        }        
+        }
         return resp
 
 
@@ -371,8 +374,8 @@ class GetTasksCount(TaskApiView):
             'description': 'success',
             'schema': ApiObjecCountResponseSchema
         }
-    })     
-    
+    })
+
     def get(self, controller, data, *args, **kwargs):
         """
         Task count
@@ -403,8 +406,8 @@ class QueryTask(TaskApiView):
             'description': 'success',
             'schema': QueryTaskResponseSchema
         }
-    }) 
-        
+    })
+
     def get(self, controller, data, oid, *args, **kwargs):
         """
         Get task info
@@ -425,24 +428,24 @@ class GetTaskGraph(TaskApiView):
         'GetTaskGraphResponseSchema':GetTaskGraphResponseSchema,
         'GetApiObjectRequestSchema': GetApiObjectRequestSchema,
     }
-    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)    
+    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
     responses = SwaggerApiView.setResponses({
         200: {
             'description': 'success',
             'schema': GetTaskGraphResponseSchema
         }
-    }) 
-        
+    })
+
     def get(self, controller, data, oid, *args, **kwargs):
         """
         Get task graph
         Get list of nodes and link that represents the task childs graph
-        """ 
+        """
         task_manager = controller.get_task_manager()
         res = task_manager.get_task_graph(oid)
         resp = {'task_instance_graph':res}
-        return resp    
-    
+        return resp
+
 
 ## purge all
 class PurgeAllTasks(TaskApiView):
@@ -452,36 +455,36 @@ class PurgeAllTasks(TaskApiView):
         204: {
             'description': 'success'
         }
-    })    
-    
+    })
+
     def delete(self, controller, data, *args, **kwargs):
         """
         Delete all tasks
         Delete all tasks
-        """        
+        """
         task_manager = controller.get_task_manager()
         resp = task_manager.delete_task_instances()
         return (resp, 204)
-    
+
 '''
 class PurgeTasks(TaskApiView):
     def delete(self, controller, data, *args, **kwargs):
         task_manager = controller.get_task_manager()
         resp = task_manager.purge_tasks()
         return (resp, 202)  '''
-    
+
 ## delete
 class DeleteTask(TaskApiView):
     definitions = {
         'GetApiObjectRequestSchema': GetApiObjectRequestSchema,
     }
-    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)    
+    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
     responses = SwaggerApiView.setResponses({
         204: {
             'description': 'success'
         }
-    })     
-    
+    })
+
     def delete(self, controller, data, oid, *args, **kwargs):
         """
         Delete task
@@ -489,17 +492,17 @@ class DeleteTask(TaskApiView):
         """
         task_manager = controller.get_task_manager()
         resp = task_manager.delete_task_instance(oid)
-        return (resp, 204)  
+        return (resp, 204)
 
 '''
 class RevokeTask(TaskApiView):
     def dispatch(self, controller, data, oid, *args, **kwargs):
         task_manager = controller.get_task_manager()
         resp = task_manager.revoke_task(oid)
-        return (resp, 202)  
-    
+        return (resp, 202)
+
 class SetTaskTimeLimit(TaskApiView):
-    def dispatch(self, controller, data, *args, **kwargs):    
+    def dispatch(self, controller, data, *args, **kwargs):
         task_manager = controller.get_task_manager()
         cmd = get_value(data, 'cmd', None)
         # set tasks category time limit
@@ -536,9 +539,9 @@ class RunJobTest(TaskApiView):
             'description': 'success',
             'schema': CrudApiJobResponseSchema
         }
-    })    
-    
-    def post(self, controller, data, *args, **kwargs):    
+    })
+
+    def post(self, controller, data, *args, **kwargs):
         task_manager = controller.get_task_manager()
         job = task_manager.run_jobtest(data)
         return {'jobid': job.id}, 201
@@ -548,7 +551,7 @@ class SchedulerAPI(ApiView):
     """
     """
     @staticmethod
-    def register_api(module):
+    def register_api(module, **kwargs):
         rules = [
             ('%s/scheduler/entries' % module.base_path, 'GET', GetSchedulerEntries, {}),
             ('%s/scheduler/entries/<oid>' % module.base_path, 'GET', GetSchedulerEntry, {}),
@@ -556,14 +559,14 @@ class SchedulerAPI(ApiView):
             ('%s/scheduler/entries/<oid>' % module.base_path, 'DELETE', DeleteSchedulerEntry, {}),
         ]
 
-        ApiView.register_api(module, rules)
+        ApiView.register_api(module, rules, **kwargs)
 
-        
+
 class TaskAPI(ApiView):
     """
     """
     @staticmethod
-    def register_api(module):
+    def register_api(module, **kwargs):
         rules = [
             ('%s/worker/ping' % module.base_path, 'GET', ManagerPing, {}),
             ('%s/worker/stats' % module.base_path, 'GET', ManagerStats, {}),
@@ -579,4 +582,4 @@ class TaskAPI(ApiView):
             ('%s/worker/tasks/test' % module.base_path, 'POST', RunJobTest, {}),
         ]
 
-        ApiView.register_api(module, rules)
+        ApiView.register_api(module, rules, **kwargs)

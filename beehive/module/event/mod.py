@@ -1,8 +1,8 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
+from beehive.module.basic.views.status import StatusAPI
 from beehive.common.apimanager import ApiModule
 from beehive.module.event.view import EventAPI
 from beehive.module.event.controller import EventController
@@ -19,7 +19,7 @@ class EventModule(ApiModule):
         
         ApiModule.__init__(self, api_manger, self.name)
         
-        self.apis = [EventAPI]
+        self.apis = [EventAPI, StatusAPI]
         self.controller = EventController(self)
 
     def get_controller(self):

@@ -1,7 +1,6 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 from re import match
 from datetime import datetime
@@ -15,7 +14,8 @@ from marshmallow import fields, Schema
 from marshmallow.validate import OneOf, Range, Length
 from marshmallow.decorators import post_load, validates
 from marshmallow.exceptions import ValidationError
-
+from typing import TYPE_CHECKING
+from beehive.module.auth.controller import AuthController
 
 class BaseCreateRequestSchema(Schema):
     name = fields.String(required=True, error_messages={'required': 'name is required.'})
@@ -31,15 +31,14 @@ class BaseUpdateRequestSchema(Schema):
 
 class BaseCreateExtendedParamRequestSchema(Schema):
     active = fields.Boolean(missing=True, allow_none=True)
-    expiry_date = fields.String(load_from='expirydate', missing=None, 
+    expiry_date = fields.String(data_key='expirydate', missing=None,
                                 allow_none=True, example='',
                                 description='expiration date. [default=365days]')
-    
+
     @post_load
-    def make_expiry_date(self, data):
+    def make_expiry_date(self, data, *args, **kvargs):
         expiry_date = data.get('expiry_date', None)
         if expiry_date is not None:
-            #expiry_date = expiry_date.replace('T', '')
             y, m, d = expiry_date.split('-')
             expiry_date = datetime(int(y), int(m), int(d))
             data['expiry_date'] = expiry_date
@@ -75,7 +74,7 @@ class ListProviders(SwaggerApiView):
         }
     })
 
-    def get(self, controller, data, *args, **kwargs):
+    def get(self, controller:AuthController, data, *args, **kwargs):
         auth_providers = controller.module.authentication_manager.auth_providers
         res = []
         for provider, auth_provider in auth_providers.items():
@@ -122,10 +121,10 @@ class ListTokens(SwaggerApiView):
         }
     })
 
-    def get(self, controller, data, *args, **kwargs):
-        identities = controller.get_identities()        
+    def get(self, controller:AuthController, data, *args, **kwargs):
+        identities = controller.get_identities()
         res = []
-        for i in identities:            
+        for i in identities:
             user = i.get('user')
             user_name = None
             user_domain = None
@@ -184,7 +183,7 @@ class GetToken(SwaggerApiView):
         }
     })
 
-    def get(self, controller, data, oid, *args, **kwargs):
+    def get(self, controller:AuthController, data, oid, *args, **kwargs):
         data = controller.get_identity(oid)
         res = {
             'token': data['uid'],
@@ -209,7 +208,7 @@ class DeleteToken(SwaggerApiView):
         }
     })
 
-    def delete(self, controller, data, oid, *args, **kwargs):
+    def delete(self, controller:AuthController, data, oid, *args, **kwargs):
         resp = controller.remove_identity(oid)
         return resp, 204
 
@@ -218,13 +217,13 @@ class ListUsersRequestSchema(PaginatedRequestQuerySchema):
     group = fields.String(context='query')
     role = fields.String(context='query')
     active = fields.Boolean(context='query')
-    expiry_date = fields.String(load_from='expirydate', default='2099-12-31', context='query')
+    expiry_date = fields.String(data_key='expirydate', default='2099-12-31', context='query')
     name = fields.String(context='query')
     names = fields.String(context='query')
     desc = fields.String(context='query')
     email = fields.String(context='query')
     perms_N = fields.List(fields.String(example=''), required=False, allow_none=True, context='query',
-                          collection_format='multi', load_from='perms.N', description='permissions list')
+                          collection_format='multi', data_key='perms.N', description='permissions list')
 
 
 class ListUserResponseSchema(ApiObjectResponseSchema):
@@ -250,8 +249,8 @@ class ListUsers(SwaggerApiView):
             'schema': ListUsersResponseSchema
         }
     })
-    
-    def get(self, controller, data, *args, **kwargs):
+
+    def get(self, controller:AuthController, data, *args, **kwargs):
         objs, total = controller.get_users(**data)
         res = [r.info() for r in objs]
 
@@ -280,9 +279,9 @@ class GetUser(SwaggerApiView):
             'description': 'success',
             'schema': GetUserResponseSchema
         }
-    })    
-    
-    def get(self, controller, data, oid, *args, **kwargs):
+    })
+
+    def get(self, controller:AuthController, data, oid, *args, **kwargs):
         obj = controller.get_user(oid)
         res = obj.detail()
         resp = {'user': res}
@@ -312,7 +311,7 @@ class GetUserSecret(SwaggerApiView):
         }
     })
 
-    def get(self, controller, data, oid, *args, **kwargs):
+    def get(self, controller:AuthController, data, oid, *args, **kwargs):
         secret = controller.get_user_secret(oid)
         resp = {'user': {'secret': secret}}
         return resp
@@ -345,9 +344,9 @@ class ResetUserSecret(SwaggerApiView):
             'description': 'success',
             'schema': UserSecretResponseSchema
         }
-    })    
-    
-    def put(self, controller, data, oid, *args, **kwargs):
+    })
+
+    def put(self, controller:AuthController, data, oid, *args, **kwargs):
         old_secret = data.get('user', {}).get('old_secret', None)
         secret = controller.reset_user_secret(oid, old_secret=old_secret)
         resp = {'user': {'secret': secret}}
@@ -378,9 +377,9 @@ class GetUserAtributes(SwaggerApiView):
             'description': 'success',
             'schema': GetUserAtributesResponseSchema
         }
-    })     
-    
-    def get(self, controller, data, oid, *args, **kwargs):
+    })
+
+    def get(self, controller:AuthController, data, oid, *args, **kwargs):
         user = controller.get_user(oid)
         res = user.get_attribs()
         resp = {'user_attributes': res, 'count': len(res)}
@@ -394,11 +393,11 @@ class CreateUserParamRequestSchema(BaseCreateRequestSchema, BaseCreateExtendedPa
                               missing='DBUSER')
     base = fields.Boolean(missing=False)
     system = fields.Boolean(missing=False)
-    
+
     @validates('name')
     def validate_user(self, value):
         if not match(r'[\w\W]+@[\w\W]+', value):
-            raise ValidationError('User name syntax must be <name>@<domain>') 
+            raise ValidationError('User name syntax must be <name>@<domain>')
 
 
 class CreateUserRequestSchema(Schema):
@@ -425,8 +424,8 @@ class CreateUser(SwaggerApiView):
             'schema': CrudApiObjectResponseSchema
         }
     })
-    
-    def post(self, controller, data, *args, **kwargs):
+
+    def post(self, controller:AuthController, data, *args, **kwargs):
         resp = controller.add_user(**data.get('user'))
         return {'uuid': resp}, 201
 
@@ -485,9 +484,9 @@ class UpdateUser(SwaggerApiView):
             'description': 'success',
             'schema': UpdateUserResponseSchema
         }
-    })    
+    })
 
-    def put(self, controller, data, oid, *args, **kwargs):
+    def put(self, controller:AuthController, data, oid, *args, **kwargs):
         """
         Update user
         Call this api to update a user
@@ -496,9 +495,9 @@ class UpdateUser(SwaggerApiView):
         role = data.pop('roles', None)
         role_perm = data.pop('perms', None)
         user = controller.get_user(oid)
-        
+
         resp = {'update': None, 'role_append': [], 'role_remove': [], 'perm_append': [], 'perm_remove': []}
-        
+
         # append, remove role
         if role is not None:
             # append role
@@ -506,7 +505,7 @@ class UpdateUser(SwaggerApiView):
                 for role, expiry in role.get('append'):
                     res = user.append_role(role, expiry_date=expiry)
                     resp['role_append'].append(res)
-        
+
             # remove role
             if 'remove' in role:
                 for role in role.get('remove'):
@@ -545,7 +544,7 @@ class UserAttribSchemaCreateParam(Schema):
 
 
 class CreateUserAttributeRequestSchema(Schema):
-    user_attribute = fields.Nested(UserAttribSchemaCreateParam, load_from='user_attribute')
+    user_attribute = fields.Nested(UserAttribSchemaCreateParam, data_key='user_attribute')
 
 
 class CreateUserAttributeBodyRequestSchema(GetApiObjectRequestSchema):
@@ -571,9 +570,9 @@ class CreateUserAttribute(SwaggerApiView):
             'description': 'success',
             'schema': CreateUserAttributeResponseSchema
         }
-    })       
+    })
 
-    def post(self, controller, data, oid, *args, **kwargs):
+    def post(self, controller:AuthController, data, oid, *args, **kwargs):
         """
         Delete user
         Call this api to delete a user
@@ -596,18 +595,18 @@ class DeleteUserAttribute(SwaggerApiView):
         204: {
             'description': 'no response'
         }
-    })    
-    
-    def delete(self, controller, data, oid, aid, *args, **kwargs):
+    })
+
+    def delete(self, controller:AuthController, data, oid, aid, *args, **kwargs):
         """
         Delete user attribute
-        Call this api to delete a user attribute   
-        """        
+        Call this api to delete a user attribute
+        """
         user = controller.get_user(oid)
         resp = user.remove_attribute(aid)
-        return (resp, 204)
+        return resp, 204
 
-## delete
+
 class DeleteUser(SwaggerApiView):
     tags = ['authorization']
     definitions = {}
@@ -616,16 +615,16 @@ class DeleteUser(SwaggerApiView):
         204: {
             'description': 'no response'
         }
-    })      
-    
-    def delete(self, controller, data, oid, *args, **kwargs):
+    })
+
+    def delete(self, controller:AuthController, data, oid, *args, **kwargs):
         """
         Delete user
-        Call this api to delete a user 
+        Call this api to delete a user
         """
         user = controller.get_user(oid)
         resp = user.delete()
-        return (resp, 204)
+        return resp, 204
 
 
 #
@@ -635,11 +634,11 @@ class ListRolesRequestSchema(PaginatedRequestQuerySchema):
     user = fields.String(context='query')
     group = fields.String(context='query')
 #     groups_N = fields.List(fields.String(example='1'), required=False, allow_none=True, context='query',
-#                           collection_format='multi', load_from='groups.N', description='groups id list')
+#                           collection_format='multi', data_key='groups.N', description='groups id list')
     names = fields.String(context='query')
     alias = fields.String(context='query')
     perms_N = fields.List(fields.String(example=''), required=False, allow_none=True, context='query',
-                          collection_format='multi', load_from='perms.N', description='permissions list')
+                          collection_format='multi', data_key='perms.N', description='permissions list')
 
 
 class ListRoleResponseSchema(ApiObjectResponseSchema):
@@ -663,14 +662,14 @@ class ListRoles(SwaggerApiView):
             'schema': ListRolesResponseSchema
         }
     })
-    
-    def get(self, controller, data, *args, **kwargs):
+
+    def get(self, controller:AuthController, data, *args, **kwargs):
         """
         List roles
         Call this api to list roles
-        """      
+        """
         objs, total = controller.get_roles(**data)
-        
+
         res = [r.info() for r in objs]
         return self.format_paginated_response(res, 'roles', total, **data)
 
@@ -694,13 +693,13 @@ class GetRole(SwaggerApiView):
             'description': 'success',
             'schema': GetRoleResponseSchema
         }
-    })      
-    
-    def get(self, controller, data, oid, *args, **kwargs):
+    })
+
+    def get(self, controller:AuthController, data, oid, *args, **kwargs):
         """
         Get role
         Call this api to get a role
-        """             
+        """
         obj = controller.get_role(oid)
         res = obj.info()
         resp = {'role': res}
@@ -734,7 +733,7 @@ class CreateRole(SwaggerApiView):
         }
     })
 
-    def post(self, controller, data, *args, **kwargs):
+    def post(self, controller:AuthController, data, *args, **kwargs):
         """
         Create role
         Call this api to create a role
@@ -774,12 +773,12 @@ class UpdateRoleResponseSchema(Schema):
     perm_append = fields.List(fields.String, dump_to='perm_append', required=True)
     perm_remove = fields.List(fields.String, dump_to='perm_remove', required=True)
 
-    
+
 class UpdateRole(SwaggerApiView):
     tags = ['authorization']
     definitions = {
-        'UpdateRoleRequestSchema':UpdateRoleRequestSchema,
-        'UpdateRoleResponseSchema':UpdateRoleResponseSchema
+        'UpdateRoleRequestSchema': UpdateRoleRequestSchema,
+        'UpdateRoleResponseSchema': UpdateRoleResponseSchema
     }
     parameters = SwaggerHelper().get_parameters(UpdateRoleBodyRequestSchema)
     parameters_schema = UpdateRoleRequestSchema
@@ -790,7 +789,7 @@ class UpdateRole(SwaggerApiView):
         }
     })
 
-    def put(self, controller, data, oid, *args, **kwargs):
+    def put(self, controller:AuthController, data, oid, *args, **kwargs):
         """
         Update role
         Call this api to update a role
@@ -798,9 +797,9 @@ class UpdateRole(SwaggerApiView):
         data = data.get('role')
         role_perm = data.pop('perms', None)
         role = controller.get_role(oid)
-        
+
         resp = {'update': None, 'perm_append': [], 'perm_remove': []}
-        
+
         # append, remove role
         if role_perm is not None:
             # append role
@@ -813,7 +812,7 @@ class UpdateRole(SwaggerApiView):
                     resp['perm_append'] = res
                 else:
                     resp['perm_append'] = []
-        
+
             # remove role
             if 'remove' in role_perm:
                 perms = []
@@ -824,9 +823,9 @@ class UpdateRole(SwaggerApiView):
                     resp['perm_remove'] = res
                 else:
                     resp['perm_remove'] = []
-        
+
         # update role
-        res = role.update(**data)        
+        res = role.update(**data)
         resp['update'] = res
         return resp
 
@@ -840,15 +839,15 @@ class DeleteRole(SwaggerApiView):
             'description': 'no response'
         }
     })
-    
-    def delete(self, controller, data, oid, *args, **kwargs):
+
+    def delete(self, controller:AuthController, data, oid, *args, **kwargs):
         """
         Delete role
         Call this api to delete a role
         """
         role = controller.get_role(oid)
         resp = role.delete()
-        return (resp, 204)
+        return resp, 204
 
 
 #
@@ -858,9 +857,9 @@ class ListGroupsRequestSchema(PaginatedRequestQuerySchema):
     user = fields.String(context='query')
     role = fields.String(context='query')
     active = fields.Boolean(context='query')
-    expiry_date = fields.String(load_from='expirydate', default='2099-12-31', context='query')
+    expiry_date = fields.String(data_key='expirydate', default='2099-12-31', context='query')
     perms_N = fields.List(fields.String(example=''), required=False, allow_none=True, context='query',
-                          collection_format='multi', load_from='perms.N', description='permissions list')
+                          collection_format='multi', data_key='perms.N', description='permissions list')
 
 
 class ListGroupsResponseSchema(PaginatedResponseSchema):
@@ -882,11 +881,11 @@ class ListGroups(SwaggerApiView):
             'schema': ListGroupsResponseSchema
         }
     })
-    
-    def get(self, controller, data, *args, **kwargs):
+
+    def get(self, controller:AuthController, data, *args, **kwargs):
         objs, total = controller.get_groups(**data)
-        
-        res = [r.info() for r in objs]  
+
+        res = [r.info() for r in objs]
         return self.format_paginated_response(res, 'groups', total, **data)
 
 
@@ -908,14 +907,14 @@ class GetGroup(SwaggerApiView):
         }
     })
 
-    def get(self, controller, data, oid, *args, **kwargs):
+    def get(self, controller:AuthController, data, oid, *args, **kwargs):
         """
         Get group
         Call this api to get a group
-        """                
+        """
         obj = controller.get_group(oid)
-        res = obj.info()      
-        resp = {'group':res} 
+        res = obj.info()
+        resp = {'group':res}
         return resp
 
 
@@ -946,8 +945,8 @@ class CreateGroup(SwaggerApiView):
             'schema': CrudApiObjectResponseSchema
         }
     })
-    
-    def post(self, controller, data, *args, **kwargs):
+
+    def post(self, controller:AuthController, data, *args, **kwargs):
         """
         Create group
         Call this api to create a group
@@ -1018,23 +1017,23 @@ class UpdateGroup(SwaggerApiView):
         }
     })
 
-    def put(self, controller, data, oid, *args, **kwargs):
+    def put(self, controller:AuthController, data, oid, *args, **kwargs):
         """
         Update group
         Call this api to update a group
-        """        
+        """
         data = data.get('group')
         group_role = data.pop('roles', None)
         group_user = data.pop('users', None)
         role_perm = data.pop('perms', None)
 
         group = controller.get_group(oid)
-        
+
         resp = {'update': None,
                 'role_append': [], 'role_remove': [],
                 'user_append': [], 'user_remove': [],
                 'perm_append': [], 'perm_remove': []}
-        
+
         # append, remove role
         if group_role is not None:
             # append role
@@ -1042,7 +1041,7 @@ class UpdateGroup(SwaggerApiView):
                 for role, expiry in group_role.get('append'):
                     res = group.append_role(role, expiry_date=expiry)
                     resp['role_append'].append(res)
-        
+
             # remove role
             if 'remove' in group_role:
                 for role in group_role.get('remove'):
@@ -1074,15 +1073,15 @@ class UpdateGroup(SwaggerApiView):
                 for user in group_user.get('append'):
                     res = group.append_user(user)
                     resp['user_append'].append(res)
-        
+
             # remove user
             if 'remove' in group_user:
                 for user in group_user.get('remove'):
                     res = group.remove_user(user)
                     resp['user_remove'].append(res)
-        
+
         # update group
-        res = group.update(**data)        
+        res = group.update(**data)
         resp['update'] = res
         return resp
 
@@ -1097,7 +1096,7 @@ class PatchGroup(SwaggerApiView):
         }
     })
 
-    def patch(self, controller, data, oid, *args, **kwargs):
+    def patch(self, controller:AuthController, data, oid, *args, **kwargs):
         """
         Delete group
         Call this api to delete a group
@@ -1115,13 +1114,13 @@ class DeleteGroup(SwaggerApiView):
         204: {
             'description': 'no response'
         }
-    })      
-    
-    def delete(self, controller, data, oid, *args, **kwargs):
+    })
+
+    def delete(self, controller:AuthController, data, oid, *args, **kwargs):
         """
         Delete group
-        Call this api to delete a group   
-        """                
+        Call this api to delete a group
+        """
         group = controller.get_group(oid)
         resp = group.delete()
         return resp, 204
@@ -1154,6 +1153,8 @@ class ListObjectsResponseSchema(PaginatedResponseSchema):
 
 
 class ListObjects(SwaggerApiView):
+    summary = 'List objects'
+    description = 'List objects'
     tags = ['authorization']
     definitions = {
         'ListObjectsResponseSchema': ListObjectsResponseSchema,
@@ -1166,17 +1167,13 @@ class ListObjects(SwaggerApiView):
             'schema': ListObjectsResponseSchema
         }
     })
-    
-    def get(self, controller, data, *args, **kwargs):
-        """
-        List objects
-        Call this api to list objects
-        """
+
+    def get(self, controller:AuthController, data, *args, **kwargs):
         objid = data.get('objid', None)
         if objid is not None:
             data['objid'] = objid.replace('_', '//')
         res, total = controller.objects.get_objects(**data)
-        
+
         return self.format_paginated_response(res, 'objects', total, **data)
 
 
@@ -1196,15 +1193,15 @@ class GetObject(SwaggerApiView):
             'schema': GetObjectResponseSchema
         }
     })
-    
-    def get(self, controller, data, oid, *args, **kwargs):
+
+    def get(self, controller:AuthController, data, oid, *args, **kwargs):
         """
         Get object
         Call this api to get a object
-        """                        
+        """
         obj = controller.objects.get_object(oid)
         res = obj
-        resp = {'object':res} 
+        resp = {'object': res}
         return resp
 
 
@@ -1212,13 +1209,13 @@ class CreateObjectParamRequestSchema(Schema):
     subsystem = fields.String(required=True)
     type = fields.String(required=True)
     objid = fields.String(required=True)
-    desc = fields.String(required=True)    
+    desc = fields.String(required=True)
 
 
 class CreateObjectRequestSchema(Schema):
     objects = fields.Nested(CreateObjectParamRequestSchema, many=True)
 
-    
+
 class CreateObjectBodyRequestSchema(Schema):
     body = fields.Nested(CreateObjectRequestSchema, context='body')
 
@@ -1241,14 +1238,15 @@ class CreateObject(SwaggerApiView):
             'schema': CreateObjectResponseSchema
         }
     })
-    
-    def post(self, controller, data, *args, **kwargs):
+
+    def post(self, controller:AuthController, data, *args, **kwargs):
         """
         Create object
         Call this api to create a object
-        """        
+        """
         resp = controller.objects.add_objects(data.get('objects'))
-        return ({'ids':resp}, 201)
+        return {'ids': resp}, 201
+
 
 class DeleteObject(SwaggerApiView):
     tags = ['authorization']
@@ -1258,31 +1256,61 @@ class DeleteObject(SwaggerApiView):
         204: {
             'description': 'no response'
         }
-    })    
-    
-    def delete(self, controller, data, oid, *args, **kwargs):
+    })
+
+    def delete(self, controller:AuthController, data, oid, *args, **kwargs):
         """
         Delete object
-        Call this api to delete a object      
-        """                        
-        resp = controller.objects.remove_object(oid=oid)
-        return (resp, 204)   
+        Call this api to delete a object
+        """
+        # oid syntax: objtype:objdef:objid
+        if oid.find(':') >= 0:
+            objtype, objdef, objid = oid.split(':')
+            objid = objid.replace('__', '//')
+            resp = controller.objects.remove_object(objdef=objdef, objtype=objtype, objid=objid)
+        # oid syntax: int or uuid
+        else:
+            resp = controller.objects.remove_object(oid=oid)
+        return resp, 204
+
 
 #
 # object types
 #
-class TypeQuerySchema(PaginatedRequestQuerySchema):
-    field = fields.String(validate=OneOf(['subsystem', 'type', 'id'],
-                          error='Field can be subsystem, type, id'),
-                          missing='id')    
-    subsystem = fields.String()
-    type = fields.String()
-    objid = fields.String()
+class ListObjectTypesRequestSchema(PaginatedRequestQuerySchema):
+    field = fields.String(validate=OneOf(['subsystem', 'type', 'id', 'objid'],
+                          error='Field can be subsystem, type, id, objid'), missing='id')
+    subsystem = fields.String(context='query')
+    type = fields.String(context='query')
+    objid = fields.String(context='query')
 
-class ListObjectTypes(ApiView):
-    parameters_schema = TypeQuerySchema
-    
-    def get(self, controller, data, *args, **kwargs):
+
+class ListObjectTypesParamsResponseSchema(Schema):
+    subsystem = fields.String(required=True, default='auth')
+    type = fields.String(required=True, default='Role')
+
+
+class ListObjectTypesResponseSchema(PaginatedResponseSchema):
+    object_types = fields.Nested(ListObjectTypesParamsResponseSchema, many=True, required=True, allow_none=True)
+
+
+class ListObjectTypes(SwaggerApiView):
+    summary = 'List object types'
+    description = 'List object types'
+    tags = ['authorization']
+    definitions = {
+        'ListObjectTypesResponseSchema': ListObjectTypesResponseSchema,
+    }
+    parameters = SwaggerHelper().get_parameters(ListObjectTypesRequestSchema)
+    parameters_schema = ListObjectTypesRequestSchema
+    responses = SwaggerApiView.setResponses({
+        200: {
+            'description': 'success',
+            'schema': ListObjectTypesResponseSchema
+        }
+    })
+
+    def get(self, controller:AuthController, data, *args, **kwargs):
         """
         List object types
         Call this api to list object types
@@ -1323,7 +1351,7 @@ class ListObjectTypes(ApiView):
             required: false
             description: Set list order
             type: string
-            enum: 
+            enum:
               - ASC
               - DESC
             default: DESC
@@ -1332,7 +1360,7 @@ class ListObjectTypes(ApiView):
             required: false
             description: Set list order field
             type: string
-            default: id              
+            default: id
         responses:
           500:
             $ref: "#/responses/InternalServerError"
@@ -1343,17 +1371,17 @@ class ListObjectTypes(ApiView):
           403:
             $ref: "#/responses/Forbidden"
           405:
-            $ref: "#/responses/MethodAotAllowed" 
+            $ref: "#/responses/MethodAotAllowed"
           408:
             $ref: "#/responses/Timeout"
           410:
-            $ref: "#/responses/Gone"            
+            $ref: "#/responses/Gone"
           415:
             $ref: "#/responses/UnsupportedMediaType"
           422:
             $ref: "#/responses/UnprocessableEntity"
           429:
-            $ref: "#/responses/TooManyRequests" 
+            $ref: "#/responses/TooManyRequests"
           200:
             description: success
             schema:
@@ -1375,13 +1403,13 @@ class ListObjectTypes(ApiView):
                   properties:
                     order:
                       type: string
-                      enum: 
+                      enum:
                         - ASC
                         - DESC
-                      example: DESC                      
+                      example: DESC
                     field:
                       type: string
-                      example: id          
+                      example: id
                 object-types:
                   type: array
                   items:
@@ -1404,216 +1432,115 @@ class ListObjectTypes(ApiView):
                           creation:
                             type: string
                             format: date-time
-                            example: 1990-12-31T23:59:59Z        
+                            example: 1990-12-31T23:59:59Z
         """
         res, total = controller.objects.get_type(**data)
         return self.format_paginated_response(res, 'object_types', total, **data)
 
 
-class ObjectTypeSchemaCreateParam(Schema):
-    subsystem = fields.String()
-    type = fields.String()
+class CreateObjectTypeParamRequestSchema(Schema):
+    subsystem = fields.String(required=True)
+    type = fields.String(required=True)
 
 
-class ObjectTypeSchemaCreate(Schema):
-    object_types = fields.Nested(ObjectTypeSchemaCreateParam, many=True, required=True, allow_none=True)
+class CreateObjectTypeRequestSchema(Schema):
+    object_types = fields.Nested(CreateObjectTypeParamRequestSchema, many=True)
 
 
-class CreateObjectType(ApiView):
-    parameters_schema = ObjectTypeSchemaCreate
+class CreateObjectTypeBodyRequestSchema(Schema):
+    body = fields.Nested(CreateObjectTypeRequestSchema, context='body')
 
-    def post(self, controller, data, *args, **kwargs):
-        """
-        Create object type
-        Call this api to create a object type
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-          - in : body
-            name: body
-            schema:
-              type: object
-              required: [object-types]
-              properties:
-                object_types:
-                  type: array
-                  items:
-                    type: object
-                    required: [subsystem, type]
-                    properties:
-                      subsystem:
-                        type: string
-                        example: auth
-                      type:
-                        type: string
-                        example: Objects
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests" 
-          201:
-            description: success
-            schema:
-              type: object
-              required: [ids]
-              properties:
-                ids:            
-                  type: array
-                  items:
-                    type: integer
-        """
-        #data = get_value(data, 'object-types', None, exception=True)
+
+class CreateObjectTypeResponseSchema(Schema):
+    ids = fields.List(fields.Int(required=True, default=10))
+
+
+class CreateObjectType(SwaggerApiView):
+    summary = 'Create object type'
+    description = 'Create object type'
+    tags = ['authorization']
+    definitions = {
+        'CreateObjectTypeRequestSchema': CreateObjectTypeRequestSchema,
+        'CreateObjectTypeResponseSchema': CreateObjectTypeResponseSchema
+    }
+    parameters = SwaggerHelper().get_parameters(CreateObjectTypeBodyRequestSchema)
+    parameters_schema = CreateObjectTypeRequestSchema
+    responses = SwaggerApiView.setResponses({
+        201: {
+            'description': 'success',
+            'schema': CreateObjectTypeResponseSchema
+        }
+    })
+
+    def post(self, controller:AuthController, data, *args, **kwargs):
         resp = controller.objects.add_types(data['object_types'])
-        return ({'ids':resp}, 201)  
-    
-class DeleteObjectType(ApiView):
-    def delete(self, controller, data, oid, *args, **kwargs):
-        """
-        Delete object type
-        Call this api to delete a object type
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]
-        parameters:
-        - in: path
-          name: oid
-          type: integer
-          required: true
-          description: object type id          
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          404:
-            $ref: "#/responses/NotFound"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests"
-          204:
-            description: No response        
-        """        
+        return {'ids': resp}, 201
+
+
+class DeleteObjectType(SwaggerApiView):
+    summary = 'Delete object type'
+    description = 'Delete object type'
+    tags = ['authorization']
+    definitions = {}
+    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
+    responses = SwaggerApiView.setResponses({
+        204: {
+            'description': 'no response'
+        }
+    })
+
+    def delete(self, controller:AuthController, data, oid, *args, **kwargs):
         resp = controller.objects.remove_type(oid=oid)
-        return (resp, 204)      
-    
+        return resp, 204
+
+
 #
 # object action
-#    
+#
+class ListObjectActionResponseSchema(Schema):
+    id = fields.Integer(required=True, default=10, description='action id')
+    value = fields.String(required=True, default='test', description='action value')
+
+
+class ListObjectActionsResponseSchema(Schema):
+    object_actions = fields.Nested(ListObjectActionResponseSchema, many=True, required=True, allow_none=True)
+    count = fields.Integer(required=True, default=10, example=10, description='number of query items returned')
+
+
 class ListObjectActions(ApiView):
-    def get(self, controller, data, *args, **kwargs):
-        """
-        List objects
-        Call this api to list objects
-        ---
-        deprecated: false
-        tags:
-          - authorization
-        security:
-          - ApiKeyAuth: []
-          - OAuth2: [auth, beehive]          
-        responses:
-          500:
-            $ref: "#/responses/InternalServerError"
-          400:
-            $ref: "#/responses/BadRequest"
-          401:
-            $ref: "#/responses/Unauthorized"
-          403:
-            $ref: "#/responses/Forbidden"
-          405:
-            $ref: "#/responses/MethodAotAllowed" 
-          408:
-            $ref: "#/responses/Timeout"
-          410:
-            $ref: "#/responses/Gone"            
-          415:
-            $ref: "#/responses/UnsupportedMediaType"
-          422:
-            $ref: "#/responses/UnprocessableEntity"
-          429:
-            $ref: "#/responses/TooManyRequests" 
-          200:
-            description: success
-            schema:
-              type: object
-              required: [object_actions, count]
-              properties:
-                count:
-                  type: integer
-                  example: 1     
-                object_actions:
-                  type: array
-                  items:
-                    type: object
-                    required: [id, value]
-                    properties:
-                      id:
-                        type: integer
-                        example: 1
-                      value:
-                        type: string
-                        example: beehive
-        """
+    summary = 'List object actions'
+    description = 'List object actions'
+    tags = ['authorization']
+    definitions = {
+        'ListObjectActionsResponseSchema': ListObjectActionsResponseSchema,
+    }
+    responses = SwaggerApiView.setResponses({
+        200: {
+            'description': 'success',
+            'schema': ListObjectActionsResponseSchema
+        }
+    })
+
+    def get(self, controller:AuthController, data, *args, **kwargs):
         res = controller.objects.get_action()
-        resp = {'object_actions':res,
-                'count':len(res)} 
-        return resp    
+        resp = {'object_actions': res, 'count': len(res)}
+        return resp
 
 
 #
 # object perms
 #
 class ListObjectPermsRequestSchema(PaginatedRequestQuerySchema):
-    field = fields.String(validate=OneOf(['subsystem', 'type', 'id', 
-                          'objid', 'aid', 'action'],
-                          error='Field can be subsystem, type, id, objid, aid, action'),
-                          missing='id')      
+    field = fields.String(validate=OneOf(['subsystem', 'type', 'id', 'objid', 'aid', 'action'],
+                          error='Field can be subsystem, type, id, objid, aid, action'), missing='id')
     subsystem = fields.String(context='query')
     type = fields.String(context='query')
     objid = fields.String(context='query')
+    oid = fields.String(context='query')
     user = fields.String(context='query')
     role = fields.String(context='query')
     group = fields.String(context='query')
-    cascade = fields.Boolean(context='query')
+    cascade = fields.Boolean(context='query', missing=False)
 
 
 class ListObjectPermsParamsResponseSchema(Schema):
@@ -1645,24 +1572,30 @@ class ListObjectPerms(SwaggerApiView):
         }
     })
 
-    def get(self, controller, data, *args, **kwargs):
+    def get(self, controller:AuthController, data, *args, **kwargs):
         """
         List object permissions
-        Call this api to list object permissions              
+        Call this api to list object permissions
         """
         user = data.get('user', None)
         role = data.get('role', None)
         group = data.get('group', None)
         objid = data.get('objid', None)
+        subsystem = data.get('subsystem', None)
+        type = data.get('type', None)
+        oid = data.get('oid', None)
+        if user is None and role is None and group is None and objid is None and subsystem is None and type is None and oid is None :
+            raise ApiManagerError("No parameters when qeryin permisssions", code=400)
+
+
         if objid is not None:
             data['objid'] = objid.replace('_', '//')
-            
         if user is not None:
             user = controller.get_user(user)
             objs, total = user.get_permissions(**data)
         elif role is not None:
             role = controller.get_role(role)
-            objs, total = role.get_permissions(**data)            
+            objs, total = role.get_permissions(**data)
         elif group is not None:
             group = controller.get_group(group)
             objs, total = group.get_permissions(**data)
@@ -1671,31 +1604,30 @@ class ListObjectPerms(SwaggerApiView):
         return self.format_paginated_response(objs, 'perms', total, **data)
 
 
-## get
-class GetObjectPermsResponseSchema(Schema):
+class GetObjectPermResponseSchema(Schema):
     perm = fields.Nested(ListObjectPermsParamsResponseSchema, required=True, allow_none=True)
 
 
-class GetObjectPerms(SwaggerApiView):
+class GetObjectPerm(SwaggerApiView):
     tags = ['authorization']
     definitions = {
-        'GetObjectPermsResponseSchema': GetObjectPermsResponseSchema,
+        'GetObjectPermResponseSchema': GetObjectPermResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
     responses = SwaggerApiView.setResponses({
         200: {
             'description': 'success',
-            'schema': GetObjectPermsResponseSchema
+            'schema': GetObjectPermResponseSchema
         }
-    })  
+    })
 
-    def get(self, controller, data, oid, *args, **kwargs):
+    def get(self, controller:AuthController, data, oid, *args, **kwargs):
         """
         List object permissions
-        Call this api to list object permissions               
-        """        
+        Call this api to list object permissions
+        """
         res = controller.objects.get_permission(oid)
-        resp = {'perm':res}
+        resp = {'perm': res}
         return resp
 
 
@@ -1703,7 +1635,7 @@ class AuthorizationAPI(ApiView):
     """Authorization API
     """
     @staticmethod
-    def register_api(module):
+    def register_api(module, **kwargs):
         rules = [
             # new routes
             ('%s/providers' % module.base_path, 'GET', ListProviders, {'secure': False}),
@@ -1746,8 +1678,8 @@ class AuthorizationAPI(ApiView):
             ('%s/objects/types' % module.base_path, 'POST', CreateObjectType, {}),
             ('%s/objects/types/<oid>' % module.base_path, 'DELETE', DeleteObjectType, {}),
             ('%s/objects/perms' % module.base_path, 'GET', ListObjectPerms, {}),
-            ('%s/objects/perms/<oid>' % module.base_path, 'GET', GetObjectPerms, {}),
+            ('%s/objects/perms/<oid>' % module.base_path, 'GET', GetObjectPerm, {}),
             ('%s/objects/actions' % module.base_path, 'GET', ListObjectActions, {}),
         ]
 
-        ApiView.register_api(module, rules)
+        ApiView.register_api(module, rules, **kwargs)

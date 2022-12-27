@@ -1,7 +1,6 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 from flask import request
 from beecell.simple import get_remote_ip
@@ -18,7 +17,7 @@ def get_ip():
 class CreateTokenRequestSchema(Schema):
     user = fields.String(required=True, error_messages={'required': 'user is required.'})
     password = fields.String(required=True, error_messages={'required': 'password is required.'})
-    login_ip = fields.String(load_from='login-ip', missing=get_ip)
+    login_ip = fields.String(data_key='login-ip', missing=get_ip)
 
     @validates('user')
     def validate_user(self, value):
@@ -64,9 +63,9 @@ class CreateToken(SwaggerApiView):
             (1, 1, 'auth', 'objects', 'ObjectContainer', '*', 1, '*'),
             (1, 1, 'auth', 'role', 'RoleContainer', '*', 1, '*'),
             (1, 1, 'auth', 'user', 'UserContainer', '*', 1, '*')]
-        operation.perms = innerperms     
+        operation.perms = innerperms
         res = controller.create_keyauth_token(**data)
-        resp = res       
+        resp = res
         return resp
 
 
@@ -74,9 +73,9 @@ class KeyAuthApi(ApiView):
     """Asymmetric key authentication API
     """
     @staticmethod
-    def register_api(module):
+    def register_api(module, **kwargs):
         rules = [
             ('%s/keyauth/token' % module.base_path, 'POST', CreateToken, {'secure': False}),
         ]
-        
-        ApiView.register_api(module, rules)
+
+        ApiView.register_api(module, rules, **kwargs)

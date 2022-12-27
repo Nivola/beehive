@@ -1,13 +1,11 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 import ujson as json
 from logging import getLogger
 from oauthlib.oauth2.rfc6749.clients.base import Client
-from oauthlib.oauth2.rfc6749.parameters import prepare_token_request,\
-    parse_token_response
+from oauthlib.oauth2.rfc6749.parameters import prepare_token_request
 from oauthlib.oauth2.rfc6749 import errors, tokens, utils
 from requests_oauthlib.oauth2_session import OAuth2Session
 import jwt
@@ -130,7 +128,7 @@ class JWTClient(Client):
         claims = {
             'iss': client_email,
             'sub': sub,
-            'aud': client_token_uri,
+            'aud': 'nivola',
             'exp': now + timedelta(seconds=60),
             'iat': now,
             'nbf': now

@@ -1,7 +1,6 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 from beehive.common.event import EventProducerRedis
 from beehive.common.test import BeehiveTestCase, runtest
@@ -21,7 +20,11 @@ class EventProducerTestCase(BeehiveTestCase):
         self.module_prefix = 'nes'
         self.endpoint_service = 'event'
 
-        redis_uri = 'redis://localhost:6379/0'
+        # redis_uri = 'redis://localhost:6379/0'
+        # redis_uri = 'redis://:ppp@192.168.49.2:31281/0'
+        redis_uri = self.redis_uri_complete
+        print('redis_uri %s' % redis_uri)
+
         redis_channel = 'beehive.event'
         self.client = EventProducerRedis(redis_uri, redis_channel)
         

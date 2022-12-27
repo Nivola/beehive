@@ -1,12 +1,12 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 from .controller import AuthController
 from .views import AuthorizationAPI, SimpleHttpAuthApi, KeyAuthApi
-from beehive.common.apimanager import ApiModule
+from beehive.common.apimanager import ApiModule , ApiManager
 from beehive.common.controller.authorization import AuthenticationManager
+from ..basic.views.status import StatusAPI
 
 
 class AuthModule(ApiModule):
@@ -14,16 +14,17 @@ class AuthModule(ApiModule):
 
     :param module: ApiModule instance
     """
-    def __init__(self, api_manger):
+    def __init__(self, api_manger: ApiManager):
         self.name = 'AuthModule'
         self.base_path = 'nas'
-        
+
         ApiModule.__init__(self, api_manger, self.name)
-         
+
         self.apis = [
             AuthorizationAPI,
             SimpleHttpAuthApi,
-            KeyAuthApi
+            KeyAuthApi,
+            StatusAPI
         ]
         self.authentication_manager = AuthenticationManager(api_manger.auth_providers)
         self.controller = AuthController(self)

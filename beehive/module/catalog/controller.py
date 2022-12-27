@@ -1,7 +1,6 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 from beecell.simple import truncate, id_gen
 from beecell.db import ModelError, QueryError, TransactionError
@@ -143,6 +142,7 @@ class CatalogController(BaseAuthController):
                 self.logger.debug('Auhtorization disabled for command')
 
             # make catalog index
+            kvargs['size'] = -1
             catalogs, total = self.manager.get(**kvargs)
             catalogs_idx = {i.id: Catalog(self, oid=i.id, objid=i.objid, name=i.name, desc=i.desc, active=True,
                                           model=i) for i in catalogs}

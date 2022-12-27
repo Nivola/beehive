@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 import ujson as json
 from datetime import datetime, timedelta
+
+from six import ensure_text
+
 from beecell.db.manager import RedisManagerError
-from beecell.simple import str2uni, get_attrib, truncate
+from beecell.simple import get_attrib, truncate
 from celery.schedules import crontab
 from networkx import DiGraph
 from networkx.readwrite import json_graph
@@ -561,7 +563,7 @@ class TaskManager(ApiObject):
         """
         if isinstance(timestamp, float):
             timestamp = datetime.fromtimestamp(timestamp)
-            return str2uni(timestamp.strftime('%d-%m-%Y %H:%M:%S.%f'))
+            return ensure_text(timestamp.strftime('%d-%m-%Y %H:%M:%S.%f'))
         return ''
 
     def __get_redis_task(self, task_id):

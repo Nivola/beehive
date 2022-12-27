@@ -1,7 +1,6 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 from datetime import datetime
 from logging import getLogger
@@ -33,9 +32,12 @@ class DisableExpiredUsersTask(BaseTask):
         :param task: parent celery task
         :param dict params: step params
         :param str step_id: step id
+        :return: res, params
         """
         expiry_date = datetime.today()
         task.controller.auth_manager.expire_users(expiry_date)
+
+        return True, params
 
 
 class RemoveExpiredRolesFromUsersTask(BaseTask):
@@ -59,9 +61,12 @@ class RemoveExpiredRolesFromUsersTask(BaseTask):
         :param task: parent celery task
         :param dict params: step params
         :param str step_id: step id
+        :return: res, params
         """
         expiry_date = datetime.today()
         task.controller.auth_manager.remove_expired_user_role(expiry_date)
+
+        return True, params
 
 
 task_manager.tasks.register(DisableExpiredUsersTask())

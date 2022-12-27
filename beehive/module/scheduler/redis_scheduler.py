@@ -1,7 +1,6 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 import logging
 import ujson as json
@@ -149,8 +148,8 @@ class RedisScheduler(Scheduler):
     def _get_redis(self):
         # set redis manager
         if self._redis_manager is None:
-            self._redis_manager = RedisManager(self.app.conf.scheduler_backend)
-        self._prefix = self.app.conf.scheduler_key_prefix
+            self._redis_manager = RedisManager(self.app.conf.CELERY_SCHEDULE_BACKEND)
+        self._prefix = self.app.conf.CELERY_REDIS_SCHEDULER_KEY_PREFIX
 
     def open_schedule(self, with_last_run_at=False):
         try:
@@ -168,7 +167,7 @@ class RedisScheduler(Scheduler):
                     val = {}
                 name = val.get('name')
                 options = val.get('options', {})
-                options.update({'queue': self.app.conf.task_default_queue})
+                options.update({'queue': self.app.conf.CELERY_TASK_DEFAULT_QUEUE})
                 if with_last_run_at is True:
                     self._store[name] = self.Entry.create(self.app, name, val.get('task'), val.get('schedule'),
                                                           args=val.get('args'), kwargs=val.get('kwargs'),
@@ -190,7 +189,7 @@ class RedisScheduler(Scheduler):
         try:
             self._get_redis()
             # set queue
-            schedule['options'].update({'queue': self.app.conf.task_default_queue})
+            schedule['options'].update({'queue': self.app.conf.CELERY_TASK_DEFAULT_QUEUE})
 
             key = self._prefix + '.' + schedule.get('name')
             res = self._redis_manager.set(key, json.dumps(schedule))

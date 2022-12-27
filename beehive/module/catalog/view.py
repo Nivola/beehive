@@ -1,7 +1,6 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 from beehive.common.apimanager import ApiView, PaginatedRequestQuerySchema,\
     PaginatedResponseSchema, ApiObjectResponseSchema, SwaggerApiView,\
@@ -41,7 +40,7 @@ class ListCatalogs(SwaggerApiView):
             'schema': ListCatalogsResponseSchema
         }
     })
-    
+
     def get(self, controller, data, *args, **kwargs):
         catalogs, total = controller.get_catalogs(**data)
         res = [r.info() for r in catalogs]
@@ -76,11 +75,11 @@ class GetCatalog(SwaggerApiView):
             'schema': GetCatalogResponseSchema
         }
     })
-    
+
     def get(self, controller, data, oid, *args, **kwargs):
         catalog = controller.get_catalog(oid)
         res = catalog.detail()
-        resp = {'catalog':res}        
+        resp = {'catalog':res}
         return resp
 
 
@@ -93,16 +92,17 @@ class GetCatalogPerms(SwaggerApiView):
         'ApiObjectPermsResponseSchema': ApiObjectPermsResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(ApiObjectPermsRequestSchema)
-    parameters_schema = PaginatedRequestQuerySchema
+    parameters_schema = ApiObjectPermsRequestSchema
     responses = SwaggerApiView.setResponses({
         200: {
             'description': 'success',
             'schema': ApiObjectPermsResponseSchema
         }
     })
-    
+
     def get(self, controller, data, oid, *args, **kwargs):
         catalog = controller.get_catalog(oid)
+        data.pop('oid', None)
         res, total = catalog.authorization(**data)
         return self.format_paginated_response(res, 'perms', total, **data)
 
@@ -137,7 +137,7 @@ class CreateCatalog(SwaggerApiView):
             'schema': CrudApiObjectResponseSchema
         }
     })
-    
+
     def post(self, controller, data, *args, **kwargs):
         resp = controller.add_catalog(**data.get('catalog'))
         return {'uuid': resp}, 201
@@ -173,12 +173,12 @@ class UpdateCatalog(SwaggerApiView):
             'schema': CrudApiObjectResponseSchema
         }
     })
-    
+
     def put(self, controller, data, oid, *args, **kwargs):
         catalog = controller.get_catalog(oid)
         resp = catalog.update(**data.get('catalog'))
         return {'uuid':resp}
-    
+
 
 class DeleteCatalog(SwaggerApiView):
     summary = 'Delete catalog'
@@ -191,7 +191,7 @@ class DeleteCatalog(SwaggerApiView):
             'description': 'no response'
         }
     })
-    
+
     def delete(self, controller, data, oid, *args, **kwargs):
         catalog = controller.get_catalog(oid)
         resp = catalog.delete()
@@ -236,7 +236,7 @@ class ListEndpoints(SwaggerApiView):
             'schema': ListEndpointsResponseSchema
         }
     })
-    
+
     def get(self, controller, data, *args, **kwargs):
         endpoints, total = controller.get_endpoints(**data)
         res = [r.info() for r in endpoints]
@@ -261,13 +261,13 @@ class GetEndpoint(SwaggerApiView):
             'schema': GetEndpointResponseSchema
         }
     })
-    
-    def get(self, controller, data, oid, *args, **kwargs):      
+
+    def get(self, controller, data, oid, *args, **kwargs):
         endpoint = controller.get_endpoint(oid)
         res = endpoint.detail()
-        resp = {'endpoint':res}        
+        resp = {'endpoint':res}
         return resp
-        
+
 
 class GetEndpointPerms(SwaggerApiView):
     summary = 'Get catalog endpoint permissions'
@@ -285,11 +285,11 @@ class GetEndpointPerms(SwaggerApiView):
             'schema': ApiObjectPermsResponseSchema
         }
     })
-    
+
     def get(self, controller, data, oid, *args, **kwargs):
         endpoint = controller.get_endpoint(oid)
         res, total = endpoint.authorization(**data)
-        return self.format_paginated_response(res, 'perms', total, **data)    
+        return self.format_paginated_response(res, 'perms', total, **data)
 
 
 class CreateEndpointParamRequestSchema(Schema):
@@ -325,7 +325,7 @@ class CreateEndpoint(SwaggerApiView):
             'schema': CrudApiObjectResponseSchema
         }
     })
-    
+
     def post(self, controller, data, *args, **kwargs):
         data = data.get('endpoint')
         endpoint = data.pop('catalog')
@@ -339,7 +339,7 @@ class UpdateEndpointParamRequestSchema(Schema):
     desc = fields.String()
     service = fields.String()
     uri = fields.String()
-    active = fields.Boolean() 
+    active = fields.Boolean()
 
 
 class UpdateEndpointRequestSchema(Schema):
@@ -366,12 +366,12 @@ class UpdateEndpoint(SwaggerApiView):
             'schema': CrudApiObjectResponseSchema
         }
     })
-               
+
     def put(self, controller, data, oid, *args, **kwargs):
         endpoint = controller.get_endpoint(oid)
         resp = endpoint.update(**data.get('endpoint'))
         return {'uuid': resp}
-    
+
 
 class DeleteEndpoint(SwaggerApiView):
     summary = 'Delete catalog endpoint'
@@ -384,7 +384,7 @@ class DeleteEndpoint(SwaggerApiView):
             'description': 'no response'
         }
     })
-    
+
     def delete(self, controller, data, oid, *args, **kwargs):
         endpoint = controller.get_endpoint(oid)
         resp = endpoint.delete()
@@ -395,7 +395,7 @@ class CatalogAPI(ApiView):
     """CatalogAPI
     """
     @staticmethod
-    def register_api(module):
+    def register_api(module, **kwargs):
         rules = [
             ('%s/catalogs' % module.base_path, 'GET', ListCatalogs, {}),
             ('%s/catalogs/<oid>' % module.base_path, 'GET', GetCatalog, {}),
@@ -414,4 +414,4 @@ class CatalogAPI(ApiView):
             ('%s/endpoints/<oid>' % module.base_path, 'DELETE', DeleteEndpoint, {}),
         ]
 
-        ApiView.register_api(module, rules)
+        ApiView.register_api(module, rules, **kwargs)

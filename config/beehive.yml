@@ -1,7 +1,6 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 ---
 schema: resource
@@ -12,30 +11,35 @@ db-uris:
   resource:
   service:
 redis:
-  uri:
-  cluster:
+  uri_complete: redis://:ppp@<MINIKUBE_IP>:31281/0
+  uri: <MINIKUBE_IP>;<REDIS_SERVICE_PORT>;0
+  cluster: 
 worker:
-  result: redis://localhost:6379/0
-  broker: redis://localhost:6379/0
+  result: redis://<MINIKUBE_IP>:<REDIS_SERVICE_PORT>/0
+  broker: redis://<MINIKUBE_IP>:<REDIS_SERVICE_PORT>/0
+  #result: redis://localhost:6379/0
+  #broker: redis://localhost:6379/0
   queue: celery.auth
 endpoints:
-  auth: http://localhost:8080
-  event: http://localhost:8081
+  auth: https://<HOST_NGINX>:443/mylab
+  event: https://<HOST_NGINX>:443/mylab
+  ssh: https://<HOST_NGINX>:443/mylab
 swagger:
-  auth: http://localhost:8080/apispec_1.json
-  event: http://localhost:8081/apispec_1.json
+  auth: http://<MINIKUBE_IP>:30000/apispec_1.json
+  event: http://<MINIKUBE_IP>:30001/apispec_1.json
+  ssh: http://<MINIKUBE_IP>:30001/apispec_1.json
 users:
  admin:
    user: admin@local
-   pwd: admin
+   pwd: beehive_admin
    secret:
    ip: localhost
    auth: keyauth
    catalog: beehive-internal
  test1:
-   user: test1@local
-   pwd: test1
+   user: name1@local
+   pwd: xxxxxxxxx
    secret:
-   ip: localhost
+   ip: 192.168.49.111
    auth: keyauth
    catalog: beehive-internal

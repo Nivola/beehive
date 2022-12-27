@@ -1,7 +1,6 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 import unittest
 from beehive.common.test import runtest, BeehiveTestCase, assert_exception
@@ -82,6 +81,8 @@ class AuthTestCase(BeehiveTestCase):
         self.module = 'auth'
         self.module_prefix = 'nas'
         self.endpoint_service = 'auth'
+        # run with admin for right permission
+        # self.run_test_user = "admin"
         
     def tearDown(self):
         BeehiveTestCase.tearDown(self)

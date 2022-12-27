@@ -1,7 +1,6 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 import gevent.monkey
 gevent.monkey.patch_all()
@@ -26,6 +25,7 @@ class CatalogTaskManagerTestCase(BeehiveTestCase):
                                task_queue=self.worker.get('queue'))
         configure_task_scheduler(self.worker.get('broker'), self.worker.get('result'),
                                  task_queue=self.worker.get('queue'))
+        self.logger.info('end setup')
 
     def tearDown(self):
         BeehiveTestCase.tearDown(self)
@@ -42,12 +42,18 @@ class CatalogTaskManagerTestCase(BeehiveTestCase):
             'objid': 'objid1'
         }
         data = {}
+        self.logger.info('AAA passo 1')
         params.update(user)
+        self.logger.info('AAA passo 2')
         params.update(entity)
+        self.logger.info('AAA passo 3')
         params.update(data)
+        self.logger.info('AAA passo 4')
         task = signature('beehive.module.auth.tasks_v2.disable_expired_users_task', [params], app=task_manager,
                          queue=self.worker.get('queue'))
+        self.logger.info('AAA passo 5')
         res = task.apply_async()
+        self.logger.info('AAA passo 6')
         self.logger.debug('start task: %s' % res)
 
     def test_remove_expired_roles_from_users(self):

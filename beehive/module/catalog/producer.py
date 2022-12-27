@@ -1,7 +1,6 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 from logging import getLogger
 import gevent
@@ -82,6 +81,46 @@ class CatalogProducerRedis(CatalogProducer):
                                  routing_key=self.routing_key,
                                  expiration=60,
                                  delivery_mode=1)
+                self.logger.debug('Send catalog endpoint : %s' % msg)
+        except exceptions.ConnectionLimitExceeded as ex:
+            self.logger.error('Endpoint can not be send: %s' % ex)
+        except Exception as ex:
+            self.logger.error('Endpoint can not be send: %s' % ex, exc_info=True)
+
+
+class CatalogProducerKombu(CatalogProducer):
+    def __init__(self, broker_uri, broker_exchange):
+        """Kombu catalog producer
+
+        :param broker_uri: broker uri
+        :param broker_exchange: kombu channel
+        """
+        CatalogProducer.__init__(self)
+
+        self.broker_uri = broker_uri
+        self.broker_exchange = broker_exchange
+
+        self.conn = Connection(broker_uri)
+        self.exchange = Exchange(self.broker_exchange, type='direct')
+        self.queue_name = '%s.queue' % self.broker_exchange
+        self.routing_key = '%s.key' % self.broker_exchange
+        self.queue = Queue(self.queue_name, self.exchange, routing_key=self.routing_key)
+
+    def _send(self, name, desc, service, catalog, uri):
+        try:
+            # generate endpoint
+            endpoint = CatalogEndpoint(name, desc, service, catalog, uri)
+            with producers[self.conn].acquire() as producer:
+                msg = endpoint.dict()
+                producer.publish(msg,
+                                 serializer='json',
+                                 compression='bzip2',
+                                 exchange=self.exchange,
+                                 declare=[self.exchange],
+                                 routing_key=self.routing_key,
+                                 # expiration=60,
+                                 # delivery_mode=1
+                                 )
                 self.logger.debug('Send catalog endpoint : %s' % msg)
         except exceptions.ConnectionLimitExceeded as ex:
             self.logger.error('Endpoint can not be send: %s' % ex)

@@ -1,9 +1,9 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 import logging
+from re import match
 from time import time
 from functools import wraps
 from uuid import uuid4
@@ -14,15 +14,17 @@ from beecell.simple import import_class
 from beecell.simple import encrypt_data as simple_encrypt_data
 from beecell.simple import decrypt_data as simple_decrypt_data
 from beecell.db import TransactionError, QueryError, ModelError
-from multiprocessing import current_process
-from threading import current_thread
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from beehive.common.apimanager import ApiController
+
 
 logger = logging.getLogger(__name__)
 logger.manager.setLoggerClass(ExtendedLogger)
 
 # container connection
 try:
-    import gevent
+    import gevent.local
     container = gevent.local.local() #: thread/gevent local container
 except:
     import threading
@@ -32,7 +34,7 @@ container.connection = None
 
 # beehive operation
 try:
-    import gevent
+    import gevent.local
     operation = gevent.local.local() #: thread/gevent local operation
 except:
     import threading
@@ -100,19 +102,19 @@ def set_operation_params(param):
     val = param.get('user', '--')
     if val != '--':
         operation.user = val
-    
+
     val = param.get('perms', '--')
     if val != '--':
         operation.perms = val
-    
+
     val = param.get('opid', '--')
     if val != '--':
         operation.opid = val
-    
+
     val = param.get('transaction', '--')
     if val != '--':
         operation.transaction = val
-    
+
     val = param.get('encryption_key', '--')
     if val != '--':
         operation.encryption_key = val
@@ -133,7 +135,7 @@ def core_transaction(fn, rollback_throwable, *args, **kwargs):
 
     # lock = RLock()
     # lock.acquire()
-    
+
     commit = False
     if operation.transaction is None:
         operation.transaction = id_gen()
@@ -141,11 +143,11 @@ def core_transaction(fn, rollback_throwable, *args, **kwargs):
         logger.debug2('Create transaction %s' % operation.transaction)
     else:
         logger.debug2('Use transaction %s' % operation.transaction)
-    
+
     # set distributed transaction id to 0 for single transaction
     try:
         operation.id
-    except: 
+    except:
         operation.id = str(uuid4())
 
     try:
@@ -155,18 +157,17 @@ def core_transaction(fn, rollback_throwable, *args, **kwargs):
             params.append(str(item))
         for k, v in kwargs.items():
             params.append(u"'%s':'%s'" % (k, v))
-            
+
         # call internal function
         res = fn(*args, **kwargs)
-        
+
         if commit is True:
             session.commit()
             logger.log(-10, 'Commit transaction %s' % operation.transaction)
             operation.transaction = None
-            
+
         elapsed = round(time() - start, 4)
         logger.debug2(OK_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params),  elapsed))
-                    
         return res
     except ModelError as ex:
         elapsed = round(time() - start, 4)
@@ -180,17 +181,17 @@ def core_transaction(fn, rollback_throwable, *args, **kwargs):
         elapsed = round(time() - start, 4)
         logger.error(KO_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params), elapsed))
         rollback_if_throwable(session, commit, rollback_throwable)
-        raise TransactionError(str(ex), code=400)
+        raise TransactionError(ex, code=400)
     except IntegrityError as ex:
         elapsed = round(time() - start, 4)
         logger.error(KO_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params), elapsed))
         rollback_if_throwable(session, commit, rollback_throwable)
-        raise TransactionError(str(ex), code=409)
+        raise TransactionError(ex, code=409)
     except DBAPIError as ex:
         elapsed = round(time() - start, 4)
         logger.error(KO_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params), elapsed))
         rollback_if_throwable(session, commit, rollback_throwable)
-        raise TransactionError(str(ex), code=400)
+        raise TransactionError(ex, code=400)
     except TransactionError as ex:
         elapsed = round(time() - start, 4)
         logger.error(KO_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params), elapsed))
@@ -200,7 +201,7 @@ def core_transaction(fn, rollback_throwable, *args, **kwargs):
         elapsed = round(time() - start, 4)
         logger.error(KO_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params), elapsed))
         rollback_if_throwable(session, commit, rollback_throwable)
-        raise TransactionError(str(ex), code=400)
+        raise TransactionError(ex, code=400)
     finally:
         if not rollback_throwable:
             if commit is True and operation.transaction is not None:
@@ -208,15 +209,13 @@ def core_transaction(fn, rollback_throwable, *args, **kwargs):
                 logger.log(-10, 'Commit transaction on exception %s' % operation.transaction)
                 operation.transaction = None
 
-        # lock.release()
-
 
 def transaction2(rollback_throwable=True):
     """Use this decorator to transform a function that contains delete, insert and update statement in a transaction.
     If rollback_throwable is false than then commits anyway
-    
+
     Example::
-    
+
         @transaction
         def fn(*args, **kwargs):
             ....
@@ -230,11 +229,10 @@ def transaction2(rollback_throwable=True):
 
 
 def transaction(fn):
-    """Use this decorator to transform a function that contains delete, insert
-    and update statement in a transaction.
-     
+    """Use this decorator to transform a function that contains delete, insert and update statement in a transaction.
+
     Example::
-     
+
         @transaction
         def fn(*args, **kwargs):
             ....
@@ -258,14 +256,13 @@ def rollback_if_throwable(session, status, throwable):
 
 
 def query(fn):
-    """Use this decorator to transform a function that contains delete, insert
-    and update statement in a transaction.
-    
+    """Use this decorator to transform a function that contains a query.
+
     Example::
-    
+
         @query
         def fn(*args, **kwargs):
-            ....    
+            ....
     """
     @wraps(fn)
     def query_wrap(*args, **kwargs): #1
@@ -277,9 +274,9 @@ def query(fn):
         # set distributed transaction id to 0 for single transaction
         try:
             operation.id
-        except: 
+        except:
             operation.id = str(uuid4())
-        
+
         try:
             # format request params
             params = []
@@ -296,8 +293,8 @@ def query(fn):
         except ModelError as ex:
             elapsed = round(time() - start, 4)
             logger.error(KO_Q_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params), elapsed))
-            logger.error(ex.desc)
-            raise QueryError(ex.desc, code=ex.code)
+            logger.error(str(ex))
+            raise QueryError(str(ex), code=ex.code)
         except ArgumentError as ex:
             elapsed = round(time() - start, 4)
             logger.error(KO_Q_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params), elapsed))
@@ -311,8 +308,8 @@ def query(fn):
         except TypeError as ex:
             elapsed = round(time() - start, 4)
             logger.error(KO_Q_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params), elapsed))
-            logger.error(ex)
-            raise QueryError(ex, code=400)
+            logger.error(str(ex))
+            raise QueryError(str(ex), code=400)
         except Exception as ex:
             elapsed = round(time() - start, 4)
             logger.error(KO_Q_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params), elapsed))
@@ -323,26 +320,27 @@ def query(fn):
 
 def trace(entity=None, op='view', noargs=False):
     """Use this decorator to send an event after function execution.
-    
+
     :param entity: beehive authorized entity [optional]
     :param op: operation. Can be <operation>.view|insert|update|delete|use|* <operation>. is optional
     :param noargs: if True do not trace command args and kvargs [default=False]
-    
+
     Example::
-    
+
         @trace(entity=Role, op='view')
         def fn(*args, **kwargs):
-            ....    
+            ....
     """
     def wrapper(fn):
         @wraps(fn)
-        def decorated(*args, **kwargs):
+        def trace_internal(*args, **kwargs):
             # get start time
             start = time()
-            
-            args = list(args)            
-            inst = args.pop(0)  
-            
+
+            args = list(args)
+            inst = args.pop(0)
+            method = '%s.%s.%s' % (inst.__module__, fn.__name__, op)
+
             def get_entity(entity):
                 if entity is None:
                     return inst
@@ -356,7 +354,7 @@ def trace(entity=None, op='view', noargs=False):
 
                 # calculate elasped time
                 elapsed = round(time() - start, 4)
-                method = '%s.%s.%s' % (inst.__module__, fn.__name__, op)
+
                 if noargs is True:
                     get_entity(entity).send_event(method, args=[], params={}, elapsed=elapsed)
                 else:
@@ -375,16 +373,17 @@ def trace(entity=None, op='view', noargs=False):
                     except:
                         ex_escaped = ex
                 if noargs is True:
-                    get_entity(entity).send_event(op, args=[], params={}, exception=ex_escaped, elapsed=elapsed)
+                    get_entity(entity).send_event(method, args=[], params={}, exception=ex_escaped, elapsed=elapsed)
                 else:
-                    get_entity(entity).send_event(op, args=args, params=kwargs, exception=ex_escaped, elapsed=elapsed)
+                    get_entity(entity).send_event(method, args=args, params=kwargs, exception=ex_escaped,
+                                                  elapsed=elapsed)
                 raise
             return ret
-        return decorated
+        return trace_internal
     return wrapper
 
 
-def cache(key, ttl=600):
+def cache(key, ttl=600, pickling=False):
     """Use this decorator to get an item from cache if exist or execute a function and set item in cache for future
     query.
 
@@ -398,7 +397,7 @@ def cache(key, ttl=600):
     """
     def wrapper(fn):
         @wraps(fn)
-        def decorated(controller, postfix, *args, **kwargs):
+        def cache_internal(controller, postfix:str, *args, **kwargs):
             # get start time
             start = time()
 
@@ -410,10 +409,7 @@ def cache(key, ttl=600):
                 if operation.cache is False or ret is None or ret == {} or ret == []:
                     # save data in cache
                     ret = fn(controller, postfix, *args, **kwargs)
-                    controller.cache.set(internalkey, ret, ttl=ttl)
-                else:
-                    # extend key time
-                    controller.cache.expire(key, ttl)
+                    controller.cache.set(internalkey, ret, ttl=ttl, pickling=pickling)
 
                 # calculate elasped time
                 elapsed = round(time() - start, 4)
@@ -423,8 +419,75 @@ def cache(key, ttl=600):
                 raise
             return ret
 
-        return decorated
+        return cache_internal
 
+    return wrapper
+
+
+def cache_query(key, ttl=600):
+    """Use this decorator to get an item from cache if exist or execute a function and set item in cache for future
+    query.
+
+    :param key: cache item key
+    :param ttl: cache item ttl [default=600]
+    Example::
+
+        @cache_query('prova')
+        def fn(manager, entityclass, oid, *args, **kwargs):
+            ....
+    """
+    def wrapper(fn):
+        @wraps(fn)
+        def cache_query_internal(manager, entityclass, oid, *args, **kwargs):
+            # get start time
+            start = time()
+
+            internalkey = '%s.%s.%s' % (entityclass.__name__, key, oid)
+
+            model_to_dict = getattr(entityclass, 'model_to_dict', None)
+            dict_to_model = getattr(entityclass, 'dict_to_model', None)
+            if model_to_dict is None:
+                raise ModelError('entity model doe not have model_to_dict. These operation can not be applied')
+            if dict_to_model is None:
+                raise ModelError('entity model doe not have dict_to_model. These operation can not be applied')
+
+            # execute inner function
+            try:
+                if match('[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', str(oid)) \
+                        or match('^\d+$', str(oid)):
+                    ret = manager.cache.get(internalkey)
+                else:
+                    ret = None
+                if operation.cache is False or ret is None or ret == {} or ret == []:
+                    # exec query operation
+                    ret = fn(manager, entityclass, oid, *args, **kwargs)
+
+                    if isinstance(ret, list):
+                        ret = list(map(model_to_dict, ret))
+                    else:
+                        ret = model_to_dict(ret)
+
+                    # save data in cache
+                    manager.cache.set(internalkey, ret, ttl=ttl)
+                else:
+                    # extend key time
+                    manager.cache.expire(internalkey, ttl)
+
+                # calculate elasped time
+                elapsed = round(time() - start, 4)
+                logger.debug2('Cache %s:%s [%ss]' % (internalkey, truncate(ret), elapsed))
+            except Exception as ex:
+                logger.error(ex)
+                raise
+
+            if isinstance(ret, list):
+                ret = list(map(dict_to_model, ret))
+            else:
+                ret = dict_to_model(ret)
+
+            return ret
+
+        return cache_query_internal
     return wrapper
 
 

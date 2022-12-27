@@ -1,7 +1,6 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 import logging
 
@@ -148,8 +147,8 @@ def start_task_manager(params):
     if log_path is not None:
         log_path = run_path = ensure_text(log_path)
     if log_path is None:
-        log_path = '/var/log/%s/%s' % (params['api_package'], params['api_env'])
-        run_path = '/var/run/%s/%s' % (params['api_package'], params['api_env'])
+        log_path = '/var/log/%s/%s/' % (params['api_package'], params['api_env'])
+        run_path = '/var/run/%s/%s/' % (params['api_package'], params['api_env'])
 
     file_name = log_path + name + '.log'
     pid_name = run_path + name + '.pid'
@@ -216,8 +215,8 @@ def start_scheduler(params):
     if log_path is not None:
         log_path = run_path = ensure_text(log_path)
     if log_path is None:
-        log_path = '/var/log/%s/%s' % (params['api_package'], params['api_env'])
-        run_path = '/var/run/%s/%s' % (params['api_package'], params['api_env'])
+        log_path = '/var/log/%s/%s/' % (params['api_package'], params['api_env'])
+        run_path = '/var/run/%s/%s/' % (params['api_package'], params['api_env'])
 
     file_name = log_path + name + '.log'
     pid_name = run_path + name + '.pid'

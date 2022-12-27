@@ -1,7 +1,6 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 from beehive.common.apimanager import ApiView
 
@@ -28,10 +27,10 @@ class ConfigAPI(ApiView):
     """
     """
     @staticmethod
-    def register_api(module):
+    def register_api(module, **kwargs):
         rules = [
-            ('configs/<app>', 'GET', ListConfig, {}),           
+            ('configs/<app>', 'GET', ListConfig, {}),
             ('configs', 'GET', FilterConfig, {})
         ]
 
-        ApiView.register_api(module, rules)
+        ApiView.register_api(module, rules, **kwargs)

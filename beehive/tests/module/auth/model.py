@@ -1,7 +1,6 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2019 CSI-Piemonte
-# (C) Copyright 2019-2020 CSI-Piemonte
+# (C) Copyright 2018-2022 CSI-Piemonte
 
 import unittest
 from beehive.common.data import operation
@@ -318,7 +317,7 @@ class AuthManagerTestCase(BeehiveTestCase):
         name = 'user1'
         res = self.manager.update_user(name=name, new_name='user2', 
                                        new_description='user2_desc', 
-                                       new_active=False, new_password='mypass2')
+                                       new_active=False, new_password='xxx')
         self.assertEqual(res, True)
 
     def test_append_user_role(self):
