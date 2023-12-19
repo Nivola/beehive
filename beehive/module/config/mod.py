@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
 from beehive.common.apimanager import ApiModule
 from beehive.module.config.view import ConfigAPI
@@ -12,12 +12,13 @@ class ConfigModule(ApiModule):
 
     :param module: ApiModule instance
     """
+
     def __init__(self, api_manger):
         """ """
-        self.name = 'ConfigModule'
-        
+        self.name = "ConfigModule"
+
         ApiModule.__init__(self, api_manger, self.name)
-        
+
         self.apis = [ConfigAPI]
         self.controller = ConfigController(self)
 

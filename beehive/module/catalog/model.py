@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
 import logging
 from sqlalchemy import Column, Integer, String, DateTime, Boolean
@@ -17,10 +17,10 @@ logger = logging.getLogger(__name__)
 
 
 class Catalog(Base, BaseEntity):
-    __tablename__ = 'catalog'
-    
+    __tablename__ = "catalog"
+
     zone = Column(String(50), nullable=False)
-    
+
     def __init__(self, objid, name, desc, zone, active=True):
         BaseEntity.__init__(self, objid, name, desc, active)
 
@@ -28,26 +28,33 @@ class Catalog(Base, BaseEntity):
 
 
 class CatalogEndpoint(Base, BaseEntity):
-    __tablename__ = 'catalog_endpoint'
+    __tablename__ = "catalog_endpoint"
 
-    catalog_id = Column(Integer(), ForeignKey('catalog.id'))
+    catalog_id = Column(Integer(), ForeignKey("catalog.id"))
     catalog = relationship("Catalog")
     service = Column(String(30), nullable=False)
     uri = Column(String(100), nullable=False)
     creation_date = Column(DateTime())
     modification_date = Column(DateTime())
-    
+
     def __init__(self, objid, name, service, desc, catalog, uri, active=True):
         BaseEntity.__init__(self, objid, name, desc, active)
-        
+
         self.service = service
         self.desc = desc
         self.catalog_id = catalog
         self.uri = uri
 
     def __repr__(self):
-        return '<CatalogEndpoint id=%s, uuid=%s, obid=%s, name=%s, service=%s, catalog=%s, active=%s, >' % (
-            self.id, self.uuid, self.objid, self.name, self.service, self.catalog, self.active)
+        return "<CatalogEndpoint id=%s, uuid=%s, obid=%s, name=%s, service=%s, catalog=%s, active=%s, >" % (
+            self.id,
+            self.uuid,
+            self.objid,
+            self.name,
+            self.service,
+            self.catalog,
+            self.active,
+        )
 
 
 class CatalogDbManager(AbstractDbManager):
@@ -64,9 +71,9 @@ class CatalogDbManager(AbstractDbManager):
         """
         try:
             engine = create_engine(db_uri)
-            engine.execute('SET FOREIGN_KEY_CHECKS=1;')
+            engine.execute("SET FOREIGN_KEY_CHECKS=1;")
             Base.metadata.create_all(engine)
-            logger.info('Create tables on : %s' % db_uri)
+            logger.info("Create tables on : %s" % db_uri)
             del engine
         except exc.DBAPIError as e:
             raise Exception(e)
@@ -79,9 +86,9 @@ class CatalogDbManager(AbstractDbManager):
         """
         try:
             engine = create_engine(db_uri)
-            engine.execute('SET FOREIGN_KEY_CHECKS=0;')
+            engine.execute("SET FOREIGN_KEY_CHECKS=0;")
             Base.metadata.drop_all(engine)
-            logger.info('Remove tables from : %s' % db_uri)
+            logger.info("Remove tables from : %s" % db_uri)
             del engine
         except exc.DBAPIError as e:
             raise Exception(e)
@@ -91,7 +98,7 @@ class CatalogDbManager(AbstractDbManager):
     #
     def get(self, *args, **kvargs):
         """Get catalog.
-        
+
         :param tags: list of permission tags
         :param name: name like [optional]
         :param active: active [optional]
@@ -103,16 +110,16 @@ class CatalogDbManager(AbstractDbManager):
         :param size: number of users to show in list per page [default=0]
         :param order: sort order [default=DESC]
         :param field: sort field [default=id]
-        :return: list of Catalog     
+        :return: list of Catalog
         :raises QueryError: raise :class:`QueryError`
         """
         filters = []
-        if 'zone' in kvargs and kvargs.get('zone') is not None:
-            filters = ['AND zone=:zone']
-        
+        if "zone" in kvargs and kvargs.get("zone") is not None:
+            filters = ["AND zone=:zone"]
+
         res, total = self.get_paginated_entities(Catalog, filters=filters, *args, **kvargs)
         return res, total
-    
+
     def add(self, objid, name, desc, zone):
         """Add catalog.
 
@@ -125,7 +132,7 @@ class CatalogDbManager(AbstractDbManager):
         """
         res = self.add_entity(Catalog, objid, name, desc, zone)
         return res
-        
+
     def update(self, *args, **kvargs):
         """Update catalog.
 
@@ -137,8 +144,8 @@ class CatalogDbManager(AbstractDbManager):
         :raises TransactionError: raise :class:`TransactionError`
         """
         res = self.update_entity(Catalog, *args, **kvargs)
-        return res  
-    
+        return res
+
     def delete(self, *args, **kvargs):
         """Remove catalog.
         :param int oid: entity id. [optional]
@@ -147,13 +154,13 @@ class CatalogDbManager(AbstractDbManager):
         """
         res = self.remove_entity(Catalog, *args, **kvargs)
         return res
-    
+
     #
     # CatalogEndpoint
     #
     def get_endpoints(self, *args, **kvargs):
         """Get endpoints.
-        
+
         :param tags: list of permission tags
         :param name: name like [optional]
         :param active: active [optional]
@@ -166,21 +173,21 @@ class CatalogDbManager(AbstractDbManager):
         :param size: number of users to show in list per page [default=0]
         :param order: sort order [default=DESC]
         :param field: sort field [default=id]
-        :return: list of :class:`CatalogEndpoint`            
+        :return: list of :class:`CatalogEndpoint`
         :raises QueryError: raise :class:`QueryError`
         """
         filters = []
-        if 'service' in kvargs and kvargs.get('service') is not None:
-            filters.append('AND service=:service')
-        if 'catalog' in kvargs and kvargs.get('catalog') is not None:
-            filters.append('AND catalog_id=:catalog')        
-        
+        if "service" in kvargs and kvargs.get("service") is not None:
+            filters.append("AND service=:service")
+        if "catalog" in kvargs and kvargs.get("catalog") is not None:
+            filters.append("AND catalog_id=:catalog")
+
         res, total = self.get_paginated_entities(CatalogEndpoint, filters=filters, *args, **kvargs)
-        return res, total    
-        
+        return res, total
+
     def add_endpoint(self, objid, name, service, desc, catalog, uri, active=True):
         """Add endpoint.
-  
+
         :param objid: endpoint objid
         :param name: endpoint name
         :param service: service
@@ -190,10 +197,10 @@ class CatalogDbManager(AbstractDbManager):
         :param active: endpoint state: True or False
         :return: :class:`CatalogEndpoint`
         :raises TransactionError: raise :class:`TransactionError`
-        """        
+        """
         res = self.add_entity(CatalogEndpoint, objid, name, service, desc, catalog, uri, active)
         return res
-    
+
     def update_endpoint(self, *args, **kvargs):
         """Update catalog endpoint.
 
@@ -207,8 +214,8 @@ class CatalogDbManager(AbstractDbManager):
         :raises TransactionError: raise :class:`TransactionError`
         """
         res = self.update_entity(CatalogEndpoint, *args, **kvargs)
-        return res  
-    
+        return res
+
     def delete_endpoint(self, *args, **kvargs):
         """Remove catalog endpoint.
 
@@ -217,4 +224,4 @@ class CatalogDbManager(AbstractDbManager):
         :raises TransactionError: raise :class:`TransactionError`
         """
         res = self.remove_entity(CatalogEndpoint, *args, **kvargs)
-        return res        
+        return res

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
 from celery import Task
 from celery.utils.log import get_task_logger
@@ -14,9 +14,9 @@ logger = get_task_logger(__name__)
 
 class BaseTask(Task):
     abstract = True
-    inner_type = 'TASK'
-    prefix = 'celery-task-shared-'
-    prefix_stack = 'celery-task-stack-'
+    inner_type = "TASK"
+    prefix = "celery-task-shared-"
+    prefix_stack = "celery-task-stack-"
     expire = 3600
 
     def __init__(self, *args, **kwargs):
@@ -49,7 +49,7 @@ class BaseTask(Task):
         tasks. Shared area could not ensure synchronization
         """
         # get actual data
-        current_data = self.get_shared_data()
+        current_data = self.get_shared_data(task_id)
         current_data.update(data)
         val = jsonDumps(current_data)
         self._redis.setex(self.prefix + task_id, self.expire, val)
@@ -72,8 +72,7 @@ class BaseTask(Task):
         val = self._redis.lpop(self.prefix_stack + task_id)
         if val is not None:
             data = json.loads(val)
-        logger.debug('Pop stack data for job %s: %s' %
-                     (task_id, truncate(data)))
+        logger.debug("Pop stack data for job %s: %s" % (task_id, truncate(data)))
         return data
 
     def push_stack_data(self, task_id, data):
@@ -82,8 +81,7 @@ class BaseTask(Task):
         """
         val = jsonDumps(data)
         self._redis.lpush(self.prefix_stack + task_id, val)
-        logger.debug('Push stack data for job %s: %s' %
-                     (task_id, truncate(data)))
+        logger.debug("Push stack data for job %s: %s" % (task_id, truncate(data)))
         return True
 
     def remove_stack(self, task_id):
@@ -110,8 +108,7 @@ class BaseTask(Task):
         self.app.api_manager.release_session()
 
     def after_return(self, *args, **kwargs):
-        """Handler called after the task returns.
-        """
+        """Handler called after the task returns."""
         super(BaseTask, self).after_return(*args, **kwargs)
 
         if operation.session is not None:

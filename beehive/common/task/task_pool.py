@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
 import logging
 from beecell.logger.helper import LoggerHelper
@@ -23,15 +23,32 @@ from beehive.common.task.handler import TaskResult
 
 logger = logging.getLogger(__name__)
 
-__all__ = ['TaskPool']
+__all__ = ["TaskPool"]
 
 
 class TaskPool(GeventTaskPool):
     """GEvent Pool."""
 
-    def on_apply(self, target, args=None, kwargs=None, callback=None, accept_callback=None, timeout=None,
-                 timeout_callback=None, **_):
-
+    def on_apply(
+        self,
+        target,
+        args=None,
+        kwargs=None,
+        callback=None,
+        accept_callback=None,
+        timeout=None,
+        timeout_callback=None,
+        **_,
+    ):
         # TaskResult.task_pending(args)
-        return GeventTaskPool.on_apply(self, target, args, kwargs, callback, accept_callback, timeout,
-                                       timeout_callback, **_)
+        return GeventTaskPool.on_apply(
+            self,
+            target,
+            args,
+            kwargs,
+            callback,
+            accept_callback,
+            timeout,
+            timeout_callback,
+            **_,
+        )

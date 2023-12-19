@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
 from uuid import uuid4
 
@@ -23,20 +23,21 @@ class SchedulerController(ApiController):
 
     :param module: ApiModule instance
     """
+
     def __init__(self, module):
         ApiController.__init__(self, module)
 
-        self.version = 'v2.0'
+        self.version = "v2.0"
         self.child_classes = [Scheduler, TaskManager]
 
         self.manager = SchedulerDbManager()
-        
+
     def add_service_class(self, name, version, service_class):
         self.service_classes.append(service_class)
 
     def get_task_manager(self):
         return TaskManager(self)
-        
+
     def get_scheduler(self):
         return Scheduler(self)
 
@@ -60,23 +61,24 @@ class Scheduler(ApiObject):
 
     :param controller: SchedulerController instance
     """
-    module = 'SchedulerModuleV2'
-    objtype = 'task'
-    objdef = 'Scheduler'
-    objdesc = 'Scheduler'
-    
+
+    module = "SchedulerModuleV2"
+    objtype = "task"
+    objdef = "Scheduler"
+    objdesc = "Scheduler"
+
     def __init__(self, controller):
-        ApiObject.__init__(self, controller, oid='', name='', desc='', active='')
+        ApiObject.__init__(self, controller, oid="", name="", desc="", active="")
         try:
-            self.objid = '*'
+            self.objid = "*"
             self.scheduler = None
             if self.task_scheduler is not None:
                 self.scheduler = RedisScheduler(self.task_scheduler, lazy=True)
                 self.scheduler.set_redis(self.controller.redis_scheduler)
-        except:
-            self.logger.warn('', exc_info=1)
+        except Exception:
+            self.logger.warn("", exc_info=1)
 
-    @trace(op='insert')
+    @trace(op="insert")
     def create_update_entry(self, name, task, schedule, args=None, kwargs=None, options={}, relative=None):
         """Create scheduler entry
 
@@ -90,53 +92,53 @@ class Scheduler(ApiObject):
         :return: {'schedule': <schdule_name>}
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        self.verify_permisssions('insert')
+        self.verify_permisssions("insert")
 
         try:
             # new entry
             entry = {
-                'name': name,
-                'task': task,
-                'schedule': schedule,
-                'options': options
+                "name": name,
+                "task": task,
+                "schedule": schedule,
+                "options": options,
             }
 
             if args is not None:
-                entry['args'] = args
+                entry["args"] = args
             if kwargs is not None:
-                entry['kwargs'] = kwargs
+                entry["kwargs"] = kwargs
             if relative is not None:
-                entry['relative'] = relative
+                entry["relative"] = relative
 
             # insert entry in redis
-            res = self.scheduler.write_schedule(entry)
+            self.scheduler.write_schedule(entry)
 
-            self.logger.info('Create scheduler entry: %s' % entry)
-            return {'schedule': name}
+            self.logger.info("Create scheduler entry: %s" % entry)
+            return {"schedule": name}
         except Exception as ex:
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
-        
-    @trace(op='view')
+
+    @trace(op="view")
     def get_entries(self, name=None):
         """Get scheduler entries.
-        
+
         :param name: entry name
         :return: list of (name, entry data) pairs.
         :rtype: list
-        :raises ApiManagerError: raise :class:`.ApiManagerError`  
+        :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
-        self.verify_permisssions('view')
-        
+        self.verify_permisssions("view")
+
         try:
             entries = self.scheduler.read_schedule(name)
-            self.logger.info('Get scheduler entries: %s' % entries)
+            self.logger.info("Get scheduler entries: %s" % entries)
             return entries
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=404)
 
-    @trace(op='delete')
+    @trace(op="delete")
     def remove_entry(self, name):
         """Remove scheduler entry.
 
@@ -145,30 +147,30 @@ class Scheduler(ApiObject):
         :rtype: bool
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
-        self.verify_permisssions('delete')
+        self.verify_permisssions("delete")
 
         try:
-            res = self.scheduler.delete_schedule(name)
-            self.logger.info('Remove scheduler entry: %s' % name)
+            self.scheduler.delete_schedule(name)
+            self.logger.info("Remove scheduler entry: %s" % name)
             return True
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
 
-    @trace(op='delete')
+    @trace(op="delete")
     def clear_all_entries(self):
         """Clear all scheduler entries.
-        
+
         :param name: entry name
         :return: True
         :rtype: bool
-        :raises ApiManagerError: raise :class:`.ApiManagerError`  
+        :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
-        self.verify_permisssions('delete')
-        
+        self.verify_permisssions("delete")
+
         try:
             self.redis_entries.clear()
-            self.logger.info('Remove all scheduler entries')
+            self.logger.info("Remove all scheduler entries")
             return True
         except Exception as ex:
             self.logger.error(ex)
@@ -180,41 +182,45 @@ class TaskManager(ApiObject):
 
     :param controller: SchedulerController instance
     """
-    module = 'SchedulerModuleV2'
-    objtype = 'task'
-    objdef = 'Manager'
-    objdesc = 'Task Manager'
+
+    module = "SchedulerModuleV2"
+    objtype = "task"
+    objdef = "Manager"
+    objdesc = "Task Manager"
 
     def __init__(self, controller):
-        ApiObject.__init__(self, controller, oid='', name='', desc='', active='')
+        ApiObject.__init__(self, controller, oid="", name="", desc="", active="")
 
-        self.objid = '*'
+        self.objid = "*"
         try:
-            self.hostname = self.celery_broker_queue + '@' + self.api_manager.server_name
+            self.hostname = self.celery_broker_queue + "@" + self.api_manager.server_name
             # self.control = task_manager.control.inspect([self.hostname])
             # self.prefix = task_manager.conf.CELERY_REDIS_RESULT_KEY_PREFIX
             # self.prefix_base = 'celery-task-meta'
-        except:
+        except Exception:
             self.control = None
-            self.prefix = ''
-            self.prefix_base = ''
+            self.prefix = ""
+            self.prefix_base = ""
 
-        self.expire = float(self.api_manager.params.get('expire', 0))
+        self.expire = float(self.api_manager.params.get("expire", 0))
 
-    @trace(op='use')
+    @trace(op="use")
     def ping(self):
         """Ping all task manager workers.
-        
-        :return: 
-        :rtype: dict        
+
+        :return:
+        :rtype: dict
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
-        self.verify_permisssions('use')
-        
+        self.verify_permisssions("use")
+
         try:
-            control = self.task_manager.control
+            from celery.app.control import Control
+
+            control: Control = self.task_manager.control
+            self.logger.debug("Ping task manager control: %s" % control)
             res = control.ping(timeout=1.0)
-            self.logger.debug('Ping task manager workers: %s' % res)
+            self.logger.debug("Ping task manager workers: %s" % res)
             resp = {}
             for item in res:
                 if list(item.keys())[0].find(self.celery_broker_queue) >= 0:
@@ -222,22 +228,22 @@ class TaskManager(ApiObject):
             return resp
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
-            raise ApiManagerError(ex, code=400)        
-        
-    @trace(op='use')
+            raise ApiManagerError(ex, code=400)
+
+    @trace(op="use")
     def stats(self):
         """Get stats from all task manager worker
-        
+
         :return: usage info
-        :rtype: dict        
+        :rtype: dict
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
-        self.verify_permisssions('use')
-        
+        self.verify_permisssions("use")
+
         try:
             control = self.task_manager.control.inspect(timeout=1.0)
             res = control.stats()
-            self.logger.debug('Get task manager workers stats: %s' % res)
+            self.logger.debug("Get task manager workers stats: %s" % res)
             resp = {}
             for k, v in res.items():
                 if k.find(self.celery_broker_queue) >= 0:
@@ -247,20 +253,20 @@ class TaskManager(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
 
-    @trace(op='use')
+    @trace(op="use")
     def report(self):
         """Get manager worker report
-        
+
         :return: report info
-        :rtype: dict        
+        :rtype: dict
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
-        
-        self.verify_permisssions('use')
+
+        self.verify_permisssions("use")
         try:
             control = self.task_manager.control.inspect(timeout=1.0)
             res = control.report()
-            self.logger.debug('Get task manager report: %s' % res)
+            self.logger.debug("Get task manager report: %s" % res)
             resp = {}
             for k, v in res.items():
                 if k.find(self.celery_broker_queue) >= 0:
@@ -270,7 +276,7 @@ class TaskManager(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
 
-    @trace(op='use')
+    @trace(op="use")
     def get_active_queues(self):
         """Ping all task manager active queues.
 
@@ -278,12 +284,12 @@ class TaskManager(ApiObject):
         :rtype: dict
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
-        self.verify_permisssions('use')
+        self.verify_permisssions("use")
 
         try:
             control = self.task_manager.control.inspect(timeout=1.0)
             res = control.active_queues()
-            self.logger.debug('Get task manager active queues: %s' % res)
+            self.logger.debug("Get task manager active queues: %s" % res)
             resp = {}
             for k, v in res.items():
                 if k.find(self.celery_broker_queue) >= 0:
@@ -293,32 +299,32 @@ class TaskManager(ApiObject):
             self.logger.error(ex)
             raise ApiManagerError(ex, code=400)
 
-    @trace(op='view')
+    @trace(op="view")
     def get_registered_tasks(self):
         """Get task definitions
-        
+
         :return: registered tasks
-        :rtype: dict        
+        :rtype: dict
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
-        self.verify_permisssions('view')
-        
+        self.verify_permisssions("view")
+
         try:
             control = self.task_manager.control.inspect(timeout=1.0)
             res = control.registered()
             if res is None:
                 res = []
-            self.logger.debug('Get registered tasks: %s' % res)
+            self.logger.debug("Get registered tasks: %s" % res)
             resp = {}
             for k, v in res.items():
                 if k.find(self.celery_broker_queue) >= 0:
                     resp[k] = v
             return resp
-        except Exception as ex:
-            self.logger.error('No registered tasks found')
+        except Exception:
+            self.logger.error("No registered tasks found")
             return []
 
-    @trace(op='view')
+    @trace(op="view")
     def get_tasks(self, *args, **kvargs):
         """Get tasks.
 
@@ -337,7 +343,7 @@ class TaskManager(ApiObject):
 
         objdef = None
         objtype = None
-        entity_class = kvargs.pop('entity_class')
+        entity_class = kvargs.pop("entity_class")
         if entity_class is not None:
             entity_class = import_class(entity_class)
             objdef = entity_class.objdef
@@ -346,41 +352,47 @@ class TaskManager(ApiObject):
         if operation.authorize is True:
             try:
                 # use base permission over task manager - admin
-                self.verify_permisssions('view')
+                self.verify_permisssions("view")
                 with_perm_tag = False
-            except:
+            except Exception:
                 if entity_class is None:
-                    raise ApiManagerError('entity_class must be specified')
+                    raise ApiManagerError("entity_class must be specified")
 
                 # use permission for a specific objtype:objdef - user
                 with_perm_tag = True
 
                 # verify permissions
-                objs = self.controller.can(u'view', objtype=objtype, definition=objdef)
+                objs = self.controller.can("view", objtype=objtype, definition=objdef)
 
                 # create permission tags
                 for entity_def, ps in objs.items():
                     for p in ps:
                         tags.append(self.manager.hash_from_permission(entity_def.lower(), p))
-                self.logger.debug(u'Permission tags to apply: %s' % truncate(tags))
+                self.logger.debug("Permission tags to apply: %s" % truncate(tags))
         else:
             with_perm_tag = False
-            self.logger.debug(u'Auhtorization disabled for command')
+            self.logger.debug("Auhtorization disabled for command")
 
         try:
             entities, total = self.manager.get_tasks(tags=tags, with_perm_tag=with_perm_tag, *args, **kvargs)
 
             for entity in entities:
-                obj = Task(self.controller, oid=entity.id, objid=entity.objid, name=entity.name, model=entity)
+                obj = Task(
+                    self.controller,
+                    oid=entity.id,
+                    objid=entity.objid,
+                    name=entity.name,
+                    model=entity,
+                )
                 res.append(obj)
 
-            self.logger.info(u'Get tasks (total:%s): %s' % (total, truncate(res)))
+            self.logger.info("Get tasks (total:%s): %s" % (total, truncate(res)))
             return res, total
         except QueryError as ex:
             self.logger.warn(ex, exc_info=1)
             return [], 0
 
-    @trace(op='view')
+    @trace(op="view")
     def get_task(self, task_id, entity_class_name=None):
         """Get task
 
@@ -391,10 +403,10 @@ class TaskManager(ApiObject):
         """
         tasks, tot = self.get_tasks(entity_class=entity_class_name, task_id=task_id)
         if tot == 0:
-            raise ApiManagerError('task %s of entity %s does not exist' % (task_id, entity_class_name))
+            raise ApiManagerError("task %s of entity %s does not exist" % (task_id, entity_class_name))
         return tasks[0]
 
-    @trace(op='view')
+    @trace(op="view")
     def get_task_status(self, task_id, entity_class_name=None):
         """Get task
 
@@ -403,22 +415,23 @@ class TaskManager(ApiObject):
         :return: :class:`Task` instance
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        # get first task status from celery task stored in celery backend
-        task = AsyncResult(task_id, app=self.task_manager)
-        status = task.status
-        self.logger.debug('get task from celery: %s' % task)
 
         # when celery task is removed from celery backend for key elapsed use task from db
         tasks, tot = self.get_tasks(entity_class=entity_class_name, task_id=task_id)
         if tot == 1:
             task = tasks[0]
             status = task.status
-            self.logger.debug('get task from database: %s' % task)
+            self.logger.debug("get task from database: %s - status: %s" % (task, status))
+        else:
+            # get first task status from celery task stored in celery backend
+            asyncResult = AsyncResult(task_id, app=self.task_manager)
+            status = asyncResult.status
+            self.logger.debug("get task from celery: %s - status: %s" % (asyncResult, status))
 
-        res = {'uuid': task_id, 'status': status}
+        res = {"uuid": task_id, "status": status}
         return res
 
-    @trace(op='insert')
+    @trace(op="insert")
     def run_test_task(self, params):
         """Run test task
 
@@ -428,18 +441,22 @@ class TaskManager(ApiObject):
         :raises ApiManagerError if query empty return error.
         """
         # verify permissions
-        self.controller.check_authorization(self.objtype, self.objdef, None, 'insert')
+        self.controller.check_authorization(self.objtype, self.objdef, None, "insert")
 
         params.update(self.get_user())
-        params['objid'] = str(uuid4())
-        params['alias'] = 'test_task'
-        task = signature('beehive.module.scheduler_v2.tasks.test_task', [params], app=self.task_manager,
-                         queue=self.celery_broker_queue)
+        params["objid"] = str(uuid4())
+        params["alias"] = "test_task"
+        task = signature(
+            "beehive.module.scheduler_v2.tasks.test_task",
+            [params],
+            app=self.task_manager,
+            queue=self.celery_broker_queue,
+        )
         task_id = task.apply_async()
 
         return task_id
 
-    @trace(op='insert')
+    @trace(op="insert")
     def run_test_scheduled_action(self, schedule=None):
         """Run test scheduled action
 
@@ -448,28 +465,25 @@ class TaskManager(ApiObject):
         :raises ApiManagerError if query empty return error.
         """
         # verify permissions
-        self.controller.check_authorization(self.objtype, self.objdef, None, 'insert')
+        self.controller.check_authorization(self.objtype, self.objdef, None, "insert")
 
         if schedule is None:
-            schedule = {
-                'type': 'timedelta',
-                'minutes': 1
-            }
+            schedule = {"type": "timedelta", "minutes": 1}
         params = {
-            'key1': 'value1',
-            'steps': [
+            "key1": "value1",
+            "steps": [
                 # 'beehive.module.scheduler_v2.tasks.ScheduledActionTask.remove_schedule_step',
-                'beehive.module.scheduler_v2.tasks.ScheduledActionTask.task_step'
-            ]
+                "beehive.module.scheduler_v2.tasks.ScheduledActionTask.task_step"
+            ],
         }
-        schedule_name = self.scheduled_action('test', schedule, params=params)
+        schedule_name = self.scheduled_action("test", schedule, params=params)
 
         return schedule_name
 
     #
     # inline task step
     #
-    @run_async(action='use', alias='test_inline_task')
+    @run_async(action="use", alias="test_inline_task")
     def run_test_inline_task(self, params):
         """Run test task
 
@@ -477,16 +491,16 @@ class TaskManager(ApiObject):
         :return: test result
         :raises ApiManagerError if query empty return error.
         """
-        res = params.get('x') + params.get('y')
-        self.logger.debug('test inline task result from params %s: %s' % (params, res))
+        res = params.get("x") + params.get("y")
+        self.logger.debug("test inline task result from params %s: %s" % (params, res))
         return res
 
 
 class Task(ApiObject):
-    module = 'SchedulerModuleV2'
-    objtype = 'task'
-    objdef = 'Manager'
-    objdesc = 'Task'
+    module = "SchedulerModuleV2"
+    objtype = "task"
+    objdef = "Manager"
+    objdesc = "Task"
 
     def __init__(self, *args, **kvargs):
         ApiObject.__init__(self, *args, **kvargs)
@@ -522,21 +536,24 @@ class Task(ApiObject):
                 # args = self.model.args[1:-2]
                 # args = args.replace('\'', '"').replace('False', 'false').replace('True', 'true').replace('None', 'null')
                 self.args = json.loads(args)[0]
-                self.args.pop('objid', None)
-                self.args.pop('api_id', None)
-                self.args.pop('steps', None)
-                self.server = self.args.pop('server')
-                self.user = self.args.pop('user')
-                self.identity = self.args.pop('identity')
-                self.alias = self.args.pop('alias', self.name)
-            except:
-                self.logger.warn('error parsing task %s args %s' % (self.oid, self.model.args), exc_info=True)
+                self.args.pop("objid", None)
+                self.args.pop("api_id", None)
+                self.args.pop("steps", None)
+                self.server = self.args.pop("server")
+                self.user = self.args.pop("user")
+                self.identity = self.args.pop("identity")
+                self.alias = self.args.pop("alias", self.name)
+            except Exception:
+                self.logger.warn(
+                    "error parsing task %s args %s" % (self.oid, self.model.args),
+                    exc_info=True,
+                )
                 self.args = None
                 self.alias = self.name
 
             try:
                 self.kwargs = json.loads(self.model.kwargs)
-            except:
+            except Exception:
                 self.kwargs = None
 
         self.steps = []
@@ -550,27 +567,27 @@ class Task(ApiObject):
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
         res = {
-            '__meta__': {
-                'objid': self.objid,
-                'type': self.objtype,
-                'definition': self.objdef,
-                'uri': self.objuri,
+            "__meta__": {
+                "objid": self.objid,
+                "type": self.objtype,
+                "definition": self.objdef,
+                "uri": self.objuri,
             },
-            'id': self.oid,
-            'uuid': self.uuid,
-            'name': self.name,
-            'alias': self.alias,
-            'status': self.status,
-            'parent': self.parent,
-            'worker': self.worker,
-            'api_id': self.api_id,
-            'server': self.server,
-            'user': self.user,
-            'identity': self.identity,
-            'start_time': format_date(self.start_time),
-            'run_time': format_date(self.run_time),
-            'stop_time': format_date(self.stop_time),
-            'duration': self.duration
+            "id": self.oid,
+            "uuid": self.uuid,
+            "name": self.name,
+            "alias": self.alias,
+            "status": self.status,
+            "parent": self.parent,
+            "worker": self.worker,
+            "api_id": self.api_id,
+            "server": self.server,
+            "user": self.user,
+            "identity": self.identity,
+            "start_time": format_date(self.start_time),
+            "run_time": format_date(self.run_time),
+            "stop_time": format_date(self.stop_time),
+            "duration": self.duration,
         }
         return res
 
@@ -582,31 +599,31 @@ class Task(ApiObject):
         :raises ApiManagerError: raise :class:`.ApiManagerError`
         """
         res = {
-            '__meta__': {
-                'objid': self.objid,
-                'type': self.objtype,
-                'definition': self.objdef,
-                'uri': self.objuri,
+            "__meta__": {
+                "objid": self.objid,
+                "type": self.objtype,
+                "definition": self.objdef,
+                "uri": self.objuri,
             },
-            'id': self.oid,
-            'uuid': self.uuid,
-            'name': self.name,
-            'alias': self.alias,
-            'status': self.status,
-            'parent': self.parent,
-            'worker': self.worker,
-            'api_id': self.api_id,
-            'server': self.server,
-            'user': self.user,
-            'identity': self.identity,
-            'start_time': format_date(self.start_time),
-            'run_time': format_date(self.run_time),
-            'stop_time': format_date(self.stop_time),
-            'duration': self.duration,
-            'result': self.result,
-            'args': self.args,
-            'kwargs': self.kwargs,
-            'steps': self.steps
+            "id": self.oid,
+            "uuid": self.uuid,
+            "name": self.name,
+            "alias": self.alias,
+            "status": self.status,
+            "parent": self.parent,
+            "worker": self.worker,
+            "api_id": self.api_id,
+            "server": self.server,
+            "user": self.user,
+            "identity": self.identity,
+            "start_time": format_date(self.start_time),
+            "run_time": format_date(self.run_time),
+            "stop_time": format_date(self.stop_time),
+            "duration": self.duration,
+            "result": self.result,
+            "args": self.args,
+            "kwargs": self.kwargs,
+            "steps": self.steps,
         }
         return res
 
@@ -617,14 +634,16 @@ class Task(ApiObject):
         """
         traces = []
         for trace, step in self.manager.get_trace(self.uuid):
-            traces.append({
-                'id': str(trace.id),
-                'step': trace.step_id,
-                'step_name': step.name,
-                'message': trace.message,
-                'level': trace.level,
-                'date': format_date(trace.date)
-            })
+            traces.append(
+                {
+                    "id": str(trace.id),
+                    "step": trace.step_id,
+                    "step_name": step.name,
+                    "message": trace.message,
+                    "level": trace.level,
+                    "date": format_date(trace.date),
+                }
+            )
         return traces
 
     def get_log(self, size=100, page=0, *args, **kwargs):
@@ -635,20 +654,20 @@ class Task(ApiObject):
         :return: log list
         :raise ApiManagerError:
         """
-        worker_split = self.worker.split('@')
+        worker_split = self.worker.split("@")
         if len(worker_split) > 1:
             worker = worker_split[1]
         else:
             worker = worker_split[0]
-        kwargs = {
-            'size': size,
-            'page': page,
-            'pod': worker,
-            'op': '%s::%s:%s' % (self.api_id, self.name.split('.')[-1], self.uuid),
-            'date': format_date(self.start_time, format='%Y.%m.%d')
+        next_kwargs = {
+            "size": size,
+            "page": page,
+            "pod": worker,
+            "op": "%s::%s:%s" % (self.api_id, self.name.split(".")[-1], self.uuid),
+            "date": format_date(self.start_time, format="%Y.%m.%d"),
         }
-        logs = self.controller.get_log_from_elastic(**kwargs)
-        self.logger.debug('get task %s log: %s' % (self.uuid, truncate(logs)))
+        logs = self.controller.get_log_from_elastic(**next_kwargs)
+        self.logger.debug("get task %s log: %s" % (self.uuid, truncate(logs)))
         return logs
 
     #
@@ -667,13 +686,15 @@ class Task(ApiObject):
             if isinstance(s.start_time, datetime) and isinstance(s.run_time, datetime):
                 duration = (s.run_time - s.start_time).total_seconds()
                 stop_time = format_date(s.stop_time)
-            self.steps.append({
-                'uuid': s.uuid,
-                'name': s.name,
-                'status': s.status,
-                'result': s.result,
-                'start_time': format_date(s.start_time),
-                'run_time': format_date(s.run_time),
-                'stop_time': stop_time,
-                'duration': duration
-            })
+            self.steps.append(
+                {
+                    "uuid": s.uuid,
+                    "name": s.name,
+                    "status": s.status,
+                    "result": s.result,
+                    "start_time": format_date(s.start_time),
+                    "run_time": format_date(s.run_time),
+                    "stop_time": stop_time,
+                    "duration": duration,
+                }
+            )

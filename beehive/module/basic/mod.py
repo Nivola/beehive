@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
 from .views.base import BaseAPI
 from .controller import BasicController
@@ -12,11 +12,12 @@ class BasicModule(ApiModule):
 
     :param module: ApiModule instance
     """
+
     def __init__(self, api_manger):
-        self.name = 'BasicModule'
-        
+        self.name = "BasicModule"
+
         ApiModule.__init__(self, api_manger, self.name)
-        
+
         self.apis = [BaseAPI]
         self.controller = BasicController(self)
 

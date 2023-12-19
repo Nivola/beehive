@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
 import ujson as json
 from six import b, ensure_text
@@ -19,9 +19,11 @@ logger = get_task_logger(__name__)
 # job operation
 try:
     import gevent.local
+
     task_local = gevent.local.local()
 except BaseException:
     import threading
+
     task_local = threading.local()
 
 
@@ -36,10 +38,10 @@ class TaskResult(object):
         :return: task dict result or None
         """
         _redis = task_manager.api_manager.redis_taskmanager.conn
-        _prefix = task_manager.conf['CELERY_REDIS_RESULT_KEY_PREFIX']
+        _prefix = task_manager.conf["CELERY_REDIS_RESULT_KEY_PREFIX"]
 
         def get_data(task_id):
-            key = '%s%s' % (_prefix, task_id)
+            key = "%s%s" % (_prefix, task_id)
             task_data = _redis.get(key)
             return task_data
 
@@ -63,9 +65,9 @@ class TaskResult(object):
         :return: task dict result or None
         """
         _redis = task_manager.api_manager.redis_taskmanager.conn
-        _prefix = task_manager.conf['CELERY_REDIS_RESULT_KEY_PREFIX']
-        _expire = task_manager.conf['CELERY_REDIS_RESULT_EXPIRES']
-        key = '%s%s' % (_prefix, task_id)
+        _prefix = task_manager.conf["CELERY_REDIS_RESULT_KEY_PREFIX"]
+        _expire = task_manager.conf["CELERY_REDIS_RESULT_EXPIRES"]
+        key = "%s%s" % (_prefix, task_id)
 
         # serialize data
         data = jsonDumps(value)
@@ -84,7 +86,7 @@ class TaskResult(object):
         """
         val = TaskResult.get_from_redis_with_retry(task_id)
         if val is None:
-            val = {'type': None, 'status': None}
+            val = {"type": None, "status": None}
         return val
 
         # _redis = task_manager.api_manager.redis_taskmanager.conn
@@ -98,34 +100,48 @@ class TaskResult(object):
         # return result
 
     @staticmethod
-    def store(task_id, name=None, hostname=None, args=None, kwargs=None, status=None, retval=None, start_time=None,
-              stop_time=None, childs=None, traceback=None, inner_type=None, msg=None, jobs=None, counter=None,
-              failure=False):
-        """Store task result in redis
-        """
+    def store(
+        task_id,
+        name=None,
+        hostname=None,
+        args=None,
+        kwargs=None,
+        status=None,
+        retval=None,
+        start_time=None,
+        stop_time=None,
+        childs=None,
+        traceback=None,
+        inner_type=None,
+        msg=None,
+        jobs=None,
+        counter=None,
+        failure=False,
+    ):
+        """Store task result in redis"""
         _redis = task_manager.api_manager.redis_taskmanager.conn
-        _prefix = task_manager.conf['CELERY_REDIS_RESULT_KEY_PREFIX']
-        _expire = task_manager.conf['CELERY_REDIS_RESULT_EXPIRES']
+        _prefix = task_manager.conf["CELERY_REDIS_RESULT_KEY_PREFIX"]
+        _expire = task_manager.conf["CELERY_REDIS_RESULT_EXPIRES"]
 
-        data = {'task_id': task_id}
+        data = {"task_id": task_id}
 
         def set_data(key, value):
             if value is not None:
                 data[key] = value
 
-        set_data('name', name)
-        set_data('type', inner_type)
-        set_data('worker', hostname)
-        set_data('args', args)
-        set_data('kwargs', kwargs)
-        set_data('status', status)
-        set_data('result', retval)
-        set_data('start_time', start_time)
-        set_data('stop_time', stop_time)
-        set_data('children', childs)
-        set_data('jobs', jobs)
-        set_data('traceback', traceback)
-        set_data('counter', counter)
+        set_data("name", name)
+        set_data("type", inner_type)
+        set_data("worker", hostname)
+        set_data("args", args)
+        set_data("kwargs", kwargs)
+        set_data("status", status)
+        set_data("result", retval)
+        set_data("start_time", start_time)
+        set_data("stop_time", stop_time)
+        set_data("children", childs)
+        set_data("jobs", jobs)
+        set_data("traceback", traceback)
+        set_data("counter", counter)
 
         def update_data():
             # get data from redis
@@ -142,50 +158,51 @@ class TaskResult(object):
 
             if result is not None:
                 # result = json.loads(val)
-                if result.get('status') != 'FAILURE':
+                if result.get("status") != "FAILURE":
                     result.update(data)
                 else:
-                    result.update({'stop_time': stop_time})
+                    result.update({"stop_time": stop_time})
 
                 # check job already present in task jobs list
-                val_jobs = result.get('jobs', [])
+                val_jobs = result.get("jobs", [])
                 if val_jobs is None:
-                    result['jobs'] = []
+                    result["jobs"] = []
                     val_jobs = []
                 if jobs is not None:
                     for job in jobs:
                         if job not in val_jobs:
-                            result['jobs'].append(job)
+                            result["jobs"].append(job)
 
             else:
                 result = {
-                    'name': name,
-                    'type': inner_type,
-                    'task_id': task_id,
-                    'worker': hostname,
-                    'args': args,
-                    'kwargs': kwargs,
-                    'status': status,
-                    'result': retval,
-                    'traceback': traceback,
-                    'start_time': time(),
+                    "name": name,
+                    "type": inner_type,
+                    "task_id": task_id,
+                    "worker": hostname,
+                    "args": args,
+                    "kwargs": kwargs,
+                    "status": status,
+                    "result": retval,
+                    "traceback": traceback,
+                    "start_time": time(),
                     # 'start_time': start_time,
-                    'stop_time': stop_time,
-                    'children': childs,
-                    'jobs': jobs,
-                    'counter': 0,
-                    'trace': []}
+                    "stop_time": stop_time,
+                    "children": childs,
+                    "jobs": jobs,
+                    "counter": 0,
+                    "trace": [],
+                }
 
             # update task trace
             if msg is not None:
                 # msg1 = '(%s) %s' % (task_id, msg)
                 msg1 = msg
                 if failure is True:
-                    msg1 = 'ERROR %s' % msg1
+                    msg1 = "ERROR %s" % msg1
                 else:
-                    msg1 = 'DEBUG %s' % msg1
-                _timestamp = ensure_text(datetime.today().strftime('%d-%m-%y %H:%M:%S-%f'))
-                result['trace'].append((_timestamp, msg1))
+                    msg1 = "DEBUG %s" % msg1
+                _timestamp = ensure_text(datetime.today().strftime("%d-%m-%y %H:%M:%S-%f"))
+                result["trace"].append((_timestamp, msg1))
 
             # save data
             val = TaskResult.set_to_redis_with_retry(task_id, result)
@@ -194,8 +211,8 @@ class TaskResult(object):
 
         val = update_data()
 
-        if inner_type == 'JOB':
-            logger.debug2('Save %s %s result: %s' % (inner_type, task_id, truncate(val, size=400)))
+        if inner_type == "JOB":
+            logger.debug2("Save %s %s result: %s" % (inner_type, task_id, truncate(val, size=400)))
 
         return data
 
@@ -204,32 +221,57 @@ class TaskResult(object):
         # store task
         # start_time = time()
         start_time = None
-        task = TaskResult.store(task_id, name=None, hostname=None, args=None, kwargs=None, status='PENDING',
-                                retval=None, start_time=start_time, stop_time=0, childs=[], traceback=None,
-                                inner_type=None, msg=None, jobs=None, counter=0)
+        task = TaskResult.store(
+            task_id,
+            name=None,
+            hostname=None,
+            args=None,
+            kwargs=None,
+            status="PENDING",
+            retval=None,
+            start_time=start_time,
+            stop_time=0,
+            childs=[],
+            traceback=None,
+            inner_type=None,
+            msg=None,
+            jobs=None,
+            counter=0,
+        )
         return task
 
     @staticmethod
     def task_prerun(**args):
         # store task
-        task = args.get('task')
-        task_id = args.get('task_id')
-        vargs = args.get('args')
-        kwargs = args.get('kwargs')
+        task = args.get("task")
+        task_id = args.get("task_id")
+        vargs = args.get("args")
+        kwargs = args.get("kwargs")
 
         # store task
-        TaskResult.store(task_id, name=task.name, hostname=task.request.hostname, args=vargs, kwargs=kwargs,
-                         status='STARTING', retval=None, childs=[], traceback=None,
-                         inner_type=getattr(task, 'inner_type', None), msg=None, jobs=None)
+        TaskResult.store(
+            task_id,
+            name=task.name,
+            hostname=task.request.hostname,
+            args=vargs,
+            kwargs=kwargs,
+            status="STARTING",
+            retval=None,
+            childs=[],
+            traceback=None,
+            inner_type=getattr(task, "inner_type", None),
+            msg=None,
+            jobs=None,
+        )
 
     @staticmethod
     def task_postrun(**args):
-        task = args.get('task')
-        task_id = args.get('task_id')
-        vargs = args.get('args')
-        kwargs = args.get('kwargs')
-        status = args.get('state')
-        retval = args.get('retval')
+        task = args.get("task")
+        task_id = args.get("task_id")
+        vargs = args.get("args")
+        kwargs = args.get("kwargs")
+        status = args.get("state")
+        retval = args.get("retval")
 
         # get task childrens
         childrens = task.request.children
@@ -241,14 +283,14 @@ class TaskResult(object):
         # get chord callback task
         chord_callback_task = None
         if chord is not None:
-            chord_callback_task = chord['options'].get('task_id', None)
+            chord_callback_task = chord["options"].get("task_id", None)
             childs.append(chord_callback_task)
 
         if len(childrens) > 0:
             for c in childrens:
                 if isinstance(c, AsyncResult):
                     child_task = TaskResult.get(c.id)
-                    if child_task['type'] == 'JOB':
+                    if child_task["type"] == "JOB":
                         jobs.append(c.id)
                     else:
                         childs.append(c.id)
@@ -260,24 +302,37 @@ class TaskResult(object):
         stop_time = time()
 
         # set retval to None when failure occurs
-        if status == 'FAILURE':
+        if status == "FAILURE":
             retval = None
 
         # when RETRY store PROGRESS and ignore retval
-        if status == 'RETRY':
+        if status == "RETRY":
             retval = None
-            status = 'PROGRESS'
+            status = "PROGRESS"
 
         # reset status for JOB task to PROGRESS when status is SUCCESS
         # status SUCCESS will be set when the last child task end
-        inner_type = getattr(task, 'inner_type', None)
-        if inner_type == 'JOB' and status == 'SUCCESS':
-            status = 'PROGRESS'
+        inner_type = getattr(task, "inner_type", None)
+        if inner_type == "JOB" and status == "SUCCESS":
+            status = "PROGRESS"
 
         # store task
-        TaskResult.store(task_id, name=task.name, hostname=task.request.hostname, args=vargs, kwargs=kwargs,
-                         status=status, retval=retval, start_time=None, stop_time=stop_time, childs=set(childs),
-                         traceback=None, inner_type=inner_type, msg=None, jobs=jobs)
+        TaskResult.store(
+            task_id,
+            name=task.name,
+            hostname=task.request.hostname,
+            args=vargs,
+            kwargs=kwargs,
+            status=status,
+            retval=retval,
+            start_time=None,
+            stop_time=stop_time,
+            childs=set(childs),
+            traceback=None,
+            inner_type=inner_type,
+            msg=None,
+            jobs=jobs,
+        )
 
     @staticmethod
     def task_failure(**args):
@@ -292,15 +347,15 @@ class TaskResult(object):
         - traceback: Stack trace object.
         - einfo: The billiard.einfo.ExceptionInfo instance.
         """
-        task_id = args.get('task_id')
-        exception = args.get('exception')
-        kwargs = args.get('kwargs')
-        kwargs = args.get('kwargs')
-        traceback = args.get('traceback')
-        einfo = args.get('einfo')
+        task_id = args.get("task_id")
+        exception = args.get("exception")
+        kwargs = args.get("kwargs")
+        kwargs = args.get("kwargs")
+        traceback = args.get("traceback")
+        einfo = args.get("einfo")
 
         # set status
-        status = 'FAILURE'
+        status = "FAILURE"
 
         # get task stop_time
         stop_time = time()
@@ -311,9 +366,23 @@ class TaskResult(object):
         trace.append(err)
 
         # store task
-        TaskResult.store(task_id, name=None, hostname=None, args=None, kwargs=None, status=status, retval=None,
-                         start_time=None, stop_time=stop_time, childs=None, traceback=trace, inner_type=None, msg=err,
-                         jobs=None, failure=True)
+        TaskResult.store(
+            task_id,
+            name=None,
+            hostname=None,
+            args=None,
+            kwargs=None,
+            status=status,
+            retval=None,
+            start_time=None,
+            stop_time=stop_time,
+            childs=None,
+            traceback=trace,
+            inner_type=None,
+            msg=err,
+            jobs=None,
+            failure=True,
+        )
 
 
 # @task_prerun.connect

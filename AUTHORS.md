@@ -1,10 +1,15 @@
-beehive is written and maintained by: 
+beehive is written and maintained by:
 
-* Sergio Tonani
+
+* Alessandro More'
 * Antonio Brasile
-* Gianni Doria
 * Daniela Ferrarini
 * Davide Sacchetto
+* Fabrizio Cosci
 * Filippo Vallero
 * Franco Frattini
-* Alessandro More'
+* Gianni Doria
+* Gianpiero Ardissono
+* Ignazio Cassano
+* Michele Bello
+* Sergio Tonani

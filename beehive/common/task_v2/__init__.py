@@ -1,8 +1,14 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
 import collections
+
+try:
+    import collections.Callable
+except ImportError:
+    collections.Callable = collections.abc.Callable  # compatibility fix for python >= 3.10
+
 from copy import deepcopy
 from functools import wraps
 from typing import Any, Callable, List, Dict, Union
@@ -20,6 +26,7 @@ from beecell.password import obscure_data
 from beecell.simple import import_func
 from beehive.common.apimanager import ApiManagerError
 from beehive.common.data import operation
+from beehive.common.audit import Audit, initAudit, localAudit
 from beehive.common.task_v2.canvas import signature
 from beehive.common.task_v2.handler import TaskResult
 from celery.utils.saferepr import saferepr
@@ -36,10 +43,10 @@ class TaskError(Exception):
         super(Exception, self).__init__(self.value, *arg, **kw)
 
     def __repr__(self):
-        return 'TaskError: %s' % self.value
+        return "TaskError: %s" % self.value
 
     def __str__(self):
-        return '%s' % self.value
+        return "%s" % self.value
 
 
 class RunTaskError(Exception):
@@ -48,7 +55,7 @@ class RunTaskError(Exception):
         super(Exception, self).__init__(self.value, *arg, **kw)
 
     def __repr__(self):
-        return 'RunTaskError: %s' % self.value
+        return "RunTaskError: %s" % self.value
 
     def __str__(self):
         return self.value
@@ -78,10 +85,11 @@ class BaseTask(Task):
     :param args: positional arg
     :param kwargs: key value arg
     """
+
     abstract = True
-    inner_type = 'TASK'
-    prefix = 'celery-task-shared-'
-    prefix_stack = 'celery-task-stack-'
+    inner_type = "TASK"
+    prefix = "celery-task-shared-"
+    prefix_stack = "celery-task-stack-"
     expire = 3600
     entity_class = None
     controller = None
@@ -91,11 +99,12 @@ class BaseTask(Task):
     def __init__(self, *args, **kwargs):
         Task.__init__(self, *args, **kwargs)
 
-        self.name = self.__class__.__module__ + '.' + self.name
+        self.name = self.__class__.__module__ + "." + self.name
 
         self.logger = logger
         self.steps = []
         self.task_result = TaskResult(self)
+        self.audit: Audit = None
 
         self.objid = None
         self.objtype = None
@@ -126,7 +135,7 @@ class BaseTask(Task):
             self._data = {}
         self._data[key] = value
 
-    def get_data(self, key: str, defaultvalue: Any=None) -> Any:
+    def get_data(self, key: str, defaultvalue: Any = None) -> Any:
         """
         get local data as opposed to get_shared_data
         """
@@ -202,7 +211,7 @@ class BaseTask(Task):
         val = self.redis.lpop(self.prefix_stack + task_id)
         if val is not None:
             data = json.loads(val)
-        logger.debug('Pop stack data for job %s: %s' % (task_id, truncate(data)))
+        logger.debug("Pop stack data for job %s: %s" % (task_id, truncate(data)))
         return data
 
     def push_stack_data(self, data, task_id=None):
@@ -217,7 +226,7 @@ class BaseTask(Task):
 
         val = jsonDumps(data)
         self.redis.lpush(self.prefix_stack + task_id, val)
-        logger.debug('Push stack data for job %s: %s' % (task_id, truncate(data)))
+        logger.debug("Push stack data for job %s: %s" % (task_id, truncate(data)))
         return True
 
     def remove_stack(self, task_id=None):
@@ -267,17 +276,17 @@ class BaseTask(Task):
         operation.authorize = False
 
         printed_params = deepcopy(params)
-        self.logger.debug('get input params: %s' % obscure_data(printed_params))
+        self.logger.debug("get input params: %s" % obscure_data(printed_params))
         if isinstance(params, dict):
-            sync = params.get('sync', False)
+            sync = params.get("sync", False)
         else:
             sync = False
 
         if sync is True:
             # self.request.id = self.request['kwargs'].pop('task_id')
-            self.request.update(id=self.request.kwargs.pop('task_id'))
-            self.parent = params.pop('parent_task')
-            self.hostname = params.pop('hostname')
+            self.request.update(id=self.request.kwargs.pop("task_id"))
+            self.parent = params.pop("parent_task")
+            self.hostname = params.pop("hostname")
             self.argsrepr = jsonDumps(self.request.args)
             # self.argsrepr = saferepr(self.request.args, AMQP.argsrepr_maxsize)
             self.kwargsrepr = saferepr(self.request.kwargs, AMQP.kwargsrepr_maxsize)
@@ -286,23 +295,23 @@ class BaseTask(Task):
             self.hostname = self.request.hostname
             self.argsrepr = jsonDumps(self.request.args)
             # self.argsrepr = self.request.argsrepr
-            if hasattr(self.request, 'kwargsrepr'):
+            if hasattr(self.request, "kwargsrepr"):
                 self.kwargsrepr = self.request.kwargsrepr
             else:
-                self.kwargsrepr = ''
+                self.kwargsrepr = ""
 
         # setup correct user
         try:
-            user = params.pop('user', 'task_manager')
-            server = params.pop('server', 'localhost')
-            identity = params.pop('identity', '')
-            api_id = params.pop('api_id', '')
+            user = params.pop("user", "task_manager")
+            server = params.pop("server", "localhost")
+            identity = params.pop("identity", "")
+            api_id = params.pop("api_id", "")
         except Exception:
-            self.logger.warning('Can not get request user', exc_info=True)
-            user = 'task_manager'
-            server = 'localhost'
-            identity = ''
-            api_id = ''
+            self.logger.warning("Can not get request user", exc_info=True)
+            user = "task_manager"
+            server = "localhost"
+            identity = ""
+            api_id = ""
 
         if sync is False:
             operation.perms = []
@@ -318,15 +327,26 @@ class BaseTask(Task):
             mod = self.app.api_manager.modules[self.entity_class.module]
             self.controller = mod.get_controller()
 
-        self.objid = params.get('objid', None)
+        self.objid = params.get("objid", None)
         self.op = self.name
         self.opid = self.request.id
         self.delta = 2
         self.user = user
         self.api_id = api_id
 
-        self.logger.debug('completed params setup')
-
+        self.logger.debug("completed params setup")
+        try:
+            self.audit = initAudit(
+                objdef=self.objdef,
+                objid=self.objid,
+                api_method=self.name,
+                req_method="task",
+                request_id=api_id,
+                user=user,
+                subsystem=self.app.api_manager.app_subsytem,
+            )
+        except Exception as ex:
+            logger.error(ex)
         return params
 
     def progress(self, step_id=None, msg=None):
@@ -340,18 +360,20 @@ class BaseTask(Task):
         self.task_result.step_progress(self.request.id, step_id, msg=msg)
 
     def failure(self, params, error):
+        self.audit.state = 500
+        self.audit.send_audit(self.app.api_manager.elasticsearch, error=error, data=params)
         pass
 
     #
     # api call
     #
-    def invoke_api(self, subsystem, uri, method, data=''):
+    def invoke_api(self, subsystem, uri, method, data=""):
         try:
             if self.controller.api_client is not None:
                 res = self.controller.api_client.admin_request(subsystem, uri, method, data=data)
                 return res
             else:
-                self.logger.warning('Api client is not configured')
+                self.logger.warning("Api client is not configured")
                 return None
         except ApiManagerError as ex:
             raise TaskError(ex.value)
@@ -359,10 +381,17 @@ class BaseTask(Task):
     def wait_task(self, subsystem, prefix, taskid, timeout=60, delta=3, maxtime=600, trace=None):
         try:
             if self.controller.api_client is not None:
-                self.controller.api_client.admin_wait_task(subsystem, prefix, taskid, timeout=timeout, delta=delta,
-                                                           maxtime=maxtime, trace=trace)
+                self.controller.api_client.admin_wait_task(
+                    subsystem,
+                    prefix,
+                    taskid,
+                    timeout=timeout,
+                    delta=delta,
+                    maxtime=maxtime,
+                    trace=trace,
+                )
             else:
-                self.logger.warning('Api client is not configured')
+                self.logger.warning("Api client is not configured")
         except ApiManagerError as ex:
             raise TaskError(ex.value)
 
@@ -371,28 +400,28 @@ class BaseTask(Task):
     #
     def start_step(self):
         """Start step"""
-        step_id = self.task_result.step_add(self.request.id, 'start_step')
+        step_id = self.task_result.step_add(self.request.id, "start_step")
         self.task_result.step_success(self.request.id, step_id, None)
 
     def end_step(self):
         """End step"""
-        step_id = self.task_result.step_add(self.request.id, 'end_step')
+        step_id = self.task_result.step_add(self.request.id, "end_step")
         self.task_result.step_success(self.request.id, step_id, None)
 
     #
     # task run
     #
     def __import_step(self, step):
-        components = step.split('.')
-        self.logger.debug('import step %s' % step)
+        components = step.split(".")
+        self.logger.debug("import step %s" % step)
         # step passed as function
         try:
-            mod = __import__('.'.join(components[:-1]), globals(), locals(), [components[-1]], 0)
+            mod = __import__(".".join(components[:-1]), globals(), locals(), [components[-1]], 0)
             step_func = getattr(mod, components[-1], None)
 
         # step passed as class method
-        except:
-            mod = __import__('.'.join(components[:-2]), globals(), locals(), [components[-2]], 0)
+        except Exception:
+            mod = __import__(".".join(components[:-2]), globals(), locals(), [components[-2]], 0)
             step_class = getattr(mod, components[-2], None)
             step_func = getattr(step_class, components[-1], None)
 
@@ -410,7 +439,7 @@ class BaseTask(Task):
         params = self._setup(params)
 
         # get sync
-        sync = params.get('sync', False)
+        sync = params.get("sync", False)
 
         # open database session
         if sync is False:
@@ -428,22 +457,22 @@ class BaseTask(Task):
                     step = import_func(step)
 
                 if not isinstance(step, collections.Callable):
-                    raise TaskError('step is not a callable function')
+                    raise TaskError("step is not a callable function")
 
                 res, params = step(self, None, params)
 
                 # set result of the executed step in the params of the following step
-                params['last_step_response'] = res
+                params["last_step_response"] = res
 
             # run optional steps
-            steps = params.pop('steps', [])
+            steps = params.pop("steps", [])
             for step in steps:
                 if isinstance(step, dict):
                     # logger.debug('+++++ run dict - step[step]: %s' % step['step'])
-                    step_func = self.__import_step(step['step'])
-                    
+                    step_func = self.__import_step(step["step"])
+
                     # logger.debug('+++++ run dict - BEFORE - step_func: %s' % step_func)
-                    res, params = step_func(self, None, params, *step['args'])
+                    res, params = step_func(self, None, params, *step["args"])
                     # logger.debug('+++++ run dict - AFTER - step_func: %s' % step_func)
                 else:
                     # logger.debug('+++++ run else - __import_step - step: %s' % step)
@@ -453,33 +482,37 @@ class BaseTask(Task):
                     # logger.debug('+++++ run else - AFTER - step_func: %s' % step_func)
 
                 # set result of the executed step in the params of the following step
-                params['last_step_response'] = res
+                params["last_step_response"] = res
 
             # run optional custom_run
-            custom_run = getattr(self, 'custom_run', None)
+            custom_run = getattr(self, "custom_run", None)
             if custom_run is not None:
                 res, params = custom_run(params)
 
             # run end step
-            self.end_step()
+            self.audit.state = 200
+            self.audit.send_audit(self.app.api_manager.elasticsearch, data=params)
 
             self.task_result.task_success(self, str(res))
         except SoftTimeLimitExceeded:
-            self.task_result.task_failure(self, 'Soft time limit exceeded')
-            self.failure(params, 'Soft time limit exceeded')
-            raise TaskError('Soft time limit exceeded')
+            self.task_result.task_failure(self, "Soft time limit exceeded")
+            self.failure(params, "Soft time limit exceeded")
+            raise TaskError("Soft time limit exceeded")
         except TimeLimitExceeded:
-            self.task_result.task_failure(self, 'Time limit exceeded')
-            self.failure(params, 'Time limit exceeded')
-            raise TaskError('Time limit exceeded')
+            self.task_result.task_failure(self, "Time limit exceeded")
+            self.failure(params, "Time limit exceeded")
+            raise TaskError("Time limit exceeded")
         except WorkerLostError:
-            self.task_result.task_failure(self, 'The worker processing a job has exited prematurely')
-            self.failure(params, 'The worker processing a job has exited prematurely')
-            raise TaskError('The worker processing a job has exited prematurely')
+            self.task_result.task_failure(self, "The worker processing a job has exited prematurely")
+            self.failure(params, "The worker processing a job has exited prematurely")
+            raise TaskError("The worker processing a job has exited prematurely")
         except Terminated:
-            self.task_result.task_failure(self, 'The worker processing a job has been terminated by user request')
-            self.failure(params, 'The worker processing a job has been terminated by user request')
-            raise TaskError('The worker processing a job has been terminated by user request')
+            self.task_result.task_failure(self, "The worker processing a job has been terminated by user request")
+            self.failure(
+                params,
+                "The worker processing a job has been terminated by user request",
+            )
+            raise TaskError("The worker processing a job has been terminated by user request")
         except ApiManagerError as err:
             self.task_result.task_failure(self, str(err.value))
             self.failure(params, str(err.value))
@@ -509,17 +542,18 @@ def task_step():
             ....
             return res, params
     """
+
     def wrapper(fn):
         @wraps(fn)
-        def decorated(task, step_id, params, *args, **kwargs):
+        def decorated(task, dummystep_id, params, *args, **kwargs):
             step_id = task.task_result.step_add(task.request.id, fn.__name__)
-            task.progress(step_id, msg='get params: %s' % params)
+            task.progress(step_id, msg="get params: %s" % params)
             try:
                 task.current_step_id = step_id
                 task.current_step_name = fn.__name__
                 res, params = fn(task, step_id, params, *args, **kwargs)
             except SoftTimeLimitExceeded:
-                task.task_result.step_failure(task.request.id, step_id, 'Soft time limit exceeded')
+                task.task_result.step_failure(task.request.id, step_id, "Soft time limit exceeded")
                 raise
             except TaskError as ex:
                 task.task_result.step_failure(task.request.id, step_id, str(ex))
@@ -530,7 +564,9 @@ def task_step():
             task.task_result.step_success(task.request.id, step_id, res)
 
             return res, params
+
         return decorated
+
     return wrapper
 
 
@@ -542,9 +578,7 @@ def create_task_class(TaskClass, fn, task_entity_class, task_alias):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
 
-            self.steps = [
-                InternalTask.main_step
-            ]
+            self.steps = [InternalTask.main_step]
 
         @staticmethod
         @task_step()
@@ -556,21 +590,21 @@ def create_task_class(TaskClass, fn, task_entity_class, task_alias):
             :param dict params: step params
             :return: res, params
             """
-            entity_id = params.get('entity_id', None)
+            entity_id = params.get("entity_id", None)
             entity = task.controller.get_entity_for_task(task.entity_class, entity_id)
             res = fn(entity, params)
-            task.progress(step_id, msg='run async method %s: %s' % (fn.__name__, res))
+            task.progress(step_id, msg="run async method %s: %s" % (fn.__name__, res))
             return res, params
 
-    name = ''.join(t.capitalize() for t in task_alias.split('_'))
-    task_class_name = '%s%s' % (task_entity_class.__name__, name)
+    name = "".join(t.capitalize() for t in task_alias.split("_"))
+    task_class_name = "%s%s" % (task_entity_class.__name__, name)
     logger.warn(task_class_name)
-    InternalTaskClass = type(task_class_name, (InternalTask,), {'__module__': task_entity_class.__module__})
+    InternalTaskClass = type(task_class_name, (InternalTask,), {"__module__": task_entity_class.__module__})
 
     return InternalTaskClass
 
 
-def run_async(action='use', TaskClass=BaseTask, alias=None):
+def run_async(action="use", TaskClass=BaseTask, alias=None):
     """Use this decorator to transform a class method in static and run ad celery task
 
     Example::
@@ -580,12 +614,13 @@ def run_async(action='use', TaskClass=BaseTask, alias=None):
             ....
             return res, params
     """
+
     def wrapper(fn):
         @wraps(fn)
         def run_async_decorated(*args, **kwargs):
-            register = kwargs.pop('register', False)
-            sync = kwargs.pop('sync', False)
-            task_entity_class = kwargs.pop('entity_class', None)
+            register = kwargs.pop("register", False)
+            sync = kwargs.pop("sync", False)
+            task_entity_class = kwargs.pop("entity_class", None)
             task_alias = alias if alias is not None else fn.__name__
 
             args = list(args)
@@ -593,16 +628,17 @@ def run_async(action='use', TaskClass=BaseTask, alias=None):
             # if len(args) > 1:
             #     sync = args[1].pop('sync', False)
 
-            logger.debug('##### run_async args: %s' % args)
-            logger.debug('##### run_async kwargs: %s' % kwargs)
-            logger.debug('##### run_async register: %s' % register)
-            logger.debug('##### run_async task_entity_class: %s' % task_entity_class)
-            logger.debug('##### run_async task_alias: %s' % task_alias)
-            logger.debug('##### run_async sync status: %s' % sync)
+            logger.debug("##### run_async args: %s" % args)
+            logger.debug("##### run_async kwargs: %s" % kwargs)
+            logger.debug("##### run_async register: %s" % register)
+            logger.debug("##### run_async task_entity_class: %s" % task_entity_class)
+            logger.debug("##### run_async task_alias: %s" % task_alias)
+            logger.debug("##### run_async sync status: %s" % sync)
 
             # register task in celery
             if register is True:
                 from beehive.common.task_v2.manager import task_manager
+
                 # module = __import__(task_entity_class.__module__)
                 # import sys
                 # module = sys.modules[task_entity_class.__module__]
@@ -616,14 +652,14 @@ def run_async(action='use', TaskClass=BaseTask, alias=None):
 
             # run method as sync
             elif sync is True:
-                logger.debug('########## start sync %s' % fn.__name__)
+                logger.debug("########## start sync %s" % fn.__name__)
                 # args = list(args)
                 inst = args.pop(0)
                 params = args.pop(0)
-                params['sync'] = True
+                params["sync"] = True
                 res = fn(inst, params)
-                logger.debug('run sync method %s: %s' % (fn.__name__, res))
-                logger.debug('########## end sync %s' % fn.__name__)
+                logger.debug("run sync method %s: %s" % (fn.__name__, res))
+                logger.debug("########## end sync %s" % fn.__name__)
                 return res
 
             # send task request to celery
@@ -637,20 +673,27 @@ def run_async(action='use', TaskClass=BaseTask, alias=None):
 
                 # verify permissions
                 objid = inst.objid
-                if action == 'insert':
-                    objid = '//'.join(inst.objid.split('//')[0:-1])
+                if action == "insert":
+                    objid = "//".join(inst.objid.split("//")[0:-1])
                 controller.check_authorization(inst.objtype, inst.objdef, objid, action)
 
                 params.update(inst.get_user())
-                params['objid'] = str(uuid4())
-                params['alias'] = task_alias
-                params['entity_id'] = inst.oid
-                task_name = '%s.%s' % (inst.__class__.__module__, task_alias)
+                params["objid"] = str(uuid4())
+                params["alias"] = task_alias
+                params["entity_id"] = inst.oid
+                task_name = "%s.%s" % (inst.__class__.__module__, task_alias)
                 # task_name = 'beehive.common.task_v2.%s' % fn.__name__
-                task = signature(task_name, [params], app=inst.task_manager, queue=inst.celery_broker_queue)
+                task = signature(
+                    task_name,
+                    [params],
+                    app=inst.task_manager,
+                    queue=inst.celery_broker_queue,
+                )
                 task_obj = task.apply_async()
-                return {'taskid': task_obj.id}, 201
+                return {"taskid": task_obj.id}, 201
+
         return run_async_decorated
+
     return wrapper
 
 
@@ -663,23 +706,23 @@ def prepare_or_run_task(entity, task, params, sync=False):
     :param sync: if True run a sync task
     :return:
     """
-    params['sync'] = sync
+    params["sync"] = sync
     if sync is True:
         user = {
-            'user': operation.user[0],
-            'server': operation.user[1],
-            'identity': operation.user[2],
-            'api_id': operation.id
+            "user": operation.user[0],
+            "server": operation.user[1],
+            "identity": operation.user[2],
+            "api_id": operation.id,
         }
         new_params = deepcopy(params)
         new_params.update(user)
         task = signature(task, [], app=entity.task_manager)
-        return {'task': task, 'uuid': entity.uuid, 'params': new_params}, 200
+        return {"task": task, "uuid": entity.uuid, "params": new_params}, 200
     else:
         task = signature(task, [params], app=entity.task_manager, queue=entity.celery_broker_queue)
         task = task.apply_async()
-        logger.info('run async task %s' % task.id)
-        return {'taskid': task.id, 'uuid': entity.uuid}, 202
+        logger.info("run async task %s" % task.id)
+        return {"taskid": task.id, "uuid": entity.uuid}, 202
 
 
 def run_sync_task(prepared_sync_task, parent_task, parent_step):
@@ -689,15 +732,15 @@ def run_sync_task(prepared_sync_task, parent_task, parent_step):
     :param parent_task: parent task instance
     :return:
     """
-    logger.info('start sync task %s' % prepared_sync_task['task'])
-    prepared_sync_task['params']['hostname'] = parent_task.hostname
-    prepared_sync_task['params']['parent_task'] = parent_task.request.id + ':' + parent_step
-    prepared_sync_task['params']['user'] = operation.user[0]
-    prepared_sync_task['params']['server'] = operation.user[1]
-    prepared_sync_task['params']['identity'] = operation.user[2]
-    prepared_sync_task['params']['api_id'] = operation.id
-    prepared_sync_task['params']['objid'] = parent_task.objid
+    logger.info("start sync task %s" % prepared_sync_task["task"])
+    prepared_sync_task["params"]["hostname"] = parent_task.hostname
+    prepared_sync_task["params"]["parent_task"] = parent_task.request.id + ":" + parent_step
+    prepared_sync_task["params"]["user"] = operation.user[0]
+    prepared_sync_task["params"]["server"] = operation.user[1]
+    prepared_sync_task["params"]["identity"] = operation.user[2]
+    prepared_sync_task["params"]["api_id"] = operation.id
+    prepared_sync_task["params"]["objid"] = parent_task.objid
     # res = prepared_sync_task['task'].type(prepared_sync_task['params'])
-    res = prepared_sync_task['task'].apply(args=[prepared_sync_task['params']], throw=True)
-    logger.info('complete sync task %s : %s ' % (prepared_sync_task['task'], res))
+    res = prepared_sync_task["task"].apply(args=[prepared_sync_task["params"]], throw=True)
+    logger.info("complete sync task %s : %s " % (prepared_sync_task["task"], res))
     return res.result

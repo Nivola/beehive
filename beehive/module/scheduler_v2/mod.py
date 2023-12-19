@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
 from .view import SchedulerAPI, TaskAPI
 from .controller import SchedulerController
@@ -12,15 +12,13 @@ class SchedulerModuleV2(ApiModule):
 
     :param module: ApiModule instance
     """
+
     def __init__(self, api_manger):
-        self.name = 'SchedulerModuleV2'
-        
+        self.name = "SchedulerModuleV2"
+
         ApiModule.__init__(self, api_manger, self.name)
-        
-        self.apis = [
-            SchedulerAPI, 
-            TaskAPI
-        ]
+
+        self.apis = [SchedulerAPI, TaskAPI]
         self.api_plugins = {}
         self.controller = SchedulerController(self)
 
@@ -28,7 +26,7 @@ class SchedulerModuleV2(ApiModule):
         try:
             self.related = api_manger.main_module
             self.base_path = self.related.base_path
-        except:
+        except Exception:
             pass
 
     def get_controller(self):

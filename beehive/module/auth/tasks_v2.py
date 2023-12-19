@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
 from datetime import datetime
 from logging import getLogger
@@ -12,17 +12,16 @@ logger = getLogger(__name__)
 
 
 class DisableExpiredUsersTask(BaseTask):
-    name = 'disable_expired_users_task'
+    name = "disable_expired_users_task"
     entity_class = User
 
     """Disable expired users
     """
+
     def __init__(self, *args, **kwargs):
         super(DisableExpiredUsersTask, self).__init__(*args, **kwargs)
 
-        self.steps = [
-            DisableExpiredUsersTask.disable_expired_users_task_step
-        ]
+        self.steps = [DisableExpiredUsersTask.disable_expired_users_task_step]
 
     @staticmethod
     @task_step()
@@ -41,17 +40,16 @@ class DisableExpiredUsersTask(BaseTask):
 
 
 class RemoveExpiredRolesFromUsersTask(BaseTask):
-    name = 'remove_expired_roles_from_users_task'
+    name = "remove_expired_roles_from_users_task"
     entity_class = User
 
     """Disable expired users
     """
+
     def __init__(self, *args, **kwargs):
         super(RemoveExpiredRolesFromUsersTask, self).__init__(*args, **kwargs)
 
-        self.steps = [
-            RemoveExpiredRolesFromUsersTask.remove_expired_roles_from_users_step
-        ]
+        self.steps = [RemoveExpiredRolesFromUsersTask.remove_expired_roles_from_users_step]
 
     @staticmethod
     @task_step()

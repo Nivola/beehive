@@ -1,5 +1,41 @@
 # Changelog
 
+## Version 1.15.0
+
+* Added ...
+  * http request/response auditing
+  * task auditing
+
+* Fixed ...
+  * timeout
+  * check permission
+  * audit log fields
+
+## Version 1.14.0
+
+* Added ...
+  * check permissions for api method executions
+
+* Fixed ...
+  * identity crud refactored
+  * refactoring controller
+  * minor fixes
+
+## Version 1.13.0
+
+* Added ...
+
+* Fixed ...
+  * minor fixes
+
+## Version 1.12.0
+
+* Added ...
+  * version 8 elastisearch
+
+* Fixed ...
+  * minor fixes
+
 ## Version 1.11.0 (feb 11, 2022)
 
 * Added ...

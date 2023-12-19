@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
 import logging
 from celery.canvas import Signature as CelerySignature
 from celery.utils import abstract
 
-logger = logging.getLogger('beehive.common')
+logger = logging.getLogger("beehive.common")
 
 
 class Signature(CelerySignature):
@@ -22,13 +22,13 @@ class Signature(CelerySignature):
         See also:
             :meth:`~@Task.apply_async` and the :ref:`guide-calling` guide.
         """
-        logger.debug('args - {0}'.format(args))
-        logger.debug('kwargs: %s' % kwargs)
-        logger.debug('route_name: %s' % route_name)
-        logger.debug('**options: %s' % options)
+        logger.debug("args - {0}".format(args))
+        logger.debug("kwargs: %s" % kwargs)
+        logger.debug("route_name: %s" % route_name)
+        logger.debug("**options: %s" % options)
 
         taskid = CelerySignature.apply_async(self, args, kwargs, route_name, **options)
-        logger.debug('Create new task: %s' % taskid)
+        logger.debug("Create new task: %s" % taskid)
         return taskid
 
 
@@ -40,11 +40,11 @@ def signature(varies, *args, **kwargs):
 
     :return: Signature: The resulting signature.
     """
-    logger.debug('args - {0}'.format(args))
-    logger.debug('kwargs: %s' % kwargs)
-    logger.debug('varies: %s' % varies)
+    logger.debug("args - {0}".format(args))
+    logger.debug("kwargs: %s" % kwargs)
+    logger.debug("varies: %s" % varies)
 
-    app = kwargs.get('app')
+    app = kwargs.get("app")
     if isinstance(varies, dict):
         if isinstance(varies, abstract.CallableSignature):
             return varies.clone()
