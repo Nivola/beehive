@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
 from beehive.module.basic.views.status import StatusAPI
 from beehive.common.apimanager import ApiModule
@@ -13,12 +13,13 @@ class EventModule(ApiModule):
 
     :param module: ApiModule instance
     """
+
     def __init__(self, api_manger):
-        self.name = 'EventModule'
-        self.base_path = 'nes'
-        
+        self.name = "EventModule"
+        self.base_path = "nes"
+
         ApiModule.__init__(self, api_manger, self.name)
-        
+
         self.apis = [EventAPI, StatusAPI]
         self.controller = EventController(self)
 

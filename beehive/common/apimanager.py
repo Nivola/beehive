@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
 import logging
 from modulefinder import Module
@@ -25,7 +25,7 @@ from six import ensure_text
 from beecell.cache.client import CacheClient
 from beecell.db import TransactionError, QueryError
 from beecell.db.manager import MysqlManager, SqlManagerError, RedisManager
-from beecell.auth import extract
+from beecell.auth import extract, IdentityMgr, AuthError
 from beecell.db.manager import parse_redis_uri
 from beecell.password import obscure_data
 from beecell.file import read_file
@@ -36,20 +36,21 @@ from beecell.types.type_dict import dict_get
 from beecell.simple import import_class, get_class_name, get_remote_ip, dynamic_import
 from beecell.sendmail import Mailer
 from beehive.common.data import operation, trace
+from beehive.common.audit import Audit, initAudit, localAudit
 from beecell.auth import DatabaseAuth, LdapAuth, SystemUser
 from beehive.common.apiclient import BeehiveApiClient, BeehiveApiClientError
 from beehive.common.model.config import ConfigDbManager
 from beehive.common.model.authorization import AuthDbManager, Role
-# from dicttoxml import dicttoxml
 from dict2xml import dict2xml
 from beecell.simple import jsonDumps
+
 try:
     from beehive.common.event import EventProducerKombu
-except:
+except Exception:
     pass
 try:
     from beecell.server.uwsgi_server.wrapper import uwsgi_util
-except:
+except Exception:
     pass
 from copy import deepcopy
 from flask_session.sessions import RedisSessionInterface
@@ -59,29 +60,33 @@ from flasgger import Swagger, SwaggerView
 from marshmallow import fields, Schema, ValidationError
 from marshmallow.validate import OneOf, Range
 from beecell.db.manager import RedisManager
-from typing import List, Type, Tuple, Any, Union, Dict, Callable
+from typing import List, Type, Tuple, Any, Union, Dict, Callable, Union
+
+## from beecell.debug import dbgprint
 
 logger = logging.getLogger(__name__)
 
+
 class ApiMethod(object):
-    objtype = 'ApiMethod'
-    objdef = 'ApiMethod'
-    objdesc = 'Api Method'
+    objtype = "ApiMethod"
+    objdef = "ApiMethod"
+    objdesc = "Api Method"
+
 
 class RedisSessionInterface2(RedisSessionInterface):
     def __init__(self, redis, key_prefix, use_signer=False, permanent=True):
         RedisSessionInterface.__init__(self, redis, key_prefix, use_signer, permanent)
 
     def save_session(self, app, session, response):
-        if response.mimetype in ['text/html']:
+        if response.mimetype in ["text/html"]:
             RedisSessionInterface.save_session(self, app, session, response)
 
         # if response.mimetype not in ['text/html']:
         #     self.redis.delete(self.key_prefix + session.sid)
         #     logger.debug2('Delete user session. This is an Api request')
-        if session.get('_invalidate', False) is not False:
+        if session.get("_invalidate", False) is not False:
             self.redis.delete(self.key_prefix + session.sid)
-            logger.debug2('Delete user session. This is an Api request')
+            logger.debug2("Delete user session. This is an Api request")
 
 
 class ApiManagerWarning(Exception):
@@ -90,16 +95,17 @@ class ApiManagerWarning(Exception):
     :param value: error description
     :param code: error code [default=400]
     """
+
     def __init__(self, value, code=400):
         self.code = code
         self.value = value
         Exception.__init__(self, value, code)
 
     def __repr__(self):
-        return 'ApiManagerWarning: %s' % self.value
+        return "ApiManagerWarning: %s" % self.value
 
     def __str__(self):
-        return '%s' % self.value
+        return "%s" % self.value
 
 
 class ApiManagerError(Exception):
@@ -108,16 +114,20 @@ class ApiManagerError(Exception):
     :param value: error description
     :param code: error code [default=400]
     """
-    def __init__(self, value, code=400):
+
+    def __init__(self, value, code=400, prefix: str = None):
         self.code = code
-        self.value = str(value)
+        if prefix is not None:
+            self.value = prefix + " - " + str(value)
+        else:
+            self.value = str(value)
         Exception.__init__(self, self.value, code)
 
     def __repr__(self):
-        return 'ApiManagerError: %s' % self.value
+        return "ApiManagerError: %s" % self.value
 
     def __str__(self):
-        return '%s' % self.value
+        return "%s" % self.value
 
 
 class ApiManager(object):
@@ -127,48 +137,61 @@ class ApiManager(object):
     :param app: flask app reference
     :param hostname: server hostname
     """
+
     def __init__(self, params, app=None, hostname=None):
-        self.logger = logging.getLogger(self.__class__.__module__ + '.' + self.__class__.__name__)
+        self.logger = logging.getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
 
         # configuration params
         self.params = params
 
         # flask app reference
         self.app = app
-        self.app_name = ensure_text(self.params['api_name'])
-        self.app_id = ensure_text(self.params['api_id'])
-        self.app_env = ensure_text(self.params['api_env'])
-        self.app_desc = ensure_text(self.params['api_id'])
-        self.app_subsytem = ensure_text(self.params['api_subsystem'])
-        self.app_fernet_key = self.params.get('api_fernet_key', None)
+        self.app_name = ensure_text(self.params["api_name"])
+        self.app_id = ensure_text(self.params["api_id"])
+        self.app_env = ensure_text(self.params["api_env"])
+        self.app_desc = ensure_text(self.params["api_id"])
+        self.app_subsytem = ensure_text(self.params["api_subsystem"])
+        self.app_fernet_key = self.params.get("api_fernet_key", None)
         if self.app_fernet_key is not None:
             self.app_fernet_key = ensure_text(self.app_fernet_key)
-        self.app_endpoint_id = '%s-%s' % (ensure_text(self.params['api_id']), hostname)
-        self.swagger_spec_path = ensure_text(self.params.get('api_swagger_spec_path', 'swagger.yml'))
-        self.app_k8s_pod = ensure_text(self.params.get('api_k8s_pod', ''))
+        self.app_endpoint_id = "%s-%s" % (ensure_text(self.params["api_id"]), hostname)
+        self.swagger_spec_path = ensure_text(self.params.get("api_swagger_spec_path", "swagger.yml"))
+        self.app_k8s_pod = ensure_text(self.params.get("api_k8s_pod", ""))
 
         try:
-            self.app_uri = 'http://%s%s' % (hostname, ensure_text(self.params['http-socket']))
-            self.uwsgi_uri = 'uwsgi://%s%s' % (hostname, ensure_text(self.params['socket']))
-        except:
+            self.app_uri = "http://%s%s" % (
+                hostname,
+                ensure_text(self.params["http-socket"]),
+            )
+            self.uwsgi_uri = "uwsgi://%s%s" % (
+                hostname,
+                ensure_text(self.params["socket"]),
+            )
+        except Exception:
             self.app_uri = None
             self.uwsgi_uri = None
 
-        self.cluster_ip = self.params.get('api_cluster_ip', None)
+        self.cluster_ip = self.params.get("api_cluster_ip", None)
         self.cluster_app_uri = self.app_uri
         if self.cluster_ip is not None:
             self.cluster_ip = ensure_text(self.cluster_ip)
-            self.cluster_app_uri = 'http://%s%s' % (self.cluster_ip, ensure_text(self.params['http-socket']))
-            self.app_endpoint_id = '%s-%s' % (ensure_text(self.params['api_id']), self.app_env)
+            self.cluster_app_uri = "http://%s%s" % (
+                self.cluster_ip,
+                ensure_text(self.params["http-socket"]),
+            )
+            self.app_endpoint_id = "%s-%s" % (
+                ensure_text(self.params["api_id"]),
+                self.app_env,
+            )
 
         # set syslog server
-        syslog = self.params.get('syslog_server', None)
+        syslog = self.params.get("syslog_server", None)
         self.syslog_server = None
         if syslog is not None:
             self.syslog_server = ensure_text(syslog)
 
         # get pod
-        pod = self.params.get('api_pod', None)
+        pod = self.params.get("api_pod", None)
         self.pod = None
         if pod is not None:
             self.pod = ensure_text(pod)
@@ -181,14 +204,14 @@ class ApiManager(object):
             swagger_template = read_file(self.swagger_spec_path)
             self.swagger = Swagger(self.app, template=swagger_template)
         except FileNotFoundError:
-            self.logger.warning('file %s not found' % self.swagger_spec_path)
+            self.logger.warning("file %s not found" % self.swagger_spec_path)
             self.swagger = None
-        except:
-            self.logger.warning('', exc_info=True)
+        except Exception:
+            self.logger.warning("", exc_info=True)
             self.swagger = None
 
         # instance configuration
-        self.http_socket = self.params.get('http-socket', None)
+        self.http_socket = self.params.get("http-socket", None)
         if self.http_socket is not None:
             self.http_socket = ensure_text(self.http_socket)
         self.server_name = hostname
@@ -225,13 +248,13 @@ class ApiManager(object):
         self.event_producer = None
 
         # api listener
-        self.api_timeout = float(self.params.get('api_timeout', 10.0))
+        self.api_timeout = float(self.params.get("api_timeout", 10.0))
 
         # api endpoints
         self.endpoints = []
         self.api_user = None
         self.api_user_pwd = None
-        self.api_client: ApiClient= None
+        self.api_client: ApiClient = None
         # self.awx_client = None
 
         # gateways
@@ -245,8 +268,8 @@ class ApiManager(object):
 
         # database manager
         self.db_manager = None
-        if self.params.get('database_uri', None) is not None:
-            database_uri = ensure_text(self.params.get('database_uri', ''))
+        if self.params.get("database_uri", None) is not None:
+            database_uri = ensure_text(self.params.get("database_uri", ""))
             self.create_pool_engine((database_uri, 5, 10, 10, 1800))
 
         # send mail
@@ -254,8 +277,8 @@ class ApiManager(object):
         self.mail_sender = None
 
         # identity
-        self.prefix = 'identity:'
-        self.prefix_index = 'identity:index:'
+        self.prefix = "identity:"
+        self.prefix_index = "identity:index:"
         self.expire = 3600
 
         # scheduler
@@ -290,10 +313,13 @@ class ApiManager(object):
             pool_size = dbconf[2]
             max_overflow = dbconf[3]
             pool_recycle = dbconf[4]
-            self.db_manager = MysqlManager('db_manager01', db_uri, connect_timeout=connect_timeout)
-            self.db_manager.create_pool_engine(pool_size=pool_size, max_overflow=max_overflow,
-                                               pool_recycle=pool_recycle)
-            self.logger.debug('setup db manager on uri %s: %s ' % (db_uri, self.db_manager))
+            self.db_manager = MysqlManager("db_manager01", db_uri, connect_timeout=connect_timeout)
+            self.db_manager.create_pool_engine(
+                pool_size=pool_size,
+                max_overflow=max_overflow,
+                pool_recycle=pool_recycle,
+            )
+            self.logger.debug("setup db manager on uri %s: %s " % (db_uri, self.db_manager))
         except SqlManagerError as ex:
             self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex)
@@ -306,15 +332,14 @@ class ApiManager(object):
         try:
             db_uri = dbconf[0]
             connect_timeout = dbconf[1]
-            self.db_manager = MysqlManager('db_manager01', db_uri, connect_timeout=connect_timeout)
+            self.db_manager = MysqlManager("db_manager01", db_uri, connect_timeout=connect_timeout)
             self.db_manager.create_simple_engine()
         except SqlManagerError as ex:
             self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex)
 
     def is_engine_configured(self):
-        """Return True if database engine is configured
-        """
+        """Return True if database engine is configured"""
         if self.db_manager is not None:
             return True
         return False
@@ -344,41 +369,40 @@ class ApiManager(object):
         except SqlManagerError as e:
             raise ApiManagerError(e)
 
-    def get_identity(self, uid):
+    def get_identity(self, uid, update_ttl: bool = False):
         """Get identity
 
         :param uid: identity id
         :return: {'uid':..., 'user':..., timestamp':..., 'pubkey':..., 'seckey':...}
         """
-        identity = self.redis_identity_manager.conn.get(self.prefix + uid)
-        if identity is not None:
-            data = pickle.loads(identity)
-            data['ttl'] = self.redis_identity_manager.conn.ttl(self.prefix + uid)
-            self.logger.debug('Get identity %s from redis' % (uid))
-            return data
-        else:
+        ## dbgprint(uuid=uid)
+        try:
+            identity = IdentityMgr.get_identity(uid, self.redis_identity_manager, update_ttl=update_ttl)
+            return identity
+        # except AuthError as ex:
+        #     self.logger.error(str(ex))
+        #     raise ApiManagerError(str(ex), code=401)
+        except Exception as ex:
             self.logger.error("Identity %s doesn't exist or is expired" % uid)
             raise ApiManagerError("Identity %s doesn't exist or is expired" % uid, code=401)
+            # self.logger.error(str(ex))
+            # raise ApiManagerError(str(ex), code=401)
 
     def get_identities(self):
         """Get identities
 
         :return: [{'uid':..., 'user':..., timestamp':..., 'pubkey':..., 'seckey':...}, ..]
         """
+        ## dbgprint()
         try:
-            res = []
-            for key in self.redis_identity_manager.conn.keys(self.prefix+'*'):
-                identity = self.redis_identity_manager.conn.get(key)
-                data = pickle.loads(identity)
-                ttl = self.redis_identity_manager.conn.ttl(key)
-                res.append({'uid': data['uid'], 'user': data['user']['name'], 'timestamp': data['timestamp'],
-                            'ttl': ttl, 'ip': data['ip']})
+            self.logger.debug("Get identities from redis")
+            return IdentityMgr.get_identities(self.redis_identity_manager)
+        except AuthError as ex:
+            self.logger.error(str(ex))
+            raise ApiManagerError(str(ex))
         except Exception as ex:
-            self.logger.error('No identities found: %s' % ex)
-            raise ApiManagerError('No identities found')
-
-        self.logger.debug('Get identities from redis: %s' % (res))
-        return res
+            self.logger.error(str(ex))
+            raise ApiManagerError(str(ex))
 
     def verify_simple_http_credentials(self, user, pwd, user_ip):
         """Verify simple http credentials.
@@ -404,9 +428,9 @@ class ApiManager(object):
         :return: {'uid':..., 'user':..., timestamp':..., 'pubkey':..., 'seckey':...}
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        identity = self.get_identity(token)
-        self.redis_identity_manager.conn.expire(self.prefix + token, self.expire)
-        self.logger.debug('Extend identity %s expire' % token)
+        identity = self.get_identity(token, update_ttl=True)
+        # self.redis_identity_manager.conn.expire(self.prefix + token, self.expire)
+        self.logger.debug("Extend identity %s expire" % token)
         return identity
 
     def verify_request_signature(self, uid, sign, data):
@@ -419,9 +443,16 @@ class ApiManager(object):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # get identity
-        identity = self.get_identity(uid)
+        try:
+            idmg: IdentityMgr = IdentityMgr.factory(uid, redismanager=self.redis_identity_manager)
+        except Exception as ex:
+            self.logger.error("Identity %s doesn't exist or is expired" % uid)
+            raise ApiManagerError("Identity %s doesn't exist or is expired" % uid, code=401)
+
+        # identity = self.get_identity(uid)
+        identity = idmg.identity
         # verify signature
-        pubkey64 = identity['pubkey']
+        pubkey64 = identity["pubkey"]
 
         try:
             # import key
@@ -431,24 +462,24 @@ class ApiManager(object):
 
             # create data hash
             hash_data = SHA256.new()
-            hash_data.update(bytes(data, encoding='utf-8'))
+            hash_data.update(bytes(data, encoding="utf-8"))
 
             # verify sign
             verifier = PKCS1_v1_5.new(key)
             res = verifier.verify(hash_data, signature)
-        except:
-            self.logger.error('Data signature for identity %s is not valid' % uid)
-            raise ApiManagerError('Data signature for identity %s is not valid' % uid, code=401)
+        except Exception:
+            self.logger.error("Data signature for identity %s is not valid" % uid)
+            raise ApiManagerError("Data signature for identity %s is not valid" % uid, code=401)
 
         # extend expire time of the redis key
         if res is True:
-            self.redis_identity_manager.conn.expire(self.prefix + uid, self.expire)
-            self.redis_identity_manager.conn.expire(self.prefix_index + dict_get(identity, 'user.id'), self.expire)
-            self.logger.debug('Data signature %s for identity %s is valid. Extend expire.' % (sign, uid))
+            idmg.reset_ttl()
+            # self.redis_identity_manager.conn.expire(self.prefix + uid, self.expire)
+            # self.redis_identity_manager.conn.expire(self.prefix_index + dict_get(identity, "user.id"), self.expire)
+            self.logger.debug("Data signature %s for identity %s is valid. Extend expire." % (sign, uid))
         else:
-            self.logger.error('Data signature for identity %s is not valid' % uid)
-            raise ApiManagerError('Data signature for identity %s is not valid' % uid, code=401)
-
+            self.logger.error("Data signature for identity %s is not valid" % uid)
+            raise ApiManagerError("Data signature for identity %s is not valid" % uid, code=401)
 
         return identity
 
@@ -458,57 +489,58 @@ class ApiManager(object):
         :param register_api: if True register api module
         :param register_task: if True register async method as Celery task
         """
-        self.logger.info('Configure modules - START')
 
-        is_list = isinstance(self.params['api_module'], list)
+        self.logger.info("Configure modules - START")
+
+        is_list = isinstance(self.params["api_module"], list)
 
         if is_list:
-            module_classes_num = len(self.params['api_module'])
+            module_classes_num = len(self.params["api_module"])
             start_idx = 0
         else:
-            module_classes_num = int(self.params['api_module'])+1
+            module_classes_num = int(self.params["api_module"]) + 1
             start_idx = 1
 
         for i in range(start_idx, module_classes_num):
             if is_list:
-                item = self.params['api_module'][i]
+                item = self.params["api_module"][i]
             else:
-                item = ensure_text(self.params['api_module.%s' % i])
+                item = ensure_text(self.params["api_module.%s" % i])
 
             # check if module is primary
             main = False
             ## TODO remove debugging loggin
-            self.logger.info(f'PARSING module: {item} ' )
-            if item.find(',') > 0:
-                item, main = item.split(',')
+            self.logger.info(f"PARSING module: {item} ")
+            if item.find(",") > 0:
+                item, main = item.split(",")
                 main = str2bool(main)
             # import module class
             ## TODO remove debugging loggin
-            self.logger.info(f'Registering module: {item}  is main {main}' )
+            self.logger.info(f"Registering module: {item}  is main {main}")
             module_class = import_class(item)
             # instance module class
             module = module_class(self)
             # set main module
             if main is True:
                 self.main_module = module
-            self.logger.info('Register module: %s' % item)
+            self.logger.info("Register module: %s" % item)
 
-        if 'api_plugin' in self.params:
-            is_list = isinstance(self.params['api_plugin'], list)
+        if "api_plugin" in self.params:
+            is_list = isinstance(self.params["api_plugin"], list)
 
             if is_list:
-                api_plugin_num = len(self.params['api_plugin'])
+                api_plugin_num = len(self.params["api_plugin"])
                 start_idx = 0
             else:
-                api_plugin_num = int(self.params['api_plugin']) + 1
+                api_plugin_num = int(self.params["api_plugin"]) + 1
                 start_idx = 1
 
             plugin_pkgs = []
             for i in range(start_idx, api_plugin_num):
                 if is_list:
-                    plugin_pkgs.append(ensure_text(self.params['api_plugin'][i]))
+                    plugin_pkgs.append(ensure_text(self.params["api_plugin"][i]))
                 else:
-                    plugin_pkgs.append(ensure_text(self.params['api_plugin.%s' % i]))
+                    plugin_pkgs.append(ensure_text(self.params["api_plugin.%s" % i]))
 
             if type(plugin_pkgs) is str:
                 plugin_pkgs = [plugin_pkgs]
@@ -516,22 +548,25 @@ class ApiManager(object):
             if len(plugin_pkgs) > 0:
                 plpkg = []
                 for x in plugin_pkgs:
-                    for p in x.replace(' ', '').split():
+                    for p in x.replace(" ", "").split():
                         plpkg.append(p)
                 plugin_pkgs = plpkg
 
             # plugin_pkgs
             for plugin_pkg in plugin_pkgs:
-                name, class_name = plugin_pkg.split(',')
+                name, class_name = plugin_pkg.split(",")
                 # import plugin class
+                self.logger.info("register_modules - import class_name: %s" % class_name)
                 plugin_class = import_class(class_name)
                 # get module plugin
+                self.logger.info("register_modules - name: %s" % name)
                 module = self.modules[name]
+                self.logger.info("register_modules - module: %s" % module)
                 # instance plugin class
                 plugin = plugin_class(module)
                 # register plugin
                 plugin.register()
-                self.logger.info('Register plugin: %s' % class_name)
+                self.logger.info("registered plugin: %s" % class_name)
 
         # register api
         if register_api is True:
@@ -551,7 +586,7 @@ class ApiManager(object):
                 # register module api
                 module.register_task()
 
-        self.logger.info('Configure modules - STOP')
+        self.logger.info("Configure modules - STOP")
 
     def list_modules(self):
         """Return list of configured modules
@@ -571,7 +606,7 @@ class ApiManager(object):
 
     def configure(self):
         """Configure api manager"""
-        self.logger.info('Configure server - CONFIGURE')
+        self.logger.info("Configure server - CONFIGURE")
 
         if self.is_engine_configured() is True:
             # open db session
@@ -585,20 +620,20 @@ class ApiManager(object):
                 #
                 # oauth2 configuration
                 #
-                self.logger.info('Configure oauth2 - CONFIGURE')
+                self.logger.info("Configure oauth2 - CONFIGURE")
                 try:
-                    self.oauth2_endpoint = ensure_text(self.params.get('oauth2_endpoint'))
-                    self.logger.info('Setup oauth2 endpoint: %s' % self.oauth2_endpoint)
-                    self.logger.info('Configure oauth2 - CONFIGURED')
-                except:
-                    self.logger.warning('Configure oauth2 - NOT CONFIGURED')
+                    self.oauth2_endpoint = ensure_text(self.params.get("oauth2_endpoint"))
+                    self.logger.info("Setup oauth2 endpoint: %s" % self.oauth2_endpoint)
+                    self.logger.info("Configure oauth2 - CONFIGURED")
+                except Exception:
+                    self.logger.warning("Configure oauth2 - NOT CONFIGURED")
 
                 #
                 # identity redis configuration
                 #
-                self.logger.info('Configure identity redis - CONFIGURE')
+                self.logger.info("Configure identity redis - CONFIGURE")
                 # connect to redis
-                redis_identity_uri = self.params.get('redis_identity_uri', None)
+                redis_identity_uri = self.params.get("redis_identity_uri", None)
                 if redis_identity_uri is not None:
                     redis_identity_uri = ensure_text(redis_identity_uri)
 
@@ -607,58 +642,57 @@ class ApiManager(object):
 
                     # set redis manager
                     self.redis_identity_manager = None
-                    if parsed_uri['type'] == 'single':
-                        self.redis_identity_manager = RedisManager(
-                            redis_identity_uri,
-                            timeout=5,
-                            max_connections=200)
+                    if parsed_uri["type"] == "single":
+                        self.redis_identity_manager = RedisManager(redis_identity_uri, timeout=30, max_connections=200)
                         # self.redis_identity_manager = redis.StrictRedis(
                         #     host=parsed_uri['host'],
                         #     port=parsed_uri['port'],
                         #     password=parsed_uri.get('pwd', None),
                         #     db=parsed_uri['db'],
-                        #     socket_timeout=5,
-                        #     socket_connect_timeout=5)
-                    elif parsed_uri['type'] == 'sentinel':
-                        port = parsed_uri['port']
-                        pwd = parsed_uri['pwd']
+                        #     socket_timeout=30,
+                        #     socket_connect_timeout=30)
+                    elif parsed_uri["type"] == "sentinel":
+                        port = parsed_uri["port"]
+                        pwd = parsed_uri["pwd"]
                         self.redis_identity_manager = RedisManager(
                             None,
-                            timeout=5,
+                            timeout=30,
                             max_connections=200,
-                            sentinels=[(host, port) for host in parsed_uri['hosts']],
-                            sentinel_name=parsed_uri['group'],
+                            sentinels=[(host, port) for host in parsed_uri["hosts"]],
+                            sentinel_name=parsed_uri["group"],
                             sentinel_pwd=pwd,
                             db=0,
-                            pwd=pwd) #.conn
+                            pwd=pwd,
+                        )  # .conn
 
                     # app session
                     if self.app is not None:
                         self.app.config.update(
-                            SESSION_COOKIE_NAME='auth-session',
+                            SESSION_COOKIE_NAME="auth-session",
                             SESSION_COOKIE_SECURE=True,
                             PERMANENT_SESSION_LIFETIME=3600,
-                            SESSION_TYPE='redis',
+                            SESSION_TYPE="redis",
                             SESSION_USE_SIGNER=True,
-                            SESSION_KEY_PREFIX='session:',
-                            SESSION_REDIS=self.redis_identity_manager.conn
+                            SESSION_KEY_PREFIX="session:",
+                            SESSION_REDIS=self.redis_identity_manager.conn,
                         )
                         Session(self.app)
                         i = self.app.session_interface
                         self.app.session_interface = RedisSessionInterface2(
-                            i.redis, i.key_prefix, i.use_signer, i.permanent)
-                        self.logger.info('Setup redis session manager: %s' % self.app.session_interface)
+                            i.redis, i.key_prefix, i.use_signer, i.permanent
+                        )
+                        self.logger.info("Setup redis session manager: %s" % self.app.session_interface)
 
-                    self.logger.info('Configure identity redis - CONFIGURED')
+                    self.logger.info("Configure identity redis - CONFIGURED")
                 else:
-                    self.logger.warning('Configure identity redis - NOT CONFIGURED')
+                    self.logger.warning("Configure identity redis - NOT CONFIGURED")
 
                 #
                 # redis configuration
                 #
-                self.logger.info('Configure redis - CONFIGURE')
+                self.logger.info("Configure redis - CONFIGURE")
                 # connect to redis
-                redis_uri = self.params.get('redis_uri', None)
+                redis_uri = self.params.get("redis_uri", None)
                 if redis_uri is not None:
                     redis_uri = ensure_text(redis_uri)
 
@@ -667,147 +701,168 @@ class ApiManager(object):
 
                     # set redis manager
                     self.redis_manager = None
-                    if parsed_uri['type'] == 'single':
+                    if parsed_uri["type"] == "single":
                         self.redis_manager = redis.StrictRedis(
-                            host=parsed_uri['host'],
-                            port=parsed_uri['port'],
-                            password=parsed_uri.get('pwd', None),
-                            db=parsed_uri['db'],
-                            socket_timeout=5,
-                            socket_connect_timeout=5)
+                            host=parsed_uri["host"],
+                            port=parsed_uri["port"],
+                            password=parsed_uri.get("pwd", None),
+                            db=parsed_uri["db"],
+                            socket_timeout=30,
+                            socket_connect_timeout=30,
+                        )
 
-                    self.logger.info('Configure redis - CONFIGURED')
+                    self.logger.info("Configure redis - CONFIGURED")
                 else:
-                    self.logger.warning('Configure redis - NOT CONFIGURED', exc_info=True)
+                    self.logger.warning("Configure redis - NOT CONFIGURED", exc_info=True)
 
                 #
                 # cache configuration
                 #
-                self.logger.info('Configure cache - CONFIGURE')
+                self.logger.info("Configure cache - CONFIGURE")
 
                 if self.redis_manager is not None:
                     self.cache_manager = CacheClient(self.redis_manager)
                     self.logger.debug(self.cache_manager)
 
-                    self.logger.info('Configure cache - CONFIGURED')
+                    self.logger.info("Configure cache - CONFIGURED")
                 else:
-                    self.logger.warning('Configure cache - NOT CONFIGURED')
+                    self.logger.warning("Configure cache - NOT CONFIGURED")
 
                 #
                 # scheduler reference configuration
                 #
-                self.logger.info('Configure scheduler reference - CONFIGURE')
+                self.logger.info("Configure scheduler reference - CONFIGURE")
 
                 try:
                     from beehive.common.task_v2.manager import configure_task_manager
                     from beehive.common.task_v2.manager import configure_task_scheduler
 
-                    broker_url = self.params.get('broker_url', None)
-                    result_backend = self.params.get('result_backend', None)
+                    broker_url = self.params.get("broker_url", None)
+                    result_backend = self.params.get("result_backend", None)
                     if broker_url is not None and result_backend is not None:
                         # task manager
                         broker_url = ensure_text(broker_url)
                         result_backend = ensure_text(result_backend)
-                        internal_result_backend = ensure_text(self.params['redis_celery_uri'])
-                        task_manager = configure_task_manager(broker_url, result_backend,
-                                                              task_queue=self.params['broker_queue'])
+                        internal_result_backend = ensure_text(self.params["redis_celery_uri"])
+                        task_manager = configure_task_manager(
+                            broker_url,
+                            result_backend,
+                            task_queue=self.params["broker_queue"],
+                        )
                         task_manager.api_manager = self
-                        self.celery_broker_queue = ensure_text(self.params['broker_queue'])
+                        self.celery_broker_queue = ensure_text(self.params["broker_queue"])
                         self.redis_taskmanager = RedisManager(internal_result_backend)
                         self.task_manager = task_manager
 
                         # scheduler
                         broker_url = ensure_text(broker_url)
                         schedule_backend = ensure_text(result_backend)
-                        task_scheduler = configure_task_scheduler(broker_url, schedule_backend,
-                                                                  task_queue=self.params['broker_queue'])
+                        task_scheduler = configure_task_scheduler(
+                            broker_url,
+                            schedule_backend,
+                            task_queue=self.params["broker_queue"],
+                        )
                         self.redis_scheduler = RedisManager(schedule_backend)
                         self.task_scheduler = task_scheduler
                     else:
-                        self.logger.warning('Configure scheduler reference - NOT CONFIGURED')
+                        self.logger.warning("Configure scheduler reference - NOT CONFIGURED")
 
-                    self.logger.info('Configure scheduler reference - CONFIGURED')
-                except:
-                    self.logger.warning('Configure scheduler reference - NOT CONFIGURED', exc_info=True)
+                    self.logger.info("Configure scheduler reference - CONFIGURED")
+                except Exception:
+                    self.logger.warning("Configure scheduler reference - NOT CONFIGURED", exc_info=True)
 
                 #
                 # identity provider configuration - configure only with auth module
                 #
                 try:
-                    identity_provider = self.params.get('identity_provider', None)
+                    identity_provider = self.params.get("identity_provider", None)
 
-                    if configurator.exist(app=self.app_name, group='auth'):
-                        confs = configurator.get(app=self.app_name, group='auth')
-                        self.logger.info('Configure security - CONFIGURE')
+                    if configurator.exist(app=self.app_name, group="auth"):
+                        confs = configurator.get(app=self.app_name, group="auth")
+                        self.logger.info("Configure security - CONFIGURE")
 
                         # Create authentication providers
                         for conf in confs:
                             item = json.loads(conf.value)
-                            if item['type'] == 'db':
+                            if item["type"] == "db":
                                 auth_provider = DatabaseAuth(AuthDbManager, self.db_manager, SystemUser)
-                            elif item['type'] == 'ldap':
-                                bind_pwd = decrypt_data(item['bind_pwd'])
-                                auth_provider = LdapAuth(item['host'], SystemUser, timeout=int(item['timeout']),
-                                                         ssl=item['ssl'], dn=item['dn'],
-                                                         search_filter=item['search_filter'],
-                                                         search_id=item['search_id'],
-                                                         bind_user=item['bind_user'], bind_pwd=bind_pwd)
-                            self.auth_providers[item['provider']] = auth_provider
-                            self.logger.info('Setup authentication provider: %s' % auth_provider)
+                            elif item["type"] == "ldap":
+                                bind_pwd = decrypt_data(item["bind_pwd"])
+                                auth_provider = LdapAuth(
+                                    item["host"],
+                                    SystemUser,
+                                    timeout=int(item["timeout"]),
+                                    ssl=item["ssl"],
+                                    dn=item["dn"],
+                                    search_filter=item["search_filter"],
+                                    search_id=item["search_id"],
+                                    bind_user=item["bind_user"],
+                                    bind_pwd=bind_pwd,
+                                )
+                            self.auth_providers[item["provider"]] = auth_provider
+                            self.logger.info("Setup authentication provider: %s" % auth_provider)
 
-                        self.logger.info('Configure security - CONFIGURED')
+                        self.logger.info("Configure security - CONFIGURED")
                     elif identity_provider is not None:
-                        identity_provider_num = int(self.params['identity_provider']) + 1
+                        identity_provider_num = int(self.params["identity_provider"]) + 1
                         start_idx = 1
 
                         for i in range(start_idx, identity_provider_num):
                             auth_provider = None
-                            item_type = ensure_text(self.params['identity_provider.%s.type' % i])
-                            item_host = ensure_text(self.params['identity_provider.%s.host' % i])
-                            item_provider = ensure_text(self.params['identity_provider.%s.provider' % i])
-                            item_ssl = self.params['identity_provider.%s.ssl' % i]
+                            item_type = ensure_text(self.params["identity_provider.%s.type" % i])
+                            item_host = ensure_text(self.params["identity_provider.%s.host" % i])
+                            item_provider = ensure_text(self.params["identity_provider.%s.provider" % i])
+                            item_ssl = self.params["identity_provider.%s.ssl" % i]
                             if not isinstance(item_ssl, bool):
                                 item_ssl = str2bool(ensure_text(item_ssl))
-                            item_timeout = self.params['identity_provider.%s.timeout' % i]
+                            item_timeout = self.params["identity_provider.%s.timeout" % i]
                             if not isinstance(item_timeout, int):
                                 item_timeout = int(ensure_text(item_timeout))
-                            if item_type == 'db':
+                            if item_type == "db":
                                 auth_provider = DatabaseAuth(AuthDbManager, self.db_manager, SystemUser)
-                            elif item_type == 'ldap':
-                                item_dn = ensure_text(self.params['identity_provider.%s.dn' % i])
-                                item_search_filter = ensure_text(self.params['identity_provider.%s.search_filter' % i])
-                                item_search_id = ensure_text(self.params['identity_provider.%s.search_id' % i])
-                                item_bind_user = ensure_text(self.params['identity_provider.%s.bind_user' % i])
-                                item_bind_pwd = ensure_text(self.params['identity_provider.%s.bind_pwd' % i])
-                                auth_provider = LdapAuth(item_host, SystemUser, timeout=item_timeout, ssl=item_ssl,
-                                                         dn=item_dn, search_filter=item_search_filter,
-                                                         search_id=item_search_id, bind_user=item_bind_user,
-                                                         bind_pwd=item_bind_pwd)
+                            elif item_type == "ldap":
+                                item_dn = ensure_text(self.params["identity_provider.%s.dn" % i])
+                                item_search_filter = ensure_text(self.params["identity_provider.%s.search_filter" % i])
+                                item_search_id = ensure_text(self.params["identity_provider.%s.search_id" % i])
+                                item_bind_user = ensure_text(self.params["identity_provider.%s.bind_user" % i])
+                                item_bind_pwd = ensure_text(self.params["identity_provider.%s.bind_pwd" % i])
+                                auth_provider = LdapAuth(
+                                    item_host,
+                                    SystemUser,
+                                    timeout=item_timeout,
+                                    ssl=item_ssl,
+                                    dn=item_dn,
+                                    search_filter=item_search_filter,
+                                    search_id=item_search_id,
+                                    bind_user=item_bind_user,
+                                    bind_pwd=item_bind_pwd,
+                                )
                             self.auth_providers[item_provider] = auth_provider
-                            self.logger.info('Setup authentication provider: %s' % auth_provider)
+                            self.logger.info("Setup authentication provider: %s" % auth_provider)
 
                     else:
-                        self.logger.warning('Configure security - NOT CONFIGURED')
-                except:
-                    self.logger.warning('Configure security - NOT CONFIGURED', exc_info=True)
+                        self.logger.warning("Configure security - NOT CONFIGURED")
+                except Exception:
+                    self.logger.warning("Configure security - NOT CONFIGURED", exc_info=True)
 
                 #
                 # camunda configuration
                 #
                 try:
-                    self.logger.info('Configure Camunda - CONFIGURE')
+                    self.logger.info("Configure Camunda - CONFIGURE")
                     from beedrones.camunda import WorkFlowEngine as CamundaEngine
-                    if configurator.exist(app=self.app_name, group='bpmn', name='camunda.cluster'):
-                        conf = configurator.get(app=self.app_name, group='bpmn', name='camunda.cluster')[0].value
-                        self.logger.info('Configure Camunda - CONFIG app %s: %s' % (self.app_name, conf))
+
+                    if configurator.exist(app=self.app_name, group="bpmn", name="camunda.cluster"):
+                        conf = configurator.get(app=self.app_name, group="bpmn", name="camunda.cluster")[0].value
+                        self.logger.info("Configure Camunda - CONFIG app %s: %s" % (self.app_name, conf))
                         item = json.loads(conf)
 
-                        self.camunda_engine = CamundaEngine(item['conn'], user=item['user'], passwd=item['passwd'])
-                        self.logger.info('Configure Camunda  - CONFIGURED')
+                        self.camunda_engine = CamundaEngine(item["conn"], user=item["user"], passwd=item["passwd"])
+                        self.logger.info("Configure Camunda  - CONFIGURED")
                     else:
-                        self.logger.warning('Configure Camunda  - NOT CONFIGURED')
-                except:
-                    self.logger.warning('Configure Camunda  - NOT CONFIGURED', exc_info=True)
+                        self.logger.warning("Configure Camunda  - NOT CONFIGURED")
+                except Exception:
+                    self.logger.warning("Configure Camunda  - NOT CONFIGURED", exc_info=True)
 
                 # ##### awx configuration #####
                 # try:
@@ -825,106 +880,129 @@ class ApiManager(object):
                 # logstash configuration
                 #
                 try:
-                    self.logger.info('Configure logstash - CONFIGURE')
-                    logstash = self.params.get('logstash_host', None)
-                    logstash_ca = self.params.get('logstash_ca', None)
-                    logstash_cert = self.params.get('logstash_cert', None)
-                    logstash_pkey = self.params.get('logstash_pkey', None)
-                    if logstash is not None and logstash_ca is not None and logstash_cert is not None \
-                            and logstash_pkey is not None:
+                    self.logger.info("Configure logstash - CONFIGURE")
+                    logstash = self.params.get("logstash_host", None)
+                    logstash_ca = self.params.get("logstash_ca", None)
+                    logstash_cert = self.params.get("logstash_cert", None)
+                    logstash_pkey = self.params.get("logstash_pkey", None)
+                    if (
+                        logstash is not None
+                        and logstash_ca is not None
+                        and logstash_cert is not None
+                        and logstash_pkey is not None
+                    ):
                         logstash = ensure_text(logstash)
                         logstash_ca = ensure_text(logstash_ca)
                         logstash_cert = ensure_text(logstash_cert)
                         logstash_pkey = ensure_text(logstash_pkey)
-                        host, port = logstash.split(':')
+                        host, port = logstash.split(":")
                         self.logstash = {
-                            'host': host,
-                            'port': int(port),
-                            'ca': logstash_ca,
-                            'ca_file': None,
-                            'cert': logstash_cert,
-                            'cert_file': None,
-                            'pkey': logstash_pkey,
-                            'pkey_file': None,
+                            "host": host,
+                            "port": int(port),
+                            "ca": logstash_ca,
+                            "ca_file": None,
+                            "cert": logstash_cert,
+                            "cert_file": None,
+                            "pkey": logstash_pkey,
+                            "pkey_file": None,
                         }
-                        self.logger.debug('logstash config: %s' % truncate(self.logstash))
-                        self.logger.info('Configure logstash - CONFIGURED')
+                        self.logger.debug("logstash config: %s" % truncate(self.logstash))
+                        self.logger.info("Configure logstash - CONFIGURED")
                     else:
-                        self.logger.warning('Configure logstash - NOT CONFIGURED')
-                except:
-                    self.logger.warning('Configure logstash - NOT CONFIGURED', exc_info=True)
+                        self.logger.warning("Configure logstash - NOT CONFIGURED")
+                except Exception:
+                    self.logger.warning("Configure logstash - NOT CONFIGURED", exc_info=True)
 
                 #
                 # elasticsearch configuration
                 #
                 try:
-                    self.logger.info('Configure elasticsearch - CONFIGURE')
-                    el_nodes = self.params.get('elasticsearch_nodes', None)
-                    self.logger.info('configure - el_nodes: %s' % el_nodes)
+                    self.logger.info("Configure elasticsearch - CONFIGURE")
+                    el_nodes = self.params.get("elasticsearch_nodes", None)
+                    self.logger.info("configure - el_nodes: %s" % el_nodes)
 
-                    if el_nodes is not None and el_nodes != '' and el_nodes != b'':
+                    if el_nodes is not None and el_nodes != "" and el_nodes != b"":
                         el_nodes = ensure_text(el_nodes)
-                        el_nodes_and_and_cred = el_nodes.split('@')
+                        # es. 10.1.100.100,10.2.200.200,10.3.300.300@user:password
+                        el_nodes_and_and_cred = el_nodes.split("@")
                         http_auth = None
                         if len(el_nodes_and_and_cred) > 1:
-                            http_auth = el_nodes_and_and_cred[1].split(':')
-                        el_nodes = el_nodes_and_and_cred[0]
-                        hosts = el_nodes.split(',')
+                            http_auth = el_nodes_and_and_cred[1].split(":")
 
-                        self.logger.debug('configure - hosts: %s' % hosts)
+                        el_nodes = el_nodes_and_and_cred[0]
+                        hosts = el_nodes.split(",")
+
+                        elk_hosts = []
+                        for host in hosts:
+                            self.logger.info("Configure elasticsearch - host: %s" % host)
+                            # MEMO: elastic presente sui labX non è raggiungibile via https
+                            # ERROR : TLS error caused by: TlsError(TLS error caused by: SSLError([SSL: WRONG_VERSION_NUMBER] wrong version number (_ssl.c:1129)))
+                            if host.startswith("http://"):
+                                self.logger.info("Configure elasticsearch - NOT https")
+                                elk_hosts.append(str(host) + ":9200")
+
+                            elif host.startswith("https://"):
+                                self.logger.info("Configure elasticsearch - https")
+                                elk_hosts.append(str(host) + ":9200")
+
+                            else:
+                                self.logger.info("Configure elasticsearch - default")
+                                elk_hosts.append("https://" + str(host) + ":9200")
+
+                        self.logger.debug("Configure elasticsearch - elk_hosts: %s" % elk_hosts)
                         # self.logger.warn('configure - http_auth: %s' % http_auth)
 
                         self.elasticsearch = Elasticsearch(
-                            hosts,
+                            elk_hosts,
                             # http_auth
                             http_auth=http_auth,
                             # turn on SSL
-                            use_ssl=True,
+                            # use_ssl=True,
                             # make sure we verify SSL certificates
                             verify_certs=False,
                         )
-                        self.logger.info('Elasticsearch client: %s' % self.elasticsearch)
-                        self.logger.info('Configure elasticsearch - CONFIGURED')
+                        self.logger.info("Elasticsearch client: %s" % self.elasticsearch)
+                        self.logger.info("Configure elasticsearch - CONFIGURED")
                     else:
-                        self.logger.warning('Configure elasticsearch - NOT CONFIGURED')
-                except:
-                    self.logger.warning('Configure elasticsearch - NOT CONFIGURED', exc_info=True)
+                        self.logger.warning("Configure elasticsearch - NOT CONFIGURED")
+                except Exception:
+                    self.logger.warning("Configure elasticsearch - NOT CONFIGURED", exc_info=True)
 
                 #
                 # sendmail configuration
                 #
                 try:
-                    self.logger.debug('Configure sendmail - CONFIGURE')
+                    self.logger.debug("Configure sendmail - CONFIGURE")
 
-                    mail_server = self.params.get('sendmail_server', None)
-                    mail_sender = self.params.get('sendmail_sender', None)
+                    mail_server = self.params.get("sendmail_server", None)
+                    mail_sender = self.params.get("sendmail_sender", None)
                     if mail_server is not None and mail_sender is not None:
                         mail_server = ensure_text(mail_server)
                         self.mailer = Mailer(mail_server)
-                        self.logger.info('Use mail server: %s' % mail_server)
+                        self.logger.info("Use mail server: %s" % mail_server)
 
                         mail_sender = ensure_text(mail_sender)
                         self.mail_sender = mail_sender
-                        self.logger.info('Use mail sender: %s' % mail_sender)
+                        self.logger.info("Use mail sender: %s" % mail_sender)
 
-                        self.logger.info('Configure sendmail - CONFIGURED')
-                    elif configurator.exist(app=self.app_name, group='mail'):
-                        confs = configurator.get(app=self.app_name, group='mail')
+                        self.logger.info("Configure sendmail - CONFIGURED")
+                    elif configurator.exist(app=self.app_name, group="mail"):
+                        confs = configurator.get(app=self.app_name, group="mail")
                         for conf in confs:
-                            if conf.name == 'server1':
+                            if conf.name == "server1":
                                 mail_server = conf.value
                                 self.mailer = Mailer(mail_server)
-                                self.logger.info('Use mail server: %s' % mail_server)
-                            if conf.name == 'sender1':
+                                self.logger.info("Use mail server: %s" % mail_server)
+                            if conf.name == "sender1":
                                 mail_sender = conf.value
                                 self.mail_sender = mail_sender
-                                self.logger.info('Use mail sender: %s' % mail_sender)
+                                self.logger.info("Use mail sender: %s" % mail_sender)
 
-                        self.logger.info('Configure sendmail - CONFIGURED')
+                        self.logger.info("Configure sendmail - CONFIGURED")
                     else:
-                        self.logger.warning('Configure sendmail - NOT CONFIGURED')
-                except:
-                    self.logger.warning('Configure sendmail - NOT CONFIGURED', exc_info=True)
+                        self.logger.warning("Configure sendmail - NOT CONFIGURED")
+                except Exception:
+                    self.logger.warning("Configure sendmail - NOT CONFIGURED", exc_info=True)
 
                 # ##### gateway configuration #####
                 # try:
@@ -964,76 +1042,84 @@ class ApiManager(object):
                 # event queue configuration
                 #
                 try:
-                    self.logger.info('Configure event queue - CONFIGURE')
-                    broker_queue_event = self.params.get('broker_queue_event', None)
+                    self.logger.info("Configure event queue - CONFIGURE")
+                    broker_queue_event = self.params.get("broker_queue_event", None)
 
-                    if configurator.exist(app=self.app_name, group='queue', name='queue.event'):
-                        conf = configurator.get(app=self.app_name, group='queue', name='queue.event')
+                    if configurator.exist(app=self.app_name, group="queue", name="queue.event"):
+                        conf = configurator.get(app=self.app_name, group="queue", name="queue.event")
 
                         # setup event producer
                         conf = json.loads(conf[0].value)
                         # set redis manager
-                        self.broker_event_uri = ensure_text(self.params.get('broker_url', ''))
-                        self.broker_event_exchange = ensure_text(conf['queue'])
+                        self.broker_event_uri = ensure_text(self.params.get("broker_url", ""))
+                        self.broker_event_exchange = ensure_text(conf["queue"])
 
                         # create instance of event producer
                         self.event_producer = EventProducerKombu(self.broker_event_uri, self.broker_event_exchange)
-                        self.logger.info('Configure exchange %s on %s' % (self.broker_event_exchange,
-                                                                          self.broker_event_uri))
-                        self.logger.info('Configure event queue - CONFIGURED')
+                        self.logger.info(
+                            "Configure exchange %s on %s" % (self.broker_event_exchange, self.broker_event_uri)
+                        )
+                        self.logger.info("Configure event queue - CONFIGURED")
                     elif broker_queue_event is not None:
-                        self.broker_event_uri = ensure_text(self.params.get('broker_url', ''))
+                        self.broker_event_uri = ensure_text(self.params.get("broker_url", ""))
                         self.broker_event_exchange = ensure_text(broker_queue_event)
 
                         # create instance of event producer
                         self.event_producer = EventProducerKombu(self.broker_event_uri, self.broker_event_exchange)
-                        self.logger.info('Configure exchange %s on %s' % (self.broker_event_exchange,
-                                                                          self.broker_event_uri))
-                        self.logger.info('Configure event queue - CONFIGURED')
+                        self.logger.info(
+                            "Configure exchange %s on %s" % (self.broker_event_exchange, self.broker_event_uri)
+                        )
+                        self.logger.info("Configure event queue - CONFIGURED")
                     else:
-                        self.logger.warning('Configure event queue - NOT CONFIGURED')
-                except:
-                    self.logger.warning('Configure event queue - NOT CONFIGURED', exc_info=True)
+                        self.logger.warning("Configure event queue - NOT CONFIGURED")
+                except Exception:
+                    self.logger.warning("Configure event queue - NOT CONFIGURED", exc_info=True)
 
                 #
                 # catalog queue configuration
                 #
                 try:
-                    self.logger.info('Configure catalog queue - CONFIGURE')
-                    broker_queue_catalog = self.params.get('broker_queue_catalog', None)
-                    broker_url = self.params.get('broker_url', None)
+                    self.logger.info("Configure catalog queue - CONFIGURE")
+                    broker_queue_catalog = self.params.get("broker_queue_catalog", None)
+                    broker_url = self.params.get("broker_url", None)
 
-                    if configurator.exist(app=self.app_name, group='queue', name='queue.catalog'):
-                        conf = configurator.get(app=self.app_name, group='queue', name='queue.catalog')
+                    if configurator.exist(app=self.app_name, group="queue", name="queue.catalog"):
+                        conf = configurator.get(app=self.app_name, group="queue", name="queue.catalog")
 
                         # setup catalog producer
                         conf = json.loads(conf[0].value)
-                        self.broker_catalog_uri = ensure_text(self.params.get('broker_url', ''))
-                        self.broker_catalog_exchange = ensure_text(conf['queue'])
+                        self.broker_catalog_uri = ensure_text(self.params.get("broker_url", ""))
+                        self.broker_catalog_exchange = ensure_text(conf["queue"])
                         # self.redis_catalog_uri = ensure_text(self.params['redis_queue_uri'])
                         # self.redis_catalog_channel = ensure_text(conf['queue'])
 
                         # create instance of catalog producer
                         from beehive.module.catalog.producer import CatalogProducerKombu
-                        self.catalog_producer = CatalogProducerKombu(self.broker_catalog_uri,
-                                                                     self.broker_catalog_exchange)
-                        self.logger.info('Configure exchange %s on %s' % (self.broker_catalog_exchange,
-                                                                          self.broker_catalog_uri))
+
+                        self.catalog_producer = CatalogProducerKombu(
+                            self.broker_catalog_uri, self.broker_catalog_exchange
+                        )
+                        self.logger.info(
+                            "Configure exchange %s on %s" % (self.broker_catalog_exchange, self.broker_catalog_uri)
+                        )
                         # from beehive.module.catalog.producer import CatalogProducerRedis
                         # self.catalog_producer = CatalogProducerKombu(self.redis_catalog_uri, self.redis_catalog_channel)
                         # self.logger.info('Configure queue %s on %s' % (self.redis_catalog_channel,
                         #                                                self.redis_catalog_uri))
-                        self.logger.info('Configure catalog queue - CONFIGURED')
+                        self.logger.info("Configure catalog queue - CONFIGURED")
                     elif broker_url is not None and broker_queue_catalog is not None:
                         self.broker_catalog_uri = ensure_text(broker_url)
                         self.broker_catalog_exchange = ensure_text(broker_queue_catalog)
 
                         # create instance of catalog producer
                         from beehive.module.catalog.producer import CatalogProducerKombu
-                        self.catalog_producer = CatalogProducerKombu(self.broker_catalog_uri,
-                                                                     self.broker_catalog_exchange)
-                        self.logger.info('Configure exchange %s on %s' % (self.broker_catalog_exchange,
-                                                                          self.broker_catalog_uri))
+
+                        self.catalog_producer = CatalogProducerKombu(
+                            self.broker_catalog_uri, self.broker_catalog_exchange
+                        )
+                        self.logger.info(
+                            "Configure exchange %s on %s" % (self.broker_catalog_exchange, self.broker_catalog_uri)
+                        )
 
                         # self.redis_catalog_uri = ensure_text(self.params['redis_queue_uri'])
                         # self.redis_catalog_channel = ensure_text(broker_queue_catalog)
@@ -1043,11 +1129,11 @@ class ApiManager(object):
                         # self.catalog_producer = CatalogProducerRedis(self.redis_catalog_uri, self.redis_catalog_channel)
                         # self.logger.info('Configure queue %s on %s' % (self.redis_catalog_channel,
                         #                                                self.redis_catalog_uri))
-                        self.logger.info('Configure catalog queue - CONFIGURED')
+                        self.logger.info("Configure catalog queue - CONFIGURED")
                     else:
-                        self.logger.warning('Configure catalog queue - NOT CONFIGURED')
-                except:
-                    self.logger.warning('Configure catalog queue - NOT CONFIGURED', exc_info=True)
+                        self.logger.warning("Configure catalog queue - NOT CONFIGURED")
+                except Exception:
+                    self.logger.warning("Configure catalog queue - NOT CONFIGURED", exc_info=True)
 
                 ##### tcp proxy configuration #####
                 # try:
@@ -1082,114 +1168,111 @@ class ApiManager(object):
                 # stacks uri reference configuration
                 #
                 try:
-                    self.logger.info('Configure stacks uri reference - CONFIGURE')
-                    stacks_uri = self.params.get('stacks_uri', None)
-                    if configurator.exist(app=self.app_name, group='resource', name='stacks_uri'):
-                        conf = configurator.get(app=self.app_name, group='resource', name='stacks_uri')
+                    self.logger.info("Configure stacks uri reference - CONFIGURE")
+                    stacks_uri = self.params.get("stacks_uri", None)
+                    if configurator.exist(app=self.app_name, group="resource", name="stacks_uri"):
+                        conf = configurator.get(app=self.app_name, group="resource", name="stacks_uri")
                         self.stacks_uri = conf[0].value
-                        self.logger.info('Setup stacks uri reference: %s' % self.stacks_uri)
-                        self.logger.info('Configure stacks uri reference - CONFIGURED')
+                        self.logger.info("Setup stacks uri reference: %s" % self.stacks_uri)
+                        self.logger.info("Configure stacks uri reference - CONFIGURED")
                     elif stacks_uri is not None:
                         self.stacks_uri = ensure_text(stacks_uri)
-                        self.logger.info('Setup stacks uri reference: %s' % self.stacks_uri)
-                        self.logger.info('Configure stacks uri reference - CONFIGURED')
+                        self.logger.info("Setup stacks uri reference: %s" % self.stacks_uri)
+                        self.logger.info("Configure stacks uri reference - CONFIGURED")
                     else:
-                        self.logger.warning('Configure stacks uri reference - NOT CONFIGURED')
-                except:
-                    self.logger.warning('Configure stacks uri reference - NOT CONFIGURED', exc_info=True)
+                        self.logger.warning("Configure stacks uri reference - NOT CONFIGURED")
+                except Exception:
+                    self.logger.warning("Configure stacks uri reference - NOT CONFIGURED", exc_info=True)
 
                 #
                 # git uri reference configuration
                 #
                 try:
-                    self.logger.info('Configure git uri reference - CONFIGURE')
-                    git_uri = self.params.get('git_uri', None)
-                    git_branch = self.params.get('git_branch', None)
+                    self.logger.info("Configure git uri reference - CONFIGURE")
+                    git_uri = self.params.get("git_uri", None)
+                    git_branch = self.params.get("git_branch", None)
                     if git_uri is not None and git_branch is not None:
                         self.git = {
-                            'uri': ensure_text(git_uri),
-                            'branch': ensure_text(git_branch),
+                            "uri": ensure_text(git_uri),
+                            "branch": ensure_text(git_branch),
                         }
-                        self.logger.info('Setup git reference: %s' % self.git)
-                        self.logger.info('Configure git uri reference - CONFIGURED')
+                        self.logger.info("Setup git reference: %s" % self.git)
+                        self.logger.info("Configure git uri reference - CONFIGURED")
                     else:
-                        self.logger.warning('Configure git uri reference - NOT CONFIGURED')
-                except:
-                    self.logger.warning('Configure git uri reference - NOT CONFIGURED', exc_info=True)
+                        self.logger.warning("Configure git uri reference - NOT CONFIGURED")
+                except Exception:
+                    self.logger.warning("Configure git uri reference - NOT CONFIGURED", exc_info=True)
 
                 #
                 # api authentication configuration - not configure for auth module
                 #
                 try:
-                    self.logger.info('Configure apiclient - CONFIGURE')
+                    self.logger.info("Configure apiclient - CONFIGURE")
 
-                    prefix = self.params.get('api_prefix', '')
+                    prefix = self.params.get("api_prefix", "")
                     if prefix is None:
-                        prefix = ''
+                        prefix = ""
                     self.prefixuri = ensure_text(prefix)
-                    self.logger.info('Get prefix: %s' % self.prefixuri)
+                    self.logger.info("Get prefix: %s" % self.prefixuri)
 
-                    self.catalog = ensure_text(self.params['api_catalog'])
-                    self.logger.info('Get catalog: %s' % self.catalog)
+                    self.catalog = ensure_text(self.params["api_catalog"])
+                    self.logger.info("Get catalog: %s" % self.catalog)
 
-                    endpoint = self.params.get('api_endpoint', None)
+                    endpoint = self.params.get("api_endpoint", None)
                     if endpoint is not None:
                         endpoint = ensure_text(endpoint)
-                    self.logger.info('Get api endpoint: %s' % endpoint)
+                    self.logger.info("Get api endpoint: %s" % endpoint)
 
                     if endpoint is None:
                         self.endpoints = [self.cluster_app_uri]
                     else:
                         self.endpoints = [endpoint]
-                    self.logger.info('Get auth endpoints: %s' % self.endpoints)
+                    self.logger.info("Get auth endpoints: %s" % self.endpoints)
 
-                    api_oauth2_client = self.params.get('api_oauth2_client', None)
-                    api_user = self.params.get('api_user', None)
-                    api_user_password = self.params.get('api_user_password', None)
+                    api_oauth2_client = self.params.get("api_oauth2_client", None)
+                    api_user = self.params.get("api_user", None)
+                    api_user_password = self.params.get("api_user_password", None)
 
                     # get oauth2 client
-                    if api_oauth2_client is not None and api_oauth2_client != b'':
+                    if api_oauth2_client is not None and api_oauth2_client != b"":
                         api_oauth2_client = ensure_text(api_oauth2_client)
-                        client_id, client_secret = api_oauth2_client.split(':')
+                        client_id, client_secret = api_oauth2_client.split(":")
                         self.api_oauth2_client = {
-                            'grant_type': 'client_credentials',
-                            'uuid': client_id,
-                            'secret': client_secret
+                            "grant_type": "client_credentials",
+                            "uuid": client_id,
+                            "secret": client_secret,
                         }
 
                         # configure api client
                         self.configure_api_client()
 
-                        self.logger.info('Get oauth2 client: %s' % api_oauth2_client)
+                        self.logger.info("Get oauth2 client: %s" % api_oauth2_client)
 
                     # get auth system user from db config
-                    elif configurator.exist(app=self.app_name, group='api', name='user'):
-                        auth_user = configurator.get(app=self.app_name, group='api', name='user')[0].value
+                    elif configurator.exist(app=self.app_name, group="api", name="user"):
+                        auth_user = configurator.get(app=self.app_name, group="api", name="user")[0].value
                         self.auth_user = json.loads(auth_user)
-                        self.logger.info('Get auth user: %s' % self.auth_user.get('name', None))
+                        self.logger.info("Get auth user: %s" % self.auth_user.get("name", None))
 
                         # configure api client
                         self.configure_api_client()
 
-                        self.logger.info('Configure apiclient - CONFIGURED')
+                        self.logger.info("Configure apiclient - CONFIGURED")
 
                     # get auth system user from file config
                     elif api_user is not None and api_user_password is not None:
-                        self.auth_user = {
-                            'pwd': api_user_password,
-                            'name': api_user
-                        }
-                        self.logger.info('Get auth user: %s' % self.auth_user.get('name', None))
+                        self.auth_user = {"pwd": api_user_password, "name": api_user}
+                        self.logger.info("Get auth user: %s" % self.auth_user.get("name", None))
 
                         # configure api client
                         self.configure_api_client()
 
-                        self.logger.info('Configure apiclient - CONFIGURED')
+                        self.logger.info("Configure apiclient - CONFIGURED")
 
                     else:
-                        self.logger.warning('Configure apiclient - NOT CONFIGURED')
-                except:
-                    self.logger.warning('Configure apiclient - NOT CONFIGURED', exc_info=True)
+                        self.logger.warning("Configure apiclient - NOT CONFIGURED")
+                except Exception:
+                    self.logger.warning("Configure apiclient - NOT CONFIGURED", exc_info=True)
                 ##### api authentication configuration #####
 
                 del configurator
@@ -1201,26 +1284,27 @@ class ApiManager(object):
             self.release_session()
             operation.perms = None
 
-        self.logger.info('Configure server - CONFIGURED')
+        self.logger.info("Configure server - CONFIGURED")
 
     def configure_api_client(self):
-        """Configure api client instance
-        """
-        oauth2_grant_type = 'jwt'
-        authtype = 'keyauth'
+        """Configure api client instance"""
+        oauth2_grant_type = "jwt"
+        authtype = "keyauth"
         if self.api_oauth2_client is not None:
-            oauth2_grant_type = 'client'
-            authtype = 'oauth2'
-        self.api_client = ApiClient(self.endpoints,
-                                    self.auth_user.get('name', None),
-                                    self.auth_user.get('pwd', None),
-                                    None,
-                                    catalog_id=self.catalog,
-                                    prefixuri=self.prefixuri,
-                                    client_config=self.api_oauth2_client,
-                                    oauth2_grant_type=oauth2_grant_type,
-                                    authtype=authtype)
-        self.logger.debug('Configure api client: %s' % self.api_client)
+            oauth2_grant_type = "client"
+            authtype = "oauth2"
+        self.api_client = ApiClient(
+            self.endpoints,
+            self.auth_user.get("name", None),
+            self.auth_user.get("pwd", None),
+            None,
+            catalog_id=self.catalog,
+            prefixuri=self.prefixuri,
+            client_config=self.api_oauth2_client,
+            oauth2_grant_type=oauth2_grant_type,
+            authtype=authtype,
+        )
+        self.logger.debug("Configure api client: %s" % self.api_client)
 
     # def register_catalog_old(self):
     #     """Create endpoint instance in catalog
@@ -1245,9 +1329,8 @@ class ApiManager(object):
     #         self.logger.info('Register %s instance in catalog' % self.app_endpoint_id)
 
     def register_catalog(self):
-        """Create endpoint instance in catalog
-        """
-        register = self.params.get('register-catalog', True)
+        """Create endpoint instance in catalog"""
+        register = self.params.get("register-catalog", True)
         register = str2bool(register)
 
         # skip catalog registration - usefool for temporary instance
@@ -1280,12 +1363,13 @@ class ApiModule(object):
     :param api_manager: ApiManager instance
     :param name: module name
     """
-    def __init__(self, api_manager:ApiManager, name:str):
-        self.logger = logging.getLogger(self.__class__.__module__ + '.' + self.__class__.__name__)
 
-        self.api_manager:ApiManager = api_manager
-        self.name:str = name
-        #TODO views seems unused added apis
+    def __init__(self, api_manager: ApiManager, name: str):
+        self.logger = logging.getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
+
+        self.api_manager: ApiManager = api_manager
+        self.name: str = name
+        # TODO views seems unused added apis
         self.views = []
         self.apis = []
         self.controller: ApiController = None
@@ -1294,7 +1378,10 @@ class ApiModule(object):
         self.api_manager.modules[name] = self
 
     def __repr__(self):
-        return "<%s id='%s'>" % (self.__class__.__module__+'.'+self.__class__.__name__, id(self))
+        return "<%s id='%s'>" % (
+            self.__class__.__module__ + "." + self.__class__.__name__,
+            id(self),
+        )
 
     def info(self):
         """Get module infos.
@@ -1303,7 +1390,7 @@ class ApiModule(object):
         :rtype: dict
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        res = {'name': self.name, 'api': self.api_routes}
+        res = {"name": self.name, "api": self.api_routes}
         return res
 
     @property
@@ -1328,12 +1415,12 @@ class ApiModule(object):
 
     @staticmethod
     def _get_value(objtype, args):
-        data = ['*' for i in objtype.split('.')]
+        data = ["*" for i in objtype.split(".")]
         pos = 0
         for arg in args:
             data[pos] = arg
             pos += 1
-        return '//'.join(data)
+        return "//".join(data)
 
     def get_session(self):
         """open db session"""
@@ -1344,8 +1431,7 @@ class ApiModule(object):
         self.api_manager.release_session()
 
     def init_object(self):
-        """Init object
-        """
+        """Init object"""
         self.get_controller().init_object()
 
     def register_api(self, **kwargs):
@@ -1354,19 +1440,18 @@ class ApiModule(object):
             for api in self.apis:
                 api.register_api(self, **kwargs)
         else:
-            self.logger.warning( f"Warning self.api_manager.app is  None ")
+            self.logger.warning(f"Warning self.api_manager.app is  None ")
 
     def register_task(self):
         if self.controller is not None:
             self.controller.register_async_methods()
 
     def get_superadmin_permissions(self):
-        """Get superadmin permissions
-        """
+        """Get superadmin permissions"""
         perms = self.get_controller().get_superadmin_permissions()
         return perms
 
-    def get_controller(self) -> 'ApiController':
+    def get_controller(self) -> "ApiController":
         raise NotImplementedError()
 
 
@@ -1375,11 +1460,12 @@ class ApiController(object):
 
     :param module: ApiModule instance
     """
+
     def __init__(self, module: ApiModule):
-        self.logger: logging.Logger = logging.getLogger(self.__class__.__module__ + '.' + self.__class__.__name__)
+        self.logger: logging.Logger = logging.getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
 
         self.module = module
-        self.version = 'v1.0'
+        self.version = "v1.0"
 
         # child classes
         self.child_classes = []
@@ -1389,7 +1475,7 @@ class ApiController(object):
             self.prefix = self.module.api_manager.prefix
             self.prefix_index = self.module.api_manager.prefix_index
             self.expire = self.module.api_manager.expire
-        except:
+        except Exception:
             self.prefix = None
             self.prefix_index = None
             self.expire = None
@@ -1398,7 +1484,7 @@ class ApiController(object):
         self.dbmanager = None
 
     def register_async_methods(self):
-        self.logger.info('Register async methods for controller %s' % self)
+        self.logger.info("Register async methods for controller %s" % self)
         for child_class in self.child_classes:
             child_class(self).register_async_methods()
 
@@ -1415,14 +1501,17 @@ class ApiController(object):
             if new_key is not None and data.get(key, None) is not None:
                 data[new_key] = data.pop(key, None)
 
-    def resolve_oid(self, fk :int or str, get_entity: Callable) -> str:
+    def resolve_oid(self, fk: int or str, get_entity: Callable) -> str:
         res = fk
         if fk is not None and not isinstance(fk, int) and not fk.isdigit():
             res = get_entity(fk).oid
         return res
 
     def __repr__(self):
-        return "<%s id='%s'>" % (self.__class__.__module__ + '.' + self.__class__.__name__, id(self))
+        return "<%s id='%s'>" % (
+            self.__class__.__module__ + "." + self.__class__.__name__,
+            id(self),
+        )
 
     @property
     def redis_manager(self):
@@ -1470,34 +1559,33 @@ class ApiController(object):
         """
         try:
             sql_ping = self.api_manager.db_manager.ping()
-        except:
-            self.logger.warning('', exc_info=True)
+        except Exception:
+            self.logger.warning("", exc_info=True)
             sql_ping = False
 
         try:
             redis_ping = self.api_manager.redis_manager.ping()
-        except:
-            self.logger.warning('', exc_info=True)
+        except Exception:
+            self.logger.warning("", exc_info=True)
             redis_ping = False
 
         try:
             redis_identity_ping = self.api_manager.redis_identity_manager.ping()
-        except:
-            self.logger.warning('', exc_info=True)
+        except Exception:
+            self.logger.warning("", exc_info=True)
             redis_identity_ping = False
 
         try:
             res = {
-                'name': self.module.api_manager.app_name,
-                'id': self.module.api_manager.app_id,
-                'hostname': self.module.api_manager.server_name,
-                'uri': self.module.api_manager.app_uri,
-                'sql_ping': sql_ping,
-                'redis_ping': redis_ping,
-                'redis_identity_ping': redis_identity_ping
-
+                "name": self.module.api_manager.app_name,
+                "id": self.module.api_manager.app_id,
+                "hostname": self.module.api_manager.server_name,
+                "uri": self.module.api_manager.app_uri,
+                "sql_ping": sql_ping,
+                "redis_ping": redis_ping,
+                "redis_identity_ping": redis_identity_ping,
             }
-            self.logger.debug('ping service: %s' % truncate(res))
+            self.logger.debug("ping service: %s" % truncate(res))
             return res
         except Exception as ex:
             self.logger.error(ex)
@@ -1510,11 +1598,11 @@ class ApiController(object):
         """
         try:
             res = {
-                'name': self.module.api_manager.app_name,
-                'id': self.module.api_manager.app_id,
-                'modules': {k: v.info() for k, v in self.module.api_manager.modules.items()},
+                "name": self.module.api_manager.app_name,
+                "id": self.module.api_manager.app_id,
+                "modules": {k: v.info() for k, v in self.module.api_manager.modules.items()},
             }
-            self.logger.debug('Get server info: %s' % truncate(res))
+            self.logger.debug("Get server info: %s" % truncate(res))
             return res
         except Exception as ex:
             self.logger.error(ex)
@@ -1527,8 +1615,8 @@ class ApiController(object):
         """
         try:
             mod = dynamic_import(package)
-            res = {'name': package, 'version': mod.__version__}
-        except:
+            res = {"name": package, "version": mod.__version__}
+        except Exception:
             res = None
 
         return res
@@ -1540,14 +1628,14 @@ class ApiController(object):
         """
         res = []
         packages = [
-            'beecell',
-            'beedrones',
-            'beehive',
-            'beehive_oauth2',
-            'beehive_resource',
-            'beehive_ssh',
-            'beehive_service',
-            'beehive_service_netaas'
+            "beecell",
+            "beedrones",
+            "beehive",
+            "beehive_oauth2",
+            "beehive_resource",
+            "beehive_ssh",
+            "beehive_service",
+            "beehive_service_netaas",
         ]
         try:
             for package in packages:
@@ -1555,7 +1643,7 @@ class ApiController(object):
                 if ver is not None:
                     res.append(ver)
 
-            self.logger.debug('Get server beehive package versions: %s' % truncate(res))
+            self.logger.debug("Get server beehive package versions: %s" % truncate(res))
             return res
         except Exception as ex:
             self.logger.error(ex)
@@ -1578,31 +1666,35 @@ class ApiController(object):
         :param kvargs.size: page size
         :return: list of events
         """
-        self.logger.warn('elk query params: %s' % kvargs)
+        self.logger.warn("elk query params: %s" % kvargs)
 
-        date = kvargs.get('date', None)
-        name = kvargs.get('name', None)
-        pod = kvargs.get('pod', None)
-        op = kvargs.get('op', None)
+        date = kvargs.get("date", None)
+        name = kvargs.get("name", None)
+        pod = kvargs.get("pod", None)
+        op = kvargs.get("op", None)
         # component = kvargs.get('component', None)
         # task = kvargs.get('task', None)
-        page = kvargs.get('page', 0)
-        size = kvargs.get('size', 20)
-        sort = kvargs.get('sort', 'timestamp:desc')
+        page = kvargs.get("page", 0)
+        size = kvargs.get("size", 20)
+        sort = kvargs.get("sort", "timestamp:desc")
 
         if date is None:
-            date = datetime.now().strftime('%Y.%m.%d')
-        index = '*-beehive-%s-filebeat-%s-%s-cmp_nivola*' % (self.api_manager.app_env, '7.12.0', date)
+            date = datetime.now().strftime("%Y.%m.%d")
+        index = "*-beehive-%s-filebeat-%s-%s-cmp_nivola*" % (
+            self.api_manager.app_env,
+            "7.12.0",
+            date,
+        )
 
         match = []
         if name is not None:
-            match.append({'match': {'kubernetes.container.name': {'query': name, 'operator': 'and'}}})
+            match.append({"match": {"kubernetes.container.name": {"query": name, "operator": "and"}}})
 
         if pod is not None:
-            match.append({'match': {'kubernetes.pod.name': {'query': pod, 'operator': 'and'}}})
+            match.append({"match": {"kubernetes.pod.name": {"query": pod, "operator": "and"}}})
 
         if op is not None:
-            match.append({'match': {'message': {'query': op, 'operator': 'and'}}})
+            match.append({"match": {"message": {"query": op, "operator": "and"}}})
 
         # if component is not None:
         #     match.append({'match': {'component': {'query': component, 'operator': 'and'}}})
@@ -1612,52 +1704,50 @@ class ApiController(object):
 
         if name is None and pod is None and op is None:
             query = {
-                'bool': {
-                    'must': [{
-                        'match': {
-                            'kubernetes.namespace': {
-                                'query': 'beehive-%s' % self.api_manager.app_env
-                            }
-                        }
-                    }]
+                "bool": {
+                    "must": [{"match": {"kubernetes.namespace": {"query": "beehive-%s" % self.api_manager.app_env}}}]
                 }
             }
         else:
-            query = {
-                'bool': {
-                    'must': match
-                }
-            }
+            query = {"bool": {"must": match}}
 
-        self.logger.warn('elk query: %s' % query)
+        self.logger.warn("get_log_from_elastic - elk query: %s" % query)
 
         page = page * size
-        body = {'query': query}
-        body.update({'sort': [{f[0]: f[1]} for f in [sort.split(':')]]})
-        res = self.api_manager.elasticsearch.search(index=index, body=body, from_=page, size=size, sort=sort)
-        logger.debug2('query elastic: %s' % truncate(res))
-        hits = res.get('hits', {})
+
+        # body = {"query": query}
+        # body.update({"sort": [{f[0]: f[1]} for f in [sort.split(":")]]})
+
+        self.logger.debug("get_log_from_elastic - sort: %s" % sort)
+        sort_elk = [{f[0]: f[1]} for f in [sort.split(":")]]
+        self.logger.debug("get_log_from_elastic - sort_elk: %s" % sort_elk)
+
+        # res = self.api_manager.elasticsearch.search(index=index, body=body, from_=page, size=size, sort=sort)
+        res = self.api_manager.elasticsearch.search(index=index, sort=sort_elk, from_=page, size=size, query=query)
+        logger.debug2("query elastic: %s" % truncate(res))
+
+        hits = res.get("hits", {})
         values = []
-        if len(hits.get('hits', [])) > 0:
-            fields = ['_id']
-            fields.extend(hits.get('hits', [])[0].get('_source').keys())
+        if len(hits.get("hits", [])) > 0:
+            fields = ["_id"]
+            fields.extend(hits.get("hits", [])[0].get("_source").keys())
             headers = fields
-            headers[0] = 'id'
-        for hit in hits.get('hits', []):
-            value = hit.get('_source')
-            values.append(value.get('message'))
+            headers[0] = "id"
+        for hit in hits.get("hits", []):
+            value = hit.get("_source")
+            values.append(value.get("message"))
         values.reverse()
-        total = hits.get('total', {})
+        total = hits.get("total", {})
         if isinstance(total, dict):
-            total = total.get('value', 0)
+            total = total.get("value", 0)
         resp = {
-            'page': page,
-            'count': size,
-            'total': total,
-            'sort': sort,
-            'values': values
+            "page": page,
+            "count": size,
+            "total": total,
+            "sort": sort,
+            "values": values,
         }
-        logger.debug('query events: %s' % truncate(resp))
+        logger.debug("query events: %s" % truncate(resp))
         return resp
 
     #
@@ -1667,13 +1757,13 @@ class ApiController(object):
         """Register object types, objects and permissions related to module. Call this function when initialize
         system first time.
         """
-        self.logger.info('Init %s - START' % self)
-        self.logger.info('Init childs: %s' % self.child_classes)
+        self.logger.info("Init %s - START" % self)
+        self.logger.info("Init childs: %s" % self.child_classes)
 
         # init controller child classes
         for child in self.child_classes:
             child(self).init_object()
-        self.logger.info('Init %s - STOP' % self)
+        self.logger.info("Init %s - STOP" % self)
 
     def get_session(self):
         """open db session"""
@@ -1685,12 +1775,12 @@ class ApiController(object):
 
     @staticmethod
     def _get_value(objtype, args):
-        data = ['*' for i in objtype.split('.')]
+        data = ["*" for i in objtype.split(".")]
         pos = 0
         for arg in args:
             data[pos] = arg
             pos += 1
-        return '//'.join(data)
+        return "//".join(data)
 
     def get_identity(self, uid):
         """Get identity
@@ -1738,7 +1828,7 @@ class ApiController(object):
         return self.module.api_manager.verify_simple_http_credentials(user, pwd, user_ip)
 
     def can(self, action, objtype=None, definition=None):
-        """Verify if  user can execute an action over a certain object type. Specify at least name or perms.
+        """Verify if user can execute an action over a certain object type. Specify at least name or perms.
 
         :param objtype: object type. Es. 'resource', 'service' [optional]
         :param definition: object definition. Es. 'container.org.group.vm' [optional]
@@ -1749,10 +1839,12 @@ class ApiController(object):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
 
+        # dbgprint( action=action, objtype=objtype, definition=definition, user0=operation.user[0], user1=operation.user[1], perms=operation.perms )
         try:
             objids = []
             defs = []
-            user = (operation.user[0], operation.user[1])
+            # user = (operation.user[0], operation.user[1])
+            self.logger.debug2("can - action, objtype, definition - %s, %s, %s" % (action, objtype, definition))
 
             res = {}
             for perm in operation.perms:
@@ -1766,27 +1858,33 @@ class ApiController(object):
                 # definition is specified
                 if definition is not None:
                     definition = definition.lower()
+                    # self.logger.debug2("can - perm_action, perm_objtype, perm_definition - %s, %s, %s" % (perm_action, perm_objtype, perm_definition))
 
                     # verify object type, definition and action. If they match
                     # append objid to values list
-                    if (perm_objtype == objtype and perm_definition == definition and perm_action in ['*', action]):
+                    if perm_objtype == objtype and perm_definition == definition and perm_action in ["*", action]:
                         objids.append(perm_objid)
+                        # self.logger.debug2("can - match definition - perm_action, perm_objtype, perm_definition - %s, %s, %s" % (perm_action, perm_objtype, perm_definition))
 
                     # loop between object objids, compact objids and verify match
                     if len(objids) > 0:
                         res[definition] = objids
+
                 elif objtype is not None:
-                    if perm_objtype == objtype and perm_action in ['*', action]:
+                    if perm_objtype == objtype and perm_action in ["*", action]:
                         if perm_definition in res:
                             res[perm_definition].append(perm_objid)
                         else:
                             res[perm_definition] = [perm_objid]
+                        # self.logger.debug2("can - match objtype - perm_action, perm_objtype, perm_definition - %s, %s, %s" % (perm_action, perm_objtype, perm_definition))
+
                 else:
-                    if perm_action in ['*', action]:
+                    if perm_action in ["*", action]:
                         if perm_definition in res:
                             res[perm_definition].append(perm_objid)
                         else:
                             res[perm_definition] = [perm_objid]
+                        # self.logger.debug2("can - match perm_action - perm_action, perm_objtype, perm_definition - %s, %s, %s" % (perm_action, perm_objtype, perm_definition))
 
             for objdef, objids in res.items():
                 # loop between object objids, compact objids and verify match
@@ -1799,9 +1897,10 @@ class ApiController(object):
                 return res
             else:
                 if definition is None:
-                    definition = ''
-                raise Exception("Identity %s can not '%s' objects '%s:%s'" %
-                                (operation.user[2], action, objtype, definition))
+                    definition = ""
+                raise Exception(
+                    "Identity %s can not '%s' objects '%s:%s'" % (operation.user[2], action, objtype, definition)
+                )
         except Exception as ex:
             self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=403)
@@ -1816,7 +1915,7 @@ class ApiController(object):
         """
         if len(needs.intersection(perms)) > 0:
             return True
-        self.logger.warning('Perms %s do not overlap needs %s' % (perms, needs))
+        self.logger.warning("Perms %s do not overlap needs %s" % (perms, needs))
         return False
 
     def get_needs(self, args):
@@ -1826,12 +1925,12 @@ class ApiController(object):
         :return:
         """
         # first item *.*.*.....
-        act_need = ['*' for i in args]
-        needs = ['//'.join(act_need)]
+        act_need = ["*" for i in args]
+        needs = ["//".join(act_need)]
         pos = 0
         for arg in args:
             act_need[pos] = arg
-            needs.append('//'.join(act_need))
+            needs.append("//".join(act_need))
             pos += 1
 
         return set(needs)
@@ -1846,6 +1945,11 @@ class ApiController(object):
         :param objid: object unique id. Es. *//*//*, nome1//nome2//*, nome1//nome2//nome3
         :return: True if permissions overlap
         """
+        try:
+            localAudit().set_objid(objid=objid, objdef=objdef, force=(objdef != ApiMethod.objdef))
+        except Exception as ex:
+            logger.error(ex)
+
         if operation.authorize is False:
             return True
         try:
@@ -1854,20 +1958,26 @@ class ApiController(object):
             objset = set(objs[objdef.lower()])
 
             # create needs
-            if action == 'insert':
-                if objid is None or objid == '*':
-                    objid = '*'
+            if action == "insert":
+                if objid is None or objid == "*":
+                    objid = "*"
                 else:
-                    objid = objid + '//*'
-            needs = self.get_needs(objid.split('//'))
+                    objid = objid + "//*"
+            needs = self.get_needs(objid.split("//"))
 
             # check needs overlaps perms
             res = self.has_needs(needs, objset)
             if res is False:
-                raise ApiManagerError('')
-            self.logger.debug2('check authorization OK')
+                raise ApiManagerError("")
+            self.logger.debug2("check authorization OK")
         except ApiManagerError:
-            msg = "Identity %s can not '%s' objects '%s:%s.%s'" % (operation.user[2], action, objtype, objdef, objid)
+            msg = "Identity %s can not '%s' objects '%s:%s.%s'" % (
+                operation.user[2],
+                action,
+                objtype,
+                objdef,
+                objid,
+            )
             self.logger.error(msg)
             raise ApiManagerError(msg, code=403)
         return res
@@ -1898,7 +2008,7 @@ class ApiController(object):
     #
     def get_scheduler(self):
         """Get scheduler instance"""
-        scheduler_module = self.api_manager.get_module('SchedulerModuleV2')
+        scheduler_module = self.api_manager.get_module("SchedulerModuleV2")
         scheduler_controller = scheduler_module.get_controller()
         scheduler = scheduler_controller.get_scheduler()
         return scheduler
@@ -1924,12 +2034,22 @@ class ApiController(object):
         """
         scheduler = self.get_scheduler()
         scheduler.remove_entry(schedule_name)
-        self.logger.info('remove schedule %s' % schedule_name)
+        self.logger.info("remove schedule %s" % schedule_name)
 
     #
     # helper model get method
     #
-    def get_entity(self, entity_class, model_class, oid, for_update=False, details=True, authorize=True,*args, **kvargs):
+    def get_entity(
+        self,
+        entity_class,
+        model_class,
+        oid,
+        for_update=False,
+        details=True,
+        authorize=True,
+        *args,
+        **kvargs,
+    ):
         """Get single entity by oid (id, uuid, name) if exists
 
         :param entity_class: Controller ApiObject Extension class. Specify when you want to verif match between
@@ -1946,26 +2066,32 @@ class ApiController(object):
         except QueryError as ex:
             self.logger.error(ex, exc_info=True)
             entity_name = entity_class.__name__
-            raise ApiManagerError('%s %s not found or name is not unique' % (entity_name, oid), code=404)
+            raise ApiManagerError("%s %s not found or name is not unique" % (entity_name, oid), code=404)
 
         if entity is None:
             entity_name = entity_class.__name__
-            self.logger.warning('%s %s not found' % (entity_name, oid))
-            raise ApiManagerError('%s %s not found' % (entity_name, oid), code=404)
+            self.logger.warning("%s %s not found" % (entity_name, oid))
+            raise ApiManagerError("%s %s not found" % (entity_name, oid), code=404)
 
         # check authorization
-        if operation.authorize is True:
-            if authorize:
-                self.check_authorization(entity_class.objtype, entity_class.objdef, entity.objid, 'view')
+        if operation.authorize is True and authorize:
+            self.check_authorization(entity_class.objtype, entity_class.objdef, entity.objid, "view")
 
-        res = entity_class(self, oid=entity.id, objid=entity.objid, name=entity.name, active=entity.active,
-                           desc=entity.desc, model=entity)
+        res = entity_class(
+            self,
+            oid=entity.id,
+            objid=entity.objid,
+            name=entity.name,
+            active=entity.active,
+            desc=entity.desc,
+            model=entity,
+        )
 
         # execute custom post_get
         if details is True:
             res.post_get()
 
-        self.logger.debug('Get %s : %s' % (entity_class.__name__, res))
+        self.logger.debug("Get %s : %s" % (entity_class.__name__, res))
         return res
 
     def get_entity_for_task(self, entity_class, oid, *args, **kvargs):
@@ -1978,8 +2104,19 @@ class ApiController(object):
         """
         return None
 
-    def get_paginated_entities(self, entity_class, get_entities, page=0, size=10, order='DESC', field='id',
-                               customize=None, authorize=True, *args, **kvargs):
+    def get_paginated_entities(
+        self,
+        entity_class,
+        get_entities,
+        page=0,
+        size=10,
+        order="DESC",
+        field="id",
+        customize=None,
+        authorize=True,
+        *args,
+        **kvargs,
+    ):
         """Get entities with pagination
 
         :param entity_class: ApiObject Extension class
@@ -2005,33 +2142,48 @@ class ApiController(object):
         if operation.authorize is True:
             if authorize:
                 # verify permissions
-                objs = self.can('view', entity_class.objtype, definition=entity_class.objdef)
+                objs = self.can("view", entity_class.objtype, definition=entity_class.objdef)
                 objs = objs.get(entity_class.objdef.lower())
 
                 # create permission tags
                 for p in objs:
                     tags.append(self.manager.hash_from_permission(entity_class.objdef, p))
-                self.logger.debug('Permission tags to apply: %s' % tags)
+                self.logger.debug("Permission tags to apply: %s" % tags)
             else:
-                kvargs['with_perm_tag'] = False
-                self.logger.debug('Auhtorization disabled by flag for command')
+                kvargs["with_perm_tag"] = False
+                self.logger.debug("Auhtorization disabled by flag for command")
         else:
-            kvargs['with_perm_tag'] = False
-            self.logger.debug('Auhtorization disabled by greenlet for command')
+            kvargs["with_perm_tag"] = False
+            self.logger.debug("Auhtorization disabled by greenlet for command")
 
         try:
-            entities, total = get_entities(tags=tags, page=page, size=size, order=order, field=field, *args, **kvargs)
+            entities, total = get_entities(
+                tags=tags,
+                page=page,
+                size=size,
+                order=order,
+                field=field,
+                *args,
+                **kvargs,
+            )
 
             for entity in entities:
-                obj = entity_class(self, oid=entity.id, objid=entity.objid, name=entity.name,
-                                   active=entity.active, desc=entity.desc, model=entity)
+                obj = entity_class(
+                    self,
+                    oid=entity.id,
+                    objid=entity.objid,
+                    name=entity.name,
+                    active=entity.active,
+                    desc=entity.desc,
+                    model=entity,
+                )
                 res.append(obj)
 
             # customize entities
             if customize is not None:
                 customize(res, tags=tags, *args, **kvargs)
 
-            self.logger.debug('Get %s (total:%s): %s' % (entity_class.__name__, total, truncate(res)))
+            self.logger.debug("Get %s (total:%s): %s" % (entity_class.__name__, total, truncate(res)))
             return res, total
         except QueryError as ex:
             self.logger.warning(ex, exc_info=True)
@@ -2058,7 +2210,7 @@ class ApiController(object):
         if operation.authorize is True:
             if authorize:
                 # verify permissions
-                objs = self.can('view', entity_class.objtype, definition=entity_class.objdef)
+                objs = self.can("view", entity_class.objtype, definition=entity_class.objdef)
                 objs = objs.get(entity_class.objdef.lower())
 
                 # create permission tags
@@ -2066,16 +2218,23 @@ class ApiController(object):
                 tags = []
                 for p in objs:
                     tags.append(self.manager.hash_from_permission(entity_class.objdef, p))
-                self.logger.debug('Permission tags to apply: %s' % tags)
+                self.logger.debug("Permission tags to apply: %s" % tags)
 
         try:
             entities = get_entities(tags=tags, *args, **kvargs)
 
             for entity in entities:
-                obj = entity_class(self, oid=entity.id, objid=entity.objid, name=entity.name, active=entity.active,
-                                   desc=entity.desc, model=entity)
+                obj = entity_class(
+                    self,
+                    oid=entity.id,
+                    objid=entity.objid,
+                    name=entity.name,
+                    active=entity.active,
+                    desc=entity.desc,
+                    model=entity,
+                )
                 res.append(obj)
-            self.logger.debug('Get %s : %s' % (entity_class.__name__, truncate(res)))
+            self.logger.debug("Get %s : %s" % (entity_class.__name__, truncate(res)))
             return res
         except QueryError as ex:
             self.logger.warning(ex)
@@ -2093,12 +2252,13 @@ class ApiObject(object):
     :param active: active
     :param model: orm class instance
     """
+
     module: ApiModule = None
-    objtype = ''
-    objdef = ''
-    objuri = ''
-    objname = 'object'
-    objdesc = ''
+    objtype = ""
+    objdef = ""
+    objuri = ""
+    objname = "object"
+    objdesc = ""
     objmodel = None
 
     # set this to define db manger methdod used for update. If not set update is not supported
@@ -2112,22 +2272,31 @@ class ApiObject(object):
 
     register = True
 
-    API_OPERATION = 'API'
-    SYNC_OPERATION = 'CMD'
-    ASYNC_OPERATION = 'TASK'
+    API_OPERATION = "API"
+    SYNC_OPERATION = "CMD"
+    ASYNC_OPERATION = "TASK"
 
     # cache key
-    cache_key = 'object.get'
+    cache_key = "object.get"
 
-    def __init__(self, controller: ApiController, oid=None, objid=None, name=None, desc=None, active=None, model=None):
-        self.logger = logging.getLogger(self.__class__.__module__ + '.' + self.__class__.__name__)
+    def __init__(
+        self,
+        controller: ApiController,
+        oid=None,
+        objid=None,
+        name=None,
+        desc=None,
+        active=None,
+        model=None,
+    ):
+        self.logger = logging.getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
 
         self.controller = controller
-        self.model = model # db model if exist
-        self.oid = oid # object internal db id
-        self.objid = objid
-        self.name = name
-        self.desc = desc
+        self.model = model  # db model if exist
+        self.oid: Union[str, int] = oid  # object internal db id
+        self.objid: str = objid
+        self.name: str = name
+        self.desc: str = desc
         self.active = active
 
         # object uuid
@@ -2136,16 +2305,24 @@ class ApiObject(object):
             self.uuid = self.model.uuid
 
         # object uri
-        self.objuri = '/%s/%s/%s' % (getattr(self.controller, 'version', 'v1.0'), self.objuri, self.uuid)
+        self.objuri = "/%s/%s/%s" % (
+            getattr(self.controller, "version", "v1.0"),
+            self.objuri,
+            self.uuid,
+        )
 
         # child classes
         self.child_classes = []
 
-        self._admin_role_prefix = 'admin'
+        self._admin_role_prefix = "admin"
 
     def __repr__(self):
-        return '<%s id=%s objid=%s name=%s>' % (self.__class__.__module__+'.'+self.__class__.__name__, self.oid,
-                                                self.objid, self.name)
+        return "<%s id=%s objid=%s name=%s>" % (
+            self.__class__.__module__ + "." + self.__class__.__name__,
+            self.oid,
+            self.objid,
+            self.name,
+        )
 
     @property
     def manager(self):
@@ -2188,7 +2365,7 @@ class ApiObject(object):
         """
         Join typedef parent with typedef child
         """
-        return '.'.join([parent, child])
+        return ".".join([parent, child])
 
     @staticmethod
     def get_type(self):
@@ -2198,10 +2375,10 @@ class ApiObject(object):
     def get_user(self):
         """Get user info"""
         user = {
-            'user': operation.user[0],
-            'server': operation.user[1],
-            'identity': operation.user[2],
-            'api_id': operation.id
+            "user": operation.user[0],
+            "server": operation.user[1],
+            "identity": operation.user[2],
+            "api_id": operation.id,
         }
         return user
 
@@ -2213,12 +2390,12 @@ class ApiObject(object):
         :param args: value args
         :return:
         """
-        data = ['*' for i in objtype.split('.')]
+        data = ["*" for i in objtype.split(".")]
         pos = 0
         for arg in args:
             data[pos] = arg
             pos += 1
-        return '//'.join(data)
+        return "//".join(data)
 
     def convert_timestamp(self, timestamp):
         """Convert timestamp to string
@@ -2251,23 +2428,33 @@ class ApiObject(object):
     #
     # scheduled actions
     #
-    def scheduled_action(self, action, schedule, params=None, task_path=None, task_name='scheduled_action_task'):
+    def scheduled_action(
+        self,
+        action,
+        schedule,
+        params=None,
+        task_path=None,
+        task_name="scheduled_action_task",
+    ):
         """"""
         if task_path is None:
-            task_path = 'beehive.module.scheduler_v2.tasks.ScheduledActionTask.'
+            task_path = "beehive.module.scheduler_v2.tasks.ScheduledActionTask."
         task = task_path + task_name
-        schedule_name = 'action-%s-schedule' % action
+        schedule_name = "action-%s-schedule" % action
         if params is None:
-            params = {'steps': []}
+            params = {"steps": []}
 
         params.update(self.get_user())
-        params['objid'] = str(uuid4())
-        params['alias'] = 'ScheduledAction.%s' % action
-        params['schedule_name'] = schedule_name
-        params['steps'].insert(0, 'beehive.module.scheduler_v2.tasks.ScheduledActionTask.remove_schedule_step')
+        params["objid"] = str(uuid4())
+        params["alias"] = "ScheduledAction.%s" % action
+        params["schedule_name"] = schedule_name
+        params["steps"].insert(
+            0,
+            "beehive.module.scheduler_v2.tasks.ScheduledActionTask.remove_schedule_step",
+        )
         args = [params]
         self.controller.create_schedule(schedule_name, task, schedule, args)
-        self.logger.info('create scheduled action %s' % schedule_name)
+        self.logger.info("create scheduled action %s" % schedule_name)
         return schedule_name
 
     #
@@ -2281,36 +2468,34 @@ class ApiObject(object):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         data = {
-            '__meta__': {
-                'objid': self.objid,
-                'type': self.objtype,
-                'definition': self.objdef,
-                'uri': self.objuri,
+            "__meta__": {
+                "objid": self.objid,
+                "type": self.objtype,
+                "definition": self.objdef,
+                "uri": self.objuri,
             },
-            'id': self.oid,
-            'uuid': self.uuid,
-            'name': self.name,
-            'desc': self.desc,
+            "id": self.oid,
+            "uuid": self.uuid,
+            "name": self.name,
+            "desc": self.desc,
         }
-        self.cache.set('%s.%s' % (self.cache_key, self.oid), data, ttl=self.cache_ttl)
+        self.cache.set("%s.%s" % (self.cache_key, self.oid), data, ttl=self.cache_ttl)
 
     def get_cache(self):
-        """Get cache items
-        """
-        res = self.cache.get_by_pattern('*.%s' % self.uuid)
-        res.extend(self.cache.get_by_pattern('*.%s' % self.oid))
-        res.extend(self.cache.get_by_pattern('*.%s' % self.name))
-        res.extend(self.cache.get_by_pattern('*.%s' % self.objid))
+        """Get cache items"""
+        res = self.cache.get_by_pattern("*.%s" % self.uuid)
+        res.extend(self.cache.get_by_pattern("*.%s" % self.oid))
+        res.extend(self.cache.get_by_pattern("*.%s" % self.name))
+        res.extend(self.cache.get_by_pattern("*.%s" % self.objid))
         return res
 
     def clean_cache(self):
-        """Clean cache
-        """
-        self.cache.delete_by_pattern('*.%s' % self.uuid)
-        self.cache.delete_by_pattern('*.%s' % self.oid)
-        self.cache.delete_by_pattern('*.%s' % self.name)
-        self.cache.delete_by_pattern('*.%s' % self.objid)
-        self.cache.delete_by_pattern('metrics.%s' % self.oid)
+        """Clean cache"""
+        self.cache.delete_by_pattern("*.%s" % self.uuid)
+        self.cache.delete_by_pattern("*.%s" % self.oid)
+        self.cache.delete_by_pattern("*.%s" % self.name)
+        self.cache.delete_by_pattern("*.%s" % self.objid)
+        self.cache.delete_by_pattern("metrics.%s" % self.oid)
 
     def cache_data(self, cache_key, func, cache=True, ttl=1800, *args, **kwargs):
         """cache data from executed function
@@ -2324,7 +2509,7 @@ class ApiObject(object):
             # save data in cache
             self.controller.cache.set(cache_key, ret, ttl=ttl)
 
-        self.logger.debug2('cache data from func %s: %s' % (func.__name__, ret))
+        self.logger.debug2("cache data from func %s: %s" % (func.__name__, ret))
         return ret
 
     #
@@ -2338,16 +2523,16 @@ class ApiObject(object):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         res = {
-            '__meta__': {
-                'objid': self.objid,
-                'type': self.objtype,
-                'definition': self.objdef,
-                'uri': self.objuri,
+            "__meta__": {
+                "objid": self.objid,
+                "type": self.objtype,
+                "definition": self.objdef,
+                "uri": self.objuri,
             },
-            'id': self.oid,
-            'uuid': self.uuid,
-            'name': self.name,
-            'active': str2bool(self.active),
+            "id": self.oid,
+            "uuid": self.uuid,
+            "name": self.name,
+            "active": str2bool(self.active),
         }
         return res
 
@@ -2359,26 +2544,26 @@ class ApiObject(object):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         res = {
-            '__meta__': {
-                'objid': self.objid,
-                'type': self.objtype,
-                'definition': self.objdef,
-                'uri': self.objuri,
+            "__meta__": {
+                "objid": self.objid,
+                "type": self.objtype,
+                "definition": self.objdef,
+                "uri": self.objuri,
             },
-            'id': self.oid,
-            'uuid': self.uuid,
-            'name': self.name,
-            'desc': self.desc,
-            'active': str2bool(self.active),
-            'date': {
-                'creation': format_date(self.model.creation_date),
-                'modified': format_date(self.model.modification_date),
-                'expiry': ''
-            }
+            "id": self.oid,
+            "uuid": self.uuid,
+            "name": self.name,
+            "desc": self.desc,
+            "active": str2bool(self.active),
+            "date": {
+                "creation": format_date(self.model.creation_date),
+                "modified": format_date(self.model.modification_date),
+                "expiry": "",
+            },
         }
 
-        if hasattr(self.model,'expiry_date') and self.model.expiry_date is not None:
-            res['date']['expiry'] = format_date(self.model.expiry_date)
+        if hasattr(self.model, "expiry_date") and self.model.expiry_date is not None:
+            res["date"]["expiry"] = format_date(self.model.expiry_date)
 
         return res
 
@@ -2390,26 +2575,26 @@ class ApiObject(object):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         res = {
-            '__meta__': {
-                'objid': self.objid,
-                'type': self.objtype,
-                'definition': self.objdef,
-                'uri': self.objuri,
+            "__meta__": {
+                "objid": self.objid,
+                "type": self.objtype,
+                "definition": self.objdef,
+                "uri": self.objuri,
             },
-            'id': self.oid,
-            'uuid': self.uuid,
-            'name': self.name,
-            'desc': self.desc,
-            'active': str2bool(self.active),
-            'date': {
-                'creation': format_date(self.model.creation_date),
-                'modified': format_date(self.model.modification_date),
-                'expiry': ''
-            }
+            "id": self.oid,
+            "uuid": self.uuid,
+            "name": self.name,
+            "desc": self.desc,
+            "active": str2bool(self.active),
+            "date": {
+                "creation": format_date(self.model.creation_date),
+                "modified": format_date(self.model.modification_date),
+                "expiry": "",
+            },
         }
 
-        if hasattr(self.model,'expiry_date') and self.model.expiry_date is not None:
-            res['date']['expiry'] = format_date(self.model.expiry_date)
+        if hasattr(self.model, "expiry_date") and self.model.expiry_date is not None:
+            res["date"]["expiry"] = format_date(self.model.expiry_date)
 
         return res
 
@@ -2420,7 +2605,7 @@ class ApiObject(object):
         """Register object types, objects and permissions related to module.
         Call this function when initialize system first time.
         """
-        self.logger.info('Init api object %s.%s - START' % (self.objtype, self.objdef))
+        self.logger.info("Init api object %s.%s - START" % (self.objtype, self.objdef))
 
         try:
             # call only once during db initialization
@@ -2431,7 +2616,7 @@ class ApiObject(object):
             objs = self._get_value(self.objdef, [])
             self.api_client.add_object(self.objtype, self.objdef, objs, self.objdesc)
 
-            self.logger.info('Init api object %s.%s - STOP' % (self.objtype, self.objdef))
+            self.logger.info("Init api object %s.%s - STOP" % (self.objtype, self.objdef))
         except ApiManagerError as ex:
             self.logger.warning(ex.value)
 
@@ -2449,12 +2634,12 @@ class ApiObject(object):
         :return: list of valid objids
         """
         # first item *.*.*.....
-        act_obj = ['*' for i in args]
-        objdis = ['//'.join(act_obj)]
+        act_obj = ["*" for i in args]
+        objdis = ["//".join(act_obj)]
         pos = 0
         for arg in args:
             act_obj[pos] = arg
-            objdis.append('//'.join(act_obj))
+            objdis.append("//".join(act_obj))
             pos += 1
 
         return objdis
@@ -2468,42 +2653,41 @@ class ApiObject(object):
         if self.oid is not None:
             ids = self.get_all_valid_objids(args)
             for i in ids:
-                perm = '%s-%s' % (self.objdef.lower(), i)
+                perm = "%s-%s" % (self.objdef.lower(), i)
                 tag = self.manager.hash_from_permission(self.objdef.lower(), i)
                 table = self.objdef
                 self.manager.add_perm_tag(tag, perm, self.oid, table)
 
     def deregister_object_permtags(self):
-        """Deregister object permission tags.
-        """
+        """Deregister object permission tags."""
         if self.objid is not None:
-            ids = self.get_all_valid_objids(self.objid.split('//'))
+            ids = self.get_all_valid_objids(self.objid.split("//"))
             tags = []
             for i in ids:
                 tags.append(self.manager.hash_from_permission(self.objdef, i))
             table = self.objdef
             self.manager.delete_perm_tag(self.oid, table, tags)
 
-    def register_object(self, objids, desc=''):
+    def register_object(self, objids, desc=""):
         """Register object types, objects and permissions related to module.
 
         :param objids: objid split by //
         :param desc: object description
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        self.logger.debug('Register api object: %s:%s %s - START' % (self.objtype, self.objdef, objids))
+        self.logger.debug("Register api object: %s:%s %s - START" % (self.objtype, self.objdef, objids))
 
         objids = [ensure_text(o) for o in objids]
 
         # add object and permissions
-        self.api_client.add_object(self.objtype, self.objdef, '//'.join(objids), desc)
+        self.api_client.add_object(self.objtype, self.objdef, "//".join(objids), desc)
 
         # register permission tags
         self.register_object_permtags(objids)
 
-        self.logger.debug('Register api object: %s:%s %s - STOP' % (self.objtype, self.objdef, objids))
+        self.logger.debug("Register api object: %s:%s %s - STOP" % (self.objtype, self.objdef, objids))
 
-        objids.append('*')
+        objids.append("*")
         for child in self.child_classes:
             child(self.controller, oid=None).register_object(list(objids), desc=child.objdesc)
 
@@ -2512,26 +2696,26 @@ class ApiObject(object):
 
         :param objids: objid split by //
         """
-        self.logger.debug('Deregister api object %s:%s %s - START' % (self.objtype, self.objdef, objids))
+        self.logger.debug("Deregister api object %s:%s %s - START" % (self.objtype, self.objdef, objids))
 
         # deregister permission tags
         self.deregister_object_permtags()
 
         # remove object and permissions
-        objid = '//'.join([ensure_text(o) for o in objids])
+        objid = "//".join([ensure_text(o) for o in objids])
         self.api_client.remove_object(self.objtype, self.objdef, objid)
 
-        objids.append('*')
+        objids.append("*")
         for child in self.child_classes:
             child(self.controller, oid=None).deregister_object(list(objids))
 
-        self.logger.debug('Deregister api object %s:%s %s - STOP' % (self.objtype, self.objdef, objid))
+        self.logger.debug("Deregister api object %s:%s %s - STOP" % (self.objtype, self.objdef, objid))
 
     def register_async_methods(self):
         # self.logger.debug('register class %s methods' % self.__class__.__name__)
-        methods = get_class_methods_by_decorator(self.__class__, 'run_async')
+        methods = get_class_methods_by_decorator(self.__class__, "run_async")
         for method in methods:
-            self.logger.debug('register async method %s for class %s' % (method, self.__class__.__name__))
+            self.logger.debug("register async method %s for class %s" % (method, self.__class__.__name__))
             # self.logger.warn('register async method %s for class %s' % (method, self.__class__.__name__))
             getattr(self.__class__, method)(entity_class=self.__class__, register=True)
 
@@ -2541,7 +2725,7 @@ class ApiObject(object):
 
     def set_superadmin_permissions(self):
         """ """
-        self.set_admin_permissions('ApiSuperadmin', [])
+        self.set_admin_permissions("ApiSuperadmin", [])
 
     def set_admin_permissions(self, role, args):
         """Set admin permissions
@@ -2550,8 +2734,9 @@ class ApiObject(object):
         :param args: permissions args
         """
         # set main permissions
-        self.api_client.append_role_permissions(role, self.objtype, self.objdef, self._get_value(self.objdef, args),
-                                                '*')
+        self.api_client.append_role_permissions(
+            role, self.objtype, self.objdef, self._get_value(self.objdef, args), "*"
+        )
 
     def set_viewer_permissions(self, role, args):
         """Set viewer permissions
@@ -2560,8 +2745,9 @@ class ApiObject(object):
         :param args: permissions args
         """
         # set main permissions
-        self.api_client.append_role_permissions(role, self.objtype, self.objdef, self._get_value(self.objdef, args),
-                                                'view')
+        self.api_client.append_role_permissions(
+            role, self.objtype, self.objdef, self._get_value(self.objdef, args), "view"
+        )
 
     def verify_permisssions(self, action, *args, **kvargs):
         """Short method to verify permissions.
@@ -2780,67 +2966,75 @@ class ApiObject(object):
     #
     # event
     #
-    def send_event(self, op, args=None, params={}, opid=None, response=True, exception=None, etype=None, elapsed=0):
+    def send_event(
+        self,
+        op,
+        args=None,
+        params={},
+        opid=None,
+        exception=None,
+        etype=None,
+        elapsed=0,
+    ):
         """Publish an event to event queue.
 
         :param op: operation to audit
         :param opid: operation id to audit [optional]
         :param params: operation params [default={}]
-        :param response: operation response. [default=True]
         :param exception: exceptione raised [optinal]
         :param etype: event type. Can be ApiObject.SYNC_OPERATION, ApiObject.ASYNC_OPERATION
         :param elapsed: elapsed time [default=0]
         """
         if opid is None:
             opid = operation.id
-        objid = '*'
+        objid = "*"
         if self.objid is not None:
             objid = self.objid
         if etype is None:
             etype = self.SYNC_OPERATION
         if exception is not None:
-            response = ['KO', str(exception)]
+            response = ["KO", str(exception)]
         else:
-            response = ['OK', '']
+            response = ["OK", ""]
 
-        action = op.split('.')[-1]
+        action = op.split(".")[-1]
 
         data = {
-            'opid': opid,
-            'op': op,
-            'api_id': opid,
+            "opid": opid,
+            "op": op,
+            "api_id": opid,
             # 'args': compat(args),
             # 'kwargs': compat(params),
             # 'args': args,
             # 'kwargs': params,
-            'args': [],
-            'kvargs': '',
-            'elapsed': elapsed,
-            'response': response
+            "args": [],
+            "kvargs": "",
+            "elapsed": elapsed,
+            "response": response,
         }
 
         source = {
-            'user': operation.user[0],
-            'ip': operation.user[1],
-            'identity': operation.user[2]
+            "user": operation.user[0],
+            "ip": operation.user[1],
+            "identity": operation.user[2],
         }
 
         dest = {
-            'ip': self.controller.module.api_manager.server_name,
-            'port': self.controller.module.api_manager.http_socket,
-            'pod': self.api_manager.app_k8s_pod,
-            'objid': objid,
-            'objtype': self.objtype,
-            'objdef': self.objdef,
-            'action': action
+            "ip": self.controller.module.api_manager.server_name,
+            "port": self.controller.module.api_manager.http_socket,
+            "pod": self.api_manager.app_k8s_pod,
+            "objid": objid,
+            "objtype": self.objtype,
+            "objdef": self.objdef,
+            "action": action,
         }
 
         # send event
         try:
-            client = self.controller.module.api_manager.event_producer
+            client: EventProducerKombu = self.controller.module.api_manager.event_producer
             client.send(etype, data, source, dest)
         except Exception as ex:
-            self.logger.warning('Event can not be published. Event producer is not configured - %s' % ex)
+            self.logger.warning("Event can not be published. Event producer is not configured - %s" % ex)
 
     def get_field(self, obj, name):
         """Get object field if exist. Return None if it can be retrieved
@@ -2851,13 +3045,13 @@ class ApiObject(object):
         """
         try:
             return obj.__dict__[name]
-        except:
+        except Exception:
             return None
 
     #
     # update, delete
     #
-    @trace(op='update')
+    @trace(op="update")
     def update(self, *args, **kvargs):
         """Update entity.
 
@@ -2867,10 +3061,10 @@ class ApiObject(object):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         if self.update_object is None:
-            raise ApiManagerError('Update is not supported for %s:%s' % (self.objtype, self.objdef))
+            raise ApiManagerError("Update is not supported for %s:%s" % (self.objtype, self.objdef))
 
         # verify permissions
-        self.verify_permisssions('update')
+        self.verify_permisssions("update")
 
         # clean cache
         self.clean_cache()
@@ -2882,13 +3076,13 @@ class ApiObject(object):
         try:
             res = self.update_object(oid=self.oid, *args, **kvargs)
 
-            self.logger.debug('Update %s %s with data %s' % (self.objdef, self.oid, truncate(kvargs)))
+            self.logger.debug("Update %s %s with data %s" % (self.objdef, self.oid, truncate(kvargs)))
             return self.uuid
         except TransactionError as ex:
             self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=ex.code)
 
-    @trace(op='update')
+    @trace(op="update")
     def patch(self, *args, **kvargs):
         """Patch entity.
 
@@ -2898,10 +3092,10 @@ class ApiObject(object):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         if self.patch_object is None:
-            raise ApiManagerError('Patch is not supported for %s:%s' % (self.objtype, self.objdef))
+            raise ApiManagerError("Patch is not supported for %s:%s" % (self.objtype, self.objdef))
 
         # verify permissions
-        self.verify_permisssions('update')
+        self.verify_permisssions("update")
 
         # clean cache
         self.clean_cache()
@@ -2913,13 +3107,13 @@ class ApiObject(object):
         try:
             self.patch_object(self.model)
 
-            self.logger.debug('Patch %s %s' % (self.objdef, self.oid))
+            self.logger.debug("Patch %s %s" % (self.objdef, self.oid))
             return self.uuid
         except TransactionError as ex:
             self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=ex.code)
 
-    @trace(op='delete')
+    @trace(op="delete")
     def delete(self, soft=False, **kvargs):
         """Delete entity.
 
@@ -2929,10 +3123,10 @@ class ApiObject(object):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         if self.delete_object is None:
-            raise ApiManagerError('Delete is not supported for %s:%s' % (self.objtype, self.objdef))
+            raise ApiManagerError("Delete is not supported for %s:%s" % (self.objtype, self.objdef))
 
         # verify permissions
-        self.verify_permisssions('delete')
+        self.verify_permisssions("delete")
 
         # clean cache
         self.clean_cache()
@@ -2947,12 +3141,12 @@ class ApiObject(object):
                 # self.delete_object(self.oid)
                 if self.register is True:
                     # remove object and permissions
-                    self.deregister_object(self.objid.split('//'))
+                    self.deregister_object(self.objid.split("//"))
 
-                self.logger.debug('Delete %s: %s' % (self.objdef, self.oid))
+                self.logger.debug("Delete %s: %s" % (self.objdef, self.oid))
             else:
                 self.delete_object(self.model)
-                self.logger.debug('Soft delete %s: %s' % (self.objdef, self.oid))
+                self.logger.debug("Soft delete %s: %s" % (self.objdef, self.oid))
         except TransactionError as ex:
             self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=ex.code)
@@ -2963,7 +3157,7 @@ class ApiObject(object):
 
         return None
 
-    @trace(op='delete')
+    @trace(op="delete")
     def expunge(self, **kvargs):
         """Expunge entity.
 
@@ -2972,10 +3166,10 @@ class ApiObject(object):
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         if self.expunge_object is None:
-            raise ApiManagerError('Expunge is not supported for %s:%s' % (self.objtype, self.objdef))
+            raise ApiManagerError("Expunge is not supported for %s:%s" % (self.objtype, self.objdef))
 
         # verify permissions
-        self.verify_permisssions('delete')
+        self.verify_permisssions("delete")
 
         # clean cache
         self.clean_cache()
@@ -2988,9 +3182,9 @@ class ApiObject(object):
             self.expunge_object(self.model)
             if self.register is True:
                 # remove object and permissions
-                self.deregister_object(self.objid.split('//'))
+                self.deregister_object(self.objid.split("//"))
 
-            self.logger.debug('Expunge %s: %s' % (self.objdef, self.oid))
+            self.logger.debug("Expunge %s: %s" % (self.objdef, self.oid))
         except TransactionError as ex:
             self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=ex.code)
@@ -3013,9 +3207,10 @@ class ApiInternalObject(ApiObject):
     :param active: active
     :param model: orm class instance
     """
-    objtype = 'auth'
-    objdef = 'abstract'
-    objdesc = 'Authorization abstract object'
+
+    objtype = "auth"
+    objdef = "abstract"
+    objdesc = "Authorization abstract object"
 
     def __init__(self, *args, **kvargs):
         ApiObject.__init__(self, *args, **kvargs)
@@ -3028,7 +3223,7 @@ class ApiInternalObject(ApiObject):
         """Register object types, objects and permissions related to module.
         Call this function when initialize system first time.
         """
-        self.logger.info('Init api object %s.%s - START' % (self.objtype, self.objdef))
+        self.logger.info("Init api object %s.%s - START" % (self.objtype, self.objdef))
 
         try:
             # call only once during db initialization
@@ -3042,7 +3237,7 @@ class ApiInternalObject(ApiObject):
             actions = self.auth_db_manager.get_object_action()
             self.auth_db_manager.add_object(objs, actions)
 
-            self.logger.info('Init api object %s.%s - STOP' % (self.objtype, self.objdef))
+            self.logger.info("Init api object %s.%s - STOP" % (self.objtype, self.objdef))
         except (QueryError, TransactionError) as ex:
             self.logger.warning(ex)
 
@@ -3050,31 +3245,31 @@ class ApiInternalObject(ApiObject):
         for child in self.child_classes:
             child(self.controller).init_object()
 
-    def register_object(self, objids, desc=''):
+    def register_object(self, objids, desc=""):
         """Register object types, objects and permissions related to module.
 
         :param objids: objid split by //
         :param desc: object description
         """
-        self.logger.debug('Register api object %s:%s %s - START' % (self.objtype, self.objdef, objids))
+        self.logger.debug("Register api object %s:%s %s - START" % (self.objtype, self.objdef, objids))
 
         try:
             # add object and permissions
             obj_type = self.auth_db_manager.get_object_type(objtype=self.objtype, objdef=self.objdef)[0][0]
-            objs = [(obj_type, '//'.join(objids), desc)]
+            objs = [(obj_type, "//".join(objids), desc)]
             actions = self.auth_db_manager.get_object_action()
             self.auth_db_manager.add_object(objs, actions)
         except (QueryError, TransactionError) as ex:
-            self.logger.error('Register api object: %s - ERROR' % ex.value)
+            self.logger.error("Register api object: %s - ERROR" % ex.value)
             raise ApiManagerError(ex, code=400)
 
         # register permission tags
         self.register_object_permtags(objids)
 
-        self.logger.debug('Register api object %s:%s %s - STOP' % (self.objtype, self.objdef, objs))
+        self.logger.debug("Register api object %s:%s %s - STOP" % (self.objtype, self.objdef, objs))
 
         # register child classes
-        objids.append('*')
+        objids.append("*")
         for child in self.child_classes:
             child(self.controller, oid=None).register_object(objids, desc=child.objdesc)
 
@@ -3083,7 +3278,7 @@ class ApiInternalObject(ApiObject):
 
         :param objids: objid split by //
         """
-        self.logger.debug('Deregister api object %s:%s %s - START' % (self.objtype, self.objdef, objids))
+        self.logger.debug("Deregister api object %s:%s %s - START" % (self.objtype, self.objdef, objids))
 
         # deregister permission tags
         self.deregister_object_permtags()
@@ -3091,16 +3286,16 @@ class ApiInternalObject(ApiObject):
         try:
             # remove object and permissions
             obj_type = self.auth_db_manager.get_object_type(objtype=self.objtype, objdef=self.objdef)[0][0]
-            objid = '//'.join([ensure_text(o) for o in objids])
+            objid = "//".join([ensure_text(o) for o in objids])
             self.auth_db_manager.remove_object(objid=objid, objtype=obj_type)
 
-            self.logger.debug('Deregister api object %s:%s %s - STOP' % (self.objtype, self.objdef, objids))
+            self.logger.debug("Deregister api object %s:%s %s - STOP" % (self.objtype, self.objdef, objids))
         except (QueryError, TransactionError) as ex:
-            self.logger.error('Deregister api object: %s - ERROR' % ex.value)
+            self.logger.error("Deregister api object: %s - ERROR" % ex.value)
             raise ApiManagerError(ex, code=400)
 
         # deregister child classes
-        objids.append('*')
+        objids.append("*")
         for child in self.child_classes:
             child(self.controller, oid=None).deregister_object(objids)
 
@@ -3112,8 +3307,12 @@ class ApiInternalObject(ApiObject):
         """
         try:
             role = self.auth_db_manager.get_entity(Role, role_name)
-            perms, total = self.auth_db_manager.get_permissions(objid=self._get_value(self.objdef, args), objtype=None,
-                                                                objdef=self.objdef, action='*')
+            perms, total = self.auth_db_manager.get_permissions(
+                objid=self._get_value(self.objdef, args),
+                objtype=None,
+                objdef=self.objdef,
+                action="*",
+            )
 
             # set container main permissions
             self.auth_db_manager.append_role_permissions(role, perms)
@@ -3121,7 +3320,7 @@ class ApiInternalObject(ApiObject):
             # set child resources permissions
             for child in self.child_classes:
                 res = child(self.controller, self)
-                res.set_admin_permissions(role_name, self._get_value(res.objdef, args).split('//'))
+                res.set_admin_permissions(role_name, self._get_value(res.objdef, args).split("//"))
         except Exception as ex:
             self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=400)
@@ -3142,29 +3341,33 @@ class ApiInternalObject(ApiObject):
             # resource permissions
             if objid is None:
                 objid = self.objid
-            objids = [objid,
-                      objid+'//*',
-                      objid+'//*//*',
-                      objid+'//*//*//*',
-                      objid+'//*//*//*//*',
-                      objid+'//*//*//*//*//*',
-                      objid+'//*//*//*//*//*//*']
+            objids = [
+                objid,
+                objid + "//*",
+                objid + "//*//*",
+                objid + "//*//*//*",
+                objid + "//*//*//*//*",
+                objid + "//*//*//*//*//*",
+                objid + "//*//*//*//*//*//*",
+            ]
             perms, total = self.auth_db_manager.get_deep_permissions(objids=objids, objtype=self.objtype, **kvargs)
 
             res = []
             for p in perms:
-                res.append({
-                    'id': p.id,
-                    'oid': p.obj.id,
-                    'subsystem': p.obj.type.objtype,
-                    'type': p.obj.type.objdef,
-                    'objid': p.obj.objid,
-                    'aid': p.action.id,
-                    'action': p.action.value,
-                    'desc': p.obj.desc
-                })
+                res.append(
+                    {
+                        "id": p.id,
+                        "oid": p.obj.id,
+                        "subsystem": p.obj.type.objtype,
+                        "type": p.obj.type.objdef,
+                        "objid": p.obj.objid,
+                        "aid": p.action.id,
+                        "action": p.action.value,
+                        "desc": p.obj.desc,
+                    }
+                )
 
-            self.logger.debug('Get permissions %s: %s' % (self.oid, truncate(res)))
+            self.logger.debug("Get permissions %s: %s" % (self.oid, truncate(res)))
             return res, total
         except ApiManagerError as ex:
             self.logger.error(ex, exc_info=True)
@@ -3176,12 +3379,13 @@ class ApiViewResponse(ApiObject):
 
     :param controller: ApiController instance
     """
-    objtype = 'api'
-    objdef = 'Response'
-    objdesc = 'Api Response'
+
+    objtype = "api"
+    objdef = "Response"
+    objdesc = "Api Response"
 
     api_exclusions_list = [
-        '/v1.0/server/ping:GET',
+        "/v1.0/server/ping:GET",
     ]
 
     def __init__(self, *args, **kvargs):
@@ -3208,7 +3412,7 @@ class ApiViewResponse(ApiObject):
             actions = self.auth_db_manager.get_object_action()
             self.auth_db_manager.add_object(objs, actions)
 
-            self.logger.debug('Register api object: %s' % objs)
+            self.logger.debug("Register api object: %s" % objs)
         except (QueryError, TransactionError) as ex:
             self.logger.warning(ex)
 
@@ -3220,8 +3424,12 @@ class ApiViewResponse(ApiObject):
         """
         try:
             role = self.auth_db_manager.get_entity(Role, role_name)
-            perms, total = self.auth_db_manager.get_permissions(objid=self._get_value(self.objdef, args), objtype=None,
-                                                                objdef=self.objdef, action='*')
+            perms, total = self.auth_db_manager.get_permissions(
+                objid=self._get_value(self.objdef, args),
+                objtype=None,
+                objdef=self.objdef,
+                action="*",
+            )
 
             # set container main permissions
             self.auth_db_manager.append_role_permissions(role, perms)
@@ -3229,7 +3437,7 @@ class ApiViewResponse(ApiObject):
             self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=400)
 
-    def send_event(self, api, params={}, response=True, exception=None, opid=None):
+    def send_event(self, event_data, params={}, response=True, exception=None, opid=None):
         """Publish an event to event queue.
 
         :param api: api to audit {'path':.., 'method':.., 'elapsed':..}
@@ -3237,122 +3445,123 @@ class ApiViewResponse(ApiObject):
         :param response: operation response. [default=True]
         :param exception: exception raised [optional]
         """
-        elapsed = api.get('elapsed')
-        code = api.get('code')
-        path = api.get('path')
-        method = api.get('method')
-        objid = '*'
-        api_explain = '%s:%s' % (api.get('path'), api.get('method'))
+        elapsed = event_data.get("elapsed")
+        code = event_data.get("code")
+        path = event_data.get("path")
+        method = event_data.get("method")
+        user_agent = event_data.get("user-agent")
+
+        objid = "*"
+        api_explain = "%s:%s" % (path, method)
 
         if opid is None:
             opid = operation.id
 
         if exception is not None:
-            response = [str(code), str(exception)]
+            ret_response = [str(code), str(exception)]
         else:
-            response = [str(code), '']
+            ret_response = [str(code), ""]
 
-        if method in ['GET']:
-            action = 'view'
-        elif method in ['POST']:
-            action = 'insert'
-        elif method in ['PUT']:
-            action = 'update'
-        elif method in ['PATCH']:
-            action = 'patch'
-        elif method in ['DELETE']:
-            action = 'delete'
+        if method in ["GET"]:
+            action = "view"
+        elif method in ["POST"]:
+            action = "insert"
+        elif method in ["PUT"]:
+            action = "update"
+        elif method in ["PATCH"]:
+            action = "patch"
+        elif method in ["DELETE"]:
+            action = "delete"
+
+        params_obscured = obscure_data(deepcopy(params))
+        kwargs_obscure = jsonDumps(params_obscured)
 
         # send event
         data = {
-            'opid': opid,
-            'op': '%s:%s' % (path, method),
-            'api_id': operation.id,
+            "opid": opid,
+            "op": "%s:%s" % (path, method),
+            "api_id": operation.id,
             # 'args': [],
             # 'kwargs': compat(params),
             # 'args': compat(args),
             # 'kwargs': compat(params),
-            'kwargs': jsonDumps(params),
-            'args': [],
+            "kwargs": kwargs_obscure,
+            "args": [],
             # 'kwargs': params,
-            'elapsed': elapsed,
-            'response': response
+            "elapsed": elapsed,
+            "response": ret_response,
+            "user_agent": user_agent,
         }
 
         source = {
-            'user': operation.user[0],
-            'ip': operation.user[1],
-            'identity': operation.user[2]
+            "user": operation.user[0],
+            "ip": operation.user[1],
+            "identity": operation.user[2],
         }
 
         dest = {
-            'ip': self.controller.module.api_manager.server_name,
-            'port': self.controller.module.api_manager.http_socket,
-            'pod': self.api_manager.app_k8s_pod,
-            'objid': objid,
-            'objtype': self.objtype,
-            'objdef': self.objdef,
-            'action': action
+            "ip": self.controller.module.api_manager.server_name,
+            "port": self.controller.module.api_manager.http_socket,
+            "pod": self.api_manager.app_k8s_pod,
+            "objid": objid,
+            "objtype": self.objtype,
+            "objdef": self.objdef,
+            "action": action,
         }
 
         # send event
         try:
             if api_explain not in self.api_exclusions_list:
-                client = self.controller.module.api_manager.event_producer
+                client: EventProducerKombu = self.controller.module.api_manager.event_producer
                 client.send(self.API_OPERATION, data, source, dest)
         except Exception as ex:
-            self.logger.warning('Event can not be published. Event producer is not configured - %s' % ex)
+            self.logger.warning("Event can not be published. Event producer is not configured - %s" % ex)
 
 
 class ApiView(FlaskView):
-    """Base api object used when create an api view
-    """
+    """Base api object used when create an api view"""
+
     authorizable = False
-    prefix = 'identity:'
+    prefix = "identity:"
     expire = 3600
     parameters = []
     parameters_schema = None
     response_schema = None
 
-    RESPONSE_MIME_TYPE = [
-        'application/json',
-        'application/bson',
-        'text/xml',
-        '*/*'
-    ]
+    RESPONSE_MIME_TYPE = ["application/json", "application/bson", "text/xml", "*/*"]
 
     def __init__(self, *argc, **argv):
-        self.logger = logging.getLogger(self.__class__.__module__ + '.' + self.__class__.__name__)
+        self.identity_key: str = None
+        self.logger = logging.getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
 
     def get_user_agent(self):
-        return request.headers.get('User-Agent')
+        return request.headers.get("User-Agent")
 
     def _get_response_mime_type(self):
         """Get response mime type"""
         try:
-            self.response_mime = request.headers['Content-Type']
-        except:
-            self.response_mime = 'application/json'
+            self.response_mime = request.headers["Content-Type"]
+        except Exception:
+            self.response_mime = "application/json"
 
-        if self.response_mime == '*/*':
-            self.response_mime = 'application/json'
+        if self.response_mime == "*/*":
+            self.response_mime = "application/json"
 
-        if self.response_mime == '':
-            self.response_mime = 'application/json'
+        if self.response_mime == "":
+            self.response_mime = "application/json"
 
         if self.response_mime is None:
-            self.response_mime = 'application/json'
+            self.response_mime = "application/json"
 
     def __get_auth_filter(self):
-        """Get authentication filter. It can be keyauth, oauth2, simplehttp or ...
-        """
+        """Get authentication filter. It can be keyauth, oauth2, simplehttp or ..."""
         headers = request.headers
-        if 'uid' in headers and 'sign' in headers:
-            return 'keyauth'
-        if 'Authorization' in headers and headers.get('Authorization').find('Basic') >= 0:
-            return 'simplehttp'
-        if 'Authorization' in headers and headers.get('Authorization').find('Bearer') >= 0:
-            return 'oauth2'
+        if "uid" in headers and "sign" in headers:
+            return "keyauth"
+        if "Authorization" in headers and headers.get("Authorization").find("Basic") >= 0:
+            return "simplehttp"
+        if "Authorization" in headers and headers.get("Authorization").find("Bearer") >= 0:
+            return "oauth2"
         return None
 
     def __get_token(self):
@@ -3363,14 +3572,14 @@ class ApiView(FlaskView):
         """
         try:
             header = request.headers
-            uid = header['uid']
-            sign = header['sign']
+            uid = header["uid"]
+            sign = header["sign"]
             data = request.path
-            self.logger.debug2('Uid: %s' % uid)
-            self.logger.debug2('Sign: %s' % sign)
-            self.logger.debug2('Data: %s' % data)
-        except:
-            raise ApiManagerError('Error retrieving token and sign from http header', code=401)
+            self.logger.debug2("Uid: %s" % uid)
+            self.logger.debug2("Sign: %s" % sign)
+            self.logger.debug2("Data: %s" % data)
+        except Exception:
+            raise ApiManagerError("Error retrieving token and sign from http header", code=401)
         return uid, sign, data
 
     def __get_oauth2_token(self):
@@ -3381,10 +3590,10 @@ class ApiView(FlaskView):
         """
         try:
             header = request.headers
-            token = header['Authorization'].replace('Bearer ', '')
-            self.logger.info('Get Bearer Token: %s' % token)
-        except:
-            raise ApiManagerError('Error retrieving bearer token', code=401)
+            token = header["Authorization"].replace("Bearer ", "")
+            self.logger.info("Get Bearer Token: %s" % token)
+        except Exception:
+            raise ApiManagerError("Error retrieving bearer token", code=401)
         return token
 
     def __get_http_credentials(self):
@@ -3395,20 +3604,20 @@ class ApiView(FlaskView):
         """
         try:
             header = request.headers
-            authorization = header['Authorization']
-            self.logger.info('Authorization: %s' % authorization)
+            authorization = header["Authorization"]
+            self.logger.info("Authorization: %s" % authorization)
 
             # get credentials
-            if not match('Basic [a-zA-z0-9]+', authorization):
-                raise Exception('Authorization field syntax is wrong')
-            authorization = authorization.lstrip('Basic ')
-            self.logger.warning('Authorization: %s' % authorization)
+            if not match("Basic [a-zA-z0-9]+", authorization):
+                raise Exception("Authorization field syntax is wrong")
+            authorization = authorization.lstrip("Basic ")
+            self.logger.warning("Authorization: %s" % authorization)
             credentials = b64decode(authorization)
-            user, pwd = credentials.split(':')
+            user, pwd = credentials.split(":")
             user_ip = get_remote_ip(request)
         except Exception as ex:
             self.logger.error(ex, exc_info=True)
-            raise ApiManagerError('Error retrieving Authorization from http header', code=401)
+            raise ApiManagerError("Error retrieving Authorization from http header", code=401)
         return user, pwd, user_ip
 
     def get_current_identity(self):
@@ -3420,16 +3629,15 @@ class ApiView(FlaskView):
         return self.__get_token()
 
     def invalidate_user_session(self):
-        """Remove user session from redis for api request
-        """
+        """Remove user session from redis for api request"""
         serializer = current_app.session_interface.serializer
         redis = current_app.session_interface.redis
         key_prefix = current_app.session_interface.key_prefix
 
-        self.logger.warning(redis.keys('%s*' % key_prefix))
+        self.logger.warning(redis.keys("%s*" % key_prefix))
 
-        session['_permanent'] = False
-        self.logger.debug('Invalidate user session')
+        session["_permanent"] = False
+        self.logger.debug("Invalidate user session")
 
     def authorize_request(self, module):
         """Authorize http request
@@ -3438,7 +3646,7 @@ class ApiView(FlaskView):
         :raise AuthViewError: raise :class:`AuthViewError`
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        self.logger.debug('Verify api %s [%s] authorization' % (request.path, request.method))
+        self.logger.debug("Verify api %s [%s] authorization" % (request.path, request.method))
 
         # select correct authentication filter
         authfilter = self.__get_auth_filter()
@@ -3446,55 +3654,56 @@ class ApiView(FlaskView):
         self.logger.debug('Select authentication filter: "%s"' % authfilter)
 
         # get controller
-        controller = module.get_controller()
+        controller: ApiController = module.get_controller()
 
         # - keyauth
-        if authfilter == 'keyauth':
+        if authfilter == "keyauth":
             # get identity and verify signature
             uid, sign, data = self.__get_token()
             identity = controller.verify_request_signature(uid, sign, data)
-
+            self.identity_key = uid
         # - oauth2
-        elif authfilter == 'oauth2':
+        elif authfilter == "oauth2":
             uid = self.__get_oauth2_token()
             # get identity
             identity = controller.get_oauth2_identity(uid)
-            if identity['type'] != 'oauth2':
-                msg = 'Token type oauth2 does not match with supplied token'
+            self.identity_key = uid
+            if identity["type"] != "oauth2":
+                msg = "Token type oauth2 does not match with supplied token"
                 self.logger.error(msg, exc_info=True)
                 raise ApiManagerError(msg, code=401)
 
         # - simple http authentication
-        elif authfilter == 'simplehttp':
+        elif authfilter == "simplehttp":
             user, pwd, user_ip = self.__get_http_credentials()
             identity = controller.verify_simple_http_credentials(user, pwd, user_ip)
             uid = None
-            identity['seckey'] = None
-            identity['ip'] = user_ip
+            identity["seckey"] = None
+            identity["ip"] = user_ip
 
         # - no authentication
         elif authfilter is None:
-            msg = 'Request is not authorized'
+            msg = "Request is not authorized"
             self.logger.error(msg)
             raise ApiManagerError(msg, code=401)
 
         # get user permissions from identity
-        name = 'Guest'
+        name = "Guest"
         try:
             # get user permission
-            user = identity['user']
-            name = user['name']
-            compress_perms = user['perms']
+            user = identity["user"]
+            name = user["name"]
+            compress_perms = user["perms"]
 
             # get permissions
             operation.perms = json.loads(decompress(binascii.a2b_base64(compress_perms)))
-            operation.user = (name, identity['ip'], uid, identity.get('seckey', None))
-            self.logger.debug2('Get user %s permissions: %s' % (name, truncate(operation.perms)))
+            operation.user = (name, identity["ip"], uid, identity.get("seckey", None))
+            self.logger.debug2("Get user %s permissions: %s" % (name, truncate(operation.perms)))
             if self.authorizable:
                 ## TODO manage per method authorization
                 pass
         except Exception as ex:
-            msg = 'Error retrieving user %s permissions: %s' % (name, ex)
+            msg = "Error retrieving user %s permissions: %s" % (name, ex)
             self.logger.error(msg, exc_info=True)
             raise ApiManagerError(msg, code=401)
 
@@ -3522,36 +3731,50 @@ class ApiView(FlaskView):
         :return: Flask Response
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        headers = {'Cache-Control': 'no-store', 'Pragma': 'no-cache', 'remote-server': module.api_manager.server_name}
+        headers = {
+            "Cache-Control": "no-store",
+            "Pragma": "no-cache",
+            "remote-server": module.api_manager.server_name,
+        }
 
         error = {
-            'code': code,
-            'message': '%s' % msg,
-            'description': '%s - %s' % (exception, msg)
+            "code": code,
+            "message": "%s" % msg,
+            "description": "%s - %s" % (exception, msg),
         }
-        self.logger.error('Api response: %s' % error)
+        self.logger.error("Api response: %s" % error)
 
-        if self.response_mime is None or self.response_mime == '*/*' or self.response_mime == '':
-            self.response_mime = 'application/json'
+        if self.response_mime is None or self.response_mime == "*/*" or self.response_mime == "":
+            self.response_mime = "application/json"
 
         if code in [400, 401, 403, 404, 405, 406, 408, 409, 415, 500]:
             status = code
         else:
             status = 400
 
-        self.logger.error('Code: %s, Error: %s' % (code, exception), exc_info=True)
-        if self.response_mime == 'application/json':
-            return Response(response=json.dumps(error), mimetype='application/json', status=status, headers=headers)
-        elif self.response_mime == 'application/bson':
-            return Response(response=json.dumps(error), mimetype='application/bson', status=status, headers=headers)
-        elif self.response_mime in ['text/xml', 'application/xml']:
+        self.logger.error("Code: %s, Error: %s" % (code, exception), exc_info=True)
+        if self.response_mime == "application/json":
+            return Response(
+                response=json.dumps(error),
+                mimetype="application/json",
+                status=status,
+                headers=headers,
+            )
+        elif self.response_mime == "application/bson":
+            return Response(
+                response=json.dumps(error),
+                mimetype="application/bson",
+                status=status,
+                headers=headers,
+            )
+        elif self.response_mime in ["text/xml", "application/xml"]:
             # xml = dicttoxml(error, root=False, attr_type=False)
             xml = dict2xml(error)
-            return Response(response=xml, mimetype='application/xml', status=status, headers=headers)
+            return Response(response=xml, mimetype="application/xml", status=status, headers=headers)
         else:
             # 415 Unsupported Media Type
-            res = {'msg': 'Unsupported media type'}
-            return Response(response=res, mimetype='application/xml', status=415, headers=headers)
+            res = {"msg": "Unsupported media type"}
+            return Response(response=res, mimetype="application/xml", status=415, headers=headers)
 
     def get_response(self, response, code=200, headers={}, module=None):
         """Return api response
@@ -3563,59 +3786,64 @@ class ApiView(FlaskView):
         :return: Flask Response
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        headers.update({'Cache-Control': 'no-store', 'Pragma': 'no-cache',
-                        'remote-server': module.api_manager.server_name})
+        headers.update(
+            {
+                "Cache-Control": "no-store",
+                "Pragma": "no-cache",
+                "remote-server": module.api_manager.server_name,
+            }
+        )
 
         try:
             if response is None:
-                return Response(response='', mimetype='text/plain', status=code)
+                return Response(response="", mimetype="text/plain", status=code)
 
-            self.logger.debug2('Api response mime type: %s' % self.response_mime)
+            self.logger.debug2("Api response mime type: %s" % self.response_mime)
 
             # redirect to new uri
             if code in [301, 302, 303, 305, 307]:
-                self.logger.debug2('Api response: %s' % truncate(response))
+                self.logger.debug2("Api response: %s" % truncate(response))
                 return response
 
             # render template
-            elif self.response_mime.find('text/html') >= 0:
-                self.logger.debug2('Api response: %s' % truncate(response))
+            elif self.response_mime.find("text/html") >= 0:
+                self.logger.debug2("Api response: %s" % truncate(response))
                 return response
 
             # return original response
             elif isinstance(response, Response):
-                self.logger.debug2('Api response: %s' % truncate(response))
+                self.logger.debug2("Api response: %s" % truncate(response))
                 return response
 
             # render json
-            elif self.response_mime == 'application/json':
+            elif self.response_mime == "application/json":
                 resp = jsonDumps(response)
-                self.logger.debug2('Api response: %s' % truncate(resp))
-                return Response(resp, mimetype='application/json', status=code, headers=headers)
+                self.logger.debug2("Api response: %s" % truncate(resp))
+                return Response(resp, mimetype="application/json", status=code, headers=headers)
 
             # render Bson
-            elif self.response_mime == 'application/bson':
+            elif self.response_mime == "application/bson":
                 resp = jsonDumps(response)
-                self.logger.debug2('Api response: %s' % truncate(resp))
-                return Response(resp, mimetype='application/bson', status=code, headers=headers)
+                self.logger.debug2("Api response: %s" % truncate(resp))
+                return Response(resp, mimetype="application/bson", status=code, headers=headers)
 
             # render xml
-            elif self.response_mime in ['text/xml', 'application/xml']:
+            elif self.response_mime in ["text/xml", "application/xml"]:
                 # resp = dicttoxml(response, root=False, attr_type=False)
                 resp = dict2xml(response)
-                self.logger.debug2('Api response: %s' % truncate(resp))
-                return Response(resp, mimetype='application/xml', status=code, headers=headers)
+                self.logger.debug2("Api response: %s" % truncate(resp))
+                return Response(resp, mimetype="application/xml", status=code, headers=headers)
 
             # 415 Unsupported Media Type
             else:
-                self.logger.debug2('Api response: ')
-                return Response(response='', mimetype='text/plain', status=code, headers=headers)
+                self.logger.debug2("Api response: ")
+                return Response(response="", mimetype="text/plain", status=code, headers=headers)
         except Exception as ex:
-            msg = 'Error creating response - %s' % ex
+            msg = "Error creating response - %s" % ex
             self.logger.error(msg)
             raise ApiManagerError(msg, code=400)
 
-    def format_paginated_response(self, response, entity, total, page=None, field='id', order='DESC', **kvargs):
+    def format_paginated_response(self, response, entity, total, page=None, field="id", order="DESC", **kvargs):
         """Format response with pagination info
 
         :param response: response
@@ -3628,13 +3856,10 @@ class ApiView(FlaskView):
         """
         resp = {
             entity: response,
-            'count': len(response),
-            'page': page,
-            'total': total,
-            'sort': {
-                'field': field,
-                'order': order
-            }
+            "count": len(response),
+            "page": page,
+            "total": total,
+            "sort": {"field": field, "order": order},
         }
 
         return resp
@@ -3658,21 +3883,21 @@ class ApiView(FlaskView):
         """
         res = {}
         for k, v in querystring.items(multi=True):
-            if k[-2:] == '.N':
+            if k[-2:] == ".N":
                 try:
                     res[k].append(v)
-                except:
+                except Exception:
                     res[k] = [v]
             else:
                 res[k] = v
         return res
 
-    def check_permission(self, controller:ApiController, rule:str, method:str ):
+    def check_permission(self, controller: ApiController, rule: str, method: str):
         if not operation.authorize is True:
             return
         if not self.authorizable is True:
             return
-        objid = SHA256.new(bytes(rule, encoding='utf-8')).hexdigest()
+        objid = SHA256.new(bytes(rule, encoding="utf-8")).hexdigest()
         # objid = hashlib.sha256(bytes(rule, encoding='utf-8')).hexdigest()
         action = "view"
         if method == "get":
@@ -3717,20 +3942,19 @@ class ApiView(FlaskView):
         opid = None
 
         try:
-            headers = ['%s: %s' % (k, v) for k, v in request.headers.items()]
+            headers = ["%s: %s" % (k, v) for k, v in request.headers.items()]
 
             # set operation
-            operation.user = ('guest', get_remote_ip(request), None)
-            operation.id = request.headers.get('request-id', str(uuid4()))
+            operation.user = ("guest", get_remote_ip(request), None)
+            operation.id = request.headers.get("request-id", str(uuid4()))
             operation.transaction = None
             operation.authorize = True
             operation.cache = True
             operation.encryption_key = module.api_manager.app_fernet_key
+            self.logger.debug2("Set response timeout to: %s" % module.api_manager.api_timeout)
 
-            self.logger.debug2('Set response timeout to: %s' % module.api_manager.api_timeout)
-
-            if self.get_user_agent() != 'beehive-cmp':
-                opid = getattr(operation, 'id', None)
+            if self.get_user_agent() != "beehive-cmp":
+                opid = getattr(operation, "id", None)
 
             # class BeehiveLogRecord(logging.LogRecord):
             #     def __init__(self, *args, **kwargs):
@@ -3739,13 +3963,13 @@ class ApiView(FlaskView):
             #
             # logging.setLogRecordFactory(BeehiveLogRecord)
 
-            self.logger.debug2('Start new operation: %s' % operation.id)
-            self.logger.info('Invoke api: %s [%s] - START' % (request.path, request.method))
+            self.logger.debug2("Start new operation: %s" % operation.id)
+            self.logger.info("Invoke api: %s [%s] - START" % (request.path, request.method))
 
             query_string = self.to_dict(request.args)
 
             # get chunked input data
-            if request.headers.get('Transfer-Encoding', '') == 'chunked':
+            if request.headers.get("Transfer-Encoding", "") == "chunked":
                 request_data = uwsgi_util.chunked_read(5)
             else:
                 request_data = request.data
@@ -3765,39 +3989,48 @@ class ApiView(FlaskView):
 
             request_data = deepcopy(data)
 
-            self.logger.debug2('Api request headers: %s' % headers)
+            audit: Audit = initAudit(
+                request_id=operation.id,
+                api_method=request.path,
+                req_method=request.method,
+                subsystem=module.api_manager.app_subsytem,
+            )
+
+            self.logger.debug2("Api request headers: %s" % headers)
 
             # validate query/input data
             if self.parameters_schema is not None:
-                if request.method.lower() == 'get':
+                if request.method.lower() == "get":
                     query_string.update(kwargs)
                     try:
                         parsed = self.parameters_schema().load(query_string)
-                        self.logger.debug2('Api request data: %s' % obscure_data(deepcopy(query_string)))
+                        self.logger.debug2("Api request data: %s" % obscure_data(deepcopy(query_string)))
                     except ValidationError as err:
                         # self.logger.error(err.messages)
-                        self.logger.error('+++++ validate request - err.messages: {}'.format(err.messages))
-                        self.logger.error('+++++ validate request - query_string: %s' % (obscure_data(deepcopy(query_string))))
+                        self.logger.error("+++++ validate request - err.messages: {}".format(err.messages))
+                        self.logger.error(
+                            "+++++ validate request - query_string: %s" % (obscure_data(deepcopy(query_string)))
+                        )
                         raise ApiManagerError(err.messages, code=400)
                 else:
                     # data.update(kwargs)
                     try:
                         parsed = self.parameters_schema().load(data)
-                        self.logger.debug2('Api request data: %s' % obscure_data(request_data))
+                        self.logger.debug2("Api request data: %s" % obscure_data(request_data))
                     except ValidationError as err:
                         # self.logger.error(err.messages)
-                        self.logger.error('+++++ validate request - err.messages: {}'.format(err.messages))
-                        self.logger.error('+++++ validate request - request_data: %s' % (obscure_data(request_data)))
+                        self.logger.error("+++++ validate request - err.messages: {}".format(err.messages))
+                        self.logger.error("+++++ validate request - request_data: %s" % (obscure_data(request_data)))
                         raise ApiManagerError(err.messages, code=400)
 
                 data = parsed
-                self.logger.debug2('Api request data after validation: %s' % obscure_data(request_data))
+                self.logger.debug2("Api request data after validation: %s" % obscure_data(request_data))
             else:
-                self.logger.debug2('Api request data: %s' % obscure_data(request_data))
+                self.logger.debug2("Api request data: %s" % obscure_data(request_data))
 
-            # TODO disabilitata per relase 1.11.0
-            # if self.authorizable == True:
-            #     self.check_permission(controller, request.url_rule.rule, request.method.lower())
+            # since relase 1.14.0
+            if self.authorizable == True:
+                self.check_permission(controller, request.url_rule.rule, request.method.lower())
             # dispatch request
             meth = getattr(self, request.method.lower(), None)
             if meth is None:
@@ -3813,19 +4046,19 @@ class ApiView(FlaskView):
                         parsed_response = schema.load(data=resp[0])
                     else:
                         parsed_response = schema.load(data=resp)
-                    self.logger.info('+++++ validate response - OK - %s' % self.response_schema)
+                    self.logger.info("+++++ validate response - OK - %s" % self.response_schema)
                 except ValidationError as err:
-                    self.logger.error('+++++ validate response - KO - %s' % self.response_schema)
-                    self.logger.error('+++++ validate response - err.messages: {}'.format(err.messages))
+                    self.logger.error("+++++ validate response - KO - %s" % self.response_schema)
+                    self.logger.error("+++++ validate response - err.messages: {}".format(err.messages))
 
                     try:
                         if isinstance(resp, tuple):
                             # self.logger.warning('+++++ validate response - resp original: %s' % (resp[0]))
-                            self.logger.warning('+++++ validate response - resp: %s' % (obscure_data(resp[0])))
+                            self.logger.warning("+++++ validate response - resp: %s" % (obscure_data(resp[0])))
                         else:
-                            self.logger.warning('+++++ validate response - resp: %s' % (obscure_data(resp)))
+                            self.logger.warning("+++++ validate response - resp: %s" % (obscure_data(resp)))
                     except Exception as ex:
-                        self.logger.error('ex trying logging resp: %s' % ex)
+                        self.logger.error("ex trying logging resp: %s" % ex)
 
             if isinstance(resp, tuple):
                 code = resp[1]
@@ -3836,48 +4069,108 @@ class ApiView(FlaskView):
             else:
                 code = 200
                 res = self.get_response(resp, module=module)
-
             # unset user permisssions in local thread object
             operation.perms = None
             # print('############# %s %s' % (gevent.getcurrent().name, request.path))
             # get request elapsed time
             elapsed = round(time.time() - start, 4)
-            self.logger.info('Invoke api: %s [%s] - STOP - %s' % (request.path, request.method, elapsed))
-            event_data = {'path': request.path, 'method': request.method, 'elapsed': elapsed, 'code': code}
+            self.logger.info("Invoke api: %s [%s] - STOP - %s" % (request.path, request.method, elapsed))
+            event_data = {
+                "path": request.path,
+                "method": request.method,
+                "elapsed": elapsed,
+                "code": code,
+                "user-agent": self.get_user_agent(),
+            }
+            audit.update(state=code, api_method=request.path, req_method=request.method)
+            audit.send_audit(module.api_manager.elasticsearch, data=request_data)
+
             ApiViewResponse(controller).send_event(event_data, request_data, opid=opid)
         except gevent.Timeout:
             # get request elapsed time
             elapsed = round(time.time() - start, 4)
-            self.logger.error('Invoke api: %s [%s] - ERROR - %s' % (request.path, request.method, elapsed))
-            msg = 'Request %s %s timeout' % (request.path, request.method)
-            event_data = {'path': request.path, 'method': request.method, 'elapsed': elapsed, 'code': 408}
+            self.logger.error("Invoke api: %s [%s] - ERROR - %s" % (request.path, request.method, elapsed))
+            msg = "Request %s %s timeout" % (request.path, request.method)
+            event_data = {
+                "path": request.path,
+                "method": request.method,
+                "elapsed": elapsed,
+                "code": 408,
+                "user-agent": self.get_user_agent(),
+            }
+            try:
+                # audit = localAudit()
+                audit.update(state=408, api_method=request.path, req_method=request.method)
+                audit.send_audit(module.api_manager.elasticsearch, data=request_data)
+            except Exception as e:
+                pass
+
             ApiViewResponse(controller).send_event(event_data, request_data, exception=msg, opid=opid)
-            return self.get_error('Timeout', 408, msg, module=module)
+            return self.get_error("Timeout", 408, msg, module=module)
         except ApiManagerError as ex:
             # get request elapsed time
             elapsed = round(time.time() - start, 4)
-            self.logger.error('Invoke api: %s [%s] - ERROR - %s' % (request.path, request.method, elapsed))
-            event_data = {'path': request.path, 'method': request.method, 'elapsed': elapsed, 'code': ex.code}
+            self.logger.error("Invoke api: %s [%s] - ERROR - %s" % (request.path, request.method, elapsed))
+            event_data = {
+                "path": request.path,
+                "method": request.method,
+                "elapsed": elapsed,
+                "code": ex.code,
+                "user-agent": self.get_user_agent(),
+            }
+            try:
+                # audit = localAudit()
+                audit.update(state=ex.code, api_method=request.path, req_method=request.method)
+                audit.send_audit(module.api_manager.elasticsearch, data=request_data)
+            except Exception as e:
+                pass
             ApiViewResponse(controller).send_event(event_data, request_data, exception=ex.value, opid=opid)
-            return self.get_error('ApiManagerError', ex.code, ex.value, module=module)
+            return self.get_error("ApiManagerError", ex.code, ex.value, module=module)
         except ApiManagerWarning as ex:
             # get request elapsed time
             elapsed = round(time.time() - start, 4)
-            self.logger.warning('Invoke api: %s [%s] - Warning - %s' % (request.path, request.method, elapsed))
-            event_data = {'path': request.path, 'method': request.method, 'elapsed': elapsed, 'code': ex.code}
+            self.logger.warning("Invoke api: %s [%s] - Warning - %s" % (request.path, request.method, elapsed))
+            event_data = {
+                "path": request.path,
+                "method": request.method,
+                "elapsed": elapsed,
+                "code": ex.code,
+                "user-agent": self.get_user_agent(),
+            }
+
+            try:
+                # audit = localAudit()
+                audit.update(state=ex.code, api_method=request.path, req_method=request.method)
+                audit.send_audit(module.api_manager.elasticsearch, data=request_data)
+            except Exception as e:
+                pass
+
             ApiViewResponse(controller).send_event(event_data, request_data, exception=ex.value, opid=opid)
-            return self.get_warning('ApiManagerWarning', ex.code, ex.value, module=module)
+            return self.get_warning("ApiManagerWarning", ex.code, ex.value, module=module)
         except Exception as ex:
             # get request elapsed time
             elapsed = round(time.time() - start, 4)
-            self.logger.error('Invoke api: %s [%s] - ERROR - %s' % (request.path, request.method, elapsed))
-            event_data = {'path': request.path, 'method': request.method, 'elapsed': elapsed, 'code': 400}
+            self.logger.error("Invoke api: %s [%s] - ERROR - %s" % (request.path, request.method, elapsed))
+            event_data = {
+                "path": request.path,
+                "method": request.method,
+                "elapsed": elapsed,
+                "code": 400,
+                "user-agent": self.get_user_agent(),
+            }
             ApiViewResponse(controller).send_event(event_data, request_data, exception=str(ex), opid=opid)
-            return self.get_error('Exception', 400, str(ex), module=module)
+            try:
+                # audit = localAudit()
+                audit.update(state=ex.code, api_method=request.path, req_method=request.method)
+                audit.send_audit(module.api_manager.elasticsearch, data=request_data)
+            except Exception as e:
+                pass
+
+            return self.get_error("Exception", 400, str(ex), module=module)
         finally:
             module.release_session()
             timeout.cancel()
-            self.logger.debug2('Timeout released')
+            self.logger.debug2("Timeout released")
 
         return res
 
@@ -3891,29 +4184,32 @@ class ApiView(FlaskView):
         subsystem = module.api_manager.app_subsytem
         objdef = ApiMethod.objdef
 
-        def register_object(url:str):
-            rule =f"/{version}/{url}"
-            objid = SHA256.new(bytes(rule, encoding='utf-8')).hexdigest()
-            #objid = hashlib.sha256(bytes(rule, encoding='utf-8')).hexdigest()
+        def register_object(url: str):
+            rule = f"/{version}/{url}"
+            objid = SHA256.new(bytes(rule, encoding="utf-8")).hexdigest()
+            # objid = hashlib.sha256(bytes(rule, encoding='utf-8')).hexdigest()
 
-            logger.debug( f'Register api object: {subsystem}:{objdef} {rule} {objid} - START' )
+            logger.debug(f"Register api object: {subsystem}:{objdef} {rule} {objid} - START")
             # add object and permissions
             module.api_manager.api_client.add_object(subsystem, objdef, objid, rule)
-            logger.debug(f'Register api object: {subsystem}:{objdef} {objid} - STOP' )
+            try:
+                localAudit().set_objid(objid=objid, objdef=objdef, force=True)
+            except Exception as ex:
+                logger.error(ex)
+            logger.debug(f"Register api object: {subsystem}:{objdef} {objid} - STOP")
 
         for rule in rules:
             url: str = rule[0]
             method: str = rule[1]
             view: ApiView = rule[2]
             if view.authorizable:
-                logger.warning ( f'view for {url} is authorizable')
-                logger.warning ( f'registering {url} for {method}')
+                logger.warning(f"view for {url} is authorizable")
+                logger.warning(f"registering {url} for {method}")
                 register_object(url)
                 pass
 
-
     @staticmethod
-    def register_api(module: ApiModule, rules: list, version:str=None, only_auth=False):
+    def register_api(module: ApiModule, rules: list, version: str = None, only_auth=False):
         """Register api as Flask route
 
         :param module: beehive module
@@ -3940,53 +4236,73 @@ class ApiView(FlaskView):
         # regiter routes
         view_num = 0
         for rule in rules:
-            uri = '/%s/%s' % (version, rule[0])
-            defaults = {'module': module}
+            uri = "/%s/%s" % (version, rule[0])
+            defaults = {"module": module}
             defaults.update(rule[3])
-            view_name = '%s-%s' % (get_class_name(rule[2]), view_num)
+            view_name = "%s-%s" % (get_class_name(rule[2]), view_num)
             view_func = rule[2].as_view(view_name)
 
             # setup flask route
             app.add_url_rule(uri, methods=[rule[1]], view_func=view_func, defaults=defaults)
 
             view_num += 1
-            logger.debug2('Add route: %s %s' % (uri, rule[1]))
+            logger.debug2("Add route: %s %s" % (uri, rule[1]))
 
             # append route to module
-            module.api_routes.append({'uri': uri, 'method': rule[1]})
+            module.api_routes.append({"uri": uri, "method": rule[1]})
 
 
 class XmlnsSchema(Schema):
-    xmlns = fields.String(required=False, data_key='__xmlns')
+    xmlns = fields.String(required=False, data_key="__xmlns")
 
 
 class PaginatedRequestQuerySchema(Schema):
-    size = fields.Integer(default=20, example=20, missing=20, context='query',
-                          description='entities list page size. -1 to get all the records',
-                          validate=Range(min=-1, max=100, error='Size is out from range'))
-    page = fields.Integer(default=0, example=0, missing=0, context='query',
-                          description='entities list page selected',
-                          validate=Range(min=0, max=10000, error='Page is out from range'))
-    order = fields.String(validate=OneOf(['ASC', 'asc', 'DESC', 'desc'], error='Order can be asc, ASC, desc, DESC'),
-                          description='entities list order: ASC or DESC',
-                          default='DESC', example='DESC', missing='DESC', context='query')
-    field = fields.String(validate=OneOf(['id', 'uuid', 'objid', 'name'], error='Field can be id, uuid, objid, name'),
-                          description='entities list order field. Ex. id, uuid, name',
-                          default='id', example='id', missing='id', context='query')
+    size = fields.Integer(
+        default=20,
+        example=20,
+        missing=20,
+        context="query",
+        description="entities list page size. -1 to get all the records",
+        validate=Range(min=-1, max=100, error="Size is out from range"),
+    )
+    page = fields.Integer(
+        default=0,
+        example=0,
+        missing=0,
+        context="query",
+        description="entities list page selected",
+        validate=Range(min=0, max=10000, error="Page is out from range"),
+    )
+    order = fields.String(
+        validate=OneOf(["ASC", "asc", "DESC", "desc"], error="Order can be asc, ASC, desc, DESC"),
+        description="entities list order: ASC or DESC",
+        default="DESC",
+        example="DESC",
+        missing="DESC",
+        context="query",
+    )
+    field = fields.String(
+        validate=OneOf(["id", "uuid", "objid", "name"], error="Field can be id, uuid, objid, name"),
+        description="entities list order field. Ex. id, uuid, name",
+        default="id",
+        example="id",
+        missing="id",
+        context="query",
+    )
 
 
 class GetApiObjectRequestSchema(Schema):
-    oid = fields.String(required=True, description='id, uuid or name', context='path')
+    oid = fields.String(required=True, description="id, uuid or name", context="path")
 
 
 class ApiObjectRequestFiltersSchema(Schema):
-    filter_expired = fields.Boolean(required=False, context='query', missing=False)
-    filter_creation_date_start = fields.DateTime(required=False, context='query')
-    filter_creation_date_stop = fields.DateTime(required=False, context='query')
-    filter_modification_date_start = fields.DateTime(required=False, context='query')
-    filter_modification_date_stop = fields.DateTime(required=False, context='query')
-    filter_expiry_date_start = fields.DateTime(required=False, context='query')
-    filter_expiry_date_stop = fields.DateTime(required=False, context='query')
+    filter_expired = fields.Boolean(required=False, context="query", missing=False)
+    filter_creation_date_start = fields.DateTime(required=False, context="query")
+    filter_creation_date_stop = fields.DateTime(required=False, context="query")
+    filter_modification_date_start = fields.DateTime(required=False, context="query")
+    filter_modification_date_stop = fields.DateTime(required=False, context="query")
+    filter_expiry_date_start = fields.DateTime(required=False, context="query")
+    filter_expiry_date_stop = fields.DateTime(required=False, context="query")
 
 
 class ApiObjectPermsRequestSchema(PaginatedRequestQuerySchema, GetApiObjectRequestSchema):
@@ -3994,32 +4310,52 @@ class ApiObjectPermsRequestSchema(PaginatedRequestQuerySchema, GetApiObjectReque
 
 
 class ApiObjectResponseDateSchema(Schema):
-    creation = fields.DateTime(required=True, default='1990-12-31T23:59:59Z', example='1990-12-31T23:59:59Z',
-                               description='creation date')
-    modified = fields.DateTime(required=True, default='1990-12-31T23:59:59Z', example='1990-12-31T23:59:59Z',
-                               description='modification date')
-    expiry = fields.String(required=False, allow_none=True, default='', description='expiry date')
+    creation = fields.DateTime(
+        required=True,
+        default="1990-12-31T23:59:59Z",
+        example="1990-12-31T23:59:59Z",
+        description="creation date",
+    )
+    modified = fields.DateTime(
+        required=True,
+        default="1990-12-31T23:59:59Z",
+        example="1990-12-31T23:59:59Z",
+        description="modification date",
+    )
+    expiry = fields.String(required=False, allow_none=True, default="", description="expiry date")
 
 
 class ApiObjecCountResponseSchema(Schema):
-    count = fields.Integer(required=True, default=10, description='number of items')
+    count = fields.Integer(required=True, default=10, description="number of items")
 
 
 class ApiObjectMetadataResponseSchema(Schema):
-    objid = fields.String(required=True, default='396587362//3328462822', example='396587362//3328462822',
-                          description='authorization id')
-    type = fields.String(required=True, default='auth', example='auth', description='entity category')
-    definition = fields.String(required=True, default='Role', example='Role', description='entity type')
-    uri = fields.String(required=True, default='/v1.0/auht/roles', example='/v1.0/auht/roles',
-                        description='entity rest uri')
+    objid = fields.String(
+        required=True,
+        default="396587362//3328462822",
+        example="396587362//3328462822",
+        description="authorization id",
+    )
+    type = fields.String(required=True, default="auth", example="auth", description="entity category")
+    definition = fields.String(required=True, default="Role", example="Role", description="entity type")
+    uri = fields.String(
+        required=True,
+        default="/v1.0/auht/roles",
+        example="/v1.0/auht/roles",
+        description="entity rest uri",
+    )
 
 
 class ApiObjectSmallResponseSchema(Schema):
-    id = fields.Integer(required=True, default=10, example=10, description='entity database id')
-    uuid = fields.String(required=True, default='4cdf0ea4-159a-45aa-96f2-708e461130e1',
-                         example='4cdf0ea4-159a-45aa-96f2-708e461130e1', description='entity uuid')
-    name = fields.String(required=True, default='test', example='test', description='entity name')
-    active = fields.Boolean(required=True, default=True, example=True, description='entity acitve status')
+    id = fields.Integer(required=True, default=10, example=10, description="entity database id")
+    uuid = fields.String(
+        required=True,
+        default="4cdf0ea4-159a-45aa-96f2-708e461130e1",
+        example="4cdf0ea4-159a-45aa-96f2-708e461130e1",
+        description="entity uuid",
+    )
+    name = fields.String(required=True, default="test", example="test", description="entity name")
+    active = fields.Boolean(required=True, default=True, example=True, description="entity acitve status")
     __meta__ = fields.Nested(ApiObjectMetadataResponseSchema, required=True)
 
 
@@ -4032,36 +4368,57 @@ class ApiObjectResponseSchema(AuditResponseSchema, ApiObjectSmallResponseSchema)
     # uuid = fields.String(required=True,  default='4cdf0ea4-159a-45aa-96f2-708e461130e1',
     #                      example='4cdf0ea4-159a-45aa-96f2-708e461130e1')
     # name = fields.String(required=True, default='test', example='test')
-    desc = fields.String(required=True, default='test', example='test')
+    desc = fields.String(required=True, default="test", example="test")
     # active = fields.Boolean(required=True, default=True, example=True)
     # __meta__ = fields.Nested(ApiObjectMetadataResponseSchema, required=True)
 
 
 class PaginatedResponseSortSchema(Schema):
-    order = fields.String(required=True, validate=OneOf(['ASC', 'asc', 'DESC', 'desc']), default='DESC', example='DESC')
-    field = fields.String(required=True, default='id', example='id')
+    order = fields.String(
+        required=True,
+        validate=OneOf(["ASC", "asc", "DESC", "desc"]),
+        default="DESC",
+        example="DESC",
+    )
+    field = fields.String(required=True, default="id", example="id")
 
 
 class PaginatedResponseSchema(Schema):
-    count = fields.Integer(required=True, default=10, example=10, description='number of query items returned')
-    page = fields.Integer(required=True, default=0, example=0, description='query page number')
-    total = fields.Integer(required=True, default=20, example=20, description='total number of available query items')
-    sort = fields.Nested(PaginatedResponseSortSchema, required=True, description='query sort order')
+    count = fields.Integer(
+        required=True,
+        default=10,
+        example=10,
+        description="number of query items returned",
+    )
+    page = fields.Integer(required=True, default=0, example=0, description="query page number")
+    total = fields.Integer(
+        required=True,
+        default=20,
+        example=20,
+        description="total number of available query items",
+    )
+    sort = fields.Nested(PaginatedResponseSortSchema, required=True, description="query sort order")
 
 
 class CrudApiObjectSimpleResponseSchema(Schema):
-    res = fields.Boolean(required=True,  default=True, example=True)
+    res = fields.Boolean(required=True, default=True, example=True)
 
 
 class CrudApiObjectResponseSchema(Schema):
-    uuid = fields.UUID(required=True,  default='6d960236-d280-46d2-817d-f3ce8f0aeff7',
-                       example='6d960236-d280-46d2-817d-f3ce8f0aeff7', description='api object uuid')
+    uuid = fields.UUID(
+        required=True,
+        default="6d960236-d280-46d2-817d-f3ce8f0aeff7",
+        example="6d960236-d280-46d2-817d-f3ce8f0aeff7",
+        description="api object uuid",
+    )
 
 
 class CrudApiJobResponseSchema(Schema):
-    jobid = fields.UUID(default='db078b20-19c6-4f0e-909c-94745de667d4',
-                        example='6d960236-d280-46d2-817d-f3ce8f0aeff7',
-                        required=True)
+    jobid = fields.UUID(
+        default="db078b20-19c6-4f0e-909c-94745de667d4",
+        example="6d960236-d280-46d2-817d-f3ce8f0aeff7",
+        required=True,
+    )
 
 
 class CrudApiObjectJobResponseSchema(CrudApiObjectResponseSchema, CrudApiJobResponseSchema):
@@ -4069,9 +4426,12 @@ class CrudApiObjectJobResponseSchema(CrudApiObjectResponseSchema, CrudApiJobResp
 
 
 class CrudApiTaskResponseSchema(Schema):
-    taskid = fields.UUID(default='db078b20-19c6-4f0e-909c-94745de667d4',
-                         example='6d960236-d280-46d2-817d-f3ce8f0aeff7',
-                         required=True, description='task id')
+    taskid = fields.UUID(
+        default="db078b20-19c6-4f0e-909c-94745de667d4",
+        example="6d960236-d280-46d2-817d-f3ce8f0aeff7",
+        required=True,
+        description="task id",
+    )
 
 
 class CrudApiObjectTaskResponseSchema(CrudApiObjectResponseSchema, CrudApiTaskResponseSchema):
@@ -4079,23 +4439,31 @@ class CrudApiObjectTaskResponseSchema(CrudApiObjectResponseSchema, CrudApiTaskRe
 
 
 class ApiGraphResponseSchema(Schema):
-    directed = fields.Boolean(required=True, example=True, description='if True graph is directed')
-    graph = fields.Dict(required=True, example={'name': 'vShield V...'}, description='if TRue graph is directed')
-    links = fields.List(fields.Dict(example={'source': 2, 'target': 7}), required=True, example=True,
-                        description='links list')
-    multigraph = fields.Boolean(required=True, example=False, description='if True graph is multigraph')
-    nodes = fields.List(fields.Dict(example={}), required=True, example=True, description='nodes list')
+    directed = fields.Boolean(required=True, example=True, description="if True graph is directed")
+    graph = fields.Dict(
+        required=True,
+        example={"name": "vShield V..."},
+        description="if TRue graph is directed",
+    )
+    links = fields.List(
+        fields.Dict(example={"source": 2, "target": 7}),
+        required=True,
+        example=True,
+        description="links list",
+    )
+    multigraph = fields.Boolean(required=True, example=False, description="if True graph is multigraph")
+    nodes = fields.List(fields.Dict(example={}), required=True, example=True, description="nodes list")
 
 
 class ApiObjectPermsParamsResponseSchema(Schema):
     id = fields.Integer(required=True, default=1, example=1)
     oid = fields.Integer(required=True, default=1, example=1)
-    objid = fields.String(required=True, default='396587362//3328462822', example='396587362//3328462822')
-    type = fields.String(required=True, default='Objects', example='Objects')
-    subsystem = fields.String(required=True, default='auth', example='auth')
-    desc = fields.String(required=True, default='beehive', example='beehive')
+    objid = fields.String(required=True, default="396587362//3328462822", example="396587362//3328462822")
+    type = fields.String(required=True, default="Objects", example="Objects")
+    subsystem = fields.String(required=True, default="auth", example="auth")
+    desc = fields.String(required=True, default="beehive", example="beehive")
     aid = fields.Integer(required=True, default=1, example=1)
-    action = fields.String(required=True, default='view', example='view')
+    action = fields.String(required=True, default="view", example="view")
 
 
 class ApiObjectPermsResponseSchema(PaginatedResponseSchema):
@@ -4107,30 +4475,28 @@ class SwaggerApiView(ApiView, SwaggerView):
 
     :param controller: ApiController instance
     """
+
     authorizable = False
-    consumes = ['application/json',
-                'application/xml']
-    produces = ['application/json',
-                'application/xml',
-                'text/plain']
+    consumes = ["application/json", "application/xml"]
+    produces = ["application/json", "application/xml", "text/plain"]
     security = [
-        {'ApiKeyAuth': []},
-        {'OAuth2': ['auth', 'beehive']},
+        {"ApiKeyAuth": []},
+        {"OAuth2": ["auth", "beehive"]},
     ]
     definitions = {}
     parameters = []
     responses = {
-        'default': {'$ref': '#/responses/DefaultError'},
-        500: {'$ref': '#/responses/InternalServerError'},
-        400: {'$ref': '#/responses/BadRequest'},
-        401: {'$ref': '#/responses/Unauthorized'},
-        403: {'$ref': '#/responses/Forbidden'},
-        405: {'$ref': '#/responses/MethodAotAllowed'},
-        408: {'$ref': '#/responses/Timeout'},
-        410: {'$ref': '#/responses/Gone'},
-        415: {'$ref': '#/responses/UnsupportedMediaType'},
-        422: {'$ref': '#/responses/UnprocessableEntity'},
-        429: {'$ref': '#/responses/TooManyRequests'},
+        "default": {"$ref": "#/responses/DefaultError"},
+        500: {"$ref": "#/responses/InternalServerError"},
+        400: {"$ref": "#/responses/BadRequest"},
+        401: {"$ref": "#/responses/Unauthorized"},
+        403: {"$ref": "#/responses/Forbidden"},
+        405: {"$ref": "#/responses/MethodAotAllowed"},
+        408: {"$ref": "#/responses/Timeout"},
+        410: {"$ref": "#/responses/Gone"},
+        415: {"$ref": "#/responses/UnsupportedMediaType"},
+        422: {"$ref": "#/responses/UnprocessableEntity"},
+        429: {"$ref": "#/responses/TooManyRequests"},
     }
 
     @classmethod
@@ -4142,12 +4508,46 @@ class SwaggerApiView(ApiView, SwaggerView):
 
 class ApiClient(BeehiveApiClient):
     """Base ApiClient class used by ApiManager"""
-    def __init__(self, auth_endpoints, user, pwd, secret, catalog_id=None, authtype='keyauth', prefixuri='',
-                 client_config=None, key=None, proxy=None, oauth2_grant_type='jwt'):
-        BeehiveApiClient.__init__(self, auth_endpoints, authtype, user, pwd, secret, catalog_id, client_config, key,
-                                  proxy, prefixuri, oauth2_grant_type)
 
-    def admin_request(self, subsystem, path, method, data='', other_headers={}, silent=False, timeout=60):
+    def __init__(
+        self,
+        auth_endpoints,
+        user,
+        pwd,
+        secret,
+        catalog_id=None,
+        authtype="keyauth",
+        prefixuri="",
+        client_config=None,
+        key=None,
+        proxy=None,
+        oauth2_grant_type="jwt",
+    ):
+        BeehiveApiClient.__init__(
+            self,
+            auth_endpoints,
+            authtype,
+            user,
+            pwd,
+            secret,
+            catalog_id,
+            client_config,
+            key,
+            proxy,
+            prefixuri,
+            oauth2_grant_type,
+        )
+
+    def admin_request(
+        self,
+        subsystem,
+        path,
+        method,
+        data="",
+        other_headers={},
+        silent=False,
+        timeout=60,
+    ):
         """Make api request using module internal admin user credentials
 
         :param subsystem: subsystem
@@ -4163,10 +4563,10 @@ class ApiClient(BeehiveApiClient):
         """
         # propagate opernation.id to internal api call
         if isinstance(other_headers, dict):
-            other_headers['request-id'] = operation.id
-            other_headers['User-Agent'] = 'beehive-cmp'
+            other_headers["request-id"] = operation.id
+            other_headers["User-Agent"] = "beehive-cmp"
         else:
-            other_headers = {'request-id': operation.id, 'User-Agent': 'beehive-cmp'}
+            other_headers = {"request-id": operation.id, "User-Agent": "beehive-cmp"}
 
         try:
             if self.exist(self.uid, other_headers=other_headers) is False:
@@ -4175,16 +4575,37 @@ class ApiClient(BeehiveApiClient):
             raise ApiManagerError(ex.value, code=ex.code)
 
         try:
-            res = self.send_request(subsystem, path, method, data, self.uid, self.seckey, other_headers, silent=silent,
-                                    timeout=timeout)
-            self.logger.debug('Send admin request to %s using uid %s' % (path, self.uid))
+            res = self.send_request(
+                subsystem,
+                path,
+                method,
+                data,
+                self.uid,
+                self.seckey,
+                other_headers,
+                silent=silent,
+                timeout=timeout,
+            )
+            self.logger.debug("Send admin request to %s using uid %s" % (path, self.uid))
         except BeehiveApiClientError as ex:
-            self.logger.error('Send admin request to %s using uid %s: %s' % (path, self.uid, ex.value), exc_info=True)
+            self.logger.error(
+                "Send admin request to %s using uid %s: %s" % (path, self.uid, ex.value),
+                exc_info=True,
+            )
             raise ApiManagerError(ex.value, code=ex.code)
 
         return res
 
-    def user_request(self, subsystem, path, method, data='', other_headers={}, silent=False, timeout=60):
+    def user_request(
+        self,
+        subsystem,
+        path,
+        method,
+        data="",
+        other_headers={},
+        silent=False,
+        timeout=60,
+    ):
         """Make api request using module current user credentials
 
         :param subsystem: subsystem
@@ -4200,20 +4621,33 @@ class ApiClient(BeehiveApiClient):
         """
         # propagate opernation.id to internal api call
         if isinstance(other_headers, dict):
-            other_headers['request-id'] = operation.id
-            other_headers['User-Agent'] = 'beehive-cmp'
+            other_headers["request-id"] = operation.id
+            other_headers["User-Agent"] = "beehive-cmp"
         else:
-            other_headers = {'request-id': operation.id, 'User-Agent': 'beehive-cmp'}
+            other_headers = {"request-id": operation.id, "User-Agent": "beehive-cmp"}
 
         try:
             # get user logged uid and password
             uid = operation.user[2]
             seckey = operation.user[3]
-            res = self.send_request(subsystem, path, method, data, uid, seckey, other_headers, silent=silent,
-                                    api_authtype=operation.token_type, timeout=timeout)
-            self.logger.debug('Send user request to %s using uid %s' % (path, self.uid))
+            res = self.send_request(
+                subsystem,
+                path,
+                method,
+                data,
+                uid,
+                seckey,
+                other_headers,
+                silent=silent,
+                api_authtype=operation.token_type,
+                timeout=timeout,
+            )
+            self.logger.debug("Send user request to %s using uid %s" % (path, self.uid))
         except BeehiveApiClientError as ex:
-            self.logger.error('Send user request to %s using uid %s: %s' % (path, self.uid, ex.value), exc_info=True)
+            self.logger.error(
+                "Send user request to %s using uid %s: %s" % (path, self.uid, ex.value),
+                exc_info=True,
+            )
             raise ApiManagerError(ex.value, code=ex.code)
 
         return res
@@ -4231,7 +4665,7 @@ class ApiClient(BeehiveApiClient):
         :return: None
         """
         # propagate opernation.id to internal api call
-        other_headers = {'request-id': operation.id, 'User-Agent': 'beehive-cmp'}
+        other_headers = {"request-id": operation.id, "User-Agent": "beehive-cmp"}
 
         try:
             if self.exist(self.uid) is False:
@@ -4240,7 +4674,17 @@ class ApiClient(BeehiveApiClient):
             raise ApiManagerError(ex.value, code=ex.code)
 
         try:
-            self.wait_task(subsystem, prefix, taskid, uid=self.uid, seckey=self.seckey, timeout=timeout, delta=delta,
-                           maxtime=maxtime, trace=trace, other_headers=other_headers)
+            self.wait_task(
+                subsystem,
+                prefix,
+                taskid,
+                uid=self.uid,
+                seckey=self.seckey,
+                timeout=timeout,
+                delta=delta,
+                maxtime=maxtime,
+                trace=trace,
+                other_headers=other_headers,
+            )
         except BeehiveApiClientError as ex:
             raise ApiManagerError(ex.value, code=ex.code)

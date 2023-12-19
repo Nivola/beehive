@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
 """
 Usage: batch.py config_file entityclass task_class jsonparameter
@@ -10,6 +10,7 @@ Usage: batch.py config_file entityclass task_class jsonparameter
 
 """
 from gevent import monkey
+
 monkey.patch_all()
 
 
@@ -32,7 +33,7 @@ from uuid import uuid4
 
 from sys import argv
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     params = configure_server()
 
     conf = argv[1]  #'/etc/uwsgi/uwsgi.yaml'
@@ -42,36 +43,38 @@ if __name__ == '__main__':
     params_string = argv[4]  #'{}'
 
     task_params = ujson.loads(params_string)
-    task_params['sync'] = False
-    task_params['parent_task'] = ''
-    task_params['hostname'] = 'localhost'
-    task_params['user'] = 'task_manager'
-    task_params['server'] = 'localhost'
-    task_params['identity'] = ''
-    task_params['api_id'] = 'batch'
+    task_params["sync"] = False
+    task_params["parent_task"] = ""
+    task_params["hostname"] = "localhost"
+    task_params["user"] = "task_manager"
+    task_params["server"] = "localhost"
+    task_params["identity"] = ""
+    task_params["api_id"] = "batch"
     # task_params['objid'] = id_gen()
-    task_params['task_id'] = id_gen()
+    task_params["task_id"] = id_gen()
 
     configure_batch_task_manager(params)
-    set_operation_params({
-        'user': ('task_manager', 'localhost', ''),
-        'authorize': False,
-        'id': ensure_text(params['api_id']) + '.batch',
-        'cache': False,
-    })
+    set_operation_params(
+        {
+            "user": ("task_manager", "localhost", ""),
+            "authorize": False,
+            "id": ensure_text(params["api_id"]) + ".batch",
+            "cache": False,
+        }
+    )
 
     api_manager: ApiManager = task_manager.api_manager
     entity_class = import_class(entity_class_name)
     # instance_class = entity_class(api_manager.main_module.get_controller())
 
-    task_class= import_class(task_class_name)
+    task_class = import_class(task_class_name)
     task_instance = task_class()
     task_instance.entity_class = entity_class
     task_instance.app = task_manager
     task_instance.entity_class = entity_class
 
     task_instance.get_session()
-    task_instance.request.kwargsreprid = ''
+    task_instance.request.kwargsreprid = ""
     task_instance.request.id = str(uuid4())
     task_instance.task_result.task_prerun(task=task_instance, task_id=task_instance.request.id)
     task_instance.run(task_params)

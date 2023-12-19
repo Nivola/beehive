@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
 # --- DEPRECATED ---
 
@@ -22,86 +22,90 @@ logger = get_task_logger(__name__)
 #
 class AuthJob(Job):
     """AuthJob class.
-    
+
     :param list args: Free job params passed as list
     :param dict kwargs: Free job params passed as dict
     """
+
     abstract = True
     ops = [
         User,
         Role,
         Group,
     ]
-    
+
     def __init__(self, *args, **kwargs):
         Job.__init__(self, *args, **kwargs)
 
 
 class AuthJobTask(JobTask):
     """AuthJobTask class.
-    
+
     :param list args: Free job params passed as list
-    :param dict kwargs: Free job params passed as dict          
+    :param dict kwargs: Free job params passed as dict
     """
+
     abstract = True
     ops = [
         User,
         Role,
         Group,
     ]
-    
+
     def __init__(self, *args, **kwargs):
         JobTask.__init__(self, *args, **kwargs)
-        
+
         self.apiclient = BeehiveApiClient([], None, None, None, None)
 
     def get_endpoints(self, oid=None):
-        """Get all endpoints
-        """
+        """Get all endpoints"""
         endpoints = task_local.controller.get_endpoints(oid=oid)
-        logger.debug('Get endpoints: %s' % endpoints)
+        logger.debug("Get endpoints: %s" % endpoints)
         return endpoints
-    
+
     def ping_endpoint(self, endpoint):
         """Ping endpoint
-        
+
         :param endpoint: CatalogEndpoint instance
         """
         uri = endpoint.model.uri
         res = self.apiclient.ping(endpoint=uri)
-        logger.warn('Ping endpoint %s: %s' % (uri, res))
-        return res      
+        logger.warn("Ping endpoint %s: %s" % (uri, res))
+        return res
+
 
 #
 # auth tasks
 #
 @task_manager.task(bind=True, base=AuthJob)
-@job(entity_class=User, name='disable-users.update', delta=1)
+@job(entity_class=User, name="disable-users.update", delta=1)
 def disable_expired_users(self, objid, params):
     """Disable expired users
-    
+
     :param objid: objid of the resource. Ex. 110//2222//334//*
     :param params: task input params
-    :return: True  
+    :return: True
     :rtype: bool
     """
     ops = self.get_options()
     self.set_shared_data(params)
     self.set_operation()
 
-    Job.create([
-        end_task,
-        disable_expired_users_task,
-        start_task,
-    ], ops).delay()
-    return True    
+    Job.create(
+        [
+            end_task,
+            disable_expired_users_task,
+            start_task,
+        ],
+        ops,
+    ).delay()
+    return True
 
 
 @task_manager.task(bind=True, base=AuthJobTask)
 @job_task()
 def disable_expired_users_task(self, options):
-    """Disable expired users - task
-    """
+    """Disable expired users - task"""
     self.set_operation()
     self.get_session()
     expiry_date = datetime.datetime.today()
@@ -111,32 +115,34 @@ def disable_expired_users_task(self, options):
 
 
 @task_manager.task(bind=True, base=AuthJob)
-@job(entity_class=User, name='remove-user-roles.update', delta=1)
+@job(entity_class=User, name="remove-user-roles.update", delta=1)
 def remove_expired_roles_from_users(self, objid, params):
     """Remove expired roles from users
-    
+
     :param objid: objid of the resource. Ex. 110//2222//334//*
     :param params: task input params
-    :return: True  
+    :return: True
     :rtype: bool
     """
     ops = self.get_options()
     self.set_shared_data(params)
     self.set_operation()
-    
-    Job.create([
-        end_task,
-        remove_expired_roles_from_users_task,
-        start_task,
-    ], ops).delay()
+
+    Job.create(
+        [
+            end_task,
+            remove_expired_roles_from_users_task,
+            start_task,
+        ],
+        ops,
+    ).delay()
     return True
 
 
 @task_manager.task(bind=True, base=AuthJobTask)
 @job_task()
 def remove_expired_roles_from_users_task(self, options):
-    """Remove expired roles from users - task
-    """
+    """Remove expired roles from users - task"""
     self.set_operation()
     self.get_session()
     expiry_date = datetime.datetime.today()

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
 from .controller import CatalogController
 from .view import CatalogAPI
@@ -14,9 +14,10 @@ class CatalogModule(ApiModule):
 
     :param module: ApiModule instance
     """
+
     def __init__(self, api_manger: ApiManager):
-        self.name = 'CatalogModule'
-        self.base_path = 'ncs'
+        self.name = "CatalogModule"
+        self.base_path = "ncs"
 
         ApiModule.__init__(self, api_manger, self.name)
 

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
 import requests
 from logging import getLogger
@@ -12,21 +12,19 @@ logger = getLogger(__name__)
 
 
 class RefreshCatalogTask(BaseTask):
-    name = 'refresh_catalog_task'
+    name = "refresh_catalog_task"
     entity_class = Catalog
 
     """Refresh catalog task
     """
+
     def __init__(self, *args, **kwargs):
         super(RefreshCatalogTask, self).__init__(*args, **kwargs)
 
-        self.steps = [
-            RefreshCatalogTask.check_endpoints_step
-        ]
+        self.steps = [RefreshCatalogTask.check_endpoints_step]
 
     def get_endpoints(self, oid=None):
-        """Get all endpoints
-        """
+        """Get all endpoints"""
         endpoints, tot = self.controller.get_endpoints(oid=oid)
         return endpoints
 
@@ -36,7 +34,7 @@ class RefreshCatalogTask(BaseTask):
         :param endpoint: CatalogEndpoint instance
         """
         uri = endpoint.model.uri
-        url = u'%s/v1.0/server/ping' % endpoint.model.uri
+        url = "%s/v1.0/server/ping" % endpoint.model.uri
 
         res = False
         try:
@@ -49,7 +47,7 @@ class RefreshCatalogTask(BaseTask):
         except Exception as ex:
             logger.error(ex, exc_info=1)
 
-        logger.debug('Ping endpoint %s: %s' % (uri, res))
+        logger.debug("Ping endpoint %s: %s" % (uri, res))
         return res
 
     def remove_endpoint(self, endpoint):
@@ -58,7 +56,7 @@ class RefreshCatalogTask(BaseTask):
         :param endpoint: CatalogEndpoint instance
         """
         res = endpoint.delete()
-        logger.debug('Delete endpoint: %s' % endpoint.uuid)
+        logger.debug("Delete endpoint: %s" % endpoint.uuid)
         return res
 
     @staticmethod
@@ -90,10 +88,10 @@ class RefreshCatalogTask(BaseTask):
         :return: res, params
         """
         ping = task.ping_endpoint(endpoint)
-        task.progress(step_id, msg='ping endpoint %s' % endpoint.name)
+        task.progress(step_id, msg="ping endpoint %s" % endpoint.name)
         if ping is False:
             task.remove_endpoint(endpoint)
-            task.progress(step_id, msg='remove endpoint %s' % endpoint.name)
+            task.progress(step_id, msg="remove endpoint %s" % endpoint.name)
 
         return ping, params
 

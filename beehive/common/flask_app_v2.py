@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
 import logging
 from uuid import uuid4
 import ujson as json
 
-# patch redis socket to use async comunication 
+# patch redis socket to use async comunication
 from time import time
 from socket import gethostname, gethostbyname
 from flask import Flask, Response, request
@@ -14,6 +14,7 @@ from os import urandom
 from six import b, ensure_text
 from beecell.logger.helper import LoggerHelper
 from beecell.logger.k8s_handler import K8shHandler
+
 # from beecell.server.uwsgi_server.wrapper import uwsgi_util
 from beehive.common.apimanager import ApiManager
 from beehive.common.data import operation
@@ -31,20 +32,21 @@ class BeehiveAppV2(Flask):
     :param args: positional args
     :param kwargs: key value args
     """
+
     def __init__(self, *args, **kwargs):
         import sys
+
         logger.warn(sys.argv)
-        config = kwargs.pop('config', None)
+        config = kwargs.pop("config", None)
         super().__init__(*args, **kwargs)
 
         # set debug mode
         self.debug = False
-        
+
         # flask secret
-        self.secret_key = urandom(48)         
+        self.secret_key = urandom(48)
 
-        logger.warn('$$$$$$$$$$$$$$$$$$$$$$')
-
+        logger.warn("$$$$$$$$$$$$$$$$$$$$$$")
 
         # self.http_socket = uwsgi_util.opt['http-socket']
         # self.server_name = ensure_text(uwsgi_util.opt['api_host'])
@@ -101,7 +103,7 @@ class BeehiveAppV2(Flask):
         #
         # self.setup_loggers(level=loggin_level)
         #
-        logger.info('########## SERVER STARTING ##########')
+        logger.info("########## SERVER STARTING ##########")
         start = time()
         #
         # # api manager reference
@@ -120,9 +122,9 @@ class BeehiveAppV2(Flask):
         #
         # logger.info('Setup server over: %s' % self.api_manager.app_uri)
         # logger.info('Setup server over: %s' % self.api_manager.uwsgi_uri)
-        
-        logger.info('########## SERVER STARTED ########## - %s' % round(time() - start, 2))
-    
+
+        logger.info("########## SERVER STARTED ########## - %s" % round(time() - start, 2))
+
     def del_configurations(self):
         del self.db_uri
         del self.tcp_proxy
@@ -133,26 +135,28 @@ class BeehiveAppV2(Flask):
         :param level:
         :return:
         """
-        logname = uwsgi_util.opt['api_id'].decode('utf-8')
+        logname = uwsgi_util.opt["api_id"].decode("utf-8")
 
         # base logging
         # file_name = self.log_path.decode('utf-8') + logname + '.api.log'
         loggers = [
             logger,
-            logging.getLogger('oauthlib'),
-            logging.getLogger('beehive'),
-            logging.getLogger('beecell'),
-            logging.getLogger('beedrones'),
-            logging.getLogger('beehive_oauth2'),
-            logging.getLogger('beehive_service'),
-            logging.getLogger('beehive_service_netaas'),
-            logging.getLogger('beehive_resource'),
-            logging.getLogger('beehive_ssh'),
-            logging.getLogger('urllib3'),
+            logging.getLogger("oauthlib"),
+            logging.getLogger("beehive"),
+            logging.getLogger("beecell"),
+            logging.getLogger("beedrones"),
+            logging.getLogger("beehive_oauth2"),
+            logging.getLogger("beehive_service"),
+            logging.getLogger("beehive_service_netaas"),
+            logging.getLogger("beehive_resource"),
+            logging.getLogger("beehive_ssh"),
+            logging.getLogger("urllib3"),
             # logging.getLogger('beehive.common.data')
         ]
-        frmt = "%(asctime)s %(levelname)s %(process)s:%(thread)s %(api_id)s " \
-               "%(name)s:%(funcName)s:%(lineno)d | %(message)s"
+        frmt = (
+            "%(asctime)s %(levelname)s %(process)s:%(thread)s %(api_id)s "
+            "%(name)s:%(funcName)s:%(lineno)d | %(message)s"
+        )
         LoggerHelper.simple_handler(loggers, level, frmt=frmt, formatter=None, handler=K8shHandler)
 
     # def setup_additional_loggers(self, elasticsearch, level=LoggerHelper.DEBUG, tags=[], **custom_fields):
@@ -181,11 +185,9 @@ class BeehiveAppV2(Flask):
     #     LoggerHelper.elastic_handler(loggers, level, elasticsearch, index=index, tags=tags, **custom_fields)
 
     def open_db_session(self):
-        """Open database session.
-        """
+        """Open database session."""
         operation.session = self.api_manager.get_session()
-    
+
     def release_db_session(self):
-        """Release database session.
-        """
+        """Release database session."""
         self.api_manager.release_session()

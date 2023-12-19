@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
 import logging
 from datetime import datetime
@@ -18,15 +18,23 @@ class CliEventHandler(EventHandler):
 
     :param api_manager: ApiManager instance
     """
+
     def __init__(self, api_manager):
         EventHandler.__init__(self, api_manager)
 
         loggers = [self.logger]
         if api_manager.syslog_server is not None:
-            syslog_server, syslog_port = api_manager.syslog_server.split(':')
-            facility = 'local4'
-            LoggerHelper.syslog_handler(loggers, logging.INFO, syslog_server, facility, frmt='%(message)s',
-                                        propagate=False, syslog_port=int(syslog_port))
+            syslog_server, syslog_port = api_manager.syslog_server.split(":")
+            facility = "local4"
+            LoggerHelper.syslog_handler(
+                loggers,
+                logging.INFO,
+                syslog_server,
+                facility,
+                frmt="%(message)s",
+                propagate=False,
+                syslog_port=int(syslog_port),
+            )
         else:
             LoggerHelper.simple_handler(loggers, logging.INFO)
 
@@ -54,32 +62,34 @@ class CliEventHandler(EventHandler):
         :return:
         """
         try:
-            event_type = event.get('type')
-            if event_type == 'SSH':
-                data = event.get('data')
-                op = data.get('op')
-                opid = data.get('opid')
-                source = event.get('source')
-                dest = event.get('dest')
-                kvargs = json.loads(data.get('kwargs'))
-                node_name = kvargs.get('node_name')
-                node_user = kvargs.get('user').split('.')[0]
-                tmpl = '%(source)s %(pod)s %(env)s %(source_ip)s %(dest_ip)s %(user)s %(identity)s %(op)s ' \
-                       '%(node_name)s "%(node_user)s" %(elapsed)s'
+            event_type = event.get("type")
+            if event_type == "SSH":
+                data = event.get("data")
+                op = data.get("op")
+                opid = data.get("opid")
+                source = event.get("source")
+                dest = event.get("dest")
+                kvargs = json.loads(data.get("kwargs"))
+                node_name = kvargs.get("node_name")
+                node_user = kvargs.get("user").split(".")[0]
+                tmpl = (
+                    "%(source)s %(pod)s %(env)s %(source_ip)s %(dest_ip)s %(user)s %(identity)s %(op)s "
+                    '%(node_name)s "%(node_user)s" %(elapsed)s'
+                )
                 log = {
-                    'source': 'CLI',
-                    'pod': self.api_manager.pod,
-                    'env': self.api_manager.app_env,
-                    'source_ip': source.get('ip'),
-                    'dest_ip': dest.get('ip'),
-                    'user': source.get('user'),
-                    'identity': source.get('identity'),
-                    'node_name': node_name,
-                    'node_user': node_user,
-                    'elapsed': data.get('elapsed'),
-                    'op': '%s.%s' % (opid, op)
+                    "source": "CLI",
+                    "pod": self.api_manager.pod,
+                    "env": self.api_manager.app_env,
+                    "source_ip": source.get("ip"),
+                    "dest_ip": dest.get("ip"),
+                    "user": source.get("user"),
+                    "identity": source.get("identity"),
+                    "node_name": node_name,
+                    "node_user": node_user,
+                    "elapsed": data.get("elapsed"),
+                    "op": "%s.%s" % (opid, op),
                 }
                 self.logger.info(tmpl % log)
         except Exception as ex:
-            self.logger.error('Error parsing event: %s' % ex)
+            self.logger.error("Error parsing event: %s" % ex)
             raise EventConsumerError(ex)

@@ -1,14 +1,21 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
 from re import match
 from datetime import datetime
 from beecell.simple import get_value, str2bool, AttribException, format_date
-from beehive.common.apimanager import ApiView, ApiManagerError, PaginatedRequestQuerySchema,\
-    PaginatedResponseSchema, ApiObjectResponseSchema, SwaggerApiView,\
-    CrudApiObjectResponseSchema, GetApiObjectRequestSchema,\
-    ApiObjectResponseDateSchema
+from beehive.common.apimanager import (
+    ApiView,
+    ApiManagerError,
+    PaginatedRequestQuerySchema,
+    PaginatedResponseSchema,
+    ApiObjectResponseSchema,
+    SwaggerApiView,
+    CrudApiObjectResponseSchema,
+    GetApiObjectRequestSchema,
+    ApiObjectResponseDateSchema,
+)
 from beecell.swagger import SwaggerHelper
 from marshmallow import fields, Schema
 from marshmallow.validate import OneOf, Range, Length
@@ -16,32 +23,38 @@ from marshmallow.decorators import post_load, validates
 from marshmallow.exceptions import ValidationError
 from typing import TYPE_CHECKING
 from beehive.module.auth.controller import AuthController
+from beecell.auth import IdentityMgr, identity_mgr_factory, AuthError
+
 
 class BaseCreateRequestSchema(Schema):
-    name = fields.String(required=True, error_messages={'required': 'name is required.'})
-    desc = fields.String(required=True, error_messages={'required': 'desc is required.'})
+    name = fields.String(required=True, error_messages={"required": "name is required."})
+    desc = fields.String(required=True, error_messages={"required": "desc is required."})
 
 
 class BaseUpdateRequestSchema(Schema):
     name = fields.String(allow_none=True)
     desc = fields.String(allow_none=True)
-    active = fields.Boolean(context='query', allow_none=True)
-    expiry_date = fields.String(default='2099-12-31', allow_none=True)
+    active = fields.Boolean(context="query", allow_none=True)
+    expiry_date = fields.String(default="2099-12-31", allow_none=True)
 
 
 class BaseCreateExtendedParamRequestSchema(Schema):
     active = fields.Boolean(missing=True, allow_none=True)
-    expiry_date = fields.String(data_key='expirydate', missing=None,
-                                allow_none=True, example='',
-                                description='expiration date. [default=365days]')
+    expiry_date = fields.String(
+        data_key="expirydate",
+        missing=None,
+        allow_none=True,
+        example="",
+        description="expiration date. [default=365days]",
+    )
 
     @post_load
     def make_expiry_date(self, data, *args, **kvargs):
-        expiry_date = data.get('expiry_date', None)
+        expiry_date = data.get("expiry_date", None)
         if expiry_date is not None:
-            y, m, d = expiry_date.split('-')
+            y, m, d = expiry_date.split("-")
             expiry_date = datetime(int(y), int(m), int(d))
-            data['expiry_date'] = expiry_date
+            data["expiry_date"] = expiry_date
         return data
 
 
@@ -51,35 +64,30 @@ class BaseUpdateMultiRequestSchema(Schema):
 
 
 class ListProviderResponseSchema(Schema):
-    name = fields.String(required=True, example='local', description='login provider name')
-    type = fields.String(required=True, example='DatabaseAuth', description='login provider description')
+    name = fields.String(required=True, example="local", description="login provider name")
+    type = fields.String(required=True, example="DatabaseAuth", description="login provider description")
 
 
 class ListProvidersResponseSchema(Schema):
     providers = fields.Nested(ListProviderResponseSchema, many=True, required=True, allow_none=True)
-    count = fields.Integer(required=True, example=1, description='Providers count')
+    count = fields.Integer(required=True, example=1, description="Providers count")
 
 
 class ListProviders(SwaggerApiView):
-    summary = 'List authentication providers'
-    description = 'List authentication providers'
-    tags = ['authorization']
+    summary = "List authentication providers"
+    description = "List authentication providers"
+    tags = ["authorization"]
     definitions = {
-        'ListProvidersResponseSchema': ListProvidersResponseSchema,
+        "ListProvidersResponseSchema": ListProvidersResponseSchema,
     }
-    responses = SwaggerApiView.setResponses({
-        200: {
-            'description': 'success',
-            'schema': ListProvidersResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses({200: {"description": "success", "schema": ListProvidersResponseSchema}})
 
-    def get(self, controller:AuthController, data, *args, **kwargs):
+    def get(self, controller: AuthController, data, *args, **kwargs):
         auth_providers = controller.module.authentication_manager.auth_providers
         res = []
         for provider, auth_provider in auth_providers.items():
-            res.append({'name': provider, 'type': auth_provider.__class__.__name__})
-        resp = {'providers': res, 'count': len(res)}
+            res.append({"name": provider, "type": auth_provider.__class__.__name__})
+        resp = {"providers": res, "count": len(res)}
         return resp
 
 
@@ -91,77 +99,92 @@ class ListTokensRequestSchema(Schema):
 
 
 class ListTokenResponseSchema(Schema):
-    ip = fields.String(required=True, example='pc160234.csi.it', description='client login ip address')
-    ttl = fields.Integer(required=True, example=3600, description='token ttl')
-    token = fields.String(required=True, example='28ff1dd5-5520-42f3-a361-c58f19d20b7c', description='token')
-    user = fields.String(required=True, example='admin@local', description='client login user')
-    provider = fields.String(required=True, example='local', description='authentication provider')
-    timestamp = fields.String(required=True, example='internal', description='token timestamp')
-    type = fields.String(required=True, example='internal', description='token type')
+    ip = fields.String(required=True, example="pc160234.csi.it", description="client login ip address")
+    ttl = fields.Integer(required=True, example=3600, description="token ttl")
+    token = fields.String(
+        required=True,
+        example="28ff1dd5-5520-42f3-a361-c58f19d20b7c",
+        description="token",
+    )
+    user = fields.String(required=True, example="admin@local", description="client login user")
+    provider = fields.String(required=True, example="local", description="authentication provider")
+    timestamp = fields.String(required=True, example="internal", description="token timestamp")
+    type = fields.String(required=True, example="internal", description="token type")
 
 
 class ListTokensResponseSchema(Schema):
     tokens = fields.Nested(ListTokenResponseSchema, many=True, required=True, allow_none=True)
-    count = fields.Integer(required=True, example=1, description='Token count')
+    count = fields.Integer(required=True, example=1, description="Token count")
 
 
 class ListTokens(SwaggerApiView):
-    summary = 'List authentication tokens'
-    description = 'List authentication tokens'
-    tags = ['authorization']
-    definitions = {
-        'ListTokensResponseSchema': ListTokensResponseSchema
-    }
+    summary = "List authentication tokens"
+    description = "List authentication tokens"
+    tags = ["authorization"]
+    definitions = {"ListTokensResponseSchema": ListTokensResponseSchema}
     # parameters = SwaggerHelper().get_parameters(ListTokensRequestSchema)
     # parameters_schema = ListTokensRequestSchema
-    responses = SwaggerApiView.setResponses({
-        200: {
-            'description': 'success',
-            'schema': ListTokensResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses({200: {"description": "success", "schema": ListTokensResponseSchema}})
 
-    def get(self, controller:AuthController, data, *args, **kwargs):
+    def get(self, controller: AuthController, data, *args, **kwargs):
         identities = controller.get_identities()
         res = []
         for i in identities:
-            user = i.get('user')
+            user = i.get("user")
             user_name = None
             user_domain = None
             if user is not None:
-                user_name = user.get('id', None)
-                user_email = user.get('name', None)
-                user_domain = user.get('domain', None)
-            res.append({
-                'token': i['uid'],
-                'type': i['type'],
-                'user': user_name,
-                'email': user_email,
-                'provider': user_domain,
-                'timestamp': format_date(i['timestamp']),
-                'ttl': i['ttl'],
-                'ip': i['ip']
-            })
-        resp = {'tokens': res,
-                'count': len(res)}
+                user_name = user.get("id", None)
+                user_email = user.get("name", None)
+                user_domain = user.get("domain", None)
+            res.append(
+                {
+                    "token": i["uid"],
+                    "type": i["type"],
+                    "user": user_name,
+                    "email": user_email,
+                    "provider": user_domain,
+                    "timestamp": format_date(i["timestamp"]),
+                    "ttl": i["ttl"],
+                    "ip": i["ip"],
+                }
+            )
+        resp = {"tokens": res, "count": len(res)}
         return resp
 
 
 class GetTokenUserResponseSchema(Schema):
-    name = fields.String(required=True, example='admin@local', description='client login user')
-    roles = fields.List(fields.String(example='admin@local'), required=True, description='client login user')
-    perms = fields.String(required=True, example='admin@local', description='client login perms')
-    active = fields.Boolean(required=True, example=True, description='client login active')
-    id = fields.UUID(required=True, description='client login uuid', example='6d960236-d280-46d2-817d-f3ce8f0aeff7')
+    name = fields.String(required=True, example="admin@local", description="client login user")
+    roles = fields.List(
+        fields.String(example="admin@local"),
+        required=True,
+        description="client login user",
+    )
+    perms = fields.String(required=True, example="admin@local", description="client login perms")
+    active = fields.Boolean(required=True, example=True, description="client login active")
+    id = fields.UUID(
+        required=True,
+        description="client login uuid",
+        example="6d960236-d280-46d2-817d-f3ce8f0aeff7",
+    )
 
 
 class GetTokenParamsResponseSchema(Schema):
-    ip = fields.String(required=True, example='pc160234.csi.it', description='client login ip address')
-    ttl = fields.Integer(required=True, example=3600, description='token ttl')
-    token = fields.String(required=True, example='28ff1dd5-5520-42f3-a361-c58f19d20b7c', description='token')
-    user = fields.Nested(GetTokenUserResponseSchema, required=True, description='client login user', allow_none=True)
-    timestamp = fields.String(required=True, example='internal', description='token timestamp')
-    type = fields.String(required=True, example='internal', description='token type')
+    ip = fields.String(required=True, example="pc160234.csi.it", description="client login ip address")
+    ttl = fields.Integer(required=True, example=3600, description="token ttl")
+    token = fields.String(
+        required=True,
+        example="28ff1dd5-5520-42f3-a361-c58f19d20b7c",
+        description="token",
+    )
+    user = fields.Nested(
+        GetTokenUserResponseSchema,
+        required=True,
+        description="client login user",
+        allow_none=True,
+    )
+    timestamp = fields.String(required=True, example="internal", description="token timestamp")
+    type = fields.String(required=True, example="internal", description="token type")
 
 
 class GetTokenResponseSchema(Schema):
@@ -169,65 +192,64 @@ class GetTokenResponseSchema(Schema):
 
 
 class GetToken(SwaggerApiView):
-    summary = 'Get authentication tokens'
-    description = 'Get authentication tokens'
-    tags = ['authorization']
+    summary = "Get authentication tokens"
+    description = "Get authentication tokens"
+    tags = ["authorization"]
     definitions = {
-        'GetTokenResponseSchema': GetTokenResponseSchema,
+        "GetTokenResponseSchema": GetTokenResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
-    responses = SwaggerApiView.setResponses({
-        200: {
-            'description': 'success',
-            'schema': GetTokenResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses({200: {"description": "success", "schema": GetTokenResponseSchema}})
 
-    def get(self, controller:AuthController, data, oid, *args, **kwargs):
+    def get(self, controller: AuthController, dummydata, oid, *args, **kwargs):
         data = controller.get_identity(oid)
         res = {
-            'token': data['uid'],
-            'type': data['type'],
-            'user': data['user'],
-            'timestamp': format_date(data['timestamp']),
-            'ttl': data['ttl'],
-            'ip': data['ip']}
-        resp = {'token': res}
+            "token": data["uid"],
+            "type": data["type"],
+            "user": data["user"],
+            "timestamp": format_date(data["timestamp"]),
+            "ttl": data["ttl"],
+            "ip": data["ip"],
+        }
+        resp = {"token": res}
         return resp
 
 
 class DeleteToken(SwaggerApiView):
-    summary = 'Delete authentication tokens'
-    description = 'Delete authentication tokens'
-    tags = ['authorization']
+    summary = "Delete authentication tokens"
+    description = "Delete authentication tokens"
+    tags = ["authorization"]
     definitions = {}
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
-    responses = SwaggerApiView.setResponses({
-        204: {
-            'description': 'no response'
-        }
-    })
+    responses = SwaggerApiView.setResponses({204: {"description": "no response"}})
 
-    def delete(self, controller:AuthController, data, oid, *args, **kwargs):
+    def delete(self, controller: AuthController, data, oid, *args, **kwargs):
         resp = controller.remove_identity(oid)
         return resp, 204
 
 
 class ListUsersRequestSchema(PaginatedRequestQuerySchema):
-    group = fields.String(context='query')
-    role = fields.String(context='query')
-    active = fields.Boolean(context='query')
-    expiry_date = fields.String(data_key='expirydate', default='2099-12-31', context='query')
-    name = fields.String(context='query')
-    names = fields.String(context='query')
-    desc = fields.String(context='query')
-    email = fields.String(context='query')
-    perms_N = fields.List(fields.String(example=''), required=False, allow_none=True, context='query',
-                          collection_format='multi', data_key='perms.N', description='permissions list')
+    group = fields.String(context="query")
+    role = fields.String(context="query")
+    active = fields.Boolean(context="query")
+    expiry_date = fields.String(data_key="expirydate", default="2099-12-31", context="query")
+    name = fields.String(context="query")
+    names = fields.String(context="query")
+    desc = fields.String(context="query")
+    email = fields.String(context="query")
+    perms_N = fields.List(
+        fields.String(example=""),
+        required=False,
+        allow_none=True,
+        context="query",
+        collection_format="multi",
+        data_key="perms.N",
+        description="permissions list",
+    )
 
 
 class ListUserResponseSchema(ApiObjectResponseSchema):
-    email = fields.String(required=True, example='test@local')
+    email = fields.String(required=True, example="test@local")
 
 
 class ListUsersResponseSchema(PaginatedResponseSchema):
@@ -235,26 +257,21 @@ class ListUsersResponseSchema(PaginatedResponseSchema):
 
 
 class ListUsers(SwaggerApiView):
-    summary = 'List users'
-    description = 'List users'
-    tags = ['authorization']
+    summary = "List users"
+    description = "List users"
+    tags = ["authorization"]
     definitions = {
-        'ListUsersResponseSchema': ListUsersResponseSchema,
+        "ListUsersResponseSchema": ListUsersResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(ListUsersRequestSchema)
     parameters_schema = ListUsersRequestSchema
-    responses = SwaggerApiView.setResponses({
-        200: {
-            'description': 'success',
-            'schema': ListUsersResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses({200: {"description": "success", "schema": ListUsersResponseSchema}})
 
-    def get(self, controller:AuthController, data, *args, **kwargs):
+    def get(self, controller: AuthController, data, *args, **kwargs):
         objs, total = controller.get_users(**data)
         res = [r.info() for r in objs]
 
-        return self.format_paginated_response(res, 'users', total, **data)
+        return self.format_paginated_response(res, "users", total, **data)
 
 
 class GetUserParamsResponseSchema(ApiObjectResponseSchema):
@@ -267,29 +284,24 @@ class GetUserResponseSchema(Schema):
 
 
 class GetUser(SwaggerApiView):
-    summary = 'Get user'
-    description = 'Get user'
-    tags = ['authorization']
+    summary = "Get user"
+    description = "Get user"
+    tags = ["authorization"]
     definitions = {
-        'GetUserResponseSchema': GetUserResponseSchema,
+        "GetUserResponseSchema": GetUserResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
-    responses = SwaggerApiView.setResponses({
-        200: {
-            'description': 'success',
-            'schema': GetUserResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses({200: {"description": "success", "schema": GetUserResponseSchema}})
 
-    def get(self, controller:AuthController, data, oid, *args, **kwargs):
+    def get(self, controller: AuthController, data, oid, *args, **kwargs):
         obj = controller.get_user(oid)
         res = obj.detail()
-        resp = {'user': res}
+        resp = {"user": res}
         return resp
 
 
 class UserSecretParamsResponseSchema(Schema):
-    secret = fields.String(required=True, example='test')
+    secret = fields.String(required=True, example="test")
 
 
 class UserSecretResponseSchema(Schema):
@@ -297,66 +309,60 @@ class UserSecretResponseSchema(Schema):
 
 
 class GetUserSecret(SwaggerApiView):
-    summary = 'Get user secret'
-    description = 'Get user secret'
-    tags = ['authorization']
+    summary = "Get user secret"
+    description = "Get user secret"
+    tags = ["authorization"]
     definitions = {
-        'UserSecretResponseSchema': UserSecretResponseSchema,
+        "UserSecretResponseSchema": UserSecretResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
-    responses = SwaggerApiView.setResponses({
-        200: {
-            'description': 'success',
-            'schema': UserSecretResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses({200: {"description": "success", "schema": UserSecretResponseSchema}})
 
-    def get(self, controller:AuthController, data, oid, *args, **kwargs):
+    def get(self, controller: AuthController, data, oid, *args, **kwargs):
         secret = controller.get_user_secret(oid)
-        resp = {'user': {'secret': secret}}
+        resp = {"user": {"secret": secret}}
         return resp
 
 
 class UserSecretParamsRequestSchema(Schema):
-    old_secret = fields.String(required=False, example='test', description='user secret key to reset to',
-                               context='query')
+    old_secret = fields.String(
+        required=False,
+        example="test",
+        description="user secret key to reset to",
+        context="query",
+    )
 
 
-class UserSecretRequestSchema (Schema):
+class UserSecretRequestSchema(Schema):
     user = fields.Nested(UserSecretParamsRequestSchema, required=True, allow_none=True)
 
 
 class ResetUserSecretBodyRequestSchema(GetApiObjectRequestSchema):
-    body = fields.Nested(UserSecretRequestSchema, context='body')
+    body = fields.Nested(UserSecretRequestSchema, context="body")
 
 
 class ResetUserSecret(SwaggerApiView):
-    summary = 'Reset user secret'
-    description = 'Reset user secret'
-    tags = ['authorization']
+    summary = "Reset user secret"
+    description = "Reset user secret"
+    tags = ["authorization"]
     definitions = {
-        'UserSecretRequestSchema': UserSecretRequestSchema,
-        'UserSecretResponseSchema': UserSecretResponseSchema,
+        "UserSecretRequestSchema": UserSecretRequestSchema,
+        "UserSecretResponseSchema": UserSecretResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(ResetUserSecretBodyRequestSchema)
-    responses = SwaggerApiView.setResponses({
-        200: {
-            'description': 'success',
-            'schema': UserSecretResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses({200: {"description": "success", "schema": UserSecretResponseSchema}})
 
-    def put(self, controller:AuthController, data, oid, *args, **kwargs):
-        old_secret = data.get('user', {}).get('old_secret', None)
+    def put(self, controller: AuthController, data, oid, *args, **kwargs):
+        old_secret = data.get("user", {}).get("old_secret", None)
         secret = controller.reset_user_secret(oid, old_secret=old_secret)
-        resp = {'user': {'secret': secret}}
+        resp = {"user": {"secret": secret}}
         return resp
 
 
 class GetUserAtributesParamResponseSchema(Schema):
-    name = fields.String(required=True, default='test')
-    value = fields.String(required=True, default='test')
-    desc = fields.String(required=True, default='test')
+    name = fields.String(required=True, default="test")
+    value = fields.String(required=True, default="test")
+    desc = fields.String(required=True, default="test")
 
 
 class GetUserAtributesResponseSchema(Schema):
@@ -365,39 +371,36 @@ class GetUserAtributesResponseSchema(Schema):
 
 
 class GetUserAtributes(SwaggerApiView):
-    summary = 'Get user attributes'
-    description = 'Get user attributes'
-    tags = ['authorization']
+    summary = "Get user attributes"
+    description = "Get user attributes"
+    tags = ["authorization"]
     definitions = {
-        'GetUserAtributesResponseSchema': GetUserAtributesResponseSchema,
+        "GetUserAtributesResponseSchema": GetUserAtributesResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
-    responses = SwaggerApiView.setResponses({
-        200: {
-            'description': 'success',
-            'schema': GetUserAtributesResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses({200: {"description": "success", "schema": GetUserAtributesResponseSchema}})
 
-    def get(self, controller:AuthController, data, oid, *args, **kwargs):
+    def get(self, controller: AuthController, data, oid, *args, **kwargs):
         user = controller.get_user(oid)
         res = user.get_attribs()
-        resp = {'user_attributes': res, 'count': len(res)}
+        resp = {"user_attributes": res, "count": len(res)}
         return resp
 
 
 class CreateUserParamRequestSchema(BaseCreateRequestSchema, BaseCreateExtendedParamRequestSchema):
-    password = fields.String(validate=Length(min=8, max=20), error='Password must be at least 8 characters')
-    email = fields.String(error='email address', missing=None)
-    storetype = fields.String(validate=OneOf(['DBUSER', 'LDAPUSER'], error='Field can be DBUSER, LDAPUSER'),
-                              missing='DBUSER')
+    password = fields.String(validate=Length(min=8, max=20), error="Password must be at least 8 characters")
+    email = fields.String(error="email address", missing=None)
+    storetype = fields.String(
+        validate=OneOf(["DBUSER", "LDAPUSER"], error="Field can be DBUSER, LDAPUSER"),
+        missing="DBUSER",
+    )
     base = fields.Boolean(missing=False)
     system = fields.Boolean(missing=False)
 
-    @validates('name')
+    @validates("name")
     def validate_user(self, value):
-        if not match(r'[\w\W]+@[\w\W]+', value):
-            raise ValidationError('User name syntax must be <name>@<domain>')
+        if not match(r"[\w\W]+@[\w\W]+", value):
+            raise ValidationError("User name syntax must be <name>@<domain>")
 
 
 class CreateUserRequestSchema(Schema):
@@ -405,29 +408,24 @@ class CreateUserRequestSchema(Schema):
 
 
 class CreateUserBodyRequestSchema(Schema):
-    body = fields.Nested(CreateUserRequestSchema, context='body')
+    body = fields.Nested(CreateUserRequestSchema, context="body")
 
 
 class CreateUser(SwaggerApiView):
-    summary = 'Create a user'
-    description = 'Create a user'
-    tags = ['authorization']
+    summary = "Create a user"
+    description = "Create a user"
+    tags = ["authorization"]
     definitions = {
-        'CreateUserRequestSchema': CreateUserRequestSchema,
-        'CrudApiObjectResponseSchema': CrudApiObjectResponseSchema
+        "CreateUserRequestSchema": CreateUserRequestSchema,
+        "CrudApiObjectResponseSchema": CrudApiObjectResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(CreateUserBodyRequestSchema)
     parameters_schema = CreateUserRequestSchema
-    responses = SwaggerApiView.setResponses({
-        201: {
-            'description': 'success',
-            'schema': CrudApiObjectResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses({201: {"description": "success", "schema": CrudApiObjectResponseSchema}})
 
-    def post(self, controller:AuthController, data, *args, **kwargs):
-        resp = controller.add_user(**data.get('user'))
-        return {'uuid': resp}, 201
+    def post(self, controller: AuthController, data, *args, **kwargs):
+        resp = controller.add_user(**data.get("user"))
+        return {"uuid": resp}, 201
 
 
 class UpdateUserParamPermRequestSchema(Schema):
@@ -451,8 +449,11 @@ class UpdateUserParamRoleRequestSchema(Schema):
 class UpdateUserParamRequestSchema(BaseUpdateRequestSchema):
     perms = fields.Nested(UpdateUserParamPermsRequestSchema, allow_none=True)
     roles = fields.Nested(UpdateUserParamRoleRequestSchema, allow_none=True)
-    password = fields.String(validate=Length(min=8, max=20), allow_none=True,
-                             error='Password must be at least 8 characters')
+    password = fields.String(
+        validate=Length(min=8, max=20),
+        allow_none=True,
+        error="Password must be at least 8 characters",
+    )
 
 
 class UpdateUserRequestSchema(Schema):
@@ -460,79 +461,80 @@ class UpdateUserRequestSchema(Schema):
 
 
 class UpdateUserBodyRequestSchema(GetApiObjectRequestSchema):
-    body = fields.Nested(UpdateUserRequestSchema, context='body')
+    body = fields.Nested(UpdateUserRequestSchema, context="body")
 
 
 class UpdateUserResponseSchema(Schema):
-    update = fields.String(default='6d960236-d280-46d2-817d-f3ce8f0aeff7', required=True)
-    role_append = fields.List(fields.String, dump_to='role_append', required=True)
-    role_remove = fields.List(fields.String, dump_to='role_remove', required=True)
-    perm_append = fields.List(fields.String, dump_to='perm_append', required=True)
-    perm_remove = fields.List(fields.String, dump_to='perm_remove', required=True)
+    update = fields.String(default="6d960236-d280-46d2-817d-f3ce8f0aeff7", required=True)
+    role_append = fields.List(fields.String, dump_to="role_append", required=True)
+    role_remove = fields.List(fields.String, dump_to="role_remove", required=True)
+    perm_append = fields.List(fields.String, dump_to="perm_append", required=True)
+    perm_remove = fields.List(fields.String, dump_to="perm_remove", required=True)
 
 
 class UpdateUser(SwaggerApiView):
-    tags = ['authorization']
+    tags = ["authorization"]
     definitions = {
-        'UpdateUserRequestSchema': UpdateUserRequestSchema,
-        'UpdateUserResponseSchema': UpdateUserResponseSchema
+        "UpdateUserRequestSchema": UpdateUserRequestSchema,
+        "UpdateUserResponseSchema": UpdateUserResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(UpdateUserBodyRequestSchema)
     parameters_schema = UpdateUserRequestSchema
-    responses = SwaggerApiView.setResponses({
-        200: {
-            'description': 'success',
-            'schema': UpdateUserResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses({200: {"description": "success", "schema": UpdateUserResponseSchema}})
 
-    def put(self, controller:AuthController, data, oid, *args, **kwargs):
+    def put(self, controller: AuthController, data, oid, *args, **kwargs):
         """
         Update user
         Call this api to update a user
         """
-        data = data.get('user')
-        role = data.pop('roles', None)
-        role_perm = data.pop('perms', None)
+        data = data.get("user")
+        role = data.pop("roles", None)
+        role_perm = data.pop("perms", None)
         user = controller.get_user(oid)
 
-        resp = {'update': None, 'role_append': [], 'role_remove': [], 'perm_append': [], 'perm_remove': []}
+        resp = {
+            "update": None,
+            "role_append": [],
+            "role_remove": [],
+            "perm_append": [],
+            "perm_remove": [],
+        }
 
         # append, remove role
         if role is not None:
             # append role
-            if 'append' in role:
-                for role, expiry in role.get('append'):
+            if "append" in role:
+                for role, expiry in role.get("append"):
                     res = user.append_role(role, expiry_date=expiry)
-                    resp['role_append'].append(res)
+                    resp["role_append"].append(res)
 
             # remove role
-            if 'remove' in role:
-                for role in role.get('remove'):
+            if "remove" in role:
+                for role in role.get("remove"):
                     res = user.remove_role(role)
-                    resp['role_remove'].append(res)
+                    resp["role_remove"].append(res)
 
         # append, remove perms
         if role_perm is not None:
             # append role
-            if 'append' in role_perm:
+            if "append" in role_perm:
                 perms = []
-                for perm in role_perm.get('append'):
+                for perm in role_perm.get("append"):
                     perms.append(perm)
                 res = user.append_permissions(perms)
-                resp['perm_append'] = res
+                resp["perm_append"] = res
 
             # remove role
-            if 'remove' in role_perm:
+            if "remove" in role_perm:
                 perms = []
-                for perm in role_perm.get('remove'):
+                for perm in role_perm.get("remove"):
                     perms.append(perm)
                 res = user.remove_permissions(perms)
-                resp['perm_remove'] = res
+                resp["perm_remove"] = res
 
         # update user
         res = user.update(**data)
-        resp['update'] = res
+        resp["update"] = res
         return resp
 
 
@@ -544,60 +546,54 @@ class UserAttribSchemaCreateParam(Schema):
 
 
 class CreateUserAttributeRequestSchema(Schema):
-    user_attribute = fields.Nested(UserAttribSchemaCreateParam, data_key='user_attribute')
+    user_attribute = fields.Nested(UserAttribSchemaCreateParam, data_key="user_attribute")
 
 
 class CreateUserAttributeBodyRequestSchema(GetApiObjectRequestSchema):
-    body = fields.Nested(CreateUserAttributeRequestSchema, context='body')
+    body = fields.Nested(CreateUserAttributeRequestSchema, context="body")
 
 
 class CreateUserAttributeResponseSchema(Schema):
-    name = fields.String(required=True, default='test')
-    value = fields.String(required=True, default='test')
-    desc = fields.String(required=True, default='test')
+    name = fields.String(required=True, default="test")
+    value = fields.String(required=True, default="test")
+    desc = fields.String(required=True, default="test")
 
 
 class CreateUserAttribute(SwaggerApiView):
-    tags = ['authorization']
+    tags = ["authorization"]
     definitions = {
-        'CreateUserAttributeRequestSchema': CreateUserAttributeRequestSchema,
-        'CreateUserAttributeResponseSchema': CreateUserAttributeResponseSchema
+        "CreateUserAttributeRequestSchema": CreateUserAttributeRequestSchema,
+        "CreateUserAttributeResponseSchema": CreateUserAttributeResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(CreateUserAttributeBodyRequestSchema)
     parameters_schema = CreateUserAttributeRequestSchema
-    responses = SwaggerApiView.setResponses({
-        201: {
-            'description': 'success',
-            'schema': CreateUserAttributeResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses(
+        {201: {"description": "success", "schema": CreateUserAttributeResponseSchema}}
+    )
 
-    def post(self, controller:AuthController, data, oid, *args, **kwargs):
+    def post(self, controller: AuthController, data, oid, *args, **kwargs):
         """
         Delete user
         Call this api to delete a user
         """
         user = controller.get_user(oid)
-        attr = user.set_attribute(**data.get('user_attribute'))
-        resp = {'name':attr.name, 'value':attr.value, 'desc':attr.desc}
+        attr = user.set_attribute(**data.get("user_attribute"))
+        resp = {"name": attr.name, "value": attr.value, "desc": attr.desc}
         return (resp, 201)
+
 
 ## delete attributes
 class DeleteUserAttributeRequestSchema(GetApiObjectRequestSchema):
-    aid = fields.String(required=True, description='attribute name',
-                        context='path')
+    aid = fields.String(required=True, description="attribute name", context="path")
+
 
 class DeleteUserAttribute(SwaggerApiView):
-    tags = ['authorization']
+    tags = ["authorization"]
     definitions = {}
     parameters = SwaggerHelper().get_parameters(DeleteUserAttributeRequestSchema)
-    responses = SwaggerApiView.setResponses({
-        204: {
-            'description': 'no response'
-        }
-    })
+    responses = SwaggerApiView.setResponses({204: {"description": "no response"}})
 
-    def delete(self, controller:AuthController, data, oid, aid, *args, **kwargs):
+    def delete(self, controller: AuthController, data, oid, aid, *args, **kwargs):
         """
         Delete user attribute
         Call this api to delete a user attribute
@@ -608,16 +604,12 @@ class DeleteUserAttribute(SwaggerApiView):
 
 
 class DeleteUser(SwaggerApiView):
-    tags = ['authorization']
+    tags = ["authorization"]
     definitions = {}
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
-    responses = SwaggerApiView.setResponses({
-        204: {
-            'description': 'no response'
-        }
-    })
+    responses = SwaggerApiView.setResponses({204: {"description": "no response"}})
 
-    def delete(self, controller:AuthController, data, oid, *args, **kwargs):
+    def delete(self, controller: AuthController, data, oid, *args, **kwargs):
         """
         Delete user
         Call this api to delete a user
@@ -631,18 +623,25 @@ class DeleteUser(SwaggerApiView):
 # role
 #
 class ListRolesRequestSchema(PaginatedRequestQuerySchema):
-    user = fields.String(context='query')
-    group = fields.String(context='query')
-#     groups_N = fields.List(fields.String(example='1'), required=False, allow_none=True, context='query',
-#                           collection_format='multi', data_key='groups.N', description='groups id list')
-    names = fields.String(context='query')
-    alias = fields.String(context='query')
-    perms_N = fields.List(fields.String(example=''), required=False, allow_none=True, context='query',
-                          collection_format='multi', data_key='perms.N', description='permissions list')
+    user = fields.String(context="query")
+    group = fields.String(context="query")
+    #     groups_N = fields.List(fields.String(example='1'), required=False, allow_none=True, context='query',
+    #                           collection_format='multi', data_key='groups.N', description='groups id list')
+    names = fields.String(context="query")
+    alias = fields.String(context="query")
+    perms_N = fields.List(
+        fields.String(example=""),
+        required=False,
+        allow_none=True,
+        context="query",
+        collection_format="multi",
+        data_key="perms.N",
+        description="permissions list",
+    )
 
 
 class ListRoleResponseSchema(ApiObjectResponseSchema):
-    alias = fields.String(required=True, default='test', example='test')
+    alias = fields.String(required=True, default="test", example="test")
 
 
 class ListRolesResponseSchema(PaginatedResponseSchema):
@@ -650,20 +649,15 @@ class ListRolesResponseSchema(PaginatedResponseSchema):
 
 
 class ListRoles(SwaggerApiView):
-    tags = ['authorization']
+    tags = ["authorization"]
     definitions = {
-        'ListRolesResponseSchema': ListRolesResponseSchema,
+        "ListRolesResponseSchema": ListRolesResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(ListRolesRequestSchema)
     parameters_schema = ListRolesRequestSchema
-    responses = SwaggerApiView.setResponses({
-        200: {
-            'description': 'success',
-            'schema': ListRolesResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses({200: {"description": "success", "schema": ListRolesResponseSchema}})
 
-    def get(self, controller:AuthController, data, *args, **kwargs):
+    def get(self, controller: AuthController, data, *args, **kwargs):
         """
         List roles
         Call this api to list roles
@@ -671,11 +665,11 @@ class ListRoles(SwaggerApiView):
         objs, total = controller.get_roles(**data)
 
         res = [r.info() for r in objs]
-        return self.format_paginated_response(res, 'roles', total, **data)
+        return self.format_paginated_response(res, "roles", total, **data)
 
 
 class GetRoleItemResponseSchema(ApiObjectResponseSchema):
-    alias = fields.String(required=True, default='test', example='test')
+    alias = fields.String(required=True, default="test", example="test")
 
 
 class GetRoleResponseSchema(Schema):
@@ -683,31 +677,112 @@ class GetRoleResponseSchema(Schema):
 
 
 class GetRole(SwaggerApiView):
-    tags = ['authorization']
+    tags = ["authorization"]
     definitions = {
-        'GetRoleResponseSchema': GetRoleResponseSchema,
+        "GetRoleResponseSchema": GetRoleResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
-    responses = SwaggerApiView.setResponses({
-        200: {
-            'description': 'success',
-            'schema': GetRoleResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses({200: {"description": "success", "schema": GetRoleResponseSchema}})
 
-    def get(self, controller:AuthController, data, oid, *args, **kwargs):
+    def get(self, controller: AuthController, data, oid, *args, **kwargs):
         """
         Get role
         Call this api to get a role
         """
         obj = controller.get_role(oid)
         res = obj.info()
-        resp = {'role': res}
+        resp = {"role": res}
         return resp
 
 
+class UseRoleResponseSchema(Schema):
+    done = fields.Boolean(
+        required=True,
+    )
+
+
+class UseRoleRequestSchema(Schema):
+    oid = fields.String(required=True, description="role id, uuid or name", context="path")
+
+
+class UseRole(SwaggerApiView):
+    tags = ["authorization"]
+    definitions = {
+        "UseRoleResponseSchema": UseRoleResponseSchema,
+    }
+    parameters = SwaggerHelper().get_parameters(UseRoleRequestSchema)
+    responses = SwaggerApiView.setResponses(
+        {
+            200: {"description": "success", "schema": UseRoleResponseSchema},
+            403: {"description": "forbidden", "schema": UseRoleResponseSchema},
+            404: {"description": "notFound", "schema": UseRoleResponseSchema},
+        }
+    )
+
+    def get(self, controller: AuthController, data, oid, *args, **kwargs):
+        """
+        Use role
+        Call this method to modify the current session in order to play the role desired role.
+        in case  the currente usere di not have penough permmission to playe the role a code 403 is returned
+        The usere do not need to have the role but must have the equivlent permmissions.
+        I.e. a super user can use any role.
+        """
+        # from beecell.debug import dbgprint
+
+        # dbgprint(data=data, oid=oid)
+        idmgr: IdentityMgr
+        try:
+            idmgr = IdentityMgr.factory(self.identity_key, controller=controller)
+            role = controller.get_role(oid)
+        except AuthError as ex:
+            raise ApiManagerError("Identity not found", code=404)
+        except Exception as ex:
+            raise ApiManagerError("Identity not found", code=404)
+        if role is None:
+            raise ApiManagerError("Role not found", code=404)
+        perms = controller.manager.get_role_permissions_by_role_id(role.oid)
+        try:
+            if len(perms) > 0:
+                idmgr.set_perms(perms, store=True)
+                return {"done": True}
+            else:
+                return {"done": False}
+        except AuthError:
+            raise ApiManagerError("Identity permsions do not match role permission", code=403)
+
+
+class ResetRole(SwaggerApiView):
+    tags = ["authorization"]
+    definitions = {
+        "UseRoleResponseSchema": UseRoleResponseSchema,
+    }
+    parameters = []
+    responses = SwaggerApiView.setResponses(
+        {
+            200: {"description": "success", "schema": UseRoleResponseSchema},
+            400: {"description": "Error"},
+        }
+    )
+
+    def get(self, controller: AuthController, data, *args, **kwargs):
+        """
+        Reset role
+        Call this method to modify the current session in order restore the full user permission
+        """
+        try:
+            idmgr = identity_mgr_factory(self.identity_key, controller=controller)
+            idmgr.restore_full_perms()
+            idmgr.save()
+            return {"done": True}
+        except AuthError as ex:
+            code = 400
+            if ex.code == AuthError.TOKENEXPIRED:
+                code = 428
+            raise ApiManagerError(f"{ex.info}", code=code)
+
+
 class CreateRoleItemRequestSchema(BaseCreateRequestSchema):
-    alias = fields.String(required=False, description='Role alias')
+    alias = fields.String(required=False, description="Role alias")
 
 
 class CreateRoleRequestSchema(Schema):
@@ -715,31 +790,26 @@ class CreateRoleRequestSchema(Schema):
 
 
 class CreateRoleBodyRequestSchema(Schema):
-    body = fields.Nested(CreateRoleRequestSchema, context='body')
+    body = fields.Nested(CreateRoleRequestSchema, context="body")
 
 
 class CreateRole(SwaggerApiView):
-    tags = ['authorization']
+    tags = ["authorization"]
     definitions = {
-        'CreateRoleRequestSchema': CreateRoleRequestSchema,
-        'CrudApiObjectResponseSchema': CrudApiObjectResponseSchema
+        "CreateRoleRequestSchema": CreateRoleRequestSchema,
+        "CrudApiObjectResponseSchema": CrudApiObjectResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(CreateRoleBodyRequestSchema)
     parameters_schema = CreateRoleRequestSchema
-    responses = SwaggerApiView.setResponses({
-        201: {
-            'description': 'success',
-            'schema': CrudApiObjectResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses({201: {"description": "success", "schema": CrudApiObjectResponseSchema}})
 
-    def post(self, controller:AuthController, data, *args, **kwargs):
+    def post(self, controller: AuthController, data, *args, **kwargs):
         """
         Create role
         Call this api to create a role
         """
-        resp = controller.add_role(**data.get('role'))
-        return {'uuid': resp}, 201
+        resp = controller.add_role(**data.get("role"))
+        return {"uuid": resp}, 201
 
 
 class UpdateRoleParamPermDescRequestSchema(Schema):
@@ -765,82 +835,73 @@ class UpdateRoleRequestSchema(Schema):
 
 
 class UpdateRoleBodyRequestSchema(GetApiObjectRequestSchema):
-    body = fields.Nested(UpdateRoleRequestSchema, context='body')
+    body = fields.Nested(UpdateRoleRequestSchema, context="body")
 
 
 class UpdateRoleResponseSchema(Schema):
-    update = fields.String(default='6d960236-d280-46d2-817d-f3ce8f0aeff7', required=True)
-    perm_append = fields.List(fields.String, dump_to='perm_append', required=True)
-    perm_remove = fields.List(fields.String, dump_to='perm_remove', required=True)
+    update = fields.String(default="6d960236-d280-46d2-817d-f3ce8f0aeff7", required=True)
+    perm_append = fields.List(fields.String, dump_to="perm_append", required=True)
+    perm_remove = fields.List(fields.String, dump_to="perm_remove", required=True)
 
 
 class UpdateRole(SwaggerApiView):
-    tags = ['authorization']
+    tags = ["authorization"]
     definitions = {
-        'UpdateRoleRequestSchema': UpdateRoleRequestSchema,
-        'UpdateRoleResponseSchema': UpdateRoleResponseSchema
+        "UpdateRoleRequestSchema": UpdateRoleRequestSchema,
+        "UpdateRoleResponseSchema": UpdateRoleResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(UpdateRoleBodyRequestSchema)
     parameters_schema = UpdateRoleRequestSchema
-    responses = SwaggerApiView.setResponses({
-        200: {
-            'description': 'success',
-            'schema': UpdateRoleResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses({200: {"description": "success", "schema": UpdateRoleResponseSchema}})
 
-    def put(self, controller:AuthController, data, oid, *args, **kwargs):
+    def put(self, controller: AuthController, data, oid, *args, **kwargs):
         """
         Update role
         Call this api to update a role
         """
-        data = data.get('role')
-        role_perm = data.pop('perms', None)
+        data = data.get("role")
+        role_perm = data.pop("perms", None)
         role = controller.get_role(oid)
 
-        resp = {'update': None, 'perm_append': [], 'perm_remove': []}
+        resp = {"update": None, "perm_append": [], "perm_remove": []}
 
         # append, remove role
         if role_perm is not None:
             # append role
-            if 'append' in role_perm:
+            if "append" in role_perm:
                 perms = []
-                for perm in role_perm.get('append'):
+                for perm in role_perm.get("append"):
                     perms.append(perm)
                 if len(perms) > 0:
                     res = role.append_permissions(perms)
-                    resp['perm_append'] = res
+                    resp["perm_append"] = res
                 else:
-                    resp['perm_append'] = []
+                    resp["perm_append"] = []
 
             # remove role
-            if 'remove' in role_perm:
+            if "remove" in role_perm:
                 perms = []
-                for perm in role_perm.get('remove'):
+                for perm in role_perm.get("remove"):
                     perms.append(perm)
                 if len(perms) > 0:
                     res = role.remove_permissions(perms)
-                    resp['perm_remove'] = res
+                    resp["perm_remove"] = res
                 else:
-                    resp['perm_remove'] = []
+                    resp["perm_remove"] = []
 
         # update role
         res = role.update(**data)
-        resp['update'] = res
+        resp["update"] = res
         return resp
 
 
 class DeleteRole(SwaggerApiView):
-    tags = ['authorization']
+    tags = ["authorization"]
     definitions = {}
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
-    responses = SwaggerApiView.setResponses({
-        204: {
-            'description': 'no response'
-        }
-    })
+    responses = SwaggerApiView.setResponses({204: {"description": "no response"}})
 
-    def delete(self, controller:AuthController, data, oid, *args, **kwargs):
+    def delete(self, controller: AuthController, data, oid, *args, **kwargs):
         """
         Delete role
         Call this api to delete a role
@@ -854,12 +915,19 @@ class DeleteRole(SwaggerApiView):
 # group
 #
 class ListGroupsRequestSchema(PaginatedRequestQuerySchema):
-    user = fields.String(context='query')
-    role = fields.String(context='query')
-    active = fields.Boolean(context='query')
-    expiry_date = fields.String(data_key='expirydate', default='2099-12-31', context='query')
-    perms_N = fields.List(fields.String(example=''), required=False, allow_none=True, context='query',
-                          collection_format='multi', data_key='perms.N', description='permissions list')
+    user = fields.String(context="query")
+    role = fields.String(context="query")
+    active = fields.Boolean(context="query")
+    expiry_date = fields.String(data_key="expirydate", default="2099-12-31", context="query")
+    perms_N = fields.List(
+        fields.String(example=""),
+        required=False,
+        allow_none=True,
+        context="query",
+        collection_format="multi",
+        data_key="perms.N",
+        description="permissions list",
+    )
 
 
 class ListGroupsResponseSchema(PaginatedResponseSchema):
@@ -867,26 +935,21 @@ class ListGroupsResponseSchema(PaginatedResponseSchema):
 
 
 class ListGroups(SwaggerApiView):
-    summary = 'List groups'
-    description = 'List authorization groups'
-    tags = ['authorization']
+    summary = "List groups"
+    description = "List authorization groups"
+    tags = ["authorization"]
     definitions = {
-        'ListGroupsResponseSchema': ListGroupsResponseSchema,
+        "ListGroupsResponseSchema": ListGroupsResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(ListGroupsRequestSchema)
     parameters_schema = ListGroupsRequestSchema
-    responses = SwaggerApiView.setResponses({
-        200: {
-            'description': 'success',
-            'schema': ListGroupsResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses({200: {"description": "success", "schema": ListGroupsResponseSchema}})
 
-    def get(self, controller:AuthController, data, *args, **kwargs):
+    def get(self, controller: AuthController, data, *args, **kwargs):
         objs, total = controller.get_groups(**data)
 
         res = [r.info() for r in objs]
-        return self.format_paginated_response(res, 'groups', total, **data)
+        return self.format_paginated_response(res, "groups", total, **data)
 
 
 ## get
@@ -895,26 +958,21 @@ class GetGroupResponseSchema(Schema):
 
 
 class GetGroup(SwaggerApiView):
-    tags = ['authorization']
+    tags = ["authorization"]
     definitions = {
-        'GetGroupResponseSchema': GetGroupResponseSchema,
+        "GetGroupResponseSchema": GetGroupResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
-    responses = SwaggerApiView.setResponses({
-        200: {
-            'description': 'success',
-            'schema': GetGroupResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses({200: {"description": "success", "schema": GetGroupResponseSchema}})
 
-    def get(self, controller:AuthController, data, oid, *args, **kwargs):
+    def get(self, controller: AuthController, data, oid, *args, **kwargs):
         """
         Get group
         Call this api to get a group
         """
         obj = controller.get_group(oid)
         res = obj.info()
-        resp = {'group':res}
+        resp = {"group": res}
         return resp
 
 
@@ -928,31 +986,26 @@ class CreateGroupRequestSchema(Schema):
 
 
 class CreateGroupBodyRequestSchema(Schema):
-    body = fields.Nested(CreateGroupRequestSchema, context='body')
+    body = fields.Nested(CreateGroupRequestSchema, context="body")
 
 
 class CreateGroup(SwaggerApiView):
-    tags = ['authorization']
+    tags = ["authorization"]
     definitions = {
-        'CreateGroupRequestSchema': CreateGroupRequestSchema,
-        'CrudApiObjectResponseSchema':CrudApiObjectResponseSchema
+        "CreateGroupRequestSchema": CreateGroupRequestSchema,
+        "CrudApiObjectResponseSchema": CrudApiObjectResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(CreateGroupBodyRequestSchema)
     parameters_schema = CreateGroupRequestSchema
-    responses = SwaggerApiView.setResponses({
-        201: {
-            'description': 'success',
-            'schema': CrudApiObjectResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses({201: {"description": "success", "schema": CrudApiObjectResponseSchema}})
 
-    def post(self, controller:AuthController, data, *args, **kwargs):
+    def post(self, controller: AuthController, data, *args, **kwargs):
         """
         Create group
         Call this api to create a group
         """
-        resp = controller.add_group(**data.get('group'))
-        return {'uuid':resp}, 201
+        resp = controller.add_group(**data.get("group"))
+        return {"uuid": resp}, 201
 
 
 class UpdateGroupParamRoleRequestSchema(Schema):
@@ -989,114 +1042,110 @@ class UpdateGroupRequestSchema(Schema):
 
 
 class UpdateGroupBodyRequestSchema(GetApiObjectRequestSchema):
-    body = fields.Nested(UpdateGroupRequestSchema, context='body')
+    body = fields.Nested(UpdateGroupRequestSchema, context="body")
 
 
 class UpdateGroupResponseSchema(Schema):
-    update = fields.String(default='6d960236-d280-46d2-817d-f3ce8f0aeff7', required=True)
-    role_append = fields.List(fields.String, dump_to='role_append', required=True)
-    role_remove = fields.List(fields.String, dump_to='role_remove', required=True)
-    user_append = fields.List(fields.String, dump_to='user_append', required=True)
-    user_remove = fields.List(fields.String, dump_to='user_remove', required=True)
-    perm_append = fields.List(fields.String, dump_to='perm_append', required=True)
-    perm_remove = fields.List(fields.String, dump_to='perm_remove', required=True)
+    update = fields.String(default="6d960236-d280-46d2-817d-f3ce8f0aeff7", required=True)
+    role_append = fields.List(fields.String, dump_to="role_append", required=True)
+    role_remove = fields.List(fields.String, dump_to="role_remove", required=True)
+    user_append = fields.List(fields.String, dump_to="user_append", required=True)
+    user_remove = fields.List(fields.String, dump_to="user_remove", required=True)
+    perm_append = fields.List(fields.String, dump_to="perm_append", required=True)
+    perm_remove = fields.List(fields.String, dump_to="perm_remove", required=True)
 
 
 class UpdateGroup(SwaggerApiView):
-    tags = ['authorization']
+    tags = ["authorization"]
     definitions = {
-        'UpdateGroupRequestSchema':UpdateGroupRequestSchema,
-        'UpdateGroupResponseSchema':UpdateGroupResponseSchema
+        "UpdateGroupRequestSchema": UpdateGroupRequestSchema,
+        "UpdateGroupResponseSchema": UpdateGroupResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(UpdateGroupBodyRequestSchema)
     parameters_schema = UpdateGroupRequestSchema
-    responses = SwaggerApiView.setResponses({
-        200: {
-            'description': 'success',
-            'schema': UpdateGroupResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses({200: {"description": "success", "schema": UpdateGroupResponseSchema}})
 
-    def put(self, controller:AuthController, data, oid, *args, **kwargs):
+    def put(self, controller: AuthController, data, oid, *args, **kwargs):
         """
         Update group
         Call this api to update a group
         """
-        data = data.get('group')
-        group_role = data.pop('roles', None)
-        group_user = data.pop('users', None)
-        role_perm = data.pop('perms', None)
+        data = data.get("group")
+        group_role = data.pop("roles", None)
+        group_user = data.pop("users", None)
+        role_perm = data.pop("perms", None)
 
         group = controller.get_group(oid)
 
-        resp = {'update': None,
-                'role_append': [], 'role_remove': [],
-                'user_append': [], 'user_remove': [],
-                'perm_append': [], 'perm_remove': []}
+        resp = {
+            "update": None,
+            "role_append": [],
+            "role_remove": [],
+            "user_append": [],
+            "user_remove": [],
+            "perm_append": [],
+            "perm_remove": [],
+        }
 
         # append, remove role
         if group_role is not None:
             # append role
-            if 'append' in group_role:
-                for role, expiry in group_role.get('append'):
+            if "append" in group_role:
+                for role, expiry in group_role.get("append"):
                     res = group.append_role(role, expiry_date=expiry)
-                    resp['role_append'].append(res)
+                    resp["role_append"].append(res)
 
             # remove role
-            if 'remove' in group_role:
-                for role in group_role.get('remove'):
+            if "remove" in group_role:
+                for role in group_role.get("remove"):
                     res = group.remove_role(role)
-                    resp['role_remove'].append(res)
+                    resp["role_remove"].append(res)
 
         # append, remove perms
         if role_perm is not None:
             # append role
-            if 'append' in role_perm:
+            if "append" in role_perm:
                 perms = []
-                for perm in role_perm.get('append'):
+                for perm in role_perm.get("append"):
                     perms.append(perm)
                 res = group.append_permissions(perms)
-                resp['perm_append'] = res
+                resp["perm_append"] = res
 
             # remove role
-            if 'remove' in role_perm:
+            if "remove" in role_perm:
                 perms = []
-                for perm in role_perm.get('remove'):
+                for perm in role_perm.get("remove"):
                     perms.append(perm)
                 res = group.remove_permissions(perms)
-                resp['perm_remove'] = res
+                resp["perm_remove"] = res
 
         # append, remove user
         if group_user is not None:
             # append user
-            if 'append' in group_user:
-                for user in group_user.get('append'):
+            if "append" in group_user:
+                for user in group_user.get("append"):
                     res = group.append_user(user)
-                    resp['user_append'].append(res)
+                    resp["user_append"].append(res)
 
             # remove user
-            if 'remove' in group_user:
-                for user in group_user.get('remove'):
+            if "remove" in group_user:
+                for user in group_user.get("remove"):
                     res = group.remove_user(user)
-                    resp['user_remove'].append(res)
+                    resp["user_remove"].append(res)
 
         # update group
         res = group.update(**data)
-        resp['update'] = res
+        resp["update"] = res
         return resp
 
 
 class PatchGroup(SwaggerApiView):
-    tags = ['authorization']
+    tags = ["authorization"]
     definitions = {}
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
-    responses = SwaggerApiView.setResponses({
-        204: {
-            'description': 'no response'
-        }
-    })
+    responses = SwaggerApiView.setResponses({204: {"description": "no response"}})
 
-    def patch(self, controller:AuthController, data, oid, *args, **kwargs):
+    def patch(self, controller: AuthController, data, oid, *args, **kwargs):
         """
         Delete group
         Call this api to delete a group
@@ -1107,16 +1156,12 @@ class PatchGroup(SwaggerApiView):
 
 
 class DeleteGroup(SwaggerApiView):
-    tags = ['authorization']
+    tags = ["authorization"]
     definitions = {}
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
-    responses = SwaggerApiView.setResponses({
-        204: {
-            'description': 'no response'
-        }
-    })
+    responses = SwaggerApiView.setResponses({204: {"description": "no response"}})
 
-    def delete(self, controller:AuthController, data, oid, *args, **kwargs):
+    def delete(self, controller: AuthController, data, oid, *args, **kwargs):
         """
         Delete group
         Call this api to delete a group
@@ -1130,20 +1175,25 @@ class DeleteGroup(SwaggerApiView):
 # object
 #
 class ListObjectsRequestSchema(PaginatedRequestQuerySchema):
-    field = fields.String(validate=OneOf(['subsystem', 'type', 'id', 'objid'],
-                          error='Field can be subsystem, type, id, objid'), missing='id')
-    subsystem = fields.String(context='query')
-    type = fields.String(context='query')
-    objid = fields.String(context='query')
+    field = fields.String(
+        validate=OneOf(
+            ["subsystem", "type", "id", "objid"],
+            error="Field can be subsystem, type, id, objid",
+        ),
+        missing="id",
+    )
+    subsystem = fields.String(context="query")
+    type = fields.String(context="query")
+    objid = fields.String(context="query")
 
 
 class ListObjectsParamsResponseSchema(Schema):
     id = fields.Integer(required=True, default=10)
-    uuid = fields.String(required=True, default='4cdf0ea4-159a-45aa-96f2-708e461130e1')
-    objid = fields.String(required=True, default='396587362//3328462822')
-    subsystem = fields.String(required=True, default='auth')
-    type = fields.String(required=True, default='Role')
-    desc = fields.String(required=True, default='test')
+    uuid = fields.String(required=True, default="4cdf0ea4-159a-45aa-96f2-708e461130e1")
+    objid = fields.String(required=True, default="396587362//3328462822")
+    subsystem = fields.String(required=True, default="auth")
+    type = fields.String(required=True, default="Role")
+    desc = fields.String(required=True, default="test")
     date = fields.Nested(ApiObjectResponseDateSchema, required=True, allow_none=True)
     active = fields.Boolean(required=True, default=True)
 
@@ -1153,28 +1203,23 @@ class ListObjectsResponseSchema(PaginatedResponseSchema):
 
 
 class ListObjects(SwaggerApiView):
-    summary = 'List objects'
-    description = 'List objects'
-    tags = ['authorization']
+    summary = "List objects"
+    description = "List objects"
+    tags = ["authorization"]
     definitions = {
-        'ListObjectsResponseSchema': ListObjectsResponseSchema,
+        "ListObjectsResponseSchema": ListObjectsResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(ListObjectsRequestSchema)
     parameters_schema = ListObjectsRequestSchema
-    responses = SwaggerApiView.setResponses({
-        200: {
-            'description': 'success',
-            'schema': ListObjectsResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses({200: {"description": "success", "schema": ListObjectsResponseSchema}})
 
-    def get(self, controller:AuthController, data, *args, **kwargs):
-        objid = data.get('objid', None)
+    def get(self, controller: AuthController, data, *args, **kwargs):
+        objid = data.get("objid", None)
         if objid is not None:
-            data['objid'] = objid.replace('_', '//')
+            data["objid"] = objid.replace("_", "//")
         res, total = controller.objects.get_objects(**data)
 
-        return self.format_paginated_response(res, 'objects', total, **data)
+        return self.format_paginated_response(res, "objects", total, **data)
 
 
 class GetObjectResponseSchema(Schema):
@@ -1182,26 +1227,21 @@ class GetObjectResponseSchema(Schema):
 
 
 class GetObject(SwaggerApiView):
-    tags = ['authorization']
+    tags = ["authorization"]
     definitions = {
-        'GetObjectResponseSchema': GetObjectResponseSchema,
+        "GetObjectResponseSchema": GetObjectResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
-    responses = SwaggerApiView.setResponses({
-        200: {
-            'description': 'success',
-            'schema': GetObjectResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses({200: {"description": "success", "schema": GetObjectResponseSchema}})
 
-    def get(self, controller:AuthController, data, oid, *args, **kwargs):
+    def get(self, controller: AuthController, data, oid, *args, **kwargs):
         """
         Get object
         Call this api to get a object
         """
         obj = controller.objects.get_object(oid)
         res = obj
-        resp = {'object': res}
+        resp = {"object": res}
         return resp
 
 
@@ -1217,7 +1257,7 @@ class CreateObjectRequestSchema(Schema):
 
 
 class CreateObjectBodyRequestSchema(Schema):
-    body = fields.Nested(CreateObjectRequestSchema, context='body')
+    body = fields.Nested(CreateObjectRequestSchema, context="body")
 
 
 class CreateObjectResponseSchema(Schema):
@@ -1225,48 +1265,39 @@ class CreateObjectResponseSchema(Schema):
 
 
 class CreateObject(SwaggerApiView):
-    tags = ['authorization']
+    tags = ["authorization"]
     definitions = {
-        'CreateObjectRequestSchema': CreateObjectRequestSchema,
-        'CreateObjectResponseSchema':CreateObjectResponseSchema
+        "CreateObjectRequestSchema": CreateObjectRequestSchema,
+        "CreateObjectResponseSchema": CreateObjectResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(CreateObjectBodyRequestSchema)
     parameters_schema = CreateObjectRequestSchema
-    responses = SwaggerApiView.setResponses({
-        201: {
-            'description': 'success',
-            'schema': CreateObjectResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses({201: {"description": "success", "schema": CreateObjectResponseSchema}})
 
-    def post(self, controller:AuthController, data, *args, **kwargs):
+    def post(self, controller: AuthController, data, *args, **kwargs):
         """
         Create object
         Call this api to create a object
         """
-        resp = controller.objects.add_objects(data.get('objects'))
-        return {'ids': resp}, 201
+        resp = controller.objects.add_objects(data.get("objects"))
+        return {"ids": resp}, 201
 
 
 class DeleteObject(SwaggerApiView):
-    tags = ['authorization']
+    tags = ["authorization"]
     definitions = {}
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
-    responses = SwaggerApiView.setResponses({
-        204: {
-            'description': 'no response'
-        }
-    })
+    responses = SwaggerApiView.setResponses({204: {"description": "no response"}})
 
-    def delete(self, controller:AuthController, data, oid, *args, **kwargs):
+    def delete(self, controller: AuthController, data, oid, *args, **kwargs):
         """
         Delete object
         Call this api to delete a object
         """
         # oid syntax: objtype:objdef:objid
-        if oid.find(':') >= 0:
-            objtype, objdef, objid = oid.split(':')
-            objid = objid.replace('__', '//')
+        if oid.find(":") >= 0:
+            objtype, objdef, objid = oid.split(":")
+            objid = objid.replace("__", "//")
             resp = controller.objects.remove_object(objdef=objdef, objtype=objtype, objid=objid)
         # oid syntax: int or uuid
         else:
@@ -1278,16 +1309,21 @@ class DeleteObject(SwaggerApiView):
 # object types
 #
 class ListObjectTypesRequestSchema(PaginatedRequestQuerySchema):
-    field = fields.String(validate=OneOf(['subsystem', 'type', 'id', 'objid'],
-                          error='Field can be subsystem, type, id, objid'), missing='id')
-    subsystem = fields.String(context='query')
-    type = fields.String(context='query')
-    objid = fields.String(context='query')
+    field = fields.String(
+        validate=OneOf(
+            ["subsystem", "type", "id", "objid"],
+            error="Field can be subsystem, type, id, objid",
+        ),
+        missing="id",
+    )
+    subsystem = fields.String(context="query")
+    type = fields.String(context="query")
+    objid = fields.String(context="query")
 
 
 class ListObjectTypesParamsResponseSchema(Schema):
-    subsystem = fields.String(required=True, default='auth')
-    type = fields.String(required=True, default='Role')
+    subsystem = fields.String(required=True, default="auth")
+    type = fields.String(required=True, default="Role")
 
 
 class ListObjectTypesResponseSchema(PaginatedResponseSchema):
@@ -1295,22 +1331,17 @@ class ListObjectTypesResponseSchema(PaginatedResponseSchema):
 
 
 class ListObjectTypes(SwaggerApiView):
-    summary = 'List object types'
-    description = 'List object types'
-    tags = ['authorization']
+    summary = "List object types"
+    description = "List object types"
+    tags = ["authorization"]
     definitions = {
-        'ListObjectTypesResponseSchema': ListObjectTypesResponseSchema,
+        "ListObjectTypesResponseSchema": ListObjectTypesResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(ListObjectTypesRequestSchema)
     parameters_schema = ListObjectTypesRequestSchema
-    responses = SwaggerApiView.setResponses({
-        200: {
-            'description': 'success',
-            'schema': ListObjectTypesResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses({200: {"description": "success", "schema": ListObjectTypesResponseSchema}})
 
-    def get(self, controller:AuthController, data, *args, **kwargs):
+    def get(self, controller: AuthController, data, *args, **kwargs):
         """
         List object types
         Call this api to list object types
@@ -1435,7 +1466,7 @@ class ListObjectTypes(SwaggerApiView):
                             example: 1990-12-31T23:59:59Z
         """
         res, total = controller.objects.get_type(**data)
-        return self.format_paginated_response(res, 'object_types', total, **data)
+        return self.format_paginated_response(res, "object_types", total, **data)
 
 
 class CreateObjectTypeParamRequestSchema(Schema):
@@ -1448,7 +1479,7 @@ class CreateObjectTypeRequestSchema(Schema):
 
 
 class CreateObjectTypeBodyRequestSchema(Schema):
-    body = fields.Nested(CreateObjectTypeRequestSchema, context='body')
+    body = fields.Nested(CreateObjectTypeRequestSchema, context="body")
 
 
 class CreateObjectTypeResponseSchema(Schema):
@@ -1456,40 +1487,31 @@ class CreateObjectTypeResponseSchema(Schema):
 
 
 class CreateObjectType(SwaggerApiView):
-    summary = 'Create object type'
-    description = 'Create object type'
-    tags = ['authorization']
+    summary = "Create object type"
+    description = "Create object type"
+    tags = ["authorization"]
     definitions = {
-        'CreateObjectTypeRequestSchema': CreateObjectTypeRequestSchema,
-        'CreateObjectTypeResponseSchema': CreateObjectTypeResponseSchema
+        "CreateObjectTypeRequestSchema": CreateObjectTypeRequestSchema,
+        "CreateObjectTypeResponseSchema": CreateObjectTypeResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(CreateObjectTypeBodyRequestSchema)
     parameters_schema = CreateObjectTypeRequestSchema
-    responses = SwaggerApiView.setResponses({
-        201: {
-            'description': 'success',
-            'schema': CreateObjectTypeResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses({201: {"description": "success", "schema": CreateObjectTypeResponseSchema}})
 
-    def post(self, controller:AuthController, data, *args, **kwargs):
-        resp = controller.objects.add_types(data['object_types'])
-        return {'ids': resp}, 201
+    def post(self, controller: AuthController, data, *args, **kwargs):
+        resp = controller.objects.add_types(data["object_types"])
+        return {"ids": resp}, 201
 
 
 class DeleteObjectType(SwaggerApiView):
-    summary = 'Delete object type'
-    description = 'Delete object type'
-    tags = ['authorization']
+    summary = "Delete object type"
+    description = "Delete object type"
+    tags = ["authorization"]
     definitions = {}
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
-    responses = SwaggerApiView.setResponses({
-        204: {
-            'description': 'no response'
-        }
-    })
+    responses = SwaggerApiView.setResponses({204: {"description": "no response"}})
 
-    def delete(self, controller:AuthController, data, oid, *args, **kwargs):
+    def delete(self, controller: AuthController, data, oid, *args, **kwargs):
         resp = controller.objects.remove_type(oid=oid)
         return resp, 204
 
@@ -1498,32 +1520,34 @@ class DeleteObjectType(SwaggerApiView):
 # object action
 #
 class ListObjectActionResponseSchema(Schema):
-    id = fields.Integer(required=True, default=10, description='action id')
-    value = fields.String(required=True, default='test', description='action value')
+    id = fields.Integer(required=True, default=10, description="action id")
+    value = fields.String(required=True, default="test", description="action value")
 
 
 class ListObjectActionsResponseSchema(Schema):
     object_actions = fields.Nested(ListObjectActionResponseSchema, many=True, required=True, allow_none=True)
-    count = fields.Integer(required=True, default=10, example=10, description='number of query items returned')
+    count = fields.Integer(
+        required=True,
+        default=10,
+        example=10,
+        description="number of query items returned",
+    )
 
 
 class ListObjectActions(ApiView):
-    summary = 'List object actions'
-    description = 'List object actions'
-    tags = ['authorization']
+    summary = "List object actions"
+    description = "List object actions"
+    tags = ["authorization"]
     definitions = {
-        'ListObjectActionsResponseSchema': ListObjectActionsResponseSchema,
+        "ListObjectActionsResponseSchema": ListObjectActionsResponseSchema,
     }
-    responses = SwaggerApiView.setResponses({
-        200: {
-            'description': 'success',
-            'schema': ListObjectActionsResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses(
+        {200: {"description": "success", "schema": ListObjectActionsResponseSchema}}
+    )
 
-    def get(self, controller:AuthController, data, *args, **kwargs):
+    def get(self, controller: AuthController, data, *args, **kwargs):
         res = controller.objects.get_action()
-        resp = {'object_actions': res, 'count': len(res)}
+        resp = {"object_actions": res, "count": len(res)}
         return resp
 
 
@@ -1531,27 +1555,32 @@ class ListObjectActions(ApiView):
 # object perms
 #
 class ListObjectPermsRequestSchema(PaginatedRequestQuerySchema):
-    field = fields.String(validate=OneOf(['subsystem', 'type', 'id', 'objid', 'aid', 'action'],
-                          error='Field can be subsystem, type, id, objid, aid, action'), missing='id')
-    subsystem = fields.String(context='query')
-    type = fields.String(context='query')
-    objid = fields.String(context='query')
-    oid = fields.String(context='query')
-    user = fields.String(context='query')
-    role = fields.String(context='query')
-    group = fields.String(context='query')
-    cascade = fields.Boolean(context='query', missing=False)
+    field = fields.String(
+        validate=OneOf(
+            ["subsystem", "type", "id", "objid", "aid", "action"],
+            error="Field can be subsystem, type, id, objid, aid, action",
+        ),
+        missing="id",
+    )
+    subsystem = fields.String(context="query")
+    type = fields.String(context="query")
+    objid = fields.String(context="query")
+    oid = fields.String(context="query")
+    user = fields.String(context="query")
+    role = fields.String(context="query")
+    group = fields.String(context="query")
+    cascade = fields.Boolean(context="query", missing=False)
 
 
 class ListObjectPermsParamsResponseSchema(Schema):
     id = fields.Integer(required=True, default=10)
     oid = fields.Integer(required=True, default=11)
-    objid = fields.String(required=True, default='396587362//3328462822')
-    type = fields.String(required=True, default='auth')
-    subsystem = fields.String(required=True, default='Role')
-    desc = fields.String(required=True, default='test')
+    objid = fields.String(required=True, default="396587362//3328462822")
+    type = fields.String(required=True, default="auth")
+    subsystem = fields.String(required=True, default="Role")
+    desc = fields.String(required=True, default="test")
     aid = fields.Integer(required=True, default=12)
-    action = fields.String(required=True, default='view')
+    action = fields.String(required=True, default="view")
 
 
 class ListObjectPermsResponseSchema(PaginatedResponseSchema):
@@ -1559,37 +1588,39 @@ class ListObjectPermsResponseSchema(PaginatedResponseSchema):
 
 
 class ListObjectPerms(SwaggerApiView):
-    tags = ['authorization']
+    tags = ["authorization"]
     definitions = {
-        'ListObjectPermsResponseSchema': ListObjectPermsResponseSchema,
+        "ListObjectPermsResponseSchema": ListObjectPermsResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(ListObjectPermsRequestSchema)
     parameters_schema = ListObjectPermsRequestSchema
-    responses = SwaggerApiView.setResponses({
-        200: {
-            'description': 'success',
-            'schema': ListObjectPermsResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses({200: {"description": "success", "schema": ListObjectPermsResponseSchema}})
 
-    def get(self, controller:AuthController, data, *args, **kwargs):
+    def get(self, controller: AuthController, data, *args, **kwargs):
         """
         List object permissions
         Call this api to list object permissions
         """
-        user = data.get('user', None)
-        role = data.get('role', None)
-        group = data.get('group', None)
-        objid = data.get('objid', None)
-        subsystem = data.get('subsystem', None)
-        type = data.get('type', None)
-        oid = data.get('oid', None)
-        if user is None and role is None and group is None and objid is None and subsystem is None and type is None and oid is None :
+        user = data.get("user", None)
+        role = data.get("role", None)
+        group = data.get("group", None)
+        objid = data.get("objid", None)
+        subsystem = data.get("subsystem", None)
+        type = data.get("type", None)
+        oid = data.get("oid", None)
+        if (
+            user is None
+            and role is None
+            and group is None
+            and objid is None
+            and subsystem is None
+            and type is None
+            and oid is None
+        ):
             raise ApiManagerError("No parameters when qeryin permisssions", code=400)
 
-
         if objid is not None:
-            data['objid'] = objid.replace('_', '//')
+            data["objid"] = objid.replace("_", "//")
         if user is not None:
             user = controller.get_user(user)
             objs, total = user.get_permissions(**data)
@@ -1601,7 +1632,7 @@ class ListObjectPerms(SwaggerApiView):
             objs, total = group.get_permissions(**data)
         else:
             objs, total = controller.objects.get_permissions(**data)
-        return self.format_paginated_response(objs, 'perms', total, **data)
+        return self.format_paginated_response(objs, "perms", total, **data)
 
 
 class GetObjectPermResponseSchema(Schema):
@@ -1609,77 +1640,94 @@ class GetObjectPermResponseSchema(Schema):
 
 
 class GetObjectPerm(SwaggerApiView):
-    tags = ['authorization']
+    tags = ["authorization"]
     definitions = {
-        'GetObjectPermResponseSchema': GetObjectPermResponseSchema,
+        "GetObjectPermResponseSchema": GetObjectPermResponseSchema,
     }
     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
-    responses = SwaggerApiView.setResponses({
-        200: {
-            'description': 'success',
-            'schema': GetObjectPermResponseSchema
-        }
-    })
+    responses = SwaggerApiView.setResponses({200: {"description": "success", "schema": GetObjectPermResponseSchema}})
 
-    def get(self, controller:AuthController, data, oid, *args, **kwargs):
+    def get(self, controller: AuthController, data, oid, *args, **kwargs):
         """
         List object permissions
         Call this api to list object permissions
         """
         res = controller.objects.get_permission(oid)
-        resp = {'perm': res}
+        resp = {"perm": res}
         return resp
 
 
 class AuthorizationAPI(ApiView):
-    """Authorization API
-    """
+    """Authorization API"""
+
     @staticmethod
     def register_api(module, **kwargs):
         rules = [
             # new routes
-            ('%s/providers' % module.base_path, 'GET', ListProviders, {'secure': False}),
-
-            ('%s/tokens' % module.base_path, 'GET', ListTokens, {}),
-            ('%s/tokens/<oid>' % module.base_path, 'GET', GetToken, {}),
+            (
+                "%s/providers" % module.base_path,
+                "GET",
+                ListProviders,
+                {"secure": False},
+            ),
+            ("%s/tokens" % module.base_path, "GET", ListTokens, {}),
+            ("%s/tokens/<oid>" % module.base_path, "GET", GetToken, {}),
             # ('%s/tokens/<oid>/refresh' % module.base_path, 'PUT', TokenRefresh, {}),
-            ('%s/tokens/<oid>' % module.base_path, 'DELETE', DeleteToken, {}),
+            ("%s/tokens/<oid>" % module.base_path, "DELETE", DeleteToken, {}),
             # ('%s/tokens/<oid>/exist' % module.base_path, 'GET', LoginExists, {}),
-
-            ('%s/users' % module.base_path, 'GET', ListUsers, {}),
-            ('%s/users/<oid>' % module.base_path, 'GET', GetUser, {}),
-            ('%s/users/<oid>/attributes' % module.base_path, 'GET', GetUserAtributes, {}),
-            ('%s/users' % module.base_path, 'POST', CreateUser, {}),
-            ('%s/users/<oid>' % module.base_path, 'PUT', UpdateUser, {}),
-            ('%s/users/<oid>/secret' % module.base_path, 'GET', GetUserSecret, {}),
-            ('%s/users/<oid>/secret' % module.base_path, 'PUT', ResetUserSecret, {}),
-            ('%s/users/<oid>/attributes' % module.base_path, 'POST', CreateUserAttribute, {}),
-            ('%s/users/<oid>/attributes/<aid>' % module.base_path, 'DELETE', DeleteUserAttribute, {}),
-            ('%s/users/<oid>' % module.base_path, 'DELETE', DeleteUser, {}),
-
-            ('%s/roles' % module.base_path, 'GET', ListRoles, {}),
-            ('%s/roles/<oid>' % module.base_path, 'GET', GetRole, {}),
-            ('%s/roles' % module.base_path, 'POST', CreateRole, {}),
-            ('%s/roles/<oid>' % module.base_path, 'PUT', UpdateRole, {}),
-            ('%s/roles/<oid>' % module.base_path, 'DELETE', DeleteRole, {}),
-
-            ('%s/groups' % module.base_path, 'GET', ListGroups, {}),
-            ('%s/groups/<oid>' % module.base_path, 'GET', GetGroup, {}),
-            ('%s/groups' % module.base_path, 'POST', CreateGroup, {}),
-            ('%s/groups/<oid>' % module.base_path, 'PUT', UpdateGroup, {}),
-            ('%s/groups/<oid>' % module.base_path, 'PATCH', PatchGroup, {}),
-            ('%s/groups/<oid>' % module.base_path, 'DELETE', DeleteGroup, {}),
-
-            ('%s/objects' % module.base_path, 'GET', ListObjects, {}),
-            ('%s/objects/<oid>' % module.base_path, 'GET', GetObject, {}),
-            ('%s/objects' % module.base_path, 'POST', CreateObject, {}),
-            ('%s/objects/<oid>' % module.base_path, 'DELETE', DeleteObject, {}),
-            ('%s/objects/types' % module.base_path, 'GET', ListObjectTypes, {}),
-            ('%s/objects/types' % module.base_path, 'POST', CreateObjectType, {}),
-            ('%s/objects/types/<oid>' % module.base_path, 'DELETE', DeleteObjectType, {}),
-            ('%s/objects/perms' % module.base_path, 'GET', ListObjectPerms, {}),
-            ('%s/objects/perms/<oid>' % module.base_path, 'GET', GetObjectPerm, {}),
-            ('%s/objects/actions' % module.base_path, 'GET', ListObjectActions, {}),
+            ("%s/users" % module.base_path, "GET", ListUsers, {}),
+            ("%s/users/<oid>" % module.base_path, "GET", GetUser, {}),
+            (
+                "%s/users/<oid>/attributes" % module.base_path,
+                "GET",
+                GetUserAtributes,
+                {},
+            ),
+            ("%s/users" % module.base_path, "POST", CreateUser, {}),
+            ("%s/users/<oid>" % module.base_path, "PUT", UpdateUser, {}),
+            ("%s/users/<oid>/secret" % module.base_path, "GET", GetUserSecret, {}),
+            ("%s/users/<oid>/secret" % module.base_path, "PUT", ResetUserSecret, {}),
+            (
+                "%s/users/<oid>/attributes" % module.base_path,
+                "POST",
+                CreateUserAttribute,
+                {},
+            ),
+            (
+                "%s/users/<oid>/attributes/<aid>" % module.base_path,
+                "DELETE",
+                DeleteUserAttribute,
+                {},
+            ),
+            ("%s/users/<oid>" % module.base_path, "DELETE", DeleteUser, {}),
+            ("%s/roles" % module.base_path, "GET", ListRoles, {}),
+            ("%s/roles/<oid>" % module.base_path, "GET", GetRole, {}),
+            ("%s/roles/use/<oid>" % module.base_path, "GET", UseRole, {}),
+            ("%s/roles/reset" % module.base_path, "GET", ResetRole, {}),
+            ("%s/roles" % module.base_path, "POST", CreateRole, {}),
+            ("%s/roles/<oid>" % module.base_path, "PUT", UpdateRole, {}),
+            ("%s/roles/<oid>" % module.base_path, "DELETE", DeleteRole, {}),
+            ("%s/groups" % module.base_path, "GET", ListGroups, {}),
+            ("%s/groups/<oid>" % module.base_path, "GET", GetGroup, {}),
+            ("%s/groups" % module.base_path, "POST", CreateGroup, {}),
+            ("%s/groups/<oid>" % module.base_path, "PUT", UpdateGroup, {}),
+            ("%s/groups/<oid>" % module.base_path, "PATCH", PatchGroup, {}),
+            ("%s/groups/<oid>" % module.base_path, "DELETE", DeleteGroup, {}),
+            ("%s/objects" % module.base_path, "GET", ListObjects, {}),
+            ("%s/objects/<oid>" % module.base_path, "GET", GetObject, {}),
+            ("%s/objects" % module.base_path, "POST", CreateObject, {}),
+            ("%s/objects/<oid>" % module.base_path, "DELETE", DeleteObject, {}),
+            ("%s/objects/types" % module.base_path, "GET", ListObjectTypes, {}),
+            ("%s/objects/types" % module.base_path, "POST", CreateObjectType, {}),
+            (
+                "%s/objects/types/<oid>" % module.base_path,
+                "DELETE",
+                DeleteObjectType,
+                {},
+            ),
+            ("%s/objects/perms" % module.base_path, "GET", ListObjectPerms, {}),
+            ("%s/objects/perms/<oid>" % module.base_path, "GET", GetObjectPerm, {}),
+            ("%s/objects/actions" % module.base_path, "GET", ListObjectActions, {}),
         ]
 
         ApiView.register_api(module, rules, **kwargs)

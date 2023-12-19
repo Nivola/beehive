@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
 import ujson as json
 import logging
@@ -9,8 +9,13 @@ from sqlalchemy import text, asc
 
 from beecell.simple import truncate
 from beehive.common.data import query
-from beehive.common.model import AbstractDbManager, PaginatedQueryGenerator, SchedulerTask, SchedulerStep, \
-    SchedulerTrace
+from beehive.common.model import (
+    AbstractDbManager,
+    PaginatedQueryGenerator,
+    SchedulerTask,
+    SchedulerStep,
+    SchedulerTrace,
+)
 from beecell.db import ModelError
 
 
@@ -22,6 +27,7 @@ class SchedulerDbManager(AbstractDbManager):
 
     :param session: sqlalchemy session
     """
+
     def get_steps(self, task_id):
         """Get task steps
 
@@ -32,7 +38,7 @@ class SchedulerDbManager(AbstractDbManager):
 
         query = session.query(SchedulerStep).filter_by(task_id=task_id).order_by(asc(SchedulerStep.start_time))
         steps = query.all()
-        self.logger.debug('Get task %s steps: %s' % (task_id, truncate(steps)))
+        self.logger.debug("Get task %s steps: %s" % (task_id, truncate(steps)))
         return steps
 
     def get_step(self, step_id):
@@ -45,7 +51,7 @@ class SchedulerDbManager(AbstractDbManager):
 
         query = session.query(SchedulerStep).filter_by(uuid=step_id)
         steps = query.one()
-        self.logger.debug('Get task step %s: %s' % (step_id, truncate(steps)))
+        self.logger.debug("Get task step %s: %s" % (step_id, truncate(steps)))
         return steps
 
     def get_trace(self, task_id):
@@ -56,17 +62,29 @@ class SchedulerDbManager(AbstractDbManager):
         """
         session = self.get_session()
 
-        query = session.query(SchedulerTrace, SchedulerStep). \
-            filter(SchedulerTrace.step_id == SchedulerStep.uuid). \
-            filter(SchedulerTrace.task_id == task_id). \
-            order_by(asc(SchedulerTrace.date))
+        query = (
+            session.query(SchedulerTrace, SchedulerStep)
+            .filter(SchedulerTrace.step_id == SchedulerStep.uuid)
+            .filter(SchedulerTrace.task_id == task_id)
+            .order_by(asc(SchedulerTrace.date))
+        )
         # query = session.query(SchedulerTrace).filter_by(task_id=task_id).order_by(asc(SchedulerTrace.date))
         steps = query.all()
-        self.logger.debug('Get task %s trace: %s' % (task_id, truncate(steps)))
+        self.logger.debug("Get task %s trace: %s" % (task_id, truncate(steps)))
         return steps
 
     @query
-    def get_tasks(self, tags=[], page=0, size=10, order='DESC', field='id', with_perm_tag=None, *args, **kvargs):
+    def get_tasks(
+        self,
+        tags=[],
+        page=0,
+        size=10,
+        order="DESC",
+        field="id",
+        with_perm_tag=None,
+        *args,
+        **kvargs,
+    ):
         """Get tasks with some permission tags
 
         :param task_id: task id
@@ -85,8 +103,8 @@ class SchedulerDbManager(AbstractDbManager):
         query = PaginatedQueryGenerator(SchedulerTask, self.get_session(), with_perm_tag=with_perm_tag)
 
         # set filters
-        query.add_relative_filter('AND t3.uuid = :task_id', 'task_id', kvargs)
-        query.add_relative_filter('AND t3.objid like :objid', 'objid', kvargs)
+        query.add_relative_filter("AND t3.uuid = :task_id", "task_id", kvargs)
+        query.add_relative_filter("AND t3.objid like :objid", "objid", kvargs)
         # query.add_relative_filter('AND t3.objtype like :objtype', 'objtype', kvargs)
         # query.add_relative_filter('AND t3.objdef like :objdef', 'objdef', kvargs)
         # query.add_relative_filter('AND t3.data like :data', 'data', kvargs)

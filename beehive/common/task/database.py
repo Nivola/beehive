@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
 from beehive.common.task import BaseTask
 from beehive.common.data import operation
@@ -35,14 +35,7 @@ class DatabaseTask(BaseTask):
 
         The return value of this handler is ignored.
         """
-        BaseTask.after_return(
-            self,
-            status,
-            retval,
-            task_id,
-            args,
-            kwargs,
-            einfo)
+        BaseTask.after_return(self, status, retval, task_id, args, kwargs, einfo)
 
         if operation.session is not None:
             self._release_session()

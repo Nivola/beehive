@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
 from sys import argv
 import yaml
@@ -10,7 +10,7 @@ import os
 
 def configure_server():
     config_file = argv[1]
-    f = open(config_file, 'r')
+    f = open(config_file, "r")
     data = f.read()
 
     # replace key from environment
@@ -23,31 +23,32 @@ def configure_server():
     #     data = data.replace('$(%s)' % key, val)
 
     for k, v in dict(os.environ).items():
-        data = data.replace('$(%s)' % k, v)
+        data = data.replace("$(%s)" % k, v)
 
-    data = data.replace('%d', '')
+    data = data.replace("%d", "")
     params = yaml.full_load(data)
-    params = params.get('uwsgi')
+    params = params.get("uwsgi")
     f.close()
 
-    fields = ['task_module', 'event_handler']
+    fields = ["task_module", "event_handler"]
     for field in fields:
         num = int(params.pop(field, 0))
         if num > 0:
             num += 1
             params[field] = []
             for i in range(1, num):
-                item = params.pop('%s.%s' % (field, i))
+                item = params.pop("%s.%s" % (field, i))
                 params[field].append(item)
 
     res = {}
     for k, v in params.items():
         if is_string(v):
-            res[k] = v.encode('utf-8')
+            res[k] = v.encode("utf-8")
         else:
             res[k] = v
 
     from gevent import monkey
+
     monkey.patch_all()
 
     return res

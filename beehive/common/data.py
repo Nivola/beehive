@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
 import logging
 from re import match
@@ -8,13 +8,15 @@ from time import time
 from functools import wraps
 from uuid import uuid4
 from sqlalchemy.exc import IntegrityError, DBAPIError, ArgumentError
+from sqlalchemy.orm import Session
 from beecell.logger.helper import ExtendedLogger
 from beecell.simple import id_gen, truncate
 from beecell.simple import import_class
 from beecell.simple import encrypt_data as simple_encrypt_data
 from beecell.simple import decrypt_data as simple_decrypt_data
 from beecell.db import TransactionError, QueryError, ModelError
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Tuple
+
 if TYPE_CHECKING:
     from beehive.common.apimanager import ApiController
 
@@ -25,9 +27,11 @@ logger.manager.setLoggerClass(ExtendedLogger)
 # container connection
 try:
     import gevent.local
-    container = gevent.local.local() #: thread/gevent local container
-except:
+
+    container = gevent.local.local()  #: thread/gevent local container
+except Exception:
     import threading
+
     container = threading.local()
 
 container.connection = None
@@ -35,28 +39,33 @@ container.connection = None
 # beehive operation
 try:
     import gevent.local
-    operation = gevent.local.local() #: thread/gevent local operation
-except:
+
+    operation = gevent.local.local()  #: thread/gevent local operation
+
+except Exception:
     import threading
+
     operation = threading.local()
 
 operation.id = None  #: operation id in uuid4
-operation.session = None  #: current database session
-operation.user = None  #: logged user (username, userip, uid)
+operation.session: Session = None  #: current database session
+operation.user: Tuple[str] = None  #: logged user (username, userip, uid)
 operation.perms = None  #: logged user permission
 operation.token_type = None  #: token type released
 operation.transaction = None  #: transaction id
 operation.encryption_key = None  #: _encryption_key used to encrypt and decrypt data
-operation.authorize = True  #: enable or disable authorization check
-operation.cache = True  #: if True check cache. If False execute function decorated by @cache() also if cache exists
+operation.authorize: bool = True  #: enable or disable authorization check
+operation.cache: bool = (
+    True  #: if True check cache. If False execute function decorated by @cache() also if cache exists
+)
 
 
-OK_MSG = '%s.%s - %s - transaction - %s - %s - OK - %s'
-KO_MSG = '%s.%s - %s - transaction - %s - %s - KO - %s'
+OK_MSG = "%s.%s - %s - transaction - %s - %s - OK - %s"
+KO_MSG = "%s.%s - %s - transaction - %s - %s - KO - %s"
 
 
-OK_Q_MSG = '%s.%s - %s - query - %s - %s - OK - %s'
-KO_Q_MSG = '%s.%s - %s - query - %s - %s - KO - %s'
+OK_Q_MSG = "%s.%s - %s - query - %s - %s - OK - %s"
+KO_Q_MSG = "%s.%s - %s - query - %s - %s - KO - %s"
 
 
 #
@@ -69,7 +78,7 @@ def encrypt_data(data):
     :return: encrypted data
     """
     res = simple_encrypt_data(operation.encryption_key, data)
-    logger.debug('Encrypt data')
+    logger.debug("Encrypt data")
     return res
 
 
@@ -80,7 +89,7 @@ def decrypt_data(data):
     :return: decrypted data
     """
     res = simple_decrypt_data(operation.encryption_key, data)
-    logger.debug('Decrypt data')
+    logger.debug("Decrypt data")
     return res
 
 
@@ -93,34 +102,34 @@ def get_operation_params():
         "opid": operation.id,
         "transaction": operation.transaction,
         "encryption_key": operation.encryption_key,
-        'authorize': operation.authorize
+        "authorize": operation.authorize,
     }
 
 
 def set_operation_params(param):
     """set in the current greenlet/thread the parameter stored in param"""
-    val = param.get('user', '--')
-    if val != '--':
+    val = param.get("user", "--")
+    if val != "--":
         operation.user = val
 
-    val = param.get('perms', '--')
-    if val != '--':
+    val = param.get("perms", "--")
+    if val != "--":
         operation.perms = val
 
-    val = param.get('opid', '--')
-    if val != '--':
+    val = param.get("opid", "--")
+    if val != "--":
         operation.opid = val
 
-    val = param.get('transaction', '--')
-    if val != '--':
+    val = param.get("transaction", "--")
+    if val != "--":
         operation.transaction = val
 
-    val = param.get('encryption_key', '--')
-    if val != '--':
+    val = param.get("encryption_key", "--")
+    if val != "--":
         operation.encryption_key = val
 
-    val = param.get('authorize', '--')
-    if val != '--':
+    val = param.get("authorize", "--")
+    if val != "--":
         operation.authorize = val
 
 
@@ -130,7 +139,7 @@ def set_operation_params(param):
 def core_transaction(fn, rollback_throwable, *args, **kwargs):
     start = time()
     stmp_id = id_gen()
-    session = operation.session
+    session: Session = operation.session
     sessionid = id(session)
 
     # lock = RLock()
@@ -140,14 +149,14 @@ def core_transaction(fn, rollback_throwable, *args, **kwargs):
     if operation.transaction is None:
         operation.transaction = id_gen()
         commit = True
-        logger.debug2('Create transaction %s' % operation.transaction)
+        logger.debug2("Create transaction %s" % operation.transaction)
     else:
-        logger.debug2('Use transaction %s' % operation.transaction)
+        logger.debug2("Use transaction %s" % operation.transaction)
 
     # set distributed transaction id to 0 for single transaction
     try:
         operation.id
-    except:
+    except Exception:
         operation.id = str(uuid4())
 
     try:
@@ -156,18 +165,18 @@ def core_transaction(fn, rollback_throwable, *args, **kwargs):
         for item in args:
             params.append(str(item))
         for k, v in kwargs.items():
-            params.append(u"'%s':'%s'" % (k, v))
+            params.append("'%s':'%s'" % (k, v))
 
         # call internal function
         res = fn(*args, **kwargs)
 
         if commit is True:
             session.commit()
-            logger.log(-10, 'Commit transaction %s' % operation.transaction)
+            logger.log(-10, "Commit transaction %s" % operation.transaction)
             operation.transaction = None
 
         elapsed = round(time() - start, 4)
-        logger.debug2(OK_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params),  elapsed))
+        logger.debug2(OK_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params), elapsed))
         return res
     except ModelError as ex:
         elapsed = round(time() - start, 4)
@@ -206,7 +215,7 @@ def core_transaction(fn, rollback_throwable, *args, **kwargs):
         if not rollback_throwable:
             if commit is True and operation.transaction is not None:
                 session.commit()
-                logger.log(-10, 'Commit transaction on exception %s' % operation.transaction)
+                logger.log(-10, "Commit transaction on exception %s" % operation.transaction)
                 operation.transaction = None
 
 
@@ -220,11 +229,14 @@ def transaction2(rollback_throwable=True):
         def fn(*args, **kwargs):
             ....
     """
+
     def wrapper_transaction2(fn):
         @wraps(fn)
-        def transaction_wrap2(*args, **kwargs): #1
+        def transaction_wrap2(*args, **kwargs):  # 1
             return core_transaction(fn, rollback_throwable, *args, **kwargs)
+
         return transaction_wrap2
+
     return wrapper_transaction2
 
 
@@ -237,16 +249,18 @@ def transaction(fn):
         def fn(*args, **kwargs):
             ....
     """
+
     @wraps(fn)
-    def transaction_wrap(*args, **kwargs): #1
+    def transaction_wrap(*args, **kwargs):  # 1
         return core_transaction(fn, True, *args, **kwargs)
+
     return transaction_wrap
 
 
 def rollback(session, status):
     if status is True:
         session.rollback()
-        logger.warning('Rollback transaction %s' % operation.transaction)
+        logger.warning("Rollback transaction %s" % operation.transaction)
         operation.transaction = None
 
 
@@ -264,17 +278,18 @@ def query(fn):
         def fn(*args, **kwargs):
             ....
     """
+
     @wraps(fn)
-    def query_wrap(*args, **kwargs): #1
+    def query_wrap(*args, **kwargs):  # 1
         start = time()
         stmp_id = id_gen()
-        session = operation.session
+        session: Session = operation.session
         sessionid = id(session)
 
         # set distributed transaction id to 0 for single transaction
         try:
             operation.id
-        except:
+        except Exception:
             operation.id = str(uuid4())
 
         try:
@@ -283,42 +298,103 @@ def query(fn):
             for item in args:
                 params.append(str(item))
             for k, v in kwargs.items():
-                params.append(u"'%s':'%s'" % (k, v))
+                params.append("'%s':'%s'" % (k, v))
 
             # call internal function
             res = fn(*args, **kwargs)
             elapsed = round(time() - start, 4)
-            logger.debug2(OK_Q_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params),  elapsed))
+            logger.debug2(
+                OK_Q_MSG
+                % (
+                    operation.id,
+                    stmp_id,
+                    sessionid,
+                    fn.__name__,
+                    truncate(params),
+                    elapsed,
+                )
+            )
             return res
         except ModelError as ex:
             elapsed = round(time() - start, 4)
-            logger.error(KO_Q_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params), elapsed))
+            logger.error(
+                KO_Q_MSG
+                % (
+                    operation.id,
+                    stmp_id,
+                    sessionid,
+                    fn.__name__,
+                    truncate(params),
+                    elapsed,
+                )
+            )
             logger.error(str(ex))
             raise QueryError(str(ex), code=ex.code)
         except ArgumentError as ex:
             elapsed = round(time() - start, 4)
-            logger.error(KO_Q_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params), elapsed))
+            logger.error(
+                KO_Q_MSG
+                % (
+                    operation.id,
+                    stmp_id,
+                    sessionid,
+                    fn.__name__,
+                    truncate(params),
+                    elapsed,
+                )
+            )
             logger.error(str(ex))
             raise QueryError(str(ex), code=400)
         except DBAPIError as ex:
             elapsed = round(time() - start, 4)
-            logger.error(KO_Q_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params), elapsed))
+            logger.error(
+                KO_Q_MSG
+                % (
+                    operation.id,
+                    stmp_id,
+                    sessionid,
+                    fn.__name__,
+                    truncate(params),
+                    elapsed,
+                )
+            )
             logger.error(str(ex))
             raise QueryError(str(ex), code=400)
         except TypeError as ex:
             elapsed = round(time() - start, 4)
-            logger.error(KO_Q_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params), elapsed))
+            logger.error(
+                KO_Q_MSG
+                % (
+                    operation.id,
+                    stmp_id,
+                    sessionid,
+                    fn.__name__,
+                    truncate(params),
+                    elapsed,
+                )
+            )
             logger.error(str(ex))
             raise QueryError(str(ex), code=400)
         except Exception as ex:
             elapsed = round(time() - start, 4)
-            logger.error(KO_Q_MSG % (operation.id, stmp_id, sessionid, fn.__name__, truncate(params), elapsed))
+            logger.error(
+                KO_Q_MSG
+                % (
+                    operation.id,
+                    stmp_id,
+                    sessionid,
+                    fn.__name__,
+                    truncate(params),
+                    elapsed,
+                )
+            )
             logger.error(str(ex))
             raise QueryError(str(ex), code=400)
+
     return query_wrap
 
 
-def trace(entity=None, op='view', noargs=False):
+def trace(entity=None, op="view", noargs=False):
     """Use this decorator to send an event after function execution.
 
     :param entity: beehive authorized entity [optional]
@@ -331,6 +407,7 @@ def trace(entity=None, op='view', noargs=False):
         def fn(*args, **kwargs):
             ....
     """
+
     def wrapper(fn):
         @wraps(fn)
         def trace_internal(*args, **kwargs):
@@ -339,13 +416,13 @@ def trace(entity=None, op='view', noargs=False):
 
             args = list(args)
             inst = args.pop(0)
-            method = '%s.%s.%s' % (inst.__module__, fn.__name__, op)
+            method = "%s.%s.%s" % (inst.__module__, fn.__name__, op)
 
             def get_entity(entity):
                 if entity is None:
                     return inst
                 else:
-                    eclass = import_class('%s.%s' % (inst.__module__, entity))
+                    eclass = import_class("%s.%s" % (inst.__module__, entity))
                     return eclass(inst)
 
             # execute inner function
@@ -365,21 +442,35 @@ def trace(entity=None, op='view', noargs=False):
                 elapsed = round(time() - start, 4)
 
                 from beehive.common.apimanager import ApiManagerError
+
                 if isinstance(ex, ApiManagerError):
                     ex_escaped = ex.value
                 else:
                     try:
                         ex_escaped = str(ex)
-                    except:
+                    except Exception:
                         ex_escaped = ex
                 if noargs is True:
-                    get_entity(entity).send_event(method, args=[], params={}, exception=ex_escaped, elapsed=elapsed)
+                    get_entity(entity).send_event(
+                        method,
+                        args=[],
+                        params={},
+                        exception=ex_escaped,
+                        elapsed=elapsed,
+                    )
                 else:
-                    get_entity(entity).send_event(method, args=args, params=kwargs, exception=ex_escaped,
-                                                  elapsed=elapsed)
+                    get_entity(entity).send_event(
+                        method,
+                        args=args,
+                        params=kwargs,
+                        exception=ex_escaped,
+                        elapsed=elapsed,
+                    )
                 raise
             return ret
+
         return trace_internal
+
     return wrapper
 
 
@@ -395,13 +486,14 @@ def cache(key, ttl=600, pickling=False):
         def fn(controller, postfix, *args, **kwargs):
             ....
     """
+
     def wrapper(fn):
         @wraps(fn)
-        def cache_internal(controller, postfix:str, *args, **kwargs):
+        def cache_internal(controller, postfix: str, *args, **kwargs):
             # get start time
             start = time()
 
-            internalkey = '%s.%s' % (key, postfix)
+            internalkey = "%s.%s" % (key, postfix)
 
             # execute inner function
             try:
@@ -413,7 +505,7 @@ def cache(key, ttl=600, pickling=False):
 
                 # calculate elasped time
                 elapsed = round(time() - start, 4)
-                logger.debug2('Cache %s:%s [%ss]' % (internalkey, truncate(ret), elapsed))
+                logger.debug2("Cache %s:%s [%ss]" % (internalkey, truncate(ret), elapsed))
             except Exception as ex:
                 logger.error(ex)
                 raise
@@ -436,25 +528,28 @@ def cache_query(key, ttl=600):
         def fn(manager, entityclass, oid, *args, **kwargs):
             ....
     """
+
     def wrapper(fn):
         @wraps(fn)
         def cache_query_internal(manager, entityclass, oid, *args, **kwargs):
             # get start time
             start = time()
 
-            internalkey = '%s.%s.%s' % (entityclass.__name__, key, oid)
+            internalkey = "%s.%s.%s" % (entityclass.__name__, key, oid)
 
-            model_to_dict = getattr(entityclass, 'model_to_dict', None)
-            dict_to_model = getattr(entityclass, 'dict_to_model', None)
+            model_to_dict = getattr(entityclass, "model_to_dict", None)
+            dict_to_model = getattr(entityclass, "dict_to_model", None)
             if model_to_dict is None:
-                raise ModelError('entity model doe not have model_to_dict. These operation can not be applied')
+                raise ModelError("entity model doe not have model_to_dict. These operation can not be applied")
             if dict_to_model is None:
-                raise ModelError('entity model doe not have dict_to_model. These operation can not be applied')
+                raise ModelError("entity model doe not have dict_to_model. These operation can not be applied")
 
             # execute inner function
             try:
-                if match('[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', str(oid)) \
-                        or match('^\d+$', str(oid)):
+                if match(
+                    "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+                    str(oid),
+                ) or match("^\d+$", str(oid)):
                     ret = manager.cache.get(internalkey)
                 else:
                     ret = None
@@ -475,7 +570,7 @@ def cache_query(key, ttl=600):
 
                 # calculate elasped time
                 elapsed = round(time() - start, 4)
-                logger.debug2('Cache %s:%s [%ss]' % (internalkey, truncate(ret), elapsed))
+                logger.debug2("Cache %s:%s [%ss]" % (internalkey, truncate(ret), elapsed))
             except Exception as ex:
                 logger.error(ex)
                 raise
@@ -488,6 +583,7 @@ def cache_query(key, ttl=600):
             return ret
 
         return cache_query_internal
+
     return wrapper
 
 
@@ -504,6 +600,7 @@ def maybe_run_batch_greenlet(controller, batch, timeout=600):
         def action(*args, **kwargs):
             ....
     """
+
     def wrapper(fn):
         @wraps(fn)
         def decorated(*args, **kwargs):
@@ -512,7 +609,7 @@ def maybe_run_batch_greenlet(controller, batch, timeout=600):
 
             logger = controller.logger
 
-            logger.info('Outer %s - START' % fn.__name__)
+            logger.info("Outer %s - START" % fn.__name__)
 
             # execute inner function
             try:
@@ -522,7 +619,7 @@ def maybe_run_batch_greenlet(controller, batch, timeout=600):
                     # get start time
                     start_wrap = time()
 
-                    logger.info('Inner %s - START' % fn.__name__)
+                    logger.info("Inner %s - START" % fn.__name__)
 
                     try:
                         # set local thread operation
@@ -535,13 +632,13 @@ def maybe_run_batch_greenlet(controller, batch, timeout=600):
                         fn(*args, **kwargs)
                         # calculate elasped time
                         elapsed_wrap = round(time() - start_wrap, 4)
-                        logger.info('Inner %s - STOP - %s' % (fn.__name__, elapsed_wrap))
+                        logger.info("Inner %s - STOP - %s" % (fn.__name__, elapsed_wrap))
                         return True
-                    except:
+                    except Exception:
                         # calculate elasped time
                         elapsed_wrap = round(time() - start_wrap, 4)
-                        logger.error('', exc_info=1)
-                        logger.error('Inner %s - ERROR - %s' % (fn.__name__, elapsed_wrap))
+                        logger.error("", exc_info=1)
+                        logger.error("Inner %s - ERROR - %s" % (fn.__name__, elapsed_wrap))
                     finally:
                         controller.release_session()
 
@@ -550,19 +647,21 @@ def maybe_run_batch_greenlet(controller, batch, timeout=600):
                 op_params = get_operation_params()
                 res = gevent.spawn(inner_fn, op_params, *args, **kwargs)
                 if batch is True:
-                    logger.debug('Start batch operation: %s' % res)
+                    logger.debug("Start batch operation: %s" % res)
                 else:
                     gevent.joinall([res], timeout=timeout)
 
                 # calculate elasped time
                 elapsed = round(time() - start, 4)
-                logger.info('Outer %s - STOP - %s' % (fn.__name__, elapsed))
-            except:
+                logger.info("Outer %s - STOP - %s" % (fn.__name__, elapsed))
+            except Exception:
                 # calculate elasped time
                 elapsed = round(time() - start, 4)
-                logger.error('', exc_info=1)
-                logger.error('Outer %s - ERROR - %s' % (fn.__name__, elapsed))
+                logger.error("", exc_info=1)
+                logger.error("Outer %s - ERROR - %s" % (fn.__name__, elapsed))
                 raise
             return True
+
         return decorated
+
     return wrapper
