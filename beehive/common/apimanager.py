@@ -55,18 +55,10 @@ from elasticsearch import Elasticsearch
 from flasgger import Swagger, SwaggerView
 from marshmallow import fields, Schema, ValidationError
 from marshmallow.validate import OneOf, Range
-from beecell.db.manager import RedisManager
-from typing import List, Type, Tuple, Any, Union, Dict, Callable, Union
 
 ## from beecell.debug import dbgprint
 
 logger = getLogger(__name__)
-
-
-class ApiMethod(object):
-    objtype = "ApiMethod"
-    objdef = "ApiMethod"
-    objdesc = "Api Method"
 
 
 class ApiMethod(object):
@@ -4041,8 +4033,6 @@ class ApiView(FlaskView):
         # dbsession = module.get_session()
         module.get_session()
         controller: ApiController = module.get_controller()
-
-        opid = None
 
         opid = None
 
