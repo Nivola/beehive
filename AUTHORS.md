@@ -1,6 +1,5 @@
 beehive is written and maintained by:
 
-
 * Alessandro More'
 * Antonio Brasile
 * Daniela Ferrarini
@@ -12,4 +11,5 @@ beehive is written and maintained by:
 * Gianpiero Ardissono
 * Ignazio Cassano
 * Michele Bello
+* Pietro Pilolli
 * Sergio Tonani

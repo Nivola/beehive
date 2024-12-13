@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2023 CSI-Piemonte
+# (C) Copyright 2018-2024 CSI-Piemonte
 
 import logging
 from operator import mod
@@ -16,12 +16,6 @@ from beecell.simple import import_class, get_value
 from beehive.common.model.config import ConfigDbManager
 from beecell.db.manager import RedisManager
 from beecell.db import QueryError
-
-
-try:
-    import json
-except ImportError:
-    import simplejson as json
 
 
 class BeehiveHelper(object):

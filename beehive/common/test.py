@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2023 CSI-Piemonte
+# (C) Copyright 2018-2024 CSI-Piemonte
 
 import os
 import sys
@@ -21,6 +21,7 @@ import logging
 import unittest
 import pprint
 import time
+from datetime import datetime
 import json
 import redis
 import re
@@ -380,6 +381,12 @@ class BeehiveTestCase(unittest.TestCase):
                 validate = True
         return validate
 
+    def diff_datetime(self, start):
+        end = datetime.now()
+        delta = end - start
+        sec = delta.total_seconds()
+        return sec
+
     def call(
         self,
         subsystem,
@@ -403,7 +410,8 @@ class BeehiveTestCase(unittest.TestCase):
     ):
         global token, seckey
 
-        start = time.time()
+        # start = time.time()
+        start = datetime.now()
         validate = False
         res = None
 
@@ -429,18 +437,18 @@ class BeehiveTestCase(unittest.TestCase):
                 headers.update({"Authorization": "Bearer %s" % oauth2_token})
             elif user is not None and auth == "simplehttp":
                 cred = HTTPBasicAuth(user, pwd)
-                logger.debug("Make simple http authentication: %s" % time.time() - start)
+                logger.debug("Make simple http authentication: %s sec" % self.diff_datetime(start))
             elif user is not None and auth == "keyauth":
                 if token is None:
                     self.runlogger.info("call - user: %s" % user)
                     # self.runlogger.info('call - pwd: %s' % pwd)
                     self.create_keyauth_token(user, pwd, timeout=timeout)
-                    logger.debug("Create keyauth token: %s - %s" % (token, time.time() - start))
+                    logger.debug("Create keyauth token: %s - %s sec" % (token, self.diff_datetime(start)))
                 sign = self.auth_client.sign_request(seckey, uri)
                 headers.update({"uid": token, "sign": sign})
 
             # reset start after authentication
-            start = time.time()
+            start = datetime.now()
 
             if runlog is True:
                 self.runlogger.info("request endpoint: %s" % endpoint)
@@ -500,7 +508,7 @@ class BeehiveTestCase(unittest.TestCase):
                 self.runlogger.info("response headers: %s" % response.headers)
                 self.runlogger.info("response code:    %s" % response.status_code)
 
-            logger.info("request url:      %s" % response.url)
+            logger.info("response url:     %s" % response.url)
             logger.info("response headers: %s" % response.headers)
             logger.info("response code:    %s" % response.status_code)
 
@@ -591,7 +599,8 @@ class BeehiveTestCase(unittest.TestCase):
                     res = response.text
 
             else:
-                raise ServerErrorException("Internal server error")
+                logger.debug("Call api elapsed %s - %s sec" % (uri, self.diff_datetime(start)))
+                raise ServerErrorException("Internal server error - response.status_code: %s" % (response.status_code))
 
             if runlog is True:
                 self.runlogger.info("response data:    %s" % truncate(response.text, size=response_size))
@@ -607,6 +616,7 @@ class BeehiveTestCase(unittest.TestCase):
             # Max retries exceeded with url: /stage1/v2.0/nws/serviceinsts/PROVA-database-db-post-11
             # (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x7f881fb16340>:
             # Failed to establish a new connection: [Errno -2] Name or service not known'))
+            logger.debug("Call api elapsed %s - %s sec" % (uri, self.diff_datetime(start)))
             logger.error("call ConnectionError")
             logger.error(ce, exc_info=1)
             if runlog is True:
@@ -639,12 +649,13 @@ class BeehiveTestCase(unittest.TestCase):
                 raise
 
         except Exception:
+            logger.debug("Call api elapsed %s - %s sec" % (uri, self.diff_datetime(start)))
             logger.error("", exc_info=1)
             if runlog is True:
                 self.runlogger.error("", exc_info=1)
             raise
 
-        logger.debug("Call api elapsed: %s" % (time.time() - start))
+        logger.debug("Call api elapsed %s - %s sec" % (uri, self.diff_datetime(start)))
         self.assertEqual(validate, True)
         return res
 
@@ -756,7 +767,17 @@ class BeehiveTestCase(unittest.TestCase):
             **user,
         )
         if res is not None and isinstance(res, dict) and dict_get(res, task_key) is not None:
-            self.wait_task(dict_get(res, task_key))
+            taskid = dict_get(res, task_key)
+            self.logger.info("post - taskid: %s" % taskid)
+            state = self.wait_task(taskid)
+
+            self.logger.info("put - state: %s" % state)
+            if state == "TOKEN_INVALID":
+                # beecell.remote.UnauthorizedException: [401] Identity <TOKEN> doen't exist or is expired
+                # force create new token
+                self.reset_token()
+                # re-create_keyauth_token
+                state = self.wait_task(taskid)
         return res
 
     def patch(
@@ -1045,7 +1066,11 @@ def runtest(testcase_class: BeehiveTestCase, tests, args={}) -> unittest.result.
             testResult: unittest.result.TestResult = runner.run(unittest.TestSuite(map(testcase_class, tests)))
 
     else:
-        runner = unittest.TextTestRunner(verbosity=2)
+        failfast = args.get("failfast", False)
+        print("failfast=%s" % failfast)
+        runner = unittest.TextTestRunner(verbosity=2, failfast=failfast)
+        # runner = unittest.TextTestRunner(verbosity=2, failfast=False)
+
         # run test suite
         if isinstance(tests, dict):
             all_tests = []

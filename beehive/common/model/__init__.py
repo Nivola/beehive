@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2023 CSI-Piemonte
+# (C) Copyright 2018-2024 CSI-Piemonte
 
 import logging
 from time import time
@@ -424,7 +424,7 @@ class PaginatedQueryGenerator(object):
         self.start: str = None
         self.end: str = None
 
-    def set_pagination(self, page=0, size=10, order="DESC", field="id"):
+    def set_pagination(self, page: int = 0, size: int = 10, order: str = "DESC", field: str = "id"):
         """Set pagiantion params
 
         :param page: users list page to show [default=0]
@@ -432,8 +432,8 @@ class PaginatedQueryGenerator(object):
         :param order: sort order [default=DESC]
         :param field: sort field [default=id]
         """
-        if field == "id":
-            field = "t3.id"
+        if field is not None and "." not in field:
+            field = "t3.%s" % field
 
         self.page: int = page
         self.size: int = size
@@ -658,7 +658,9 @@ class PaginatedQueryGenerator(object):
         if self.size > 0:
             # count all records
             stmp = self.base_stmp(count=True)
-            total = self.session.query(Column("count")).from_statement(stmp).params(tags=tags, **kvargs).first()[0]
+            query_count = self.session.query(Column("count")).from_statement(stmp).params(tags=tags, **kvargs)
+            self.logger.debug2("+++++ SQL - count stmp: %s" % query_count.statement.compile(dialect=mysql.dialect()))
+            total = query_count.first()[0]
 
         stmp = self.base_stmp()
 
@@ -779,9 +781,9 @@ class PaginatedQueryGenerator(object):
         entities.extend(self.other_entities)
 
         query = self.session.query(*entities).from_statement(stmp).params(tags=tags, **kvargs)
-        self.logger.debug2("stmp: %s" % query.statement.compile(dialect=mysql.dialect()))
-        self.logger.debug2("kvargs: %s" % truncate(kvargs))
-        self.logger.debug2("tags: %s" % truncate(tags))
+        self.logger.debug2("+++++ run2 stmp: %s" % query.statement.compile(dialect=mysql.dialect()))
+        self.logger.debug2("+++++ run2 kvargs: %s" % truncate(kvargs))
+        self.logger.debug2("+++++ run2 tags: %s" % truncate(tags))
         res: List[ENTITY] = query.all()
 
         if self.size == 0 or self.size == -1:

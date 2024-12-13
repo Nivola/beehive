@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2023 CSI-Piemonte
+# (C) Copyright 2018-2024 CSI-Piemonte
 
 from re import match
-from datetime import datetime
+from datetime import datetime, timedelta
 from beecell.simple import get_value, str2bool, AttribException, format_date
 from beehive.common.apimanager import (
     ApiView,
@@ -22,8 +22,10 @@ from marshmallow.validate import OneOf, Range, Length
 from marshmallow.decorators import post_load, validates
 from marshmallow.exceptions import ValidationError
 from typing import TYPE_CHECKING
+
 from beehive.module.auth.controller import AuthController
 from beecell.auth import IdentityMgr, identity_mgr_factory, AuthError
+from beehive.module.auth.controller.user import User
 
 
 class BaseCreateRequestSchema(Schema):
@@ -237,6 +239,8 @@ class ListUsersRequestSchema(PaginatedRequestQuerySchema):
     names = fields.String(context="query")
     desc = fields.String(context="query")
     email = fields.String(context="query")
+    taxcode = fields.String(context="query")
+    ldap = fields.String(context="query")
     perms_N = fields.List(
         fields.String(example=""),
         required=False,
@@ -248,8 +252,15 @@ class ListUsersRequestSchema(PaginatedRequestQuerySchema):
     )
 
 
+class ListUnitResponseDateSchema(ApiObjectResponseDateSchema):
+    last_login = fields.DateTime(required=False)
+
+
 class ListUserResponseSchema(ApiObjectResponseSchema):
     email = fields.String(required=True, example="test@local")
+    taxcode = fields.String(required=False)
+    ldap = fields.String(required=False)
+    date = fields.Nested(ListUnitResponseDateSchema, required=True)
 
 
 class ListUsersResponseSchema(PaginatedResponseSchema):
@@ -266,10 +277,16 @@ class ListUsers(SwaggerApiView):
     parameters = SwaggerHelper().get_parameters(ListUsersRequestSchema)
     parameters_schema = ListUsersRequestSchema
     responses = SwaggerApiView.setResponses({200: {"description": "success", "schema": ListUsersResponseSchema}})
+    response_schema = ListUsersResponseSchema
 
     def get(self, controller: AuthController, data, *args, **kwargs):
         objs, total = controller.get_users(**data)
-        res = [r.info() for r in objs]
+
+        # res = [r.info() for r in objs]
+        res = []
+        for r in objs:
+            user: User = r
+            res.append(user.info())
 
         return self.format_paginated_response(res, "users", total, **data)
 
@@ -396,6 +413,8 @@ class CreateUserParamRequestSchema(BaseCreateRequestSchema, BaseCreateExtendedPa
     )
     base = fields.Boolean(missing=False)
     system = fields.Boolean(missing=False)
+    taxcode = fields.String(allow_none=True)
+    ldap = fields.String(allow_none=True)
 
     @validates("name")
     def validate_user(self, value):
@@ -454,6 +473,9 @@ class UpdateUserParamRequestSchema(BaseUpdateRequestSchema):
         allow_none=True,
         error="Password must be at least 8 characters",
     )
+    email = fields.String(allow_none=True)
+    taxcode = fields.String(allow_none=True)
+    ldap = fields.String(allow_none=True)
 
 
 class UpdateUserRequestSchema(Schema):
@@ -490,7 +512,7 @@ class UpdateUser(SwaggerApiView):
         data = data.get("user")
         role = data.pop("roles", None)
         role_perm = data.pop("perms", None)
-        user = controller.get_user(oid)
+        user: User = controller.get_user(oid)
 
         resp = {
             "update": None,
@@ -641,7 +663,7 @@ class ListRolesRequestSchema(PaginatedRequestQuerySchema):
 
 
 class ListRoleResponseSchema(ApiObjectResponseSchema):
-    alias = fields.String(required=True, default="test", example="test")
+    alias = fields.String(required=False, default="test", example="test", allow_none=True)
 
 
 class ListRolesResponseSchema(PaginatedResponseSchema):
@@ -656,6 +678,7 @@ class ListRoles(SwaggerApiView):
     parameters = SwaggerHelper().get_parameters(ListRolesRequestSchema)
     parameters_schema = ListRolesRequestSchema
     responses = SwaggerApiView.setResponses({200: {"description": "success", "schema": ListRolesResponseSchema}})
+    response_schema = ListRolesResponseSchema
 
     def get(self, controller: AuthController, data, *args, **kwargs):
         """
@@ -909,6 +932,38 @@ class DeleteRole(SwaggerApiView):
         role = controller.get_role(oid)
         resp = role.delete()
         return resp, 204
+
+
+class ExpireRoleRequestSchema(GetApiObjectRequestSchema):
+    days = fields.String(required=False, description="num of days", context="path")
+
+
+class ExpireRole(SwaggerApiView):
+    tags = ["authorization"]
+    definitions = {}
+    parameters = SwaggerHelper().get_parameters(ExpireRoleRequestSchema)
+    responses = SwaggerApiView.setResponses({204: {"description": "no response"}})
+
+    def delete(self, controller: AuthController, data, oid, days, *args, **kwargs):
+        """
+        Expure role
+        Call this api to expire a role
+        """
+        # from beecell.simple import id_gen
+        self.logger.debug("ExpireRole - delete - days: %s" % days)
+
+        role = controller.get_role(oid)
+        num_days = int(days)
+        expiry_date = datetime.today() + timedelta(days=num_days)
+        new_name = role.name  # + "%s-DELETED" % id_gen()
+
+        res = role.update(
+            expiry_date=expiry_date,
+            # modification_date=datetime.today(),
+            name=new_name,
+            # active=False
+        )
+        return res, 204
 
 
 #
@@ -1617,7 +1672,7 @@ class ListObjectPerms(SwaggerApiView):
             and type is None
             and oid is None
         ):
-            raise ApiManagerError("No parameters when qeryin permisssions", code=400)
+            raise ApiManagerError("No parameters when querying permissions", code=400)
 
         if objid is not None:
             data["objid"] = objid.replace("_", "//")
@@ -1707,6 +1762,7 @@ class AuthorizationAPI(ApiView):
             ("%s/roles" % module.base_path, "POST", CreateRole, {}),
             ("%s/roles/<oid>" % module.base_path, "PUT", UpdateRole, {}),
             ("%s/roles/<oid>" % module.base_path, "DELETE", DeleteRole, {}),
+            ("%s/roles/<oid>/expire/<days>" % module.base_path, "DELETE", ExpireRole, {}),
             ("%s/groups" % module.base_path, "GET", ListGroups, {}),
             ("%s/groups/<oid>" % module.base_path, "GET", GetGroup, {}),
             ("%s/groups" % module.base_path, "POST", CreateGroup, {}),

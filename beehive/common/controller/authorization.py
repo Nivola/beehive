@@ -1,28 +1,40 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2023 CSI-Piemonte
+# (C) Copyright 2018-2024 CSI-Piemonte
 
 import binascii
+from datetime import datetime, timedelta
 import pickle
-import ujson as json
-from logging import getLogger
 from six import ensure_text
+import ujson as json
+from zlib import compress
+from logging import getLogger
 from beecell.auth import AuthError, IdentityMgr
+from beecell.crypto_util.rsa_crypto import RasCrypto
+from beecell.db import QueryError, TransactionError
 from beehive.common.apimanager import ApiController, ApiManagerError, ApiInternalObject
 from beehive.common.model.authorization import AuthDbManager
-from beecell.db import QueryError, TransactionError
 from ipaddress import IPv4Network
 from beecell.simple import truncate, id_gen, token_gen, dict_get
 from beehive.common.data import operation, trace
-from zlib import compress
-from datetime import datetime, timedelta
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import serialization
 from beehive.common.model.authorization import User as ModelUser
 from beecell.debug import dbgprint
 
 # from beecell.simple import jsonDumps
+
+
+class AuthObject(ApiInternalObject):
+    module = "AuthModule"
+
+
+class User(AuthObject):
+    objdef = "User"
+    objdesc = "System users"
+
+
+class Token(AuthObject):
+    objdef = "Token"
+    objdesc = "Authorization Token"
 
 
 class AuthenticationManager(object):
@@ -658,21 +670,12 @@ class BaseAuthController(ApiController):
         try:
             uid = token_gen()
             timestamp = datetime.now()
-            private_key = rsa.generate_private_key(public_exponent=65537, key_size=1024, backend=default_backend())
-            public_key = private_key.public_key()
-            pem = public_key.public_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PublicFormat.SubjectPublicKeyInfo,
-            )
-            pubkey = binascii.b2a_base64(pem)
-            pem = private_key.private_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PrivateFormat.TraditionalOpenSSL,
-                encryption_algorithm=serialization.NoEncryption(),
-            )
-            seckey = binascii.b2a_base64(pem)
+            rsa_crypto = RasCrypto()
+            private_key = rsa_crypto.generate_private_key()
+            pubkey = rsa_crypto.get_public_key_pem(private_key)
+            seckey = rsa_crypto.get_private_key_pem(private_key)
 
-            # create identity
+            # Create the identity dictionary
             identity = {
                 "uid": uid,
                 "type": "keyauth",
@@ -870,17 +873,3 @@ class BaseAuthController(ApiController):
             raise ApiManagerError(ex, code=400)
 
         return res
-
-
-class AuthObject(ApiInternalObject):
-    module = "AuthModule"
-
-
-class User(AuthObject):
-    objdef = "User"
-    objdesc = "System users"
-
-
-class Token(AuthObject):
-    objdef = "Token"
-    objdesc = "Authorization Token"

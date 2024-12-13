@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2023 CSI-Piemonte
+# (C) Copyright 2018-2024 CSI-Piemonte
 
 from uuid import uuid4
 
@@ -10,14 +10,10 @@ import ssl
 from copy import deepcopy
 from time import time, sleep
 from logging import getLogger
-from Crypto.Hash import SHA256
-from Crypto.PublicKey import RSA
-from Crypto.Signature import PKCS1_v1_5
-from Crypto.Random import atfork
 import binascii
 from beecell.remote import NotFoundException
 from beecell.types.type_string import truncate
-from beecell.crypto import check_vault
+from beecell.crypto import check_vault, sign_data
 from beecell.password import obscure_data, obscure_string
 from multiprocessing import current_process
 from base64 import b64encode, b64decode
@@ -76,7 +72,6 @@ class BeehiveApiClient(object):
         if pwd is not None:
             pwd = check_vault(pwd, key)
 
-        # atfork()
         self.pid = current_process().ident
 
         if len(auth_endpoints) > 0:
@@ -207,28 +202,7 @@ class BeehiveApiClient(object):
         :rtype: str
         """
         try:
-            # if current_process().ident != self.pid:
-            #     atfork()
-
-            # import key
-            seckey = binascii.a2b_base64(seckey64)
-            key = RSA.importKey(seckey)
-
-            # create data hash
-            if PY3:
-                hash_data = SHA256.new()
-                hash_data.update(bytes(data, encoding="utf-8"))
-            else:
-                hash_data = SHA256.new(data)
-
-            # sign data
-            signer = PKCS1_v1_5.new(key)
-            signature = signer.sign(hash_data)
-
-            # encode signature in base64
-            signature64 = ensure_text(binascii.b2a_hex(signature))
-
-            return signature64
+            return sign_data(seckey64, data)
         except Exception as ex:
             self.logger.error(ex, exc_info=True)
             raise BeehiveApiClientError("Error signing data: %s" % data, code=401)
@@ -1980,6 +1954,7 @@ class BeehiveApiClient(object):
         :raises BeehiveApiClientError: raise :class:`BeehiveApiClientError`
         """
         # get user
+        user = None
         if oid is not None:
             uri = "/v1.0/gas/users/%s" % oid
             user = self.invoke("ssh", uri, "GET", "", parse=True, silent=True).get("user")
@@ -1987,8 +1962,15 @@ class BeehiveApiClient(object):
             uri = "/v1.0/gas/users"
             data = urlencode({"node_id": node_id, "username": username})
             res = self.invoke("ssh", uri, "GET", data, parse=True, silent=True).get("users")
-            user = res[0]
-        user["password"] = "xxx"
+            if len(res) > 0:
+                user = res[0]  # get first user
+
+        if user is None:
+            self.logger.error("user not found: %s in node: %s" % (username, node_id))
+            return None
+
+        # user["username"]
+        user["password"] = "xxx"  # after set password
         user["ssh_key_data"] = None
         self.logger.debug("Get ssh user %s: %s" % (oid, user))
 

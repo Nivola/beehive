@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2023 CSI-Piemonte
+# (C) Copyright 2018-2024 CSI-Piemonte
 
 from datetime import datetime
 from re import match
@@ -137,6 +137,7 @@ class AuthController(BaseAuthController):
                 iroles, total = self.manager.get_user_roles(*args, **kvargs)
                 roles = []
                 for role in iroles:
+                    self.logger.debug("+++++ role: %s" % role)
                     role[0].expiry_date = role[1]
                     roles.append(role[0])
 
@@ -146,6 +147,7 @@ class AuthController(BaseAuthController):
                 iroles, total = self.manager.get_group_roles(*args, **kvargs)
                 roles = []
                 for role in iroles:
+                    self.logger.debug("+++++ role: %s" % role)
                     role[0].expiry_date = role[1]
                     roles.append(role[0])
 
@@ -473,6 +475,8 @@ class AuthController(BaseAuthController):
         base=False,
         system=False,
         email=None,
+        taxcode=None,
+        ldap=None,
     ):
         """Add new user.
 
@@ -503,6 +507,8 @@ class AuthController(BaseAuthController):
                 is_generic=base,
                 is_admin=system,
                 email=email,
+                taxcode=taxcode,
+                ldap=ldap,
             )
             # add object and permission
             obj = User(

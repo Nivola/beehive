@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2023 CSI-Piemonte
+# (C) Copyright 2018-2024 CSI-Piemonte
 
 from flask import request
-from beecell.simple import get_remote_ip
+from beecell.flask.api_util import get_remote_ip
 from beecell.swagger import SwaggerHelper
 from beehive.common.apimanager import ApiView, SwaggerApiView
 from beehive.common.data import operation

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2023 CSI-Piemonte
+# (C) Copyright 2018-2024 CSI-Piemonte
 
 import logging
 from beecell.logger.helper import ExtendedLogger
@@ -98,6 +98,17 @@ class Audit(CurrentLocal):
         return self
 
     def send_audit(self, elastic: Elasticsearch, **kwargs):
+        import os
+
+        api_env = os.getenv("API_ENV", "<superunknown>")
+        # logger.debug("+++++ api_env: %s" % api_env)
+        if api_env.startswith("lab"):
+            logger.info("send_audit ignored it is a lab")
+            return
+        if elastic is None:
+            logger.info("send_audit ignored elastic is NONE")
+            return
+
         try:
             if self.user == "":
                 if hasattr(operation, "user"):

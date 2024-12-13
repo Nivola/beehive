@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2023 CSI-Piemonte
+# (C) Copyright 2018-2024 CSI-Piemonte
 
 import inspect
 import logging
@@ -20,6 +20,7 @@ from beecell.db import ModelError, QueryError
 from beehive.common.data import query, transaction, decrypt_data
 from sqlalchemy.dialects import mysql
 from typing import List
+from re import match
 
 Base = declarative_base()
 
@@ -148,7 +149,7 @@ class Role(Base):
     template = Column(Integer())
     creation_date = Column(DateTime())
     modification_date = Column(DateTime())
-    # expiry_date = Column(DateTime())
+    expiry_date = Column(DateTime())
 
     def __init__(self, objid, name, permission, desc="", active=True, alias=""):
         BaseEntity.__init__(self, objid, name, desc, active)
@@ -162,6 +163,7 @@ class Role(Base):
         self.modification_date = self.creation_date
         self.permission = permission
         self.alias = alias
+        self.expiry_date = None
 
 
 # Systems roles
@@ -218,6 +220,8 @@ class User(Base, BaseEntity):
     role = relationship("RoleUser", back_populates="user")
     attrib = relationship("UserAttribute")
     last_login = Column(DateTime())
+    taxcode = Column(String(16))
+    ldap = Column(String(100))
 
     def __init__(
         self,
@@ -228,6 +232,8 @@ class User(Base, BaseEntity):
         desc="",
         expiry_date=None,
         email=None,
+        taxcode=None,
+        ldap=None,
     ):
         BaseEntity.__init__(self, objid, name, desc, active)
 
@@ -246,6 +252,8 @@ class User(Base, BaseEntity):
         self.secret = random_password(length=100)
         self.last_login = None
         self.email = email
+        self.taxcode = taxcode
+        self.ldap = ldap
 
     def _check_password(self, password):
         # verifying the password
@@ -744,12 +752,21 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
         # get total rows
         total = session.execute(" ".join(sqlcount), params).fetchone()[0]
 
-        offset = size * page
         sql.append("ORDER BY %s %s" % (field, order))
-        sql.append("LIMIT %s OFFSET %s" % (size, offset))
 
-        res = session.query(SysObject).from_statement(text(" ".join(sql))).params(params).all()
+        if size > 0:
+            offset = size * page
+            sql.append("LIMIT %s OFFSET %s" % (size, offset))
+        elif size == -1:
+            sql.append("LIMIT 10000")
+        else:
+            sql.append("LIMIT %s" % (size))
 
+        query = session.query(SysObject).from_statement(text(" ".join(sql))).params(params)
+        self.logger.debug2("+++++ SQL - stmp: %s" % query.statement.compile(dialect=mysql.dialect()))
+        self.logger.debug2("+++++ SQL - params: %s" % truncate(params, size=2000))
+
+        res = query.all()
         if len(res) <= 0:
             self.logger.error("No objects (%s, %s, %s, %s) found" % (oid, objid, objdef, objtype))
             raise ModelError("No objects (%s, %s, %s, %s) found" % (oid, objid, objdef, objtype))
@@ -1323,6 +1340,10 @@ class AuthDbManager(AbstractAuthDbManager, AbstractDbManager):
             filters.append("AND t3.name like :names")
         if kvargs.get("alias", None) is not None:
             filters.append("AND t3.alias like :alias")
+
+        filters.append("AND t3.active=1")
+        filters.append("AND (t3.expiry_date IS NULL OR t3.expiry_date > NOW()) ")
+
         res, total = self.get_paginated_entities(Role, filters=filters, *args, **kvargs)
 
         return res, total
@@ -1698,7 +1719,7 @@ WHERE
         session = self.get_session()
         query = PaginatedQueryGenerator(Role, session, other_entities=[RoleGroup.expiry_date])
         query.add_table("roles_groups", "t4")
-        query.add_select_field("t4.expiry_date")
+        query.add_select_field("t4.expiry_date as roles_users_expiry_date")
         query.add_filter("AND t4.role_id=t3.id")
         if group_id is not None:
             query.add_filter("AND t4.group_id=:group_id")
@@ -2017,11 +2038,22 @@ WHERE
         """
         filters = []
         email = kvargs.get("email", None)
+        taxcode = kvargs.get("taxcode", None)
+        ldap = kvargs.get("ldap", None)
         expiry_date = kvargs.get("expiry_date", None)
+
         if email is not None:
             filters.append("AND t3.email=:email")
+
+        if taxcode is not None:
+            filters.append("AND t3.taxcode=:taxcode")
+
+        if ldap is not None:
+            filters.append("AND t3.ldap=:ldap")
+
         if expiry_date is not None:
             filters.append("AND expiry_date>=:expiry_date")
+
         res, total = self.get_paginated_entities(User, filters=filters, *args, **kvargs)
 
         return res, total
@@ -2053,9 +2085,11 @@ WHERE
         session = self.get_session()
         query = PaginatedQueryGenerator(Role, session, other_entities=[RoleUser.expiry_date])
         query.add_table("roles_users", "t4")
-        query.add_select_field("t4.expiry_date")
+        query.add_select_field("t4.expiry_date as roles_users_expiry_date")
         query.add_filter("AND t4.role_id=t3.id")
         query.add_filter("AND t4.user_id=:user_id")
+        query.add_filter("AND t3.active=1")
+        query.add_filter("AND (t3.expiry_date IS NULL OR t3.expiry_date > NOW()) ")
         query.set_pagination(page=page, size=size, order=order, field=field)
         res = query.run(tags, user_id=user_id, *args, **kvargs)
         return res
@@ -2250,7 +2284,7 @@ WHERE
     def add_user(
         self,
         objid,
-        name,
+        name: str,
         active=True,
         password=None,
         desc="",
@@ -2258,6 +2292,8 @@ WHERE
         is_generic=False,
         is_admin=False,
         email=None,
+        taxcode=None,
+        ldap=None,
     ):
         """Add user.
 
@@ -2274,8 +2310,34 @@ WHERE
         :return: :class:`User`
         :raises TransactionError: raise :class:`TransactionError`
         """
-        if email is None:
+        if not match("[a-zA-z0-9\.]+@[a-zA-z0-9\.]+", name):
+            raise Exception("Name is not correct. Name syntax is <name>@<domain>")
+
+        i_at = name.index("@")
+        domain = name[i_at:]
+        domains = ["@local", "@portal", "@domnt.csi.it", "@fornitori.nivola"]
+        if domain not in domains:
+            raise Exception("Name is not correct. Domain not valid")
+
+        if email is not None:
+            from beecell.sendmail import check_email
+
+            if not check_email(email):
+                raise Exception("Email is not valid")
+        else:
+            # ???
             email = name
+
+        if taxcode is not None:
+            from beecell.checks import check_tax_code
+
+            if not check_tax_code(taxcode):
+                raise Exception("Taxcode is not correct")
+
+        if ldap is not None:
+            if not match("[a-zA-z0-9\.]+@[a-zA-z0-9\.]+", ldap):
+                raise Exception("Ldap is not correct. Ldap syntax is <name>@<domain>")
+
         user = self.add_entity(
             User,
             objid,
@@ -2285,6 +2347,8 @@ WHERE
             desc=desc,
             expiry_date=expiry_date,
             email=email,
+            taxcode=taxcode,
+            ldap=ldap,
         )
 
         # create user role
@@ -2325,11 +2389,32 @@ WHERE
         :param expiry_date: user expiry date. Set using a datetime object [optional]
         :raises TransactionError: raise :class:`TransactionError`
         """
+        email = kvargs.get("email", None)
+        taxcode = kvargs.get("taxcode", None)
+        ldap = kvargs.get("ldap", None)
+
+        if email is not None:
+            from beecell.sendmail import check_email
+
+            if not check_email(email):
+                raise Exception("Email is not valid")
+
+        if taxcode is not None:
+            from beecell.checks import check_tax_code
+
+            if not check_tax_code(taxcode):
+                raise Exception("Taxcode is not correct")
+
+        if ldap is not None:
+            if not match("[a-zA-z0-9\.]+@[a-zA-z0-9\.]+", ldap):
+                raise Exception("Ldap is not correct. Ldap syntax is <name>@<domain>")
+
         # generate new salt, and hash a password
         password = kvargs.get("password", None)
         if password is not None:
             password = password.encode("utf-8")
             kvargs["password"] = bcrypt.hashpw(password, bcrypt.gensalt(14))
+
         res = self.update_entity(User, *args, **kvargs)
         return res
 

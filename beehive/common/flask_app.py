@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2023 CSI-Piemonte
+# (C) Copyright 2018-2024 CSI-Piemonte
 
 import logging
 from uuid import uuid4
@@ -19,6 +19,9 @@ from beehive.common.apimanager import ApiManager
 from beehive.common.data import operation
 
 logger = logging.getLogger(__name__)
+ENABLE_PROFILER = False
+# Uncomment this line to enable the profiler
+# ENABLE_PROFILER = True
 
 
 class BeehiveAppError(Exception):
@@ -89,17 +92,6 @@ class BeehiveApp(Flask):
         # self._register_error_handler(None, 404, error404)
         self.register_error_handler(404, error404)
 
-        # def error500(e):
-        #     operation.id = str(uuid4())
-        #     error = {
-        #         'code': 404,
-        #         'message': e,
-        #         'description': e
-        #     }
-        #     logger.error('Api response: %s' % error)
-        #     return Response(response=json.dumps(error), mimetype='application/json', status=404)
-        # self._register_error_handler(None, 500, error500)
-
         # setup loggers
         loggin_level = int(self.params["api_logging_level"])
 
@@ -119,18 +111,7 @@ class BeehiveApp(Flask):
         self.api_manager = ApiManager(self.params, app=self, hostname=self.server_ip)
 
         # server configuration
-        # self.api_manager.configure_logger()
         self.api_manager.configure()
-        # self.get_configurations()
-
-        # setup additional handler
-        # if self.api_manager.elasticsearch is not None:
-        #     tags = []
-        #     frmt = '{"timestamp":"%(asctime)s","levelname":"%(levelname)s","process":"%(process)s",' \
-        #            '"thread":"%(thread)s","module":"%(name)s","func":"%(funcName)s","lineno":"%(lineno)d",' \
-        #            '"api_id":"%(api_id)s","message":"%(message)s"}'
-        #     self.setup_additional_loggers(self.api_manager.elasticsearch, level=loggin_level, tags=tags, frmt=frmt,
-        #                                   server=self.server_name, app=self.app_id, env=self.app_env, component='api')
 
         # load modules
         self.api_manager.register_modules()
@@ -140,6 +121,11 @@ class BeehiveApp(Flask):
 
         logger.info("Setup server over: %s" % self.api_manager.app_uri)
         logger.info("Setup server over: %s" % self.api_manager.uwsgi_uri)
+
+        if ENABLE_PROFILER:
+            from werkzeug.middleware.profiler import ProfilerMiddleware
+
+            self.wsgi_app = ProfilerMiddleware(self.wsgi_app)
 
         logger.info("########## SERVER STARTED ########## - %s" % round(time() - start, 2))
 
@@ -176,31 +162,6 @@ class BeehiveApp(Flask):
             "%(name)s:%(funcName)s:%(lineno)d | %(message)s"
         )
         LoggerHelper.simple_handler(loggers, level, frmt=frmt, formatter=None, handler=K8shHandler)
-
-    # def setup_additional_loggers(self, elasticsearch, level=LoggerHelper.DEBUG, tags=[], **custom_fields):
-    #     """Setup loggers
-    #
-    #     :param elasticsearch: elasticsearch.Elasticsearch class instance
-    #     :param level:
-    #     :return:
-    #     """
-    #     loggers = [
-    #         logger,
-    #         logging.getLogger('oauthlib'),
-    #         logging.getLogger('beehive'),
-    #         logging.getLogger('beehive.db'),
-    #         logging.getLogger('beecell'),
-    #         logging.getLogger('beedrones'),
-    #         logging.getLogger('beehive_oauth2'),
-    #         logging.getLogger('beehive_service'),
-    #         logging.getLogger('beehive_service_netaas'),
-    #         logging.getLogger('beehive_resource'),
-    #         logging.getLogger('beehive_ssh'),
-    #         # logging.getLogger('beehive.common.data')
-    #     ]
-    #     # LoggerHelper.DEBUG2
-    #     index = 'cmp-%s' % ensure_text(custom_fields['env'])
-    #     LoggerHelper.elastic_handler(loggers, level, elasticsearch, index=index, tags=tags, **custom_fields)
 
     def open_db_session(self):
         """Open database session."""

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2024 CSI-Piemonte
 
 swagger: "2.0"
 info:
@@ -15,7 +15,7 @@ info:
   # termsOfService: http://me.com/terms
   version: 1.0.0
 host:
-schemes: 
+schemes:
   - http
   - https
 consumes:
@@ -45,56 +45,56 @@ responses:
   DefaultError:
     description: Defualt error syntax
     schema:
-      $ref: "#/definitions/Error" 
+      $ref: "#/definitions/Error"
   InternalServerError:
-    description: The operation failed. An unexpected exception occurred while 
-                 executing the operation. The response-body contains details 
-                 about the error.               
+    description: The operation failed. An unexpected exception occurred while
+                 executing the operation. The response-body contains details
+                 about the error.
   BadRequest:
-    description: The specified resource was not found. Syntax like default.      
+    description: The specified resource was not found. Syntax like default.
   NotFound:
     description: The operation failed.The requested resource was not found.
-                  Syntax like default.    
+                  Syntax like default.
   Unauthorized:
-    description: The operation failed. The operation requires an 
-                 Authentication header to be set. If this was present 
-                 in the request, the supplied credentials are not valid 
+    description: The operation failed. The operation requires an
+                 Authentication header to be set. If this was present
+                 in the request, the supplied credentials are not valid
                  or the user is not authorized to perform this operation.
-                  Syntax like default.              
+                  Syntax like default.
   Forbidden:
-    description: The operation is forbidden and should not be re-attempted. This 
-                 does not imply an issue with authentication not authorization, 
-                 it is an operation that is not allowed. Example. deleting a 
-                 task that is part of a running process is not allowed and will 
+    description: The operation is forbidden and should not be re-attempted. This
+                 does not imply an issue with authentication not authorization,
+                 it is an operation that is not allowed. Example. deleting a
+                 task that is part of a running process is not allowed and will
                  never be allowed, regardless of the user or process/task state.
-                  Syntax like default.               
+                  Syntax like default.
   MethodAotAllowed:
-    description: The operation failed. The used method is not allowed for this 
-                 resource. E.g. trying to update (PUT) a deployment-resource 
+    description: The operation failed. The used method is not allowed for this
+                 resource. E.g. trying to update (PUT) a deployment-resource
                  will result in a 405 status.
-                  Syntax like default.                   
+                  Syntax like default.
   NotAcceptable:
-    description: Not acceptable. Syntax like default.      
+    description: Not acceptable. Syntax like default.
   Timeout:
     description: Operation timeout. Syntax like default.
   Conflict:
-    description: The operation failed. The operation causes an update of a 
-                 resource that has been updated by another operation, which 
-                 makes the update no longer valid. Can also indicate a resource 
-                 that is being created in a collection where a resource with 
+    description: The operation failed. The operation causes an update of a
+                 resource that has been updated by another operation, which
+                 makes the update no longer valid. Can also indicate a resource
+                 that is being created in a collection where a resource with
                  that identifier already exists.
                   Syntax like default.
   UnsupportedMediaType:
-    description: The operation failed. The request body contains an unsupported 
-                 media type. Also occurs when the request-body JSON contains an 
-                 unknown attribute or value that doesn’t have the right 
+    description: The operation failed. The request body contains an unsupported
+                 media type. Also occurs when the request-body JSON contains an
+                 unknown attribute or value that doesn’t have the right
                  format/type to be accepted.
                   Syntax like default.
   Gone:
     description: Indicates that the resource at this end point is no longer available.
                   Syntax like default.
   UnprocessableEntity:
-    description: The request was well-formed but was unable to be followed due 
+    description: The request was well-formed but was unable to be followed due
                  to semantic errors. Syntax like default.
   TooManyRequests:
     description: The user has sent too many requests in a given amount of time.
@@ -114,4 +114,3 @@ definitions:
       description:
         type: string
         example: Some error description
-                   

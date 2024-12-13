@@ -1,48 +1,47 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2023 CSI-Piemonte
+# (C) Copyright 2018-2024 CSI-Piemonte
 
-import logging
-from modulefinder import Module
-import time
-import binascii
-import pickle
-import redis
-import ujson as json
+from logging import Logger, getLogger
+from time import time
+from typing import List
 from zlib import decompress
 from uuid import uuid4
 from base64 import b64decode
+from binascii import a2b_base64, a2b_hex
+from typing import List, Union, Callable
 from re import match
-from Crypto.PublicKey import RSA
-from Crypto.Hash import SHA256
-from Crypto.Signature import PKCS1_v1_5
 from datetime import datetime
-from flask import request, Response, session
+from copy import deepcopy
+from Crypto.Hash import SHA256
+from six import ensure_text
+import ujson as json
+from flask import request, Response, session, current_app
 from flask.views import MethodView as FlaskView
 from flask_session import Session
-from flask import current_app
-from six import ensure_text
+from flask_session.sessions import RedisSessionInterface
+import redis
+from beecell.crypto import verify_data, compute_sha256_hexdigest
 from beecell.cache.client import CacheClient
 from beecell.db import TransactionError, QueryError
-from beecell.db.manager import MysqlManager, SqlManagerError, RedisManager
+from beecell.db.manager import MysqlManager, SqlManagerError, RedisManager, parse_redis_uri
 from beecell.auth import extract, IdentityMgr, AuthError
-from beecell.db.manager import parse_redis_uri
 from beecell.password import obscure_data
 from beecell.file import read_file
 from beecell.types.type_class import get_class_methods_by_decorator
 from beecell.types.type_string import truncate, str2bool
 from beecell.types.type_date import format_date
-from beecell.types.type_dict import dict_get
-from beecell.simple import import_class, get_class_name, get_remote_ip, dynamic_import
+from beecell.simple import import_class, get_class_name, dynamic_import, jsonDumps
+from beecell.flask.api_util import get_remote_ip
 from beecell.sendmail import Mailer
-from beehive.common.data import operation, trace
+from beehive.common.data import operation, trace, encrypt_data, decrypt_data
 from beehive.common.audit import Audit, initAudit, localAudit
 from beecell.auth import DatabaseAuth, LdapAuth, SystemUser
 from beehive.common.apiclient import BeehiveApiClient, BeehiveApiClientError
+from beehive.common.model import AbstractDbManager
 from beehive.common.model.config import ConfigDbManager
 from beehive.common.model.authorization import AuthDbManager, Role
 from dict2xml import dict2xml
-from beecell.simple import jsonDumps
 
 try:
     from beehive.common.event import EventProducerKombu
@@ -52,9 +51,6 @@ try:
     from beecell.server.uwsgi_server.wrapper import uwsgi_util
 except Exception:
     pass
-from copy import deepcopy
-from flask_session.sessions import RedisSessionInterface
-from beehive.common.data import encrypt_data, decrypt_data
 from elasticsearch import Elasticsearch
 from flasgger import Swagger, SwaggerView
 from marshmallow import fields, Schema, ValidationError
@@ -64,7 +60,13 @@ from typing import List, Type, Tuple, Any, Union, Dict, Callable, Union
 
 ## from beecell.debug import dbgprint
 
-logger = logging.getLogger(__name__)
+logger = getLogger(__name__)
+
+
+class ApiMethod(object):
+    objtype = "ApiMethod"
+    objdef = "ApiMethod"
+    objdesc = "Api Method"
 
 
 class ApiMethod(object):
@@ -139,7 +141,7 @@ class ApiManager(object):
     """
 
     def __init__(self, params, app=None, hostname=None):
-        self.logger = logging.getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
+        self.logger = getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
 
         # configuration params
         self.params = params
@@ -249,6 +251,7 @@ class ApiManager(object):
 
         # api listener
         self.api_timeout = float(self.params.get("api_timeout", 10.0))
+        self.api_timeout_max = float(self.params.get("api_timeout_max", 3600.0))
 
         # api endpoints
         self.endpoints = []
@@ -455,31 +458,18 @@ class ApiManager(object):
         pubkey64 = identity["pubkey"]
 
         try:
-            # import key
-            signature = binascii.a2b_hex(sign)
-            pub_key = binascii.a2b_base64(pubkey64)
-            key = RSA.importKey(pub_key)
-
-            # create data hash
-            hash_data = SHA256.new()
-            hash_data.update(bytes(data, encoding="utf-8"))
-
-            # verify sign
-            verifier = PKCS1_v1_5.new(key)
-            res = verifier.verify(hash_data, signature)
-        except Exception:
-            self.logger.error("Data signature for identity %s is not valid" % uid)
-            raise ApiManagerError("Data signature for identity %s is not valid" % uid, code=401)
+            res = verify_data(pubkey64, data, sign)
+        except Exception as ex:
+            self.logger.error("Excp Data signature for identity %s is not valid %s", uid, ex)
+            raise ApiManagerError(f"Exception Data signature for identity {uid} is not valid", code=401)
 
         # extend expire time of the redis key
         if res is True:
             idmg.reset_ttl()
-            # self.redis_identity_manager.conn.expire(self.prefix + uid, self.expire)
-            # self.redis_identity_manager.conn.expire(self.prefix_index + dict_get(identity, "user.id"), self.expire)
             self.logger.debug("Data signature %s for identity %s is valid. Extend expire." % (sign, uid))
         else:
             self.logger.error("Data signature for identity %s is not valid" % uid)
-            raise ApiManagerError("Data signature for identity %s is not valid" % uid, code=401)
+            raise ApiManagerError(f"Data signature for identity {uid} is not valid", code=401)
 
         return identity
 
@@ -535,7 +525,7 @@ class ApiManager(object):
                 api_plugin_num = int(self.params["api_plugin"]) + 1
                 start_idx = 1
 
-            plugin_pkgs = []
+            plugin_pkgs: List[str] = []
             for i in range(start_idx, api_plugin_num):
                 if is_list:
                     plugin_pkgs.append(ensure_text(self.params["api_plugin"][i]))
@@ -700,18 +690,31 @@ class ApiManager(object):
                     parsed_uri = parse_redis_uri(redis_uri)
 
                     # set redis manager
-                    self.redis_manager = None
                     if parsed_uri["type"] == "single":
-                        self.redis_manager = redis.StrictRedis(
-                            host=parsed_uri["host"],
-                            port=parsed_uri["port"],
-                            password=parsed_uri.get("pwd", None),
-                            db=parsed_uri["db"],
-                            socket_timeout=30,
-                            socket_connect_timeout=30,
+                        self.redis_manager = RedisManager(redis_uri, timeout=30, max_connections=200)
+                        # self.redis_manager = redis.StrictRedis(
+                        #     host=parsed_uri["host"],
+                        #     port=parsed_uri["port"],
+                        #     password=parsed_uri.get("pwd", None),
+                        #     db=parsed_uri["db"],
+                        #     socket_timeout=30,
+                        #     socket_connect_timeout=30,
+                        # )
+                    elif parsed_uri["type"] == "sentinel":
+                        port = parsed_uri["port"]
+                        pwd = parsed_uri["pwd"]
+                        self.redis_manager = RedisManager(
+                            None,
+                            timeout=30,
+                            max_connections=200,
+                            sentinels=[(host, port) for host in parsed_uri["hosts"]],
+                            sentinel_name=parsed_uri["group"],
+                            sentinel_pwd=pwd,
+                            db=0,
+                            pwd=pwd,
                         )
 
-                    self.logger.info("Configure redis - CONFIGURED")
+                    self.logger.info("Configure redis - %s - CONFIGURED" % redis_uri)
                 else:
                     self.logger.warning("Configure redis - NOT CONFIGURED", exc_info=True)
 
@@ -1365,7 +1368,7 @@ class ApiModule(object):
     """
 
     def __init__(self, api_manager: ApiManager, name: str):
-        self.logger = logging.getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
+        self.logger = getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
 
         self.api_manager: ApiManager = api_manager
         self.name: str = name
@@ -1462,7 +1465,7 @@ class ApiController(object):
     """
 
     def __init__(self, module: ApiModule):
-        self.logger: logging.Logger = logging.getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
+        self.logger: Logger = getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
 
         self.module = module
         self.version = "v1.0"
@@ -1615,7 +1618,11 @@ class ApiController(object):
         """
         try:
             mod = dynamic_import(package)
-            res = {"name": package, "version": mod.__version__}
+            res = {
+                "name": package,
+                "version": mod.__version__,
+                "git_last_commit": mod.__git_last_commit__,
+            }
         except Exception:
             res = None
 
@@ -1648,6 +1655,27 @@ class ApiController(object):
         except Exception as ex:
             self.logger.error(ex)
             raise ApiManagerError(ex, code=8000)
+
+    def image_info(self):
+        import os
+
+        CMP_GIT_BRANCH = os.getenv("CMP_GIT_BRANCH")
+        CMP_IMG_CREATE_DATE_FILE = os.getenv("CMP_IMG_CREATE_DATE_FILE")
+        img_date = ""
+        try:
+            self.logger.debug("image_info - CMP_IMG_CREATE_DATE_FILE: %s" % CMP_IMG_CREATE_DATE_FILE)
+            with open(CMP_IMG_CREATE_DATE_FILE) as f:
+                img_date = f.read()
+                self.logger.debug("image_info - img_date: %s" % img_date)
+        except Exception as ex:
+            self.logger.error(ex, exc_info=True)
+            pass
+
+        res_image = {
+            "branch": CMP_GIT_BRANCH,
+            "date_created": img_date,
+        }
+        return res_image
 
     #
     # query log
@@ -1847,6 +1875,7 @@ class ApiController(object):
             self.logger.debug2("can - action, objtype, definition - %s, %s, %s" % (action, objtype, definition))
 
             res = {}
+            self.logger.debug2("can - operation.perms: %s" % operation.perms)
             for perm in operation.perms:
                 # perm = (0-pid, 1-oid, 2-type, 3-definition, 4-objid, 5-aid, 6-action)
                 # Es: (5, 1, 'resource', 'container.org.group.vm', 'c1.o1.g1.*', 6, 'use')
@@ -1982,6 +2011,62 @@ class ApiController(object):
             raise ApiManagerError(msg, code=403)
         return res
 
+    def is_admin_service(self):
+        # To avoid reference su Service module, set string value reference
+        # from beehive_service.controller.api_account import ApiAccount
+        # objtype = ApiAccount.objtype
+        objtype = "service"
+        # objdef = ApiAccount.objdef
+        objdef = "Organization.Division.Account"
+        objid = "*//*//*"
+        action = "*"
+
+        try:
+            objs = self.can(action, objtype, definition=objdef)
+            # check authorization
+            objset = set(objs[objdef.lower()])
+
+            # create needs
+            needs = self.get_needs(objid.split("//"))
+
+            # check needs overlaps perms
+            res = self.has_needs(needs, objset)
+            if res is False:
+                raise ApiManagerError("")
+            self.logger.debug2("check authorization service OK")
+            return True
+        except ApiManagerError as ae:
+            self.logger.error(ae, exc_info=True)
+            return False
+
+    def is_admin_resource(self):
+        # To avoid reference su Resource module, set string value reference
+        # from beehive_resource.plugins.provider.entity.zone import AvailabilityZone
+        # objtype = AvailabilityZone.objtype
+        objtype = "resource"
+        # objdef = AvailabilityZone.objdef
+        objdef = "Provider.Region.Site.AvailabilityZone"
+        objid = "*//*//*//*"
+        action = "*"
+
+        try:
+            objs = self.can(action, objtype, definition=objdef)
+            # check authorization
+            objset = set(objs[objdef.lower()])
+
+            # create needs
+            needs = self.get_needs(objid.split("//"))
+
+            # check needs overlaps perms
+            res = self.has_needs(needs, objset)
+            if res is False:
+                raise ApiManagerError("")
+            self.logger.debug2("check authorization resource OK")
+            return True
+        except ApiManagerError as ae:
+            self.logger.error(ae, exc_info=True)
+            return False
+
     #
     # encryption method
     #
@@ -2062,7 +2147,8 @@ class ApiController(object):
         :raise ApiManagerError`:
         """
         try:
-            entity = self.manager.get_entity(model_class, oid, for_update, *args, **kvargs)
+            dbManager: AbstractDbManager = self.manager
+            entity = dbManager.get_entity(model_class, oid, for_update, *args, **kvargs)
         except QueryError as ex:
             self.logger.error(ex, exc_info=True)
             entity_name = entity_class.__name__
@@ -2289,7 +2375,7 @@ class ApiObject(object):
         active=None,
         model=None,
     ):
-        self.logger = logging.getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
+        self.logger = getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
 
         self.controller = controller
         self.model = model  # db model if exist
@@ -2436,7 +2522,6 @@ class ApiObject(object):
         task_path=None,
         task_name="scheduled_action_task",
     ):
-        """"""
         if task_path is None:
             task_path = "beehive.module.scheduler_v2.tasks.ScheduledActionTask."
         task = task_path + task_name
@@ -2502,14 +2587,13 @@ class ApiObject(object):
 
         :return: None if runstate does not exist
         """
-        ret = self.controller.cache.get(cache_key)
-        if operation.cache is False or cache is False or ret is None or ret == {} or ret == []:
+        cache = self.controller.cache
+        ret = cache.get(cache_key)
+        if ret is None or ret == {} or ret == [] or not operation.cache or not cache:
             ret = func(*args, **kwargs)
-
             # save data in cache
-            self.controller.cache.set(cache_key, ret, ttl=ttl)
-
-        self.logger.debug2("cache data from func %s: %s" % (func.__name__, ret))
+            cache.set(cache_key, ret, ttl=ttl)
+        # self.logger.debug2(f"cache data from func {func.__name__}: {ret}")
         return ret
 
     #
@@ -2654,7 +2738,9 @@ class ApiObject(object):
             ids = self.get_all_valid_objids(args)
             for i in ids:
                 perm = "%s-%s" % (self.objdef.lower(), i)
-                tag = self.manager.hash_from_permission(self.objdef.lower(), i)
+
+                abstractDbManager: AbstractDbManager = self.manager
+                tag = abstractDbManager.hash_from_permission(self.objdef.lower(), i)
                 table = self.objdef
                 self.manager.add_perm_tag(tag, perm, self.oid, table)
 
@@ -2675,7 +2761,9 @@ class ApiObject(object):
         :param desc: object description
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
-        self.logger.debug("Register api object: %s:%s %s - START" % (self.objtype, self.objdef, objids))
+        self.logger.debug(
+            "Register api object: %s:%s %s - desc: %s - START" % (self.objtype, self.objdef, objids, desc)
+        )
 
         objids = [ensure_text(o) for o in objids]
 
@@ -2689,6 +2777,7 @@ class ApiObject(object):
 
         objids.append("*")
         for child in self.child_classes:
+            self.logger.debug("Register api object child - objids: %s - desc: %s - START" % (objids, child.objdesc))
             child(self.controller, oid=None).register_object(list(objids), desc=child.objdesc)
 
     def deregister_object(self, objids):
@@ -2724,7 +2813,7 @@ class ApiObject(object):
             child(self.controller).register_async_methods()
 
     def set_superadmin_permissions(self):
-        """ """
+        """Set superadmin permissions"""
         self.set_admin_permissions("ApiSuperadmin", [])
 
     def set_admin_permissions(self, role, args):
@@ -3437,7 +3526,7 @@ class ApiViewResponse(ApiObject):
             self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=400)
 
-    def send_event(self, event_data, params={}, response=True, exception=None, opid=None):
+    def send_event(self, event_data, params: Union[dict, None] = None, response=True, exception=None, opid=None):
         """Publish an event to event queue.
 
         :param api: api to audit {'path':.., 'method':.., 'elapsed':..}
@@ -3445,6 +3534,8 @@ class ApiViewResponse(ApiObject):
         :param response: operation response. [default=True]
         :param exception: exception raised [optional]
         """
+        if params is None:
+            params = {}
         elapsed = event_data.get("elapsed")
         code = event_data.get("code")
         path = event_data.get("path")
@@ -3532,7 +3623,7 @@ class ApiView(FlaskView):
 
     def __init__(self, *argc, **argv):
         self.identity_key: str = None
-        self.logger = logging.getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
+        self.logger = getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
 
     def get_user_agent(self):
         return request.headers.get("User-Agent")
@@ -3696,7 +3787,7 @@ class ApiView(FlaskView):
             compress_perms = user["perms"]
 
             # get permissions
-            operation.perms = json.loads(decompress(binascii.a2b_base64(compress_perms)))
+            operation.perms = json.loads(decompress(a2b_base64(compress_perms)))
             operation.user = (name, identity["ip"], uid, identity.get("seckey", None))
             self.logger.debug2("Get user %s permissions: %s" % (name, truncate(operation.perms)))
             if self.authorizable:
@@ -3897,13 +3988,14 @@ class ApiView(FlaskView):
             return
         if not self.authorizable is True:
             return
-        objid = SHA256.new(bytes(rule, encoding="utf-8")).hexdigest()
-        # objid = hashlib.sha256(bytes(rule, encoding='utf-8')).hexdigest()
+        objid = compute_sha256_hexdigest(rule)
         action = "view"
         if method == "get":
             action = "view"
         elif method == "post":
             action = "use"
+        elif method == "patch":
+            action = "recover"
         elif method == "put":
             action = "update"
         elif method == "delete":
@@ -3912,9 +4004,7 @@ class ApiView(FlaskView):
 
         controller.check_authorization(type, ApiMethod.objdef, objid, action)
 
-        pass
-
-    def dispatch_request(self, module=None, secure=True, *args, **kwargs):
+    def dispatch_request(self, module: ApiModule = None, secure=True, *args, **kwargs):
         """Base dispatch_request method. Extend this method in your child class
 
         :param module: ApiModule instance
@@ -3925,19 +4015,34 @@ class ApiView(FlaskView):
         """
         import gevent
 
-        # set reqeust timeout
+        # set request timeout
         res = None
 
-        timeout = gevent.Timeout(module.api_manager.api_timeout)
+        timeout_duration = module.api_manager.api_timeout
+        # if custom header present, override timeout
+        try:
+            custom_timeout = request.headers.get("CSI-Nvl-Timeout")
+            if custom_timeout:
+                custom_timeout = float(custom_timeout)
+                # not less than api_timeout
+                timeout_duration = max(module.api_manager.api_timeout, custom_timeout)
+                # not more than api_timeout_max
+                timeout_duration = min(timeout_duration, module.api_manager.api_timeout_max)
+        except:
+            timeout_duration = module.api_manager.api_timeout
+
+        timeout = gevent.Timeout(timeout_duration)
         timeout.start()
 
-        start = time.time()
+        start = time()
         data = None
 
         # open database session.
         # dbsession = module.get_session()
         module.get_session()
-        controller = module.get_controller()
+        controller: ApiController = module.get_controller()
+
+        opid = None
 
         opid = None
 
@@ -3951,7 +4056,7 @@ class ApiView(FlaskView):
             operation.authorize = True
             operation.cache = True
             operation.encryption_key = module.api_manager.app_fernet_key
-            self.logger.debug2("Set response timeout to: %s" % module.api_manager.api_timeout)
+            self.logger.debug2("Set response timeout to: %s" % timeout_duration)
 
             if self.get_user_agent() != "beehive-cmp":
                 opid = getattr(operation, "id", None)
@@ -3997,6 +4102,20 @@ class ApiView(FlaskView):
             )
 
             self.logger.debug2("Api request headers: %s" % headers)
+
+            # check system under maintenance
+            from beehive.module.basic.views.status import StatusAPI
+
+            if request.path.find(StatusAPI.MAINTENANCE_URI) < 0:
+                http_method = request.method.lower()
+                key = "cmp.%s.%s" % (module.name, http_method)
+                cmp_http_perm = controller.cache.redis_manager.get(key)
+                if cmp_http_perm is not None and not str2bool(cmp_http_perm.decode("ascii")):
+                    raise ApiManagerError(
+                        "Nivola under maintenance: method %s in subsystem %s temporarily unavailable"
+                        % (http_method, module.name),
+                        code=503,
+                    )
 
             # validate query/input data
             if self.parameters_schema is not None:
@@ -4073,7 +4192,7 @@ class ApiView(FlaskView):
             operation.perms = None
             # print('############# %s %s' % (gevent.getcurrent().name, request.path))
             # get request elapsed time
-            elapsed = round(time.time() - start, 4)
+            elapsed = round(time() - start, 4)
             self.logger.info("Invoke api: %s [%s] - STOP - %s" % (request.path, request.method, elapsed))
             event_data = {
                 "path": request.path,
@@ -4088,7 +4207,7 @@ class ApiView(FlaskView):
             ApiViewResponse(controller).send_event(event_data, request_data, opid=opid)
         except gevent.Timeout:
             # get request elapsed time
-            elapsed = round(time.time() - start, 4)
+            elapsed = round(time() - start, 4)
             self.logger.error("Invoke api: %s [%s] - ERROR - %s" % (request.path, request.method, elapsed))
             msg = "Request %s %s timeout" % (request.path, request.method)
             event_data = {
@@ -4109,7 +4228,7 @@ class ApiView(FlaskView):
             return self.get_error("Timeout", 408, msg, module=module)
         except ApiManagerError as ex:
             # get request elapsed time
-            elapsed = round(time.time() - start, 4)
+            elapsed = round(time() - start, 4)
             self.logger.error("Invoke api: %s [%s] - ERROR - %s" % (request.path, request.method, elapsed))
             event_data = {
                 "path": request.path,
@@ -4128,7 +4247,7 @@ class ApiView(FlaskView):
             return self.get_error("ApiManagerError", ex.code, ex.value, module=module)
         except ApiManagerWarning as ex:
             # get request elapsed time
-            elapsed = round(time.time() - start, 4)
+            elapsed = round(time() - start, 4)
             self.logger.warning("Invoke api: %s [%s] - Warning - %s" % (request.path, request.method, elapsed))
             event_data = {
                 "path": request.path,
@@ -4149,7 +4268,7 @@ class ApiView(FlaskView):
             return self.get_warning("ApiManagerWarning", ex.code, ex.value, module=module)
         except Exception as ex:
             # get request elapsed time
-            elapsed = round(time.time() - start, 4)
+            elapsed = round(time() - start, 4)
             self.logger.error("Invoke api: %s [%s] - ERROR - %s" % (request.path, request.method, elapsed))
             event_data = {
                 "path": request.path,
@@ -4217,7 +4336,7 @@ class ApiView(FlaskView):
         :param version: custom api version [optional]
         """
 
-        logger = logging.getLogger(__name__)
+        logger = getLogger(__name__)
 
         # get version
         if version is None:
@@ -4228,7 +4347,9 @@ class ApiView(FlaskView):
             return
 
         # get app
-        app = module.api_manager.app
+        from flask import Flask
+
+        app: Flask = module.api_manager.app
 
         # get swagger
         # swagger = module.api_manager.swagger
@@ -4476,6 +4597,7 @@ class SwaggerApiView(ApiView, SwaggerView):
     :param controller: ApiController instance
     """
 
+    xmlns = "https://nivolapiemonte.it/XMLdoc/2016-11-15/"
     authorizable = False
     consumes = ["application/json", "application/xml"]
     produces = ["application/json", "application/xml", "text/plain"]

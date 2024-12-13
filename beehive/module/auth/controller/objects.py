@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2023 CSI-Piemonte
+# (C) Copyright 2018-2024 CSI-Piemonte
 
 from datetime import datetime
 from re import match
@@ -268,7 +268,8 @@ class Objects(AuthObject):
         self.verify_permisssions("view")
 
         try:
-            data, total = self.manager.get_object(
+            authDbManager: AuthDbManager = self.manager
+            data, total = authDbManager.get_object(
                 objid=objid,
                 objtype=subsystem,
                 objdef=type,
@@ -306,7 +307,7 @@ class Objects(AuthObject):
 
     @trace(op="insert")
     def add_objects(self, objs):
-        """Add a list ofsystem objects with all the permission related to available action.
+        """Add a list of system objects with all the permission related to available action.
 
         :param objs: list of dict like {'subsystem':.., 'type':.., 'objid':.., 'desc':..}
         :return: list of uuid
@@ -352,15 +353,16 @@ class Objects(AuthObject):
         """
         # verify permissions
         self.verify_permisssions("delete")
+        authDbManager: AuthDbManager = self.manager
 
         try:
             if objtype is not None or objdef is not None:
                 # get object types
-                obj_types, tot = self.manager.get_object_type(objtype=objtype, objdef=objdef)
+                obj_types, tot = authDbManager.get_object_type(objtype=objtype, objdef=objdef)
                 for obj_type in obj_types:
-                    res = self.manager.remove_object(oid=oid, objid=objid, objtype=obj_type)
+                    res = authDbManager.remove_object(oid=oid, objid=objid, objtype=obj_type)
             else:
-                res = self.manager.remove_object(oid=oid, objid=objid)
+                res = authDbManager.remove_object(oid=oid, objid=objid)
             self.logger.debug("Remove objects: %s" % res)
             return None
         except TransactionError as ex:
@@ -511,7 +513,8 @@ class Objects(AuthObject):
 
         # get permissions id
         perm_ids = []
-        actions = {a.value: a.id for a in self.manager.get_object_action()}
+        authDbManager: AuthDbManager = self.manager
+        actions = {a.value: a.id for a in authDbManager.get_object_action()}
         for perm in perms:
             if match("^\d+$", perm):
                 perm = int(perm)
@@ -519,9 +522,9 @@ class Objects(AuthObject):
             if isinstance(perm, list):
                 objtype, objdef, objid, objaction = perm
                 try:
-                    objs, tot = self.manager.get_object(objid=objid, objtype=objtype, objdef=objdef)
+                    objs, tot = authDbManager.get_object(objid=objid, objtype=objtype, objdef=objdef)
                     for obj in objs:
-                        perms = self.manager.get_permission_by_id(object_id=obj.id)
+                        perms = authDbManager.get_permission_by_id(object_id=obj.id)
                         for perm in perms:
                             if perm.action_id == actions.get(objaction):
                                 perm_ids.append(str(perm.id))
@@ -530,9 +533,9 @@ class Objects(AuthObject):
             elif isinstance(perm, str):
                 objtype, objdef, objid, objaction = perm.split(",")
                 try:
-                    objs, tot = self.manager.get_object(objid=objid, objtype=objtype, objdef=objdef)
+                    objs, tot = authDbManager.get_object(objid=objid, objtype=objtype, objdef=objdef)
                     for obj in objs:
-                        perms = self.manager.get_permission_by_id(object_id=obj.id)
+                        perms = authDbManager.get_permission_by_id(object_id=obj.id)
                         for perm in perms:
                             if perm.action_id == actions.get(objaction):
                                 perm_ids.append(str(perm.id))
@@ -540,13 +543,13 @@ class Objects(AuthObject):
                     self.logger.warning("Permission %s was not found" % perm)
             else:
                 try:
-                    pp = self.manager.get_permission(int(perm))
+                    pp = authDbManager.get_permission(int(perm))
                     perm_ids.append(str(pp.id))
                 except:
                     self.logger.warning("Permission %s was not found" % perm)
 
         if len(perm_ids) > 0:
-            roles, total = self.manager.get_permissions_roles(perms=perm_ids, *args, **kvargs)
+            roles, total = authDbManager.get_permissions_roles(perms=perm_ids, *args, **kvargs)
 
         self.logger.debug("Permissions %s are used by roles: %s" % (perms, truncate(roles)))
         return roles, total

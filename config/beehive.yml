@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2023 CSI-Piemonte
+# (C) Copyright 2018-2024 CSI-Piemonte
 
 ---
 schema: resource
@@ -13,7 +13,7 @@ db-uris:
 redis:
   uri_complete: redis://:ppp@<MINIKUBE_IP>:31281/0
   uri: <MINIKUBE_IP>;<REDIS_SERVICE_PORT>;0
-  cluster: 
+  cluster:
 worker:
   result: redis://<MINIKUBE_IP>:<REDIS_SERVICE_PORT>/0
   broker: redis://<MINIKUBE_IP>:<REDIS_SERVICE_PORT>/0

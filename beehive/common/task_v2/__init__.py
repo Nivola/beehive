@@ -1,8 +1,10 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2023 CSI-Piemonte
-
+# (C) Copyright 2018-2024 CSI-Piemonte
+from __future__ import annotations
 import collections
+
+from beecell.db.manager import RedisManager
 
 try:
     import collections.Callable
@@ -33,6 +35,10 @@ from celery.utils.saferepr import saferepr
 from celery.app.amqp import AMQP
 from beecell.simple import jsonDumps
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from beehive.common.apimanager import ApiObject
 
 logger = getLogger(__name__)
 
@@ -142,6 +148,41 @@ class BaseTask(Task):
         if self._data is None:
             return None
         return self._data.get(key, defaultvalue)
+
+    #
+    # stdout
+    #
+    def get_key_stdout(self):
+        return self.prefix + self.api_id + "stdout"
+
+    def set_stdout_data(self, data):
+        """Set stdout to shared memory area. Use this to pass stdout from different tasks/steps.
+
+        :param task_id: task id
+        :param data: data to store
+        :return: True
+        """
+        val = jsonDumps(data)
+        redisManager: RedisManager = self.redis
+        redisManager.setex(self.get_key_stdout(), self.expire, val)
+        return True
+
+    def get_stdout_data(self):
+        """Get stdout from shared memory area.
+
+        :return: stdout
+        """
+        val = self.redis.get(self.get_key_stdout())
+        if val is not None:
+            data = json.loads(val)
+        else:
+            data = {}
+        return data
+
+    def remove_stdout_data(self):
+        """Remove stdout from shared memory area reference from redis"""
+        redisManager: RedisManager = self.redis
+        redisManager.delete_key(self.get_key_stdout())
 
     #
     # shared area
@@ -466,6 +507,7 @@ class BaseTask(Task):
 
             # run optional steps
             steps = params.pop("steps", [])
+            # self.logger.debug("+++++ run - steps: %s" % steps)
             for step in steps:
                 if isinstance(step, dict):
                     # logger.debug('+++++ run dict - step[step]: %s' % step['step'])
@@ -522,6 +564,7 @@ class BaseTask(Task):
             self.failure(params, str(err.value))
             raise
         except Exception as err:
+            # self.logger.error(err, exc_info=True)
             msg = str(err)
             self.task_result.task_failure(self, msg)
             self.failure(params, msg)
@@ -551,6 +594,8 @@ def task_step():
             try:
                 task.current_step_id = step_id
                 task.current_step_name = fn.__name__
+                # logger.debug("+++++ decorated - task.current_step_id: %s" % (task.current_step_id))
+                # logger.debug("+++++ decorated - task.current_step_name: %s" % (task.current_step_name))
                 res, params = fn(task, step_id, params, *args, **kwargs)
             except SoftTimeLimitExceeded:
                 task.task_result.step_failure(task.request.id, step_id, "Soft time limit exceeded")
@@ -697,7 +742,7 @@ def run_async(action="use", TaskClass=BaseTask, alias=None):
     return wrapper
 
 
-def prepare_or_run_task(entity, task, params, sync=False):
+def prepare_or_run_task(entity: ApiObject, task: str, params: dict, sync=False):
     """Prepare a task using a simple function or run an async task using a celery task
 
     :param entity: ApiObject instance that run task
@@ -707,6 +752,7 @@ def prepare_or_run_task(entity, task, params, sync=False):
     :return:
     """
     params["sync"] = sync
+    # logger.info("+++++ prepare_or_run_task - sync: %s" % sync)
     if sync is True:
         user = {
             "user": operation.user[0],
@@ -719,17 +765,21 @@ def prepare_or_run_task(entity, task, params, sync=False):
         task = signature(task, [], app=entity.task_manager)
         return {"task": task, "uuid": entity.uuid, "params": new_params}, 200
     else:
+        # logger.info("+++++ prepare_or_run_task - task: %s" % task)
         task = signature(task, [params], app=entity.task_manager, queue=entity.celery_broker_queue)
         task = task.apply_async()
         logger.info("run async task %s" % task.id)
         return {"taskid": task.id, "uuid": entity.uuid}, 202
 
 
-def run_sync_task(prepared_sync_task, parent_task, parent_step):
+def run_sync_task(prepared_sync_task, parent_task: BaseTask, parent_step: str, custom_task_id: str = None):
     """Run a sync task using a simple function
 
     :param prepared_sync_task: result from prepare_or_run_task
     :param parent_task: parent task instance
+    :param parent_step: parent step
+    :param custom_task_id: str(uuid4()) or None. used when you want a custom id for the new task
+
     :return:
     """
     logger.info("start sync task %s" % prepared_sync_task["task"])
@@ -741,6 +791,6 @@ def run_sync_task(prepared_sync_task, parent_task, parent_step):
     prepared_sync_task["params"]["api_id"] = operation.id
     prepared_sync_task["params"]["objid"] = parent_task.objid
     # res = prepared_sync_task['task'].type(prepared_sync_task['params'])
-    res = prepared_sync_task["task"].apply(args=[prepared_sync_task["params"]], throw=True)
+    res = prepared_sync_task["task"].apply(task_id=custom_task_id, args=[prepared_sync_task["params"]], throw=True)
     logger.info("complete sync task %s : %s " % (prepared_sync_task["task"], res))
     return res.result

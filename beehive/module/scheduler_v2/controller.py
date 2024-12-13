@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2023 CSI-Piemonte
+# (C) Copyright 2018-2024 CSI-Piemonte
 
 from uuid import uuid4
 
@@ -10,6 +10,7 @@ from datetime import datetime
 from celery.result import AsyncResult
 from beecell.db.util import QueryError
 from beecell.simple import truncate, import_class, format_date
+from beecell.types.type_dict import dict_get
 from beehive.common.apimanager import ApiController, ApiObject, ApiManagerError
 from beehive.common.task_v2 import run_async
 from beehive.module.scheduler_v2.redis_scheduler import RedisScheduler
@@ -348,33 +349,43 @@ class TaskManager(ApiObject):
             entity_class = import_class(entity_class)
             objdef = entity_class.objdef
             objtype = entity_class.objtype
+        else:
+            entity_class = TaskManager
+            objdef = entity_class.objdef
+            objtype = entity_class.objtype
 
         if operation.authorize is True:
-            try:
-                # use base permission over task manager - admin
-                self.verify_permisssions("view")
+            # check SuperAdmin
+            if self.controller.is_admin_service():
                 with_perm_tag = False
-            except Exception:
+            else:
+                # check subsystem resource
+                if self.controller.module.api_manager.app_subsytem == "resource":
+                    raise ApiManagerError("You are not SuperAdmin")
+
+                # check subsystem service
+                if self.controller.module.api_manager.app_subsytem == "service":
+                    self.logger.debug("get_tasks - kvargs: %s" % kvargs)
+                    task_id = dict_get(kvargs, "task_id")
+                    objid = dict_get(kvargs, "objid")
+                    if objid is None and task_id is None:
+                        # user can only see tasks related to service instances that can see
+                        raise ApiManagerError("You are not SuperAdmin, filter for objid or task_id")
+
+                    with_perm_tag = False
+
                 if entity_class is None:
                     raise ApiManagerError("entity_class must be specified")
 
-                # use permission for a specific objtype:objdef - user
-                with_perm_tag = True
-
                 # verify permissions
                 objs = self.controller.can("view", objtype=objtype, definition=objdef)
-
-                # create permission tags
-                for entity_def, ps in objs.items():
-                    for p in ps:
-                        tags.append(self.manager.hash_from_permission(entity_def.lower(), p))
-                self.logger.debug("Permission tags to apply: %s" % truncate(tags))
         else:
             with_perm_tag = False
-            self.logger.debug("Auhtorization disabled for command")
+            self.logger.debug("Authorization disabled for command")
 
         try:
-            entities, total = self.manager.get_tasks(tags=tags, with_perm_tag=with_perm_tag, *args, **kvargs)
+            schedulerDbManager: SchedulerDbManager = self.manager
+            entities, total = schedulerDbManager.get_tasks(tags=tags, with_perm_tag=with_perm_tag, *args, **kvargs)
 
             for entity in entities:
                 obj = Task(
@@ -446,6 +457,7 @@ class TaskManager(ApiObject):
         params.update(self.get_user())
         params["objid"] = str(uuid4())
         params["alias"] = "test_task"
+        # NOTA: vedi class TestTask
         task = signature(
             "beehive.module.scheduler_v2.tasks.test_task",
             [params],

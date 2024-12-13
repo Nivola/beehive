@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2023 CSI-Piemonte
+# (C) Copyright 2018-2024 CSI-Piemonte
 
 from logging import getLogger
 from time import sleep
@@ -104,7 +104,12 @@ class TestTask(BaseTask):
             params,
             sync=True,
         )
+        task.progress(step_id, msg="task_step2 - prepared_task: %s" % (prepared_task))
+        task.logger.debug("task_step2 - prepared_task: %s" % (prepared_task))
+
         res = run_sync_task(prepared_task, task, step_id)
+        task.progress(step_id, msg="task_step2 - res: %s" % (res))
+        task.logger.debug("task_step2 - res: %s" % (res))
 
         return res, params
 
@@ -156,7 +161,8 @@ class Test2Task(BaseTask):
         :param dict params: step params
         :return: res, params
         """
-        uri = "/v2.0/nas/worker/tasks/test"
+        # lancio il test3 (test_inline_task) che termina e NON ricursivamente il task/test
+        uri = "/v2.0/nas/worker/tasks/test3"
         data = {"x": 2, "y": 234, "numbers": [2, 78, 45, 90], "mul_numbers": []}
         res = task.invoke_api("auth", uri, "post", data=data)
         if res is not None:

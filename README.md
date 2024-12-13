@@ -16,7 +16,7 @@ Subsytem runtime is composed of:
 
 Miminal subsystem to deploy are:
 
-- auth subsytem: the first to configure and deploy. It is composed by base module, auth module, catalog module and 
+- auth subsytem: the first to configure and deploy. It is composed by base module, auth module, catalog module and
   scheduler module.
 - event subsystem: useful to store system events. It is composed by base module, event module, and scheduler module.
 
@@ -59,8 +59,8 @@ $ source /tmp/py3-test-env/bin/activate
 
 Open tests directory __/tmp/py3-test-env/lib/python[3.x]/site-packages/beehive/tests__
 
-Copy file beehive.yml from /tmp/py3-test-env/share/test in your home directory. 
-Open the file and set correctly the <BLANK> variables. 
+Copy file beehive.yml from /tmp/py3-test-env/share/test in your home directory.
+Open the file and set correctly the <BLANK> variables.
 In particular:
 - the endpoints:
   auth: https://<HOST_NGINX>:443/mylab
@@ -74,9 +74,9 @@ Copy file beehive.fernet from /tmp/py3-test-env/share/test in your home director
 
 Run tests:
 
-Test log can be seen in the home directory. 
-Files: 
-- __test.run__ 
+Test log can be seen in the home directory.
+Files:
+- __test.run__
 - __test.log__
 
 ```
@@ -100,9 +100,12 @@ We use Semantic Versioning for versioning. (https://semver.org)
 See the list of contributors who participated in this project in the file AUTHORS.md contained in each specific project.
 
 ## Copyright
-CSI Piemonte - 2018-2022
+CSI Piemonte - 2018-2024
 
 Regione Piemonte - 2020-2022
 
 ## License
-See the *LICENSE.txt file for details
+See EUPL v1_2 EN-LICENSE.txt or EUPL v1_2 IT-LICENSE.txt file for details
+
+## Community site (Optional)
+At https://www.nivolapiemonte.it/ could find all the informations about the project.

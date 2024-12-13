@@ -1,0 +1,215 @@
+changelog:
+  - version: 1.16.0
+    date: 2024-03-26
+    descr:
+    added:
+      - maintenance mode check user is SuperAdmin
+      - api_timeout_max, custom header CSI-Nvl-Timeout, and formatting changes
+      - user taxcode, ldap (insert, update, list)
+      - Add commented lines to profile
+    fixed:
+      - test: failfast to break tests in case of error
+      - fix get_ssh_user: check len list users
+      - task log debug
+      - auth: fix list size, type hint
+      - test: Call api elapsed
+      - script sql add table users taxcode, ldap
+      - fix method patch in ApiView. check_permission
+      - fix user update email
+      - Fix worngly used time
+      - Use ujson
+      - Try to rearrange imports in rando order
+  - version: 1.15.3
+    date: 2024-03-11
+    descr:
+    added:
+      - Aggiunta modo maintenance mode
+      - maintenance: change response http code 503 when in maintenance
+      - maintenance: API check
+    fixed:
+      - fix test_run_test_task1
+      - fix swagger StatusAPI
+      - set version v1.15.3
+      - redis_manager instance of RedisManager (redis.StrictRedis old)
+      - fix method patch in ApiView. check_permission
+
+  - version: 1.15.0
+    date: 2025-10-12
+    descr:
+    added:
+      - http request/response auditing
+      - task auditing
+    fixed:
+      - timeout
+      - check permission
+      - audit log fields
+  - version: 1.14.0
+    date: 2023-06-22
+    descr:
+    added:
+      - check permissions for api method executions
+    fixed:
+      - identity crud refactored
+      - refactoring controller
+      - minor fixes
+  - version: 1.13.0
+    date: 2023-02-24
+    descr:
+    added:
+    fixed:
+      - minor fixes
+  - version: 1.12.0
+    date: 2023-01-27
+    descr:
+    added:
+      - version 8 elastisearch
+    fixed:
+      - minor fixes
+  - version: 1.11.0
+    date: 2022-02-11
+    descr:
+    added:
+      - add decorator and methods to declare ApiObject method as async. Method is executed as Celery task
+      - add system to remove user tokens when permissions change
+      - add redis ping in base api
+      - add step name in event trace api
+      - removed field expiry_date from authorization Role
+      - add print of pod name in event destination
+      - add user role creation for admin user in auth manager add_user. Add role user for admin@local in auth user table
+    fixed:
+      - sql join in get_paginated_entities using run2 method
+      - correct aut object type and object action open api definition
+      - add clean_cache in ApiObject update, delete, expunge method
+      - correct incompatibility with last version of sql alchemy and Flask
+      - correct bug in redis identity connection
+      - correct bug in use of redis as session interface
+  - version: 1.10.0
+    date: 2021-06-11
+    descr:
+    added:
+      - add method ApiObject.cache_data to cache data from a function
+      - add beehive_service_netaas logger
+      - removed logging handler to elastic
+      - integrated event saving in elastic using logstash
+      - correct logging format to enable best management with filebeat and logstash
+      - integrated usage of different redis for identity and cache management
+    fixed:
+  - version: 1.9.0
+    date: 2021-02-05
+    descr:
+    added:
+      - add new api ping (with sql check), capabilities and version to /v1.0/nas, /v1.0/nes, /v1.0/nws, /v1.0/nrs, /v1.0/gas
+      - add ApiObject pre_clone and post_clone method
+      - add method set_ssh_key_authorization to ApiClient
+    fixed:
+  - version: 1.8.0
+    date: 2020-12-31
+    descr:
+    added:
+      - update version setup
+    changed:
+      - update copyright
+    fixed:
+      - add BeehiveApiClient method set_endpoints to set endpoints manually
+    removed:
+      - removed old python 2 start script from server package
+  - version: 1.7.2
+    date: 2020-09-10
+    descr:
+    added:
+    fixed:
+      - removed unused startup configuration
+      - now configuration can be passed using only the uwsgi config file
+      - replaced redis queue with rabbitmq queue in catalog consumer and producer
+      - added ApiClient method get_ssh_user
+      - add ApiObject method get_cache
+      - correct some configuration issue
+      - correct bug in get_permissions_groups, get_permissions_users and get_permissions_roles. Int perm id can nat get correctly
+      - correct bug in method ApiObject set_cache
+      - correct bug in get_entity. Entity None was not intercepted
+  - version: 1.7.1
+    date: 2020-06-17
+    descr:
+    added:
+      - added task manager batch to run task using scheduled k8s pod
+      - added batch server to run task manager using scheduled k8s pod
+    fixed:
+      - add print of security log from event to rsyslog
+      - correct bug in base model update_entity. Added synchronize_session=False to resolve a problem in update
+      - correct bugs in ApiClient
+      - correct bug un PaginatedQueryGenerator that return wrong number of records. Added param group_by to set as True when call run with with_permtag=False
+  - version: 1.7.0
+    date: 2020-06-21
+    descr:
+    added:
+      - api_client create_token can use also client authentication. Use this one for cmp instances communication
+      - new task engine implementation based on single celery task and step function (common.task_v2, module.scheduler_v2)
+      - wait_task and admin_wait_task method in ApiClient
+      - replaced EventProducerRedis with EventProducerKombu configured to use rabbitmq
+      - EventConsumerRedis changed in EventConsumer and configured to use rabbitmq
+    fixed:
+      - fixed a misbehavior of add_perm_tag method used with ssh module (group, node, user and key are permtag are not
+        created). Added session.commit() before second transaction block
+      - improve performance of methods append_permisssions, remove_permisssions, get_permisssions
+  - version: 1.6.0
+    date: 2019-12-23
+    descr:
+    added:
+    fixed:
+      - changed method common.job.wait_for_job_complete. elapsed to set a job as stalled increased from 60s to 240s
+      - correct bug in job_task. Celery worker does not release session if a task raise an Exception
+  - version: 1.5.0
+    date: 2019-09-04
+    descr:
+    added:
+      - added methods expunge, pre_expunge e post_expunge to ApiObject
+      - added methods base_stmp2 and run2 in PaginatedQueryGenerator
+      - added logger elk for api and task
+      - added microsecond to event stored in mysql db
+      - added signature Celery that register task in redis when uuid is generated from the apply_async
+      - added send of log item for the api class to elasticsearch if it is configured
+    fixed:
+      - modify max query window for event to 2 hours
+      - changed wait_for_job_complete. Timeout that identify a job as stalled is increased from 60s to 240s
+  - version: 1.4.0
+    date: 2019-05-24
+    descr:
+    added:
+      - added field provider in the class classe common.model.authorization.User to indicate the autentication provider
+      - added management of the field provider in the api of auth.user
+    fixed:
+      - revision of method user_request
+      - modified query api of domains in query api of providers
+      - modified configuration of the authentication provider ldap
+      - update of the method get_entity signature: inserted params *args, **kvargs
+      - Class GetAllTasksRequestSchema: corrected error in swagger validation, removed the parameter missing=None for the field type
+      - modified behaviour of the methid AbstractDbManager.add_perm_tag. Removed the rollback when permtag already exixsts
+  - version: 1.3.0
+    date: 2019-02-27
+    descr:
+    added:
+      - added runner to realize concurrent test unit
+    fixed:
+      - increased the size to 500 chars of the field desc in table event
+  - version: 1.2.0
+    date: 2019-02-01
+    descr:
+    added:
+      - BeehiveApiClient added method set_ssh_group_authorization
+    fixed:
+      - corrected bug in class PaginatedQueryGenerator that block change of group by filter
+  - version: 1.1.0
+    date: 2019-01-13
+    descr:
+    added:
+      - added invoked job reference in caller task
+    fixed:
+      - trace: changed event trace. It was printed the name of the traced method
+      - event: revision of the list query. It is too slow. Query was limited to one day.
+      - auth: revision of the method that control user has a specific role
+  - version: 1.0.0
+    date: 2018-07-31
+    descr: First production preview release.
+  - version: 0.1.0
+    date: 2016-04-18
+    descr: First private preview release.

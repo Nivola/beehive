@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2023 CSI-Piemonte
+# (C) Copyright 2018-2024 CSI-Piemonte
 
 from datetime import datetime
 from re import match
@@ -71,6 +71,9 @@ class User(BaseUser):
         if self.model.last_login is not None:
             info["date"]["last_login"] = format_date(self.model.last_login)
 
+        info["taxcode"] = self.model.taxcode
+        info["ldap"] = self.model.ldap
+
         return info
 
     def detail(self):
@@ -84,6 +87,9 @@ class User(BaseUser):
         info["email"] = self.model.email
         if self.model.last_login is not None:
             info["date"]["last_login"] = format_date(self.model.last_login)
+
+        info["taxcode"] = self.model.taxcode
+        info["ldap"] = self.model.ldap
 
         return info
 
