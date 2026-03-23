@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 import logging
 from datetime import datetime
@@ -8,7 +8,7 @@ from datetime import datetime
 from beecell.db import ModelError
 from beehive.common.data import transaction, query, operation
 from sqlalchemy import Column, Integer, String, DateTime
-from sqlalchemy import create_engine, exc
+from sqlalchemy import create_engine, exc, text
 from sqlalchemy.ext.declarative import declarative_base
 from beehive.common.model import AbstractDbManager
 
@@ -72,7 +72,7 @@ class ConfigDbManager(AbstractDbManager):
         """
         try:
             engine = create_engine(db_uri)
-            engine.execute("SET FOREIGN_KEY_CHECKS=1;")
+            engine.execute(text("SET FOREIGN_KEY_CHECKS=1;"))
             Base.metadata.create_all(engine)
             logger.info("Create tables on : %s" % db_uri)
             del engine
@@ -87,7 +87,7 @@ class ConfigDbManager(AbstractDbManager):
         """
         try:
             engine = create_engine(db_uri)
-            engine.execute("SET FOREIGN_KEY_CHECKS=0;")
+            engine.execute(text("SET FOREIGN_KEY_CHECKS=0;"))
             Base.metadata.drop_all(engine)
             logger.info("Remove tables from : %s" % db_uri)
             del engine
@@ -154,7 +154,7 @@ class ConfigDbManager(AbstractDbManager):
             prop = session.query(ConfigProp).all()
 
         if len(prop) == 0:
-            self.logger.warn("No properties (app=%s, group=%s oid=%s, name=%s) found" % (app, group, oid, name))
+            self.logger.warning("No properties (app=%s, group=%s oid=%s, name=%s) found" % (app, group, oid, name))
             raise ModelError("No properties (app=%s, group=%s, oid=%s, name=%s) found" % (app, group, oid, name))
 
         self.logger.debug("Get properties: %s" % prop)

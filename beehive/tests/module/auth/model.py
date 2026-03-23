@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 import unittest
 from beehive.common.data import operation
@@ -97,7 +97,7 @@ class AuthManagerTestCase(BeehiveTestCase):
 
     def setUp(self):
         BeehiveTestCase.setUp(self)
-        db_session = self.open_mysql_session(self.db_uri)
+        db_session = self.open_mysql_session(self.db_uris.get("auth"))
         operation.session = db_session()
         self.manager = AuthDbManager()
         operation.transaction = 0
@@ -107,10 +107,10 @@ class AuthManagerTestCase(BeehiveTestCase):
         BeehiveTestCase.tearDown(self)
 
     def test_create_table(self):
-        AuthDbManager.create_table(self.db_uri)
+        AuthDbManager.create_table(self.db_uris.get("auth"))
 
     def test_remove_table(self):
-        AuthDbManager.remove_table(self.db_uri)
+        AuthDbManager.remove_table(self.db_uris.get("auth"))
 
     def test_set_initial_data(self):
         self.manager.set_initial_data()
@@ -207,23 +207,23 @@ class AuthManagerTestCase(BeehiveTestCase):
         res = self.manager.get_permission_by_id()
 
     def test_get_permission(self):
-        res = self.manager.get_permission_by_object(objid="c1.o1.g1.*")
-        res = self.manager.get_permission_by_object(objtype="service")
-        res = self.manager.get_permission_by_object(objdef="container.org")
-        res = self.manager.get_permission_by_object(
+        self.manager.get_permissions(objid="c1.o1.g1.*")
+        self.manager.get_permissions(objtype="service")
+        self.manager.get_permissions(objdef="container.org")
+        self.manager.get_permissions(
             objid="c1.o1.g1.*", objtype="resource", objdef="container.org.group.vm"
         )
 
     def test_get_permission_empty(self):
         with self.assertRaises(QueryError):
-            res = self.manager.get_permission_by_id(permission_id=0)
+            self.manager.get_permission(permission_id=0)
 
     # role
     def test_add_role(self):
         objid = id_gen()
         name = "role1"
         description = "role1"
-        res = self.manager.add_role(objid, name, description)
+        self.manager.add_role(objid, name, description)
 
     def test_add_role_bis(self):
         objid = id_gen()
@@ -234,11 +234,11 @@ class AuthManagerTestCase(BeehiveTestCase):
 
     def test_get_role(self):
         name = "role1"
-        res = self.manager.get_role(name=name)
+        self.manager.get_roles(names=name)
 
     def test_get_role_permission(self):
         name = "role2"
-        res = self.manager.get_role_permissions(name)
+        self.manager.get_role_permissions(name)
 
     def test_update_role(self):
         name = "role1"
@@ -256,63 +256,63 @@ class AuthManagerTestCase(BeehiveTestCase):
         self.assertEqual(res, True)
 
     def test_append_role_permission(self):
-        role = self.manager.get_role(name="role2")[0]
-        perms1 = self.manager.get_permission_by_object(objid="c1.o1.g1.*")
-        perms2 = self.manager.get_permission_by_object(objtype="service")
+        role = self.manager.get_roles(names="role2")[0]
+        perms1 = self.manager.get_permissions(objid="c1.o1.g1.*")
+        perms2 = self.manager.get_permissions(objtype="service")
         res = self.manager.append_role_permissions(role, perms1)
         res = self.manager.append_role_permissions(role, perms2)
         self.assertEqual(res, True)
 
     def test_remove_role_permission(self):
-        role = self.manager.get_role(name="role2")[0]
-        perms1 = self.manager.get_permission_by_object(objid="c1.o1.g1.*")
-        perms2 = self.manager.get_permission_by_object(objtype="service")
+        role = self.manager.get_roles(names="role2")[0]
+        perms1 = self.manager.get_permissions(objid="c1.o1.g1.*")
+        perms2 = self.manager.get_permissions(objtype="service")
         res = self.manager.remove_role_permission(role, perms1)
         res = self.manager.remove_role_permission(role, perms2)
         self.assertEqual(res, True)
 
     def test_get_permission_roles(self):
-        perms2 = self.manager.get_permission_by_object(objtype="service")[0]
-        res = self.manager.get_permission_roles(perms2)
+        perms2 = self.manager.get_permissions(objtype="service")[0]
+        self.manager.get_permission_roles(perms2)
 
     # user
     def test_add_user(self):
         objid = id_gen()
         name = "user1"
-        user_type = "user"
-        roles = [self.manager.get_role(name="role2")[0]]
+        #user_type = "user"
+        #roles = [self.manager.get_roles(names="role2")[0]]
         active = True
         password = "mypass"
-        res = self.manager.add_user(objid, name, roles, active=active, password=password)
+        self.manager.add_user(objid, name, active=active, password=password)
 
     def test_get_user(self):
-        res = self.manager.get_user(name="user1")
+        self.manager.get_user(oid="user1")
 
     def test_get_user_roles(self):
-        user, total = self.manager.get_user(name="admin@local")
-        res, total = self.manager.get_user_roles_with_expiry(user[0])
+        user, _ = self.manager.get_user(oid="admin@local")
+        self.manager.get_user_roles(user[0])
 
     def test_get_role_users(self):
-        role, total = self.manager.get_role(name="ApiSuperadmin")
-        res = self.manager.get_role_users(role[0])
+        role, _ = self.manager.get_roles(name="ApiSuperadmin")
+        self.manager.get_role_users(role[0])
 
     def test_get_user_permissions(self):
-        user = self.manager.get_user(name="user1")[0]
-        res = self.manager.get_user_permissions(user)
+        user = self.manager.get_user(oid="user1")[0]
+        self.manager.get_user_permissions(user)
 
     def test_get_user_permissions2(self):
-        user = self.manager.get_user(name="user2")[0]
-        res = self.manager.get_user_permissions(user)
+        user = self.manager.get_user(oid="user2")[0]
+        self.manager.get_user_permissions(user)
 
     def test_verify_user_password(self):
         password = "mypass"
-        user = self.manager.get_user(name="user1")[0]
+        user = self.manager.get_user(oid="user1")[0]
         res = self.manager.verify_user_password(user, password)
         self.assertEqual(res, True)
 
     def test_verify_user_password_bad(self):
         password = "mypass1"
-        user = self.manager.get_user(name="user1")[0]
+        user = self.manager.get_user(oid="user1")[0]
         res = self.manager.verify_user_password(user, password)
         self.assertEqual(res, False)
 
@@ -328,21 +328,22 @@ class AuthManagerTestCase(BeehiveTestCase):
         self.assertEqual(res, True)
 
     def test_append_user_role(self):
-        user = self.manager.get_user(name="user1")[0]
+        res = False
+        user = self.manager.get_user(oid="user1")[0]
         if self.manager.add_role(id_gen(), "role3", "role3_desc"):
-            role = self.manager.get_role(name="role3")[0]
-        res = self.manager.append_user_role(user, role)
+            role = self.manager.get_roles(names="role3")[0]
+            res = self.manager.append_user_role(user, role)
         self.assertEqual(res, True)
 
     def test_append_user_role_bis(self):
         with self.assertRaises(TransactionError):
-            user = self.manager.get_user(name="user1")[0]
-            role = self.manager.get_role(name="role3")[0]
-            res = self.manager.append_user_role(user, role)
+            user = self.manager.get_user(oid="user1")[0]
+            role = self.manager.get_roles(names="role3")[0]
+            self.manager.append_user_role(user, role)
 
     def test_remove_user_role(self):
-        user = self.manager.get_user(name="user1")[0]
-        role = self.manager.get_role(name="role3")[0]
+        user = self.manager.get_user(oid="user1")[0]
+        role = self.manager.get_roles(names="role3")[0]
         res = self.manager.remove_user_role(user, role)
         res = self.manager.remove_role(name="role3")
         self.assertEqual(res, True)
@@ -352,19 +353,19 @@ class AuthManagerTestCase(BeehiveTestCase):
         self.assertEqual(res, True)
 
     def test_set_attribute(self):
-        user = self.manager.get_user(name="user2")[0]
-        res = self.manager.set_user_attribute(user, "attr1", "value1", "")
+        user = self.manager.get_user(oid="user2")[0]
+        self.manager.set_user_attribute(user, "attr1", "value1", "")
 
     def test_set_attribute_bis(self):
-        user = self.manager.get_user(name="user2")[0]
-        res = self.manager.set_user_attribute(user, "attr1", "value2", "")
+        user = self.manager.get_user(oid="user2")[0]
+        self.manager.set_user_attribute(user, "attr1", "value2", "")
 
     def test_get_attribute(self):
-        user = self.manager.get_user(name="user2")[0]
+        user = self.manager.get_user(oid="user2")[0]
         self.logger.debug(user.attrib)
 
     def test_remove_attribute(self):
-        user = self.manager.get_user(name="user2")[0]
+        user = self.manager.get_user(oid="user2")[0]
         res = self.manager.remove_user_attribute(user, "attr1")
         self.assertEqual(res, True)
 
@@ -372,36 +373,36 @@ class AuthManagerTestCase(BeehiveTestCase):
     def test_add_group(self):
         name = "group1"
         description = ""
-        user_type = "group"
-        roles = [self.manager.get_role(name="role2")[0]]
-        members = [self.manager.get_user(name="user2")[0]]
-        active = True
-        password = "mypass"
-        res = self.manager.add_group(id_gen(), name, description, members, roles)
+        #user_type = "group"
+        roles = [self.manager.get_roles(names="role2")[0]]
+        members = [self.manager.get_user(oid="user2")[0]]
+        #active = True
+        #password = "mypass"
+        self.manager.add_group(id_gen(), name, description, members, roles)
 
     def test_get_group(self):
-        res = self.manager.get_group(name="group1")
+        res = self.manager.get_groups(name="group1")
         self.logger.debug(res)
 
     def test_get_group_roles(self):
-        group = self.manager.get_group(name="group1")[0]
-        res = self.manager.get_group_roles(group)
+        group = self.manager.get_groups(name="group1")[0]
+        self.manager.get_group_roles(group)
 
     def test_get_role_groups(self):
-        role = self.manager.get_role(name="role2")[0]
-        res = self.manager.get_role_groups(role)
+        role = self.manager.get_roles(names="role2")[0]
+        self.manager.get_role_groups(role)
 
     def test_get_group_members(self):
-        group = self.manager.get_group(name="group1")[0]
-        res = self.manager.get_group_members(group)
+        group = self.manager.get_groups(name="group1")[0]
+        self.manager.get_group_users(group)
 
     def test_get_user_groups(self):
-        user = self.manager.get_user(name="user2")[0]
-        res = self.manager.get_user_groups(user)
+        user = self.manager.get_user(oid="user2")[0]
+        self.manager.get_user_groups(user)
 
     def test_get_group_permissions(self):
-        group = self.manager.get_group(name="group1")[0]
-        res = self.manager.get_group_permissions(group)
+        group = self.manager.get_groups(name="group1")[0]
+        self.manager.get_group_permissions(group)
 
     def test_update_group(self):
         name = "group1"
@@ -411,44 +412,46 @@ class AuthManagerTestCase(BeehiveTestCase):
         self.assertEqual(res, True)
 
     def test_append_group_role(self):
-        group = self.manager.get_group("group1")[0]
+        res = False
+        group = self.manager.get_groups(name="group1")[0]
         if self.manager.add_role(id_gen(), "role4", "role4_desc"):
-            role = self.manager.get_role(name="role4")[0]
-        res = self.manager.append_group_role(group, role)
+            role = self.manager.get_roles(name="role4")[0]
+            res = self.manager.append_group_role(group, role)
         self.assertEqual(res, True)
 
     def test_append_group_role_bis(self):
         with self.assertRaises(TransactionError):
-            group = self.manager.get_group(name="group1")[0]
-            role = self.manager.get_role(name="role4")[0]
+            group = self.manager.get_groups(name="group1")[0]
+            role = self.manager.get_roles(name="role4")[0]
             res = self.manager.append_group_role(group, role)
             self.assertEqual(res, False)
 
     def test_remove_group_role(self):
-        group = self.manager.get_group(name="group1")[0]
-        role = self.manager.get_role(name="role4")[0]
+        group = self.manager.get_groups(name="group1")[0]
+        role = self.manager.get_roles(name="role4")[0]
         res = self.manager.remove_group_role(group, role)
         res = self.manager.remove_role(name="role4")
         self.assertEqual(res, True)
 
     def test_append_group_member(self):
-        group = self.manager.get_group(name="group1")[0]
-        if self.manager.add_user(id_gen(), "user3", [], active=True, password="", description=""):
-            user = self.manager.get_user(name="user3")[0]
-        res = self.manager.append_group_member(group, user)
+        res = False
+        group = self.manager.get_groups(name="group1")[0]
+        if self.manager.add_user(id_gen(), "user3", active=True, password="", desc=""):
+            user = self.manager.get_user(oid="user3")[0]
+            res = self.manager.append_group_user(group, user)
         self.assertEqual(res, True)
 
     def test_append_group_member_bis(self):
         with self.assertRaises(TransactionError):
-            group = self.manager.get_group(name="group1")[0]
-            user = self.manager.get_user(name="user3")[0]
-            res = self.manager.append_group_member(group, user)
+            group = self.manager.get_groups(name="group1")[0]
+            user = self.manager.get_user(oid="user3")[0]
+            res = self.manager.append_group_user(group, user)
             self.assertEqual(res, False)
 
     def test_remove_group_member(self):
-        group = self.manager.get_group(name="group1")[0]
-        user = self.manager.get_user(name="user3")[0]
-        res = self.manager.remove_group_memeber(group, user)
+        group = self.manager.get_groups(name="group1")[0]
+        user = self.manager.get_user(oid="user3")[0]
+        res = self.manager.remove_group_user(group, user)
         res = self.manager.remove_user(username="user3")
         self.assertEqual(res, True)
 

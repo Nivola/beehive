@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 swagger: "2.0"
 info:
@@ -43,7 +43,7 @@ securityDefinitions:
 # Descriptions of common responses
 responses:
   DefaultError:
-    description: Defualt error syntax
+    description: Default error syntax
     schema:
       $ref: "#/definitions/Error"
   InternalServerError:

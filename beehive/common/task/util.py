@@ -1,15 +1,15 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 from time import time
 
 from celery.utils.log import get_task_logger
-from beehive.common.task.manager import task_manager
+from beehive.common.task.manager import get_task_manager
 from beehive.common.task.job import JobTask, job_task
 
 logger = get_task_logger(__name__)
-
+task_manager = get_task_manager()
 
 #
 # multi purpose tasks

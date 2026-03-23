@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 from datetime import datetime
 from re import match
-from six import ensure_text
+# from beecell.util import ensure_text
 
 from beecell.auth import extract
 from beecell.simple import id_gen, truncate, str2bool, format_date
@@ -151,11 +151,11 @@ class Role(AuthObject):
                     objdef = perm["type"]
                     objaction = perm["action"]
                     objs, tot = self.manager.get_object(objid=objid, objtype=objtype, objdef=objdef)
-                    for obj in objs:
-                        perms = self.manager.get_permission_by_id(object_id=obj.id)
-                        for perm in perms:
-                            if perm.action_id == actions.get(objaction):
-                                roleperms.append(perm)
+                    obj_ids = [o.id for o in objs]
+                    perms_by_ids = self.manager.get_permission_by_ids(object_ids=obj_ids)
+                    for perm_by_id in perms_by_ids:
+                        if perm_by_id.action_id == actions.get(objaction):
+                            roleperms.append(perm_by_id)
 
                     # perms, total = self.manager.get_permissions(objid=perm['objid'], objtype=perm['subsystem'],
                     #                                             objdef=perm['type'], action=perm['action'], size=10)

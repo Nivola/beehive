@@ -1,13 +1,16 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
+from typing import TYPE_CHECKING
 from celery import Task
 from celery.utils.log import get_task_logger
 import ujson as json
 from beecell.simple import truncate
 from beehive.common.data import operation
 from beecell.simple import jsonDumps
+if TYPE_CHECKING:
+    from celery import Celery
 
 logger = get_task_logger(__name__)
 
@@ -19,6 +22,7 @@ class BaseTask(Task):
     prefix_stack = "celery-task-stack-"
     expire = 3600
 
+    app: 'Celery'
     def __init__(self, *args, **kwargs):
         Task.__init__(self, *args, **kwargs)
 

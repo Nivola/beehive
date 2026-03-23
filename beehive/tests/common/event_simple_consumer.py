@@ -1,9 +1,8 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 import json
-import unittest
 from beehive.common.test import runtest, BeehiveTestCase
 import logging
 from beecell.logger.helper import LoggerHelper
@@ -67,9 +66,7 @@ class SimpleEventConsumer(object):
 
                 gevent.sleep(0.05)  # be nice to the system :) 0.05
             except (gevent.Greenlet.GreenletExit, Exception) as ex:
-                self.logger.error("Error receiving message: %s", exc_info=1)
-
-        self.logger.info("Stop event consumer on redis channel %s:%s" % (self.redis_uri, self.redis_channel))
+                self.logger.error("Error receiving message: %s", ex, exc_info=1)
 
 
 tests = [

@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 import binascii
 from datetime import datetime, timedelta
 import pickle
-from six import ensure_text
+from beecell.util import ensure_text
 import ujson as json
 from zlib import compress
 from logging import getLogger
@@ -18,7 +18,7 @@ from ipaddress import IPv4Network
 from beecell.simple import truncate, id_gen, token_gen, dict_get
 from beehive.common.data import operation, trace
 from beehive.common.model.authorization import User as ModelUser
-from beecell.debug import dbgprint
+# from beecell.debug import dbgprint
 
 # from beecell.simple import jsonDumps
 
@@ -204,14 +204,14 @@ class BaseAuthController(ApiController):
         :param expire_time: [optional] det expire time in seconds
         """
         try:
-            dbgprint(uid=uid, identity=identity)
+            # dbgprint(uid=uid, identity=identity)
             IdentityMgr.set_identity(
                 uid, identity, self.module.redis_identity_manager, expire=expire, expire_time=expire_time
             )
 
             self.logger.info("Set identity %s in redis" % uid)
         except Exception as ex:
-            dbgprint(ex)
+            # dbgprint(ex)
             self.logger.error(ex)
 
     @trace(entity="Token", op="delete")
@@ -243,7 +243,7 @@ class BaseAuthController(ApiController):
             self.logger.debug("Remove identity %s from redis" % uid)
             return None
         except Exception as ex:
-            dbgprint(ex)
+            # dbgprint(ex)
             err = "Can not remove identity %s" % uid
             self.logger.error(err)
             raise ApiManagerError(err, code=400)

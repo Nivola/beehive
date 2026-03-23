@@ -1,5 +1,9 @@
+# SPDX-License-Identifier: EUPL-1.2
+#
+# (C) Copyright 2018-2026 CSI-Piemonte
+
+
 from dict2xml import dict2xml
-from dicttoxml import dicttoxml
 
 s = {
     "accounts": [
@@ -617,7 +621,5 @@ ss = {
     "description": "%s - %s" % ("exception", "msg"),
 }
 
-xml = dicttoxml(s, root=False, attr_type=False)
+xml = dict2xml(s, root=False, attr_type=False)
 print(xml)
-# xml = dict2xml(s)
-# print(xml)

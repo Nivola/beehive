@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 from __future__ import annotations
 import collections
 
@@ -28,19 +28,25 @@ from beecell.password import obscure_data
 from beecell.simple import import_func
 from beehive.common.apimanager import ApiManagerError
 from beehive.common.data import operation
-from beehive.common.audit import Audit, initAudit, localAudit
-from beehive.common.task_v2.canvas import signature
+from beehive.common.audit import Audit, initAudit
+from beehive.common.task_v2.canvas import Signature, signature
 from beehive.common.task_v2.handler import TaskResult
 from celery.utils.saferepr import saferepr
 from celery.app.amqp import AMQP
 from beecell.simple import jsonDumps
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict
 
 if TYPE_CHECKING:
+    from celery.app import Celery
+    from celery.result import AsyncResult, EagerResult
     from beehive.common.apimanager import ApiObject
+    from beehive.common.controller.authorization import ApiController
 
 logger = getLogger(__name__)
+ENABLE_PROFILER = False
+# Uncomment to enable celery worker profiler.
+#ENABLE_PROFILER = True
 
 
 class TaskError(Exception):
@@ -85,7 +91,29 @@ class RunTaskError(Exception):
 #             raise TaskError('Time limit exceeded')
 
 
-class BaseTask(Task):
+class BaseTaskWithProfiling(Task):
+    def __call__(self, *args, **kwargs):
+        if ENABLE_PROFILER:
+            import cProfile
+            import pstats
+            import os
+            profiler = cProfile.Profile()
+            profiler.enable()
+            try:
+                result = super().__call__(*args, **kwargs)
+            finally:
+                profiler.disable()
+                profile_dir = "/tmp/profiler"
+                os.makedirs(profile_dir, exist_ok=True)
+                task_name = self.name or "task"
+                profile_path = os.path.join(profile_dir, f"{task_name}.prof")
+                with open(profile_path, 'w') as f:
+                    ps = pstats.Stats(profiler, stream=f)
+                    ps.strip_dirs().sort_stats('cumulative').dump_stats(profile_path)
+            return result
+        return super().__call__(*args, **kwargs)
+
+class BaseTask(BaseTaskWithProfiling):
     """Base beehive celery task class
 
     :param args: positional arg
@@ -98,12 +126,17 @@ class BaseTask(Task):
     prefix_stack = "celery-task-stack-"
     expire = 3600
     entity_class = None
-    controller = None
+    controller: 'ApiController' = None
     _redis = None
-    _data: dict = None
+    _data: Dict = None
+    app: 'Celery'
+    parent: BaseTask = None
+    hostname = None
+    argsrepr: str
+    kwargsrepr: str
 
     def __init__(self, *args, **kwargs):
-        Task.__init__(self, *args, **kwargs)
+        Task.__init__(self) #, *args, **kwargs) # TODO boh
 
         self.name = self.__class__.__module__ + "." + self.name
 
@@ -252,7 +285,7 @@ class BaseTask(Task):
         val = self.redis.lpop(self.prefix_stack + task_id)
         if val is not None:
             data = json.loads(val)
-        logger.debug("Pop stack data for job %s: %s" % (task_id, truncate(data)))
+        logger.debug("Pop stack data for job %s: %s", task_id, truncate(data))
         return data
 
     def push_stack_data(self, data, task_id=None):
@@ -267,7 +300,7 @@ class BaseTask(Task):
 
         val = jsonDumps(data)
         self.redis.lpush(self.prefix_stack + task_id, val)
-        logger.debug("Push stack data for job %s: %s" % (task_id, truncate(data)))
+        logger.debug("Push stack data for job %s: %s", task_id, truncate(data))
         return True
 
     def remove_stack(self, task_id=None):
@@ -286,6 +319,25 @@ class BaseTask(Task):
     #
     # db session
     #
+    def get_session_advanced(self, reopen=True, autoflush=False, autocommit=False):
+        """get new sqlalchemy session with specified
+        autocommit and autoflush.
+
+        NB: with both autocommit and autoflush set to False you
+        must manage commit and rollback manually
+
+        :param reopen: if True close first the previous session
+        :returns: a new session
+
+        NB: always returns a new session
+        """
+        if reopen:
+            self.app.api_manager.release_session()
+        return self.app.api_manager.get_session_advanced(
+            autoflush=autoflush,
+            autocommit=autocommit
+        )
+
     def get_session(self, reopen=False):
         """Open a new sqlalchemy session
 
@@ -317,7 +369,7 @@ class BaseTask(Task):
         operation.authorize = False
 
         printed_params = deepcopy(params)
-        self.logger.debug("get input params: %s" % obscure_data(printed_params))
+        self.logger.debug("get input params: %s", obscure_data(printed_params))
         if isinstance(params, dict):
             sync = params.get("sync", False)
         else:
@@ -403,7 +455,6 @@ class BaseTask(Task):
     def failure(self, params, error):
         self.audit.state = 500
         self.audit.send_audit(self.app.api_manager.elasticsearch, error=error, data=params)
-        pass
 
     #
     # api call
@@ -454,7 +505,7 @@ class BaseTask(Task):
     #
     def __import_step(self, step):
         components = step.split(".")
-        self.logger.debug("import step %s" % step)
+        self.logger.debug("import step %s", step)
         # step passed as function
         try:
             mod = __import__(".".join(components[:-1]), globals(), locals(), [components[-1]], 0)
@@ -569,6 +620,7 @@ class BaseTask(Task):
             self.task_result.task_failure(self, msg)
             self.failure(params, msg)
             raise TaskError(msg)
+
         finally:
             if sync is False:
                 self.release_session()
@@ -615,7 +667,7 @@ def task_step():
     return wrapper
 
 
-def create_task_class(TaskClass, fn, task_entity_class, task_alias):
+def create_task_class(TaskClass, fn, task_entity_class, task_alias: str):
     class InternalTask(TaskClass):
         name = task_alias
         entity_class = task_entity_class
@@ -627,7 +679,7 @@ def create_task_class(TaskClass, fn, task_entity_class, task_alias):
 
         @staticmethod
         @task_step()
-        def main_step(task, step_id, params, *args, **kvargs):
+        def main_step(task: 'BaseTask', step_id, params, *args, **kvargs):
             """internal step used to run async method.
 
             :param task: parent celery task
@@ -643,11 +695,13 @@ def create_task_class(TaskClass, fn, task_entity_class, task_alias):
 
     name = "".join(t.capitalize() for t in task_alias.split("_"))
     task_class_name = "%s%s" % (task_entity_class.__name__, name)
-    logger.warn(task_class_name)
+    logger.warning(task_class_name)
     InternalTaskClass = type(task_class_name, (InternalTask,), {"__module__": task_entity_class.__module__})
 
     return InternalTaskClass
 
+_deferred_tasks = []
+_deferred_tasks_v2 = []
 
 def run_async(action="use", TaskClass=BaseTask, alias=None):
     """Use this decorator to transform a class method in static and run ad celery task
@@ -673,38 +727,29 @@ def run_async(action="use", TaskClass=BaseTask, alias=None):
             # if len(args) > 1:
             #     sync = args[1].pop('sync', False)
 
-            logger.debug("##### run_async args: %s" % args)
-            logger.debug("##### run_async kwargs: %s" % kwargs)
-            logger.debug("##### run_async register: %s" % register)
-            logger.debug("##### run_async task_entity_class: %s" % task_entity_class)
-            logger.debug("##### run_async task_alias: %s" % task_alias)
-            logger.debug("##### run_async sync status: %s" % sync)
+            logger.debug("##### run_async args: %s", args)
+            logger.debug("##### run_async kwargs: %s", kwargs)
+            logger.debug("##### run_async register: %s", register)
+            logger.debug("##### run_async task_entity_class: %s", task_entity_class)
+            logger.debug("##### run_async task_alias: %s", task_alias)
+            logger.debug("##### run_async sync status: %s", sync)
 
             # register task in celery
             if register is True:
-                from beehive.common.task_v2.manager import task_manager
-
-                # module = __import__(task_entity_class.__module__)
-                # import sys
-                # module = sys.modules[task_entity_class.__module__]
-                # # module = dynamic_import(task_entity_class.__module__)
-                # logger.warn(module)
-                # task_class_name = '%sTask%s' % (task_entity_class.__name__, fn.__name__)
-                # logger.warn(task_class_name)
-                # setattr(module, task_class_name, create_task_class(TaskClass, fn, task_entity_class))
+                from beehive.common.task_v2.manager import get_task_manager
+                task_manager_instance = get_task_manager()
                 InternalTaskClass = create_task_class(TaskClass, fn, task_entity_class, task_alias)
-                task_manager.tasks.register(InternalTaskClass())
-
+                task_manager_instance.register_task(InternalTaskClass())
             # run method as sync
             elif sync is True:
-                logger.debug("########## start sync %s" % fn.__name__)
+                logger.debug("########## start sync %s", fn.__name__)
                 # args = list(args)
                 inst = args.pop(0)
                 params = args.pop(0)
                 params["sync"] = True
                 res = fn(inst, params)
-                logger.debug("run sync method %s: %s" % (fn.__name__, res))
-                logger.debug("########## end sync %s" % fn.__name__)
+                logger.debug("run sync method %s: %s", fn.__name__, res)
+                logger.debug("########## end sync %s", fn.__name__)
                 return res
 
             # send task request to celery
@@ -734,7 +779,7 @@ def run_async(action="use", TaskClass=BaseTask, alias=None):
                     app=inst.task_manager,
                     queue=inst.celery_broker_queue,
                 )
-                task_obj = task.apply_async()
+                task_obj: 'AsyncResult' = task.apply_async()
                 return {"taskid": task_obj.id}, 201
 
         return run_async_decorated
@@ -765,14 +810,19 @@ def prepare_or_run_task(entity: ApiObject, task: str, params: dict, sync=False):
         task = signature(task, [], app=entity.task_manager)
         return {"task": task, "uuid": entity.uuid, "params": new_params}, 200
     else:
-        # logger.info("+++++ prepare_or_run_task - task: %s" % task)
-        task = signature(task, [params], app=entity.task_manager, queue=entity.celery_broker_queue)
-        task = task.apply_async()
-        logger.info("run async task %s" % task.id)
+        my_app = entity.task_manager
+        my_queue = entity.celery_broker_queue
+        logger.info(
+            "prepare_or_run_task - task: %s - params: %s - my_app: %s - my_queue: %s",
+            task, params, my_app, my_queue
+        )
+        task: Signature = signature(task, [params], app=my_app, queue=my_queue)
+        task: 'AsyncResult' = task.apply_async()
+        logger.info("run async task %s", task.id)
         return {"taskid": task.id, "uuid": entity.uuid}, 202
 
 
-def run_sync_task(prepared_sync_task, parent_task: BaseTask, parent_step: str, custom_task_id: str = None):
+def run_sync_task(prepared_sync_task: Dict, parent_task: BaseTask, parent_step: str, custom_task_id: str = None):
     """Run a sync task using a simple function
 
     :param prepared_sync_task: result from prepare_or_run_task
@@ -780,9 +830,9 @@ def run_sync_task(prepared_sync_task, parent_task: BaseTask, parent_step: str, c
     :param parent_step: parent step
     :param custom_task_id: str(uuid4()) or None. used when you want a custom id for the new task
 
-    :return:
+    :return: task return value, or exception object if exception
     """
-    logger.info("start sync task %s" % prepared_sync_task["task"])
+    logger.info("start sync task %s", prepared_sync_task["task"])
     prepared_sync_task["params"]["hostname"] = parent_task.hostname
     prepared_sync_task["params"]["parent_task"] = parent_task.request.id + ":" + parent_step
     prepared_sync_task["params"]["user"] = operation.user[0]
@@ -791,6 +841,7 @@ def run_sync_task(prepared_sync_task, parent_task: BaseTask, parent_step: str, c
     prepared_sync_task["params"]["api_id"] = operation.id
     prepared_sync_task["params"]["objid"] = parent_task.objid
     # res = prepared_sync_task['task'].type(prepared_sync_task['params'])
-    res = prepared_sync_task["task"].apply(task_id=custom_task_id, args=[prepared_sync_task["params"]], throw=True)
-    logger.info("complete sync task %s : %s " % (prepared_sync_task["task"], res))
+    task_signature: 'Signature' = prepared_sync_task["task"]
+    res: 'EagerResult' = task_signature.apply(task_id=custom_task_id, args=[prepared_sync_task["params"]], throw=True)
+    logger.info("complete sync task %s : %s ", task_signature, res)
     return res.result

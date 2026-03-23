@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 import json
 import time
@@ -8,7 +8,7 @@ import logging
 from datetime import datetime
 import redis
 import gevent
-from six import ensure_text
+from beecell.util import ensure_text
 from beecell.types.type_string import truncate
 from beecell.db.manager import parse_redis_uri
 from beecell.types.type_id import id_gen
@@ -28,9 +28,6 @@ class ComplexEncoder(json.JSONEncoder):
             return json.dumps(o)
         except TypeError:
             return str(o)
-
-        # Let the base class default method raise the TypeError
-        return json.JSONEncoder.default(self, o)
 
 
 def _dumps(s):
@@ -380,6 +377,7 @@ class EventProducerKombu(EventProducer):
             event = Event(event_type, data, source, dest)
             with producers[self.conn].acquire() as producer:
                 msg = event.dict()
+                self.logger.debug2("Send event msg: %s" % msg)
                 producer.publish(
                     msg,
                     serializer="json",
@@ -389,60 +387,30 @@ class EventProducerKombu(EventProducer):
                     routing_key=self.routing_key,
                     # expiration=60,
                     # delivery_mode=1
+                    # see https://docs.celeryq.dev/projects/kombu/en/v5.3.5/userguide/producers.html
+                    retry=True,
+                    # parameters supported by the retry_over_time() function
+                    retry_policy={
+                        "interval_start": 0, # First retry immediately,
+                        "interval_step": 2,  # then increase by 2s for every retry.
+                        "interval_max": 30,  # but don't exceed 30s between retries.
+                        "max_retries": 32,   # give up after 30 tries.
+                        # "timeout": 29,
+                    },
+                    timeout=29,
                 )
                 self.logger.debug2(
                     "Send event to exchange %s with routing key %s: %s" % (self.exchange, self.routing_key, msg["id"])
                 )
+
         except exceptions.ConnectionLimitExceeded as ex:
-            self.logger.error("Event can not be send: %s" % str(ex))
+            self.logger.error("Event can not be send - ConnectionLimitExceeded: %s" % str(ex), exc_info=True)
         except Exception as ex:
-            self.logger.error("Event can not be send: %s" % str(ex))
-
-
-class EventProducerZmq(EventProducer):
-    def __init__(self, host, port):
-        """Zmq event producer
-
-        :param host: Zmq consumer host
-        :param port: Zmq consumer port
-        """
-        EventProducer.__init__(self)
-
-        self._host = host
-        self._port = port
-
-    def _send(self, event_type, data, source, dest):
-        """Send event
-
-        :param event_type: event type. String like user, role, cloudstack.org.grp.vm
-        :param data: event data. Dict like {'opid':.., 'op':.., 'params':.., 'response':..}
-        :param source: event source. Dict like {'user':.., 'ip':..}
-        :param dest: event dist. Dict like {'user':.., 'ip':..}
-        """
-        zmq_socket = None
-        context = None
-        try:
-            # create context and open socket
-            context = zmq.Context()
-            zmq_socket = context.socket(zmq.PUB)
-            zmq_socket.connect("tcp://%s:%s" % (self._host, self._port))
-            self.logger.debug("Connect to %s:%s" % (self._host, self._port))
-
-            # generate event
-            event = Event(event_type, data, source, dest)
-            # send message
-            message = event.json()
-            gevent.sleep(0.01)
-            zmq_socket.send(message)
-            self.logger.debug("Send event %s : %s" % (event.id, message))
-        except zmq.error.ZMQError as ex:
-            self.logger.error("Event can not be send: %s" % ex)
+            self.logger.error("Event can not be send: %s" % str(ex), exc_info=True)
         finally:
-            # close socket and terminate context
-            if zmq_socket is not None:
-                zmq_socket.close()
-            if context is not None:
-                context.term()
+            # https://docs.celeryq.dev/projects/kombu/en/latest/reference/kombu.connection.html
+            # self.conn.release()
+            self.conn.close()
 
 
 class SimpleEventConsumer(object):
@@ -474,9 +442,8 @@ class SimpleEventConsumer(object):
 
                 gevent.sleep(0.05)  # be nice to the system :) 0.05
             except (gevent.Greenlet.GreenletExit, Exception) as ex:
-                self.logger.error("Error receiving message: %s", exc_info=1)
+                self.logger.error("Error receiving message: %s", ex, exc_info=1)
 
-        self.logger.info("Stop event consumer on redis channel %s:%s" % (self.broker_uri, self.broker_exchange))
 
 
 class SimpleEventConsumerKombu(ConsumerMixin):

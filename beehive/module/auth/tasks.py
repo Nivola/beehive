@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 # --- DEPRECATED ---
 
@@ -8,14 +8,13 @@ import datetime
 from celery.utils.log import get_task_logger
 from beehive.common.apiclient import BeehiveApiClient
 from beehive.common.task.job import Job, task_local, job, JobTask, job_task
-from beehive.module.catalog.controller import Catalog
-from beehive.module.catalog.common import CatalogEndpoint
-from beehive.common.task.manager import task_manager
+from beehive.common.task.manager import get_task_manager
 from beehive.common.task.util import end_task, start_task
 from beehive.module.auth.controller import User, Role, Group
 
 logger = get_task_logger(__name__)
 
+task_manager = get_task_manager()
 
 #
 # AuthJob
@@ -70,7 +69,7 @@ class AuthJobTask(JobTask):
         """
         uri = endpoint.model.uri
         res = self.apiclient.ping(endpoint=uri)
-        logger.warn("Ping endpoint %s: %s" % (uri, res))
+        logger.warning("Ping endpoint %s: %s" % (uri, res))
         return res
 
 

@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 from beehive.common.apimanager import ApiObject
 from beehive.common.data import transaction, operation, query
+from beehive.common.event import EventProducerKombu
 from beehive.common.model import (
     SchedulerTask,
     SchedulerState,
@@ -82,10 +83,10 @@ class TaskResult(object):
 
         # send event
         try:
-            client = self.task.controller.module.api_manager.event_producer
+            client: EventProducerKombu = self.task.controller.module.api_manager.event_producer
             client.send(ApiObject.ASYNC_OPERATION, data, source, dest)
         except Exception as ex:
-            logger.warning("Event can not be published. Event producer is not configured - %s" % ex)
+            logger.warning("task handler - Event can not be published. Event producer is not configured - %s" % ex)
 
     @transaction
     def trace_add(self, task_id, step_id, message, level):
@@ -109,8 +110,8 @@ class TaskResult(object):
         :return:
         """
         entity = self.manager.add_entity(SchedulerStep, task_id, name)
-        logger.debug2("add new db task step %s record" % entity)
-        logger.info("add new step %s.%s" % (name, entity.uuid))
+        logger.debug2("task handler - add new db task step %s record" % entity)
+        logger.info("task handler - add new step %s.%s" % (name, entity.uuid))
         self.trace_add(task_id, entity.uuid, "start step", "INFO")
         return entity.uuid
 
@@ -127,12 +128,12 @@ class TaskResult(object):
         step = self.manager.get_entity(SchedulerStep, step_id)
 
         entity = self.manager.update_entity(SchedulerStep, uuid=step_id, run_time=run_time)
-        logger.debug2("update task step %s record" % entity)
+        logger.debug2("task handler - update task step %s record" % entity)
 
         entity = self.manager.update_entity(SchedulerTask, uuid=task_id, run_time=run_time)
-        logger.debug2("update db task %s record" % entity)
+        logger.debug2("task handler - update db task %s record" % entity)
 
-        logger.info("step %s.%s progress: %s" % (step.name, step_id, msg))
+        logger.info("task handler - step %s.%s progress: %s" % (step.name, step_id, msg))
 
         if msg is not None:
             self.trace_add(task_id, step_id, msg, "INFO")
@@ -157,8 +158,8 @@ class TaskResult(object):
             stop_time=stop_time,
             run_time=stop_time,
         )
-        logger.debug2("update task step %s record" % entity_id)
-        logger.info("step %s.%s success" % (entity.name, step_id))
+        logger.debug2("task handler - update task step %s record" % entity_id)
+        logger.info("task handler - step %s.%s success" % (entity.name, step_id))
         self.trace_add(task_id, step_id, "end step with result: %s" % result, "INFO")
         step_name = entity.name
         self.send_event(step_name, "STEP", self.elapsed(), ex=None)
@@ -182,8 +183,8 @@ class TaskResult(object):
             stop_time=stop_time,
             result=False,
         )
-        logger.debug2("update task step %s record" % entity_id)
-        logger.error("step %s.%s error: %s" % (entity.name, step_id, error), exc_info=True)
+        logger.debug2("task handler - update task step %s record" % entity_id)
+        logger.error("task handler - step %s.%s error: %s" % (entity.name, step_id, error), exc_info=True)
         self.trace_add(task_id, step_id, "step error: %s" % error, "ERROR")
         step_name = entity.name
         self.send_event(step_name, "STEP", self.elapsed(), ex=error)
@@ -197,7 +198,7 @@ class TaskResult(object):
         """
         entity = self.manager.exist_entity(SchedulerTask, task_id)
         if entity is True:
-            logger.warning("task %s already exists" % task_id)
+            logger.warning("task handler - task %s already exists" % task_id)
             return True
         return False
         # raise Exception('task %s already exists' % task_id)
@@ -221,8 +222,8 @@ class TaskResult(object):
         if exists is False:
             status = SchedulerState.PENDING
             entity = self.manager.add_entity(SchedulerTask, task_id, task.name, status, start_time)
-            logger.debug2("add new db task %s record" % entity)
-            logger.info("send new task")
+            logger.debug2("task handler - add new db task %s record" % entity)
+            logger.info("task handler - task_prerun - send new task - task_id: %s" % task_id)
         # update already created task
         else:
             status = SchedulerState.PENDING
@@ -233,7 +234,8 @@ class TaskResult(object):
                 status=status,
                 start_time=start_time,
             )
-            logger.debug2("update db task %s record" % entity)
+            logger.debug2("task handler - update db task %s record" % entity)
+            logger.info("task handler - task_prerun - update task - task_id: %s" % task_id)
 
     @transaction
     def task_start(self, task):
@@ -266,8 +268,8 @@ class TaskResult(object):
             api_id=task.api_id,
             parent=task.parent,
         )
-        logger.debug2("update db task %s record" % entity)
-        logger.info("start task")
+        logger.debug2("task handler - update db task %s record" % entity)
+        logger.info("task handler - start task - task_id: %s" % task_id)
         self.trace_add(task_id, None, "start task", "INFO")
         self.send_event(self.task.name, "STARTED", 0, ex=None)
 
@@ -296,8 +298,8 @@ class TaskResult(object):
             status=status,
             result=result,
         )
-        logger.debug2("update db task %s record" % entity)
-        logger.info("task finished")
+        logger.debug2("task handler - update db task %s record" % entity)
+        logger.info("task handler - task finished")
         self.trace_add(task_id, None, "end task with result: %s" % result, "INFO")
         self.send_event(self.task.name, "SUCCESS", self.elapsed(), ex=None)
 
@@ -329,7 +331,7 @@ class TaskResult(object):
             status=status,
             result=False,
         )
-        logger.debug("update db task %s record" % entity)
+        logger.debug("task handler - update db task %s record" % entity)
         # logger.error('task failed: %s' % trace)
 
         # self.trace_add(task_id, None, trace, 'ERROR')
@@ -344,7 +346,7 @@ class TaskResult(object):
         :return:
         """
         entity = self.manager.update_entity(SchedulerTask, uuid=task_id, **args)
-        logger.debug2("update db task %s record" % entity)
+        logger.debug2("task handler - update db task %s record" % entity)
 
         self.trace_add(task_id, None, "update task", "INFO")
 
@@ -353,6 +355,8 @@ class TaskResult(object):
 def task_prerun(**args):
     task = args.get("task")
     task_id = args.get("task_id")
+    logger.info("task handler - task_prerun - task_id: %s" % (task_id))
+
     args["kwargs"]["task_id"] = task_id
 
     if getattr(task, "get_session", None):

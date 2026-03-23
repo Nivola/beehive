@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 import ujson as json
-from six import ensure_text
+from beecell.util import ensure_text
 from beecell.simple import id_gen
 
 

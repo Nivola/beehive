@@ -1,31 +1,30 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
+from datetime import datetime
 import logging
 from time import time
-from six import b, ensure_binary, ensure_text
-from sqlalchemy import exc
-from sqlalchemy.ext.declarative import declarative_base
-from beehive.common.data import operation, query, transaction, cache_query
-from beecell.simple import truncate, id_gen
-from beecell.db import ModelError, QueryError
-from datetime import datetime
+from beecell.util import b, ensure_binary, ensure_text
 import hashlib
 from uuid import uuid4
 from re import match
+from sqlalchemy import (
+    Boolean, Column, create_engine, DateTime, exc, event, Index, Integer, func, String, table, text, Text
+)
 from sqlalchemy.dialects import mysql
-from sqlalchemy import *
-from sqlalchemy.schema import DDLElement
 from sqlalchemy.ext import compiler
+from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.query import Query
+from sqlalchemy.schema import DDLElement
 from sqlalchemy.sql.expression import TextClause
-from sqlalchemy import event
-from typing import List, Type, Tuple, Any, Union, Dict, TypeVar
+from beehive.common.data import operation, query, transaction, cache_query
+from beecell.simple import truncate, id_gen
+from beecell.db import ModelError, QueryError
 
+from typing import List, Type, Tuple, Union, TypeVar
 # type var for model Objects
-
 ENTITY = TypeVar("ENTITY")
 
 Base = declarative_base()
@@ -71,7 +70,7 @@ def view(name, metadata, selectable=None, sql=None):
     return t
 
 
-class AuditData(object):
+class AuditData:
     """Basic orm audit entity
 
     :param creation_date: creation date
@@ -642,7 +641,7 @@ class PaginatedQueryGenerator(object):
         :param args: custom args
         :param kvargs: custom kvargs
         """
-        start = time()
+        self.group_by = kvargs.pop("group_by", False)
 
         self.group_by = kvargs.pop("group_by", False)
 
@@ -654,34 +653,46 @@ class PaginatedQueryGenerator(object):
         if tags is None or len(tags) == 0:
             tags = [""]
 
-        # make query
-        if self.size > 0:
+        total = 0
+
+        # count
+        nocount = kvargs.get("nocount", False)
+        if self.size > 0 and not nocount:
             # count all records
-            stmp = self.base_stmp(count=True)
-            query_count = self.session.query(Column("count")).from_statement(stmp).params(tags=tags, **kvargs)
-            self.logger.debug2("+++++ SQL - count stmp: %s" % query_count.statement.compile(dialect=mysql.dialect()))
+            stmp_count = self.base_stmp(count=True)
+            query_count = self.session.query(Column("count")).from_statement(stmp_count).params(tags=tags, **kvargs)
+            self.logger.debug2("+++++ SQL - count - stmp: %s", query_count.statement)
+            self.logger.debug2("+++++ SQL - count - stmp mysql: %s", query_count.statement.compile(dialect=mysql.dialect()))
+            self.logger.debug2("+++++ SQL - count - kvargs: %s", truncate(kvargs, size=2000))
+            self.logger.debug2("+++++ SQL - count - tags: %s", truncate(tags))
+            start_count = time()
             total = query_count.first()[0]
+            # res_count = query_count.all()
+            # self.logger.debug2("+++++ SQL - count - res_count: %s", res_count)
+            elapsed_count = round(time() - start_count, 3)
+            self.logger.debug2("+++++ SQL - count - total: %s - elapsed_count: [%s]", total, elapsed_count)
 
-        stmp = self.base_stmp()
-
+        # query
         # set query entities
         entities = [self.entity]
         entities.extend(self.other_entities)
 
+        stmp = self.base_stmp()
         query = self.session.query(*entities).from_statement(stmp).params(tags=tags, **kvargs)
-        self.logger.debug2("+++++ SQL - stmp: %s" % query.statement.compile(dialect=mysql.dialect()))
-        self.logger.debug2("+++++ SQL - kvargs: %s" % truncate(kvargs, size=2000))
-        self.logger.debug2("+++++ SQL - tags: %s" % truncate(tags))
-        res = query.all()
+        self.logger.debug2("+++++ SQL - query - stmp: %s", query.statement.compile(dialect=mysql.dialect()))
+        self.logger.debug2("+++++ SQL - query - kvargs: %s", truncate(kvargs, size=2000))
+        self.logger.debug2("+++++ SQL - query - tags: %s", truncate(tags))
+        start_query = time()
+        res_query = query.all()
+        elapsed_query = round(time() - start_query, 3)
 
         if self.size == 0 or self.size == -1:
-            total = len(res)
-
-        elapsed = round(time() - start, 3)
+            total = len(res_query)
+        
         self.logger.debug2(
-            "+++++ SQL - Get %ss (total:%s): %s [%s]" % (self.entity.__tablename__, total, truncate(res), elapsed)
+            "+++++ SQL - query - Get %ss (total:%s): %s - elapsed_query: [%s]", self.entity.__tablename__, total, truncate(res_query), elapsed_query
         )
-        return res, total
+        return res_query, total
 
     def base_stmp2(self, count: bool = False, limit: int = 1000) -> TextClause:
         """Base statement. Change usage respect base_smtp. Use distinct in select and remove group by
@@ -769,6 +780,7 @@ class PaginatedQueryGenerator(object):
             tags = [""]
 
         # make query
+        total = 0
         if self.size > 0:
             # count all records
             stmp = self.base_stmp2(count=True)
@@ -781,16 +793,16 @@ class PaginatedQueryGenerator(object):
         entities.extend(self.other_entities)
 
         query = self.session.query(*entities).from_statement(stmp).params(tags=tags, **kvargs)
-        self.logger.debug2("+++++ run2 stmp: %s" % query.statement.compile(dialect=mysql.dialect()))
-        self.logger.debug2("+++++ run2 kvargs: %s" % truncate(kvargs))
-        self.logger.debug2("+++++ run2 tags: %s" % truncate(tags))
+        self.logger.debug2("+++++ run2 stmp: %s", query.statement.compile(dialect=mysql.dialect()))
+        self.logger.debug2("+++++ run2 kvargs: %s", truncate(kvargs))
+        self.logger.debug2("+++++ run2 tags: %s", truncate(tags))
         res: List[ENTITY] = query.all()
 
         if self.size == 0 or self.size == -1:
             total: int = len(res)
 
         elapsed = round(time() - start, 3)
-        self.logger.debug2("Get %ss (total:%s): %s [%s]" % (self.entity.__tablename__, total, truncate(res), elapsed))
+        self.logger.debug2("Get %ss (total:%s): %s [%s]", self.entity.__tablename__, total, truncate(res), elapsed)
         return res, total
 
 
@@ -834,9 +846,9 @@ class AbstractDbManager(object):
         """
         try:
             engine = create_engine(db_uri)
-            engine.execute("SET FOREIGN_KEY_CHECKS=1;")
+            engine.execute(text("SET FOREIGN_KEY_CHECKS=1;"))
             Base.metadata.create_all(engine)
-            logger.info("Create tables on : %s" % db_uri)
+            logger.info("Create tables on : %s", db_uri)
             del engine
         except exc.DBAPIError as e:
             raise Exception(e)
@@ -849,9 +861,9 @@ class AbstractDbManager(object):
         """
         try:
             engine = create_engine(db_uri)
-            engine.execute("SET FOREIGN_KEY_CHECKS=0;")
+            engine.execute(text("SET FOREIGN_KEY_CHECKS=0;"))
             Base.metadata.drop_all(engine)
-            logger.info("Remove tables from : %s" % db_uri)
+            logger.info("Remove tables from : %s", db_uri)
             del engine
         except exc.DBAPIError as e:
             raise Exception(e)
@@ -864,7 +876,7 @@ class AbstractDbManager(object):
 
         :param stmp: statement
         """
-        self.logger.debug2("stmp: %s" % stmp.statement.compile(dialect=mysql.dialect()))
+        self.logger.debug2("stmp: %s", stmp.statement.compile(dialect=mysql.dialect()))
 
     @query
     def count_entities(self, entityclass: Type[ENTITY]) -> int:
@@ -876,7 +888,7 @@ class AbstractDbManager(object):
         session = self.get_session()
         res: int = session.query(entityclass).count()
 
-        self.logger.debug2("Count %s: %s" % (entityclass.__name__, res))
+        self.logger.debug2("Count %s: %s", entityclass.__name__, res)
         return res
 
     def print_query(self, func, query: Query, args):
@@ -886,7 +898,7 @@ class AbstractDbManager(object):
         :param query: query to run
         :param args: query args. Use: inspect.getargvalues(inspect.currentframe())
         """
-        self.logger.debug2("stmp: %s" % query.statement.compile(dialect=mysql.dialect()))
+        self.logger.debug2("stmp: %s", query.statement.compile(dialect=mysql.dialect()))
         args = {arg: args.locals[arg] for arg in args.args}
         self.logger.debug2(args)
 
@@ -926,8 +938,8 @@ class AbstractDbManager(object):
 
         query = query.filter_by(**kvargs)
 
-        self.logger.debug2("stmp: %s" % query.statement.compile(dialect=mysql.dialect()))
-        self.logger.debug2("kvargs: %s, %s, %s, %s, %s" % (kvargs, oid, objid, uuid, name))
+        self.logger.debug2("stmp: %s", query.statement.compile(dialect=mysql.dialect()))
+        self.logger.debug2("kvargs: %s, %s, %s, %s, %s", kvargs, oid, objid, uuid, name)
 
         return query
 
@@ -953,13 +965,15 @@ class AbstractDbManager(object):
             search_field = "uuid"
             entity = self.query_entities(entityclass, session, uuid=oid, *args, **kvargs)
         # get obj by id
-        elif match("^\d+$", oid):
+        elif match(r"^\d+$", oid):
             search_field = "id"
             entity = self.query_entities(entityclass, session, oid=oid, *args, **kvargs)
         # get obj by name
-        elif match("[\-\w\d]+", oid):
+        elif match(r"[\-\w\d]+", oid):
             search_field = "name"
             entity = self.query_entities(entityclass, session, name=oid, **kvargs)
+        else:
+            raise Exception("Invalid oid %s: not id, uuid, nor name" % oid)
 
         resp: bool = False
         if oid is not None:
@@ -967,7 +981,7 @@ class AbstractDbManager(object):
             if res is not None:
                 resp = True
 
-        self.logger.debug2("Check entity %s by %s %s exists: %s" % (entityclass.__name__, search_field, oid, resp))
+        self.logger.debug2("Check entity %s by %s %s exists: %s", entityclass.__name__, search_field, oid, resp)
         return resp
 
     @query
@@ -1001,13 +1015,15 @@ class AbstractDbManager(object):
             search_field = "uuid"
             entity = self.query_entities(entityclass, session, uuid=oid, *args, **kvargs)
         # get obj by id
-        elif match("^\d+$", oid):
+        elif match(r"^\d+$", oid):
             search_field = "id"
             entity = self.query_entities(entityclass, session, oid=oid, *args, **kvargs)
         # get obj by name
-        elif match("[\-\w\d]+", oid):
+        elif match(r"[\-\w\d]+", oid):
             search_field = "name"
             entity = self.query_entities(entityclass, session, name=oid, **kvargs)
+        else:
+            raise Exception("Invalid oid %s: not id, uuid, nor name" % oid)
 
         res: ENTITY = None
         if for_update:
@@ -1015,12 +1031,13 @@ class AbstractDbManager(object):
         else:
             res = entity.first()
 
+        self.logger.debug2("Query entity %s by %s %s: %s", entityclass.__name__, search_field, oid, res)
+
         if res is None:
             msg = "No %s found" % entityclass.__name__
             self.logger.error(msg)
             raise ModelError(msg, code=404)
 
-        self.logger.debug2("Query entity %s by %s %s: %s" % (entityclass.__name__, search_field, oid, res))
         return res
 
     @cache_query("get")
@@ -1112,7 +1129,7 @@ class AbstractDbManager(object):
         with_perm_tag: bool = True,
         *args,
         **kvargs,
-    ) -> List[ENTITY]:
+    ) -> Tuple[List[ENTITY], int]:
         """Get entities associated with some permission tags
 
         :param entityclass: entity class
@@ -1167,7 +1184,6 @@ class AbstractDbManager(object):
         for item in filters:
             query.add_filter(item)
         query.set_pagination(page=page, size=size, order=order, field=field)
-        res: List[ENTITY]
         if kvargs.pop("run2", False) is True:
             res = query.run2(tags, *args, **kvargs)
         else:
@@ -1175,7 +1191,7 @@ class AbstractDbManager(object):
         return res
 
     @transaction
-    def add_entity(self, entityclass, *args, **kvargs):
+    def add_entity(self, entityclass: Type[ENTITY], *args, **kvargs) -> ENTITY:
         """Add an entity.
 
         :param entityclass: entity model class
@@ -1191,7 +1207,7 @@ class AbstractDbManager(object):
         session.add(record)
         session.flush()
 
-        self.logger.debug2("Add %s: %s" % (entityclass.__name__, truncate(record)))
+        self.logger.debug2("Add %s: %s", entityclass.__name__, truncate(record))
         return record
 
     @transaction
@@ -1217,7 +1233,7 @@ class AbstractDbManager(object):
             query = self.query_entities(entityclass, session, uuid=uuid)
             oid = uuid
         else:
-            raise ModelError("Neither oid nor uuid are been specified", code=400)
+            raise ModelError("Neither oid nor uuid were specified", code=400)
 
         # check entity exists
         entity = query.first()
@@ -1238,7 +1254,7 @@ class AbstractDbManager(object):
         query.update(params, synchronize_session=False)
         # session.flush()
 
-        self.logger.debug2("Update %s %s with data: %s" % (entityclass.__name__, oid, params))
+        self.logger.debug2("Update %s %s with data: %s", entityclass.__name__, oid, params)
         return oid
 
     @transaction
@@ -1264,7 +1280,7 @@ class AbstractDbManager(object):
             query = self.query_entities(entityclass, session, uuid=uuid)
             oid = uuid
         else:
-            raise ModelError("Neither oid nor uuid are been specified", code=400)
+            raise ModelError("Neither oid nor uuid were specified", code=400)
 
         # check entity exists
         entity = query.first()
@@ -1279,11 +1295,11 @@ class AbstractDbManager(object):
         query.update(kvargs)
         session.flush()
 
-        self.logger.debug2("Update null %s %s with data: %s" % (entityclass.__name__, oid, kvargs))
+        self.logger.debug2("Update null %s %s with data: %s", entityclass.__name__, oid, kvargs)
         return oid
 
     @transaction
-    def remove_entity(self, entityclass, *args, **kvargs):
+    def remove_entity(self, entityclass: Type['ENTITY'], *args, **kvargs):
         """Remove entity.
 
         :param entityclass: entity model class
@@ -1309,7 +1325,7 @@ class AbstractDbManager(object):
         # delete entity
         session.delete(entity)
 
-        self.logger.debug2("Remove %s %s" % (entityclass.__name__, entity.id))
+        self.logger.debug2("Remove %s %s", entityclass.__name__, entity.id)
         return entity.id
 
     @transaction
@@ -1321,12 +1337,12 @@ class AbstractDbManager(object):
         :raises TransactionError: raise :class:`TransactionError`
         """
         if entity is None:
-            raise QueryError("Error: can't not add None entity")
+            raise QueryError("Error: cannpot add None entity")
 
         session = self.get_session()
         session.add(entity)
         session.flush()
-        self.logger.debug2("Add %s entity %s" % (entity.__class__.__name__, entity))
+        self.logger.debug2("Add %s entity %s", entity.__class__.__name__, entity)
         return entity
 
     @transaction
@@ -1338,12 +1354,12 @@ class AbstractDbManager(object):
         :raises TransactionError: raise :class:`TransactionError`
         """
         if entities is None:
-            raise QueryError("Error: can't not add None entity")
+            raise QueryError("Error: cannot add None entity")
 
         session = self.get_session()
         session.add_all(entities)
         session.flush()
-        self.logger.debug2("Add all %s entity %s" % (entities[0].__class__.__name__, len(entities)))
+        self.logger.debug2("Add all %s entity %s", entities[0].__class__.__name__, len(entities))
         return len(entities)
 
     @transaction
@@ -1355,16 +1371,16 @@ class AbstractDbManager(object):
         :raises TransactionError: raise :class:`TransactionError`
         """
         if entity is None:
-            raise QueryError("Error: can't not update None entity")
+            raise QueryError("Error: cannot update None entity")
 
-        self.logger.info("Update %s entity %s" % (entity.__class__.__name__, entity))
+        self.logger.info("Update %s entity %s", entity.__class__.__name__, entity)
         if isinstance(entity, AuditData):
             entity.modification_date = datetime.now()
 
         session = self.get_session()
         session.merge(entity)
         session.flush()
-        self.logger.info("Updated")
+        self.logger.info("Entity %s updated", entity)
         return entity
 
     @transaction
@@ -1376,17 +1392,17 @@ class AbstractDbManager(object):
         :raises TransactionError: raise :class:`TransactionError`
         """
         if entities is None:
-            raise QueryError("Error: can 't not bulk update None entities")
+            raise QueryError("Error: cannot bulk update None entities")
 
         for entity in entities:
-            self.logger.debug("Update %s entity %s" % (entities.__class__.__name__, entity))
+            self.logger.debug("Update %s entity %s", entities.__class__.__name__, entity)
             if isinstance(entity, BaseEntity):
                 entity.modification_date = datetime.today()
 
         session = self.get_session()
         session.bulk_save_objects(entities)
         session.flush()
-        self.logger.info("Bulk updated %s entities" % len(entities))
+        self.logger.info("Bulk updated %s entities", len(entities))
         return entities
 
     @transaction
@@ -1400,17 +1416,17 @@ class AbstractDbManager(object):
         if entity is None:
             raise QueryError("Error: can't not delete None entity")
 
-        self.logger.debug2("Delete %s entity %s" % (entity.__class__.__name__, entity))
+        self.logger.debug2("Delete %s entity %s", entity.__class__.__name__, entity)
         if isinstance(entity, BaseEntity):
             if entity.is_active():
                 entity.disable()
                 self.update(entity)
-                logger.info("Disable entity %s" % entity.id)
+                logger.info("Disable entity %s", entity.id)
             else:
-                logger.info("Nothing to do on %s !" % entity)
+                logger.info("Nothing to do on %s !", entity)
         else:
             self.purge(entity)
-            logger.info("Purge entity %s" % entity.id)
+            logger.info("Purge entity %s", entity.id)
         return entity
 
     @transaction
@@ -1427,7 +1443,7 @@ class AbstractDbManager(object):
         session = self.get_session()
         session.delete(entity)
         session.flush()
-        logger.debug2("Delete %s entity %s" % (entity.__class__.__name__, entity))
+        logger.debug2("Delete %s entity %s", entity.__class__.__name__, entity)
 
     #
     # permission tag
@@ -1480,7 +1496,7 @@ class AbstractDbManager(object):
 
         res = query.all()
 
-        self.logger.debug2("Query permtags: %s" % res)
+        self.logger.debug2("Query permtags: %s", res)
         return res
 
     @transaction
@@ -1500,7 +1516,7 @@ class AbstractDbManager(object):
         # create permtag
         tagrecord = PermTag(tag, explain=explain)
         session.add(tagrecord)
-        self.logger.debug2("Add permtag %s" % tagrecord)
+        self.logger.debug2("Add permtag %s", tagrecord)
 
     @transaction
     def __add_perm_tag_entity(self, tag, explain, entity, type, *args, **kvargs):
@@ -1519,13 +1535,13 @@ class AbstractDbManager(object):
         try:
             tagrecord = session.query(PermTag).filter_by(value=tag).first()
         except Exception:
-            self.logger.debug2("Permtag %s does not exist" % tag)
+            self.logger.debug2("Permtag %s does not exist", tag)
         try:
             record = PermTagEntity(tagrecord.id, entity, type)
             session.add(record)
-            self.logger.debug2("Add permtag %s entity %s association" % (tag, entity))
+            self.logger.debug2("Add permtag %s entity %s association", tag, entity)
         except Exception:
-            self.logger.debug2("Permtag %s entity %s association already exists" % (tag, entity))
+            self.logger.debug2("Permtag %s entity %s association already exists", tag, entity)
 
         return tagrecord
 
@@ -1591,7 +1607,7 @@ class AbstractDbManager(object):
         for item in items:
             session.delete(item)
         session.flush()
-        self.logger.debug2("Delete tag entity %s.%s association" % (entity, etype))
+        self.logger.debug2("Delete tag entity %s.%s association", entity, etype)
 
         # remove unused tag
         for tag in tags:
@@ -1599,9 +1615,9 @@ class AbstractDbManager(object):
             if tagrecord is not None:
                 tagusage = session.query(func.count(PermTagEntity.id)).filter_by(tag=tagrecord.id).scalar()
                 if tagusage > 0:
-                    self.logger.warning("Tag %s is used by other entities" % tag)
+                    self.logger.warning("Tag %s is used by other entities", tag)
                 else:
                     session.delete(tagrecord)
-                    self.logger.debug2("Delete tag %s" % tag)
+                    self.logger.debug2("Delete tag %s", tag)
 
         return True

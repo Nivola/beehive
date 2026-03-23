@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 from flask import request
 from beecell.simple import get_value, str2bool
@@ -9,8 +9,8 @@ from beecell.swagger import SwaggerHelper
 from beehive.common.apimanager import ApiView, ApiManagerError, SwaggerApiView
 from beehive.common.data import operation
 from beehive.module.auth.controller import AuthController
-from marshmallow import fields, Schema, validates, ValidationError
-
+from flasgger import fields, Schema, ValidationError
+from marshmallow import validates
 
 def get_ip():
     return get_remote_ip(request)
@@ -19,7 +19,7 @@ def get_ip():
 class SimpleHttpLoginRequestSchema(Schema):
     user = fields.String(required=True, error_messages={"required": "user is required."})
     password = fields.String(required=True, error_messages={"required": "password is required."})
-    login_ip = fields.String(dump_to="login-ip", missing=get_ip)
+    login_ip = fields.String(data_key="login-ip", load_default=get_ip)
 
     @validates("user")
     def validate_user(self, value):
@@ -34,9 +34,11 @@ class SimpleHttpLoginBodyRequestSchema(Schema):
 
 
 class SimpleHttpLoginResponseSchema(Schema):
-    uid = fields.String(required=True, example="")
-    type = fields.String(example="simplehttp")
-    timestamp = fields.DateTime(required=True, example="")
+    uid = fields.String(required=True,
+                        metadata={"example": ""})
+    type = fields.String(metadata={"example": "simplehttp"})
+    timestamp = fields.DateTime(required=True,
+                                metadata={"example": ""})
     user = fields.Dict(required=True, example={})
 
 

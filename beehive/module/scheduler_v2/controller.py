@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 from uuid import uuid4
 
@@ -32,9 +32,6 @@ class SchedulerController(ApiController):
         self.child_classes = [Scheduler, TaskManager]
 
         self.manager = SchedulerDbManager()
-
-    def add_service_class(self, name, version, service_class):
-        self.service_classes.append(service_class)
 
     def get_task_manager(self):
         return TaskManager(self)
@@ -77,7 +74,7 @@ class Scheduler(ApiObject):
                 self.scheduler = RedisScheduler(self.task_scheduler, lazy=True)
                 self.scheduler.set_redis(self.controller.redis_scheduler)
         except Exception:
-            self.logger.warn("", exc_info=1)
+            self.logger.warning("", exc_info=1)
 
     @trace(op="insert")
     def create_update_entry(self, name, task, schedule, args=None, kwargs=None, options={}, relative=None):
@@ -157,26 +154,6 @@ class Scheduler(ApiObject):
         except Exception as ex:
             self.logger.error(ex, exc_info=1)
             raise ApiManagerError(ex, code=400)
-
-    @trace(op="delete")
-    def clear_all_entries(self):
-        """Clear all scheduler entries.
-
-        :param name: entry name
-        :return: True
-        :rtype: bool
-        :raises ApiManagerError: raise :class:`.ApiManagerError`
-        """
-        self.verify_permisssions("delete")
-
-        try:
-            self.redis_entries.clear()
-            self.logger.info("Remove all scheduler entries")
-            return True
-        except Exception as ex:
-            self.logger.error(ex)
-            raise ApiManagerError(ex, code=400)
-
 
 class TaskManager(ApiObject):
     """Scheduler v2.0 task maanager class.
@@ -354,6 +331,7 @@ class TaskManager(ApiObject):
             objdef = entity_class.objdef
             objtype = entity_class.objtype
 
+        with_perm_tag = False
         if operation.authorize is True:
             # check SuperAdmin
             if self.controller.is_admin_service():
@@ -400,7 +378,7 @@ class TaskManager(ApiObject):
             self.logger.info("Get tasks (total:%s): %s" % (total, truncate(res)))
             return res, total
         except QueryError as ex:
-            self.logger.warn(ex, exc_info=1)
+            self.logger.warning(ex, exc_info=1)
             return [], 0
 
     @trace(op="view")
@@ -443,7 +421,7 @@ class TaskManager(ApiObject):
         return res
 
     @trace(op="insert")
-    def run_test_task(self, params):
+    def run_test_task(self, params:dict):
         """Run test task
 
         :param params: task input params {'x':.., 'y':.., 'numbers':[]}
@@ -504,7 +482,8 @@ class TaskManager(ApiObject):
         :raises ApiManagerError if query empty return error.
         """
         res = params.get("x") + params.get("y")
-        self.logger.debug("test inline task result from params %s: %s" % (params, res))
+        self.logger.debug("fvfvfv - test inline task result from params %s: %s" % (params, res))
+        print("fvfvfv - test inline task result from params %s: %s" % (params, res))
         return res
 
 
@@ -556,7 +535,7 @@ class Task(ApiObject):
                 self.identity = self.args.pop("identity")
                 self.alias = self.args.pop("alias", self.name)
             except Exception:
-                self.logger.warn(
+                self.logger.warning(
                     "error parsing task %s args %s" % (self.oid, self.model.args),
                     exc_info=True,
                 )

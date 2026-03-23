@@ -1,17 +1,19 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 from beecell.swagger import SwaggerHelper
 from beehive.common.apimanager import ApiController, ApiManagerError, ApiView, SwaggerApiView
-from marshmallow import fields
-from marshmallow.schema import Schema
+from flasgger import fields, Schema
 
 
 class ServerPingResponseSchema(Schema):
-    name = fields.String(required=True, example="beehive", description="server instance name")
-    id = fields.String(required=True, example="auth", description="server instance id")
-    hostname = fields.String(required=True, example="tst-beehive", description="server instance host name")
+    name = fields.String(required=True,
+                         metadata={"example": "beehive", "description": "server instance name"})
+    id = fields.String(required=True,
+                       metadata={"example": "auth", "description": "server instance id"})
+    hostname = fields.String(required=True,
+                             metadata={"example": "tst-beehive", "description": "server instance host name"})
     uri = fields.String(
         required=True,
         example="http://localhost:6060",
@@ -34,9 +36,12 @@ class ServerPing(SwaggerApiView):
 
 
 class ServerInfoResponseSchema(Schema):
-    name = fields.String(required=True, example="beehive", description="server instance name")
-    id = fields.String(required=True, example="auth", description="server instance id")
-    modules = fields.Dict(required=True, example={}, description="server modules")
+    name = fields.String(required=True,
+                         metadata={"example": "beehive", "description": "server instance name"})
+    id = fields.String(required=True,
+                       metadata={"example": "auth", "description": "server instance id"})
+    modules = fields.Dict(required=True, example={},
+                          metadata={"description": "server modules"})
 
 
 class ServerInfo(SwaggerApiView):
@@ -54,13 +59,17 @@ class ServerInfo(SwaggerApiView):
 
 
 class ServerVersionResponseSchema(Schema):
-    name = fields.String(required=True, example="beehive", description="package name")
-    version = fields.String(required=True, example="auth", description="package version")
+    name = fields.String(required=True,
+                         metadata={"example": "beehive", "description": "package name"})
+    version = fields.String(required=True,
+                            metadata={"example": "auth", "description": "package version"})
 
 
 class ServerImageInfoResponseSchema(Schema):
-    branch = fields.String(required=False, example="devel", description="branch")
-    date_created = fields.String(required=False, description="date_created")
+    branch = fields.String(required=False,
+                           metadata={"example": "devel", "description": "branch"})
+    date_created = fields.String(required=False,
+                                 metadata={"description": "date_created"})
 
 
 class ServerVersionsResponseSchema(Schema):
@@ -88,8 +97,10 @@ class ServerVersion(SwaggerApiView):
 
 
 class MaintenanceListMethodResponseSchema(Schema):
-    method = fields.String(required=True, example="get", description="method name")
-    enabled = fields.String(required=True, example="False", description="enabled True/False", allow_none=True)
+    method = fields.String(required=True,
+                           metadata={"example": "get", "description": "method name"})
+    enabled = fields.String(required=True,
+                            metadata={"example": "False", "description": "enabled True/False"}, allow_none=True)
 
 
 class MaintenanceListResponseSchema(Schema):
@@ -124,7 +135,8 @@ class MaintenanceSetApiParamRequestSchema(Schema):
         example="get",
         description="http method",
     )
-    enabled = fields.String(required=True, example="False", description="enable True/False")
+    enabled = fields.String(required=True,
+                            metadata={"example": "False", "description": "enable True/False"})
 
 
 class MaintenanceSetApiRequestSchema(Schema):
@@ -137,7 +149,8 @@ class MaintenanceSetApiBodyRequestSchema(Schema):
 
 class MaintenanceSetApiResponse1Schema(Schema):
     xmlns = fields.String(required=False, data_key="__xmlns")
-    ok = fields.Boolean(required=True, example="", allow_none=True)
+    ok = fields.Boolean(required=True,
+                        metadata={"example": ""}, allow_none=True)
 
 
 class MaintenanceSetApiResponseSchema(Schema):

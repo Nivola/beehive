@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 import logging
 from datetime import datetime
 import ujson as json
-from six import ensure_text
+from beecell.util import ensure_text
 
 from beecell.logger import LoggerHelper
 from beecell.simple import format_date, truncate

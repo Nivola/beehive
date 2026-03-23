@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 from logging import getLogger
 import gevent
@@ -116,6 +116,7 @@ class CatalogProducerKombu(CatalogProducer):
             endpoint = CatalogEndpoint(name, desc, service, catalog, uri)
             with producers[self.conn].acquire() as producer:
                 msg = endpoint.dict()
+                self.logger.debug2("Send catalog msg: %s" % msg)
                 producer.publish(
                     msg,
                     serializer="json",
@@ -125,9 +126,23 @@ class CatalogProducerKombu(CatalogProducer):
                     routing_key=self.routing_key,
                     # expiration=60,
                     # delivery_mode=1
+                    # see https://docs.celeryq.dev/projects/kombu/en/v5.3.5/userguide/producers.html
+                    retry=True,
+                    # parameters supported by the retry_over_time() function
+                    retry_policy={
+                        "interval_start": 0, # First retry immediately,
+                        "interval_step": 2,  # then increase by 2s for every retry.
+                        "interval_max": 30,  # but don't exceed 30s between retries.
+                        "max_retries": 33,   # give up after 30 tries.
+                    },
+                    timeout=27,
                 )
                 self.logger.debug("Send catalog endpoint : %s" % msg)
         except exceptions.ConnectionLimitExceeded as ex:
-            self.logger.error("Endpoint can not be send: %s" % ex)
+            self.logger.error("Endpoint can not be send - ConnectionLimitExceeded: %s" % ex, exc_info=True)
         except Exception as ex:
             self.logger.error("Endpoint can not be send: %s" % ex, exc_info=True)
+        finally:
+            # https://docs.celeryq.dev/projects/kombu/en/latest/reference/kombu.connection.html
+            # self.conn.release()
+            self.conn.close()

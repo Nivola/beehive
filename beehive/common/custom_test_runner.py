@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 # """Running tests"""
 
@@ -210,7 +210,7 @@ class CustomTestRunner(object):
         stream=None,
         descriptions=True,
         verbosity=1,
-        failfast=False,
+        failfast=True,
         buffer=False,
         resultclass=None,
         warnings=None,

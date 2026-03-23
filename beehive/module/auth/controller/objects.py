@@ -1,37 +1,26 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
-from datetime import datetime
 from re import match
 
-# from six import ensure_text
-
-# from beecell.auth import extract
-from beecell.simple import id_gen, truncate, str2bool, format_date
+from beecell.simple import truncate, str2bool, format_date
 from beehive.common.apimanager import ApiManagerError
 from beecell.db import TransactionError, QueryError
 from beehive.common.controller.authorization import (
-    BaseAuthController,
-    User as BaseUser,
-    Token,
     AuthObject,
 )
 from beehive.common.data import trace, operation
 from beehive.common.model.authorization import (
     AuthDbManager,
-    User as ModelUser,
-    Role as ModelRole,
-    Group as ModelGroup,
-    SysObject as ModelObject,
 )
-from typing import List, Tuple, TYPE_CHECKING
-
 
 class Objects(AuthObject):
     objdef = "Objects"
     objdesc = "Authorization objects"
     objuri = "nas/objects"
+
+    manager: 'AuthDbManager'
 
     def __init__(self, controller):
         AuthObject.__init__(self, controller, oid="", name="", desc="", active=True)
@@ -123,14 +112,14 @@ class Objects(AuthObject):
         :param objtype: type of the system object type [optional]
         :param objdef: definition of the system object type [optional]
         :return: True if operation is successful
-        :rtype: bool
+        :rtype: None
         :raises ApiManagerError: raise :class:`ApiManagerError`
         """
         # verify permissions
         self.verify_permisssions("delete")
 
         try:
-            res = self.manager.remove_object_type(oid=oid, objtype=objtype, objdef=objdef)
+            self.manager.remove_object_type(oid=oid, objtype=objtype, objdef=objdef)
             return None
         except TransactionError as ex:
             self.logger.error(ex, exc_info=False)
@@ -388,8 +377,10 @@ class Objects(AuthObject):
             if oid is not None:
                 p = self.manager.get_permission(oid)
             elif objid is not None or objtype is not None or objdef is not None:
-                pp, total = self.manager.get_permissions(objid=objid, objtype=objtype, objdef=objdef, action=action)
+                pp, _ = self.manager.get_permissions(objid=objid, objtype=objtype, objdef=objdef, action=action)
                 p = pp[0]
+            else:
+                raise ValueError("argument error: invalid filters")
             res = {
                 "id": p.id,
                 "oid": p.obj.id,
@@ -462,7 +453,6 @@ class Objects(AuthObject):
                     order=order,
                     field=field,
                 )
-
             else:
                 perms, total = self.manager.get_permissions(
                     oid=oid,
@@ -482,13 +472,13 @@ class Objects(AuthObject):
                 res.append(
                     {
                         "id": p.id,
-                        "oid": p.obj.id,
-                        "subsystem": p.obj.type.objtype,
-                        "type": p.obj.type.objdef,
-                        "objid": p.obj.objid,
-                        "aid": p.action.id,
-                        "action": p.action.value,
-                        "desc": p.obj.desc,
+                        "oid": p.oid,
+                        "subsystem": p.objtype,
+                        "type": p.objdef,
+                        "objid": p.objid,
+                        "aid": p.aid,
+                        "action": p.action,
+                        "desc": p.descr,
                     }
                 )
 
@@ -516,7 +506,7 @@ class Objects(AuthObject):
         authDbManager: AuthDbManager = self.manager
         actions = {a.value: a.id for a in authDbManager.get_object_action()}
         for perm in perms:
-            if match("^\d+$", perm):
+            if match(r"^\d+$", perm):
                 perm = int(perm)
 
             if isinstance(perm, list):
@@ -571,7 +561,7 @@ class Objects(AuthObject):
         perm_ids = []
         actions = {a.value: a.id for a in self.manager.get_object_action()}
         for perm in perms:
-            if match("^\d+$", perm):
+            if match(r"^\d+$", perm):
                 perm = int(perm)
 
             if isinstance(perm, list):
@@ -626,7 +616,7 @@ class Objects(AuthObject):
         perm_ids = []
         actions = {a.value: a.id for a in self.manager.get_object_action()}
         for perm in perms:
-            if match("^\d+$", perm):
+            if match(r"^\d+$", perm):
                 perm = int(perm)
 
             if isinstance(perm, list):

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 """
 Usage: batch.py config_file entityclass task_class jsonparameter
@@ -24,9 +24,9 @@ from beecell.simple import import_class, id_gen
 from beehive.common.data import set_operation_params
 from beehive.server import configure_server
 from beehive.common.apimanager import ApiManager
-from beehive.common.task_v2.manager import task_manager, configure_batch_task_manager
+from beehive.common.task_v2.manager import get_task_manager, configure_batch_task_manager
 from beehive.common.task_v2 import prepare_or_run_task
-from six import ensure_text
+from beecell.util import ensure_text
 import ujson
 from beehive.server import configure_server
 from uuid import uuid4
@@ -62,7 +62,7 @@ if __name__ == "__main__":
             "cache": False,
         }
     )
-
+    task_manager = get_task_manager()
     api_manager: ApiManager = task_manager.api_manager
     entity_class = import_class(entity_class_name)
     # instance_class = entity_class(api_manager.main_module.get_controller())

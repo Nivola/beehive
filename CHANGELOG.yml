@@ -1,4 +1,124 @@
 changelog:
+  - version: 1.18.2
+    date: 2026-03-12
+    added:
+      - generate fake_response
+    fixed: []
+
+  - version: 1.18.1
+    date: 2026-02-12
+    added:
+      - Update licensing header
+      - Update requirement
+    fixed:
+      - reduce logging info about query ecexution
+
+  - version: 1.18.0
+    date: 2026-01-22
+    added:
+      - data in audit log
+      -
+    fixed:
+      - updated python version, labraries and dependencies
+      - schema definitions
+      - regression tests
+      - fix typo
+      - removed wrong dump_default from PaginatedRequestQuerySchema
+      -
+    removed:
+      - unused files
+      - six direct usage
+  - version: 1.17.13
+    date: 2025-12-11
+    added: []
+    fixed: []
+
+  - version: 1.17.12
+    date: 2025-11-27
+    added:
+      - ip in aditlog
+      - support for NullCacheClient
+    fixed:
+      - timestamp in auditlog
+  - version: 1.17.11
+    date: 2025-11-06
+    added: []
+    fixed: []
+
+  - version: 1.17.11
+    date: 2025-11-06
+    added: []
+    fixed:
+      - added CSP heder and removed remote-server http response header
+  - version: 1.17.10
+    date: 2025-10-09
+    fixed:
+      - Minor change on operation
+  - version: 1.17.7
+    date: 2025-08-05
+    added:
+      - SecurityGroup rule apply to NSX security group not to NSX distribuited firewall
+    fixed:
+      - task new filters: parentonly, api_id
+      - Correct auth user name regex
+
+  - version: 1.17.4
+    date: 2025-04-17
+    fixed:
+      - query_wrap log warning slow query
+      - some typo
+
+  - version: 1.17.3
+    date: 2025-03-28
+    fixed:
+      - get_permissions queries rewritten and echo option added to sql pool engine
+      - changed depracated logger.warn to logger.warning
+      - read identity providers first from configuration table, if present, and then, from values in uwsgi.yaml file, if present
+
+  - version: 1.17.2
+    date: 2025-03-12
+
+  - version: 1.17.1
+    date: 2025-03-6
+    fixed:
+      - Commented check to request path in dispatch_request
+  - version: 1.17.0
+    date: 2025-02-24
+    desc: rilascio funzionalità
+    added:
+      - auth improvement in query database
+      - in test print task last trace in case of failure, increased timeouts, logged time test unit elapsed, rotating_bar and failfast default True
+      - nivola test tabulation
+      - type hints
+      - debug sql count
+      - dbscript  permissione on methods
+      - manage API_ENABLE_PROFILER for development environments
+      - Enabled code to profile celery task v2 for development environments
+      - new crypto api
+    fixed:
+      - Allow None fot taxcode and ldap
+      - some openapi schema definition and description and weakened some validation rule
+      - get_task_last_trace in BeehiveTestCase
+      - ignore send_audit for development lab
+      - debug Timeout released successfully
+      - increased some timeout.
+      - custom task id for sync task
+      - get_tasks check filter task_id or objid for user not SuperAdmin
+      - query generator if sort field is not id
+    removed:
+      - bcrypt dependency
+      - criptography rsa implementation
+      - query without indexes
+  - version: 1.16.0
+    date: 2024-03-26
+    descr: bug fixing release
+    added:
+      - fix get roles (alias expire date)
+      - ExpireRole set expire date
+      - ExpireRole, filter active role
+      - cmp image info and packages
+      - "task: set/get stdout"
+
   - version: 1.16.0
     date: 2024-03-26
     descr:

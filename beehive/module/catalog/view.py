@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 from beehive.common.apimanager import (
     ApiView,
@@ -13,7 +13,7 @@ from beehive.common.apimanager import (
     ApiObjectPermsResponseSchema,
     ApiObjectPermsRequestSchema,
 )
-from marshmallow import fields, Schema
+from flasgger import fields, Schema
 from beecell.swagger import SwaggerHelper
 
 
@@ -21,11 +21,11 @@ from beecell.swagger import SwaggerHelper
 # catalog
 #
 class ListCatalogsRequestSchema(PaginatedRequestQuerySchema):
-    zone = fields.String(context="query", default="internal")
+    zone = fields.String(context="query", dump_default="internal")
 
 
 class ListCatalogsParamsResponseSchema(ApiObjectResponseSchema):
-    zone = fields.String(required=True, default="internal")
+    zone = fields.String(required=True, dump_default="internal")
 
 
 class ListCatalogsResponseSchema(PaginatedResponseSchema):
@@ -50,12 +50,12 @@ class ListCatalogs(SwaggerApiView):
 
 
 class GetCatalogParamsServicesResponseSchema(Schema):
-    service = fields.String(required=True, default="auth")
-    endpoints = fields.List(fields.String(default="http://localhost:6060"))
+    service = fields.String(required=True, dump_default="auth")
+    endpoints = fields.List(fields.String(dump_default="http://localhost:6060"))
 
 
 class GetCatalogParamsResponseSchema(ApiObjectResponseSchema):
-    zone = fields.String(required=True, default="internal")
+    zone = fields.String(required=True, dump_default="internal")
     services = fields.Nested(
         GetCatalogParamsServicesResponseSchema,
         many=True,
@@ -190,14 +190,14 @@ class ListEndpointsRequestSchema(PaginatedRequestQuerySchema):
 
 
 class ListEndpointsParamsCatalogResponseSchema(Schema):
-    name = fields.String(required=True, default="test")
-    uuid = fields.UUID(required=True, default="6d960236-d280-46d2-817d-f3ce8f0aeff7")
+    name = fields.String(required=True, dump_default="test")
+    uuid = fields.UUID(required=True, dump_default="6d960236-d280-46d2-817d-f3ce8f0aeff7")
 
 
 class ListEndpointsParamsResponseSchema(ApiObjectResponseSchema):
     catalog = fields.Nested(ListEndpointsParamsCatalogResponseSchema, required=True, allow_none=True)
-    service = fields.String(required=True, default="auth")
-    endpoint = fields.String(required=True, default="http://localhost:6060")
+    service = fields.String(required=True, dump_default="auth")
+    endpoint = fields.String(required=True, dump_default="http://localhost:6060")
 
 
 class ListEndpointsResponseSchema(PaginatedResponseSchema):

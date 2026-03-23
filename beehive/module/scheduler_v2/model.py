@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 import ujson as json
 import logging
@@ -105,6 +105,26 @@ class SchedulerDbManager(AbstractDbManager):
         # set filters
         query.add_relative_filter("AND t3.uuid = :task_id", "task_id", kvargs)
         query.add_relative_filter("AND t3.objid like :objid", "objid", kvargs)
+        # if parent task optional filter set, check to ensure it contains %
+        # since it's a like filter
+        parent = kvargs.get("parent")
+        if parent is not None:
+            kvargs["parent"] = f"%{parent}%"
+            query.add_relative_filter("AND t3.parent like :parent","parent",kvargs)
+
+        parentonly = kvargs.get("parentonly")
+        if parentonly is not None:
+            kvargs["parent"] = f"%{parent}%"
+            if parentonly:
+                query.add_filter("AND t3.parent IS NULL ")
+            else:
+                query.add_filter("AND t3.parent IS NOT NULL ")
+
+        api_id = kvargs.get("api_id")
+        if api_id is not None:
+            kvargs["api_id"] = f"%{api_id}%"
+            query.add_relative_filter("AND t3.api_id like :api_id","api_id", kvargs)
+
         # query.add_relative_filter('AND t3.objtype like :objtype', 'objtype', kvargs)
         # query.add_relative_filter('AND t3.objdef like :objdef', 'objdef', kvargs)
         # query.add_relative_filter('AND t3.data like :data', 'data', kvargs)

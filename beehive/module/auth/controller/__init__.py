@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
-
+# (C) Copyright 2018-2026 CSI-Piemonte
+from __future__ import annotations
 from datetime import datetime
-from re import match
-from six import ensure_text
+# from re import match
+from beecell.util import ensure_text
 
 from beecell.auth import extract
 from beecell.simple import id_gen, truncate, str2bool, format_date
@@ -12,9 +12,8 @@ from beehive.common.apimanager import ApiManagerError
 from beecell.db import TransactionError, QueryError
 from beehive.common.controller.authorization import (
     BaseAuthController,
-    User as BaseUser,
+    #User as BaseUser, # TODO check
     Token,
-    AuthObject,
 )
 from beehive.common.data import trace, operation
 from beehive.common.model.authorization import (
@@ -29,7 +28,7 @@ from typing import List, Tuple, TYPE_CHECKING
 
 from .group import Group
 from .objects import Objects
-from .user import User
+from .user import User # extends BaseUser (see above)
 from .role import Role
 
 
@@ -40,6 +39,8 @@ class AuthController(BaseAuthController):
     """
 
     version = "v1.0"
+
+    manager: 'AuthDbManager'
 
     def __init__(self, module):
         BaseAuthController.__init__(self, module)
@@ -302,7 +303,7 @@ class AuthController(BaseAuthController):
         # execute custom post_get
         res.post_get()
 
-        self.logger.debug("Get %s : %s" % (entity_class.__name__, res))
+        self.logger.debug("Get %s : %s", entity_class.__name__, res)
         return res
 
     def _verify_operation_user_role(self, role="ApiSuperadmin"):
@@ -316,13 +317,16 @@ class AuthController(BaseAuthController):
         operation.authorize = False
 
         user_email = operation.user[0]
+        users: List[ModelUser]
         users, tot = self.manager.get_users(email=user_email, with_perm_tag=False)
         user_name = users[0].name
 
         # check if role is assigned to the user
+        users: List[User]
         users, total_users = self.get_users(email=user_email, role=role, with_perm_tag=False)
 
         # check if role is assigned to a group of which a user is a member
+        groups: List[Group]
         groups, total = self.get_groups(user=user_name)
         total_groups = 0
         for group in groups:
@@ -355,7 +359,7 @@ class AuthController(BaseAuthController):
         if self._verify_operation_user_role(role1) is True or self._verify_operation_user_role(role2) is True:
             user = self.get_user(oid, action="use")
             secret = user.model.secret
-            self.logger.debug("Get user %s secret" % user.uuid)
+            self.logger.debug("Get user %s secret", user.uuid)
             return secret
         else:
             raise ApiManagerError(
@@ -392,7 +396,7 @@ class AuthController(BaseAuthController):
                 raise ApiManagerError(value="Invalid old secret key for user id %s" % oid, code=400)
             else:
                 res = self.manager.set_user_secret(user.model.id)
-            self.logger.debug("Reset user %s secret" % user.uuid)
+            self.logger.debug("Reset user %s secret", user.uuid)
             return user.model.secret
         except TransactionError as ex:
             self.logger.error(ex, exc_info=False)
@@ -497,7 +501,7 @@ class AuthController(BaseAuthController):
 
         try:
             objid = id_gen()
-            user = self.manager.add_user(
+            user: 'ModelUser' = self.manager.add_user(
                 objid,
                 name,
                 active=active,
@@ -567,9 +571,9 @@ class AuthController(BaseAuthController):
                 # delete identity from identity user index
                 self.module.redis_identity_manager.lrem(self.prefix_index + user, 1, uid)
 
-                self.logger.debug("Remove identity %s from redis" % uid)
+                self.logger.debug("Remove identity %s from redis", uid)
             except:
-                self.logger.warning("Can not remove identity %s" % uid)
+                self.logger.warning("Can not remove identity %s", uid)
         return True
 
     #
@@ -658,7 +662,7 @@ class AuthController(BaseAuthController):
             # add object and permission
             Group(self, oid=group.id).register_object([objid], desc=desc)
 
-            self.logger.debug("Add new group: %s" % name)
+            self.logger.debug("Add new group: %s", name)
             return group.uuid
         except TransactionError as ex:
             self.logger.error(ex, exc_info=False)
@@ -690,7 +694,7 @@ class AuthController(BaseAuthController):
                     # delete identity from identity user index
                     self.module.redis_identity_manager.lrem(self.prefix_index + user.name, 1, uid)
 
-                    self.logger.debug("Remove identity %s from redis" % uid)
+                    self.logger.debug("Remove identity %s from redis", uid)
                 except:
-                    self.logger.warning("Can not remove identity %s" % uid)
+                    self.logger.warning("Can not remove identity %s", uid)
         return True

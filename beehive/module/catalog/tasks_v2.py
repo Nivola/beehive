@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 import requests
 from logging import getLogger
-from beehive.common.task_v2.manager import task_manager
+from beehive.common.task_v2.manager import get_task_manager
 from beehive.common.task_v2 import BaseTask, task_step
 from beehive.module.catalog.controller import Catalog
 
@@ -96,4 +96,5 @@ class RefreshCatalogTask(BaseTask):
         return ping, params
 
 
-task_manager.tasks.register(RefreshCatalogTask())
+#task_manager.tasks.register(RefreshCatalogTask())
+get_task_manager().register_task(RefreshCatalogTask())

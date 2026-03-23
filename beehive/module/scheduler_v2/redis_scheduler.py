@@ -1,16 +1,14 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
-import copy
-import heapq
 import logging
 import ujson as json
 from celery.schedules import crontab
 from beecell.db.manager import RedisManager
 from celery.beat import Scheduler
 from datetime import timedelta, datetime
-from celery.beat import ScheduleEntry, event_t
+from celery.beat import ScheduleEntry
 from beecell.simple import format_date
 
 
@@ -134,7 +132,7 @@ class RedisScheduleEntry(ScheduleEntry):
             if last_run_at is not None:
                 entry["last_run_at"] = datetime.strptime(last_run_at, "%Y-%m-%dT%H:%M:%SZ")
 
-            res = RedisScheduleEntry(**dict(entry, name=name, app=app))
+            res = RedisScheduleEntry(**entry, app=app)
 
             return res
         except Exception as ex:

@@ -1,10 +1,14 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
+from __future__ import annotations
 import logging
+from typing import Union, TYPE_CHECKING
 from celery.canvas import Signature as CelerySignature
 from celery.utils import abstract
+if TYPE_CHECKING:
+    from celery.app import Celery
 
 logger = logging.getLogger("beehive.common")
 
@@ -23,16 +27,43 @@ class Signature(CelerySignature):
             :meth:`~@Task.apply_async` and the :ref:`guide-calling` guide.
         """
         logger.debug("args - {0}".format(args))
+
+        # kwargs.update({
+        #     "timeout": 27
+        # })
         logger.debug("kwargs: %s" % kwargs)
         logger.debug("route_name: %s" % route_name)
+
+        # options.update({
+        #     "timeout": 28
+        # })
         logger.debug("**options: %s" % options)
 
-        taskid = CelerySignature.apply_async(self, args, kwargs, route_name, **options)
+        taskid = CelerySignature.apply_async(
+            self,
+            args,
+            kwargs,
+            route_name,
+            retry=True,
+            # parameters supported by the retry_over_time() function
+            retry_policy={
+                "interval_start": 0, # First retry immediately,
+                "interval_step": 3,  # then increase by 2s for every retry.
+                "interval_max": 31,  # but don't exceed 30s between retries.
+                "max_retries": 98,   # give up after 30 tries.
+                # File "/usr/local/lib/python3.9/site-packages/kombu/messaging.py", line 185, in publish |||
+                # _publish = self.connection.ensure(self, _publish, **retry_policy) |||
+                # TypeError: ensure() got an unexpected keyword argument 'timeout'
+                # "timeout": 26,
+            },
+            timeout=26,
+            **options,
+        )
         logger.debug("Create new task: %s" % taskid)
         return taskid
 
 
-def signature(varies, *args, **kwargs):
+def signature(varies, *args, **kwargs) -> Union[Signature, CelerySignature, abstract.CallableSignature]:
     """Create new signature.
 
     - if the first argument is a signature already then it's cloned.
@@ -40,11 +71,11 @@ def signature(varies, *args, **kwargs):
 
     :return: Signature: The resulting signature.
     """
-    logger.debug("args - {0}".format(args))
-    logger.debug("kwargs: %s" % kwargs)
-    logger.debug("varies: %s" % varies)
+    logger.debug("signature - args - {0}".format(args))
+    logger.debug("signature - kwargs: %s" % kwargs)
+    logger.debug("signature - varies: %s" % varies)
 
-    app = kwargs.get("app")
+    app: 'Celery' = kwargs.get("app")
     if isinstance(varies, dict):
         if isinstance(varies, abstract.CallableSignature):
             return varies.clone()

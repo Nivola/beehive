@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 import ujson as json
 import logging
 from re import match
-from six import b
+# from beecell.util import b
 from sqlalchemy import Column, Integer, String
-from sqlalchemy import create_engine, exc
+from sqlalchemy import create_engine, exc, text
 from sqlalchemy.dialects.mysql import DATETIME
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.exc import SQLAlchemyError
@@ -84,7 +84,7 @@ class EventDbManager(AbstractDbManager):
         """
         try:
             engine = create_engine(db_uri)
-            engine.execute("SET FOREIGN_KEY_CHECKS=1;")
+            engine.execute(text("SET FOREIGN_KEY_CHECKS=1;"))
             Base.metadata.create_all(engine)
             logger.info("Create tables on : %s" % db_uri)
             del engine
@@ -99,48 +99,66 @@ class EventDbManager(AbstractDbManager):
         """
         try:
             engine = create_engine(db_uri)
-            engine.execute("SET FOREIGN_KEY_CHECKS=1;")
+            engine.execute(text("SET FOREIGN_KEY_CHECKS=1;"))
             Base.metadata.drop_all(engine)
             logger.info("Remove tables from : %s" % db_uri)
             del engine
         except exc.DBAPIError as e:
             raise Exception(e)
 
-    @query
+    # @query
     def get_types(self):
         """Get event types.
+        Deprecata e pericoloas effettua
+            un ful table scan
+            cerca valori unici nella colonna type della tabella event
+            la tabella event è enorme e deprecata deve essere troncata
+            la funzionalità è abbandonata me resta il pericolo di scansioni di
+            una tabella enorme
+            disabilitata la query restisisce una lista di valori oer simulare un compirtamento retro compatibile
+
 
         :raise QueryError: if query return error
         """
-        session = self.get_session()
-        query = session.query(distinct(DbEvent.type)).all()
-        res = [i[0] for i in query]
+        # session = self.get_session()
+        # query = session.query(distinct(DbEvent.type)).all()
+        # res = [i[0] for i in query]
 
-        if len(res) == 0:
-            self.logger.error("No event types found")
-            raise SQLAlchemyError("No event types found")
+        # if len(res) == 0:
+        #     self.logger.error("No event types found")
+        #     raise SQLAlchemyError("No event types found")
 
-        self.logger.debug("Get event types: %s" % truncate(res))
+        # self.logger.debug("Get event types: %s" % truncate(res))
+        res = ["CMD","API","TASK"]
 
         return res
 
-    @query
-    def get_entity_definitions(self):
+    # @query
+    def get_entity_definitions(self)-> list:
         """Get event entity definition.
+            Deprecata e pericoloas effettua
+            un ful table scan
+            cerca valori unici nella colonna objdef della tabella event
+            la tabella event è enorme e deprecata deve essere troncata
+            la funzionalità è abbandonata me resta il pericolo di scansioni di
+            una tabella enorme
+            disabilitata la query restisisce una lista di valori per simulare un compirtamento retro compatibile
+
 
         :raise QueryError: if query return error
         """
-        session = self.get_session()
-        query = session.query(distinct(DbEvent.objdef)).all()
-        res = [i[0].lower() for i in query]
+        # session = self.get_session()
+        # query = session.query(distinct(DbEvent.objdef)).all()
+        # res = [i[0].lower() for i in query]
 
-        if len(res) == 0:
-            self.logger.error("No entity definitions found")
-            raise SQLAlchemyError("No entity definitions found")
+        # if len(res) == 0:
+        #     self.logger.error("No entity definitions found")
+        #     raise SQLAlchemyError("No entity definitions found")
 
-        self.logger.debug("Get entity definitions: %s" % truncate(res))
+        # self.logger.debug("Get entity definitions: %s" % truncate(res))
 
-        return res
+        # return res
+        return []
 
     def get_event(self, oid):
         """Method used by authentication manager
@@ -150,14 +168,17 @@ class EventDbManager(AbstractDbManager):
         """
         session = self.get_session()
 
-        # get obj by uuid
-        if match("[0-9a-z]+", str(oid)):
-            query = session.query(DbEvent).filter_by(event_id=oid)
+        # # get obj by uuid
+        # if match("[0-9a-z]+", str(oid)):
+        #     query = session.query(DbEvent).filter_by(event_id=oid)
         # get obj by id
-        elif match("[0-9]+", str(oid)):
+
+        if match("[0-9]+", str(oid)):
             query = session.query(DbEvent).filter_by(id=oid)
 
-        entity = query.first()
+            entity = query.first()
+        else:
+            raise ModelError("Only index based query ", code=404)
 
         if entity is None:
             msg = "No event found"

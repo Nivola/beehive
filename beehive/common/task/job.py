@@ -1,22 +1,20 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 import ujson as json
 from time import time
 from beehive.common.task import BaseTask
 from celery.utils.log import get_task_logger
 from beehive.common.apimanager import ApiManagerError, ApiObject
-from celery.result import AsyncResult, GroupResult
 from beehive.common.data import operation
-from beehive.common.task.manager import task_manager
-from beecell.simple import get_value, import_class, nround, truncate
+#from beehive.common.task.manager import task_manager
+from beecell.simple import import_class, truncate
 from celery import chord
 from traceback import format_tb
 from beehive.common.task.handler import TaskResult, task_local
 from gevent import sleep
 from functools import wraps
-from traceback import format_exc
 from billiard.einfo import ExceptionInfo
 
 logger = get_task_logger(__name__)
@@ -200,7 +198,7 @@ class AbstractJob(BaseTask):
             client = self.controller.module.api_manager.event_producer
             client.send(ApiObject.ASYNC_OPERATION, data, source, dest)
         except Exception as ex:
-            logger.warn("Event can not be published. Event producer is not configured - %s" % ex)
+            logger.warning("Event can not be published. Event producer is not configured - %s" % ex)
 
     def update_job(
         self,
@@ -289,6 +287,8 @@ class Job(AbstractJob):
         :param tasks: list of celery task
         :return: celery signature
         """
+        from beehive.common.task_v2.manager import get_task_manager
+        task_manager = get_task_manager()
         process = tasks.pop().signature(args, immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE)
         last_task = None
         for task in tasks:
@@ -310,6 +310,8 @@ class Job(AbstractJob):
             {'task':<celery task>, 'args':..}
         :return: celery signature
         """
+        from beehive.common.task_v2.manager import get_task_manager
+        task_manager = get_task_manager()
         tasks.reverse()
         process = tasks.pop().signature(args, immutable=True, queue=task_manager.conf.TASK_DEFAULT_QUEUE)
         last_task = None
@@ -749,7 +751,7 @@ def job(entity_class=None, name=None, module=None, delta=2):
                 identity = user_data.pop("identity", "")
                 api_id = user_data.pop("api_id", "")
             except BaseException:
-                logger.warn("Can not get request user", exc_info=1)
+                logger.warning("Can not get request user", exc_info=1)
                 user = "task_manager"
                 server = "127.0.0.1"
                 identity = ""

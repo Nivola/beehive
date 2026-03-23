@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 import gevent.monkey
 
@@ -11,7 +11,7 @@ from beehive.common.task_v2.manager import (
     configure_task_scheduler,
 )
 from beehive.common.task_v2.canvas import signature
-from beehive.common.task_v2.manager import task_manager
+from beehive.common.task_v2.manager import get_task_manager, get_task_scheduler
 from beehive.common.test import runtest, BeehiveTestCase
 
 
@@ -26,11 +26,13 @@ class CatalogTaskManagerTestCase(BeehiveTestCase):
         BeehiveTestCase.setUp(self)
 
         configure_task_manager(
+            get_task_manager(),
             self.worker.get("broker"),
             self.worker.get("result"),
             task_queue=self.worker.get("queue"),
         )
         configure_task_scheduler(
+            get_task_scheduler(),
             self.worker.get("broker"),
             self.worker.get("result"),
             task_queue=self.worker.get("queue"),
@@ -57,6 +59,7 @@ class CatalogTaskManagerTestCase(BeehiveTestCase):
         self.logger.info("AAA passo 3")
         params.update(data)
         self.logger.info("AAA passo 4")
+        task_manager = get_task_manager()
         task = signature(
             "beehive.module.auth.tasks_v2.disable_expired_users_task",
             [params],
@@ -81,6 +84,7 @@ class CatalogTaskManagerTestCase(BeehiveTestCase):
         params.update(user)
         params.update(entity)
         params.update(data)
+        task_manager = get_task_manager()
         task = signature(
             "beehive.module.auth.tasks_v2.remove_expired_roles_from_users_task",
             [params],

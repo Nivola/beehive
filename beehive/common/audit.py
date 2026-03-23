@@ -1,12 +1,15 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 import logging
+import os
+
 from beecell.logger.helper import ExtendedLogger
 from elasticsearch import Elasticsearch
 from datetime import datetime
 from .data import operation
+import pytz
 
 # from typing import TYPE_CHECKING, Tuple
 
@@ -54,6 +57,8 @@ class Audit(CurrentLocal):
         req_method: str = "",
         subsystem: str = "",
         user: str = "",
+        from_ip: str = "na",
+        for_ip: str = "na",
     ):
         if self.initialized:
             logger.error("Audit __init__ called too many times")
@@ -67,11 +72,15 @@ class Audit(CurrentLocal):
         self.req_method = req_method
         self.subsystem = subsystem
         self.user = user
+        self.from_ip = from_ip
+        self.for_ip = for_ip
 
     def update(self, **kwargs):
         for k, v in kwargs.items():
-            if k in self.__dict__:
-                self.__dict__[k] = v
+            if hasattr(self, k):
+                setattr(self, k, v)
+            # if k in self.__dict__:
+            #     self.__dict__[k] = v
         return self
 
     def set_objid(self, objdef: str, objid: str, force: bool = False):
@@ -98,15 +107,23 @@ class Audit(CurrentLocal):
         return self
 
     def send_audit(self, elastic: Elasticsearch, **kwargs):
-        import os
+        def now()->datetime:
+            tz_local = pytz.timezone("Europe/Rome")
+            p = datetime.now(tz_local)
+            return p
+            
+        def currtimestamp(p: datetime) -> str:
+            tz_utc = pytz.utc
+            return p.astimezone(tz_utc).strftime("%Y-%m-%dT%H:%M:%S%z")
+
 
         api_env = os.getenv("API_ENV", "<superunknown>")
         # logger.debug("+++++ api_env: %s" % api_env)
         if api_env.startswith("lab"):
-            logger.info("send_audit ignored it is a lab")
+            logger.debug("send_audit ignored it is a lab")
             return
         if elastic is None:
-            logger.info("send_audit ignored elastic is NONE")
+            logger.warning("send_audit ignored elastic is NONE")
             return
 
         try:
@@ -115,10 +132,11 @@ class Audit(CurrentLocal):
                     u = getattr(operation, "user")
                     if hasattr(u, "__iter__") and len(u) >= 3:
                         self.user = u[0]
-
-            now = datetime.now()
+            dnow = now()
             item = {
                 "http.request.id": self.request_id,
+                "http.request.ip": self.from_ip,
+                "http.request.for": self.for_ip,
                 "url.path": self.api_method,
                 "http.request.method": self.req_method,
                 "input.type": self.subsystem,
@@ -127,13 +145,14 @@ class Audit(CurrentLocal):
                 "service.target.id": self.objid,
                 "service.target.type": self.objdef,
                 "event.original": str(kwargs),
-                "@timestamp": now,
+                "source.ip"  : self.from_ip,                
+                "source.nat.ip": self.for_ip,
+                "@timestamp": currtimestamp(dnow),
             }
-
             prefix = "cmp-audit-log"
-            index = "%s-%s" % (prefix, now.date().strftime("%Y.%m.%d"))
+            index = "%s-%s" % (prefix, dnow.date().strftime("%Y.%m.%d"))
             elastic.index(index=index, document=item)
-            logger.info("////////////////////send_audit////////////////////\n sent %s" % self)
+            logger.debug("////////////////////send_audit////////////////////\n sent %s" % self)
         except Exception as ex:
             logger.error(ex)
 
@@ -166,10 +185,23 @@ def initAudit(
     req_method: str = "",
     subsystem: str = "",
     user: str = "",
+    from_ip="na",
+    for_ip="na",
 ) -> Audit:
-    logger.info("////////////////////initAudit\\\\\\\\\\\\\\\\\\\\")
+    logger.debug("////////////////////initAudit\\\\\\\\\\\\\\\\\\\\")
     global _localaudit
-    _localaudit = Audit(state, objid, objdef, api_method, request_id, req_method, subsystem, user)
+    _localaudit = Audit(
+        state=state,
+        objid=objid,
+        objdef=objdef,
+        api_method=api_method,
+        request_id=request_id,
+        req_method=req_method,
+        subsystem=subsystem,
+        user=user,
+        from_ip=from_ip,
+        for_ip=for_ip,
+    )
     return _localaudit
 
 

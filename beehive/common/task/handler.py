@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 import ujson as json
-from six import b, ensure_text
-from beehive.common.task.manager import task_manager
+from beecell.util import b, ensure_text
+#from beehive.common.task.manager import task_manager
 from beecell.simple import truncate
 from datetime import datetime
 from time import time, sleep
@@ -37,6 +37,8 @@ class TaskResult(object):
         :param delay: time to wait between two retry [default=0.01]
         :return: task dict result or None
         """
+        from beehive.common.task_v2.manager import get_task_manager
+        task_manager = get_task_manager()
         _redis = task_manager.api_manager.redis_taskmanager.conn
         _prefix = task_manager.conf["CELERY_REDIS_RESULT_KEY_PREFIX"]
 
@@ -64,6 +66,8 @@ class TaskResult(object):
         :param value: task result
         :return: task dict result or None
         """
+        from beehive.common.task_v2.manager import get_task_manager
+        task_manager = get_task_manager()
         _redis = task_manager.api_manager.redis_taskmanager.conn
         _prefix = task_manager.conf["CELERY_REDIS_RESULT_KEY_PREFIX"]
         _expire = task_manager.conf["CELERY_REDIS_RESULT_EXPIRES"]
@@ -119,6 +123,8 @@ class TaskResult(object):
         failure=False,
     ):
         """Store task result in redis"""
+        from beehive.common.task_v2.manager import get_task_manager
+        task_manager = get_task_manager()
         _redis = task_manager.api_manager.redis_taskmanager.conn
         _prefix = task_manager.conf["CELERY_REDIS_RESULT_KEY_PREFIX"]
         _expire = task_manager.conf["CELERY_REDIS_RESULT_EXPIRES"]

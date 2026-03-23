@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 import logging
 from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship
 from beehive.common.model import AbstractDbManager, BaseEntity
-from sqlalchemy import create_engine, exc
+from sqlalchemy import create_engine, exc, text
 from sqlalchemy.ext.declarative import declarative_base
 
 # Base = declarative_base()
@@ -71,7 +71,7 @@ class CatalogDbManager(AbstractDbManager):
         """
         try:
             engine = create_engine(db_uri)
-            engine.execute("SET FOREIGN_KEY_CHECKS=1;")
+            engine.execute(text("SET FOREIGN_KEY_CHECKS=1;"))
             Base.metadata.create_all(engine)
             logger.info("Create tables on : %s" % db_uri)
             del engine
@@ -86,7 +86,7 @@ class CatalogDbManager(AbstractDbManager):
         """
         try:
             engine = create_engine(db_uri)
-            engine.execute("SET FOREIGN_KEY_CHECKS=0;")
+            engine.execute(text("SET FOREIGN_KEY_CHECKS=0;"))
             Base.metadata.drop_all(engine)
             logger.info("Remove tables from : %s" % db_uri)
             del engine

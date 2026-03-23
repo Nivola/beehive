@@ -1,21 +1,16 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 import os
 import sys
-from six import b
 from beehive.common.apiclient import BeehiveApiClient
 
-# from beehive.common.log import ColorFormatter
 from beecell.simple import truncate, read_file, dict_get
 from beecell.simple import jsonDumps
+from beecell.types.type_dict import recursive_update
 from beehive.common.custom_test_runner import CustomTestRunner
-
-try:
-    from yaml import CLoader as Loader, CDumper as Dumper
-except ImportError:
-    from yaml import Loader, Dumper
+from beehive.common.nivola_test_runner import NivolaTestRunner
 
 import logging
 import unittest
@@ -41,17 +36,14 @@ from beecell.remote import (
     BadRequestException,
     UnauthorizedException,
 )
+from beecell.util import b
 import requests
 from requests.adapters import HTTPAdapter, Retry
 
-# from beecell.swagger import ApiValidator
 from flex.core import load
 from requests.auth import HTTPBasicAuth
 
-# from celery.utils.log import ColorFormatter as CeleryColorFormatter
-# from celery.utils.term import colored
 from gevent import sleep
-from dict_recursive_update import recursive_update
 from multiprocessing import Process, Queue
 from beecell.test.runner import TestRunner
 
@@ -139,13 +131,16 @@ class BeehiveTestCase(unittest.TestCase):
             raise Exception("Error loading fernet key file. Search in user home. %s" % ex)
 
         # load specific configs for a set of test
+        config2 = None
         try:
             if self.spec_config_file is not None:
-                config2 = self.load_file(self.spec_config_file)
-                recursive_update(config, config2)
                 logger.info("setUpClass - Get beehive test specific configuration: %s" % self.spec_config_file)
+                config2 = self.load_file(self.spec_config_file)
         except Exception as ex:
             raise Exception("Error loading config file. Search in user home. %s" % ex)
+
+        if config2:
+            config = recursive_update(config, config2)
 
         logger.info("Validation active: %s" % cls.validation_active)
 
@@ -202,7 +197,7 @@ class BeehiveTestCase(unittest.TestCase):
         self.load_result()
 
         self.custom_headers = {}
-        self.endpoit_service = "auth"
+        self.endpoint_service = "auth"
         self.k8s_services = config.get("k8s-services")
 
         self.prefix = dict_get(config, "prefix")
@@ -349,11 +344,11 @@ class BeehiveTestCase(unittest.TestCase):
         token = None
 
     def validate_swagger_schema(self, endpoint, timeout=30):
-        start = time.time()
+        time_start = time.time()
         schema_uri = endpoint
         response = requests.request("GET", schema_uri, timeout=timeout, verify=False)
         schema = load(response.text)
-        logger.info("Load swagger schema from %s: %ss" % (endpoint, time.time() - start))
+        logger.info("Load swagger schema from %s: %ss" % (endpoint, time.time() - time_start))
         return schema
 
     def get_schema(self, subsystem, endpoint, timeout=30):
@@ -377,13 +372,13 @@ class BeehiveTestCase(unittest.TestCase):
                     self.runlogger.info("validate:         %s" % validate)
             else:
                 if runlog is True:
-                    self.runlogger.warn("validation supported only for application/json")
+                    self.runlogger.warning("validation supported only for application/json")
                 validate = True
         return validate
 
-    def diff_datetime(self, start):
+    def diff_datetime(self, time_start):
         end = datetime.now()
-        delta = end - start
+        delta = end - time_start
         sec = delta.total_seconds()
         return sec
 
@@ -400,7 +395,7 @@ class BeehiveTestCase(unittest.TestCase):
         data=None,
         query=None,
         runlog=True,
-        timeout=30,
+        timeout=300,
         oauth2_token=None,
         response_size=400,
         pretty_response=False,
@@ -411,7 +406,7 @@ class BeehiveTestCase(unittest.TestCase):
         global token, seckey
 
         # start = time.time()
-        start = datetime.now()
+        time_start = datetime.now()
         validate = False
         res = None
 
@@ -437,18 +432,18 @@ class BeehiveTestCase(unittest.TestCase):
                 headers.update({"Authorization": "Bearer %s" % oauth2_token})
             elif user is not None and auth == "simplehttp":
                 cred = HTTPBasicAuth(user, pwd)
-                logger.debug("Make simple http authentication: %s sec" % self.diff_datetime(start))
+                logger.debug("Make simple http authentication: %s sec" % self.diff_datetime(time_start))
             elif user is not None and auth == "keyauth":
                 if token is None:
                     self.runlogger.info("call - user: %s" % user)
                     # self.runlogger.info('call - pwd: %s' % pwd)
                     self.create_keyauth_token(user, pwd, timeout=timeout)
-                    logger.debug("Create keyauth token: %s - %s sec" % (token, self.diff_datetime(start)))
+                    logger.debug("Create keyauth token: %s - %s sec" % (token, self.diff_datetime(time_start)))
                 sign = self.auth_client.sign_request(seckey, uri)
                 headers.update({"uid": token, "sign": sign})
 
             # reset start after authentication
-            start = datetime.now()
+            time_start = datetime.now()
 
             if runlog is True:
                 self.runlogger.info("request endpoint: %s" % endpoint)
@@ -460,6 +455,7 @@ class BeehiveTestCase(unittest.TestCase):
                 self.runlogger.info("request query:    %s" % query)
                 self.runlogger.info("request data:     %s" % data)
                 self.runlogger.info("request headers:  %s" % headers)
+                self.runlogger.info("request timeout:  %s" % timeout)
 
             logger.info("request endpoint: %s" % endpoint)
             logger.info("request path:     %s" % uri)
@@ -470,6 +466,7 @@ class BeehiveTestCase(unittest.TestCase):
             logger.info("request query:    %s" % query)
             logger.info("request data:     %s" % data)
             logger.info("request headers:  %s" % headers)
+            logger.info("request timeout:  %s" % timeout)
 
             # execute request
             if method == "get":
@@ -599,7 +596,7 @@ class BeehiveTestCase(unittest.TestCase):
                     res = response.text
 
             else:
-                logger.debug("Call api elapsed %s - %s sec" % (uri, self.diff_datetime(start)))
+                logger.debug("Call api elapsed %s - %s sec" % (uri, self.diff_datetime(time_start)))
                 raise ServerErrorException("Internal server error - response.status_code: %s" % (response.status_code))
 
             if runlog is True:
@@ -616,7 +613,7 @@ class BeehiveTestCase(unittest.TestCase):
             # Max retries exceeded with url: /stage1/v2.0/nws/serviceinsts/PROVA-database-db-post-11
             # (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x7f881fb16340>:
             # Failed to establish a new connection: [Errno -2] Name or service not known'))
-            logger.debug("Call api elapsed %s - %s sec" % (uri, self.diff_datetime(start)))
+            logger.error("Call api elapsed %s - %s sec" % (uri, self.diff_datetime(time_start)))
             logger.error("call ConnectionError")
             logger.error(ce, exc_info=1)
             if runlog is True:
@@ -627,7 +624,7 @@ class BeehiveTestCase(unittest.TestCase):
 
             if method == "get" and retry_times > 0:
                 sleep(2)
-                self.call(
+                res = self.call(
                     subsystem,
                     path,
                     method,
@@ -639,7 +636,7 @@ class BeehiveTestCase(unittest.TestCase):
                     data=None,
                     query=None,
                     runlog=True,
-                    timeout=30,
+                    timeout=300,
                     oauth2_token=None,
                     response_size=400,
                     pretty_response=False,
@@ -649,13 +646,14 @@ class BeehiveTestCase(unittest.TestCase):
                 raise
 
         except Exception:
-            logger.debug("Call api elapsed %s - %s sec" % (uri, self.diff_datetime(start)))
+            logger.debug("Call api elapsed %s - %s sec" % (uri, self.diff_datetime(time_start)))
             logger.error("", exc_info=1)
             if runlog is True:
                 self.runlogger.error("", exc_info=1)
             raise
 
-        logger.debug("Call api elapsed %s - %s sec" % (uri, self.diff_datetime(start)))
+        time_elapsed = self.diff_datetime(time_start)
+        logger.debug("Call api elapsed %s - %s sec" % (uri, time_elapsed))
         self.assertEqual(validate, True)
         return res
 
@@ -910,6 +908,23 @@ class BeehiveTestCase(unittest.TestCase):
         except (NotFoundException, Exception):
             return "EXPUNGED"
 
+    def get_task_last_trace(self, taskid):
+        res = self.call(
+            self.module,
+            "/v2.0/%s/worker/tasks/{oid}/trace" % self.module_prefix,
+            "get",
+            params={"oid": taskid},
+            runlog=False,
+            **self.users[self.run_test_user],
+        )
+        res = res.get("task_trace")
+        i_last = len(res)
+        if i_last > 0:
+            res_trace = res[i_last - 1]
+            print(res_trace["message"])
+        else:
+            print("no task trace - taskid: %s" % taskid)
+
     def wait_task(self, taskid, delta=3, accepted_state="SUCCESS", maxtime=1800):
         """Wait resource"""
         logger.info("wait for:         %s" % taskid)
@@ -931,6 +946,9 @@ class BeehiveTestCase(unittest.TestCase):
 
         self.logger.debug("---------- wait_task - end state: %s - elapsed: %s sec ----------\n" % (state, elapsed))
         self.runlogger.info("---------- wait_task - end state: %s - elapsed: %s sec ----------" % (state, elapsed))
+
+        if state == "FAILURE":
+            self.get_task_last_trace(taskid)
 
         if state != "TOKEN_INVALID":
             self.assertEqual(state, accepted_state)
@@ -1068,7 +1086,8 @@ def runtest(testcase_class: BeehiveTestCase, tests, args={}) -> unittest.result.
     else:
         failfast = args.get("failfast", False)
         print("failfast=%s" % failfast)
-        runner = unittest.TextTestRunner(verbosity=2, failfast=failfast)
+        # runner = unittest.TextTestRunner(verbosity=2, failfast=failfast)
+        runner = NivolaTestRunner(verbosity=2, failfast=failfast)
         # runner = unittest.TextTestRunner(verbosity=2, failfast=False)
 
         # run test suite

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 import logging
 from re import match
@@ -15,7 +15,7 @@ from beecell.simple import import_class
 from beecell.simple import encrypt_data as simple_encrypt_data
 from beecell.simple import decrypt_data as simple_decrypt_data
 from beecell.db import TransactionError, QueryError, ModelError
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING, Tuple, Optional
 
 if TYPE_CHECKING:
     from beehive.common.apimanager import ApiController
@@ -52,8 +52,8 @@ operation.session: Session = None  #: current database session
 operation.user: Tuple[str] = None  #: logged user (username, userip, uid)
 operation.perms = None  #: logged user permission
 operation.token_type = None  #: token type released
-operation.transaction = None  #: transaction id
-operation.encryption_key = None  #: _encryption_key used to encrypt and decrypt data
+operation.transaction = None  #: transaction id # str?
+operation.encryption_key: Optional[str] = None  #: _encryption_key used to encrypt and decrypt data
 operation.authorize: bool = True  #: enable or disable authorization check
 operation.cache: bool = (
     True  #: if True check cache. If False execute function decorated by @cache() also if cache exists
@@ -92,7 +92,6 @@ def decrypt_data(data):
     logger.debug("Decrypt data")
     return res
 
-
 def get_operation_params():
     """return a dictionary that contains the greenlet/thread parameter"""
 
@@ -100,38 +99,33 @@ def get_operation_params():
         "user": operation.user,
         "perms": operation.perms,
         "opid": operation.id,
+        "session": operation.session,
         "transaction": operation.transaction,
         "encryption_key": operation.encryption_key,
         "authorize": operation.authorize,
+        "token_type": operation.token_type,
+        "cache": operation.cache,
     }
 
+def set_operation_params(params: dict) -> None:
+    """Set in the current greenlet/thread the parameters stored in params"""
+    # List of attributes we expect to propagate
+    attrs = [
+        "user",
+        "perms",
+        "opid",
+        "session",
+        "transaction",
+        "encryption_key",
+        "authorize",
+        "token_type",
+        "cache",
+    ]
 
-def set_operation_params(param):
-    """set in the current greenlet/thread the parameter stored in param"""
-    val = param.get("user", "--")
-    if val != "--":
-        operation.user = val
-
-    val = param.get("perms", "--")
-    if val != "--":
-        operation.perms = val
-
-    val = param.get("opid", "--")
-    if val != "--":
-        operation.opid = val
-
-    val = param.get("transaction", "--")
-    if val != "--":
-        operation.transaction = val
-
-    val = param.get("encryption_key", "--")
-    if val != "--":
-        operation.encryption_key = val
-
-    val = param.get("authorize", "--")
-    if val != "--":
-        operation.authorize = val
-
+    for attr in attrs:
+        val = params.get(attr, "--")
+        if val != "--":
+            setattr(operation, attr, val)
 
 #
 # decorators
@@ -303,17 +297,30 @@ def query(fn):
             # call internal function
             res = fn(*args, **kwargs)
             elapsed = round(time() - start, 4)
-            logger.debug2(
-                OK_Q_MSG
-                % (
-                    operation.id,
-                    stmp_id,
-                    sessionid,
-                    fn.__name__,
-                    truncate(params),
-                    elapsed,
+            if elapsed > 0.5:
+                    logger.warning(
+                    OK_Q_MSG
+                    % (
+                        operation.id,
+                        stmp_id,
+                        sessionid,
+                        fn.__name__,
+                        truncate(params),
+                        elapsed,
+                    )
                 )
-            )
+            else:
+                logger.debug2(
+                    OK_Q_MSG
+                    % (
+                        operation.id,
+                        stmp_id,
+                        sessionid,
+                        fn.__name__,
+                        truncate(params),
+                        elapsed,
+                    )
+                )
             return res
         except ModelError as ex:
             elapsed = round(time() - start, 4)
@@ -450,6 +457,7 @@ def trace(entity=None, op="view", noargs=False):
                         ex_escaped = str(ex)
                     except Exception:
                         ex_escaped = ex
+                
                 if noargs is True:
                     get_entity(entity).send_event(
                         method,
@@ -547,9 +555,9 @@ def cache_query(key, ttl=600):
             # execute inner function
             try:
                 if match(
-                    "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+                    r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
                     str(oid),
-                ) or match("^\d+$", str(oid)):
+                ) or match(r"^\d+$", str(oid)):
                     ret = manager.cache.get(internalkey)
                 else:
                     ret = None

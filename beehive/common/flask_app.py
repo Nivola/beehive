@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 import logging
 from uuid import uuid4
@@ -8,13 +8,13 @@ import ujson as json
 
 # patch redis socket to use async comunication
 from time import time
-from socket import gethostname, gethostbyname
 from flask import Flask, Response, request
-from os import urandom
-from six import b, ensure_text
+from os import getenv, urandom
+from beecell.util import ensure_text
 from beecell.logger.helper import LoggerHelper
 from beecell.logger.k8s_handler import K8shHandler
 from beecell.server.uwsgi_server.wrapper import uwsgi_util
+from beecell.types.type_string import str2bool
 from beehive.common.apimanager import ApiManager
 from beehive.common.data import operation
 
@@ -107,11 +107,22 @@ class BeehiveApp(Flask):
         logger.info("########## SERVER STARTING ##########")
         start = time()
 
+        from beehive.common.task_v2.manager import get_task_manager
+        from beehive.common.task_v2.manager import get_task_scheduler
+        tmi = get_task_manager()
+        tsi = get_task_scheduler()
+
         # api manager reference
         self.api_manager = ApiManager(self.params, app=self, hostname=self.server_ip)
 
         # server configuration
         self.api_manager.configure()
+        if tmi:
+            tmi.api_manager = self.api_manager
+            self.api_manager.task_manager = tmi
+        if tsi:
+            tsi.api_manager = self.api_manager
+            self.api_manager.task_scheduler = tsi
 
         # load modules
         self.api_manager.register_modules()
@@ -122,16 +133,18 @@ class BeehiveApp(Flask):
         logger.info("Setup server over: %s" % self.api_manager.app_uri)
         logger.info("Setup server over: %s" % self.api_manager.uwsgi_uri)
 
-        if ENABLE_PROFILER:
+        api_enable_profiler = getenv("API_ENABLE_PROFILER", "False")
+        logger.info("api_enable_profiler: %s" % api_enable_profiler)
+        enable_profiler = str2bool(api_enable_profiler)
+        if enable_profiler:
+            import os
             from werkzeug.middleware.profiler import ProfilerMiddleware
-
-            self.wsgi_app = ProfilerMiddleware(self.wsgi_app)
+            PROFILE_DIR = "/tmp/profiler"
+            os.makedirs(PROFILE_DIR, exist_ok=True)
+            self.wsgi_app = ProfilerMiddleware(self.wsgi_app, profile_dir=PROFILE_DIR, sort_by=('cumtime',))
+            logger.info("enable profiler success")
 
         logger.info("########## SERVER STARTED ########## - %s" % round(time() - start, 2))
-
-    def del_configurations(self):
-        del self.db_uri
-        del self.tcp_proxy
 
     def setup_loggers(self, level=LoggerHelper.DEBUG):
         """Setup loggers

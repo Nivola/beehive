@@ -1,14 +1,14 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 from flask import request
 from beecell.flask.api_util import get_remote_ip
 from beecell.swagger import SwaggerHelper
 from beehive.common.apimanager import ApiView, SwaggerApiView
 from beehive.common.data import operation
-from marshmallow import fields, Schema, validates, ValidationError
-
+from flasgger import fields, Schema, ValidationError
+from marshmallow import validates
 
 def get_ip():
     return get_remote_ip(request)
@@ -17,7 +17,7 @@ def get_ip():
 class CreateTokenRequestSchema(Schema):
     user = fields.String(required=True, error_messages={"required": "user is required."})
     password = fields.String(required=True, error_messages={"required": "password is required."})
-    login_ip = fields.String(data_key="login-ip", missing=get_ip)
+    login_ip = fields.String(data_key="login-ip", load_default=get_ip)
 
     @validates("user")
     def validate_user(self, value):
@@ -32,13 +32,18 @@ class CreateTokenBodyRequestSchema(Schema):
 
 
 class CreateTokenResponseSchema(Schema):
-    access_token = fields.String(required=True, example="39cdae88-74a7-466b-9817-ced52c90239c")
-    expires_in = fields.Integer(example=3600)
-    expires_at = fields.Integer(example=1502739783)
-    token_type = fields.String(required=True, example="Bearer")
-    seckey = fields.String(required=True, example="LS0tLS1CRUdJTiBSU0Eg........")
-    pubkey = fields.String(required=True, example="LS0tLS1CRUdJTiBQVUJMSUMgS0VZL..........")
-    user = fields.String(required=True, example="6d960236-d280-46d2-817d-f3ce8f0aeff7")
+    access_token = fields.String(required=True,
+                                 metadata={"example": "39cdae88-74a7-466b-9817-ced52c90239c"})
+    expires_in = fields.Integer(metadata={"example": 3600})
+    expires_at = fields.Integer(metadata={"example": 1502739783})
+    token_type = fields.String(required=True,
+                               metadata={"example": "Bearer"})
+    seckey = fields.String(required=True,
+                           metadata={"example": "LS0tLS1CRUdJTiBSU0Eg........"})
+    pubkey = fields.String(required=True,
+                           metadata={"example": "LS0tLS1CRUdJTiBQVUJMSUMgS0VZL.........."})
+    user = fields.String(required=True,
+                         metadata={"example": "6d960236-d280-46d2-817d-f3ce8f0aeff7"})
 
 
 class CreateToken(SwaggerApiView):

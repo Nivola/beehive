@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 from re import match
 from datetime import datetime, timedelta
@@ -17,7 +17,7 @@ from beehive.common.apimanager import (
     ApiObjectResponseDateSchema,
 )
 from beecell.swagger import SwaggerHelper
-from marshmallow import fields, Schema
+from flasgger import fields, Schema
 from marshmallow.validate import OneOf, Range, Length
 from marshmallow.decorators import post_load, validates
 from marshmallow.exceptions import ValidationError
@@ -37,14 +37,14 @@ class BaseUpdateRequestSchema(Schema):
     name = fields.String(allow_none=True)
     desc = fields.String(allow_none=True)
     active = fields.Boolean(context="query", allow_none=True)
-    expiry_date = fields.String(default="2099-12-31", allow_none=True)
+    expiry_date = fields.String(dump_default="2099-12-31", allow_none=True)
 
 
 class BaseCreateExtendedParamRequestSchema(Schema):
-    active = fields.Boolean(missing=True, allow_none=True)
+    active = fields.Boolean(load_default=True, allow_none=True)
     expiry_date = fields.String(
         data_key="expirydate",
-        missing=None,
+        load_default=None,
         allow_none=True,
         example="",
         description="expiration date. [default=365days]",
@@ -66,13 +66,16 @@ class BaseUpdateMultiRequestSchema(Schema):
 
 
 class ListProviderResponseSchema(Schema):
-    name = fields.String(required=True, example="local", description="login provider name")
-    type = fields.String(required=True, example="DatabaseAuth", description="login provider description")
+    name = fields.String(required=True,
+                         metadata={"example": "local", "description": "login provider name"})
+    type = fields.String(required=True,
+                         metadata={"example": "DatabaseAuth", "description": "login provider description"})
 
 
 class ListProvidersResponseSchema(Schema):
     providers = fields.Nested(ListProviderResponseSchema, many=True, required=True, allow_none=True)
-    count = fields.Integer(required=True, example=1, description="Providers count")
+    count = fields.Integer(required=True,
+                           metadata={"example": 1, "description": "Providers count"})
 
 
 class ListProviders(SwaggerApiView):
@@ -101,22 +104,29 @@ class ListTokensRequestSchema(Schema):
 
 
 class ListTokenResponseSchema(Schema):
-    ip = fields.String(required=True, example="pc160234.csi.it", description="client login ip address")
-    ttl = fields.Integer(required=True, example=3600, description="token ttl")
+    ip = fields.String(required=True,
+                       metadata={"example": "pc160234.csi.it", "description": "client login ip address"})
+    ttl = fields.Integer(required=True,
+                         metadata={"example": 3600, "description": "token ttl"})
     token = fields.String(
         required=True,
         example="28ff1dd5-5520-42f3-a361-c58f19d20b7c",
         description="token",
     )
-    user = fields.String(required=True, example="admin@local", description="client login user")
-    provider = fields.String(required=True, example="local", description="authentication provider")
-    timestamp = fields.String(required=True, example="internal", description="token timestamp")
-    type = fields.String(required=True, example="internal", description="token type")
+    user = fields.String(required=True,
+                         metadata={"example": "admin@local", "description": "client login user"})
+    provider = fields.String(required=True,
+                             metadata={"example": "local", "description": "authentication provider"})
+    timestamp = fields.String(required=True,
+                              metadata={"example": "internal", "description": "token timestamp"})
+    type = fields.String(required=True,
+                         metadata={"example": "internal", "description": "token type"})
 
 
 class ListTokensResponseSchema(Schema):
     tokens = fields.Nested(ListTokenResponseSchema, many=True, required=True, allow_none=True)
-    count = fields.Integer(required=True, example=1, description="Token count")
+    count = fields.Integer(required=True,
+                           metadata={"example": 1, "description": "Token count"})
 
 
 class ListTokens(SwaggerApiView):
@@ -135,6 +145,7 @@ class ListTokens(SwaggerApiView):
             user = i.get("user")
             user_name = None
             user_domain = None
+            user_email = None
             if user is not None:
                 user_name = user.get("id", None)
                 user_email = user.get("name", None)
@@ -156,14 +167,17 @@ class ListTokens(SwaggerApiView):
 
 
 class GetTokenUserResponseSchema(Schema):
-    name = fields.String(required=True, example="admin@local", description="client login user")
+    name = fields.String(required=True,
+                         metadata={"example": "admin@local", "description": "client login user"})
     roles = fields.List(
-        fields.String(example="admin@local"),
+        fields.String(metadata={"example": "admin@local"}),
         required=True,
         description="client login user",
     )
-    perms = fields.String(required=True, example="admin@local", description="client login perms")
-    active = fields.Boolean(required=True, example=True, description="client login active")
+    perms = fields.String(required=True,
+                          metadata={"example": "admin@local", "description": "client login perms"})
+    active = fields.Boolean(required=True,
+                            metadata={"example": True, "description": "client login active"})
     id = fields.UUID(
         required=True,
         description="client login uuid",
@@ -172,8 +186,10 @@ class GetTokenUserResponseSchema(Schema):
 
 
 class GetTokenParamsResponseSchema(Schema):
-    ip = fields.String(required=True, example="pc160234.csi.it", description="client login ip address")
-    ttl = fields.Integer(required=True, example=3600, description="token ttl")
+    ip = fields.String(required=True,
+                       metadata={"example": "pc160234.csi.it", "description": "client login ip address"})
+    ttl = fields.Integer(required=True,
+                         metadata={"example": 3600, "description": "token ttl"})
     token = fields.String(
         required=True,
         example="28ff1dd5-5520-42f3-a361-c58f19d20b7c",
@@ -185,8 +201,10 @@ class GetTokenParamsResponseSchema(Schema):
         description="client login user",
         allow_none=True,
     )
-    timestamp = fields.String(required=True, example="internal", description="token timestamp")
-    type = fields.String(required=True, example="internal", description="token type")
+    timestamp = fields.String(required=True,
+                              metadata={"example": "internal", "description": "token timestamp"})
+    type = fields.String(required=True,
+                         metadata={"example": "internal", "description": "token type"})
 
 
 class GetTokenResponseSchema(Schema):
@@ -234,7 +252,7 @@ class ListUsersRequestSchema(PaginatedRequestQuerySchema):
     group = fields.String(context="query")
     role = fields.String(context="query")
     active = fields.Boolean(context="query")
-    expiry_date = fields.String(data_key="expirydate", default="2099-12-31", context="query")
+    expiry_date = fields.String(data_key="expirydate", dump_default="2099-12-31", context="query")
     name = fields.String(context="query")
     names = fields.String(context="query")
     desc = fields.String(context="query")
@@ -242,7 +260,7 @@ class ListUsersRequestSchema(PaginatedRequestQuerySchema):
     taxcode = fields.String(context="query")
     ldap = fields.String(context="query")
     perms_N = fields.List(
-        fields.String(example=""),
+        fields.String(metadata={"example": ""}),
         required=False,
         allow_none=True,
         context="query",
@@ -257,9 +275,10 @@ class ListUnitResponseDateSchema(ApiObjectResponseDateSchema):
 
 
 class ListUserResponseSchema(ApiObjectResponseSchema):
-    email = fields.String(required=True, example="test@local")
-    taxcode = fields.String(required=False)
-    ldap = fields.String(required=False)
+    email = fields.String(required=True,
+                          metadata={"example": "test@local"},allow_none=True)
+    taxcode = fields.String(required=False,allow_none=True)
+    ldap = fields.String(required=False,allow_none=True)
     date = fields.Nested(ListUnitResponseDateSchema, required=True)
 
 
@@ -292,7 +311,7 @@ class ListUsers(SwaggerApiView):
 
 
 class GetUserParamsResponseSchema(ApiObjectResponseSchema):
-    # secret = fields.String(required=True, example='test')
+    # secret = fields.String(required=True, metadata={"example": 'test'})
     pass
 
 
@@ -318,7 +337,8 @@ class GetUser(SwaggerApiView):
 
 
 class UserSecretParamsResponseSchema(Schema):
-    secret = fields.String(required=True, example="test")
+    secret = fields.String(required=True,
+                           metadata={"example": "test"})
 
 
 class UserSecretResponseSchema(Schema):
@@ -377,9 +397,9 @@ class ResetUserSecret(SwaggerApiView):
 
 
 class GetUserAtributesParamResponseSchema(Schema):
-    name = fields.String(required=True, default="test")
-    value = fields.String(required=True, default="test")
-    desc = fields.String(required=True, default="test")
+    name = fields.String(required=True, dump_default="test")
+    value = fields.String(required=True, dump_default="test")
+    desc = fields.String(required=True, dump_default="test")
 
 
 class GetUserAtributesResponseSchema(Schema):
@@ -406,13 +426,13 @@ class GetUserAtributes(SwaggerApiView):
 
 class CreateUserParamRequestSchema(BaseCreateRequestSchema, BaseCreateExtendedParamRequestSchema):
     password = fields.String(validate=Length(min=8, max=20), error="Password must be at least 8 characters")
-    email = fields.String(error="email address", missing=None)
+    email = fields.String(error="email address", load_default=None)
     storetype = fields.String(
         validate=OneOf(["DBUSER", "LDAPUSER"], error="Field can be DBUSER, LDAPUSER"),
-        missing="DBUSER",
+        load_default="DBUSER",
     )
-    base = fields.Boolean(missing=False)
-    system = fields.Boolean(missing=False)
+    base = fields.Boolean(load_default=False)
+    system = fields.Boolean(load_default=False)
     taxcode = fields.String(allow_none=True)
     ldap = fields.String(allow_none=True)
 
@@ -487,11 +507,11 @@ class UpdateUserBodyRequestSchema(GetApiObjectRequestSchema):
 
 
 class UpdateUserResponseSchema(Schema):
-    update = fields.String(default="6d960236-d280-46d2-817d-f3ce8f0aeff7", required=True)
-    role_append = fields.List(fields.String, dump_to="role_append", required=True)
-    role_remove = fields.List(fields.String, dump_to="role_remove", required=True)
-    perm_append = fields.List(fields.String, dump_to="perm_append", required=True)
-    perm_remove = fields.List(fields.String, dump_to="perm_remove", required=True)
+    update = fields.String(dump_default="6d960236-d280-46d2-817d-f3ce8f0aeff7", required=True)
+    role_append = fields.List(fields.String, data_key="role_append", required=True)
+    role_remove = fields.List(fields.String, data_key="role_remove", required=True)
+    perm_append = fields.List(fields.String, data_key="perm_append", required=True)
+    perm_remove = fields.List(fields.String, data_key="perm_remove", required=True)
 
 
 class UpdateUser(SwaggerApiView):
@@ -576,9 +596,9 @@ class CreateUserAttributeBodyRequestSchema(GetApiObjectRequestSchema):
 
 
 class CreateUserAttributeResponseSchema(Schema):
-    name = fields.String(required=True, default="test")
-    value = fields.String(required=True, default="test")
-    desc = fields.String(required=True, default="test")
+    name = fields.String(required=True, dump_default="test")
+    value = fields.String(required=True, dump_default="test")
+    desc = fields.String(required=True, dump_default="test")
 
 
 class CreateUserAttribute(SwaggerApiView):
@@ -604,9 +624,9 @@ class CreateUserAttribute(SwaggerApiView):
         return (resp, 201)
 
 
-## delete attributes
 class DeleteUserAttributeRequestSchema(GetApiObjectRequestSchema):
-    aid = fields.String(required=True, description="attribute name", context="path")
+    aid = fields.String(required=True,
+                        metadata={"description": "attribute name"}, context="path")
 
 
 class DeleteUserAttribute(SwaggerApiView):
@@ -647,12 +667,12 @@ class DeleteUser(SwaggerApiView):
 class ListRolesRequestSchema(PaginatedRequestQuerySchema):
     user = fields.String(context="query")
     group = fields.String(context="query")
-    #     groups_N = fields.List(fields.String(example='1'), required=False, allow_none=True, context='query',
-    #                           collection_format='multi', data_key='groups.N', description='groups id list')
+    #     groups_N = fields.List(fields.String(metadata={"example": '1'}), required=False, allow_none=True, context='query',
+    #                           collection_format='multi', data_key='groups.N', metadata={"description": 'groups id list'})
     names = fields.String(context="query")
     alias = fields.String(context="query")
     perms_N = fields.List(
-        fields.String(example=""),
+        fields.String(metadata={"example": ""}),
         required=False,
         allow_none=True,
         context="query",
@@ -663,7 +683,8 @@ class ListRolesRequestSchema(PaginatedRequestQuerySchema):
 
 
 class ListRoleResponseSchema(ApiObjectResponseSchema):
-    alias = fields.String(required=False, default="test", example="test", allow_none=True)
+    alias = fields.String(required=False, dump_default="test",
+                          metadata={"example": "test"}, allow_none=True)
 
 
 class ListRolesResponseSchema(PaginatedResponseSchema):
@@ -692,7 +713,8 @@ class ListRoles(SwaggerApiView):
 
 
 class GetRoleItemResponseSchema(ApiObjectResponseSchema):
-    alias = fields.String(required=True, default="test", example="test")
+    alias = fields.String(required=True, dump_default="test",
+                          metadata={"example": "test"})
 
 
 class GetRoleResponseSchema(Schema):
@@ -725,7 +747,8 @@ class UseRoleResponseSchema(Schema):
 
 
 class UseRoleRequestSchema(Schema):
-    oid = fields.String(required=True, description="role id, uuid or name", context="path")
+    oid = fields.String(required=True,
+                        metadata={"description": "role id, uuid or name"}, context="path")
 
 
 class UseRole(SwaggerApiView):
@@ -805,7 +828,8 @@ class ResetRole(SwaggerApiView):
 
 
 class CreateRoleItemRequestSchema(BaseCreateRequestSchema):
-    alias = fields.String(required=False, description="Role alias")
+    alias = fields.String(required=False,
+                          metadata={"description": "Role alias"})
 
 
 class CreateRoleRequestSchema(Schema):
@@ -862,9 +886,9 @@ class UpdateRoleBodyRequestSchema(GetApiObjectRequestSchema):
 
 
 class UpdateRoleResponseSchema(Schema):
-    update = fields.String(default="6d960236-d280-46d2-817d-f3ce8f0aeff7", required=True)
-    perm_append = fields.List(fields.String, dump_to="perm_append", required=True)
-    perm_remove = fields.List(fields.String, dump_to="perm_remove", required=True)
+    update = fields.String(dump_default="6d960236-d280-46d2-817d-f3ce8f0aeff7", required=True)
+    perm_append = fields.List(fields.String, data_key="perm_append", required=True)
+    perm_remove = fields.List(fields.String, data_key="perm_remove", required=True)
 
 
 class UpdateRole(SwaggerApiView):
@@ -935,7 +959,8 @@ class DeleteRole(SwaggerApiView):
 
 
 class ExpireRoleRequestSchema(GetApiObjectRequestSchema):
-    days = fields.String(required=False, description="num of days", context="path")
+    days = fields.String(required=False,
+                         metadata={"description": "num of days"}, context="path")
 
 
 class ExpireRole(SwaggerApiView):
@@ -949,7 +974,6 @@ class ExpireRole(SwaggerApiView):
         Expure role
         Call this api to expire a role
         """
-        # from beecell.simple import id_gen
         self.logger.debug("ExpireRole - delete - days: %s" % days)
 
         role = controller.get_role(oid)
@@ -959,9 +983,7 @@ class ExpireRole(SwaggerApiView):
 
         res = role.update(
             expiry_date=expiry_date,
-            # modification_date=datetime.today(),
             name=new_name,
-            # active=False
         )
         return res, 204
 
@@ -973,9 +995,9 @@ class ListGroupsRequestSchema(PaginatedRequestQuerySchema):
     user = fields.String(context="query")
     role = fields.String(context="query")
     active = fields.Boolean(context="query")
-    expiry_date = fields.String(data_key="expirydate", default="2099-12-31", context="query")
+    expiry_date = fields.String(data_key="expirydate", dump_default="2099-12-31", context="query")
     perms_N = fields.List(
-        fields.String(example=""),
+        fields.String(metadata={"example": ""}),
         required=False,
         allow_none=True,
         context="query",
@@ -1101,13 +1123,13 @@ class UpdateGroupBodyRequestSchema(GetApiObjectRequestSchema):
 
 
 class UpdateGroupResponseSchema(Schema):
-    update = fields.String(default="6d960236-d280-46d2-817d-f3ce8f0aeff7", required=True)
-    role_append = fields.List(fields.String, dump_to="role_append", required=True)
-    role_remove = fields.List(fields.String, dump_to="role_remove", required=True)
-    user_append = fields.List(fields.String, dump_to="user_append", required=True)
-    user_remove = fields.List(fields.String, dump_to="user_remove", required=True)
-    perm_append = fields.List(fields.String, dump_to="perm_append", required=True)
-    perm_remove = fields.List(fields.String, dump_to="perm_remove", required=True)
+    update = fields.String(dump_default="6d960236-d280-46d2-817d-f3ce8f0aeff7", required=True)
+    role_append = fields.List(fields.String, data_key="role_append", required=True)
+    role_remove = fields.List(fields.String, data_key="role_remove", required=True)
+    user_append = fields.List(fields.String, data_key="user_append", required=True)
+    user_remove = fields.List(fields.String, data_key="user_remove", required=True)
+    perm_append = fields.List(fields.String, data_key="perm_append", required=True)
+    perm_remove = fields.List(fields.String, data_key="perm_remove", required=True)
 
 
 class UpdateGroup(SwaggerApiView):
@@ -1235,7 +1257,8 @@ class ListObjectsRequestSchema(PaginatedRequestQuerySchema):
             ["subsystem", "type", "id", "objid"],
             error="Field can be subsystem, type, id, objid",
         ),
-        missing="id",
+        load_default="id",
+        context="query"
     )
     subsystem = fields.String(context="query")
     type = fields.String(context="query")
@@ -1243,14 +1266,14 @@ class ListObjectsRequestSchema(PaginatedRequestQuerySchema):
 
 
 class ListObjectsParamsResponseSchema(Schema):
-    id = fields.Integer(required=True, default=10)
-    uuid = fields.String(required=True, default="4cdf0ea4-159a-45aa-96f2-708e461130e1")
-    objid = fields.String(required=True, default="396587362//3328462822")
-    subsystem = fields.String(required=True, default="auth")
-    type = fields.String(required=True, default="Role")
-    desc = fields.String(required=True, default="test")
+    id = fields.Integer(required=True, dump_default=10)
+    uuid = fields.String(required=True, dump_default="4cdf0ea4-159a-45aa-96f2-708e461130e1")
+    objid = fields.String(required=True, dump_default="396587362//3328462822")
+    subsystem = fields.String(required=True, dump_default="auth")
+    type = fields.String(required=True, dump_default="Role")
+    desc = fields.String(required=True, dump_default="test")
     date = fields.Nested(ApiObjectResponseDateSchema, required=True, allow_none=True)
-    active = fields.Boolean(required=True, default=True)
+    active = fields.Boolean(required=True, dump_default=True)
 
 
 class ListObjectsResponseSchema(PaginatedResponseSchema):
@@ -1316,7 +1339,7 @@ class CreateObjectBodyRequestSchema(Schema):
 
 
 class CreateObjectResponseSchema(Schema):
-    ids = fields.List(fields.Int(required=True, default=10))
+    ids = fields.List(fields.Int(required=True, dump_default=10))
 
 
 class CreateObject(SwaggerApiView):
@@ -1369,7 +1392,8 @@ class ListObjectTypesRequestSchema(PaginatedRequestQuerySchema):
             ["subsystem", "type", "id", "objid"],
             error="Field can be subsystem, type, id, objid",
         ),
-        missing="id",
+        load_default="id",
+        context="query"
     )
     subsystem = fields.String(context="query")
     type = fields.String(context="query")
@@ -1377,8 +1401,8 @@ class ListObjectTypesRequestSchema(PaginatedRequestQuerySchema):
 
 
 class ListObjectTypesParamsResponseSchema(Schema):
-    subsystem = fields.String(required=True, default="auth")
-    type = fields.String(required=True, default="Role")
+    subsystem = fields.String(required=True, dump_default="auth")
+    type = fields.String(required=True, dump_default="Role")
 
 
 class ListObjectTypesResponseSchema(PaginatedResponseSchema):
@@ -1538,7 +1562,7 @@ class CreateObjectTypeBodyRequestSchema(Schema):
 
 
 class CreateObjectTypeResponseSchema(Schema):
-    ids = fields.List(fields.Int(required=True, default=10))
+    ids = fields.List(fields.Int(required=True, dump_default=10))
 
 
 class CreateObjectType(SwaggerApiView):
@@ -1575,15 +1599,17 @@ class DeleteObjectType(SwaggerApiView):
 # object action
 #
 class ListObjectActionResponseSchema(Schema):
-    id = fields.Integer(required=True, default=10, description="action id")
-    value = fields.String(required=True, default="test", description="action value")
+    id = fields.Integer(required=True, dump_default=10,
+                        metadata={"description": "action id"})
+    value = fields.String(required=True, dump_default="test",
+                          metadata={"description": "action value"})
 
 
 class ListObjectActionsResponseSchema(Schema):
     object_actions = fields.Nested(ListObjectActionResponseSchema, many=True, required=True, allow_none=True)
     count = fields.Integer(
         required=True,
-        default=10,
+        dump_default=10,
         example=10,
         description="number of query items returned",
     )
@@ -1615,7 +1641,8 @@ class ListObjectPermsRequestSchema(PaginatedRequestQuerySchema):
             ["subsystem", "type", "id", "objid", "aid", "action"],
             error="Field can be subsystem, type, id, objid, aid, action",
         ),
-        missing="id",
+        load_default="id",
+        context="query"
     )
     subsystem = fields.String(context="query")
     type = fields.String(context="query")
@@ -1624,18 +1651,18 @@ class ListObjectPermsRequestSchema(PaginatedRequestQuerySchema):
     user = fields.String(context="query")
     role = fields.String(context="query")
     group = fields.String(context="query")
-    cascade = fields.Boolean(context="query", missing=False)
+    cascade = fields.Boolean(context="query", load_default=False)
 
 
 class ListObjectPermsParamsResponseSchema(Schema):
-    id = fields.Integer(required=True, default=10)
-    oid = fields.Integer(required=True, default=11)
-    objid = fields.String(required=True, default="396587362//3328462822")
-    type = fields.String(required=True, default="auth")
-    subsystem = fields.String(required=True, default="Role")
-    desc = fields.String(required=True, default="test")
-    aid = fields.Integer(required=True, default=12)
-    action = fields.String(required=True, default="view")
+    id = fields.Integer(required=True, dump_default=10)
+    oid = fields.Integer(required=True, dump_default=11)
+    objid = fields.String(required=True, dump_default="396587362//3328462822")
+    type = fields.String(required=True, dump_default="auth")
+    subsystem = fields.String(required=True, dump_default="Role")
+    desc = fields.String(required=True, dump_default="test")
+    aid = fields.Integer(required=True, dump_default=12)
+    action = fields.String(required=True, dump_default="view")
 
 
 class ListObjectPermsResponseSchema(PaginatedResponseSchema):

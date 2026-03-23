@@ -1,10 +1,12 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 from logging import getLogger
 from time import sleep
-from beehive.common.task_v2.manager import task_manager
+#from beehive.common.task_v2.manager import task_manager
+from beehive.common.task_v2.manager import get_task_manager
+#from beehive.common.task_v2.manager import get_task_manager
 from beehive.common.task_v2 import (
     BaseTask,
     task_step,
@@ -33,6 +35,7 @@ class TestTask(BaseTask):
     def __init__(self, *args, **kwargs):
         super(TestTask, self).__init__(*args, **kwargs)
 
+        # self.steps = [TestTask.task_step0, TestTask.task_step1]
         self.steps = [TestTask.task_step0, TestTask.task_step1, TestTask.task_step2]
 
     @staticmethod
@@ -45,14 +48,19 @@ class TestTask(BaseTask):
         :param dict params: step params
         :return: res, params
         """
+        # print("<<<<<<<<<<<<<<<<<<<<<params", params)
         x = params["x"]
         y = params["y"]
         res = x + y
+        # print("<<<<<<<<<<<<<<<<<<<<<x", x)
+        # print("<<<<<<<<<<<<<<<<<<<<<y", y)
+        # print("<<<<<<<<<<<<<<<<<<<<<res", res)
 
         # save data. Shared data must be re-kept before save modification because
         # concurrent tasks can change its content during task elaboration
         data = task.get_shared_data()
         data["mul"] = res
+        # print("<<<<<<<<<<<<<<<<<<<<<data", data)
         task.set_shared_data(data)
         task.logger.debug("mul x=%s and y=%s: %s" % (x, y, res))
         task.progress(step_id, msg="add %s" % data)
@@ -153,7 +161,7 @@ class Test2Task(BaseTask):
 
     @staticmethod
     @task_step()
-    def task_step1(task, step_id, params, *args, **kvargs):
+    def task_step1(task: BaseTask, step_id, params, *args, **kvargs):
         """Test step invoke async api
 
         :param task: parent celery task
@@ -165,8 +173,14 @@ class Test2Task(BaseTask):
         uri = "/v2.0/nas/worker/tasks/test3"
         data = {"x": 2, "y": 234, "numbers": [2, 78, 45, 90], "mul_numbers": []}
         res = task.invoke_api("auth", uri, "post", data=data)
+        task.progress(step_id, msg=f"fvfvfv - task_step1 - res: {res}")
+        print(f"fvfvfv - task_step1 - res: {res}")
+        
         if res is not None:
             taskid = res.get("taskid")
+            task.progress(step_id, msg=f"fvfvfv - task_step1 - taskid: {taskid}")
+            print(f"fvfvfv - task_step1 - taskid: {taskid}")
+
             task.wait_task("auth", "nas", taskid, timeout=60, delta=3, maxtime=600, trace=None)
             task.progress(step_id, msg="invoke an api from a task")
             return res.get("result", None), params
@@ -219,6 +233,7 @@ class ScheduledActionTask(BaseTask):
         return True, params
 
 
-task_manager.tasks.register(TestTask())
-task_manager.tasks.register(Test2Task())
-task_manager.tasks.register(ScheduledActionTask())
+task_manager = get_task_manager()
+task_manager.register_task(TestTask())
+task_manager.register_task(Test2Task())
+task_manager.register_task(ScheduledActionTask())

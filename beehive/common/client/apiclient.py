@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
+from __future__ import annotations
 from uuid import uuid4
 
 import requests
@@ -11,6 +12,7 @@ from copy import deepcopy
 from time import time, sleep
 from logging import getLogger
 import binascii
+from beecell.checks import is_lab_dev
 from beecell.remote import NotFoundException
 from beecell.types.type_string import truncate
 from beecell.crypto import check_vault, sign_data
@@ -18,11 +20,11 @@ from beecell.password import obscure_data, obscure_string
 from multiprocessing import current_process
 from base64 import b64encode, b64decode
 from beehive.common.jwtclient import JWTClient
-from six.moves.urllib.parse import urlencode, quote
-from six.moves import http_client
-from six import PY3, ensure_text
+from urllib.parse import urlencode, quote
+import http.client as  http_client
+from beecell.util import ensure_text
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Callable, Any, Optional, Union
 
 
 class BeehiveApiClientError(Exception):
@@ -51,6 +53,8 @@ class BeehiveApiClient(object):
     :param prefixuri: custom prefix path to use in uri [default='']
     :param oauth2_grant_type: oauth2 grant type. Can be jwt or client [default=jwt]
     """
+    endpoints: Dict[str, List[Tuple[Dict[str, Union[str,int]], int]]]
+    proxy: Dict[str, Union[str, int]]
 
     def __init__(
         self,
@@ -134,7 +138,7 @@ class BeehiveApiClient(object):
             self.oauth2_grant_type,
         )
 
-    def __parse_endpoint(self, endpoint_uri: str) -> dict:
+    def __parse_endpoint(self, endpoint_uri: str) -> Dict[str,Union[str,int]]:
         """Parse endpoint http://10.102.160.240:6060
 
         :param endpoint: http://10.102.160.240:6060
@@ -146,20 +150,21 @@ class BeehiveApiClient(object):
             t2 = t1[1].split(":")
             return {"proto": t1[0], "host": t2[0], "port": int(t2[1])}
         except Exception as ex:
-            self.logger.error("Error parsing endpoint %s: %s" % (endpoint_uri, ex))
+            self.logger.error("Error parsing endpoint %s: %s", endpoint_uri, ex)
 
-    def set_endpoints(self, endpoints):
+    def set_endpoints(self, endpoints: Dict[str, str]):
         for name, uri in endpoints.items():
             self.endpoints[name].append([self.__parse_endpoint(uri), 0])
         self.logger.debug("Set endpoints: %s" % self.endpoints)
 
-    def endpoint(self, subsystem):
+    def endpoint(self, subsystem: str):
         """Select a subsystem endpoint from list
 
         :param subsystem: subsystem
         """
+        # get endpoints for subsystem
         endpoints = None
-        endpoints = self.endpoints.get(subsystem)
+        endpoints = self.endpoints.get(subsystem, [])
         if len(endpoints) == 0:
             self.load_catalog()
             # if subsystem does not already exist return error
@@ -179,6 +184,7 @@ class BeehiveApiClient(object):
         #     except:
         #         raise BeehiveApiClientError('Subsystem %s reference is empty' % subsystem, code=404)
 
+        # endpoints is a list of tuples of [{'proto':.., 'host':.., 'port':..}, <weight>]
         # order endpoint by lower weight
         endpoints = sorted(endpoints, key=lambda weight: weight[1])
 
@@ -209,12 +215,12 @@ class BeehiveApiClient(object):
 
     def http_client(
         self,
-        proto,
-        host,
-        path,
-        method,
-        data="",
-        headers={},
+        proto: str,
+        host: str,
+        path: str,
+        method: str,
+        data: str="",
+        headers: Dict[str, str]=None,
         port=80,
         timeout=30,
         print_curl=False,
@@ -235,6 +241,8 @@ class BeehiveApiClient(object):
         :param silent: if True print curl request call
         :raise BeehiveApiClientError:
         """
+        if headers is None:
+            headers = {}
         try:
             # start time
             start = time()
@@ -252,24 +260,18 @@ class BeehiveApiClient(object):
 
             send_data = obscure_string(data)
             self.logger.info(
-                "Api Request [%s] %s %s://%s:%s%s, timeout=%s" % (reqid, method, proto, host, port, path, timeout)
+                "Api Request [%s] %s %s://%s:%s%s, timeout=%s", reqid, method, proto, host, port, path, timeout
             )
             if silent is False:
                 self.logger.debug(
-                    "API Request: %s - Call: METHOD=%s, URI=%s://%s:%s%s, HEADERS=%s, DATA=%s"
-                    % (
-                        reqid,
-                        method,
-                        proto,
-                        host,
-                        port,
-                        truncate(path),
-                        headers,
-                        truncate(send_data),
-                    )
+                    "API Request: %s - Call: METHOD=%s, URI=%s://%s:%s%s, HEADERS=%s, DATA=%s",
+                    reqid, method, proto, host, port, truncate(path), headers, truncate(send_data)
                 )
 
             # format curl string
+            if is_lab_dev():
+                # print more info
+                print_curl = True
             if print_curl is True:
                 curl_url = ["curl -k -v -S -X %s" % method.upper()]
                 if data is not None and data != "":
@@ -374,20 +376,24 @@ class BeehiveApiClient(object):
                 if response is not None:
                     self.logger.error(
                         "API Request: %s - Response: HOST=%s, STATUS=%s, CONTENT-TYPE=%s, RES=%s, "
-                        "ELAPSED=%s"
-                        % (
-                            reqid,
-                            response.getheader("remote-server", ""),
-                            response.status,
-                            content_type,
-                            truncate(res),
-                            elapsed,
-                        )
+                        "ELAPSED=%s",
+                        reqid,
+                        response.getheader("remote-server", ""),
+                        response.status,
+                        content_type,
+                        truncate(res),
+                        elapsed
                     )
                 else:
                     self.logger.error(
                         "API Request: %s - Response: HOST=%s, STATUS=%s, CONTENT-TYPE=%s, RES=%s, "
-                        "ELAPSED=%s" % (reqid, None, "Timeout", content_type, truncate(res), elapsed)
+                        "ELAPSED=%s",
+                        reqid,
+                        None,
+                        "Timeout",
+                        content_type,
+                        truncate(res),
+                        elapsed
                     )
 
             raise BeehiveApiClientError(str(ex), code=400)
@@ -397,30 +403,26 @@ class BeehiveApiClient(object):
             if silent is False:
                 self.logger.debug(
                     "API Request: %s - Response: HOST=%s, STATUS=%s, CONTENT-TYPE=%s, RES=%s, "
-                    "ELAPSED=%s"
-                    % (
-                        reqid,
-                        response.getheader("remote-server", ""),
-                        response.status,
-                        content_type,
-                        truncate(res),
-                        elapsed,
-                    )
+                    "ELAPSED=%s",
+                    reqid,
+                    response.getheader("remote-server", ""),
+                    response.status,
+                    content_type,
+                    truncate(res),
+                    elapsed
                 )
         elif response.status in [204]:
             elapsed = time() - start
             if silent is False:
                 self.logger.debug(
                     "API Request: %s - Response: HOST=%s, STATUS=%s, CONTENT-TYPE=%s, RES=%s, "
-                    "ELAPSED=%s"
-                    % (
-                        reqid,
-                        response.getheader("remote-server", ""),
-                        response.status,
-                        content_type,
-                        truncate(res),
-                        elapsed,
-                    )
+                    "ELAPSED=%s",
+                    reqid,
+                    response.getheader("remote-server", ""),
+                    response.status,
+                    content_type,
+                    truncate(res),
+                    elapsed
                 )
         else:
             # self.logger.error('+++++ response.status: %s' % (response.status), exc_info=False)
@@ -438,17 +440,17 @@ class BeehiveApiClient(object):
 
     def send_request(
         self,
-        subsystem,
-        path,
-        method,
-        data="",
+        subsystem: str,
+        path: str,
+        method: str,
+        data: Union[Dict, List, str]="",
         uid=None,
         seckey=None,
-        other_headers=None,
-        timeout=60,
+        other_headers: Optional[Dict[str, str]]=None,
+        timeout=120,
         silent=False,
         print_curl=False,
-        api_authtype=None,
+        api_authtype: Optional[str]=None,
     ):
         """Send api request
 
@@ -467,6 +469,7 @@ class BeehiveApiClient(object):
         """
         # get endpoint
         endpoint = self.endpoint(subsystem)
+        self.logger.debug("subsystem: %s - endpoint: %s" % (subsystem, endpoint))
         proto = endpoint["proto"]
         host = endpoint["host"]
         port = endpoint["port"]
@@ -527,7 +530,7 @@ class BeehiveApiClient(object):
         data="",
         other_headers=None,
         parse=False,
-        timeout=60,
+        timeout=120,
         silent=False,
         print_curl=False,
     ):
@@ -597,8 +600,8 @@ class BeehiveApiClient(object):
     def get_task_status(
         self,
         subsystem,
-        prefix,
-        taskid,
+        prefix: str,
+        taskid: str,
         uid=None,
         seckey=None,
         timeout=60,
@@ -692,7 +695,7 @@ class BeehiveApiClient(object):
         timeout=60,
         delta=3,
         maxtime=600,
-        trace=None,
+        trace: Optional[Callable[[str], Any]]=None,
         other_headers=None,
     ):
         """Wait for running task
@@ -732,7 +735,7 @@ class BeehiveApiClient(object):
                 other_headers=other_headers,
             )
             self.logger.debug("%s task %s status: %s" % (subsystem, taskid, status))
-            if trace is not None:
+            if trace is not None and callable(trace):
                 trace("%s task %s status: %s" % (subsystem, taskid, status))
             elapsed += delta
             if elapsed > maxtime:
@@ -848,6 +851,7 @@ class BeehiveApiClient(object):
                         self.endpoints[service["service"]] = [[self.__parse_endpoint(endpoint), 0]]
         else:
             raise BeehiveApiClientError("Catalog id is undefined")
+        return True
 
     def set_catalog_endpoint(self, service, endpoint, append=False):
         """Set new service endpoint manually
@@ -1028,7 +1032,7 @@ class BeehiveApiClient(object):
         :raises BeehiveApiClientError: raise :class:`BeehiveApiClientError`
         """
         res = self.invoke("auth", "/v1.0/ncs/catalogs/%s" % catalog_id, "GET", "", silent=True)["catalog"]
-        self.logger.debug("Get catalog %s" % catalog_id)
+        self.logger.debug("Get catalog %s - res: %s" % (catalog_id, res))
         return res
 
     def create_catalog(self, name, zone):
@@ -1307,7 +1311,7 @@ class BeehiveApiClient(object):
             }
         }
         uri = "/v1.0/nas/roles/%s" % role
-        res = self.invoke("auth", uri, "PUT", data, parse=True, silent=True)
+        res = self.invoke("auth", uri, "PUT", data, parse=True, silent=True, timeout=120)
         self.logger.debug("Append permission %s:%s %s %s to role %s" % (objtype, objdef, objid, objaction, role))
         return res
 
@@ -1321,7 +1325,7 @@ class BeehiveApiClient(object):
         """
         data = {"role": {"perms": {"append": perms, "remove": []}}}
         uri = "/v1.0/nas/roles/%s" % role
-        res = self.invoke("auth", uri, "PUT", data, parse=True, silent=True)
+        res = self.invoke("auth", uri, "PUT", data, parse=True, silent=True, timeout=120)
         self.logger.debug("Append permissions %s " % truncate(perms))
         return res
 

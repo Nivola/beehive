@@ -1,11 +1,12 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 from datetime import datetime
 from logging import getLogger
 from beehive.common.controller.authorization import User
-from beehive.common.task_v2.manager import task_manager
+#from beehive.common.task_v2.manager import task_manager
+from beehive.common.task_v2.manager import get_task_manager
 from beehive.common.task_v2 import BaseTask, task_step
 
 logger = getLogger(__name__)
@@ -67,5 +68,7 @@ class RemoveExpiredRolesFromUsersTask(BaseTask):
         return True, params
 
 
-task_manager.tasks.register(DisableExpiredUsersTask())
-task_manager.tasks.register(RemoveExpiredRolesFromUsersTask())
+#task_manager.tasks.register(DisableExpiredUsersTask())
+#task_manager.tasks.register(RemoveExpiredRolesFromUsersTask())
+get_task_manager().register_task(DisableExpiredUsersTask())
+get_task_manager().register_task(RemoveExpiredRolesFromUsersTask())

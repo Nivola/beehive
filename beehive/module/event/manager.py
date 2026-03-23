@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 import logging
 from datetime import datetime
@@ -26,7 +26,7 @@ from beecell.db import TransactionError
 from beehive.common.apimanager import ApiManager, ApiObject
 import os
 from tempfile import NamedTemporaryFile
-from six import ensure_binary
+from beecell.util import ensure_binary
 import base64
 
 
@@ -332,27 +332,6 @@ class EventConsumer(ConsumerMixin):
         except Exception as ex:
             self.logger.error("Event %s can not be published: %s" % (event_id, ex))
             raise EventConsumerError(ex)
-
-    def __publish_event_kombu(self, event_id, event_type, data, source, dest):
-        try:
-            event = Event(event_type, data, source, dest)
-            producer = producers[self.conn].acquire()
-            producer.publish(
-                event.dict(),
-                serializer="json",
-                compression="bzip2",
-                exchange=self.exchange_sub,
-                declare=[self.exchange_sub],
-                routing_key=self.routing_key_sub,
-                expiration=60,
-                delivery_mode=1,
-            )
-            producer.release()
-            self.logger.debug("Publish event %s to exchange %s" % (event_id, self.exchange_sub))
-        except exceptions.ConnectionLimitExceeded as ex:
-            self.logger.error("Event %s can not be published: %s" % (event_id, ex), exc_info=True)
-        except Exception as ex:
-            self.logger.error("Event %s can not be published: %s" % (event_id, ex), exc_info=True)
 
 
 def start_event_consumer(params):
