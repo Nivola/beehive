@@ -14,7 +14,6 @@ from beehive.common.task.util import end_task, start_task
 logger = get_task_logger(__name__)
 task_manager = get_task_manager()
 
-
 #
 # CatalogJob
 #

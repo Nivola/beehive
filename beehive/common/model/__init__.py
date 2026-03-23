@@ -643,8 +643,6 @@ class PaginatedQueryGenerator(object):
         """
         self.group_by = kvargs.pop("group_by", False)
 
-        self.group_by = kvargs.pop("group_by", False)
-
         if self.with_perm_tag is True:
             self.logger.debug2("Authorization with permission tags ENABLED")
         else:
